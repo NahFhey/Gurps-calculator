@@ -3,14 +3,17 @@ import { Plus, Trash2 } from 'lucide-react';
 import { INGREDIENT_ROLES, VECTORS } from '../../constants';
 import { toNumberOr } from '../../utils/helpers';
 import { calculateFormulaStats, startBatchFromFormula, tallyAspects, computeDominantSecondary } from '../../utils/alchemy';
+import { TBBuilderPanel } from './TBBuilderPanel';
 
 export function FormulasView({ reagents, formulas, batches, saveReagents, saveFormulas, saveBatches }) {
   const [showDesigner, setShowDesigner] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [expandedFormula, setExpandedFormula] = useState(null);
 
   const [formulaName, setFormulaName] = useState('');
   const [ingredients, setIngredients] = useState([]);
   const [selectedVector, setSelectedVector] = useState('Potion');
+  const [formulaTraits, setFormulaTraits] = useState([]);
 
   function addIngredient() {
     if (reagents.length === 0) {
@@ -76,13 +79,15 @@ export function FormulasView({ reagents, formulas, batches, saveReagents, saveFo
       concentrationSteps: stats.concentrationSteps,
       totalConcentrationSteps: stats.totalConcentrationSteps,
       traitBudget: stats.traitBudget,
-      hasMatchingStabilizer: stats.hasMatchingStabilizer
+      hasMatchingStabilizer: stats.hasMatchingStabilizer,
+      traits: [...formulaTraits]
     };
 
     saveFormulas([...formulas, newFormula]);
     setFormulaName('');
     setIngredients([]);
     setSelectedVector('Potion');
+    setFormulaTraits([]);
     setShowDesigner(false);
     alert('Formula created!');
   }
@@ -229,22 +234,30 @@ export function FormulasView({ reagents, formulas, batches, saveReagents, saveFo
             const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector);
 
             return (
-              <div className="bg-gray-600 p-3 rounded">
-                <div className="text-sm font-semibold mb-2">Formula Preview</div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="space-y-1">
-                    <div>Tier: <span className="text-yellow-400 font-bold">{stats.tier}</span></div>
-                    <div>Dominant: <span className="text-blue-400">{stats.dominantAspect || 'None'}</span></div>
-                    <div>Secondary: <span className="text-blue-400">{stats.secondaryAspect || 'None'}</span></div>
-                    <div>Potency: <span className="text-green-400">{stats.basePotency} {stats.concentrationSteps > 0 ? `+${stats.concentrationSteps} → ${stats.finalPotency}` : ''}</span></div>
-                  </div>
-                  <div className="space-y-1">
-                    <div>WR: <span className="text-orange-400">{stats.baseWR}</span></div>
-                    <div>DM: <span className="text-orange-400">{stats.baseDM >= 0 ? '+' : ''}{stats.baseDM}</span></div>
-                    <div>TB: <span className="text-purple-400">{stats.traitBudget} points</span></div>
-                    <div>Vector: <span className="text-gray-300">{stats.vector}</span></div>
+              <div className="space-y-3">
+                <div className="bg-gray-600 p-3 rounded">
+                  <div className="text-sm font-semibold mb-2">Formula Preview</div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="space-y-1">
+                      <div>Tier: <span className="text-yellow-400 font-bold">{stats.tier}</span></div>
+                      <div>Dominant: <span className="text-blue-400">{stats.dominantAspect || 'None'}</span></div>
+                      <div>Secondary: <span className="text-blue-400">{stats.secondaryAspect || 'None'}</span></div>
+                      <div>Potency: <span className="text-green-400">{stats.basePotency} {stats.concentrationSteps > 0 ? `+${stats.concentrationSteps} → ${stats.finalPotency}` : ''}</span></div>
+                    </div>
+                    <div className="space-y-1">
+                      <div>WR: <span className="text-orange-400">{stats.baseWR}</span></div>
+                      <div>DM: <span className="text-orange-400">{stats.baseDM >= 0 ? '+' : ''}{stats.baseDM}</span></div>
+                      <div>TB: <span className="text-purple-400">{stats.traitBudget} points</span></div>
+                      <div>Vector: <span className="text-gray-300">{stats.vector}</span></div>
+                    </div>
                   </div>
                 </div>
+
+                <TBBuilderPanel
+                  traitBudget={stats.traitBudget}
+                  initialTraits={formulaTraits}
+                  onUpdate={setFormulaTraits}
+                />
               </div>
             );
           })()}
@@ -290,7 +303,40 @@ export function FormulasView({ reagents, formulas, batches, saveReagents, saveFo
               <div className="text-xs text-gray-400 mt-2">
                 {f.ingredients.map(i => `${i.reagentName} (${i.role}, ${i.unitsUsed}U)`).join(', ')}
               </div>
+
+              {/* Traits Summary */}
+              {f.traits && f.traits.length > 0 && (
+                <div className="text-xs text-purple-400 mt-2">
+                  Traits: {f.traits.map(t => `${t.name} (${t.cost}pts)`).join(', ')}
+                </div>
+              )}
             </div>
+
+            {/* Expandable Traits Panel */}
+            {expandedFormula === f.id && f.traits && (
+              <div className="mt-3">
+                <TBBuilderPanel
+                  traitBudget={f.traitBudget || 10}
+                  initialTraits={f.traits || []}
+                  onUpdate={(newTraits) => {
+                    const updatedFormulas = formulas.map(formula =>
+                      formula.id === f.id ? {...formula, traits: newTraits} : formula
+                    );
+                    saveFormulas(updatedFormulas);
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Toggle Traits Button */}
+            {(f.traits && f.traits.length > 0) || expandedFormula === f.id ? (
+              <button
+                onClick={() => setExpandedFormula(expandedFormula === f.id ? null : f.id)}
+                className="mt-2 text-xs text-purple-400 hover:text-purple-300"
+              >
+                {expandedFormula === f.id ? '▼ Hide Traits' : '▶ Show Traits'}
+              </button>
+            ) : null}
           </div>
         ))}
 
