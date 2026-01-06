@@ -3,7 +3,7 @@ import { Plus, Save, X, Trash2, Eye, EyeOff } from 'lucide-react';
 import { toNumberOr, refundMaterialsFromProject } from '../utils/helpers';
 import { TEMPLATES, ASPECTS } from '../constants';
 
-export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTemplates, materials, effectFamilyMap, saveMaterials, saveFoodTypes, saveMaterialTypes, saveWorkers, saveCrafts, saveCustomTemplates, saveEffectFamilyMap, renameMaterialType }) {
+export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTemplates, materials, effectFamilyMap, alchemySettings, saveMaterials, saveFoodTypes, saveMaterialTypes, saveWorkers, saveCrafts, saveCustomTemplates, saveEffectFamilyMap, saveAlchemySettings, renameMaterialType }) {
   const [view, setView] = useState('foodTypes');
   const [showAdd, setShowAdd] = useState(false);
   const [newType, setNewType] = useState('');
@@ -147,6 +147,7 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
         <button onClick={() => setView('projects')} className={`px-4 py-2 ${view === 'projects' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Projects</button>
         <button onClick={() => setView('templates')} className={`px-4 py-2 ${view === 'templates' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Templates</button>
         <button onClick={() => setView('effectFamilyMap')} className={`px-4 py-2 ${view === 'effectFamilyMap' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Effect Map</button>
+        <button onClick={() => setView('alchemySettings')} className={`px-4 py-2 ${view === 'alchemySettings' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Alchemy Settings</button>
       </div>
 
       {view === 'foodTypes' && (
@@ -829,6 +830,72 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
                 );
               })
             )}
+          </div>
+        </div>
+      )}
+
+      {view === 'alchemySettings' && (
+        <div>
+          <h2 className="text-xl font-bold mb-4">Alchemy Settings</h2>
+          <p className="text-sm text-gray-400 mb-6">
+            Configure default settings for alchemy batches. These can be overridden per batch.
+          </p>
+
+          <div className="bg-gray-700 p-6 rounded-lg space-y-6 max-w-2xl">
+            <div>
+              <label className="block text-sm font-semibold mb-2">Default Lab Rating</label>
+              <p className="text-xs text-gray-400 mb-3">
+                Base modifier for all alchemy work. Can be overridden when starting a batch. Typical range: -5 to +5
+              </p>
+              <input
+                type="number"
+                value={alchemySettings.defaultLabRating}
+                onChange={(e) => {
+                  saveAlchemySettings({
+                    ...alchemySettings,
+                    defaultLabRating: toNumberOr(e.target.value, 0)
+                  });
+                }}
+                className="w-full bg-gray-600 px-4 py-2 rounded text-lg"
+                placeholder="0"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                Current: {alchemySettings.defaultLabRating >= 0 ? '+' : ''}{alchemySettings.defaultLabRating}
+              </p>
+            </div>
+
+            <div className="border-t border-gray-600 pt-6">
+              <label className="block text-sm font-semibold mb-2">Work Block Duration (minutes)</label>
+              <p className="text-xs text-gray-400 mb-3">
+                Standard time unit for alchemy work. Progress is tracked in work blocks.
+              </p>
+              <input
+                type="number"
+                min="1"
+                value={alchemySettings.workBlockMinutes}
+                onChange={(e) => {
+                  saveAlchemySettings({
+                    ...alchemySettings,
+                    workBlockMinutes: Math.max(1, toNumberOr(e.target.value, 120))
+                  });
+                }}
+                className="w-full bg-gray-600 px-4 py-2 rounded text-lg"
+                placeholder="120"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                Current: {alchemySettings.workBlockMinutes} minutes ({(alchemySettings.workBlockMinutes / 60).toFixed(1)} hours)
+              </p>
+            </div>
+
+            <div className="bg-gray-800 p-4 rounded text-sm">
+              <div className="font-semibold mb-2">Notes:</div>
+              <ul className="list-disc list-inside space-y-1 text-gray-300">
+                <li>Lab Rating affects Work Requirement (WR) and Difficulty Modifier (DM)</li>
+                <li>Higher lab rating = easier brewing, fewer work blocks needed</li>
+                <li>Work blocks can be customized for different campaign pacing</li>
+                <li>These are defaults; you can override them per batch</li>
+              </ul>
+            </div>
           </div>
         </div>
       )}
