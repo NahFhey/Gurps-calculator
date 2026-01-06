@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { applyWorkBlockResult } from '../../utils/alchemy';
 
-export function BatchesView({ batches, workers, saveBatches }) {
+export function BatchesView({ batches, workers, formulas, saveBatches, saveFormulas }) {
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [workerName, setWorkerName] = useState('');
   const [skill, setSkill] = useState('');
@@ -9,6 +9,9 @@ export function BatchesView({ batches, workers, saveBatches }) {
   const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0]);
   const [showForecast, setShowForecast] = useState(false);
   const [showMicroAssay, setShowMicroAssay] = useState(false);
+  const [showSavePrompt, setShowSavePrompt] = useState(false);
+  const [completedBatch, setCompletedBatch] = useState(null);
+  const [saveAsName, setSaveAsName] = useState('');
 
   const activeBatches = batches.filter(b => b.phase === 'brewing');
   const completedBatches = batches.filter(b => b.phase !== 'brewing');
@@ -62,6 +65,38 @@ export function BatchesView({ batches, workers, saveBatches }) {
     alert(`Micro-Assay: Dominant aspect is ${selectedBatch.dominantAspect}, Secondary is ${selectedBatch.secondaryAspect}`);
   }
 
+  function saveRecipeFromBatch() {
+    if (!completedBatch || !saveFormulas) return;
+
+    const recipeName = saveAsName.trim() || completedBatch.formulaName;
+
+    // Reconstruct formula from batch data
+    const savedFormula = {
+      id: crypto.randomUUID(),
+      name: recipeName,
+      ingredients: completedBatch.consumedIngredients || [],
+      tier: completedBatch.tier || 1,
+      vector: completedBatch.vector || 'Potion',
+      baseWR: completedBatch.WR,
+      baseDM: completedBatch.DM,
+      dominantAspect: completedBatch.dominantAspect,
+      secondaryAspect: completedBatch.secondaryAspect,
+      basePotency: completedBatch.basePotency || 'P1',
+      finalPotency: completedBatch.finalPotency || 'P1',
+      concentrationSteps: completedBatch.concentrationSteps || 0,
+      totalConcentrationSteps: completedBatch.totalConcentrationSteps || 0,
+      traitBudget: completedBatch.traitBudget || 10,
+      hasMatchingStabilizer: completedBatch.hasMatchingStabilizer || false,
+      traits: completedBatch.traits || []
+    };
+
+    saveFormulas([...(formulas || []), savedFormula]);
+    setShowSavePrompt(false);
+    setCompletedBatch(null);
+    setSaveAsName('');
+    alert(`Recipe "${recipeName}" saved to formulas!`);
+  }
+
   function addWorkBlock() {
     if (!selectedBatch || !workerName || !skill || !roll) {
       alert('Fill all fields');
@@ -80,7 +115,14 @@ export function BatchesView({ batches, workers, saveBatches }) {
     saveBatches(newBatches);
 
     if (updated.phase === 'completed') {
-      alert(`Batch complete! Quality: ${updated.quality}`);
+      // Show save prompt for successful batches (not Mishap)
+      if (updated.quality !== 'Mishap' && saveFormulas) {
+        setCompletedBatch(updated);
+        setSaveAsName(updated.formulaName);
+        setShowSavePrompt(true);
+      } else {
+        alert(`Batch complete! Quality: ${updated.quality}`);
+      }
       setSelectedBatch(null);
     } else if (updated.phase === 'failed') {
       alert(`Batch failed! Mishap occurred.`);
@@ -95,6 +137,52 @@ export function BatchesView({ batches, workers, saveBatches }) {
 
   return (
     <div className="bg-gray-800 rounded-lg p-6">
+      {/* Save Recipe Prompt */}
+      {showSavePrompt && completedBatch && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-6 rounded-lg max-w-md border-2 border-green-600">
+            <h3 className="text-xl font-bold mb-2 text-green-400">Batch Complete!</h3>
+            <p className="mb-4">
+              Quality: <span className={`font-bold ${completedBatch.quality === 'Clean' ? 'text-green-400' : 'text-yellow-400'}`}>
+                {completedBatch.quality}
+              </span>
+            </p>
+            <p className="text-sm text-gray-400 mb-4">
+              Would you like to save this as a reusable formula?
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm text-gray-400 mb-1">Recipe Name</label>
+              <input
+                value={saveAsName}
+                onChange={(e) => setSaveAsName(e.target.value)}
+                className="w-full bg-gray-600 px-3 py-2 rounded"
+                placeholder="Enter recipe name..."
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowSavePrompt(false);
+                  setCompletedBatch(null);
+                  setSaveAsName('');
+                }}
+                className="flex-1 px-4 py-2 bg-gray-600 rounded"
+              >
+                Skip
+              </button>
+              <button
+                onClick={saveRecipeFromBatch}
+                className="flex-1 px-4 py-2 bg-green-600 rounded"
+              >
+                Save Recipe
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <h2 className="text-xl font-bold mb-4">Alchemy Batches</h2>
 
       {selectedBatch ? (

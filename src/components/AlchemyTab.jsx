@@ -40,7 +40,7 @@ export function AlchemyTab({ reagents, formulas, batches, workers, saveReagents,
 
       {view === 'reagents' && <ReagentsView reagents={reagents} saveReagents={saveReagents} />}
       {view === 'formulas' && <FormulasView reagents={reagents} formulas={formulas} batches={batches} saveReagents={saveReagents} saveFormulas={saveFormulas} saveBatches={saveBatches} />}
-      {view === 'batches' && <BatchesView batches={batches} workers={workers} saveBatches={saveBatches} />}
+      {view === 'batches' && <BatchesView batches={batches} workers={workers} formulas={formulas} saveBatches={saveBatches} saveFormulas={saveFormulas} />}
       {view === 'tally' && <TallyWorksheetView reagents={reagents} />}
     </div>
   );
