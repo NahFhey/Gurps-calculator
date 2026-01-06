@@ -1,4 +1,4 @@
-import { REFINEMENT_LEVELS } from '../constants';
+import { REFINEMENT_LEVELS, TIER_DATA, VECTORS, POTENCY_LEVELS } from '../constants';
 import { determineQuality } from './helpers';
 
 // Get active aspect points for a reagent based on refinement
@@ -54,26 +54,50 @@ export function computeDominantSecondary(tally) {
   };
 }
 
-// Calculate formula stats
-export function calculateFormulaStats(formula, reagentsMap) {
-  const actives = formula.ingredients.filter(ing => ing.role === 'active');
-  const stabilizers = formula.ingredients.filter(ing => ing.role === 'stabilizer');
+// Get final potency from base potency + concentration steps
+export function getFinalPotency(basePotency, concentrationSteps) {
+  const baseIndex = POTENCY_LEVELS.indexOf(basePotency);
+  if (baseIndex === -1) return basePotency;
 
+  const finalIndex = Math.min(POTENCY_LEVELS.length - 1, baseIndex + concentrationSteps);
+  return POTENCY_LEVELS[finalIndex];
+}
+
+// Calculate tier from total concentration steps
+export function calculateTier(totalConcentrationSteps) {
+  if (totalConcentrationSteps <= 2) return 1;
+  if (totalConcentrationSteps <= 5) return 2;
+  if (totalConcentrationSteps <= 8) return 3;
+  return 4;
+}
+
+// Calculate formula stats using new GURPS 4e tier-based rules
+export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion') {
+  const actives = formula.ingredients.filter(ing => ing.role === 'active' || ing.role === 'Active');
+  const stabilizers = formula.ingredients.filter(ing => ing.role === 'stabilizer' || ing.role === 'Stabilizer');
+
+  // Calculate aspect tally for dominant/secondary
   const tally = tallyAspects(actives, reagentsMap);
   const { dominant, secondary } = computeDominantSecondary(tally);
 
-  const totalActiveUnits = actives.reduce((sum, ing) => sum + ing.unitsUsed, 0);
-  let baseWR = Math.ceil(totalActiveUnits * 2);
-  let baseDM = -Math.floor(totalActiveUnits / 2);
-
-  const maxConcentrationSteps = Math.max(...actives.map(ing => {
+  // Calculate total concentration steps across ALL ingredients (for tier)
+  const totalConcentrationSteps = formula.ingredients.reduce((sum, ing) => {
     const r = reagentsMap.get(ing.reagentId);
-    return r?.concentrationSteps || 0;
-  }), 0);
+    return sum + ((r?.concentrationSteps || 0) * ing.unitsUsed);
+  }, 0);
 
-  baseWR += maxConcentrationSteps * 2;
-  baseDM -= maxConcentrationSteps;
+  // Determine tier (1-4) from total concentration steps
+  const tier = calculateTier(totalConcentrationSteps);
+  const tierData = TIER_DATA[tier];
 
+  // Get vector modifiers
+  const vector = VECTORS.find(v => v.name === vectorName) || VECTORS[0];
+
+  // Calculate WR and DM
+  let WR = tierData.baseWR + vector.wrMod;
+  let DM = tierData.baseDM + vector.dmMod;
+
+  // Check for matching stabilizer (reduces DM by 1)
   const hasMatchingStabilizer = stabilizers.some(stab => {
     const reagent = reagentsMap.get(stab.reagentId);
     if (!reagent) return false;
@@ -81,22 +105,49 @@ export function calculateFormulaStats(formula, reagentsMap) {
     return points[dominant] > 0;
   });
 
-  if (!hasMatchingStabilizer && maxConcentrationSteps > 0) {
-    baseDM -= maxConcentrationSteps;
+  if (hasMatchingStabilizer) {
+    DM -= 1; // Stabilizer bonus
   }
 
-  const basePotency = Math.max(...actives.map(ing => {
+  // Get highest base potency + concentration steps from actives
+  let highestBasePotency = 'P0';
+  let maxConcentrationSteps = 0;
+
+  actives.forEach(ing => {
     const r = reagentsMap.get(ing.reagentId);
-    return (r?.potency || 1);
-  }), 1);
+    if (r) {
+      const basePotency = r.basePotency || r.potency || 'P1';
+      const concentrationSteps = r.concentrationSteps || 0;
+
+      // Compare base potency levels
+      const currentIndex = POTENCY_LEVELS.indexOf(basePotency);
+      const highestIndex = POTENCY_LEVELS.indexOf(highestBasePotency);
+      if (currentIndex > highestIndex) {
+        highestBasePotency = basePotency;
+      }
+
+      // Track max concentration
+      if (concentrationSteps > maxConcentrationSteps) {
+        maxConcentrationSteps = concentrationSteps;
+      }
+    }
+  });
+
+  // Calculate final potency
+  const finalPotency = getFinalPotency(highestBasePotency, maxConcentrationSteps);
 
   return {
-    baseWR,
-    baseDM,
+    tier,
+    baseWR: WR,
+    baseDM: DM,
     dominantAspect: dominant,
     secondaryAspect: secondary,
-    potency: basePotency + maxConcentrationSteps,
+    basePotency: highestBasePotency,
     concentrationSteps: maxConcentrationSteps,
+    finalPotency: finalPotency,
+    totalConcentrationSteps: totalConcentrationSteps,
+    vector: vectorName,
+    traitBudget: tierData.traitBudget,
     hasMatchingStabilizer
   };
 }

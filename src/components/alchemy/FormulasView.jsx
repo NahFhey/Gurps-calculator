@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { INGREDIENT_ROLES } from '../../constants';
+import { INGREDIENT_ROLES, VECTORS } from '../../constants';
 import { toNumberOr } from '../../utils/helpers';
 import { calculateFormulaStats, startBatchFromFormula, tallyAspects, computeDominantSecondary } from '../../utils/alchemy';
 
@@ -10,6 +10,7 @@ export function FormulasView({ reagents, formulas, batches, saveReagents, saveFo
 
   const [formulaName, setFormulaName] = useState('');
   const [ingredients, setIngredients] = useState([]);
+  const [selectedVector, setSelectedVector] = useState('Potion');
 
   function addIngredient() {
     if (reagents.length === 0) {
@@ -58,24 +59,30 @@ export function FormulasView({ reagents, formulas, batches, saveReagents, saveFo
     });
 
     const tempFormula = { ingredients: ingredientsSnapshot };
-    const stats = calculateFormulaStats(tempFormula, reagentsMap);
+    const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector);
 
     const newFormula = {
       id: crypto.randomUUID(),
       name: formulaName,
       ingredients: ingredientsSnapshot,
+      tier: stats.tier,
+      vector: stats.vector,
       baseWR: stats.baseWR,
       baseDM: stats.baseDM,
       dominantAspect: stats.dominantAspect,
       secondaryAspect: stats.secondaryAspect,
-      potency: stats.potency,
+      basePotency: stats.basePotency,
+      finalPotency: stats.finalPotency,
       concentrationSteps: stats.concentrationSteps,
+      totalConcentrationSteps: stats.totalConcentrationSteps,
+      traitBudget: stats.traitBudget,
       hasMatchingStabilizer: stats.hasMatchingStabilizer
     };
 
     saveFormulas([...formulas, newFormula]);
     setFormulaName('');
     setIngredients([]);
+    setSelectedVector('Potion');
     setShowDesigner(false);
     alert('Formula created!');
   }
@@ -116,14 +123,30 @@ export function FormulasView({ reagents, formulas, batches, saveReagents, saveFo
 
       {showDesigner && (
         <div className="bg-gray-700 p-4 rounded mb-4 space-y-4">
-          <div>
-            <label className="block text-sm mb-1">Formula Name</label>
-            <input
-              value={formulaName}
-              onChange={(e) => setFormulaName(e.target.value)}
-              className="w-full bg-gray-600 px-3 py-2 rounded"
-              placeholder="e.g., Healing Draught"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm mb-1">Formula Name</label>
+              <input
+                value={formulaName}
+                onChange={(e) => setFormulaName(e.target.value)}
+                className="w-full bg-gray-600 px-3 py-2 rounded"
+                placeholder="e.g., Healing Draught"
+              />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Vector Type</label>
+              <select
+                value={selectedVector}
+                onChange={(e) => setSelectedVector(e.target.value)}
+                className="w-full bg-gray-600 px-3 py-2 rounded"
+              >
+                {VECTORS.map(v => (
+                  <option key={v.name} value={v.name}>
+                    {v.name} (WR {v.wrMod >= 0 ? '+' : ''}{v.wrMod}, DM {v.dmMod >= 0 ? '+' : ''}{v.dmMod})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div>
@@ -188,26 +211,38 @@ export function FormulasView({ reagents, formulas, batches, saveReagents, saveFo
 
           {ingredients.length > 0 && (() => {
             const reagentsMap = new Map(reagents.map(r => [r.id, r]));
-            const actives = ingredients.filter(i => i.role === 'active');
+            const actives = ingredients.filter(i => i.role === 'active' || i.role === 'Active');
             if (actives.length === 0) return null;
 
-            const tally = tallyAspects(actives.map(ing => ({
-              reagentId: ing.reagentId,
-              role: ing.role,
-              unitsUsed: ing.unitsUsed,
-              refinement: ing.refinement
-            })), reagentsMap);
+            const ingredientsSnapshot = ingredients.map(ing => {
+              const r = reagentsMap.get(ing.reagentId);
+              return {
+                reagentId: ing.reagentId,
+                role: ing.role,
+                unitsUsed: ing.unitsUsed,
+                refinement: ing.refinement,
+                aspects: r ? {...r.aspects} : {}
+              };
+            });
 
-            const { dominant, secondary } = computeDominantSecondary(tally);
+            const tempFormula = { ingredients: ingredientsSnapshot };
+            const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector);
 
             return (
               <div className="bg-gray-600 p-3 rounded">
                 <div className="text-sm font-semibold mb-2">Formula Preview</div>
-                <div className="text-sm space-y-1">
-                  <div>Dominant: <span className="text-blue-400">{dominant || 'None'}</span></div>
-                  <div>Secondary: <span className="text-blue-400">{secondary || 'None'}</span></div>
-                  <div className="text-xs text-gray-400 mt-2">
-                    Aspect Tally: {Object.entries(tally).map(([asp, val]) => `${asp}:${val}`).join(', ')}
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-1">
+                    <div>Tier: <span className="text-yellow-400 font-bold">{stats.tier}</span></div>
+                    <div>Dominant: <span className="text-blue-400">{stats.dominantAspect || 'None'}</span></div>
+                    <div>Secondary: <span className="text-blue-400">{stats.secondaryAspect || 'None'}</span></div>
+                    <div>Potency: <span className="text-green-400">{stats.basePotency} {stats.concentrationSteps > 0 ? `+${stats.concentrationSteps} → ${stats.finalPotency}` : ''}</span></div>
+                  </div>
+                  <div className="space-y-1">
+                    <div>WR: <span className="text-orange-400">{stats.baseWR}</span></div>
+                    <div>DM: <span className="text-orange-400">{stats.baseDM >= 0 ? '+' : ''}{stats.baseDM}</span></div>
+                    <div>TB: <span className="text-purple-400">{stats.traitBudget} points</span></div>
+                    <div>Vector: <span className="text-gray-300">{stats.vector}</span></div>
                   </div>
                 </div>
               </div>
@@ -235,10 +270,25 @@ export function FormulasView({ reagents, formulas, batches, saveReagents, saveFo
               </div>
             </div>
             <div className="text-sm space-y-1">
-              <div>Dominant: <span className="text-blue-400">{f.dominantAspect}</span> | Secondary: <span className="text-blue-400">{f.secondaryAspect}</span></div>
-              <div>Potency: {f.potency} | WR: {f.baseWR} | DM: {f.baseDM}</div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <span className="text-gray-400">Tier:</span> <span className="text-yellow-400 font-bold">{f.tier || 1}</span> |
+                  <span className="text-gray-400 ml-2">TB:</span> <span className="text-purple-400">{f.traitBudget || 10}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Vector:</span> <span className="text-gray-300">{f.vector || 'Potion'}</span>
+                </div>
+              </div>
+              <div>
+                <span className="text-gray-400">Aspects:</span> <span className="text-blue-400">{f.dominantAspect}</span> / <span className="text-blue-400">{f.secondaryAspect}</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Potency:</span> <span className="text-green-400">{f.finalPotency || f.potency || 'P1'}</span> |
+                <span className="text-gray-400 ml-2">WR:</span> <span className="text-orange-400">{f.baseWR}</span> |
+                <span className="text-gray-400 ml-2">DM:</span> <span className="text-orange-400">{f.baseDM >= 0 ? '+' : ''}{f.baseDM}</span>
+              </div>
               <div className="text-xs text-gray-400 mt-2">
-                Ingredients: {f.ingredients.map(i => `${i.reagentName} (${i.role}, ${i.unitsUsed}U)`).join(', ')}
+                {f.ingredients.map(i => `${i.reagentName} (${i.role}, ${i.unitsUsed}U)`).join(', ')}
               </div>
             </div>
           </div>
