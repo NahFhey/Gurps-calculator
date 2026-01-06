@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ReagentsView } from './alchemy/ReagentsView';
 import { FormulasView } from './alchemy/FormulasView';
 import { BatchesView } from './alchemy/BatchesView';
+import { TallyWorksheetView } from './alchemy/TallyWorksheetView';
 
 export function AlchemyTab({ reagents, formulas, batches, workers, saveReagents, saveFormulas, saveBatches }) {
   const [view, setView] = useState('reagents');
@@ -29,11 +30,18 @@ export function AlchemyTab({ reagents, formulas, batches, workers, saveReagents,
         >
           Batches ({activeCount} active)
         </button>
+        <button
+          onClick={() => setView('tally')}
+          className={`px-4 py-2 ${view === 'tally' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}
+        >
+          Tally Worksheet
+        </button>
       </div>
 
       {view === 'reagents' && <ReagentsView reagents={reagents} saveReagents={saveReagents} />}
       {view === 'formulas' && <FormulasView reagents={reagents} formulas={formulas} batches={batches} saveReagents={saveReagents} saveFormulas={saveFormulas} saveBatches={saveBatches} />}
       {view === 'batches' && <BatchesView batches={batches} workers={workers} saveBatches={saveBatches} />}
+      {view === 'tally' && <TallyWorksheetView reagents={reagents} />}
     </div>
   );
 }
