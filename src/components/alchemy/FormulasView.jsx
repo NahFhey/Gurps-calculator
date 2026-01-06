@@ -13,6 +13,7 @@ export function FormulasView({ reagents, formulas, batches, saveReagents, saveFo
   const [formulaName, setFormulaName] = useState('');
   const [ingredients, setIngredients] = useState([]);
   const [selectedVector, setSelectedVector] = useState('Potion');
+  const [selectedTier, setSelectedTier] = useState(1);
   const [formulaTraits, setFormulaTraits] = useState([]);
 
   function addIngredient() {
@@ -61,14 +62,14 @@ export function FormulasView({ reagents, formulas, batches, saveReagents, saveFo
       };
     });
 
-    const tempFormula = { ingredients: ingredientsSnapshot };
-    const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector);
+    const tempFormula = { ingredients: ingredientsSnapshot, tier: selectedTier };
+    const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector, { tier: selectedTier });
 
     const newFormula = {
       id: crypto.randomUUID(),
       name: formulaName,
       ingredients: ingredientsSnapshot,
-      tier: stats.tier,
+      tier: selectedTier,
       vector: stats.vector,
       baseWR: stats.baseWR,
       baseDM: stats.baseDM,
@@ -87,6 +88,7 @@ export function FormulasView({ reagents, formulas, batches, saveReagents, saveFo
     setFormulaName('');
     setIngredients([]);
     setSelectedVector('Potion');
+    setSelectedTier(1);
     setFormulaTraits([]);
     setShowDesigner(false);
     alert('Formula created!');
@@ -128,8 +130,8 @@ export function FormulasView({ reagents, formulas, batches, saveReagents, saveFo
 
       {showDesigner && (
         <div className="bg-gray-700 p-4 rounded mb-4 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-3 sm:col-span-1">
               <label className="block text-sm mb-1">Formula Name</label>
               <input
                 value={formulaName}
@@ -137,6 +139,19 @@ export function FormulasView({ reagents, formulas, batches, saveReagents, saveFo
                 className="w-full bg-gray-600 px-3 py-2 rounded"
                 placeholder="e.g., Healing Draught"
               />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Tier (1-4)</label>
+              <select
+                value={selectedTier}
+                onChange={(e) => setSelectedTier(parseInt(e.target.value))}
+                className="w-full bg-gray-600 px-3 py-2 rounded"
+              >
+                <option value="1">Tier 1 (TB: 10)</option>
+                <option value="2">Tier 2 (TB: 15)</option>
+                <option value="3">Tier 3 (TB: 20)</option>
+                <option value="4">Tier 4 (TB: 25)</option>
+              </select>
             </div>
             <div>
               <label className="block text-sm mb-1">Vector Type</label>
@@ -230,8 +245,8 @@ export function FormulasView({ reagents, formulas, batches, saveReagents, saveFo
               };
             });
 
-            const tempFormula = { ingredients: ingredientsSnapshot };
-            const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector);
+            const tempFormula = { ingredients: ingredientsSnapshot, tier: selectedTier };
+            const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector, { tier: selectedTier });
 
             return (
               <div className="space-y-3">

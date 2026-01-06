@@ -843,24 +843,27 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
 
           <div className="bg-gray-700 p-6 rounded-lg space-y-6 max-w-2xl">
             <div>
-              <label className="block text-sm font-semibold mb-2">Default Lab Rating</label>
+              <label className="block text-sm font-semibold mb-2">Default Lab Rating (LR)</label>
               <p className="text-xs text-gray-400 mb-3">
-                Base modifier for all alchemy work. Can be overridden when starting a batch. Typical range: -5 to +5
+                Lab equipment quality reduces Work Requirement (WR). Recommended range: 0 to 4
               </p>
               <input
                 type="number"
+                min="0"
+                max="4"
                 value={alchemySettings.defaultLabRating}
                 onChange={(e) => {
+                  const clamped = Math.max(0, Math.min(4, toNumberOr(e.target.value, 0)));
                   saveAlchemySettings({
                     ...alchemySettings,
-                    defaultLabRating: toNumberOr(e.target.value, 0)
+                    defaultLabRating: clamped
                   });
                 }}
                 className="w-full bg-gray-600 px-4 py-2 rounded text-lg"
                 placeholder="0"
               />
               <p className="text-xs text-gray-500 mt-2">
-                Current: {alchemySettings.defaultLabRating >= 0 ? '+' : ''}{alchemySettings.defaultLabRating}
+                Current: LR {alchemySettings.defaultLabRating} (reduces WR by {alchemySettings.defaultLabRating})
               </p>
             </div>
 
@@ -887,12 +890,35 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
               </p>
             </div>
 
+            <div className="border-t border-gray-600 pt-6">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={alchemySettings.autoSaveRecipes || false}
+                  onChange={(e) => {
+                    saveAlchemySettings({
+                      ...alchemySettings,
+                      autoSaveRecipes: e.target.checked
+                    });
+                  }}
+                  className="w-5 h-5"
+                />
+                <div>
+                  <div className="text-sm font-semibold">Auto-Save Recipes on Batch Completion</div>
+                  <p className="text-xs text-gray-400">
+                    Automatically save successful batches as new recipes without prompting
+                  </p>
+                </div>
+              </label>
+            </div>
+
             <div className="bg-gray-800 p-4 rounded text-sm">
               <div className="font-semibold mb-2">Notes:</div>
               <ul className="list-disc list-inside space-y-1 text-gray-300">
-                <li>Lab Rating affects Work Requirement (WR) and Difficulty Modifier (DM)</li>
+                <li>Lab Rating (LR) reduces WR directly: LR 4 reduces WR by 4</li>
                 <li>Higher lab rating = easier brewing, fewer work blocks needed</li>
                 <li>Work blocks can be customized for different campaign pacing</li>
+                <li>Auto-save creates a recipe copy when a batch completes successfully</li>
                 <li>These are defaults; you can override them per batch</li>
               </ul>
             </div>
