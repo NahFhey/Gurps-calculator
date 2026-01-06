@@ -119,13 +119,23 @@ export function BatchesView({ batches, workers, saveBatches }) {
             </div>
             <div className="text-xs text-gray-400 grid grid-cols-2 gap-2">
               <div>
-                Difficulty: {selectedBatch.DM}
+                Tier: <span className="text-yellow-400 font-bold">{selectedBatch.tier || 1}</span> |
+                DM: {selectedBatch.DM}
                 {selectedBatch.forecast && <span className="text-green-400 ml-1">(Forecast +1)</span>}
               </div>
+              <div>Vector: {selectedBatch.vector || 'Potion'}</div>
               <div>Dominant: {selectedBatch.dominantAspect}</div>
-              <div>Potency: {selectedBatch.potency || selectedBatch.finalPotency || 'P1'}</div>
+              <div>Potency: {selectedBatch.finalPotency || selectedBatch.potency || 'P1'}</div>
+              <div>TB: <span className="text-purple-400">{selectedBatch.traitBudget || 10} pts</span></div>
               <div>Started: {new Date(selectedBatch.startDate).toLocaleDateString()}</div>
             </div>
+
+            {/* Traits display */}
+            {selectedBatch.traits && selectedBatch.traits.length > 0 && (
+              <div className="mt-2 text-xs text-purple-400">
+                Traits: {selectedBatch.traits.map(t => `${t.name} (${t.cost}pts)`).join(', ')}
+              </div>
+            )}
 
             {/* Forecast & Micro-Assay Actions */}
             <div className="mt-4 flex gap-2">
@@ -288,7 +298,7 @@ export function BatchesView({ batches, workers, saveBatches }) {
                   <span className="text-sm text-gray-400">{b.PP}/{b.WR} PP | CP: {b.CP}</span>
                 </div>
                 <div className="text-xs text-gray-400 mt-1">
-                  {b.dominantAspect} | Potency {b.potency} | {b.shifts.length} work blocks
+                  Tier {b.tier || 1} | {b.vector || 'Potion'} | {b.dominantAspect} | Potency {b.finalPotency || b.potency || 'P1'} | {b.shifts.length} work blocks
                 </div>
               </div>
             ))}
