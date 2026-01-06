@@ -7,9 +7,60 @@ export function BatchesView({ batches, workers, saveBatches }) {
   const [skill, setSkill] = useState('');
   const [roll, setRoll] = useState('');
   const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [showForecast, setShowForecast] = useState(false);
+  const [showMicroAssay, setShowMicroAssay] = useState(false);
 
   const activeBatches = batches.filter(b => b.phase === 'brewing');
   const completedBatches = batches.filter(b => b.phase !== 'brewing');
+
+  function performForecast() {
+    if (!selectedBatch || selectedBatch.forecast) {
+      return;
+    }
+
+    const currentCP = selectedBatch.CP;
+    const qualityMap = ['Clean', 'Minor Flaw', 'Unstable', 'Flawed', 'Mishap'];
+    const predictedQuality = qualityMap[Math.min(currentCP, 4)];
+
+    const updated = {
+      ...selectedBatch,
+      forecast: {
+        performedAt: new Date().toISOString(),
+        currentCP,
+        predictedQuality,
+        dmBonus: -1  // Forecast gives -1 DM bonus
+      },
+      DM: selectedBatch.DM - 1  // Apply forecast bonus immediately
+    };
+
+    const newBatches = batches.map(b => b.id === selectedBatch.id ? updated : b);
+    saveBatches(newBatches);
+    setSelectedBatch(updated);
+    setShowForecast(false);
+    alert(`Forecast: Based on current CP (${currentCP}), predicted quality is "${predictedQuality}". DM improved by 1!`);
+  }
+
+  function performMicroAssay() {
+    if (!selectedBatch || selectedBatch.microAssay) {
+      return;
+    }
+
+    const updated = {
+      ...selectedBatch,
+      microAssay: {
+        performedAt: new Date().toISOString(),
+        dominantAspect: selectedBatch.dominantAspect,
+        secondaryAspect: selectedBatch.secondaryAspect,
+        revealed: true
+      }
+    };
+
+    const newBatches = batches.map(b => b.id === selectedBatch.id ? updated : b);
+    saveBatches(newBatches);
+    setSelectedBatch(updated);
+    setShowMicroAssay(false);
+    alert(`Micro-Assay: Dominant aspect is ${selectedBatch.dominantAspect}, Secondary is ${selectedBatch.secondaryAspect}`);
+  }
 
   function addWorkBlock() {
     if (!selectedBatch || !workerName || !skill || !roll) {
@@ -67,11 +118,89 @@ export function BatchesView({ batches, workers, saveBatches }) {
               />
             </div>
             <div className="text-xs text-gray-400 grid grid-cols-2 gap-2">
-              <div>Difficulty: {selectedBatch.DM}</div>
+              <div>
+                Difficulty: {selectedBatch.DM}
+                {selectedBatch.forecast && <span className="text-green-400 ml-1">(Forecast +1)</span>}
+              </div>
               <div>Dominant: {selectedBatch.dominantAspect}</div>
-              <div>Potency: {selectedBatch.potency}</div>
+              <div>Potency: {selectedBatch.potency || selectedBatch.finalPotency || 'P1'}</div>
               <div>Started: {new Date(selectedBatch.startDate).toLocaleDateString()}</div>
             </div>
+
+            {/* Forecast & Micro-Assay Actions */}
+            <div className="mt-4 flex gap-2">
+              {!selectedBatch.forecast && (
+                <button
+                  onClick={() => setShowForecast(!showForecast)}
+                  className="flex-1 bg-purple-600 px-3 py-2 rounded text-sm"
+                >
+                  {showForecast ? 'Cancel' : 'Perform Forecast'}
+                </button>
+              )}
+              {!selectedBatch.microAssay && (
+                <button
+                  onClick={() => setShowMicroAssay(!showMicroAssay)}
+                  className="flex-1 bg-cyan-600 px-3 py-2 rounded text-sm"
+                >
+                  {showMicroAssay ? 'Cancel' : 'Perform Micro-Assay'}
+                </button>
+              )}
+            </div>
+
+            {/* Forecast Dialog */}
+            {showForecast && (
+              <div className="mt-3 bg-gray-800 p-3 rounded border border-purple-500">
+                <div className="text-sm font-semibold mb-2">Forecast Quality</div>
+                <div className="text-xs text-gray-400 mb-3">
+                  Predict the final quality based on current contamination. Provides +1 DM bonus for remaining work.
+                </div>
+                <button
+                  onClick={performForecast}
+                  className="w-full bg-purple-600 px-3 py-2 rounded text-sm"
+                >
+                  Confirm Forecast
+                </button>
+              </div>
+            )}
+
+            {/* Micro-Assay Dialog */}
+            {showMicroAssay && (
+              <div className="mt-3 bg-gray-800 p-3 rounded border border-cyan-500">
+                <div className="text-sm font-semibold mb-2">Micro-Assay</div>
+                <div className="text-xs text-gray-400 mb-3">
+                  Analyze the batch composition to reveal dominant and secondary aspects.
+                </div>
+                <button
+                  onClick={performMicroAssay}
+                  className="w-full bg-cyan-600 px-3 py-2 rounded text-sm"
+                >
+                  Confirm Micro-Assay
+                </button>
+              </div>
+            )}
+
+            {/* Display completed Forecast */}
+            {selectedBatch.forecast && (
+              <div className="mt-3 bg-purple-900 bg-opacity-30 p-3 rounded border border-purple-500">
+                <div className="text-sm font-semibold text-purple-400">Forecast Complete</div>
+                <div className="text-xs text-gray-300 mt-1">
+                  Predicted Quality: <span className="font-semibold">{selectedBatch.forecast.predictedQuality}</span>
+                  <span className="text-gray-400 ml-2">(based on CP: {selectedBatch.forecast.currentCP})</span>
+                </div>
+                <div className="text-xs text-green-400 mt-1">DM Bonus: +1 applied</div>
+              </div>
+            )}
+
+            {/* Display completed Micro-Assay */}
+            {selectedBatch.microAssay && (
+              <div className="mt-3 bg-cyan-900 bg-opacity-30 p-3 rounded border border-cyan-500">
+                <div className="text-sm font-semibold text-cyan-400">Micro-Assay Complete</div>
+                <div className="text-xs text-gray-300 mt-1">
+                  Aspects: <span className="text-blue-400">{selectedBatch.microAssay.dominantAspect}</span> /
+                  <span className="text-blue-400 ml-1">{selectedBatch.microAssay.secondaryAspect}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="bg-gray-700 p-4 rounded space-y-3">
