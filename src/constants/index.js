@@ -52,4 +52,37 @@ export const REFINEMENT_LEVELS = {
   refined: ['primary']
 };
 
-export const INGREDIENT_ROLES = ['solvent', 'active', 'catalyst', 'stabilizer', 'signature', 'binder'];
+export const INGREDIENT_ROLES = ['Active', 'Catalyst', 'Stabilizer', 'Solvent', 'Binder', 'Vector', 'Signature', 'Tool'];
+
+export const POTENCY_LEVELS = ['P0', 'P1', 'P2', 'P3', 'P4'];
+
+export const HAZARD_TAGS = ['Flammable', 'Volatile', 'Reactive', 'Unstable', 'Toxic', 'Intoxicant', 'Hallucinogenic'];
+
+export const CONFLICT_PAIRS = [
+  ['Fire', 'Water'],
+  ['Light', 'Shadow'],
+  ['Shadow', 'Vital']
+];
+
+export const VECTORS = [
+  { name: 'Potion', wrMod: 0, dmMod: 0, tbEfficiency: 1.0 },
+  { name: 'Salve/Poultice', wrMod: 1, dmMod: -1, tbEfficiency: 1.0 },
+  { name: 'Ink/Coating', wrMod: 1, dmMod: -1, tbEfficiency: 1.0 },
+  { name: 'Aerosol/Smoke', wrMod: 2, dmMod: -2, tbEfficiency: 1.0 },
+  { name: 'Bomb/Grenade', wrMod: 3, dmMod: -3, tbEfficiency: 1.0 }
+];
+
+export const TIER_DATA = {
+  1: { baseWR: 4, baseDM: 0, traitBudget: 10 },
+  2: { baseWR: 8, baseDM: -1, traitBudget: 25 },
+  3: { baseWR: 12, baseDM: -2, traitBudget: 50 },
+  4: { baseWR: 16, baseDM: -4, traitBudget: 100 }
+};
+
+export const QUALITY_OUTCOMES = {
+  0: 'Clean',
+  1: 'Minor Flaw',
+  2: 'Unstable',
+  3: 'Flawed',
+  4: 'Mishap'
+};
