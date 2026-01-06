@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Plus, Save, X, Trash2 } from 'lucide-react';
+import { Plus, Save, X, Trash2, Eye, EyeOff } from 'lucide-react';
 import { toNumberOr, refundMaterialsFromProject } from '../utils/helpers';
-import { TEMPLATES } from '../constants';
+import { TEMPLATES, ASPECTS } from '../constants';
 
-export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTemplates, materials, saveMaterials, saveFoodTypes, saveMaterialTypes, saveWorkers, saveCrafts, saveCustomTemplates, renameMaterialType }) {
+export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTemplates, materials, effectFamilyMap, saveMaterials, saveFoodTypes, saveMaterialTypes, saveWorkers, saveCrafts, saveCustomTemplates, saveEffectFamilyMap, renameMaterialType }) {
   const [view, setView] = useState('foodTypes');
   const [showAdd, setShowAdd] = useState(false);
   const [newType, setNewType] = useState('');
@@ -146,6 +146,7 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
         <button onClick={() => setView('workers')} className={`px-4 py-2 ${view === 'workers' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Workers</button>
         <button onClick={() => setView('projects')} className={`px-4 py-2 ${view === 'projects' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Projects</button>
         <button onClick={() => setView('templates')} className={`px-4 py-2 ${view === 'templates' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Templates</button>
+        <button onClick={() => setView('effectFamilyMap')} className={`px-4 py-2 ${view === 'effectFamilyMap' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Effect Map</button>
       </div>
 
       {view === 'foodTypes' && (
@@ -630,6 +631,204 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {view === 'effectFamilyMap' && (
+        <div>
+          <h2 className="text-xl font-bold mb-4">Effect Family Map (Aspect Pairings)</h2>
+          <p className="text-sm text-gray-400 mb-6">
+            Define possible effects for each aspect pairing. Click a pairing to expand and add effects.
+          </p>
+
+          <div className="space-y-2">
+            {ASPECTS.map(dominant =>
+              ASPECTS.map(secondary => {
+                const pairKey = `${dominant}/${secondary}`;
+                const pairData = effectFamilyMap[pairKey] || { summary: '', effects: [] };
+                const isExpanded = expanded[pairKey];
+
+                return (
+                  <div key={pairKey} className="bg-gray-700 rounded">
+                    <div
+                      className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-600"
+                      onClick={() => setExpanded(p => ({...p, [pairKey]: !p[pairKey]}))}
+                    >
+                      <span className="font-semibold w-32">{dominant}/{secondary}</span>
+                      <span className="flex-1 text-sm text-gray-400 italic">
+                        {pairData.summary || 'No summary'}
+                      </span>
+                      <span className="text-xs text-blue-400">
+                        {pairData.effects?.length || 0} effect{pairData.effects?.length !== 1 ? 's' : ''}
+                      </span>
+                      <span className="text-gray-400">{isExpanded ? '▼' : '▶'}</span>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="px-3 pb-3 space-y-4 border-t border-gray-600 pt-3">
+                        {/* Summary field */}
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1">Summary (quick reference)</label>
+                          <textarea
+                            value={pairData.summary || ''}
+                            onChange={(e) => {
+                              saveEffectFamilyMap({
+                                ...effectFamilyMap,
+                                [pairKey]: {
+                                  ...pairData,
+                                  summary: e.target.value
+                                }
+                              });
+                            }}
+                            placeholder="Brief summary of possible effects for this pairing..."
+                            className="w-full bg-gray-600 px-3 py-2 rounded text-sm"
+                            rows="2"
+                          />
+                        </div>
+
+                        {/* Effects list */}
+                        <div>
+                          <div className="flex justify-between items-center mb-2">
+                            <label className="text-sm font-semibold">Named Effects</label>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const newEffect = {
+                                  id: crypto.randomUUID(),
+                                  name: '',
+                                  keywords: '',
+                                  notes: '',
+                                  gmNotes: '',
+                                  gmNotesVisible: false
+                                };
+                                saveEffectFamilyMap({
+                                  ...effectFamilyMap,
+                                  [pairKey]: {
+                                    ...pairData,
+                                    effects: [...(pairData.effects || []), newEffect]
+                                  }
+                                });
+                              }}
+                              className="bg-blue-600 px-3 py-1 rounded text-sm"
+                            >
+                              <Plus size={14} className="inline" /> Add Effect
+                            </button>
+                          </div>
+
+                          {(!pairData.effects || pairData.effects.length === 0) && (
+                            <div className="text-gray-500 text-sm italic mb-2">No effects defined</div>
+                          )}
+
+                          {pairData.effects?.map((effect, idx) => (
+                            <div key={effect.id} className="bg-gray-800 p-3 rounded mb-2 space-y-2">
+                              <div className="flex gap-2">
+                                <input
+                                  value={effect.name}
+                                  onChange={(e) => {
+                                    const updatedEffects = [...pairData.effects];
+                                    updatedEffects[idx] = {...effect, name: e.target.value};
+                                    saveEffectFamilyMap({
+                                      ...effectFamilyMap,
+                                      [pairKey]: {...pairData, effects: updatedEffects}
+                                    });
+                                  }}
+                                  placeholder="Effect name (e.g., 'Quicksilver Reflex')"
+                                  className="flex-1 bg-gray-600 px-3 py-1 rounded text-sm font-semibold"
+                                />
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const updatedEffects = pairData.effects.filter((_, i) => i !== idx);
+                                    saveEffectFamilyMap({
+                                      ...effectFamilyMap,
+                                      [pairKey]: {...pairData, effects: updatedEffects}
+                                    });
+                                  }}
+                                  className="text-red-400 px-2"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">Keywords/Tags</label>
+                                <input
+                                  value={effect.keywords}
+                                  onChange={(e) => {
+                                    const updatedEffects = [...pairData.effects];
+                                    updatedEffects[idx] = {...effect, keywords: e.target.value};
+                                    saveEffectFamilyMap({
+                                      ...effectFamilyMap,
+                                      [pairKey]: {...pairData, effects: updatedEffects}
+                                    });
+                                  }}
+                                  placeholder="speed, reflex, stamina"
+                                  className="w-full bg-gray-600 px-3 py-1 rounded text-sm"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">Notes / Trait Packages</label>
+                                <textarea
+                                  value={effect.notes}
+                                  onChange={(e) => {
+                                    const updatedEffects = [...pairData.effects];
+                                    updatedEffects[idx] = {...effect, notes: e.target.value};
+                                    saveEffectFamilyMap({
+                                      ...effectFamilyMap,
+                                      [pairKey]: {...pairData, effects: updatedEffects}
+                                    });
+                                  }}
+                                  placeholder="Player-facing notes, trait packages, etc."
+                                  className="w-full bg-gray-600 px-3 py-1 rounded text-sm"
+                                  rows="2"
+                                />
+                              </div>
+
+                              <div>
+                                <div className="flex items-center justify-between mb-1">
+                                  <label className="text-xs text-gray-500">GM Notes</label>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const updatedEffects = [...pairData.effects];
+                                      updatedEffects[idx] = {...effect, gmNotesVisible: !effect.gmNotesVisible};
+                                      saveEffectFamilyMap({
+                                        ...effectFamilyMap,
+                                        [pairKey]: {...pairData, effects: updatedEffects}
+                                      });
+                                    }}
+                                    className="text-xs px-2 py-1 bg-gray-700 rounded flex items-center gap-1"
+                                  >
+                                    {effect.gmNotesVisible ? <Eye size={12} /> : <EyeOff size={12} />}
+                                    {effect.gmNotesVisible ? 'Visible' : 'Hidden'}
+                                  </button>
+                                </div>
+                                <textarea
+                                  value={effect.gmNotes}
+                                  onChange={(e) => {
+                                    const updatedEffects = [...pairData.effects];
+                                    updatedEffects[idx] = {...effect, gmNotes: e.target.value};
+                                    saveEffectFamilyMap({
+                                      ...effectFamilyMap,
+                                      [pairKey]: {...pairData, effects: updatedEffects}
+                                    });
+                                  }}
+                                  placeholder="Hidden GM notes..."
+                                  className="w-full bg-gray-600 px-3 py-1 rounded text-sm"
+                                  rows="2"
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       )}

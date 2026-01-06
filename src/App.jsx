@@ -29,6 +29,7 @@ export default function GURPSPartyTool() {
   const [alchemyReagents, setAlchemyReagents] = useState([]);
   const [alchemyFormulas, setAlchemyFormulas] = useState([]);
   const [alchemyBatches, setAlchemyBatches] = useState([]);
+  const [effectFamilyMap, setEffectFamilyMap] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { loadData(); }, []);
@@ -42,7 +43,7 @@ export default function GURPSPartyTool() {
     }
 
     try {
-      const [matsR, foodsR, recipesR, craftsR, typesR, templatesR, matTypesR, workersR, reagentsR, formulasR, batchesR] = await Promise.all([
+      const [matsR, foodsR, recipesR, craftsR, typesR, templatesR, matTypesR, workersR, reagentsR, formulasR, batchesR, effectMapR] = await Promise.all([
         window.storage.get('materials', true).catch(() => null),
         window.storage.get('foods', true).catch(() => null),
         window.storage.get('recipes', true).catch(() => null),
@@ -53,7 +54,8 @@ export default function GURPSPartyTool() {
         window.storage.get('workers', true).catch(() => null),
         window.storage.get('alchemyReagents', true).catch(() => null),
         window.storage.get('alchemyFormulas', true).catch(() => null),
-        window.storage.get('alchemyBatches', true).catch(() => null)
+        window.storage.get('alchemyBatches', true).catch(() => null),
+        window.storage.get('effectFamilyMap', true).catch(() => null)
       ]);
       if (matsR?.value) setMaterials(JSON.parse(matsR.value));
       if (foodsR?.value) setFoods(JSON.parse(foodsR.value));
@@ -66,6 +68,7 @@ export default function GURPSPartyTool() {
       setAlchemyReagents(safeParse(reagentsR?.value, []));
       setAlchemyFormulas(safeParse(formulasR?.value, []));
       setAlchemyBatches(safeParse(batchesR?.value, []));
+      setEffectFamilyMap(safeParse(effectMapR?.value, {}));
 
       // Load and ensure material types have all required properties
       if (matTypesR?.value) {
@@ -148,6 +151,10 @@ export default function GURPSPartyTool() {
     setAlchemyBatches(d);
     debouncedStorageSave('alchemyBatches', d);
   }
+  async function saveEffectFamilyMap(d) {
+    setEffectFamilyMap(d);
+    debouncedStorageSave('effectFamilyMap', d);
+  }
 
   // Keyed debounced storage writer - maintains separate timers per key
   const debouncedStorageSave = useKeyedDebouncedStorageSave(500);
@@ -208,7 +215,7 @@ export default function GURPSPartyTool() {
         {activeTab === 'inventory' && <InventoryTab materials={materials} foods={foods} foodTypes={foodTypes} materialTypes={materialTypes} saveMaterials={saveMaterials} saveFoods={saveFoods} />}
         {activeTab === 'cooking' && <CookingTab foods={foods} recipes={recipes} saveFoods={saveFoods} saveRecipes={saveRecipes} />}
         {activeTab === 'crafting' && <CraftingTab materials={materials} crafts={crafts} customTemplates={customTemplates} materialTypes={materialTypes} workers={workers} saveMaterials={saveMaterials} saveCrafts={saveCrafts} />}
-        {activeTab === 'manager' && <ManagerTab foodTypes={foodTypes} materialTypes={materialTypes} workers={workers} crafts={crafts} customTemplates={customTemplates} materials={materials} saveMaterials={saveMaterials} saveFoodTypes={saveFoodTypes} saveMaterialTypes={saveMaterialTypes} saveWorkers={saveWorkers} saveCrafts={saveCrafts} saveCustomTemplates={saveCustomTemplates} renameMaterialType={renameMaterialType} />}
+        {activeTab === 'manager' && <ManagerTab foodTypes={foodTypes} materialTypes={materialTypes} workers={workers} crafts={crafts} customTemplates={customTemplates} materials={materials} effectFamilyMap={effectFamilyMap} saveMaterials={saveMaterials} saveFoodTypes={saveFoodTypes} saveMaterialTypes={saveMaterialTypes} saveWorkers={saveWorkers} saveCrafts={saveCrafts} saveCustomTemplates={saveCustomTemplates} saveEffectFamilyMap={saveEffectFamilyMap} renameMaterialType={renameMaterialType} />}
         {activeTab === 'alchemy' && <AlchemyTab reagents={alchemyReagents} formulas={alchemyFormulas} batches={alchemyBatches} workers={workers} saveReagents={saveAlchemyReagents} saveFormulas={saveAlchemyFormulas} saveBatches={saveAlchemyBatches} />}
       </div>
     </div>
