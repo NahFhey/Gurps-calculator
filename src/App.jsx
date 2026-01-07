@@ -16,7 +16,14 @@ export default function GURPSPartyTool() {
   const [foods, setFoods] = useState([]);
   const [recipes, setRecipes] = useState([]);
   const [crafts, setCrafts] = useState([]);
-  const [foodTypes, setFoodTypes] = useState(['fish', 'poultry', 'meat', 'fruit', 'vegetable']);
+  const [foodTypes, setFoodTypes] = useState([
+    { name: 'fish', color: '#60A5FA' },      // blue-400
+    { name: 'poultry', color: '#F59E0B' },   // amber-500
+    { name: 'meat', color: '#EF4444' },      // red-500
+    { name: 'fruit', color: '#EC4899' },     // pink-500
+    { name: 'vegetable', color: '#10B981' }  // green-500
+  ]);
+  const [craftDesigns, setCraftDesigns] = useState([]);
   const [materialTypes, setMaterialTypes] = useState([
     { name: 'wood', difficulty: -2, effects: '', ht: 10, drShift: 0, weightMod: -10, hpMod: 0 },
     { name: 'metal', difficulty: 0, effects: '', ht: 12, drShift: 0, weightMod: 0, hpMod: 0 },
@@ -44,7 +51,7 @@ export default function GURPSPartyTool() {
     }
 
     try {
-      const [matsR, foodsR, recipesR, craftsR, typesR, templatesR, matTypesR, workersR, reagentsR, formulasR, batchesR, effectMapR, alchemySettingsR] = await Promise.all([
+      const [matsR, foodsR, recipesR, craftsR, typesR, templatesR, matTypesR, workersR, reagentsR, formulasR, batchesR, effectMapR, alchemySettingsR, craftDesignsR] = await Promise.all([
         window.storage.get('materials', true).catch(() => null),
         window.storage.get('foods', true).catch(() => null),
         window.storage.get('recipes', true).catch(() => null),
@@ -57,14 +64,32 @@ export default function GURPSPartyTool() {
         window.storage.get('alchemyFormulas', true).catch(() => null),
         window.storage.get('alchemyBatches', true).catch(() => null),
         window.storage.get('effectFamilyMap', true).catch(() => null),
-        window.storage.get('alchemySettings', true).catch(() => null)
+        window.storage.get('alchemySettings', true).catch(() => null),
+        window.storage.get('craftDesigns', true).catch(() => null)
       ]);
       if (matsR?.value) setMaterials(JSON.parse(matsR.value));
       if (foodsR?.value) setFoods(JSON.parse(foodsR.value));
       if (recipesR?.value) setRecipes(JSON.parse(recipesR.value));
       if (craftsR?.value) setCrafts(JSON.parse(craftsR.value));
-      if (typesR?.value) setFoodTypes(JSON.parse(typesR.value));
       if (workersR?.value) setWorkers(JSON.parse(workersR.value));
+
+      // Load food types with backward compatibility (convert string array to object array)
+      if (typesR?.value) {
+        const loadedTypes = JSON.parse(typesR.value);
+        if (Array.isArray(loadedTypes) && loadedTypes.length > 0) {
+          if (typeof loadedTypes[0] === 'string') {
+            // Old format - convert to new format
+            const colors = ['#60A5FA', '#F59E0B', '#EF4444', '#EC4899', '#10B981', '#8B5CF6', '#06B6D4', '#F97316'];
+            setFoodTypes(loadedTypes.map((name, idx) => ({ name, color: colors[idx % colors.length] })));
+          } else {
+            // New format
+            setFoodTypes(loadedTypes);
+          }
+        }
+      }
+
+      // Load craft designs
+      setCraftDesigns(safeParse(craftDesignsR?.value, []));
 
       // Load alchemy data
       setAlchemyReagents(safeParse(reagentsR?.value, []));
@@ -162,6 +187,10 @@ export default function GURPSPartyTool() {
     setAlchemySettings(d);
     debouncedStorageSave('alchemySettings', d);
   }
+  async function saveCraftDesigns(d) {
+    setCraftDesigns(d);
+    debouncedStorageSave('craftDesigns', d);
+  }
 
   // Keyed debounced storage writer - maintains separate timers per key
   const debouncedStorageSave = useKeyedDebouncedStorageSave(500);
@@ -221,8 +250,8 @@ export default function GURPSPartyTool() {
 
         {activeTab === 'inventory' && <InventoryTab materials={materials} foods={foods} foodTypes={foodTypes} materialTypes={materialTypes} saveMaterials={saveMaterials} saveFoods={saveFoods} />}
         {activeTab === 'cooking' && <CookingTab foods={foods} recipes={recipes} saveFoods={saveFoods} saveRecipes={saveRecipes} />}
-        {activeTab === 'crafting' && <CraftingTab materials={materials} crafts={crafts} customTemplates={customTemplates} materialTypes={materialTypes} workers={workers} saveMaterials={saveMaterials} saveCrafts={saveCrafts} />}
-        {activeTab === 'manager' && <ManagerTab foodTypes={foodTypes} materialTypes={materialTypes} workers={workers} crafts={crafts} customTemplates={customTemplates} materials={materials} effectFamilyMap={effectFamilyMap} alchemySettings={alchemySettings} saveMaterials={saveMaterials} saveFoodTypes={saveFoodTypes} saveMaterialTypes={saveMaterialTypes} saveWorkers={saveWorkers} saveCrafts={saveCrafts} saveCustomTemplates={saveCustomTemplates} saveEffectFamilyMap={saveEffectFamilyMap} saveAlchemySettings={saveAlchemySettings} renameMaterialType={renameMaterialType} />}
+        {activeTab === 'crafting' && <CraftingTab materials={materials} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materialTypes={materialTypes} workers={workers} saveMaterials={saveMaterials} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} />}
+        {activeTab === 'manager' && <ManagerTab foodTypes={foodTypes} materialTypes={materialTypes} workers={workers} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materials={materials} effectFamilyMap={effectFamilyMap} alchemySettings={alchemySettings} saveMaterials={saveMaterials} saveFoodTypes={saveFoodTypes} saveMaterialTypes={saveMaterialTypes} saveWorkers={saveWorkers} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} saveCustomTemplates={saveCustomTemplates} saveEffectFamilyMap={saveEffectFamilyMap} saveAlchemySettings={saveAlchemySettings} renameMaterialType={renameMaterialType} />}
         {activeTab === 'alchemy' && <AlchemyTab reagents={alchemyReagents} formulas={alchemyFormulas} batches={alchemyBatches} workers={workers} alchemySettings={alchemySettings} saveReagents={saveAlchemyReagents} saveFormulas={saveAlchemyFormulas} saveBatches={saveAlchemyBatches} />}
       </div>
     </div>

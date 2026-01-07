@@ -136,12 +136,19 @@ export function InventoryTab({ materials, foods, foodTypes, materialTypes, saveM
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-sm">Types (required):</span>
-                  {newFoodTypes.length < 4 && <button onClick={() => setNewFoodTypes([...newFoodTypes, foodTypes[0]])} className="bg-blue-600 px-3 py-1 rounded text-sm"><Plus size={14} className="inline" /> Add</button>}
+                  {newFoodTypes.length < 4 && <button onClick={() => {
+                    const firstType = typeof foodTypes[0] === 'string' ? foodTypes[0] : foodTypes[0].name;
+                    setNewFoodTypes([...newFoodTypes, firstType]);
+                  }} className="bg-blue-600 px-3 py-1 rounded text-sm"><Plus size={14} className="inline" /> Add</button>}
                 </div>
                 {newFoodTypes.map((t, i) => (
                   <div key={i} className="flex gap-2 mb-2">
                     <select value={t} onChange={(e) => { const u = [...newFoodTypes]; u[i] = e.target.value; setNewFoodTypes(u); }} className="flex-1 bg-gray-600 px-3 py-1 rounded">
-                      {foodTypes.map(ft => <option key={ft} value={ft}>{ft}</option>)}
+                      {foodTypes.map(ft => {
+                        const ftName = typeof ft === 'string' ? ft : ft.name;
+                        const ftColor = typeof ft === 'object' ? ft.color : '#60A5FA';
+                        return <option key={ftName} value={ftName} style={{color: ftColor}}>{ftName}</option>;
+                      })}
                     </select>
                     <button onClick={() => setNewFoodTypes(newFoodTypes.filter((_, j) => j !== i))} className="text-red-400"><X size={18} /></button>
                   </div>
@@ -154,13 +161,30 @@ export function InventoryTab({ materials, foods, foodTypes, materialTypes, saveM
             </div>
           )}
           <div className="space-y-4">
-            {Object.keys(grouped).sort().map(k => (
-              <div key={k}>
-                <div className="bg-gray-700 px-4 py-2 rounded font-semibold text-sm text-blue-400">{k === 'no-type' ? 'No Type' : k}</div>
+            {Object.keys(grouped).sort().map(k => {
+              // Get color for this type grouping
+              const firstItemTypes = grouped[k][0]?.types || [];
+              const typeColor = firstItemTypes.length > 0 ? (() => {
+                const firstTypeName = firstItemTypes[0];
+                const typeObj = foodTypes.find(ft => (typeof ft === 'string' ? ft : ft.name) === firstTypeName);
+                return typeof typeObj === 'object' ? typeObj.color : '#60A5FA';
+              })() : '#60A5FA';
+
+              return (<div key={k}>
+                <div className="bg-gray-700 px-4 py-2 rounded font-semibold text-sm" style={{color: typeColor}}>{k === 'no-type' ? 'No Type' : k}</div>
                 {grouped[k].map(f => (
                   <div key={f.id} className="bg-gray-700 rounded mt-2">
                     <div className="flex items-center gap-4 p-3 cursor-pointer hover:bg-gray-600" onClick={() => setExpanded(p => ({...p, [f.id]: !p[f.id]}))}>
-                      <span className="flex-1">{f.name}</span>
+                      <span className="flex-1 flex items-center gap-2">
+                        {f.name}
+                        <span className="flex gap-1">
+                          {f.types?.map((typeName, idx) => {
+                            const typeObj = foodTypes.find(ft => (typeof ft === 'string' ? ft : ft.name) === typeName);
+                            const color = typeof typeObj === 'object' ? typeObj.color : '#60A5FA';
+                            return <span key={idx} className="w-3 h-3 rounded-full" style={{backgroundColor: color}} title={typeName}></span>;
+                          })}
+                        </span>
+                      </span>
                       <span className="text-gray-400">{f.quantity} lbs</span>
                       <span className="text-gray-400">{expanded[f.id] ? '▼' : '▶'}</span>
                     </div>
@@ -175,23 +199,34 @@ export function InventoryTab({ materials, foods, foodTypes, materialTypes, saveM
                         <div>
                           <div className="flex gap-2 mb-2">
                             <span className="text-sm">Types:</span>
-                            {f.types.length < 4 && <button onClick={() => saveFoods(foods.map(x => x.id === f.id ? {...x, types: [...x.types, foodTypes[0]]} : x))} className="bg-blue-600 px-3 py-1 text-sm rounded"><Plus size={14} className="inline" /> Add</button>}
+                            {f.types.length < 4 && <button onClick={() => {
+                              const firstType = typeof foodTypes[0] === 'string' ? foodTypes[0] : foodTypes[0].name;
+                              saveFoods(foods.map(x => x.id === f.id ? {...x, types: [...x.types, firstType]} : x));
+                            }} className="bg-blue-600 px-3 py-1 text-sm rounded"><Plus size={14} className="inline" /> Add</button>}
                           </div>
-                          {f.types.map((t, i) => (
-                            <div key={i} className="flex gap-2 mb-2">
+                          {f.types.map((t, i) => {
+                            const selectedType = foodTypes.find(ft => (typeof ft === 'string' ? ft : ft.name) === t);
+                            const selectedColor = typeof selectedType === 'object' ? selectedType.color : '#60A5FA';
+
+                            return (<div key={i} className="flex gap-2 mb-2 items-center">
+                              <span className="w-4 h-4 rounded-full flex-shrink-0" style={{backgroundColor: selectedColor}} title={t}></span>
                               <select value={t} onChange={(e) => saveFoods(foods.map(x => { if (x.id === f.id) { const nt = [...x.types]; nt[i] = e.target.value; return {...x, types: nt}; } return x; }))} className="flex-1 bg-gray-600 px-3 py-1 rounded">
-                                {foodTypes.map(ft => <option key={ft} value={ft}>{ft}</option>)}
+                                {foodTypes.map(ft => {
+                                  const ftName = typeof ft === 'string' ? ft : ft.name;
+                                  const ftColor = typeof ft === 'object' ? ft.color : '#60A5FA';
+                                  return <option key={ftName} value={ftName} style={{color: ftColor}}>{ftName}</option>;
+                                })}
                               </select>
                               <button onClick={() => saveFoods(foods.map(x => x.id === f.id ? {...x, types: x.types.filter((_, j) => j !== i)} : x))} className="text-red-400"><X size={18} /></button>
-                            </div>
-                          ))}
+                            </div>);
+                          })}
                         </div>
                       </div>
                     )}
                   </div>
                 ))}
-              </div>
-            ))}
+              </div>);
+            })}
           </div>
         </div>
       )}

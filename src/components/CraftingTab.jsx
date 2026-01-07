@@ -142,9 +142,17 @@ export function CraftingTab({ materials, crafts, customTemplates, materialTypes,
         )}
       </div>
 
-      {view === 'craft' && current && (
-        <div className="bg-gray-800 rounded-lg p-6">
-          <h2 className="text-xl font-bold mb-4">{current.phase === 'setup' ? 'Setup' : current.phase === 'design' ? 'Design Phase' : 'Craft Phase'}</h2>
+      {view === 'craft' && current && (() => {
+        // Phase-specific colors
+        const phaseColors = {
+          setup: { bg: 'bg-gray-800', border: 'border-blue-500', text: 'text-blue-400' },
+          design: { bg: 'bg-gray-800', border: 'border-purple-500', text: 'text-purple-400' },
+          craft: { bg: 'bg-gray-800', border: 'border-green-500', text: 'text-green-400' }
+        };
+        const colors = phaseColors[current.phase] || phaseColors.setup;
+
+        return (<div className={`${colors.bg} rounded-lg p-6 border-2 ${colors.border}`}>
+          <h2 className={`text-xl font-bold mb-4 ${colors.text}`}>{current.phase === 'setup' ? 'Setup Phase' : current.phase === 'design' ? 'Design Phase' : 'Crafting Phase'}</h2>
           {current.phase === 'setup' && (
             <div className="space-y-4">
               <div>
@@ -355,8 +363,8 @@ export function CraftingTab({ materials, crafts, customTemplates, materialTypes,
               }} className="w-full bg-green-600 py-3 rounded">Add Shift</button>
             </div>
           )}
-        </div>
-      )}
+        </div>);
+      })()}
 
       {view === 'list' && (
         <div className="bg-gray-800 rounded-lg p-6 space-y-6">
@@ -392,12 +400,20 @@ export function CraftingTab({ materials, crafts, customTemplates, materialTypes,
                   }).join(', '))
                   || 'no materials';
 
+                // Phase-specific colors
+                const phaseStyles = {
+                  setup: { bg: 'bg-blue-900 bg-opacity-30', border: 'border-blue-600', text: 'text-blue-400' },
+                  design: { bg: 'bg-purple-900 bg-opacity-30', border: 'border-purple-600', text: 'text-purple-400' },
+                  craft: { bg: 'bg-green-900 bg-opacity-30', border: 'border-green-600', text: 'text-green-400' }
+                };
+                const phaseStyle = phaseStyles[c.phase] || phaseStyles.setup;
+
                 return (
-                  <div key={c.id} className="bg-yellow-900 bg-opacity-30 border border-yellow-600 rounded p-4">
+                  <div key={c.id} className={`${phaseStyle.bg} border ${phaseStyle.border} rounded p-4`}>
                     <div className="flex items-center justify-between mb-2">
                       <div>
                         <h3 className="font-semibold text-lg capitalize">{c.name || `${c.currentQuality} ${c.template}`}</h3>
-                        <div className="text-sm text-gray-400">Phase: {c.phase} | Started: {c.startDate || 'unknown'} {c.startDay && <span className="text-green-400">[Day {c.startDay}]</span>}</div>
+                        <div className="text-sm text-gray-400">Phase: <span className={phaseStyle.text}>{c.phase}</span> | Started: {c.startDate || 'unknown'} {c.startDay && <span className="text-green-400">[Day {c.startDay}]</span>}</div>
                       </div>
                       <button onClick={() => {
                         setCurrent(c);
