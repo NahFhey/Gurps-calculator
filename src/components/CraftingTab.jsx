@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { QUALITIES } from '../constants';
 import { toNumberOr, upsertCraft, removeCraft, refundMaterialsFromProject } from '../utils/helpers';
 
-export function CraftingTab({ materials, crafts, customTemplates, materialTypes, workers, saveMaterials, saveCrafts }) {
+export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, materialTypes, workers, saveMaterials, saveCrafts, saveCraftDesigns }) {
   const [view, setView] = useState('list');
   const [current, setCurrent] = useState(null);
   const [skill, setSkill] = useState('');
@@ -12,6 +12,8 @@ export function CraftingTab({ materials, crafts, customTemplates, materialTypes,
   const [selectedWorker, setSelectedWorker] = useState('');
   const [expandedCrafts, setExpandedCrafts] = useState({});
   const [abandonConfirm, setAbandonConfirm] = useState(false);
+  const [saveDesignPrompt, setSaveDesignPrompt] = useState(null);
+  const [designName, setDesignName] = useState('');
 
   const allTemplates = customTemplates;
 
@@ -92,6 +94,66 @@ export function CraftingTab({ materials, crafts, customTemplates, materialTypes,
 
   return (
     <div>
+      {saveDesignPrompt && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-6 rounded-lg max-w-md border-2 border-purple-500">
+            <h3 className="text-xl font-bold mb-4 text-purple-400">Save Design?</h3>
+            <p className="mb-4 text-gray-300">
+              Design phase complete! Would you like to save this as a reusable craft design?
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm mb-2">Design Name</label>
+              <input
+                type="text"
+                value={designName}
+                onChange={(e) => setDesignName(e.target.value)}
+                placeholder={`${saveDesignPrompt.currentQuality} ${saveDesignPrompt.template}`}
+                className="w-full bg-gray-600 px-3 py-2 rounded"
+              />
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setSaveDesignPrompt(null);
+                  setDesignName('');
+                  setCurrent(saveDesignPrompt);
+                  setView('craft');
+                }}
+                className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-500"
+              >
+                Skip
+              </button>
+              <button
+                onClick={() => {
+                  const name = designName.trim() || `${saveDesignPrompt.currentQuality} ${saveDesignPrompt.template}`;
+                  const design = {
+                    id: crypto.randomUUID(),
+                    name,
+                    templateType: saveDesignPrompt.templateType,
+                    template: saveDesignPrompt.template,
+                    quality: saveDesignPrompt.currentQuality,
+                    mods: saveDesignPrompt.mods || [],
+                    selectedMaterials: saveDesignPrompt.selectedMaterials || [],
+                    consumedMaterials: saveDesignPrompt.consumedMaterials || [],
+                    designShifts: saveDesignPrompt.designShifts || saveDesignPrompt.shifts || [],
+                    savedDate: new Date().toISOString()
+                  };
+                  saveCraftDesigns([...(craftDesigns || []), design]);
+                  setSaveDesignPrompt(null);
+                  setDesignName('');
+                  setCurrent(saveDesignPrompt);
+                  setView('craft');
+                  alert('Design saved!');
+                }}
+                className="px-4 py-2 bg-purple-600 rounded hover:bg-purple-700"
+              >
+                Save Design
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {abandonConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-800 p-6 rounded-lg max-w-md">
@@ -131,6 +193,7 @@ export function CraftingTab({ materials, crafts, customTemplates, materialTypes,
 
       <div className="flex gap-2 mb-4">
         <button onClick={() => setView('list')} className={`px-4 py-2 rounded ${view === 'list' ? 'bg-blue-600' : 'bg-gray-700'}`}>Projects ({crafts.length})</button>
+        <button onClick={() => setView('designs')} className={`px-4 py-2 rounded ${view === 'designs' ? 'bg-blue-600' : 'bg-gray-700'}`}>Saved Designs ({(craftDesigns || []).length})</button>
         {!current && <button onClick={startNew} className="bg-green-600 px-4 py-2 rounded">New Project</button>}
         {current && (
           <button
@@ -341,11 +404,13 @@ export function CraftingTab({ materials, crafts, customTemplates, materialTypes,
                 qi = Math.max(0, Math.min(4, qi + qc));
                 const newCur = {...current, shifts: newShifts, currentQuality: ql[qi]};
                 if (current.phase === 'design' && newProg >= stats.designTime) {
-                  alert('Design done!');
                   newCur.phase = 'craft';
                   newCur.designShifts = newShifts;
                   newCur.shifts = [];
                   saveCrafts(upsertCraft(crafts, newCur));
+                  // Show save design prompt
+                  setSaveDesignPrompt(newCur);
+                  return;
                 }
                 else if (current.phase === 'craft' && newProg >= stats.craftTime) {
                   alert('Craft complete!');
@@ -522,6 +587,57 @@ export function CraftingTab({ materials, crafts, customTemplates, materialTypes,
                             <div>Base Weight: <span className="text-gray-300">{t.weight} lbs</span> → Final: <span className="text-blue-300">{finalWeight} lbs</span></div>
                             <div>Base HP: <span className="text-gray-300">{t.hp}</span> → Final: <span className="text-blue-300">{finalHP}</span></div>
                             <div>Final HT: <span className="text-gray-300">{avgHT + q.htBonus}</span></div>
+
+                            {/* Weapon stats */}
+                            {c.templateType === 'weapons' && (
+                              <>
+                                {t.damage && <div>Damage: <span className="text-gray-300">{t.damage}</span></div>}
+                                {t.reach && <div>Reach: <span className="text-gray-300">{t.reach}</span></div>}
+                                {t.parry && <div>Parry: <span className="text-gray-300">{t.parry}</span></div>}
+                                {t.cost !== undefined && <div>Cost: <span className="text-gray-300">${t.cost}</span></div>}
+                                {t.ST && <div>ST: <span className="text-gray-300">{t.ST}</span></div>}
+                                {t.notes && <div>Notes: <span className="text-gray-300">{t.notes}</span></div>}
+                              </>
+                            )}
+
+                            {/* Ranged weapon stats */}
+                            {c.templateType === 'ranged' && (
+                              <>
+                                {t.damage && <div>Damage: <span className="text-gray-300">{t.damage}</span></div>}
+                                {t.Acc !== undefined && <div>Acc: <span className="text-gray-300">{t.Acc}</span></div>}
+                                {t.range && <div>Range: <span className="text-gray-300">{t.range}</span></div>}
+                                {t.RoF && <div>RoF: <span className="text-gray-300">{t.RoF}</span></div>}
+                                {t.shots && <div>Shots: <span className="text-gray-300">{t.shots}</span></div>}
+                                {t.cost !== undefined && <div>Cost: <span className="text-gray-300">${t.cost}</span></div>}
+                                {t.ST && <div>ST: <span className="text-gray-300">{t.ST}</span></div>}
+                                {t.bulk !== undefined && <div>Bulk: <span className="text-gray-300">{t.bulk}</span></div>}
+                                {t.RCl !== undefined && <div>RCl: <span className="text-gray-300">{t.RCl}</span></div>}
+                                {t.LC !== undefined && <div>LC: <span className="text-gray-300">{t.LC}</span></div>}
+                                {t.notes && <div>Notes: <span className="text-gray-300">{t.notes}</span></div>}
+                              </>
+                            )}
+
+                            {/* Armor stats */}
+                            {c.templateType === 'armor' && (
+                              <>
+                                {t.location && <div>Location: <span className="text-gray-300">{t.location}</span></div>}
+                                {t.DR !== undefined && <div>DR: <span className="text-gray-300">{t.DR}</span></div>}
+                                {t.cost !== undefined && <div>Cost: <span className="text-gray-300">${t.cost}</span></div>}
+                                {t.LC !== undefined && <div>LC: <span className="text-gray-300">{t.LC}</span></div>}
+                                {t.notes && <div>Notes: <span className="text-gray-300">{t.notes}</span></div>}
+                              </>
+                            )}
+
+                            {/* Explosive stats */}
+                            {c.templateType === 'explosives' && (
+                              <>
+                                {t.damage && <div>Damage: <span className="text-gray-300">{t.damage}</span></div>}
+                                {t.fuse && <div>Fuse: <span className="text-gray-300">{t.fuse}</span></div>}
+                                {t.cost !== undefined && <div>Cost: <span className="text-gray-300">${t.cost}</span></div>}
+                                {t.LC !== undefined && <div>LC: <span className="text-gray-300">{t.LC}</span></div>}
+                                {t.notes && <div>Notes: <span className="text-gray-300">{t.notes}</span></div>}
+                              </>
+                            )}
                           </div>
                         </div>
 
@@ -563,6 +679,147 @@ export function CraftingTab({ materials, crafts, customTemplates, materialTypes,
                 <div className="text-gray-500 italic">No completed projects</div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {view === 'designs' && (
+        <div className="bg-gray-800 rounded-lg p-6">
+          <h2 className="text-xl font-bold mb-4 text-purple-400">Saved Craft Designs</h2>
+          <p className="text-sm text-gray-400 mb-4">
+            Start crafting immediately from a completed design, skipping the design phase.
+          </p>
+          <div className="space-y-4">
+            {(craftDesigns || []).map(design => {
+              const t = allTemplates[design.templateType]?.[design.template] || {weight: 0, hp: 0};
+              const q = QUALITIES[design.quality] || {htBonus: 0};
+
+              let avgHT = 10, avgWeightMod = 0, avgHPMod = 0;
+              if (design.selectedMaterials && design.selectedMaterials.length > 0) {
+                const matTypes = design.selectedMaterials.map(sm => {
+                  const mat = materials.find(m => m.id === sm.selectedMaterialId || String(m.id) === sm.selectedMaterialId);
+                  if (!mat || !mat.type) return null;
+                  return materialTypes.find(mt => mt.name === mat.type);
+                }).filter(mt => mt !== null);
+                if (matTypes.length > 0) {
+                  avgHT = Math.round(matTypes.reduce((sum, mt) => sum + mt.ht, 0) / matTypes.length);
+                  avgWeightMod = matTypes.reduce((sum, mt) => sum + (mt.weightMod || 0), 0) / matTypes.length;
+                  avgHPMod = matTypes.reduce((sum, mt) => sum + (mt.hpMod || 0), 0) / matTypes.length;
+                }
+              }
+
+              const finalWeight = Math.round(t.weight * (1 + avgWeightMod / 100) * 10) / 10;
+              const finalHP = Math.round(t.hp * (1 + avgHPMod / 100));
+
+              const requiredMaterials = design.selectedMaterials || [];
+              const canStart = requiredMaterials.every(req => {
+                const mat = materials.find(m => m.id === req.selectedMaterialId || String(m.id) === req.selectedMaterialId);
+                return mat && mat.quantity >= req.requiredAmount;
+              });
+
+              return (
+                <div key={design.id} className="bg-purple-900 bg-opacity-20 border border-purple-600 rounded p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <h3 className="font-semibold text-lg capitalize">{design.name}</h3>
+                      <div className="text-sm text-gray-400">
+                        {design.templateType} - {design.template} | Quality: {design.quality}
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        W: {finalWeight} lbs | HP: {finalHP} | HT: {avgHT + q.htBonus}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          if (!canStart) {
+                            alert('Insufficient materials to start this design');
+                            return;
+                          }
+
+                          // Consume materials
+                          const newMaterials = materials.map(m => {
+                            const used = requiredMaterials.find(req => req.selectedMaterialId === m.id || req.selectedMaterialId === String(m.id));
+                            if (used) {
+                              return {...m, quantity: m.quantity - used.requiredAmount};
+                            }
+                            return m;
+                          });
+                          saveMaterials(newMaterials);
+
+                          // Create new craft at craft phase
+                          const today = new Date().toISOString().split('T')[0];
+                          const newCraft = {
+                            id: crypto.randomUUID(),
+                            phase: 'craft',
+                            templateType: design.templateType,
+                            template: design.template,
+                            quality: design.quality,
+                            currentQuality: design.quality,
+                            mods: design.mods || [],
+                            selectedMaterials: design.selectedMaterials || [],
+                            consumedMaterials: (design.consumedMaterials || []).length > 0 ? design.consumedMaterials : design.selectedMaterials.map(sm => {
+                              const mat = materials.find(m => m.id === sm.selectedMaterialId || String(m.id) === sm.selectedMaterialId);
+                              return {
+                                materialId: sm.selectedMaterialId,
+                                amount: sm.requiredAmount,
+                                name: mat?.name || 'unknown',
+                                type: mat?.type || sm.requiredType
+                              };
+                            }),
+                            designShifts: design.designShifts || [],
+                            shifts: [],
+                            startDate: today,
+                            startDay: 1
+                          };
+
+                          saveCrafts([...crafts, newCraft]);
+                          setCurrent(newCraft);
+                          setCurrentDate(today);
+                          setCurrentDay(1);
+                          setSelectedWorker(workers[0] || '');
+                          setView('craft');
+                          alert('Craft started from design!');
+                        }}
+                        disabled={!canStart}
+                        className={`px-4 py-2 rounded ${canStart ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 cursor-not-allowed'}`}
+                      >
+                        {canStart ? 'Start Craft' : 'Need Materials'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm(`Delete design "${design.name}"?`)) {
+                            saveCraftDesigns((craftDesigns || []).filter(d => d.id !== design.id));
+                          }
+                        }}
+                        className="px-4 py-2 bg-red-600 rounded hover:bg-red-700"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                  {requiredMaterials.length > 0 && (
+                    <div className="text-sm text-gray-400 mt-2">
+                      <div className="font-semibold mb-1">Required Materials:</div>
+                      <div className="space-y-1">
+                        {requiredMaterials.map((req, idx) => {
+                          const mat = materials.find(m => m.id === req.selectedMaterialId || String(m.id) === req.selectedMaterialId);
+                          const hasEnough = mat && mat.quantity >= req.requiredAmount;
+                          return (
+                            <div key={idx} className={hasEnough ? 'text-green-400' : 'text-red-400'}>
+                              {req.requiredType}: {req.requiredAmount} lbs {mat ? `(${mat.quantity} available)` : '(not found)'}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {(craftDesigns || []).length === 0 && (
+              <div className="text-gray-500 italic">No saved designs. Complete a design phase to save one!</div>
+            )}
           </div>
         </div>
       )}
