@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Plus, Save, X, Trash2, Eye, EyeOff } from 'lucide-react';
 import { toNumberOr, refundMaterialsFromProject } from '../utils/helpers';
-import { TEMPLATES, ASPECTS } from '../constants';
+import { TEMPLATES, ASPECTS, POTENCY_LEVELS, INGREDIENT_ROLES, HAZARD_TAGS } from '../constants';
 
-export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTemplates, materials, effectFamilyMap, alchemySettings, saveMaterials, saveFoodTypes, saveMaterialTypes, saveWorkers, saveCrafts, saveCustomTemplates, saveEffectFamilyMap, saveAlchemySettings, renameMaterialType }) {
+export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTemplates, materials, effectFamilyMap, alchemySettings, alchemyReagents, saveMaterials, saveFoodTypes, saveMaterialTypes, saveWorkers, saveCrafts, saveCustomTemplates, saveEffectFamilyMap, saveAlchemySettings, saveAlchemyReagents, renameMaterialType }) {
   const [view, setView] = useState('foodTypes');
   const [showAdd, setShowAdd] = useState(false);
   const [newType, setNewType] = useState('');
@@ -156,6 +156,7 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
         <button onClick={() => setView('workers')} className={`px-4 py-2 ${view === 'workers' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Workers</button>
         <button onClick={() => setView('projects')} className={`px-4 py-2 ${view === 'projects' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Projects</button>
         <button onClick={() => setView('templates')} className={`px-4 py-2 ${view === 'templates' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Templates</button>
+        <button onClick={() => setView('reagents')} className={`px-4 py-2 ${view === 'reagents' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Reagents</button>
         <button onClick={() => setView('effectFamilyMap')} className={`px-4 py-2 ${view === 'effectFamilyMap' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Effect Map</button>
         <button onClick={() => setView('alchemySettings')} className={`px-4 py-2 ${view === 'alchemySettings' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Alchemy Settings</button>
       </div>
