@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Plus, Save, X, Trash2, Eye, EyeOff } from 'lucide-react';
 import { toNumberOr, refundMaterialsFromProject } from '../utils/helpers';
-import { TEMPLATES, ASPECTS, POTENCY_LEVELS, INGREDIENT_ROLES, HAZARD_TAGS } from '../constants';
+import { TEMPLATES, ASPECTS, POTENCY_LEVELS, INGREDIENT_ROLES, HAZARD_TAGS, VECTORS } from '../constants';
+import { calculateFormulaStats } from '../utils/alchemy';
+import { TBBuilderPanel } from './alchemy/TBBuilderPanel';
 
-export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTemplates, materials, effectFamilyMap, alchemySettings, alchemyReagents, saveMaterials, saveFoodTypes, saveMaterialTypes, saveWorkers, saveCrafts, saveCustomTemplates, saveEffectFamilyMap, saveAlchemySettings, saveAlchemyReagents, renameMaterialType }) {
+export function ManagerTab({ foodTypes, materialTypes, workers, crafts, craftDesigns, customTemplates, materials, effectFamilyMap, alchemySettings, alchemyReagents, alchemyFormulas, saveMaterials, saveFoodTypes, saveMaterialTypes, saveWorkers, saveCrafts, saveCraftDesigns, saveCustomTemplates, saveEffectFamilyMap, saveAlchemySettings, saveAlchemyReagents, saveAlchemyFormulas, renameMaterialType }) {
   const [view, setView] = useState('foodTypes');
   const [showAdd, setShowAdd] = useState(false);
   const [newType, setNewType] = useState('');
@@ -39,6 +41,14 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
   const [draftMatTypeName, setDraftMatTypeName] = useState({});
 
   const [newTypeColor, setNewTypeColor] = useState('#60A5FA');
+
+  // Formula designer state
+  const [formulaName, setFormulaName] = useState('');
+  const [ingredients, setIngredients] = useState([]);
+  const [selectedVector, setSelectedVector] = useState('Potion');
+  const [selectedTier, setSelectedTier] = useState(1);
+  const [formulaTraits, setFormulaTraits] = useState([]);
+  const [expandedFormula, setExpandedFormula] = useState(null);
 
   function addType() {
     const typeName = newType.trim().toLowerCase();
@@ -114,13 +124,92 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
     setNewTShots(''); setNewTBulk(''); setNewTRCl(''); setNewTLC(''); setNewTLocation(''); setNewTDR(''); setNewTFuse('');
   }
 
+  // Formula helper functions
+  function addIngredient() {
+    if (alchemyReagents.length === 0) {
+      alert('No reagents available!');
+      return;
+    }
+    setIngredients([...ingredients, {
+      id: crypto.randomUUID(),
+      reagentId: alchemyReagents[0].id,
+      role: 'Active',
+      unitsUsed: 1,
+      refinement: 'crude'
+    }]);
+  }
+
+  function removeIngredient(id) {
+    setIngredients(ingredients.filter(i => i.id !== id));
+  }
+
+  function updateIngredient(id, field, value) {
+    setIngredients(ingredients.map(i => i.id === id ? {...i, [field]: value} : i));
+  }
+
+  function createFormula() {
+    if (!formulaName.trim()) {
+      alert('Enter formula name');
+      return;
+    }
+    if (ingredients.length === 0) {
+      alert('Add at least one ingredient');
+      return;
+    }
+
+    const reagentsMap = new Map(alchemyReagents.map(r => [r.id, r]));
+
+    const ingredientsSnapshot = ingredients.map(ing => {
+      const r = reagentsMap.get(ing.reagentId);
+      return {
+        reagentId: ing.reagentId,
+        reagentName: r?.name || 'Unknown',
+        role: ing.role,
+        unitsUsed: ing.unitsUsed,
+        refinement: ing.refinement,
+        aspects: r ? {...r.aspects} : {}
+      };
+    });
+
+    const tempFormula = { ingredients: ingredientsSnapshot, tier: selectedTier };
+    const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector, { tier: selectedTier });
+
+    const newFormula = {
+      id: crypto.randomUUID(),
+      name: formulaName,
+      ingredients: ingredientsSnapshot,
+      tier: selectedTier,
+      vector: stats.vector,
+      baseWR: stats.baseWR,
+      baseDM: stats.baseDM,
+      dominantAspect: stats.dominantAspect,
+      secondaryAspect: stats.secondaryAspect,
+      basePotency: stats.basePotency,
+      finalPotency: stats.finalPotency,
+      concentrationSteps: stats.concentrationSteps,
+      totalConcentrationSteps: stats.totalConcentrationSteps,
+      traitBudget: stats.traitBudget,
+      hasMatchingStabilizer: stats.hasMatchingStabilizer,
+      traits: [...formulaTraits]
+    };
+
+    saveAlchemyFormulas([...alchemyFormulas, newFormula]);
+    setFormulaName('');
+    setIngredients([]);
+    setSelectedVector('Potion');
+    setSelectedTier(1);
+    setFormulaTraits([]);
+    setShowAdd(false);
+    alert('Formula created!');
+  }
+
   return (
     <div className="bg-gray-800 rounded-lg p-6">
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-800 p-6 rounded-lg max-w-md border-2 border-gray-600">
             <h3 className="text-xl font-bold mb-4">Confirm Delete</h3>
-            <p className="mb-6">{deleteConfirm.type === 'foodType' ? `Delete type "${deleteConfirm.value}"?` : deleteConfirm.type === 'materialType' ? `Delete type "${deleteConfirm.value}"?` : deleteConfirm.type === 'worker' ? `Delete worker "${deleteConfirm.value}"?` : deleteConfirm.type === 'project' ? `Delete project "${deleteConfirm.name}"?` : deleteConfirm.type === 'reagent' ? `Delete reagent "${deleteConfirm.name}"?` : `Delete template "${deleteConfirm.name}"?`}</p>
+            <p className="mb-6">{deleteConfirm.type === 'foodType' ? `Delete type "${deleteConfirm.value}"?` : deleteConfirm.type === 'materialType' ? `Delete type "${deleteConfirm.value}"?` : deleteConfirm.type === 'worker' ? `Delete worker "${deleteConfirm.value}"?` : deleteConfirm.type === 'project' ? `Delete project "${deleteConfirm.name}"?` : deleteConfirm.type === 'reagent' ? `Delete reagent "${deleteConfirm.name}"?` : deleteConfirm.type === 'formula' ? `Delete formula "${deleteConfirm.name}"?` : `Delete template "${deleteConfirm.name}"?`}</p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 bg-gray-600 rounded">Cancel</button>
               <button onClick={() => {
@@ -128,6 +217,7 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
                 else if (deleteConfirm.type === 'materialType') saveMaterialTypes(materialTypes.filter(t => t.name !== deleteConfirm.value));
                 else if (deleteConfirm.type === 'worker') saveWorkers(workers.filter(w => w.id !== deleteConfirm.id));
                 else if (deleteConfirm.type === 'reagent') saveAlchemyReagents((alchemyReagents || []).filter(r => r.id !== deleteConfirm.id));
+                else if (deleteConfirm.type === 'formula') saveAlchemyFormulas(alchemyFormulas.filter(f => f.id !== deleteConfirm.id));
                 else if (deleteConfirm.type === 'project') {
                   const proj = crafts.find(c => c.id === deleteConfirm.id);
                   if (proj && !proj.completed) {
@@ -158,6 +248,7 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
         <button onClick={() => setView('projects')} className={`px-4 py-2 ${view === 'projects' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Projects</button>
         <button onClick={() => setView('templates')} className={`px-4 py-2 ${view === 'templates' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Templates</button>
         <button onClick={() => setView('reagents')} className={`px-4 py-2 ${view === 'reagents' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Reagents</button>
+        <button onClick={() => setView('formulas')} className={`px-4 py-2 ${view === 'formulas' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Formulas</button>
         <button onClick={() => setView('effectFamilyMap')} className={`px-4 py-2 ${view === 'effectFamilyMap' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Effect Map</button>
         <button onClick={() => setView('alchemySettings')} className={`px-4 py-2 ${view === 'alchemySettings' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Alchemy Settings</button>
       </div>
@@ -1422,6 +1513,248 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
               <div className="text-center py-8 text-gray-500">
                 No reagents. Add your first reagent above.
               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {view === 'formulas' && (
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h2 className="text-xl font-bold">Formula Design</h2>
+              <p className="text-sm text-gray-400 mt-1">
+                Design and manage alchemy formulas. Players can view and start batches from formulas in the Formulas tab.
+              </p>
+            </div>
+            <button onClick={() => setShowAdd(!showAdd)} className="flex items-center gap-2 bg-green-600 px-4 py-2 rounded h-fit">
+              <Plus size={20} /> {showAdd ? 'Cancel' : 'Design Formula'}
+            </button>
+          </div>
+
+          {showAdd && (
+            <div className="bg-gray-700 p-4 rounded mb-4 space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-3 sm:col-span-1">
+                  <label className="block text-sm mb-1">Formula Name</label>
+                  <input
+                    value={formulaName}
+                    onChange={(e) => setFormulaName(e.target.value)}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                    placeholder="e.g., Healing Draught"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Tier (1-4)</label>
+                  <select
+                    value={selectedTier}
+                    onChange={(e) => setSelectedTier(parseInt(e.target.value))}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  >
+                    <option value="1">Tier 1 (TB: 10)</option>
+                    <option value="2">Tier 2 (TB: 15)</option>
+                    <option value="3">Tier 3 (TB: 20)</option>
+                    <option value="4">Tier 4 (TB: 25)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Vector Type</label>
+                  <select
+                    value={selectedVector}
+                    onChange={(e) => setSelectedVector(e.target.value)}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  >
+                    {VECTORS.map(v => (
+                      <option key={v.name} value={v.name}>
+                        {v.name} (WR {v.wrMod >= 0 ? '+' : ''}{v.wrMod}, DM {v.dmMod >= 0 ? '+' : ''}{v.dmMod})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-sm font-semibold">Ingredients</label>
+                  <button onClick={addIngredient} className="bg-blue-600 px-3 py-1 rounded text-sm">
+                    <Plus size={14} className="inline" /> Add Ingredient
+                  </button>
+                </div>
+
+                {ingredients.map(ing => {
+                  return (
+                    <div key={ing.id} className="bg-gray-600 p-3 rounded mb-2 space-y-2">
+                      <div className="grid grid-cols-4 gap-2">
+                        <select
+                          value={ing.reagentId}
+                          onChange={(e) => updateIngredient(ing.id, 'reagentId', e.target.value)}
+                          className="bg-gray-700 px-2 py-1 rounded text-sm"
+                        >
+                          {alchemyReagents.map(r => (
+                            <option key={r.id} value={r.id}>{r.name} ({r.quantity}U)</option>
+                          ))}
+                        </select>
+                        <select
+                          value={ing.role}
+                          onChange={(e) => updateIngredient(ing.id, 'role', e.target.value)}
+                          className="bg-gray-700 px-2 py-1 rounded text-sm"
+                        >
+                          {INGREDIENT_ROLES.map(role => (
+                            <option key={role} value={role}>{role}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={ing.refinement}
+                          onChange={(e) => updateIngredient(ing.id, 'refinement', e.target.value)}
+                          className="bg-gray-700 px-2 py-1 rounded text-sm"
+                        >
+                          <option value="crude">Crude</option>
+                          <option value="prepared">Prepared</option>
+                          <option value="refined">Refined</option>
+                        </select>
+                        <div className="flex gap-1">
+                          <input
+                            type="number"
+                            value={ing.unitsUsed}
+                            onChange={(e) => updateIngredient(ing.id, 'unitsUsed', Math.max(1, toNumberOr(e.target.value, 1)))}
+                            className="w-full bg-gray-700 px-2 py-1 rounded text-sm"
+                            min="1"
+                          />
+                          <button
+                            onClick={() => removeIngredient(ing.id)}
+                            className="bg-red-600 px-2 rounded"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {ingredients.length > 0 && (() => {
+                const reagentsMap = new Map(alchemyReagents.map(r => [r.id, r]));
+                const actives = ingredients.filter(i => i.role === 'Active' || i.role === 'active');
+                if (actives.length === 0) return null;
+
+                const ingredientsSnapshot = ingredients.map(ing => {
+                  const r = reagentsMap.get(ing.reagentId);
+                  return {
+                    reagentId: ing.reagentId,
+                    role: ing.role,
+                    unitsUsed: ing.unitsUsed,
+                    refinement: ing.refinement,
+                    aspects: r ? {...r.aspects} : {}
+                  };
+                });
+
+                const tempFormula = { ingredients: ingredientsSnapshot, tier: selectedTier };
+                const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector, { tier: selectedTier });
+
+                return (
+                  <div className="space-y-3">
+                    <div className="bg-gray-600 p-3 rounded">
+                      <div className="text-sm font-semibold mb-2">Formula Preview</div>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="space-y-1">
+                          <div>Tier: <span className="text-yellow-400 font-bold">{stats.tier}</span></div>
+                          <div>Dominant: <span className="text-blue-400">{stats.dominantAspect || 'None'}</span></div>
+                          <div>Secondary: <span className="text-blue-400">{stats.secondaryAspect || 'None'}</span></div>
+                          <div>Potency: <span className="text-green-400">{stats.basePotency} {stats.concentrationSteps > 0 ? `+${stats.concentrationSteps} → ${stats.finalPotency}` : ''}</span></div>
+                        </div>
+                        <div className="space-y-1">
+                          <div>WR: <span className="text-orange-400">{stats.baseWR}</span></div>
+                          <div>DM: <span className="text-orange-400">{stats.baseDM >= 0 ? '+' : ''}{stats.baseDM}</span></div>
+                          <div>TB: <span className="text-purple-400">{stats.traitBudget} points</span></div>
+                          <div>Vector: <span className="text-gray-300">{stats.vector}</span></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <TBBuilderPanel
+                      traitBudget={stats.traitBudget}
+                      initialTraits={formulaTraits}
+                      onUpdate={setFormulaTraits}
+                    />
+                  </div>
+                );
+              })()}
+
+              <button onClick={createFormula} className="w-full bg-green-600 px-4 py-2 rounded">
+                Save Formula
+              </button>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {alchemyFormulas.map(f => (
+              <div key={f.id} className="bg-gray-700 p-4 rounded">
+                <div className="flex justify-between mb-2">
+                  <h3 className="font-semibold text-lg">{f.name}</h3>
+                  <div className="flex gap-2">
+                    <button onClick={() => setDeleteConfirm({type: 'formula', id: f.id, name: f.name})} className="bg-red-600 px-3 py-1 rounded text-sm">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+                <div className="text-sm space-y-1">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-gray-400">Tier:</span> <span className="text-yellow-400 font-bold">{f.tier || 1}</span> |
+                      <span className="text-gray-400 ml-2">TB:</span> <span className="text-purple-400">{f.traitBudget || 10}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Vector:</span> <span className="text-gray-300">{f.vector || 'Potion'}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Aspects:</span> <span className="text-blue-400">{f.dominantAspect}</span> / <span className="text-blue-400">{f.secondaryAspect}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Potency:</span> <span className="text-green-400">{f.finalPotency || f.potency || 'P1'}</span> |
+                    <span className="text-gray-400 ml-2">WR:</span> <span className="text-orange-400">{f.baseWR}</span> |
+                    <span className="text-gray-400 ml-2">DM:</span> <span className="text-orange-400">{f.baseDM >= 0 ? '+' : ''}{f.baseDM}</span>
+                  </div>
+                  <div className="text-xs text-gray-400 mt-2">
+                    {f.ingredients.map(i => `${i.reagentName} (${i.role}, ${i.unitsUsed}U)`).join(', ')}
+                  </div>
+
+                  {f.traits && f.traits.length > 0 && (
+                    <div className="text-xs text-purple-400 mt-2">
+                      Traits: {f.traits.map(t => `${t.name} (${t.cost}pts)`).join(', ')}
+                    </div>
+                  )}
+                </div>
+
+                {expandedFormula === f.id && f.traits && (
+                  <div className="mt-3">
+                    <TBBuilderPanel
+                      traitBudget={f.traitBudget || 10}
+                      initialTraits={f.traits || []}
+                      onUpdate={(newTraits) => {
+                        const updatedFormulas = alchemyFormulas.map(formula =>
+                          formula.id === f.id ? {...formula, traits: newTraits} : formula
+                        );
+                        saveAlchemyFormulas(updatedFormulas);
+                      }}
+                    />
+                  </div>
+                )}
+
+                {(f.traits && f.traits.length > 0) || expandedFormula === f.id ? (
+                  <button
+                    onClick={() => setExpandedFormula(expandedFormula === f.id ? null : f.id)}
+                    className="mt-2 text-xs text-purple-400 hover:text-purple-300"
+                  >
+                    {expandedFormula === f.id ? '▼ Hide Traits' : '▶ Show Traits'}
+                  </button>
+                ) : null}
+              </div>
+            ))}
+
+            {alchemyFormulas.length === 0 && (
+              <div className="text-gray-500 text-center py-8">No formulas yet. Design one to get started!</div>
             )}
           </div>
         </div>
