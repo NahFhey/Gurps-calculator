@@ -31,7 +31,11 @@ export default function GURPSPartyTool() {
     { name: 'cloth', difficulty: -1, effects: '', ht: 6, drShift: 0, weightMod: -30, hpMod: -20 },
     { name: 'stone', difficulty: 1, effects: '', ht: 14, drShift: 0, weightMod: 50, hpMod: 10 }
   ]);
-  const [workers, setWorkers] = useState(['Worker 1', 'Worker 2', 'Worker 3']);
+  const [workers, setWorkers] = useState([
+    { id: '1', name: 'Worker 1', skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10 } },
+    { id: '2', name: 'Worker 2', skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10 } },
+    { id: '3', name: 'Worker 3', skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10 } }
+  ]);
   const [customTemplates, setCustomTemplates] = useState({ weapons: {}, armor: {}, ranged: {}, explosives: {} });
   const [alchemyReagents, setAlchemyReagents] = useState([]);
   const [alchemyFormulas, setAlchemyFormulas] = useState([]);
@@ -71,7 +75,33 @@ export default function GURPSPartyTool() {
       if (foodsR?.value) setFoods(JSON.parse(foodsR.value));
       if (recipesR?.value) setRecipes(JSON.parse(recipesR.value));
       if (craftsR?.value) setCrafts(JSON.parse(craftsR.value));
-      if (workersR?.value) setWorkers(JSON.parse(workersR.value));
+
+      // Load workers with backward compatibility (convert string array to object array)
+      if (workersR?.value) {
+        const loadedWorkers = JSON.parse(workersR.value);
+        if (Array.isArray(loadedWorkers) && loadedWorkers.length > 0) {
+          if (typeof loadedWorkers[0] === 'string') {
+            // Old format - convert to new format
+            setWorkers(loadedWorkers.map((name, idx) => ({
+              id: String(idx + 1),
+              name,
+              skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10 }
+            })));
+          } else {
+            // New format - ensure all workers have required fields
+            setWorkers(loadedWorkers.map((w, idx) => ({
+              id: w.id || String(idx + 1),
+              name: w.name || `Worker ${idx + 1}`,
+              skills: {
+                cooking: w.skills?.cooking ?? 10,
+                designing: w.skills?.designing ?? 10,
+                crafting: w.skills?.crafting ?? 10,
+                alchemy: w.skills?.alchemy ?? 10
+              }
+            })));
+          }
+        }
+      }
 
       // Load food types with backward compatibility (convert string array to object array)
       if (typesR?.value) {

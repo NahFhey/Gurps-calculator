@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { applyWorkBlockResult } from '../../utils/alchemy';
+import { DiceRoller } from '../DiceRoller';
 
 export function BatchesView({ batches, workers, formulas, saveBatches, saveFormulas }) {
   const [selectedBatch, setSelectedBatch] = useState(null);
@@ -313,11 +314,17 @@ export function BatchesView({ batches, workers, formulas, saveBatches, saveFormu
                 <label className="block text-xs mb-1">Worker</label>
                 <select
                   value={workerName}
-                  onChange={(e) => setWorkerName(e.target.value)}
+                  onChange={(e) => {
+                    const selectedWorker = workers.find(w => w.name === e.target.value);
+                    setWorkerName(e.target.value);
+                    if (selectedWorker && selectedWorker.skills) {
+                      setSkill(String(selectedWorker.skills.alchemy || 10));
+                    }
+                  }}
                   className="w-full bg-gray-600 px-3 py-2 rounded"
                 >
                   <option value="">Select worker...</option>
-                  {workers.map(w => <option key={w} value={w}>{w}</option>)}
+                  {workers.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}
                 </select>
               </div>
               <div>
@@ -344,15 +351,18 @@ export function BatchesView({ batches, workers, formulas, saveBatches, saveFormu
               </div>
               <div>
                 <label className="block text-xs mb-1">Roll (3d6)</label>
-                <input
-                  type="number"
-                  value={roll}
-                  onChange={(e) => setRoll(e.target.value)}
-                  className="w-full bg-gray-600 px-3 py-2 rounded"
-                  placeholder="3-18"
-                  min="3"
-                  max="18"
-                />
+                <div className="flex gap-2 items-start">
+                  <input
+                    type="number"
+                    value={roll}
+                    onChange={(e) => setRoll(e.target.value)}
+                    className="flex-1 bg-gray-600 px-3 py-2 rounded"
+                    placeholder="3-18"
+                    min="3"
+                    max="18"
+                  />
+                  <DiceRoller onRoll={(total) => setRoll(String(total))} />
+                </div>
               </div>
             </div>
             <button onClick={addWorkBlock} className="w-full bg-green-600 px-4 py-2 rounded">

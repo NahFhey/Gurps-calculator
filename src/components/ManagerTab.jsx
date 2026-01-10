@@ -126,7 +126,7 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
               <button onClick={() => {
                 if (deleteConfirm.type === 'foodType') saveFoodTypes(foodTypes.filter(t => t !== deleteConfirm.value));
                 else if (deleteConfirm.type === 'materialType') saveMaterialTypes(materialTypes.filter(t => t.name !== deleteConfirm.value));
-                else if (deleteConfirm.type === 'worker') saveWorkers(workers.filter(w => w !== deleteConfirm.value));
+                else if (deleteConfirm.type === 'worker') saveWorkers(workers.filter(w => w.id !== deleteConfirm.id));
                 else if (deleteConfirm.type === 'project') {
                   const proj = crafts.find(c => c.id === deleteConfirm.id);
                   if (proj && !proj.completed) {
@@ -417,21 +417,129 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
             <button onClick={() => setShowAdd(!showAdd)} className="bg-green-600 px-4 py-2 rounded"><Plus size={20} className="inline" /> Add</button>
           </div>
           {showAdd && (
-            <div className="bg-gray-700 p-4 rounded mb-4 flex gap-2">
-              <input value={newType} onChange={(e) => setNewType(e.target.value)} placeholder="Worker name" className="flex-1 bg-gray-600 px-3 py-2 rounded" />
-              <button onClick={() => {
-                if (!newType.trim() || workers.includes(newType)) { alert('Invalid or duplicate'); return; }
-                saveWorkers([...workers, newType]);
-                setNewType(''); setShowAdd(false);
-              }} className="bg-green-600 px-4 py-2 rounded"><Save size={20} /></button>
-              <button onClick={() => setShowAdd(false)} className="bg-red-600 px-4 py-2 rounded"><X size={20} /></button>
+            <div className="bg-gray-700 p-4 rounded mb-4 space-y-3">
+              <input value={newType} onChange={(e) => setNewType(e.target.value)} placeholder="Worker name" className="w-full bg-gray-600 px-3 py-2 rounded" />
+              <div className="grid grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Cooking</label>
+                  <input type="number" defaultValue="10" id="newWorkerCooking" className="w-full bg-gray-600 px-3 py-2 rounded" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Designing</label>
+                  <input type="number" defaultValue="10" id="newWorkerDesigning" className="w-full bg-gray-600 px-3 py-2 rounded" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Crafting</label>
+                  <input type="number" defaultValue="10" id="newWorkerCrafting" className="w-full bg-gray-600 px-3 py-2 rounded" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Alchemy</label>
+                  <input type="number" defaultValue="10" id="newWorkerAlchemy" className="w-full bg-gray-600 px-3 py-2 rounded" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => {
+                  if (!newType.trim()) { alert('Enter a name'); return; }
+                  if (workers.some(w => w.name === newType.trim())) { alert('Duplicate name'); return; }
+                  const newWorker = {
+                    id: crypto.randomUUID(),
+                    name: newType.trim(),
+                    skills: {
+                      cooking: toNumberOr(document.getElementById('newWorkerCooking').value, 10),
+                      designing: toNumberOr(document.getElementById('newWorkerDesigning').value, 10),
+                      crafting: toNumberOr(document.getElementById('newWorkerCrafting').value, 10),
+                      alchemy: toNumberOr(document.getElementById('newWorkerAlchemy').value, 10)
+                    }
+                  };
+                  saveWorkers([...workers, newWorker]);
+                  setNewType(''); setShowAdd(false);
+                }} className="flex-1 bg-green-600 px-4 py-2 rounded"><Save size={20} className="inline" /> Save</button>
+                <button onClick={() => setShowAdd(false)} className="bg-red-600 px-4 py-2 rounded"><X size={20} /></button>
+              </div>
             </div>
           )}
           <div className="space-y-2">
             {workers.map(w => (
-              <div key={w} className="flex items-center gap-4 bg-gray-700 p-3 rounded">
-                <input value={w} onChange={(e) => { const v = e.target.value; if (workers.includes(v) && v !== w) { alert('Duplicate'); return; } saveWorkers(workers.map(x => x === w ? v : x)); }} className="flex-1 bg-gray-600 px-3 py-1 rounded" />
-                <button onClick={() => setDeleteConfirm({type: 'worker', value: w})} className="text-red-400"><Trash2 size={20} /></button>
+              <div key={w.id} className="bg-gray-700 rounded">
+                <div
+                  className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-600"
+                  onClick={() => setExpanded(p => ({...p, [w.id]: !p[w.id]}))}
+                >
+                  <span className="flex-1 font-semibold">{w.name}</span>
+                  <span className="text-xs text-gray-400">Cook: {w.skills.cooking}</span>
+                  <span className="text-xs text-gray-400">Design: {w.skills.designing}</span>
+                  <span className="text-xs text-gray-400">Craft: {w.skills.crafting}</span>
+                  <span className="text-xs text-gray-400">Alch: {w.skills.alchemy}</span>
+                  <span className="text-gray-400">{expanded[w.id] ? '▼' : '▶'}</span>
+                </div>
+                {expanded[w.id] && (
+                  <div className="px-3 pb-3 space-y-3 border-t border-gray-600 pt-3">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Worker Name</label>
+                      <input
+                        value={w.name}
+                        onChange={(e) => {
+                          const newName = e.target.value;
+                          if (workers.some(x => x.name === newName && x.id !== w.id)) { alert('Duplicate name'); return; }
+                          saveWorkers(workers.map(x => x.id === w.id ? {...x, name: newName} : x));
+                        }}
+                        className="w-full bg-gray-600 px-3 py-2 rounded"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Cooking Skill</label>
+                        <input
+                          type="number"
+                          value={w.skills.cooking}
+                          onChange={(e) => {
+                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...x.skills, cooking: toNumberOr(e.target.value, 10)}} : x));
+                          }}
+                          className="w-full bg-gray-600 px-3 py-2 rounded"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Designing Skill</label>
+                        <input
+                          type="number"
+                          value={w.skills.designing}
+                          onChange={(e) => {
+                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...x.skills, designing: toNumberOr(e.target.value, 10)}} : x));
+                          }}
+                          className="w-full bg-gray-600 px-3 py-2 rounded"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Crafting Skill</label>
+                        <input
+                          type="number"
+                          value={w.skills.crafting}
+                          onChange={(e) => {
+                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...x.skills, crafting: toNumberOr(e.target.value, 10)}} : x));
+                          }}
+                          className="w-full bg-gray-600 px-3 py-2 rounded"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Alchemy Skill</label>
+                        <input
+                          type="number"
+                          value={w.skills.alchemy}
+                          onChange={(e) => {
+                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...x.skills, alchemy: toNumberOr(e.target.value, 10)}} : x));
+                          }}
+                          className="w-full bg-gray-600 px-3 py-2 rounded"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setDeleteConfirm({type: 'worker', value: w.name, id: w.id})}
+                      className="w-full bg-red-600 py-2 rounded text-sm"
+                    >
+                      <Trash2 size={16} className="inline" /> Delete Worker
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
