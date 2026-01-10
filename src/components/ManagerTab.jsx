@@ -1076,6 +1076,28 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
               </label>
             </div>
 
+            <div className="border-t border-gray-600 pt-6">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={alchemySettings.showObviousRoles !== false}
+                  onChange={(e) => {
+                    saveAlchemySettings({
+                      ...alchemySettings,
+                      showObviousRoles: e.target.checked
+                    });
+                  }}
+                  className="w-5 h-5"
+                />
+                <div>
+                  <div className="text-sm font-semibold">Show Obvious Physical Roles</div>
+                  <p className="text-xs text-gray-400">
+                    Allow physical roles (Solvent, Binder, Tool) to be known from mundane inspection even when reagent is unidentified
+                  </p>
+                </div>
+              </label>
+            </div>
+
             <div className="bg-gray-800 p-4 rounded text-sm">
               <div className="font-semibold mb-2">Notes:</div>
               <ul className="list-disc list-inside space-y-1 text-gray-300">
@@ -1083,6 +1105,8 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
                 <li>Higher lab rating = easier brewing, fewer work blocks needed</li>
                 <li>Work blocks can be customized for different campaign pacing</li>
                 <li>Auto-save creates a recipe copy when a batch completes successfully</li>
+                <li>Reagent identification requires Analysis (consumes 1U per attempt)</li>
+                <li>Physical roles setting allows Solvent/Binder/Tool to be visible even when unidentified</li>
                 <li>These are defaults; you can override them per batch</li>
               </ul>
             </div>

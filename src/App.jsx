@@ -121,12 +121,26 @@ export default function GURPSPartyTool() {
       // Load craft designs
       setCraftDesigns(safeParse(craftDesignsR?.value, []));
 
-      // Load alchemy data
-      setAlchemyReagents(safeParse(reagentsR?.value, []));
+      // Load alchemy data with identification system migration
+      const loadedReagents = safeParse(reagentsR?.value, []);
+      const migratedReagents = loadedReagents.map(r => ({
+        ...r,
+        identificationLevel: r.identificationLevel ?? 0,
+        analysisHistory: r.analysisHistory ?? [],
+        falseProfile: r.falseProfile ?? null
+      }));
+      setAlchemyReagents(migratedReagents);
+
       setAlchemyFormulas(safeParse(formulasR?.value, []));
       setAlchemyBatches(safeParse(batchesR?.value, []));
       setEffectFamilyMap(safeParse(effectMapR?.value, {}));
-      setAlchemySettings(safeParse(alchemySettingsR?.value, { defaultLabRating: 0, workBlockMinutes: 120 }));
+
+      // Load alchemy settings with identification toggle
+      const loadedSettings = safeParse(alchemySettingsR?.value, { defaultLabRating: 0, workBlockMinutes: 120 });
+      setAlchemySettings({
+        ...loadedSettings,
+        showObviousRoles: loadedSettings.showObviousRoles ?? true
+      });
 
       // Load and ensure material types have all required properties
       if (matTypesR?.value) {
