@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { applyWorkBlockResult } from '../../utils/alchemy';
+import { Plus } from 'lucide-react';
+import { applyWorkBlockResult, calculateFormulaStats } from '../../utils/alchemy';
 import { DiceRoller } from '../DiceRoller';
+import { INGREDIENT_ROLES, VECTORS } from '../../constants';
+import { toNumberOr } from '../../utils/helpers';
 
-export function BatchesView({ batches, workers, formulas, saveBatches, saveFormulas }) {
+export function BatchesView({ batches, workers, formulas, reagents, saveBatches, saveFormulas, saveReagents }) {
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [workerName, setWorkerName] = useState('');
   const [skill, setSkill] = useState('');
@@ -13,6 +16,13 @@ export function BatchesView({ batches, workers, formulas, saveBatches, saveFormu
   const [showSavePrompt, setShowSavePrompt] = useState(false);
   const [completedBatch, setCompletedBatch] = useState(null);
   const [saveAsName, setSaveAsName] = useState('');
+
+  // New batch creation state
+  const [showNewBatch, setShowNewBatch] = useState(false);
+  const [batchName, setBatchName] = useState('');
+  const [ingredients, setIngredients] = useState([]);
+  const [selectedVector, setSelectedVector] = useState('Potion');
+  const [selectedTier, setSelectedTier] = useState(1);
 
   const activeBatches = batches.filter(b => b.phase === 'brewing');
   const completedBatches = batches.filter(b => b.phase !== 'brewing');
@@ -96,6 +106,114 @@ export function BatchesView({ batches, workers, formulas, saveBatches, saveFormu
     setCompletedBatch(null);
     setSaveAsName('');
     alert(`Recipe "${recipeName}" saved to formulas!`);
+  }
+
+  // New batch creation helper functions
+  function addIngredient() {
+    if (reagents.length === 0) {
+      alert('No reagents available!');
+      return;
+    }
+    setIngredients([...ingredients, {
+      id: crypto.randomUUID(),
+      reagentId: reagents[0].id,
+      role: 'Active',
+      unitsUsed: 1,
+      refinement: 'crude'
+    }]);
+  }
+
+  function removeIngredient(id) {
+    setIngredients(ingredients.filter(i => i.id !== id));
+  }
+
+  function updateIngredient(id, field, value) {
+    setIngredients(ingredients.map(i => i.id === id ? {...i, [field]: value} : i));
+  }
+
+  function createNewBatch() {
+    if (!batchName.trim()) {
+      alert('Enter batch name');
+      return;
+    }
+    if (ingredients.length === 0) {
+      alert('Add at least one ingredient');
+      return;
+    }
+
+    // Check reagent availability
+    for (const ing of ingredients) {
+      const reagent = reagents.find(r => r.id === ing.reagentId);
+      if (!reagent || reagent.quantity < ing.unitsUsed) {
+        alert(`Insufficient ${reagent?.name || 'reagent'}: need ${ing.unitsUsed}U, have ${reagent?.quantity || 0}U`);
+        return;
+      }
+    }
+
+    const reagentsMap = new Map(reagents.map(r => [r.id, r]));
+
+    const ingredientsSnapshot = ingredients.map(ing => {
+      const r = reagentsMap.get(ing.reagentId);
+      return {
+        reagentId: ing.reagentId,
+        reagentName: r?.name || 'Unknown',
+        role: ing.role,
+        unitsUsed: ing.unitsUsed,
+        refinement: ing.refinement,
+        aspects: r ? {...r.aspects} : {},
+        potency: r?.basePotency || 'P0',
+        concentrationSteps: r?.concentrationSteps || 0
+      };
+    });
+
+    const tempFormula = { ingredients: ingredientsSnapshot, tier: selectedTier };
+    const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector, { tier: selectedTier });
+
+    // Consume reagents
+    const newReagents = reagents.map(r => {
+      const used = ingredients.find(ing => ing.reagentId === r.id);
+      if (used) {
+        return {...r, quantity: Math.max(0, r.quantity - used.unitsUsed)};
+      }
+      return r;
+    });
+
+    const newBatch = {
+      id: crypto.randomUUID(),
+      formulaId: null,
+      formulaName: batchName,
+      phase: 'brewing',
+      consumedIngredients: ingredientsSnapshot,
+      tier: selectedTier,
+      vector: stats.vector,
+      WR: stats.baseWR,
+      DM: stats.baseDM,
+      PP: 0,
+      CP: 0,
+      dominantAspect: stats.dominantAspect,
+      secondaryAspect: stats.secondaryAspect,
+      basePotency: stats.basePotency || 'P1',
+      finalPotency: stats.finalPotency || 'P1',
+      concentrationSteps: stats.concentrationSteps || 0,
+      traitBudget: stats.traitBudget || 10,
+      traits: [],
+      forecast: null,
+      microAssay: null,
+      hasMatchingStabilizer: stats.hasMatchingStabilizer || false,
+      shifts: [],
+      quality: null,
+      startDate: new Date().toISOString(),
+      completedDate: null
+    };
+
+    saveReagents(newReagents);
+    saveBatches([...batches, newBatch]);
+    setBatchName('');
+    setIngredients([]);
+    setSelectedVector('Potion');
+    setSelectedTier(1);
+    setShowNewBatch(false);
+    alert(`Batch "${batchName}" started!`);
   }
 
   function addWorkBlock() {
@@ -392,6 +510,163 @@ export function BatchesView({ batches, workers, formulas, saveBatches, saveFormu
         </div>
       ) : (
         <div className="space-y-4">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Alchemy Batches</h2>
+            <button
+              onClick={() => setShowNewBatch(!showNewBatch)}
+              className="flex items-center gap-2 bg-green-600 px-4 py-2 rounded"
+            >
+              <Plus size={20} /> {showNewBatch ? 'Cancel' : 'Start New Batch'}
+            </button>
+          </div>
+
+          {showNewBatch && (
+            <div className="bg-gray-700 p-4 rounded mb-4 space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-3 sm:col-span-1">
+                  <label className="block text-sm mb-1">Batch Name</label>
+                  <input
+                    value={batchName}
+                    onChange={(e) => setBatchName(e.target.value)}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                    placeholder="e.g., Experimental Potion"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Tier (1-4)</label>
+                  <select
+                    value={selectedTier}
+                    onChange={(e) => setSelectedTier(parseInt(e.target.value))}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  >
+                    <option value="1">Tier 1 (TB: 10)</option>
+                    <option value="2">Tier 2 (TB: 15)</option>
+                    <option value="3">Tier 3 (TB: 20)</option>
+                    <option value="4">Tier 4 (TB: 25)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Vector Type</label>
+                  <select
+                    value={selectedVector}
+                    onChange={(e) => setSelectedVector(e.target.value)}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  >
+                    {VECTORS.map(v => (
+                      <option key={v.name} value={v.name}>
+                        {v.name} (WR {v.wrMod >= 0 ? '+' : ''}{v.wrMod}, DM {v.dmMod >= 0 ? '+' : ''}{v.dmMod})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-sm font-semibold">Ingredients</label>
+                  <button onClick={addIngredient} className="bg-blue-600 px-3 py-1 rounded text-sm">
+                    <Plus size={14} className="inline" /> Add Ingredient
+                  </button>
+                </div>
+
+                {ingredients.map(ing => {
+                  return (
+                    <div key={ing.id} className="bg-gray-600 p-3 rounded mb-2">
+                      <div className="grid grid-cols-4 gap-2">
+                        <select
+                          value={ing.reagentId}
+                          onChange={(e) => updateIngredient(ing.id, 'reagentId', e.target.value)}
+                          className="bg-gray-700 px-2 py-1 rounded text-sm"
+                        >
+                          {reagents.map(r => (
+                            <option key={r.id} value={r.id}>{r.name} ({r.quantity}U)</option>
+                          ))}
+                        </select>
+                        <select
+                          value={ing.role}
+                          onChange={(e) => updateIngredient(ing.id, 'role', e.target.value)}
+                          className="bg-gray-700 px-2 py-1 rounded text-sm"
+                        >
+                          {INGREDIENT_ROLES.map(role => (
+                            <option key={role} value={role}>{role}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={ing.refinement}
+                          onChange={(e) => updateIngredient(ing.id, 'refinement', e.target.value)}
+                          className="bg-gray-700 px-2 py-1 rounded text-sm"
+                        >
+                          <option value="crude">Crude</option>
+                          <option value="prepared">Prepared</option>
+                          <option value="refined">Refined</option>
+                        </select>
+                        <div className="flex gap-1">
+                          <input
+                            type="number"
+                            value={ing.unitsUsed}
+                            onChange={(e) => updateIngredient(ing.id, 'unitsUsed', Math.max(1, toNumberOr(e.target.value, 1)))}
+                            className="w-full bg-gray-700 px-2 py-1 rounded text-sm"
+                            min="1"
+                          />
+                          <button
+                            onClick={() => removeIngredient(ing.id)}
+                            className="bg-red-600 px-2 rounded"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {ingredients.length > 0 && (() => {
+                const reagentsMap = new Map(reagents.map(r => [r.id, r]));
+                const actives = ingredients.filter(i => i.role === 'Active' || i.role === 'active');
+                if (actives.length === 0) return null;
+
+                const ingredientsSnapshot = ingredients.map(ing => {
+                  const r = reagentsMap.get(ing.reagentId);
+                  return {
+                    reagentId: ing.reagentId,
+                    role: ing.role,
+                    unitsUsed: ing.unitsUsed,
+                    refinement: ing.refinement,
+                    aspects: r ? {...r.aspects} : {}
+                  };
+                });
+
+                const tempFormula = { ingredients: ingredientsSnapshot, tier: selectedTier };
+                const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector, { tier: selectedTier });
+
+                return (
+                  <div className="bg-gray-600 p-3 rounded">
+                    <div className="text-sm font-semibold mb-2">Batch Preview</div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="space-y-1">
+                        <div>Tier: <span className="text-yellow-400 font-bold">{stats.tier}</span></div>
+                        <div>Dominant: <span className="text-blue-400">{stats.dominantAspect || 'None'}</span></div>
+                        <div>Secondary: <span className="text-blue-400">{stats.secondaryAspect || 'None'}</span></div>
+                        <div>Potency: <span className="text-green-400">{stats.basePotency} {stats.concentrationSteps > 0 ? `+${stats.concentrationSteps} → ${stats.finalPotency}` : ''}</span></div>
+                      </div>
+                      <div className="space-y-1">
+                        <div>WR: <span className="text-orange-400">{stats.baseWR}</span></div>
+                        <div>DM: <span className="text-orange-400">{stats.baseDM >= 0 ? '+' : ''}{stats.baseDM}</span></div>
+                        <div>TB: <span className="text-purple-400">{stats.traitBudget} points</span></div>
+                        <div>Vector: <span className="text-gray-300">{stats.vector}</span></div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <button onClick={createNewBatch} className="w-full bg-green-600 px-4 py-2 rounded">
+                Start Batch
+              </button>
+            </div>
+          )}
+
           <div>
             <h3 className="font-semibold mb-2">Active Batches ({activeBatches.length})</h3>
             {activeBatches.map(b => (
