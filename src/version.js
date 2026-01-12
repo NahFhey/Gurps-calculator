@@ -11,8 +11,7 @@ export const CHANGELOG = [
         category: 'Alchemy System',
         items: [
           'Reagent role dropdown now only shows roles that the selected reagent actually has',
-          'Prevents invalid role assignments during batch creation',
-          'Reagent dropdown displays roles for easier selection: "Role(s) - Name (Quantity)"'
+          'Prevents invalid role assignments during batch creation'
         ]
       }
     ]

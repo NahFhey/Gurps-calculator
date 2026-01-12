@@ -613,7 +613,7 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
                         >
                           {reagents.map(r => (
                             <option key={r.id} value={r.id}>
-                              {(r.roles || []).join(', ') || 'No Role'} - {r.name} ({r.quantity}U)
+                              {r.name} ({r.quantity}U)
                             </option>
                           ))}
                         </select>
