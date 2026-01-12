@@ -437,6 +437,7 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
   let ppAdded = 0;
   let cpChange = 0;
   let result = '';
+  const hazardEvents = [];
 
   const isCritSuccess =
     roll <= 4 ||
@@ -447,6 +448,9 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
     roll === 18 ||
     (roll === 17 && effectiveSkill <= 15) ||
     (roll === 16 && effectiveSkill <= 6);
+
+  const isFailure = !isCritSuccess && roll > effectiveSkill;
+  const isMishap = isCritFailure;
 
   if (isCritSuccess) {
     ppAdded = 2;
@@ -468,6 +472,45 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
     result = `Failure (MoF ${margin})`;
   }
 
+  // HAZARD TRIGGERING - check if any hazards trigger
+  const hazardDetails = batch.hazardDetails || [];
+  hazardDetails.forEach(hazard => {
+    let triggered = false;
+    let reason = '';
+
+    if (hazard.triggerOn.includes('any_failure') && isFailure) {
+      triggered = true;
+      reason = 'failure';
+    } else if (hazard.triggerOn.includes('failure') && isFailure && !isCritFailure) {
+      triggered = true;
+      reason = 'failure';
+    } else if (hazard.triggerOn.includes('mishap') && isMishap) {
+      triggered = true;
+      reason = 'mishap';
+    }
+
+    // Apply hazard effects
+    if (triggered) {
+      if (hazard.hazard === 'Unstable') {
+        cpChange += 1; // Extra contamination
+      } else if (hazard.hazard === 'Volatile') {
+        // Volatile causes batch destruction on failure/mishap
+        hazardEvents.push({
+          hazard: hazard.hazard,
+          effect: 'BATCH DESTROYED - Volatile explosion',
+          severity: 'critical'
+        });
+      }
+
+      hazardEvents.push({
+        hazard: hazard.hazard,
+        effect: hazard.effect,
+        severity: hazard.severity,
+        trigger: reason
+      });
+    }
+  });
+
   const newShift = {
     id: crypto.randomUUID(),
     date,
@@ -477,7 +520,8 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
     effectiveSkill,
     result,
     ppAdded,
-    cpChange
+    cpChange,
+    hazardEvents: hazardEvents.length > 0 ? hazardEvents : undefined
   };
 
   const newPP = batch.PP + ppAdded;
@@ -490,11 +534,47 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
     shifts: [...batch.shifts, newShift]
   };
 
+  // Check if Volatile hazard destroyed the batch
+  const volatileDestroyed = hazardEvents.some(e => e.hazard === 'Volatile' && e.effect.includes('DESTROYED'));
+  if (volatileDestroyed) {
+    updated.phase = 'failed';
+    updated.quality = 'Destroyed (Volatile Explosion)';
+    updated.completedDate = new Date().toISOString();
+    return updated;
+  }
+
   if (updated.PP >= updated.WR) {
     const quality = determineQuality(updated.CP);
     updated.phase = quality === 'Mishap' ? 'failed' : 'completed';
     updated.quality = quality;
     updated.completedDate = new Date().toISOString();
+
+    // CHECK HAZARDS ON COMPLETION
+    const completionHazards = [];
+    hazardDetails.forEach(hazard => {
+      // Flammable triggers on Unstable or worse
+      if (hazard.hazard === 'Flammable' && ['Unstable', 'Flawed', 'Mishap'].includes(quality)) {
+        completionHazards.push({
+          hazard: 'Flammable',
+          effect: hazard.effect,
+          severity: 'high',
+          trigger: `quality_${quality.toLowerCase()}`
+        });
+      }
+      // Mishap-triggered hazards
+      else if (hazard.triggerOn.includes('mishap') && quality === 'Mishap') {
+        completionHazards.push({
+          hazard: hazard.hazard,
+          effect: hazard.effect,
+          severity: hazard.severity,
+          trigger: 'mishap_quality'
+        });
+      }
+    });
+
+    if (completionHazards.length > 0) {
+      updated.completionHazards = completionHazards;
+    }
   }
 
   return updated;

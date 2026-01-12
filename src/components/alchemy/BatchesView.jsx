@@ -166,8 +166,40 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
       };
     });
 
-    const tempFormula = { ingredients: ingredientsSnapshot, tier: selectedTier };
-    const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector, { tier: selectedTier });
+    const tempFormula = { ingredients: ingredientsSnapshot };
+    const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector);
+
+    // VALIDATION CHECKS - block if critical errors
+    if (!stats.batchValidation.valid) {
+      alert('Cannot start batch: ' + stats.batchValidation.errors.join(', '));
+      return;
+    }
+
+    if (stats.roleCoverage.wrDelta >= 999) {
+      alert('Cannot start batch: Missing Active ingredient (required)');
+      return;
+    }
+
+    // WARNINGS - show but allow to proceed
+    const warnings = [];
+    if (!stats.roleCoverage.valid) {
+      warnings.push(...stats.roleCoverage.messages);
+    }
+    if (stats.batchValidation.warnings.length > 0) {
+      warnings.push(...stats.batchValidation.warnings);
+    }
+    if (stats.hazardEvaluation.count > 0) {
+      warnings.push(`Hazards present: ${stats.hazardEvaluation.hazards.join(', ')}`);
+    }
+
+    if (warnings.length > 0) {
+      const proceed = confirm(
+        'Warnings detected:\n\n' +
+        warnings.map(w => '• ' + w).join('\n') +
+        '\n\nDo you want to proceed anyway?'
+      );
+      if (!proceed) return;
+    }
 
     // Consume reagents
     const newReagents = reagents.map(r => {
@@ -184,7 +216,9 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
       formulaName: batchName,
       phase: 'brewing',
       consumedIngredients: ingredientsSnapshot,
-      tier: selectedTier,
+      tier: stats.tier, // Auto-calculated
+      calculatedTier: stats.calculatedTier,
+      potencyLoad: stats.potencyLoad,
       vector: stats.vector,
       WR: stats.baseWR,
       DM: stats.baseDM,
@@ -203,7 +237,10 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
       shifts: [],
       quality: null,
       startDate: new Date().toISOString(),
-      completedDate: null
+      completedDate: null,
+      // Store hazard info for triggering during work blocks
+      hazards: stats.hazardEvaluation.hazards,
+      hazardDetails: stats.hazardEvaluation.details
     };
 
     saveReagents(newReagents);
@@ -211,9 +248,8 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
     setBatchName('');
     setIngredients([]);
     setSelectedVector('Potion');
-    setSelectedTier(1);
     setShowNewBatch(false);
-    alert(`Batch "${batchName}" started!`);
+    alert(`Batch "${batchName}" started! Tier ${stats.tier} (Potency Load: ${stats.potencyLoad})`);
   }
 
   function addWorkBlock() {
@@ -530,18 +566,11 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
                     placeholder="e.g., Experimental Potion"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm mb-1">Tier (1-4)</label>
-                  <select
-                    value={selectedTier}
-                    onChange={(e) => setSelectedTier(parseInt(e.target.value))}
-                    className="w-full bg-gray-600 px-3 py-2 rounded"
-                  >
-                    <option value="1">Tier 1 (TB: 10)</option>
-                    <option value="2">Tier 2 (TB: 15)</option>
-                    <option value="3">Tier 3 (TB: 20)</option>
-                    <option value="4">Tier 4 (TB: 25)</option>
-                  </select>
+                <div className="bg-gray-700 p-2 rounded">
+                  <div className="text-xs text-gray-400 mb-1">Tier (Auto-calculated)</div>
+                  <div className="text-sm text-gray-300">
+                    Tier is automatically determined by the potency load of active ingredients.
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm mb-1">Vector Type</label>
@@ -635,24 +664,70 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
                   };
                 });
 
-                const tempFormula = { ingredients: ingredientsSnapshot, tier: selectedTier };
-                const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector, { tier: selectedTier });
+                const tempFormula = { ingredients: ingredientsSnapshot };
+                const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector);
 
                 return (
-                  <div className="bg-gray-600 p-3 rounded">
-                    <div className="text-sm font-semibold mb-2">Batch Preview</div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div className="space-y-1">
-                        <div>Tier: <span className="text-yellow-400 font-bold">{stats.tier}</span></div>
-                        <div>Dominant: <span className="text-blue-400">{stats.dominantAspect || 'None'}</span></div>
-                        <div>Secondary: <span className="text-blue-400">{stats.secondaryAspect || 'None'}</span></div>
-                        <div>Potency: <span className="text-green-400">{stats.basePotency} {stats.concentrationSteps > 0 ? `+${stats.concentrationSteps} → ${stats.finalPotency}` : ''}</span></div>
+                  <div className="space-y-3">
+                    {/* Validation warnings */}
+                    {!stats.roleCoverage.valid && (
+                      <div className="bg-red-900 bg-opacity-30 border border-red-500 p-2 rounded text-xs">
+                        <div className="font-semibold text-red-300 mb-1">⚠️ Missing Required Roles</div>
+                        {stats.roleCoverage.messages.map((msg, idx) => (
+                          <div key={idx} className="text-red-200">• {msg}</div>
+                        ))}
                       </div>
-                      <div className="space-y-1">
-                        <div>WR: <span className="text-orange-400">{stats.baseWR}</span></div>
-                        <div>DM: <span className="text-orange-400">{stats.baseDM >= 0 ? '+' : ''}{stats.baseDM}</span></div>
-                        <div>TB: <span className="text-purple-400">{stats.traitBudget} points</span></div>
-                        <div>Vector: <span className="text-gray-300">{stats.vector}</span></div>
+                    )}
+
+                    {!stats.batchValidation.valid && (
+                      <div className="bg-red-900 bg-opacity-30 border border-red-500 p-2 rounded text-xs">
+                        <div className="font-semibold text-red-300 mb-1">⚠️ Constraint Violations</div>
+                        {stats.batchValidation.errors.map((err, idx) => (
+                          <div key={idx} className="text-red-200">• {err}</div>
+                        ))}
+                      </div>
+                    )}
+
+                    {stats.batchValidation.warnings.length > 0 && (
+                      <div className="bg-yellow-900 bg-opacity-30 border border-yellow-500 p-2 rounded text-xs">
+                        <div className="font-semibold text-yellow-300 mb-1">⚠️ Warnings</div>
+                        {stats.batchValidation.warnings.map((warn, idx) => (
+                          <div key={idx} className="text-yellow-200">• {warn}</div>
+                        ))}
+                      </div>
+                    )}
+
+                    {stats.hazardEvaluation.count > 0 && (
+                      <div className="bg-orange-900 bg-opacity-30 border border-orange-500 p-2 rounded text-xs">
+                        <div className="font-semibold text-orange-300 mb-1">⚠️ Hazards Present ({stats.hazardEvaluation.count})</div>
+                        {stats.hazardEvaluation.details.map((h, idx) => (
+                          <div key={idx} className="text-orange-200">
+                            <strong>{h.hazard}</strong>: {h.effect}
+                            {h.wrMod > 0 && ` [+${h.wrMod} WR]`}
+                            {h.dmMod !== 0 && ` [${h.dmMod >= 0 ? '+' : ''}${h.dmMod} DM]`}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="bg-gray-600 p-3 rounded">
+                      <div className="text-sm font-semibold mb-2">Batch Preview</div>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="space-y-1">
+                          <div>
+                            Tier: <span className="text-yellow-400 font-bold">{stats.tier}</span>
+                            <span className="text-xs text-gray-400 ml-2">(Potency Load: {stats.potencyLoad})</span>
+                          </div>
+                          <div>Dominant: <span className="text-blue-400">{stats.dominantAspect || 'None'}</span></div>
+                          <div>Secondary: <span className="text-blue-400">{stats.secondaryAspect || 'None'}</span></div>
+                          <div>Potency: <span className="text-green-400">{stats.basePotency} {stats.concentrationSteps > 0 ? `+${stats.concentrationSteps} → ${stats.finalPotency}` : ''}</span></div>
+                        </div>
+                        <div className="space-y-1">
+                          <div>WR: <span className="text-orange-400">{stats.baseWR}</span></div>
+                          <div>DM: <span className="text-orange-400">{stats.baseDM >= 0 ? '+' : ''}{stats.baseDM}</span></div>
+                          <div>TB: <span className="text-purple-400">{stats.traitBudget} points</span></div>
+                          <div>Vector: <span className="text-gray-300">{stats.vector}</span></div>
+                        </div>
                       </div>
                     </div>
                   </div>
