@@ -601,6 +601,8 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
                 </div>
 
                 {ingredients.map(ing => {
+                  const selectedReagent = reagents.find(r => r.id === ing.reagentId);
+                  const availableRoles = selectedReagent?.roles || ['Active'];
                   return (
                     <div key={ing.id} className="bg-gray-600 p-3 rounded mb-2">
                       <div className="grid grid-cols-4 gap-2">
@@ -620,7 +622,7 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
                           onChange={(e) => updateIngredient(ing.id, 'role', e.target.value)}
                           className="bg-gray-700 px-2 py-1 rounded text-sm"
                         >
-                          {INGREDIENT_ROLES.map(role => (
+                          {availableRoles.map(role => (
                             <option key={role} value={role}>{role}</option>
                           ))}
                         </select>

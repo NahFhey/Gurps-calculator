@@ -1,7 +1,22 @@
 // Version and changelog information
-export const VERSION = '2.2.0';
+export const VERSION = '2.2.1';
 
 export const CHANGELOG = [
+  {
+    version: '2.2.1',
+    date: '2026-01-12',
+    title: 'Batch Creation UX Improvements',
+    changes: [
+      {
+        category: 'Alchemy System',
+        items: [
+          'Reagent role dropdown now only shows roles that the selected reagent actually has',
+          'Prevents invalid role assignments during batch creation',
+          'Reagent dropdown displays roles for easier selection: "Role(s) - Name (Quantity)"'
+        ]
+      }
+    ]
+  },
   {
     version: '2.2.0',
     date: '2026-01-12',
