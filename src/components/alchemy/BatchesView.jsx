@@ -175,14 +175,18 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
       return;
     }
 
+    // Block if missing critical roles (Active, Tool, etc.)
     if (stats.roleCoverage.wrDelta >= 999) {
-      alert('Cannot start batch: Missing Active ingredient (required)');
+      const blockingMessages = stats.roleCoverage.messages.filter(msg =>
+        msg.includes('Cannot brew')
+      );
+      alert('Cannot start batch:\n\n' + blockingMessages.join('\n'));
       return;
     }
 
-    // WARNINGS - show but allow to proceed
+    // WARNINGS - show but allow to proceed (non-blocking missing roles)
     const warnings = [];
-    if (!stats.roleCoverage.valid) {
+    if (!stats.roleCoverage.valid && stats.roleCoverage.wrDelta < 999) {
       warnings.push(...stats.roleCoverage.messages);
     }
     if (stats.batchValidation.warnings.length > 0) {

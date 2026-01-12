@@ -180,8 +180,12 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, craftDes
       return;
     }
 
+    // Block if missing critical roles (Active, Tool, etc.)
     if (stats.roleCoverage.wrDelta >= 999) {
-      alert('Cannot save formula: Missing Active ingredient (required)');
+      const blockingMessages = stats.roleCoverage.messages.filter(msg =>
+        msg.includes('Cannot brew')
+      );
+      alert('Cannot save formula:\n\n' + blockingMessages.join('\n'));
       return;
     }
 

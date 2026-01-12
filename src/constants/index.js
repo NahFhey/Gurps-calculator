@@ -98,16 +98,17 @@ export const TIER_THRESHOLDS = [
 
 // Required roles per vector type
 export const REQUIRED_ROLES_BY_VECTOR = {
-  'Potion': ['Active', 'Stabilizer', 'Solvent'],
-  'Salve/Poultice': ['Active', 'Binder'],
-  'Ink/Coating': ['Active', 'Binder'],
-  'Aerosol/Smoke': ['Active', 'Catalyst'],
-  'Bomb/Grenade': ['Active', 'Catalyst', 'Stabilizer']
+  'Potion': ['Active', 'Stabilizer', 'Solvent', 'Tool'],
+  'Salve/Poultice': ['Active', 'Binder', 'Tool'],
+  'Ink/Coating': ['Active', 'Binder', 'Tool'],
+  'Aerosol/Smoke': ['Active', 'Catalyst', 'Tool'],
+  'Bomb/Grenade': ['Active', 'Catalyst', 'Stabilizer', 'Tool']
 };
 
 // Penalty Scheme A: WR/DM adjustments for missing required roles
 export const ROLE_COVERAGE_PENALTIES = {
   'Active': { wr: 999, dm: -999, message: 'Cannot brew without Active ingredient' },
+  'Tool': { wr: 999, dm: -999, message: 'Cannot brew without Tool ingredient' },
   'Stabilizer': { wr: 2, dm: -1, message: 'Missing Stabilizer: +2 WR, -1 DM' },
   'Solvent': { wr: 2, dm: -1, message: 'Missing Solvent: +2 WR, -1 DM' },
   'Binder': { wr: 2, dm: -1, message: 'Missing Binder: +2 WR, -1 DM' },
