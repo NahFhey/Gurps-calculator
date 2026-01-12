@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Save, X, ChefHat, Hammer, Package, Beaker } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, ChefHat, Hammer, Package, Beaker, FileText } from 'lucide-react';
 import { TEMPLATES } from './constants';
 import { safeParse } from './utils/helpers';
 import { useKeyedDebouncedStorageSave } from './hooks/useStorage';
@@ -8,6 +8,8 @@ import { CookingTab } from './components/CookingTab';
 import { CraftingTab } from './components/CraftingTab';
 import { ManagerTab } from './components/ManagerTab';
 import { AlchemyTab } from './components/AlchemyTab';
+import { ChangelogTab } from './components/ChangelogTab';
+import { VERSION } from './version';
 
 export default function GURPSPartyTool() {
   console.log('GURPSPartyTool rendering');
@@ -273,7 +275,9 @@ export default function GURPSPartyTool() {
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100">
       <div className="max-w-7xl mx-auto p-6">
-        <h1 className="text-3xl font-bold mb-6 text-center">GURPS Party Management</h1>
+        <h1 className="text-3xl font-bold mb-6 text-center">
+          GURPS Party Management <span className="text-xl text-gray-400">v{VERSION}</span>
+        </h1>
         <div className="flex gap-2 mb-6 border-b border-gray-700">
           <button onClick={() => setActiveTab('inventory')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'inventory' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
             <Package size={20} />Inventory
@@ -290,6 +294,9 @@ export default function GURPSPartyTool() {
           <button onClick={() => setActiveTab('alchemy')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'alchemy' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
             <Beaker size={20} />Alchemy
           </button>
+          <button onClick={() => setActiveTab('changelog')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'changelog' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+            <FileText size={20} />Changelog
+          </button>
         </div>
 
         {activeTab === 'inventory' && <InventoryTab materials={materials} foods={foods} foodTypes={foodTypes} materialTypes={materialTypes} saveMaterials={saveMaterials} saveFoods={saveFoods} />}
@@ -297,6 +304,7 @@ export default function GURPSPartyTool() {
         {activeTab === 'crafting' && <CraftingTab materials={materials} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materialTypes={materialTypes} workers={workers} saveMaterials={saveMaterials} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} />}
         {activeTab === 'manager' && <ManagerTab foodTypes={foodTypes} materialTypes={materialTypes} workers={workers} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materials={materials} effectFamilyMap={effectFamilyMap} alchemySettings={alchemySettings} alchemyReagents={alchemyReagents} alchemyFormulas={alchemyFormulas} saveMaterials={saveMaterials} saveFoodTypes={saveFoodTypes} saveMaterialTypes={saveMaterialTypes} saveWorkers={saveWorkers} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} saveCustomTemplates={saveCustomTemplates} saveEffectFamilyMap={saveEffectFamilyMap} saveAlchemySettings={saveAlchemySettings} saveAlchemyReagents={saveAlchemyReagents} saveAlchemyFormulas={saveAlchemyFormulas} renameMaterialType={renameMaterialType} />}
         {activeTab === 'alchemy' && <AlchemyTab reagents={alchemyReagents} formulas={alchemyFormulas} batches={alchemyBatches} workers={workers} alchemySettings={alchemySettings} saveReagents={saveAlchemyReagents} saveFormulas={saveAlchemyFormulas} saveBatches={saveAlchemyBatches} />}
+        {activeTab === 'changelog' && <ChangelogTab />}
       </div>
     </div>
   );

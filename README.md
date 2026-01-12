@@ -1,6 +1,8 @@
 # GURPS Party Management Tool
 
-A comprehensive management tool for GURPS tabletop RPG sessions, featuring inventory tracking, cooking recipes, crafting projects, and an alchemy system.
+**Version: 2.1.0**
+
+A comprehensive management tool for GURPS tabletop RPG sessions, featuring inventory tracking, cooking recipes, crafting projects, and an advanced alchemy system with reagent identification mechanics.
 
 ## Features
 
@@ -36,22 +38,27 @@ src/
 └── index.css                     # Global styles
 ```
 
-## Changes from v1.0
+## Recent Updates
 
-### Icon Change
-- **Flask** icon replaced with **Beaker** icon for the Alchemy tab (more fitting for potion brewing!)
+### Version 2.1.0 - Reagent Identification & Formula Management
+- **Reagent Identification System**: Progressive information revelation (levels 0-4) based on Analysis skill checks
+- **Worker Skills**: Individual skill levels for cooking, designing, crafting, and alchemy with auto-fill
+- **3d6 Dice Roller**: Color-coded dice display integrated across all tabs
+- **Formula Management**: Centralized in Manager tab for GM control
+- **Ad-hoc Batches**: Start experimental batches directly without pre-saved formulas
+- **UI Improvements**: Persistent skill values, improved Batches tab layout
 
-### Code Organization
-- Split monolithic 3000+ line component into modular, maintainable files
-- Separated concerns: components, utilities, constants, and hooks
+### Version 2.0.0 - Alchemy System Enhancements
+- Trait Budget Builder for formula effect design
+- GURPS 4e tier-based WR/DM calculation system
+- Forecast and Micro-Assay mechanics
+- Aspect Tally Worksheet
+- Recipe auto-save on batch completion
+
+### Version 1.0.0 - Initial Modular Release
+- Refactored monolithic component into modular structure
 - Extracted alchemy system into dedicated sub-components
-- Created reusable utility functions for common operations
-
-### Improved Maintainability
-- Each tab is now a separate component file
-- Utility functions are organized by feature (alchemy, helpers)
-- Constants extracted to dedicated file
-- Custom hooks for storage operations
+- Replaced Flask icon with Beaker icon
 
 ## Tech Stack
 
