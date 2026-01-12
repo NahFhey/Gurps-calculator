@@ -1,7 +1,48 @@
 // Version and changelog information
-export const VERSION = '2.1.0';
+export const VERSION = '2.2.0';
 
 export const CHANGELOG = [
+  {
+    version: '2.2.0',
+    date: '2026-01-12',
+    title: 'Alchemy System Refactor & Data Persistence',
+    changes: [
+      {
+        category: 'Data Persistence',
+        items: [
+          'Implemented localStorage-based persistence system',
+          'Data now persists across server restarts',
+          'Async storage wrapper for future backend migration'
+        ]
+      },
+      {
+        category: 'Alchemy System Overhaul',
+        items: [
+          'Tier now auto-calculated from potency load: Σ((potency_index + conc_steps) × units)',
+          'Added enforced role coverage validation with penalty system',
+          'Active and Tool roles now required for all vectors (blocks formula creation)',
+          'Missing optional roles apply penalties: Stabilizer/Solvent/Binder (+2 WR, -1 DM), Catalyst (+1 WR)',
+          'Enforced batch constraints: max 8 reagents, role-specific unit limits',
+          'Implemented hazard triggering system with real effects during brewing',
+          'Unstable hazard adds +1 CP when triggered by failure/mishap',
+          'Volatile hazard destroys entire batch when triggered',
+          'Flammable hazard activates on batch completion with Unstable+ quality',
+          'Validation warnings prevent invalid batch creation',
+          'Canonicalized Effect Family Map keys for consistency'
+        ]
+      },
+      {
+        category: 'UI Improvements',
+        items: [
+          'Removed manual tier selection dropdown (now auto-calculated)',
+          'Added color-coded validation warning banners (red/yellow/orange severity)',
+          'Tally Worksheet now respects reagent identification levels',
+          'Only shows known aspects based on identification progress',
+          'Added confirmation prompts for batches with non-blocking warnings'
+        ]
+      }
+    ]
+  },
   {
     version: '2.1.0',
     date: '2026-01-12',
