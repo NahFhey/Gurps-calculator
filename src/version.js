@@ -1,7 +1,25 @@
 // Version and changelog information
-export const VERSION = '2.2.1';
+export const VERSION = '2.2.2';
 
 export const CHANGELOG = [
+  {
+    version: '2.2.2',
+    date: '2026-01-12',
+    title: 'Reagent Processing & Refinement System',
+    changes: [
+      {
+        category: 'Alchemy System',
+        items: [
+          'Added Concentration & Refinement tab for processing reagents',
+          'Reagents can now be refined: Crude → Prepared → Refined',
+          'Reagents can be concentrated to increase concentration steps',
+          'Refinement level in batch creation now pulled from reagent (read-only)',
+          'Processing operations consume reagent units',
+          'Visual status display shows current refinement, concentration, potency, and quantity'
+        ]
+      }
+    ]
+  },
   {
     version: '2.2.1',
     date: '2026-01-12',

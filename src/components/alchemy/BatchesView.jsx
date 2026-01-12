@@ -159,7 +159,7 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
         reagentName: r?.name || 'Unknown',
         role: ing.role,
         unitsUsed: ing.unitsUsed,
-        refinement: ing.refinement,
+        refinement: r?.refinement || 'crude',
         aspects: r ? {...r.aspects} : {},
         potency: r?.basePotency || 'P0',
         concentrationSteps: r?.concentrationSteps || 0
@@ -603,6 +603,7 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
                 {ingredients.map(ing => {
                   const selectedReagent = reagents.find(r => r.id === ing.reagentId);
                   const availableRoles = selectedReagent?.roles || ['Active'];
+                  const reagentRefinement = selectedReagent?.refinement || 'crude';
                   return (
                     <div key={ing.id} className="bg-gray-600 p-3 rounded mb-2">
                       <div className="grid grid-cols-4 gap-2">
@@ -626,15 +627,9 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
                             <option key={role} value={role}>{role}</option>
                           ))}
                         </select>
-                        <select
-                          value={ing.refinement}
-                          onChange={(e) => updateIngredient(ing.id, 'refinement', e.target.value)}
-                          className="bg-gray-700 px-2 py-1 rounded text-sm"
-                        >
-                          <option value="crude">Crude</option>
-                          <option value="prepared">Prepared</option>
-                          <option value="refined">Refined</option>
-                        </select>
+                        <div className="bg-gray-700 px-2 py-1 rounded text-sm flex items-center capitalize">
+                          {reagentRefinement}
+                        </div>
                         <div className="flex gap-1">
                           <input
                             type="number"
