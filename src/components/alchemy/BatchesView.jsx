@@ -255,7 +255,7 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
       setSelectedBatch(updated);
     }
 
-    setSkill('');
+    // Only clear roll, keep worker and skill for next work block
     setRoll('');
   }
 
@@ -306,8 +306,6 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
           </div>
         </div>
       )}
-
-      <h2 className="text-xl font-bold mb-4">Alchemy Batches</h2>
 
       {selectedBatch ? (
         <div className="space-y-4">
