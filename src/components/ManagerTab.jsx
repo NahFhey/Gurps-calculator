@@ -171,14 +171,27 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, craftDes
       };
     });
 
-    const tempFormula = { ingredients: ingredientsSnapshot, tier: selectedTier };
-    const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector, { tier: selectedTier });
+    const tempFormula = { ingredients: ingredientsSnapshot };
+    const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector);
+
+    // Check for critical validation failures
+    if (!stats.batchValidation.valid) {
+      alert('Cannot save formula: ' + stats.batchValidation.errors.join(', '));
+      return;
+    }
+
+    if (stats.roleCoverage.wrDelta >= 999) {
+      alert('Cannot save formula: Missing Active ingredient (required)');
+      return;
+    }
 
     const newFormula = {
       id: crypto.randomUUID(),
       name: formulaName,
       ingredients: ingredientsSnapshot,
-      tier: selectedTier,
+      tier: stats.tier, // Auto-calculated
+      calculatedTier: stats.calculatedTier,
+      potencyLoad: stats.potencyLoad,
       vector: stats.vector,
       baseWR: stats.baseWR,
       baseDM: stats.baseDM,
@@ -190,14 +203,16 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, craftDes
       totalConcentrationSteps: stats.totalConcentrationSteps,
       traitBudget: stats.traitBudget,
       hasMatchingStabilizer: stats.hasMatchingStabilizer,
-      traits: [...formulaTraits]
+      traits: [...formulaTraits],
+      // Store validation results for future reference
+      roleCoverage: stats.roleCoverage,
+      hazards: stats.hazardEvaluation.hazards
     };
 
     saveAlchemyFormulas([...alchemyFormulas, newFormula]);
     setFormulaName('');
     setIngredients([]);
     setSelectedVector('Potion');
-    setSelectedTier(1);
     setFormulaTraits([]);
     setShowAdd(false);
     alert('Formula created!');
@@ -1544,18 +1559,12 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, craftDes
                     placeholder="e.g., Healing Draught"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm mb-1">Tier (1-4)</label>
-                  <select
-                    value={selectedTier}
-                    onChange={(e) => setSelectedTier(parseInt(e.target.value))}
-                    className="w-full bg-gray-600 px-3 py-2 rounded"
-                  >
-                    <option value="1">Tier 1 (TB: 10)</option>
-                    <option value="2">Tier 2 (TB: 15)</option>
-                    <option value="3">Tier 3 (TB: 20)</option>
-                    <option value="4">Tier 4 (TB: 25)</option>
-                  </select>
+                <div className="bg-gray-700 p-3 rounded">
+                  <div className="text-xs text-gray-400 mb-1">Tier (Auto-calculated from potency)</div>
+                  <div className="text-sm text-gray-300">
+                    Tier is now automatically determined by the potency load of active ingredients.
+                    The tier calculation happens when you add ingredients below.
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm mb-1">Vector Type</label>
@@ -1649,16 +1658,68 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, craftDes
                   };
                 });
 
-                const tempFormula = { ingredients: ingredientsSnapshot, tier: selectedTier };
-                const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector, { tier: selectedTier });
+                const tempFormula = { ingredients: ingredientsSnapshot };
+                const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector);
 
                 return (
                   <div className="space-y-3">
+                    {/* Validation warnings */}
+                    {!stats.roleCoverage.valid && (
+                      <div className="bg-red-900 bg-opacity-30 border border-red-500 p-3 rounded">
+                        <div className="text-sm font-semibold text-red-300 mb-1">⚠️ Missing Required Roles</div>
+                        <div className="text-xs text-red-200 space-y-1">
+                          {stats.roleCoverage.messages.map((msg, idx) => (
+                            <div key={idx}>• {msg}</div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {!stats.batchValidation.valid && (
+                      <div className="bg-red-900 bg-opacity-30 border border-red-500 p-3 rounded">
+                        <div className="text-sm font-semibold text-red-300 mb-1">⚠️ Constraint Violations</div>
+                        <div className="text-xs text-red-200 space-y-1">
+                          {stats.batchValidation.errors.map((err, idx) => (
+                            <div key={idx}>• {err}</div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {stats.batchValidation.warnings.length > 0 && (
+                      <div className="bg-yellow-900 bg-opacity-30 border border-yellow-500 p-3 rounded">
+                        <div className="text-sm font-semibold text-yellow-300 mb-1">⚠️ Warnings</div>
+                        <div className="text-xs text-yellow-200 space-y-1">
+                          {stats.batchValidation.warnings.map((warn, idx) => (
+                            <div key={idx}>• {warn}</div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {stats.hazardEvaluation.count > 0 && (
+                      <div className="bg-orange-900 bg-opacity-30 border border-orange-500 p-3 rounded">
+                        <div className="text-sm font-semibold text-orange-300 mb-1">⚠️ Hazards Present ({stats.hazardEvaluation.count})</div>
+                        <div className="text-xs text-orange-200 space-y-1">
+                          {stats.hazardEvaluation.details.map((h, idx) => (
+                            <div key={idx}>
+                              <strong>{h.hazard}</strong> ({h.source}): {h.effect}
+                              {h.wrMod > 0 && ` [+${h.wrMod} WR]`}
+                              {h.dmMod !== 0 && ` [${h.dmMod >= 0 ? '+' : ''}${h.dmMod} DM]`}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="bg-gray-600 p-3 rounded">
                       <div className="text-sm font-semibold mb-2">Formula Preview</div>
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div className="space-y-1">
-                          <div>Tier: <span className="text-yellow-400 font-bold">{stats.tier}</span></div>
+                          <div>
+                            Tier: <span className="text-yellow-400 font-bold">{stats.tier}</span>
+                            <span className="text-xs text-gray-400 ml-2">(Potency Load: {stats.potencyLoad})</span>
+                          </div>
                           <div>Dominant: <span className="text-blue-400">{stats.dominantAspect || 'None'}</span></div>
                           <div>Secondary: <span className="text-blue-400">{stats.secondaryAspect || 'None'}</span></div>
                           <div>Potency: <span className="text-green-400">{stats.basePotency} {stats.concentrationSteps > 0 ? `+${stats.concentrationSteps} → ${stats.finalPotency}` : ''}</span></div>

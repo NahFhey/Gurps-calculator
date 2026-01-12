@@ -1,4 +1,15 @@
-import { REFINEMENT_LEVELS, TIER_DATA, VECTORS, POTENCY_LEVELS } from '../constants';
+import {
+  REFINEMENT_LEVELS,
+  TIER_DATA,
+  VECTORS,
+  POTENCY_LEVELS,
+  TIER_THRESHOLDS,
+  REQUIRED_ROLES_BY_VECTOR,
+  ROLE_COVERAGE_PENALTIES,
+  MAX_REAGENTS_PER_BATCH,
+  MAX_UNITS_PER_REAGENT_BY_ROLE,
+  HAZARD_RULES
+} from '../constants';
 import { determineQuality } from './helpers';
 
 // Conflict pairs for WR/DM calculation
@@ -96,6 +107,144 @@ export function getFinalPotency(basePotency, concentrationSteps) {
   return POTENCY_LEVELS[finalIndex];
 }
 
+// Calculate potency load from active ingredients
+// Potency load = sum of (potency_index + concentration_steps) for each active ingredient
+export function calculatePotencyLoad(activeIngredients, reagentsMap) {
+  let totalLoad = 0;
+
+  activeIngredients.forEach(ing => {
+    const reagent = reagentsMap.get(ing.reagentId);
+    if (!reagent) return;
+
+    // Get base potency index (P0=0, P1=1, P2=2, P3=3, P4=4)
+    const basePotency = reagent.basePotency || reagent.potency || 'P1';
+    const potencyIndex = POTENCY_LEVELS.indexOf(basePotency);
+    const concentrationSteps = reagent.concentrationSteps || 0;
+
+    // Potency load contribution = (base potency index + concentration steps) * units used
+    const contribution = (potencyIndex + concentrationSteps) * (ing.unitsUsed || 1);
+    totalLoad += contribution;
+  });
+
+  return totalLoad;
+}
+
+// Calculate tier from potency load using thresholds
+export function calculateTierFromPotencyLoad(potencyLoad) {
+  for (const threshold of TIER_THRESHOLDS) {
+    if (potencyLoad >= threshold.minPotencyLoad && potencyLoad <= threshold.maxPotencyLoad) {
+      return threshold.tier;
+    }
+  }
+  // Fallback to tier 1 if somehow out of range
+  return 1;
+}
+
+// Validate role coverage for a given vector
+export function validateRoleCoverage(ingredients, vectorName) {
+  const requiredRoles = REQUIRED_ROLES_BY_VECTOR[vectorName] || [];
+  const presentRoles = new Set(ingredients.map(ing => ing.role).filter(Boolean));
+
+  const missingRoles = [];
+  let wrPenalty = 0;
+  let dmPenalty = 0;
+  const messages = [];
+
+  requiredRoles.forEach(requiredRole => {
+    if (!presentRoles.has(requiredRole)) {
+      missingRoles.push(requiredRole);
+      const penalty = ROLE_COVERAGE_PENALTIES[requiredRole];
+      if (penalty) {
+        wrPenalty += penalty.wr;
+        dmPenalty += penalty.dm;
+        messages.push(penalty.message);
+      }
+    }
+  });
+
+  return {
+    valid: missingRoles.length === 0 && wrPenalty < 999,
+    missingRoles,
+    wrDelta: wrPenalty,
+    dmDelta: dmPenalty,
+    messages
+  };
+}
+
+// Validate batch constraints (max reagents, max units per role)
+export function validateBatchConstraints(ingredients) {
+  const errors = [];
+  const warnings = [];
+
+  // Check max reagents
+  if (ingredients.length > MAX_REAGENTS_PER_BATCH) {
+    errors.push(`Too many reagents: ${ingredients.length}/${MAX_REAGENTS_PER_BATCH} max`);
+  }
+
+  // Check max units per role
+  ingredients.forEach((ing, idx) => {
+    const role = ing.role;
+    const maxUnits = MAX_UNITS_PER_REAGENT_BY_ROLE[role];
+    if (maxUnits && ing.unitsUsed > maxUnits) {
+      warnings.push(`${ing.reagentName || `Ingredient ${idx + 1}`}: ${role} role limited to ${maxUnits}U (using ${ing.unitsUsed}U)`);
+    }
+  });
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings
+  };
+}
+
+// Evaluate hazards present in ingredients
+export function evaluateHazards(ingredients, reagentsMap) {
+  const hazardsPresent = new Set();
+  const hazardDetails = [];
+
+  ingredients.forEach(ing => {
+    const reagent = reagentsMap.get(ing.reagentId);
+    if (!reagent || !reagent.hazards) return;
+
+    reagent.hazards.forEach(hazard => {
+      if (!hazard || !hazard.trim()) return;
+
+      const hazardName = hazard.trim();
+      if (!hazardsPresent.has(hazardName)) {
+        hazardsPresent.add(hazardName);
+        const rule = HAZARD_RULES[hazardName];
+        if (rule) {
+          hazardDetails.push({
+            hazard: hazardName,
+            source: reagent.name || ing.reagentName,
+            effect: rule.effect,
+            triggerOn: rule.triggerOn,
+            wrMod: rule.wrMod || 0,
+            dmMod: rule.dmMod || 0,
+            severity: rule.severity
+          });
+        }
+      }
+    });
+  });
+
+  return {
+    count: hazardsPresent.size,
+    hazards: Array.from(hazardsPresent),
+    details: hazardDetails
+  };
+}
+
+// Canonical key for Effect Family Map (always Dominant/Secondary order)
+export function getEffectFamilyKey(aspect1, aspect2) {
+  if (!aspect1 && !aspect2) return null;
+  if (!aspect2) return aspect1;
+
+  // Always store in alphabetical order for consistency
+  const [first, second] = [aspect1, aspect2].sort();
+  return `${first}/${second}`;
+}
+
 // Calculate formula stats using GURPS 4e tier-based rules with proper WR/DM math
 export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion', options = {}) {
   const actives = formula.ingredients.filter(ing => ing.role === 'active' || ing.role === 'Active');
@@ -106,9 +255,21 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
   const tally = tallyAspects(actives, reagentsMap);
   const { dominant, dominantValue, secondary, secondaryValue } = computeDominantSecondary(tally);
 
-  // Tier is USER-SELECTED, not derived from concentration
-  const tier = options.tier || formula.tier || 1;
+  // TIER CALCULATION: Auto-calculate from potency load, but allow override for backward compat
+  const potencyLoad = calculatePotencyLoad(actives, reagentsMap);
+  const calculatedTier = calculateTierFromPotencyLoad(potencyLoad);
+  const tier = options.overrideTier ? (options.tier || formula.tier || 1) : calculatedTier;
   const tierData = TIER_DATA[tier];
+  const isLegacyTier = options.overrideTier || (formula.tier && formula.tier !== calculatedTier);
+
+  // ROLE COVERAGE VALIDATION
+  const roleCoverage = validateRoleCoverage(formula.ingredients, vectorName);
+
+  // BATCH CONSTRAINTS VALIDATION
+  const batchValidation = validateBatchConstraints(formula.ingredients);
+
+  // HAZARD EVALUATION
+  const hazardEvaluation = evaluateHazards(formula.ingredients, reagentsMap);
 
   // Get vector modifiers
   const vector = VECTORS.find(v => v.name === vectorName) || VECTORS[0];
@@ -116,6 +277,21 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
   // Start with base WR and DM from tier and vector
   let WR = tierData.baseWR + vector.wrMod;
   let DM = tierData.baseDM + vector.dmMod;
+
+  // APPLY ROLE COVERAGE PENALTIES
+  if (!roleCoverage.valid) {
+    WR += roleCoverage.wrDelta;
+    DM += roleCoverage.dmDelta;
+  }
+
+  // APPLY HAZARD MODIFIERS (from rules, not just count)
+  hazardEvaluation.details.forEach(h => {
+    // Only apply WR/DM from hazard rules if they trigger on formula creation
+    if (h.triggerOn.includes('conflict_pairs_present') || h.wrMod > 0) {
+      WR += h.wrMod;
+      DM += h.dmMod;
+    }
+  });
 
   // 1. Active aspect complexity
   const activeAspectCount = countActiveAspects(tally);
@@ -137,18 +313,9 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
   const conflicts = countConflictsFromTally(tally);
   DM -= conflicts;
 
-  // 4. Hazard load (count distinct hazards across all ingredients)
-  const distinctHazards = new Set();
-  formula.ingredients.forEach(ing => {
-    const reagent = reagentsMap.get(ing.reagentId);
-    if (reagent?.hazards && Array.isArray(reagent.hazards)) {
-      reagent.hazards.forEach(h => {
-        if (h && h.trim()) distinctHazards.add(h.trim());
-      });
-    }
-  });
-  const hazardCount = distinctHazards.size;
-  WR += Math.min(3, hazardCount); // Cap at +3 WR
+  // 4. Hazard load - already applied above via evaluateHazards
+  // Keep count for display but don't double-apply WR penalty
+  const hazardCount = hazardEvaluation.count;
 
   // 5. Concentration (max concentration steps from actives)
   let maxConcentrationSteps = 0;
@@ -239,6 +406,9 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
 
   return {
     tier,
+    calculatedTier,
+    potencyLoad,
+    isLegacyTier,
     baseWR: WR,
     baseDM: DM,
     dominantAspect: dominant,
@@ -253,7 +423,11 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
     coherent,
     activeAspectCount,
     conflicts,
-    hazardCount
+    hazardCount,
+    // Validation results
+    roleCoverage,
+    batchValidation,
+    hazardEvaluation
   };
 }
 
