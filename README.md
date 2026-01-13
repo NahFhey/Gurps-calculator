@@ -1,8 +1,8 @@
 # GURPS Party Management Tool
 
-**Version: 2.1.0**
+**Version: 2.3.0**
 
-A comprehensive management tool for GURPS tabletop RPG sessions, featuring inventory tracking, cooking recipes, crafting projects, and an advanced alchemy system with reagent identification mechanics.
+A comprehensive management tool for GURPS tabletop RPG sessions, featuring inventory tracking, cooking recipes, crafting projects, and an advanced alchemy system with reagent identification mechanics, GM/Player separation, and password-protected data export.
 
 ## Features
 
@@ -10,6 +10,8 @@ A comprehensive management tool for GURPS tabletop RPG sessions, featuring inven
 - **Cooking System**: Create recipes, manage ingredients, and remake dishes with substitutions
 - **Crafting System**: Design and craft items with material requirements, quality levels, and work tracking
 - **Alchemy System**: Mix reagents, design formulas, and brew potions with aspect-based mechanics
+- **GM/Player Mode**: Toggle between GM and Player modes with password-protected content separation
+- **Import/Export**: Save and load game state with optional encryption for player-safe exports
 - **Configuration Manager**: Manage food types, material types, workers, projects, and templates
 
 ## Project Structure
@@ -18,27 +20,68 @@ A comprehensive management tool for GURPS tabletop RPG sessions, featuring inven
 src/
 ├── components/
 │   ├── alchemy/
-│   │   ├── ReagentsView.jsx     # Alchemy reagent management
-│   │   ├── FormulasView.jsx     # Formula design and creation
-│   │   └── BatchesView.jsx      # Batch brewing and tracking
-│   ├── AlchemyTab.jsx            # Main alchemy tab wrapper
-│   ├── CookingTab.jsx            # Cooking recipes and remake system
-│   ├── CraftingTab.jsx           # Crafting projects and work tracking
-│   ├── InventoryTab.jsx          # Materials and food inventory
-│   └── ManagerTab.jsx            # Configuration and management
+│   │   ├── ReagentsView.jsx           # Alchemy reagent management
+│   │   ├── FormulasView.jsx           # Formula design and creation
+│   │   ├── BatchesView.jsx            # Batch brewing and tracking
+│   │   ├── TBBuilderPanel.jsx         # Trait Budget builder
+│   │   ├── TallyWorksheetView.jsx     # Aspect tally worksheet
+│   │   ├── AnalysisView.jsx           # Reagent identification
+│   │   └── ConcentrationRefinementView.jsx # Reagent processing
+│   ├── AlchemyTab.jsx                 # Main alchemy tab wrapper
+│   ├── CookingTab.jsx                 # Cooking recipes and remake system
+│   ├── CraftingTab.jsx                # Crafting projects and work tracking
+│   ├── InventoryTab.jsx               # Materials and food inventory
+│   ├── ManagerTab.jsx                 # Configuration and management
+│   ├── ImportExportPanel.jsx          # Import/Export UI (NEW in v2.3.0)
+│   └── GMLockModal.jsx                # GM password unlock modal (NEW in v2.3.0)
 ├── constants/
-│   └── index.js                  # Game constants and templates
+│   └── index.js                       # Game constants and templates
 ├── hooks/
-│   └── useStorage.js             # Storage hooks
+│   └── useStorage.js                  # Storage hooks with flush & beforeunload
 ├── utils/
-│   ├── alchemy.js                # Alchemy-specific utilities
-│   └── helpers.js                # General utility functions
-├── App.jsx                       # Main application component
-├── index.jsx                     # React entry point
-└── index.css                     # Global styles
+│   ├── alchemy.js                     # Alchemy-specific utilities
+│   ├── helpers.js                     # General utility functions
+│   ├── cryptoLock.js                  # Password encryption (NEW in v2.3.0)
+│   └── exportImport.js                # State import/export (NEW in v2.3.0)
+├── App.jsx                            # Main application component
+├── index.jsx                          # React entry point
+├── index.css                          # Global styles
+└── version.js                         # Version and changelog
 ```
 
 ## Recent Updates
+
+### Version 2.3.0 - GM/Player Mode + Import/Export + Enhanced Alchemy Engine
+- **GM/Player Separation**: Toggle between GM and Player modes with password-protected content
+  - Unknown hazards display as "Unknown Complication" to players
+  - GM mode reveals full hazard details, reagent secrets, and formula information
+- **Import/Export System**: Save and share game state
+  - Unlocked exports (GM only) - full plaintext JSON
+  - Locked exports (player-safe) - GM content encrypted with AES-GCM + PBKDF2
+  - Schema versioning for future-proof data migration
+- **Alchemy Engine Fixes**: Critical bug fixes and improvements
+  - Fixed hazard modifier application (DM-only hazards now work correctly)
+  - Fixed catalyst bonus direction (DM increases, making rolls easier)
+  - Refactored work-block resolution with delta accumulation (deterministic results)
+  - Removed alert() calls; replaced with structured error returns
+- **Storage Improvements**: Enhanced data persistence
+  - Added flush() function for immediate saves
+  - Beforeunload protection prevents data loss on tab close
+  - localStorage fallback for better compatibility
+
+### Version 2.2.2 - Reagent Processing & Refinement System
+- **Concentration & Refinement**: Process reagents to increase potency
+- **Refinement Levels**: Crude → Prepared → Refined
+- **Concentration Steps**: Increase active ingredient strength
+
+### Version 2.2.1 - Batch Creation UX Improvements
+- Role dropdown restricted to valid roles for selected reagent
+
+### Version 2.2.0 - Alchemy System Refactor & Data Persistence
+- Auto-calculated tier from potency load
+- Enforced role coverage validation with penalty system
+- Hazard triggering system with real effects during brewing
+- localStorage-based persistence system
 
 ### Version 2.1.0 - Reagent Identification & Formula Management
 - **Reagent Identification System**: Progressive information revelation (levels 0-4) based on Analysis skill checks
@@ -104,8 +147,38 @@ npm run build
 - **Reagents**: Manage ingredients with aspect system (Water, Air, Fire, etc.)
 - **Formulas**: Design potions by combining reagents in specific roles
 - **Batches**: Brew formulas with work blocks and contamination tracking
+- **Identification**: Progressive reveal of reagent properties through Analysis checks
+- **Processing**: Concentrate and refine reagents to enhance potency
+- **Hazards**: Dynamic hazard system with player visibility control
 - Refinement levels affect aspect contributions
 - Concentration steps increase potency
+
+### GM/Player Mode
+- **Player Mode**: Limited access to prevent accidental spoilers
+  - Unknown hazards display as "Unknown Complication"
+  - Hidden reagent details and formula secrets
+  - Safe for players to use during sessions
+- **GM Mode**: Full access to all features
+  - Complete hazard details with effects and triggers
+  - Reagent and formula design information
+  - Password-protected when using locked exports
+
+### Import/Export
+- **Export Formats**:
+  - **Unlocked** (GM only): Complete plaintext JSON - includes all data
+  - **Locked** (Player-safe): GM content encrypted with password
+- **Security**: AES-GCM encryption + PBKDF2 key derivation (210k iterations)
+- **Versioning**: Schema version tracking for safe migrations
+- **State Management**: Import/export entire game state or merge GM data
+- **Use Cases**:
+  - Share player-safe exports with your group
+  - Backup your campaign data
+  - Transfer between devices
+  - Prepare sessions offline
+
+## Security Note
+
+The password protection uses client-side WebCrypto API encryption (AES-GCM + PBKDF2) as a "casual lock" to prevent accidental viewing of GM content. This is **not** designed to be cryptographically unbreakable by a determined technical user, but it provides reasonable protection for typical tabletop gaming scenarios where you want to share files with players without spoiling secrets.
 
 ## License
 
