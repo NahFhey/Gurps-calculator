@@ -1,3 +1,40 @@
+/**
+ * @fileoverview GURPS 4th Edition Alchemy System - Core Calculation Engine (Enhanced)
+ *
+ * This module implements the complete GURPS 4e alchemy rules for formula design,
+ * batch brewing, and work block mechanics. It handles the tier-based Work Requirement (WR)
+ * and Difficulty Modifier (DM) calculations according to official GURPS rules, with
+ * enhanced features for hazard evaluation, role coverage validation, and automatic
+ * tier calculation from potency load.
+ *
+ * Key Concepts:
+ * - **Work Requirement (WR)**: Number of Progress Points (PP) needed to complete a batch
+ * - **Difficulty Modifier (DM)**: Modifier applied to Alchemy skill rolls
+ * - **Aspects**: Magical properties (Fire, Water, Light, Shadow, etc.) that define formula effects
+ * - **Tally**: Sum of aspect points from all active ingredients, weighted by refinement level
+ * - **Reagent Roles**: Active (provides effects), Stabilizer (reduces mishaps), Catalyst (reduces difficulty)
+ * - **Refinement Levels**: crude (primary only), prepared (+secondary), refined (+tertiary)
+ * - **Tier System**: Potions are categorized by power level (Tier 1-5) which sets base WR/DM
+ * - **Potency Load**: Sum of (potency index + concentration steps) across all active ingredients
+ * - **Hazards**: Dangerous reagent properties (Volatile, Unstable, Flammable, etc.) that trigger special events
+ *
+ * WR/DM Calculation Steps (see calculateFormulaStats):
+ * 1. Auto-calculate tier from potency load (or use override)
+ * 2. Start with base WR/DM from tier and vector
+ * 3. Apply role coverage penalties (missing required roles)
+ * 4. Apply hazard modifiers from hazard rules
+ * 5. Add complexity penalties for multiple active aspects
+ * 6. Check coherence (dominant aspect should lead by 3+ points)
+ * 7. Apply conflict penalties for opposing aspect pairs
+ * 8. Apply concentration penalties/bonuses
+ * 9. Apply refinement bonuses (prepared/refined ingredients help)
+ * 10. Apply catalyst matching bonuses
+ * 11. Reduce WR by Lab Rating (0-4)
+ *
+ * @module utils/alchemy
+ * @see {@link https://gurps.fandom.com/wiki/Alchemy GURPS Alchemy Rules}
+ */
+
 import {
   REFINEMENT_LEVELS,
   TIER_DATA,
@@ -12,29 +49,69 @@ import {
 } from '../constants';
 import { determineQuality } from './helpers';
 
-// Conflict pairs for WR/DM calculation
+/**
+ * Conflicting aspect pairs that increase WR/DM difficulty.
+ * Each conflict pair present in a formula reduces DM by 1.
+ * @constant {Array<[string, string]>}
+ */
 const CONFLICT_PAIRS = [
   ['Fire', 'Water'],
   ['Light', 'Shadow'],
   ['Shadow', 'Vital']
 ];
 
-// Helper: clamp value to range
+/**
+ * Clamps a value to stay within a specified range.
+ * @private
+ * @param {number} value - The value to clamp
+ * @param {number} min - Minimum allowed value
+ * @param {number} max - Maximum allowed value
+ * @returns {number} The clamped value
+ */
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-// Helper: normalize Lab Rating to 0-4 range
+/**
+ * Normalizes Lab Rating to the valid 0-4 range.
+ * Lab Rating reduces Work Requirement (WR) by 1 per point.
+ *
+ * @param {number} lr - The raw lab rating value
+ * @returns {number} Lab rating clamped to 0-4 range
+ *
+ * @example
+ * normalizeLabRating(3) // returns 3
+ * normalizeLabRating(-1) // returns 0 (clamped)
+ * normalizeLabRating(10) // returns 4 (clamped)
+ */
 export function normalizeLabRating(lr) {
   return clamp(lr || 0, 0, 4);
 }
 
-// Helper: count distinct active aspects
+/**
+ * Counts the number of distinct aspects with non-zero points in a tally.
+ * Used to determine complexity penalties (3+ aspects increase WR and reduce DM).
+ *
+ * @private
+ * @param {Object<string, number>} tally - Aspect tally object mapping aspect names to point totals
+ * @returns {number} Count of active aspects (aspects with > 0 points)
+ */
 function countActiveAspects(tally) {
   return Object.keys(tally).filter(aspect => aspect && tally[aspect] > 0).length;
 }
 
-// Helper: count conflict pairs in tally
+/**
+ * Counts the number of conflicting aspect pairs present in a tally.
+ * Each conflict pair (e.g., Fire+Water) reduces DM by 1.
+ *
+ * @private
+ * @param {Object<string, number>} tally - Aspect tally object
+ * @returns {number} Number of conflict pairs detected
+ *
+ * @example
+ * countConflictsFromTally({Fire: 5, Water: 3}) // returns 1
+ * countConflictsFromTally({Fire: 5, Water: 3, Light: 2, Shadow: 1}) // returns 2
+ */
 function countConflictsFromTally(tally) {
   let conflicts = 0;
   CONFLICT_PAIRS.forEach(([a, b]) => {
@@ -45,7 +122,30 @@ function countConflictsFromTally(tally) {
   return conflicts;
 }
 
-// Get active aspect points for a reagent based on refinement
+/**
+ * Calculates aspect points contributed by a reagent based on its refinement level.
+ *
+ * Refinement levels determine which aspect slots are active:
+ * - **crude**: primary only (3 points)
+ * - **prepared**: primary (3 pts) + secondary (2 pts)
+ * - **refined**: primary (3 pts) + secondary (2 pts) + tertiary (1 pt)
+ *
+ * @param {Object} reagent - The reagent object
+ * @param {Object} reagent.aspects - Aspect configuration
+ * @param {string} reagent.aspects.primary - Primary aspect name
+ * @param {string} [reagent.aspects.secondary] - Secondary aspect name
+ * @param {string} [reagent.aspects.tertiary] - Tertiary aspect name
+ * @param {string} reagent.refinement - Refinement level ('crude', 'prepared', or 'refined')
+ * @returns {Object<string, number>} Map of aspect names to point values
+ *
+ * @example
+ * const reagent = {
+ *   aspects: { primary: 'Fire', secondary: 'Light', tertiary: 'Vital' },
+ *   refinement: 'prepared'
+ * };
+ * getReagentAspectPoints(reagent)
+ * // returns { Fire: 3, Light: 2 } (tertiary not active at 'prepared')
+ */
 export function getReagentAspectPoints(reagent) {
   if (!reagent.aspects?.primary) return {};
 
@@ -65,7 +165,14 @@ export function getReagentAspectPoints(reagent) {
   return points;
 }
 
-// Tally aspects from multiple active ingredients
+/**
+ * Tallies aspect points from all active ingredients in a formula.
+ * The tally determines the dominant and secondary aspects of the potion.
+ *
+ * @param {Array<Object>} activeIngredients - Array of active ingredient entries
+ * @param {Map<string, Object>} reagentsMap - Map of reagent IDs to reagent objects
+ * @returns {Object<string, number>} Tally object mapping aspect names to total points
+ */
 export function tallyAspects(activeIngredients, reagentsMap) {
   const tally = {};
 
@@ -86,7 +193,17 @@ export function tallyAspects(activeIngredients, reagentsMap) {
   return tally;
 }
 
-// Compute dominant and secondary aspects
+/**
+ * Identifies the dominant and secondary aspects from a tally.
+ * The two aspects with the highest point totals become the formula's primary characteristics.
+ *
+ * @param {Object<string, number>} tally - Aspect tally object from tallyAspects()
+ * @returns {Object} Aspect analysis result
+ * @returns {string|null} returns.dominant - Name of the dominant aspect (highest points)
+ * @returns {number} returns.dominantValue - Point value of dominant aspect
+ * @returns {string|null} returns.secondary - Name of the secondary aspect (second highest)
+ * @returns {number} returns.secondaryValue - Point value of secondary aspect
+ */
 export function computeDominantSecondary(tally) {
   const entries = Object.entries(tally).sort((a, b) => b[1] - a[1]);
 
@@ -98,7 +215,15 @@ export function computeDominantSecondary(tally) {
   };
 }
 
-// Get final potency from base potency + concentration steps
+/**
+ * Calculates final potency after applying concentration steps.
+ * Concentration increases potency up through the POTENCY_LEVELS scale:
+ * P0 → P1 → P2 → P3 → P4 (each step adds one level)
+ *
+ * @param {string} basePotency - Starting potency level (e.g., 'P1', 'P2')
+ * @param {number} concentrationSteps - Number of concentration steps to apply
+ * @returns {string} Final potency level after concentration
+ */
 export function getFinalPotency(basePotency, concentrationSteps) {
   const baseIndex = POTENCY_LEVELS.indexOf(basePotency);
   if (baseIndex === -1) return basePotency;
@@ -107,8 +232,21 @@ export function getFinalPotency(basePotency, concentrationSteps) {
   return POTENCY_LEVELS[finalIndex];
 }
 
-// Calculate potency load from active ingredients
-// Potency load = sum of (potency_index + concentration_steps) for each active ingredient
+/**
+ * Calculates potency load from active ingredients for automatic tier determination.
+ * Potency load = sum of (potency_index + concentration_steps) * units_used for each active ingredient.
+ *
+ * This value is used with TIER_THRESHOLDS to automatically determine formula tier.
+ *
+ * @param {Array<Object>} activeIngredients - Array of active ingredient entries
+ * @param {Map<string, Object>} reagentsMap - Map of reagent IDs to reagent objects
+ * @returns {number} Total potency load value
+ *
+ * @example
+ * // 2 units of P1 reagent (index 1) with 0 concentration = (1+0)*2 = 2
+ * // 1 unit of P2 reagent (index 2) with 1 concentration = (2+1)*1 = 3
+ * // Total potency load = 5
+ */
 export function calculatePotencyLoad(activeIngredients, reagentsMap) {
   let totalLoad = 0;
 
@@ -129,7 +267,17 @@ export function calculatePotencyLoad(activeIngredients, reagentsMap) {
   return totalLoad;
 }
 
-// Calculate tier from potency load using thresholds
+/**
+ * Calculates tier from potency load using tier thresholds.
+ * Automatically determines formula power level based on total reagent potency.
+ *
+ * @param {number} potencyLoad - Total potency load from calculatePotencyLoad()
+ * @returns {number} Formula tier (1-5)
+ *
+ * @example
+ * calculateTierFromPotencyLoad(3) // returns 1 (Tier 1: 0-4 range)
+ * calculateTierFromPotencyLoad(12) // returns 3 (Tier 3: 10-16 range)
+ */
 export function calculateTierFromPotencyLoad(potencyLoad) {
   for (const threshold of TIER_THRESHOLDS) {
     if (potencyLoad >= threshold.minPotencyLoad && potencyLoad <= threshold.maxPotencyLoad) {
@@ -140,7 +288,21 @@ export function calculateTierFromPotencyLoad(potencyLoad) {
   return 1;
 }
 
-// Validate role coverage for a given vector
+/**
+ * Validates that a formula includes all required reagent roles for a delivery vector.
+ * Different vectors (Potion, Pill, Salve, etc.) require different role combinations.
+ *
+ * Missing required roles incur severe WR/DM penalties or make the formula impossible.
+ *
+ * @param {Array<Object>} ingredients - Formula ingredients list
+ * @param {string} vectorName - Delivery vector name ('Potion', 'Pill', etc.)
+ * @returns {Object} Validation result
+ * @returns {boolean} returns.valid - Whether all required roles are present
+ * @returns {Array<string>} returns.missingRoles - List of missing required roles
+ * @returns {number} returns.wrDelta - WR penalty for missing roles
+ * @returns {number} returns.dmDelta - DM penalty for missing roles
+ * @returns {Array<string>} returns.messages - Human-readable penalty descriptions
+ */
 export function validateRoleCoverage(ingredients, vectorName) {
   const requiredRoles = REQUIRED_ROLES_BY_VECTOR[vectorName] || [];
   const presentRoles = new Set(ingredients.map(ing => ing.role).filter(Boolean));
@@ -171,7 +333,16 @@ export function validateRoleCoverage(ingredients, vectorName) {
   };
 }
 
-// Validate batch constraints (max reagents, max units per role)
+/**
+ * Validates batch constraints including maximum reagents and units per role.
+ * Ensures formula doesn't exceed system limits.
+ *
+ * @param {Array<Object>} ingredients - Formula ingredients list
+ * @returns {Object} Validation result
+ * @returns {boolean} returns.valid - Whether all constraints are met
+ * @returns {Array<string>} returns.errors - Critical errors (block formula creation)
+ * @returns {Array<string>} returns.warnings - Non-critical warnings
+ */
 export function validateBatchConstraints(ingredients) {
   const errors = [];
   const warnings = [];
@@ -197,7 +368,22 @@ export function validateBatchConstraints(ingredients) {
   };
 }
 
-// Evaluate hazards present in ingredients
+/**
+ * Evaluates hazards present in formula ingredients.
+ * Hazards are dangerous reagent properties that trigger special events during brewing.
+ *
+ * Common hazards:
+ * - **Volatile**: Batch explodes on failure/mishap
+ * - **Unstable**: Extra CP on failures
+ * - **Flammable**: Triggers on poor quality completion
+ *
+ * @param {Array<Object>} ingredients - Formula ingredients list
+ * @param {Map<string, Object>} reagentsMap - Map of reagent IDs to reagent objects
+ * @returns {Object} Hazard evaluation result
+ * @returns {number} returns.count - Number of distinct hazards
+ * @returns {Array<string>} returns.hazards - Array of hazard names
+ * @returns {Array<Object>} returns.details - Detailed hazard information with effects and triggers
+ */
 export function evaluateHazards(ingredients, reagentsMap) {
   const hazardsPresent = new Set();
   const hazardDetails = [];
@@ -235,7 +421,22 @@ export function evaluateHazards(ingredients, reagentsMap) {
   };
 }
 
-// Canonical key for Effect Family Map (always Dominant/Secondary order)
+/**
+ * Creates a canonical key for Effect Family Map lookups.
+ * Always returns aspects in alphabetical order for consistency.
+ *
+ * Effect families represent potion effect categories based on aspect combinations
+ * (e.g., Fire/Light might be "Radiance" effects, Fire/Shadow might be "Destruction" effects).
+ *
+ * @param {string} aspect1 - First aspect name
+ * @param {string} aspect2 - Second aspect name
+ * @returns {string|null} Canonical key in "Aspect1/Aspect2" format (alphabetical), or null if no aspects
+ *
+ * @example
+ * getEffectFamilyKey('Fire', 'Light') // returns 'Fire/Light'
+ * getEffectFamilyKey('Light', 'Fire') // returns 'Fire/Light' (same key, alphabetical)
+ * getEffectFamilyKey('Fire', null) // returns 'Fire'
+ */
 export function getEffectFamilyKey(aspect1, aspect2) {
   if (!aspect1 && !aspect2) return null;
   if (!aspect2) return aspect1;
@@ -245,7 +446,33 @@ export function getEffectFamilyKey(aspect1, aspect2) {
   return `${first}/${second}`;
 }
 
-// Calculate formula stats using GURPS 4e tier-based rules with proper WR/DM math
+/**
+ * Calculates complete formula statistics using GURPS 4e tier-based alchemy rules (enhanced version).
+ * This is the core function that implements the complete WR/DM calculation algorithm with
+ * automatic tier calculation, role coverage validation, and hazard evaluation.
+ *
+ * The calculation follows these steps:
+ * 1. Auto-calculate tier from potency load (or use override for backward compatibility)
+ * 2. Start with base WR/DM from tier and delivery vector
+ * 3. Apply role coverage penalties (missing required roles)
+ * 4. Apply hazard modifiers from hazard evaluation rules
+ * 5. Apply complexity penalties for multiple active aspects (3+ aspects)
+ * 6. Check coherence (dominant aspect should lead secondary by 3+ points)
+ * 7. Apply conflict penalties for opposing aspect pairs
+ * 8. Apply concentration penalties/bonuses (increases WR, reduces DM)
+ * 9. Apply refinement bonuses (prepared/refined ingredients reduce WR)
+ * 10. Apply catalyst matching bonuses (matching aspects reduce WR and DM)
+ * 11. Reduce WR by Lab Rating (0-4 range)
+ *
+ * @param {Object} formula - The formula object containing ingredients list
+ * @param {Map<string, Object>} reagentsMap - Map of reagent IDs to full reagent objects
+ * @param {string} [vectorName='Potion'] - Delivery vector ('Potion', 'Pill', 'Salve', etc.)
+ * @param {Object} [options={}] - Optional calculation parameters
+ * @param {boolean} [options.overrideTier=false] - Set true to use manual tier instead of auto-calculated
+ * @param {number} [options.tier] - Manual tier override (1-5) when overrideTier is true
+ * @param {number} [options.labRating=0] - Lab Rating (0-4) for WR reduction
+ * @returns {Object} Complete formula statistics including validation results
+ */
 export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion', options = {}) {
   const actives = formula.ingredients.filter(ing => ing.role === 'active' || ing.role === 'Active');
   const stabilizers = formula.ingredients.filter(ing => ing.role === 'stabilizer' || ing.role === 'Stabilizer');
@@ -431,7 +658,38 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
   };
 }
 
-// Apply work block result to batch (GURPS complete crit rules)
+/**
+ * Applies the result of a work block (skill roll) to an alchemy batch.
+ * Implements complete GURPS critical success/failure rules, progress tracking, and hazard triggering.
+ *
+ * **GURPS Critical Success Rules:**
+ * - Always on 3-4
+ * - On 5 if effective skill 15+
+ * - On 6 if effective skill 16+
+ *
+ * **GURPS Critical Failure Rules:**
+ * - Always on 18
+ * - On 17 if effective skill 15 or less
+ * - On 16 if effective skill 6 or less (very rare)
+ *
+ * **Progress Mechanics:**
+ * - Critical Success: +2 PP, -1 CP (exceptional progress, reduces mishap risk)
+ * - Success: +1 PP + floor(MoS/2), no CP change (steady progress)
+ * - Failure: +0 PP, +1 CP (no progress, increases mishap risk)
+ * - Critical Failure: +0 PP, +2 CP (major setback, high mishap risk)
+ *
+ * **Hazard Triggering:**
+ * - Volatile: Batch explodes on failure/mishap (instant destruction)
+ * - Unstable: Extra +1 CP on failures
+ * - Flammable: Triggers on low quality completion
+ *
+ * @param {Object} batch - The current batch state
+ * @param {number} skill - Base Alchemy skill level (before DM)
+ * @param {number} roll - 3d6 skill roll result (3-18)
+ * @param {string} worker - Name of the alchemist performing the work
+ * @param {string} date - Date string for the work block
+ * @returns {Object} Updated batch object with new PP, CP, shifts, hazard events, and possibly completed status
+ */
 export function applyWorkBlockResult(batch, skill, roll, worker, date) {
   const effectiveSkill = skill + batch.DM;
   let ppAdded = 0;
@@ -580,7 +838,29 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
   return updated;
 }
 
-// Atomic batch start from formula (backward-compatible with options overload)
+/**
+ * Creates a new brewing batch from a formula, consuming reagents atomically.
+ * This is the primary function for starting the brewing process.
+ *
+ * The function:
+ * 1. Validates reagent availability (alerts and returns null if insufficient)
+ * 2. Creates a snapshot of consumed ingredients (preserves exact aspects/refinement)
+ * 3. Deducts reagent quantities from inventory
+ * 4. Creates a new batch object ready for work blocks
+ * 5. Returns both the updated reagent list and new batch (atomic operation)
+ *
+ * **Backward Compatibility:**
+ * Supports two signatures:
+ * - Old: `(formula, reagents, batches, forecast, microAssay)`
+ * - New: `(formula, reagents, batches, options)` where options = { forecast, microAssay, overrideWR, overrideDM }
+ *
+ * @param {Object} formula - The formula to brew
+ * @param {Array<Object>} reagents - Current reagent inventory
+ * @param {Array<Object>} batches - Current batch list (unused but kept for API compatibility)
+ * @param {Object|Array|null} [forecastOrOptions=null] - Options object OR legacy forecast array
+ * @param {Array|null} [microAssay=null] - Legacy: micro-assay data (use options.microAssay instead)
+ * @returns {Object|null} Result object with newReagents and newBatch, or null if insufficient reagents
+ */
 export function startBatchFromFormula(formula, reagents, batches, forecastOrOptions = null, microAssay = null) {
   // Support both old signature (formula, reagents, batches, forecast, microAssay)
   // and new signature (formula, reagents, batches, options)
