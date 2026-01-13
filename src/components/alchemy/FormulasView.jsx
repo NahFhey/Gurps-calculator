@@ -5,11 +5,16 @@ export function FormulasView({ reagents, formulas, batches, saveReagents, saveBa
 
   function startBatch(formula) {
     const result = startBatchFromFormula(formula, reagents, batches);
-    if (result) {
-      saveReagents(result.newReagents);
-      saveBatches([...batches, result.newBatch]);
-      alert(`Batch started! ${formula.name}`);
+    if (!result.ok) {
+      // Show structured error message
+      alert(result.error.message);
+      return;
     }
+
+    // Success - update reagents and batches
+    saveReagents(result.reagents);
+    saveBatches([...batches, result.batch]);
+    alert(`Batch started! ${formula.name}`);
   }
 
   return (

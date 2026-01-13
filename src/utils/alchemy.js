@@ -512,9 +512,23 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
   }
 
   // APPLY HAZARD MODIFIERS (from rules, not just count)
+  // Apply hazard WR/DM modifiers based on trigger conditions
   hazardEvaluation.details.forEach(h => {
-    // Only apply WR/DM from hazard rules if they trigger on formula creation
-    if (h.triggerOn.includes('conflict_pairs_present') || h.wrMod > 0) {
+    const rollTriggeredOnly = h.triggerOn.every(trigger =>
+      ['failure', 'mishap', 'any_failure', 'exposure', 'quality_unstable_or_worse'].includes(trigger)
+    );
+
+    // Apply WR/DM modifiers if:
+    // 1. Hazard triggers on conflict_pairs_present and conflicts exist
+    // 2. Hazard has modifiers but is not roll-triggered-only (always-on hazards)
+    if (h.triggerOn.includes('conflict_pairs_present')) {
+      const conflictCount = countConflictsFromTally(tally);
+      if (conflictCount > 0) {
+        WR += h.wrMod;
+        DM += h.dmMod;
+      }
+    } else if (!rollTriggeredOnly && (h.wrMod !== 0 || h.dmMod !== 0)) {
+      // Always-on hazards (not gated by roll outcomes)
       WR += h.wrMod;
       DM += h.dmMod;
     }
@@ -590,7 +604,7 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
 
   if (catalystBonus > 0) {
     WR -= catalystBonus;
-    DM -= 1;
+    DM += 1; // Catalyst makes the roll easier (increases effective skill)
   }
 
   // 8. Lab Rating reduction (0-4 reduces WR)
@@ -659,7 +673,7 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
 }
 
 /**
- * Applies the result of a work block (skill roll) to an alchemy batch.
+ * Applies the result of a work block (skill roll) to an alchemy batch using delta accumulation.
  * Implements complete GURPS critical success/failure rules, progress tracking, and hazard triggering.
  *
  * **GURPS Critical Success Rules:**
@@ -672,13 +686,13 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
  * - On 17 if effective skill 15 or less
  * - On 16 if effective skill 6 or less (very rare)
  *
- * **Progress Mechanics:**
+ * **Progress Mechanics (Delta Accumulation):**
  * - Critical Success: +2 PP, -1 CP (exceptional progress, reduces mishap risk)
  * - Success: +1 PP + floor(MoS/2), no CP change (steady progress)
  * - Failure: +0 PP, +1 CP (no progress, increases mishap risk)
  * - Critical Failure: +0 PP, +2 CP (major setback, high mishap risk)
  *
- * **Hazard Triggering:**
+ * **Hazard Triggering (Delta-based):**
  * - Volatile: Batch explodes on failure/mishap (instant destruction)
  * - Unstable: Extra +1 CP on failures
  * - Flammable: Triggers on low quality completion
@@ -692,11 +706,8 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
  */
 export function applyWorkBlockResult(batch, skill, roll, worker, date) {
   const effectiveSkill = skill + batch.DM;
-  let ppAdded = 0;
-  let cpChange = 0;
-  let result = '';
-  const hazardEvents = [];
 
+  // PHASE 1: Classify roll outcome
   const isCritSuccess =
     roll <= 4 ||
     (roll === 5 && effectiveSkill >= 15) ||
@@ -707,35 +718,47 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
     (roll === 17 && effectiveSkill <= 15) ||
     (roll === 16 && effectiveSkill <= 6);
 
+  const isSuccess = !isCritSuccess && !isCritFailure && roll <= effectiveSkill;
   const isFailure = !isCritSuccess && roll > effectiveSkill;
   const isMishap = isCritFailure;
 
+  const margin = isSuccess ? effectiveSkill - roll : (isFailure ? roll - effectiveSkill : 0);
+
+  // PHASE 2: Compute base deltas
+  let baseProgressDelta = 0;
+  let baseCPDelta = 0;
+  let result = '';
+
   if (isCritSuccess) {
-    ppAdded = 2;
-    cpChange = -1;
+    baseProgressDelta = 2;
+    baseCPDelta = -1;
     result = 'Critical Success';
   } else if (isCritFailure) {
-    ppAdded = 0;
-    cpChange = 2;
+    baseProgressDelta = 0;
+    baseCPDelta = 2;
     result = 'Critical Failure (Mishap!)';
-  } else if (roll <= effectiveSkill) {
-    const margin = effectiveSkill - roll;
-    ppAdded = 1 + Math.floor(margin / 2);
-    cpChange = 0;
+  } else if (isSuccess) {
+    baseProgressDelta = 1 + Math.floor(margin / 2);
+    baseCPDelta = 0;
     result = `Success (MoS ${margin})`;
-  } else {
-    const margin = roll - effectiveSkill;
-    ppAdded = 0;
-    cpChange = 1;
+  } else if (isFailure) {
+    baseProgressDelta = 0;
+    baseCPDelta = 1;
     result = `Failure (MoF ${margin})`;
   }
 
-  // HAZARD TRIGGERING - check if any hazards trigger
+  // PHASE 3: Evaluate hazards and compute hazard deltas
+  let hazardProgressDelta = 0;
+  let hazardCPDelta = 0;
+  let destroyed = false;
+  const hazardEvents = [];
+
   const hazardDetails = batch.hazardDetails || [];
   hazardDetails.forEach(hazard => {
     let triggered = false;
     let reason = '';
 
+    // Check trigger conditions based on roll classification
     if (hazard.triggerOn.includes('any_failure') && isFailure) {
       triggered = true;
       reason = 'failure';
@@ -747,12 +770,13 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
       reason = 'mishap';
     }
 
-    // Apply hazard effects
+    // Apply hazard effects to deltas
     if (triggered) {
       if (hazard.hazard === 'Unstable') {
-        cpChange += 1; // Extra contamination
+        hazardCPDelta += 1; // Extra contamination on failure
       } else if (hazard.hazard === 'Volatile') {
-        // Volatile causes batch destruction on failure/mishap
+        // Volatile causes batch destruction
+        destroyed = true;
         hazardEvents.push({
           hazard: hazard.hazard,
           effect: 'BATCH DESTROYED - Volatile explosion',
@@ -769,6 +793,11 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
     }
   });
 
+  // PHASE 4: Combine deltas
+  const progressDelta = baseProgressDelta + hazardProgressDelta;
+  const cpDelta = baseCPDelta + hazardCPDelta;
+
+  // Create shift record with deltas
   const newShift = {
     id: crypto.randomUUID(),
     date,
@@ -777,13 +806,25 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
     roll,
     effectiveSkill,
     result,
-    ppAdded,
-    cpChange,
+    ppAdded: progressDelta,
+    cpChange: cpDelta,
     hazardEvents: hazardEvents.length > 0 ? hazardEvents : undefined
   };
 
-  const newPP = batch.PP + ppAdded;
-  const newCP = Math.max(0, batch.CP + cpChange);
+  // PHASE 5: Handle destruction (skip progress if destroyed)
+  if (destroyed) {
+    return {
+      ...batch,
+      phase: 'failed',
+      quality: 'Destroyed (Volatile Explosion)',
+      completedDate: new Date().toISOString(),
+      shifts: [...batch.shifts, newShift]
+    };
+  }
+
+  // PHASE 6: Apply deltas with clamps
+  const newPP = clamp(batch.PP + progressDelta, 0, batch.WR);
+  const newCP = Math.max(0, batch.CP + cpDelta);
 
   const updated = {
     ...batch,
@@ -792,15 +833,7 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
     shifts: [...batch.shifts, newShift]
   };
 
-  // Check if Volatile hazard destroyed the batch
-  const volatileDestroyed = hazardEvents.some(e => e.hazard === 'Volatile' && e.effect.includes('DESTROYED'));
-  if (volatileDestroyed) {
-    updated.phase = 'failed';
-    updated.quality = 'Destroyed (Volatile Explosion)';
-    updated.completedDate = new Date().toISOString();
-    return updated;
-  }
-
+  // PHASE 7: Check completion
   if (updated.PP >= updated.WR) {
     const quality = determineQuality(updated.CP);
     updated.phase = quality === 'Mishap' ? 'failed' : 'completed';
@@ -836,6 +869,74 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
   }
 
   return updated;
+}
+
+/**
+ * Prepares hazard data with visibility control for GM/Player modes.
+ * Hazards are stored in two layers:
+ * - Public shell (player-safe): { id, known, severity }
+ * - GM detail (full hazard data): stored separately with full effects and triggers
+ *
+ * @param {Object} hazardEvaluation - Hazard evaluation result from calculateFormulaStats
+ * @param {Object} [options={}] - Options for hazard visibility
+ * @param {boolean} [options.allKnown=false] - If true, all hazards start as known
+ * @returns {Object} Hazard visibility data with public and GM layers
+ */
+export function prepareHazardsWithVisibility(hazardEvaluation, options = {}) {
+  const hazardsPublic = [];
+  const gmHazards = [];
+
+  (hazardEvaluation?.details || []).forEach(hazard => {
+    // Public shell: just ID, known status, and severity
+    hazardsPublic.push({
+      id: hazard.hazard,
+      known: options.allKnown || false,
+      severity: hazard.severity
+    });
+
+    // GM detail: full hazard data
+    gmHazards.push({
+      id: hazard.hazard,
+      hazard: hazard.hazard,
+      source: hazard.source,
+      effect: hazard.effect,
+      triggerOn: hazard.triggerOn,
+      wrMod: hazard.wrMod,
+      dmMod: hazard.dmMod,
+      severity: hazard.severity
+    });
+  });
+
+  return { hazardsPublic, gmHazards };
+}
+
+/**
+ * Gets hazard details for display based on knowledge level.
+ * If hazard is unknown, returns masked version. If known, returns full detail.
+ *
+ * @param {string} hazardId - The hazard ID
+ * @param {Array} hazardsPublic - Public hazard visibility list
+ * @param {Array} gmHazards - GM hazard details
+ * @returns {Object|null} Hazard detail object or masked version
+ */
+export function getHazardForDisplay(hazardId, hazardsPublic, gmHazards) {
+  const publicInfo = hazardsPublic.find(h => h.id === hazardId);
+  const gmInfo = gmHazards.find(h => h.id === hazardId);
+
+  if (!publicInfo || !gmInfo) return null;
+
+  if (publicInfo.known) {
+    return gmInfo; // Return full details if known
+  } else {
+    // Return masked version
+    return {
+      id: hazardId,
+      hazard: 'Unknown Complication',
+      effect: 'Unknown effect (hazard not identified)',
+      severity: publicInfo.severity,
+      masked: true
+    };
+  }
 }
 
 /**
@@ -877,12 +978,31 @@ export function startBatchFromFormula(formula, reagents, batches, forecastOrOpti
   }
 
   // Check reagent availability
+  const missing = [];
   for (const ing of formula.ingredients) {
     const reagent = reagents.find(r => r.id === ing.reagentId);
     if (!reagent || reagent.quantity < ing.unitsUsed) {
-      alert(`Insufficient ${ing.reagentName}: need ${ing.unitsUsed}U, have ${reagent?.quantity || 0}U`);
-      return null;
+      missing.push({
+        reagentId: ing.reagentId,
+        reagentName: ing.reagentName,
+        needed: ing.unitsUsed,
+        available: reagent?.quantity || 0
+      });
     }
+  }
+
+  if (missing.length > 0) {
+    const messages = missing.map(m =>
+      `${m.reagentName}: need ${m.needed}U, have ${m.available}U`
+    );
+    return {
+      ok: false,
+      error: {
+        code: 'INSUFFICIENT_REAGENTS',
+        message: `Insufficient reagents: ${messages.join('; ')}`,
+        missing
+      }
+    };
   }
 
   const consumed = formula.ingredients.map(ing => {
@@ -911,6 +1031,12 @@ export function startBatchFromFormula(formula, reagents, batches, forecastOrOpti
   const batchWR = options.overrideWR ?? formula.baseWR;
   const batchDM = options.overrideDM ?? formula.baseDM;
 
+  // Prepare hazards with visibility control (GM/Player separation)
+  const hazardVisibility = prepareHazardsWithVisibility(
+    formula.hazardEvaluation,
+    { allKnown: options.gmMode || false }
+  );
+
   const newBatch = {
     id: crypto.randomUUID(),
     formulaId: formula.id,
@@ -933,6 +1059,11 @@ export function startBatchFromFormula(formula, reagents, batches, forecastOrOpti
     forecast: options.forecast || null,
     microAssay: options.microAssay || null,
     hasMatchingStabilizer: formula.hasMatchingStabilizer || false,
+    // Hazard visibility system: public shell + GM details
+    hazardsPublic: hazardVisibility.hazardsPublic,
+    gmHazards: hazardVisibility.gmHazards,
+    // Keep hazardDetails for backward compatibility (will be deprecated)
+    hazardDetails: hazardVisibility.gmHazards,
     shifts: [],
     quality: null,
     startDate: new Date().toISOString(),
@@ -940,7 +1071,9 @@ export function startBatchFromFormula(formula, reagents, batches, forecastOrOpti
   };
 
   return {
-    newReagents,
-    newBatch
+    ok: true,
+    batch: newBatch,
+    reagents: newReagents,
+    events: []
   };
 }

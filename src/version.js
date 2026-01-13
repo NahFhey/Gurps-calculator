@@ -1,7 +1,66 @@
 // Version and changelog information
-export const VERSION = '2.2.2';
+export const VERSION = '2.3.0';
 
 export const CHANGELOG = [
+  {
+    version: '2.3.0',
+    date: '2026-01-13',
+    title: 'GM/Player Mode + Import/Export + Enhanced Alchemy Engine',
+    changes: [
+      {
+        category: 'GM/Player Separation',
+        items: [
+          'Added GM/Player mode toggle in Manager tab',
+          'Password-protected exports encrypt GM content (hazards, secret notes, reagent details)',
+          'Player-safe exports allow player use while keeping GM secrets locked',
+          'GM Lock modal for password entry when accessing locked imports',
+          'Hazard visibility system: unknown hazards display as "Unknown Complication" to players',
+          'GM mode reveals full hazard details, reagent secrets, and formula design information'
+        ]
+      },
+      {
+        category: 'Import/Export System',
+        items: [
+          'New Import/Export panel in Manager tab',
+          'Export formats: Unlocked (GM only) and Locked (player-safe with encryption)',
+          'Schema versioning with migration support for future updates',
+          'AES-GCM + PBKDF2 encryption (210k iterations) for casual security',
+          'Validation and error handling for imported files',
+          'Automatic state merging for locked imports after password entry'
+        ]
+      },
+      {
+        category: 'Alchemy Engine Fixes',
+        items: [
+          'Fixed hazard modifier application: DM-only hazards now apply correctly',
+          'Fixed catalyst bonus direction: DM now increases (makes rolls easier) instead of decreasing',
+          'Refactored work-block resolution to use delta accumulation for deterministic hazard ordering',
+          'Removed alert() from engine; replaced with structured error returns',
+          'Added hazard snapshot system with public/GM visibility layers',
+          'Hazard effects now trigger based on roll classification, not evaluation order'
+        ]
+      },
+      {
+        category: 'Storage Improvements',
+        items: [
+          'Added flush() function to useStorage hook for immediate saves',
+          'Implemented beforeunload protection to prevent data loss on tab close',
+          'Added localStorage fallback when window.storage unavailable',
+          'Debounced saves now track pending data for better reliability'
+        ]
+      },
+      {
+        category: 'Developer Experience',
+        items: [
+          'New crypto utility module (cryptoLock.js) for password encryption',
+          'New import/export utility module (exportImport.js) with state splitting',
+          'Structured error returns from alchemy engine functions',
+          'Updated FormulasView to handle new error format',
+          'Added GMLockModal and ImportExportPanel components'
+        ]
+      }
+    ]
+  },
   {
     version: '2.2.2',
     date: '2026-01-12',

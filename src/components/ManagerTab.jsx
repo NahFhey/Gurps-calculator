@@ -1,11 +1,22 @@
 import React, { useState } from 'react';
-import { Plus, Save, X, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Plus, Save, X, Trash2, Eye, EyeOff, Shield, ShieldOff } from 'lucide-react';
 import { toNumberOr, refundMaterialsFromProject } from '../utils/helpers';
 import { TEMPLATES, ASPECTS, POTENCY_LEVELS, INGREDIENT_ROLES, HAZARD_TAGS, VECTORS } from '../constants';
 import { calculateFormulaStats } from '../utils/alchemy';
 import { TBBuilderPanel } from './alchemy/TBBuilderPanel';
+import { ImportExportPanel } from './ImportExportPanel';
+import { GMLockModal } from './GMLockModal';
+import { unlockGMData, mergeGM } from '../utils/exportImport';
 
-export function ManagerTab({ foodTypes, materialTypes, workers, crafts, craftDesigns, customTemplates, materials, effectFamilyMap, alchemySettings, alchemyReagents, alchemyFormulas, saveMaterials, saveFoodTypes, saveMaterialTypes, saveWorkers, saveCrafts, saveCraftDesigns, saveCustomTemplates, saveEffectFamilyMap, saveAlchemySettings, saveAlchemyReagents, saveAlchemyFormulas, renameMaterialType }) {
+export function ManagerTab({
+  foodTypes, materialTypes, workers, crafts, craftDesigns, customTemplates, materials,
+  effectFamilyMap, alchemySettings, alchemyReagents, alchemyFormulas, alchemyBatches,
+  foods, recipes, gmMode, gmLockData, setGmMode, setGmLockData,
+  saveMaterials, saveFoods, saveRecipes, saveFoodTypes, saveMaterialTypes, saveWorkers,
+  saveCrafts, saveCraftDesigns, saveCustomTemplates, saveEffectFamilyMap,
+  saveAlchemySettings, saveAlchemyReagents, saveAlchemyFormulas, saveAlchemyBatches,
+  renameMaterialType
+}) {
   const [view, setView] = useState('foodTypes');
   const [showAdd, setShowAdd] = useState(false);
   const [newType, setNewType] = useState('');
@@ -49,6 +60,84 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, craftDes
   const [selectedTier, setSelectedTier] = useState(1);
   const [formulaTraits, setFormulaTraits] = useState([]);
   const [expandedFormula, setExpandedFormula] = useState(null);
+
+  // GM/Player mode state
+  const [showGMLockModal, setShowGMLockModal] = useState(false);
+  const [gmLockError, setGmLockError] = useState(null);
+
+  // Handle GM mode toggle
+  const handleGMModeToggle = () => {
+    if (!gmMode) {
+      // Entering GM mode
+      if (gmLockData) {
+        // Locked import - show password modal
+        setShowGMLockModal(true);
+      } else {
+        // No lock - enable GM mode with warning
+        if (confirm('No password lock detected. GM mode will be accessible to anyone with this file. Continue?')) {
+          setGmMode(true);
+        }
+      }
+    } else {
+      // Exiting GM mode
+      setGmMode(false);
+    }
+  };
+
+  // Handle GM unlock with password
+  const handleGMUnlock = async (password) => {
+    if (!gmLockData) {
+      setGmLockError('No GM lock data available');
+      return;
+    }
+
+    const result = await unlockGMData({ gmLock: gmLockData }, password);
+    if (!result.ok) {
+      setGmLockError(result.error);
+      return;
+    }
+
+    // Merge GM data into current state
+    const currentPublicState = {
+      materials, foods, recipes, foodTypes, materialTypes, workers,
+      customTemplates, craftDesigns, crafts,
+      alchemyReagents, alchemyFormulas, alchemyBatches,
+      effectFamilyMap, alchemySettings
+    };
+    const mergedState = mergeGM(currentPublicState, result.gmData);
+
+    // Apply merged state
+    if (mergedState.materials) saveMaterials(mergedState.materials);
+    if (mergedState.foods) saveFoods(mergedState.foods);
+    if (mergedState.recipes) saveRecipes(mergedState.recipes);
+    if (mergedState.alchemyReagents) saveAlchemyReagents(mergedState.alchemyReagents);
+    if (mergedState.alchemyFormulas) saveAlchemyFormulas(mergedState.alchemyFormulas);
+    if (mergedState.alchemyBatches) saveAlchemyBatches(mergedState.alchemyBatches);
+
+    // Enable GM mode
+    setGmMode(true);
+    setShowGMLockModal(false);
+    setGmLockError(null);
+  };
+
+  // Handle import from ImportExportPanel
+  const handleImport = (importedState) => {
+    // Apply all imported data to state
+    if (importedState.materials) saveMaterials(importedState.materials);
+    if (importedState.foods) saveFoods(importedState.foods);
+    if (importedState.recipes) saveRecipes(importedState.recipes);
+    if (importedState.foodTypes) saveFoodTypes(importedState.foodTypes);
+    if (importedState.materialTypes) saveMaterialTypes(importedState.materialTypes);
+    if (importedState.workers) saveWorkers(importedState.workers);
+    if (importedState.customTemplates) saveCustomTemplates(importedState.customTemplates);
+    if (importedState.craftDesigns) saveCraftDesigns(importedState.craftDesigns);
+    if (importedState.crafts) saveCrafts(importedState.crafts);
+    if (importedState.alchemyReagents) saveAlchemyReagents(importedState.alchemyReagents);
+    if (importedState.alchemyFormulas) saveAlchemyFormulas(importedState.alchemyFormulas);
+    if (importedState.alchemyBatches) saveAlchemyBatches(importedState.alchemyBatches);
+    if (importedState.effectFamilyMap) saveEffectFamilyMap(importedState.effectFamilyMap);
+    if (importedState.alchemySettings) saveAlchemySettings(importedState.alchemySettings);
+  };
 
   function addType() {
     const typeName = newType.trim().toLowerCase();
@@ -224,6 +313,58 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, craftDes
 
   return (
     <div className="bg-gray-800 rounded-lg p-6">
+      {/* GM Lock Modal */}
+      <GMLockModal
+        isOpen={showGMLockModal}
+        onClose={() => {
+          setShowGMLockModal(false);
+          setGmLockError(null);
+        }}
+        onUnlock={handleGMUnlock}
+        error={gmLockError}
+      />
+
+      {/* GM/Player Mode Toggle */}
+      <div className="mb-6 flex items-center justify-between bg-gray-700 border border-gray-600 rounded-lg p-4">
+        <div className="flex items-center gap-3">
+          {gmMode ? (
+            <Shield className="text-yellow-400" size={24} />
+          ) : (
+            <ShieldOff className="text-gray-400" size={24} />
+          )}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-100">
+              {gmMode ? 'GM Mode Active' : 'Player Mode'}
+            </h3>
+            <p className="text-sm text-gray-400">
+              {gmMode
+                ? 'Full access to all features, hazards, and GM content'
+                : 'Limited access - GM content hidden'}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={handleGMModeToggle}
+          className={`px-6 py-3 rounded-lg font-semibold transition flex items-center gap-2 ${
+            gmMode
+              ? 'bg-yellow-600 hover:bg-yellow-500 text-white'
+              : 'bg-blue-600 hover:bg-blue-500 text-white'
+          }`}
+        >
+          {gmMode ? (
+            <>
+              <ShieldOff size={18} />
+              Exit GM Mode
+            </>
+          ) : (
+            <>
+              <Shield size={18} />
+              Enable GM Mode
+            </>
+          )}
+        </button>
+      </div>
+
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-800 p-6 rounded-lg max-w-md border-2 border-gray-600">
@@ -260,7 +401,8 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, craftDes
         </div>
       )}
 
-      <div className="flex gap-2 mb-6 border-b border-gray-700">
+      <div className="flex gap-2 mb-6 border-b border-gray-700 flex-wrap">
+        <button onClick={() => setView('importExport')} className={`px-4 py-2 ${view === 'importExport' ? 'border-b-2 border-green-500 text-green-400' : 'text-gray-400'}`}>Import/Export</button>
         <button onClick={() => setView('foodTypes')} className={`px-4 py-2 ${view === 'foodTypes' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Food Types</button>
         <button onClick={() => setView('materialTypes')} className={`px-4 py-2 ${view === 'materialTypes' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Material Types</button>
         <button onClick={() => setView('workers')} className={`px-4 py-2 ${view === 'workers' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Workers</button>
@@ -271,6 +413,23 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, craftDes
         <button onClick={() => setView('effectFamilyMap')} className={`px-4 py-2 ${view === 'effectFamilyMap' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Effect Map</button>
         <button onClick={() => setView('alchemySettings')} className={`px-4 py-2 ${view === 'alchemySettings' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Alchemy Settings</button>
       </div>
+
+      {view === 'importExport' && (
+        <ImportExportPanel
+          state={{
+            materials, foods, recipes, foodTypes, materialTypes, workers,
+            customTemplates, craftDesigns, crafts,
+            alchemyReagents, alchemyFormulas, alchemyBatches,
+            effectFamilyMap, alchemySettings
+          }}
+          gmMode={gmMode}
+          gmLockData={gmLockData}
+          setGmMode={setGmMode}
+          setGmLockData={setGmLockData}
+          onImport={handleImport}
+          onShowGMLockModal={() => setShowGMLockModal(true)}
+        />
+      )}
 
       {view === 'foodTypes' && (
         <div>

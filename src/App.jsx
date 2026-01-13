@@ -45,6 +45,8 @@ export default function GURPSPartyTool() {
   const [effectFamilyMap, setEffectFamilyMap] = useState({});
   const [alchemySettings, setAlchemySettings] = useState({ defaultLabRating: 0, workBlockMinutes: 120 });
   const [loading, setLoading] = useState(true);
+  const [gmMode, setGmMode] = useState(false);
+  const [gmLockData, setGmLockData] = useState(null); // Stores gmLock from locked imports
 
   useEffect(() => { loadData(); }, []);
 
@@ -302,7 +304,7 @@ export default function GURPSPartyTool() {
         {activeTab === 'inventory' && <InventoryTab materials={materials} foods={foods} foodTypes={foodTypes} materialTypes={materialTypes} saveMaterials={saveMaterials} saveFoods={saveFoods} />}
         {activeTab === 'cooking' && <CookingTab foods={foods} recipes={recipes} saveFoods={saveFoods} saveRecipes={saveRecipes} />}
         {activeTab === 'crafting' && <CraftingTab materials={materials} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materialTypes={materialTypes} workers={workers} saveMaterials={saveMaterials} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} />}
-        {activeTab === 'manager' && <ManagerTab foodTypes={foodTypes} materialTypes={materialTypes} workers={workers} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materials={materials} effectFamilyMap={effectFamilyMap} alchemySettings={alchemySettings} alchemyReagents={alchemyReagents} alchemyFormulas={alchemyFormulas} saveMaterials={saveMaterials} saveFoodTypes={saveFoodTypes} saveMaterialTypes={saveMaterialTypes} saveWorkers={saveWorkers} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} saveCustomTemplates={saveCustomTemplates} saveEffectFamilyMap={saveEffectFamilyMap} saveAlchemySettings={saveAlchemySettings} saveAlchemyReagents={saveAlchemyReagents} saveAlchemyFormulas={saveAlchemyFormulas} renameMaterialType={renameMaterialType} />}
+        {activeTab === 'manager' && <ManagerTab foodTypes={foodTypes} materialTypes={materialTypes} workers={workers} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materials={materials} effectFamilyMap={effectFamilyMap} alchemySettings={alchemySettings} alchemyReagents={alchemyReagents} alchemyFormulas={alchemyFormulas} alchemyBatches={alchemyBatches} foods={foods} recipes={recipes} gmMode={gmMode} gmLockData={gmLockData} setGmMode={setGmMode} setGmLockData={setGmLockData} saveMaterials={saveMaterials} saveFoods={saveFoods} saveRecipes={saveRecipes} saveFoodTypes={saveFoodTypes} saveMaterialTypes={saveMaterialTypes} saveWorkers={saveWorkers} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} saveCustomTemplates={saveCustomTemplates} saveEffectFamilyMap={saveEffectFamilyMap} saveAlchemySettings={saveAlchemySettings} saveAlchemyReagents={saveAlchemyReagents} saveAlchemyFormulas={saveAlchemyFormulas} saveAlchemyBatches={saveAlchemyBatches} renameMaterialType={renameMaterialType} />}
         {activeTab === 'alchemy' && <AlchemyTab reagents={alchemyReagents} formulas={alchemyFormulas} batches={alchemyBatches} workers={workers} alchemySettings={alchemySettings} saveReagents={saveAlchemyReagents} saveFormulas={saveAlchemyFormulas} saveBatches={saveAlchemyBatches} />}
         {activeTab === 'changelog' && <ChangelogTab />}
       </div>
