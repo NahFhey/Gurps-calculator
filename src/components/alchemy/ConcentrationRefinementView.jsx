@@ -414,7 +414,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
             <div className="grid grid-cols-2 gap-3 text-sm mb-2">
               <div>
                 <span className="text-gray-400">Base Skill:</span>
-                <span className="ml-2 font-semibold">{difficultyCalc.alchemySkill}</span>
+                <span className="ml-2 font-semibold text-blue-400">{difficultyCalc.alchemySkill}</span>
               </div>
               <div>
                 <span className="text-gray-400">Lab Rating:</span>
@@ -426,19 +426,29 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
               </div>
               <div>
                 <span className="text-gray-400">Batch Size:</span>
-                <span className="ml-2 font-semibold text-orange-400">{difficultyCalc.batchSizePenalty}</span>
+                <span className="ml-2 font-semibold text-yellow-400">{difficultyCalc.batchSizePenalty}</span>
               </div>
               <div>
                 <span className="text-gray-400">Potency Control:</span>
-                <span className="ml-2 font-semibold text-orange-400">{difficultyCalc.potencyControlPenalty}</span>
+                <span className="ml-2 font-semibold text-purple-400">{difficultyCalc.potencyControlPenalty}</span>
               </div>
               <div>
                 <span className="text-gray-400">Effective Skill:</span>
                 <span className="ml-2 font-bold text-cyan-400">{difficultyCalc.effectiveSkill}</span>
               </div>
             </div>
-            <p className="text-xs text-gray-400 mt-2 font-mono">
-              {difficultyCalc.breakdown}
+            <p className="text-xs mt-2 font-mono">
+              <span className="text-blue-400">{difficultyCalc.alchemySkill}</span>
+              <span className="text-gray-400"> + </span>
+              <span className="text-green-400">{difficultyCalc.labRating}</span>
+              <span className="text-gray-400"> + </span>
+              <span className="text-orange-400">{difficultyCalc.processStepDM}</span>
+              <span className="text-gray-400"> + </span>
+              <span className="text-yellow-400">{difficultyCalc.batchSizePenalty}</span>
+              <span className="text-gray-400"> + </span>
+              <span className="text-purple-400">{difficultyCalc.potencyControlPenalty}</span>
+              <span className="text-gray-400"> = </span>
+              <span className="text-cyan-400 font-bold">{difficultyCalc.effectiveSkill}</span>
             </p>
           </div>
         )}
