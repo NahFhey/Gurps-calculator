@@ -379,7 +379,7 @@ export function ManagerTab({
             <div className="flex gap-3 justify-end">
               <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 bg-gray-600 rounded">Cancel</button>
               <button onClick={() => {
-                if (deleteConfirm.type === 'foodType') saveFoodTypes(foodTypes.filter(t => t !== deleteConfirm.value));
+                if (deleteConfirm.type === 'foodType') saveFoodTypes(foodTypes.filter(t => t.name !== deleteConfirm.value));
                 else if (deleteConfirm.type === 'materialType') saveMaterialTypes(materialTypes.filter(t => t.name !== deleteConfirm.value));
                 else if (deleteConfirm.type === 'worker') saveWorkers(workers.filter(w => w.id !== deleteConfirm.id));
                 else if (deleteConfirm.type === 'lab') saveAlchemyLabs(alchemyLabs.filter(l => l.id !== deleteConfirm.id));

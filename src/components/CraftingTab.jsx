@@ -447,16 +447,16 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                     const mat = materials.find(m => m.id === sm.selectedMaterialId || String(m.id) === sm.selectedMaterialId);
                     if (!mat || !mat.type) return null;
                     return materialTypes.find(mt => mt.name === mat.type);
-                  }).filter(mt => mt !== null);
+                  }).filter(mt => mt !== null && mt !== undefined);
                   if (matTypes.length > 0) {
-                    avgHT = Math.round(matTypes.reduce((sum, mt) => sum + mt.ht, 0) / matTypes.length);
+                    avgHT = Math.round(matTypes.reduce((sum, mt) => sum + (mt.ht || 10), 0) / matTypes.length);
                     avgWeightMod = matTypes.reduce((sum, mt) => sum + (mt.weightMod || 0), 0) / matTypes.length;
                     avgHPMod = matTypes.reduce((sum, mt) => sum + (mt.hpMod || 0), 0) / matTypes.length;
                   }
                 }
 
-                const finalWeight = Math.round(t.weight * (1 + avgWeightMod / 100) * 10) / 10;
-                const finalHP = Math.round(t.hp * (1 + avgHPMod / 100));
+                const finalWeight = Math.round((t.weight || 0) * (1 + avgWeightMod / 100) * 10) / 10;
+                const finalHP = Math.round((t.hp || 0) * (1 + avgHPMod / 100));
 
                 const materialList =
                   (c.consumedMaterials?.map(u => u.name).join(', '))
@@ -519,16 +519,16 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                     const mat = materials.find(m => m.id === sm.selectedMaterialId || String(m.id) === sm.selectedMaterialId);
                     if (!mat || !mat.type) return null;
                     return materialTypes.find(mt => mt.name === mat.type);
-                  }).filter(mt => mt !== null);
+                  }).filter(mt => mt !== null && mt !== undefined);
                   if (matTypes.length > 0) {
-                    avgHT = Math.round(matTypes.reduce((sum, mt) => sum + mt.ht, 0) / matTypes.length);
+                    avgHT = Math.round(matTypes.reduce((sum, mt) => sum + (mt.ht || 10), 0) / matTypes.length);
                     avgWeightMod = matTypes.reduce((sum, mt) => sum + (mt.weightMod || 0), 0) / matTypes.length;
                     avgHPMod = matTypes.reduce((sum, mt) => sum + (mt.hpMod || 0), 0) / matTypes.length;
                   }
                 }
 
-                const finalWeight = Math.round(t.weight * (1 + avgWeightMod / 100) * 10) / 10;
-                const finalHP = Math.round(t.hp * (1 + avgHPMod / 100));
+                const finalWeight = Math.round((t.weight || 0) * (1 + avgWeightMod / 100) * 10) / 10;
+                const finalHP = Math.round((t.hp || 0) * (1 + avgHPMod / 100));
 
                 const materialList =
                   (c.consumedMaterials?.map(u => `${u.name} (${u.type})`).join(', '))
