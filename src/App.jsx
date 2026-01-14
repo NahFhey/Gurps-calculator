@@ -42,6 +42,9 @@ export default function GURPSPartyTool() {
   const [alchemyReagents, setAlchemyReagents] = useState([]);
   const [alchemyFormulas, setAlchemyFormulas] = useState([]);
   const [alchemyBatches, setAlchemyBatches] = useState([]);
+  const [alchemyLabs, setAlchemyLabs] = useState([
+    { id: 'default', name: 'Basic Lab', rating: 0, description: 'Standard workspace' }
+  ]);
   const [effectFamilyMap, setEffectFamilyMap] = useState({});
   const [alchemySettings, setAlchemySettings] = useState({ defaultLabRating: 0, workBlockMinutes: 120 });
   const [loading, setLoading] = useState(true);
@@ -59,7 +62,7 @@ export default function GURPSPartyTool() {
     }
 
     try {
-      const [matsR, foodsR, recipesR, craftsR, typesR, templatesR, matTypesR, workersR, reagentsR, formulasR, batchesR, effectMapR, alchemySettingsR, craftDesignsR] = await Promise.all([
+      const [matsR, foodsR, recipesR, craftsR, typesR, templatesR, matTypesR, workersR, reagentsR, formulasR, batchesR, labsR, effectMapR, alchemySettingsR, craftDesignsR] = await Promise.all([
         window.storage.get('materials', true).catch(() => null),
         window.storage.get('foods', true).catch(() => null),
         window.storage.get('recipes', true).catch(() => null),
@@ -71,6 +74,7 @@ export default function GURPSPartyTool() {
         window.storage.get('alchemyReagents', true).catch(() => null),
         window.storage.get('alchemyFormulas', true).catch(() => null),
         window.storage.get('alchemyBatches', true).catch(() => null),
+        window.storage.get('alchemyLabs', true).catch(() => null),
         window.storage.get('effectFamilyMap', true).catch(() => null),
         window.storage.get('alchemySettings', true).catch(() => null),
         window.storage.get('craftDesigns', true).catch(() => null)
@@ -137,6 +141,7 @@ export default function GURPSPartyTool() {
 
       setAlchemyFormulas(safeParse(formulasR?.value, []));
       setAlchemyBatches(safeParse(batchesR?.value, []));
+      setAlchemyLabs(safeParse(labsR?.value, [{ id: 'default', name: 'Basic Lab', rating: 0, description: 'Standard workspace' }]));
       setEffectFamilyMap(safeParse(effectMapR?.value, {}));
 
       // Load alchemy settings with identification toggle
@@ -227,6 +232,10 @@ export default function GURPSPartyTool() {
     setAlchemyBatches(d);
     debouncedStorageSave('alchemyBatches', d);
   }
+  async function saveAlchemyLabs(d) {
+    setAlchemyLabs(d);
+    debouncedStorageSave('alchemyLabs', d);
+  }
   async function saveEffectFamilyMap(d) {
     setEffectFamilyMap(d);
     debouncedStorageSave('effectFamilyMap', d);
@@ -304,8 +313,8 @@ export default function GURPSPartyTool() {
         {activeTab === 'inventory' && <InventoryTab materials={materials} foods={foods} foodTypes={foodTypes} materialTypes={materialTypes} saveMaterials={saveMaterials} saveFoods={saveFoods} />}
         {activeTab === 'cooking' && <CookingTab foods={foods} recipes={recipes} saveFoods={saveFoods} saveRecipes={saveRecipes} />}
         {activeTab === 'crafting' && <CraftingTab materials={materials} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materialTypes={materialTypes} workers={workers} saveMaterials={saveMaterials} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} />}
-        {activeTab === 'manager' && <ManagerTab foodTypes={foodTypes} materialTypes={materialTypes} workers={workers} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materials={materials} effectFamilyMap={effectFamilyMap} alchemySettings={alchemySettings} alchemyReagents={alchemyReagents} alchemyFormulas={alchemyFormulas} alchemyBatches={alchemyBatches} foods={foods} recipes={recipes} gmMode={gmMode} gmLockData={gmLockData} setGmMode={setGmMode} setGmLockData={setGmLockData} saveMaterials={saveMaterials} saveFoods={saveFoods} saveRecipes={saveRecipes} saveFoodTypes={saveFoodTypes} saveMaterialTypes={saveMaterialTypes} saveWorkers={saveWorkers} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} saveCustomTemplates={saveCustomTemplates} saveEffectFamilyMap={saveEffectFamilyMap} saveAlchemySettings={saveAlchemySettings} saveAlchemyReagents={saveAlchemyReagents} saveAlchemyFormulas={saveAlchemyFormulas} saveAlchemyBatches={saveAlchemyBatches} renameMaterialType={renameMaterialType} />}
-        {activeTab === 'alchemy' && <AlchemyTab reagents={alchemyReagents} formulas={alchemyFormulas} batches={alchemyBatches} workers={workers} alchemySettings={alchemySettings} saveReagents={saveAlchemyReagents} saveFormulas={saveAlchemyFormulas} saveBatches={saveAlchemyBatches} />}
+        {activeTab === 'manager' && <ManagerTab foodTypes={foodTypes} materialTypes={materialTypes} workers={workers} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materials={materials} effectFamilyMap={effectFamilyMap} alchemySettings={alchemySettings} alchemyReagents={alchemyReagents} alchemyFormulas={alchemyFormulas} alchemyBatches={alchemyBatches} alchemyLabs={alchemyLabs} foods={foods} recipes={recipes} gmMode={gmMode} gmLockData={gmLockData} setGmMode={setGmMode} setGmLockData={setGmLockData} saveMaterials={saveMaterials} saveFoods={saveFoods} saveRecipes={saveRecipes} saveFoodTypes={saveFoodTypes} saveMaterialTypes={saveMaterialTypes} saveWorkers={saveWorkers} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} saveCustomTemplates={saveCustomTemplates} saveEffectFamilyMap={saveEffectFamilyMap} saveAlchemySettings={saveAlchemySettings} saveAlchemyReagents={saveAlchemyReagents} saveAlchemyFormulas={saveAlchemyFormulas} saveAlchemyBatches={saveAlchemyBatches} saveAlchemyLabs={saveAlchemyLabs} renameMaterialType={renameMaterialType} />}
+        {activeTab === 'alchemy' && <AlchemyTab reagents={alchemyReagents} formulas={alchemyFormulas} batches={alchemyBatches} labs={alchemyLabs} workers={workers} alchemySettings={alchemySettings} saveReagents={saveAlchemyReagents} saveFormulas={saveAlchemyFormulas} saveBatches={saveAlchemyBatches} saveLabs={saveAlchemyLabs} />}
         {activeTab === 'changelog' && <ChangelogTab />}
       </div>
     </div>

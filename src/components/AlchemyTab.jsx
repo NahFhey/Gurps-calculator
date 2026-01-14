@@ -6,7 +6,7 @@ import { TallyWorksheetView } from './alchemy/TallyWorksheetView';
 import { AnalysisView } from './alchemy/AnalysisView';
 import { ConcentrationRefinementView } from './alchemy/ConcentrationRefinementView';
 
-export function AlchemyTab({ reagents, formulas, batches, workers, alchemySettings, saveReagents, saveFormulas, saveBatches }) {
+export function AlchemyTab({ reagents, formulas, batches, labs, workers, alchemySettings, saveReagents, saveFormulas, saveBatches, saveLabs }) {
   const [view, setView] = useState('reagents');
 
   const activeCount = batches.filter(b => b.phase === 'brewing').length;
@@ -30,7 +30,7 @@ export function AlchemyTab({ reagents, formulas, batches, workers, alchemySettin
           onClick={() => setView('processing')}
           className={`px-4 py-2 ${view === 'processing' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}
         >
-          Concentration & Refinement
+          Processing
         </button>
         <button
           onClick={() => setView('formulas')}
@@ -54,7 +54,7 @@ export function AlchemyTab({ reagents, formulas, batches, workers, alchemySettin
 
       {view === 'reagents' && <ReagentsView reagents={reagents} alchemySettings={alchemySettings} />}
       {view === 'analysis' && <AnalysisView reagents={reagents} workers={workers} alchemySettings={alchemySettings} saveReagents={saveReagents} />}
-      {view === 'processing' && <ConcentrationRefinementView reagents={reagents} saveReagents={saveReagents} />}
+      {view === 'processing' && <ConcentrationRefinementView reagents={reagents} labs={labs} workers={workers} saveReagents={saveReagents} />}
       {view === 'formulas' && <FormulasView reagents={reagents} formulas={formulas} batches={batches} saveReagents={saveReagents} saveFormulas={saveFormulas} saveBatches={saveBatches} />}
       {view === 'batches' && <BatchesView batches={batches} workers={workers} formulas={formulas} reagents={reagents} saveBatches={saveBatches} saveFormulas={saveFormulas} saveReagents={saveReagents} />}
       {view === 'tally' && <TallyWorksheetView reagents={reagents} />}
