@@ -10,11 +10,11 @@ import { unlockGMData, mergeGM } from '../utils/exportImport';
 
 export function ManagerTab({
   foodTypes, materialTypes, workers, crafts, craftDesigns, customTemplates, materials,
-  effectFamilyMap, alchemySettings, alchemyReagents, alchemyFormulas, alchemyBatches,
+  effectFamilyMap, alchemySettings, alchemyReagents, alchemyFormulas, alchemyBatches, alchemyLabs,
   foods, recipes, gmMode, gmLockData, setGmMode, setGmLockData,
   saveMaterials, saveFoods, saveRecipes, saveFoodTypes, saveMaterialTypes, saveWorkers,
   saveCrafts, saveCraftDesigns, saveCustomTemplates, saveEffectFamilyMap,
-  saveAlchemySettings, saveAlchemyReagents, saveAlchemyFormulas, saveAlchemyBatches,
+  saveAlchemySettings, saveAlchemyReagents, saveAlchemyFormulas, saveAlchemyBatches, saveAlchemyLabs,
   renameMaterialType
 }) {
   const [view, setView] = useState('foodTypes');
@@ -50,6 +50,11 @@ export function ManagerTab({
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [expanded, setExpanded] = useState({});
   const [draftMatTypeName, setDraftMatTypeName] = useState({});
+
+  // Lab management state
+  const [newLabName, setNewLabName] = useState('');
+  const [newLabRating, setNewLabRating] = useState('0');
+  const [newLabDescription, setNewLabDescription] = useState('');
 
   const [newTypeColor, setNewTypeColor] = useState('#60A5FA');
 
@@ -135,6 +140,7 @@ export function ManagerTab({
     if (importedState.alchemyReagents) saveAlchemyReagents(importedState.alchemyReagents);
     if (importedState.alchemyFormulas) saveAlchemyFormulas(importedState.alchemyFormulas);
     if (importedState.alchemyBatches) saveAlchemyBatches(importedState.alchemyBatches);
+    if (importedState.alchemyLabs) saveAlchemyLabs(importedState.alchemyLabs);
     if (importedState.effectFamilyMap) saveEffectFamilyMap(importedState.effectFamilyMap);
     if (importedState.alchemySettings) saveAlchemySettings(importedState.alchemySettings);
   };
@@ -369,13 +375,14 @@ export function ManagerTab({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-800 p-6 rounded-lg max-w-md border-2 border-gray-600">
             <h3 className="text-xl font-bold mb-4">Confirm Delete</h3>
-            <p className="mb-6">{deleteConfirm.type === 'foodType' ? `Delete type "${deleteConfirm.value}"?` : deleteConfirm.type === 'materialType' ? `Delete type "${deleteConfirm.value}"?` : deleteConfirm.type === 'worker' ? `Delete worker "${deleteConfirm.value}"?` : deleteConfirm.type === 'project' ? `Delete project "${deleteConfirm.name}"?` : deleteConfirm.type === 'reagent' ? `Delete reagent "${deleteConfirm.name}"?` : deleteConfirm.type === 'formula' ? `Delete formula "${deleteConfirm.name}"?` : `Delete template "${deleteConfirm.name}"?`}</p>
+            <p className="mb-6">{deleteConfirm.type === 'foodType' ? `Delete type "${deleteConfirm.value}"?` : deleteConfirm.type === 'materialType' ? `Delete type "${deleteConfirm.value}"?` : deleteConfirm.type === 'worker' ? `Delete worker "${deleteConfirm.value}"?` : deleteConfirm.type === 'lab' ? `Delete lab "${deleteConfirm.value}"?` : deleteConfirm.type === 'project' ? `Delete project "${deleteConfirm.name}"?` : deleteConfirm.type === 'reagent' ? `Delete reagent "${deleteConfirm.name}"?` : deleteConfirm.type === 'formula' ? `Delete formula "${deleteConfirm.name}"?` : `Delete template "${deleteConfirm.name}"?`}</p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 bg-gray-600 rounded">Cancel</button>
               <button onClick={() => {
                 if (deleteConfirm.type === 'foodType') saveFoodTypes(foodTypes.filter(t => t !== deleteConfirm.value));
                 else if (deleteConfirm.type === 'materialType') saveMaterialTypes(materialTypes.filter(t => t.name !== deleteConfirm.value));
                 else if (deleteConfirm.type === 'worker') saveWorkers(workers.filter(w => w.id !== deleteConfirm.id));
+                else if (deleteConfirm.type === 'lab') saveAlchemyLabs(alchemyLabs.filter(l => l.id !== deleteConfirm.id));
                 else if (deleteConfirm.type === 'reagent') saveAlchemyReagents((alchemyReagents || []).filter(r => r.id !== deleteConfirm.id));
                 else if (deleteConfirm.type === 'formula') saveAlchemyFormulas(alchemyFormulas.filter(f => f.id !== deleteConfirm.id));
                 else if (deleteConfirm.type === 'project') {
@@ -406,6 +413,7 @@ export function ManagerTab({
         <button onClick={() => setView('foodTypes')} className={`px-4 py-2 ${view === 'foodTypes' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Food Types</button>
         <button onClick={() => setView('materialTypes')} className={`px-4 py-2 ${view === 'materialTypes' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Material Types</button>
         <button onClick={() => setView('workers')} className={`px-4 py-2 ${view === 'workers' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Workers</button>
+        <button onClick={() => setView('labs')} className={`px-4 py-2 ${view === 'labs' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Labs</button>
         <button onClick={() => setView('projects')} className={`px-4 py-2 ${view === 'projects' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Projects</button>
         <button onClick={() => setView('templates')} className={`px-4 py-2 ${view === 'templates' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Templates</button>
         <button onClick={() => setView('reagents')} className={`px-4 py-2 ${view === 'reagents' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Reagents</button>
@@ -419,7 +427,7 @@ export function ManagerTab({
           state={{
             materials, foods, recipes, foodTypes, materialTypes, workers,
             customTemplates, craftDesigns, crafts,
-            alchemyReagents, alchemyFormulas, alchemyBatches,
+            alchemyReagents, alchemyFormulas, alchemyBatches, alchemyLabs,
             effectFamilyMap, alchemySettings
           }}
           gmMode={gmMode}
@@ -808,6 +816,137 @@ export function ManagerTab({
                       className="w-full bg-red-600 py-2 rounded text-sm"
                     >
                       <Trash2 size={16} className="inline" /> Delete Worker
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {view === 'labs' && (
+        <div>
+          <div className="flex justify-between mb-4">
+            <h2 className="text-xl font-bold">Alchemy Labs</h2>
+            <button onClick={() => setShowAdd(!showAdd)} className="bg-green-600 px-4 py-2 rounded"><Plus size={20} className="inline" /> Add</button>
+          </div>
+          {showAdd && (
+            <div className="bg-gray-700 p-4 rounded mb-4 space-y-3">
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Lab Name</label>
+                <input
+                  value={newLabName}
+                  onChange={(e) => setNewLabName(e.target.value)}
+                  placeholder="Lab name (e.g., 'Master's Workshop')"
+                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Lab Rating (0-4)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="4"
+                  value={newLabRating}
+                  onChange={(e) => setNewLabRating(e.target.value)}
+                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                />
+                <p className="text-xs text-gray-500 mt-1">Higher rating = better equipment, reduces processing difficulty</p>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Description (optional)</label>
+                <textarea
+                  value={newLabDescription}
+                  onChange={(e) => setNewLabDescription(e.target.value)}
+                  placeholder="Lab description or notes..."
+                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                  rows="2"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => {
+                  if (!newLabName.trim()) { alert('Enter a lab name'); return; }
+                  if (alchemyLabs.some(l => l.name === newLabName.trim())) { alert('Duplicate lab name'); return; }
+                  const rating = Math.max(0, Math.min(4, toNumberOr(newLabRating, 0)));
+                  const newLab = {
+                    id: crypto.randomUUID(),
+                    name: newLabName.trim(),
+                    rating: rating,
+                    description: newLabDescription.trim()
+                  };
+                  saveAlchemyLabs([...alchemyLabs, newLab]);
+                  setNewLabName('');
+                  setNewLabRating('0');
+                  setNewLabDescription('');
+                  setShowAdd(false);
+                }} className="flex-1 bg-green-600 px-4 py-2 rounded"><Save size={20} className="inline" /> Save</button>
+                <button onClick={() => {
+                  setShowAdd(false);
+                  setNewLabName('');
+                  setNewLabRating('0');
+                  setNewLabDescription('');
+                }} className="bg-red-600 px-4 py-2 rounded"><X size={20} /></button>
+              </div>
+            </div>
+          )}
+          <div className="space-y-2">
+            {alchemyLabs.map(lab => (
+              <div key={lab.id} className="bg-gray-700 rounded">
+                <div
+                  className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-600"
+                  onClick={() => setExpanded(p => ({...p, [lab.id]: !p[lab.id]}))}
+                >
+                  <span className="flex-1 font-semibold">{lab.name}</span>
+                  <span className="text-sm px-2 py-1 bg-blue-600 rounded">Rating {lab.rating}</span>
+                  <span className="text-xs text-gray-400">+{lab.rating} to processing skill</span>
+                  <span className="text-gray-400">{expanded[lab.id] ? '▼' : '▶'}</span>
+                </div>
+                {expanded[lab.id] && (
+                  <div className="px-3 pb-3 space-y-3 border-t border-gray-600 pt-3">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Lab Name</label>
+                      <input
+                        value={lab.name}
+                        onChange={(e) => {
+                          const newName = e.target.value;
+                          if (alchemyLabs.some(x => x.name === newName && x.id !== lab.id)) { alert('Duplicate name'); return; }
+                          saveAlchemyLabs(alchemyLabs.map(x => x.id === lab.id ? {...x, name: newName} : x));
+                        }}
+                        className="w-full bg-gray-600 px-3 py-2 rounded"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Lab Rating (0-4)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="4"
+                        value={lab.rating}
+                        onChange={(e) => {
+                          const rating = Math.max(0, Math.min(4, toNumberOr(e.target.value, 0)));
+                          saveAlchemyLabs(alchemyLabs.map(x => x.id === lab.id ? {...x, rating} : x));
+                        }}
+                        className="w-full bg-gray-600 px-3 py-2 rounded"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Current bonus: +{lab.rating} to Alchemy skill during processing</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Description</label>
+                      <textarea
+                        value={lab.description || ''}
+                        onChange={(e) => {
+                          saveAlchemyLabs(alchemyLabs.map(x => x.id === lab.id ? {...x, description: e.target.value} : x));
+                        }}
+                        className="w-full bg-gray-600 px-3 py-2 rounded"
+                        rows="2"
+                      />
+                    </div>
+                    <button
+                      onClick={() => setDeleteConfirm({type: 'lab', value: lab.name, id: lab.id})}
+                      className="w-full bg-red-600 py-2 rounded text-sm"
+                    >
+                      <Trash2 size={16} className="inline" /> Delete Lab
                     </button>
                   </div>
                 )}
