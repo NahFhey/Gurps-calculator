@@ -780,17 +780,26 @@ export function BatchesView({ batches, workers, formulas, reagents, labs, saveBa
 
           <div>
             <h3 className="font-semibold mb-2">Active Batches ({activeBatches.length})</h3>
-            {activeBatches.map(b => (
-              <div key={b.id} className="bg-gray-700 p-3 rounded mb-2 cursor-pointer hover:bg-gray-600" onClick={() => setSelectedBatch(b)}>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">{b.formulaName}</span>
-                  <span className="text-sm text-gray-400">{b.PP}/{b.WR} PP | CP: {b.CP}</span>
+            {activeBatches.map(b => {
+              const progressPercent = Math.min(100, (b.PP / b.WR) * 100);
+              return (
+                <div key={b.id} className="bg-gray-700 p-3 rounded mb-2 cursor-pointer hover:bg-gray-600" onClick={() => setSelectedBatch(b)}>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">{b.formulaName}</span>
+                    <span className="text-sm text-gray-400">{b.PP}/{b.WR} PP | CP: {b.CP}</span>
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1 mb-2">
+                    Tier {b.tier || 1} | {b.vector || 'Potion'} | {b.dominantAspect} | Potency {b.finalPotency || b.potency || 'P1'} | {b.shifts.length} work blocks
+                  </div>
+                  <div className="w-full bg-gray-600 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{width: `${progressPercent}%`}}
+                    />
+                  </div>
                 </div>
-                <div className="text-xs text-gray-400 mt-1">
-                  Tier {b.tier || 1} | {b.vector || 'Potion'} | {b.dominantAspect} | Potency {b.finalPotency || b.potency || 'P1'} | {b.shifts.length} work blocks
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {activeBatches.length === 0 && (
               <div className="text-gray-500 text-center py-4">No active batches</div>
             )}

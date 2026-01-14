@@ -499,12 +499,35 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                 };
                 const phaseStyle = phaseStyles[c.phase] || phaseStyles.setup;
 
+                // Calculate progress
+                const designTime = 2 * finalHP;
+                const craftTime = finalHP;
+                const progress = (c.shifts || []).reduce((sum, s) => sum + (s.hoursAdded || 0), 0);
+                const designProgress = (c.designShifts || []).reduce((sum, s) => sum + (s.hoursAdded || 0), 0);
+
+                let targetHours = 0;
+                let currentProgress = 0;
+                if (c.phase === 'design') {
+                  targetHours = designTime;
+                  currentProgress = progress;
+                } else if (c.phase === 'craft') {
+                  targetHours = craftTime;
+                  currentProgress = progress;
+                } else {
+                  targetHours = 1;
+                  currentProgress = 0;
+                }
+                const progressPercent = targetHours > 0 ? Math.min(100, (currentProgress / targetHours) * 100) : 0;
+
                 return (
                   <div key={c.id} className={`${phaseStyle.bg} border ${phaseStyle.border} rounded p-4`}>
                     <div className="flex items-center justify-between mb-2">
-                      <div>
+                      <div className="flex-1">
                         <h3 className="font-semibold text-lg capitalize">{c.name || `${c.currentQuality} ${c.template}`}</h3>
                         <div className="text-sm text-gray-400">Phase: <span className={phaseStyle.text}>{c.phase}</span> | Started: {c.startDate || 'unknown'} {c.startDay && <span className="text-green-400">[Day {c.startDay}]</span>}</div>
+                        {c.phase !== 'setup' && (
+                          <div className="text-xs text-gray-400 mt-1">Progress: {currentProgress}/{targetHours}h ({Math.round(progressPercent)}%)</div>
+                        )}
                       </div>
                       <button onClick={() => {
                         setCurrent(c);
@@ -521,9 +544,18 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                       }} className="bg-blue-600 px-4 py-2 rounded">Resume</button>
                     </div>
                     <div className="text-sm text-gray-400">Materials: {materialList}</div>
-                    <div className="text-sm text-gray-400">W: {finalWeight} lbs | HP: {finalHP} | HT: {avgHT + q.htBonus}</div>
+                    <div className="text-sm text-gray-400 mb-2">W: {finalWeight} lbs | HP: {finalHP} | HT: {avgHT + q.htBonus}</div>
+                    {c.phase !== 'setup' && (
+                      <div className="w-full bg-gray-600 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full transition-all duration-300 ${phaseStyle.text === 'text-purple-400' ? 'bg-purple-600' : 'bg-green-600'}`}
+                          style={{width: `${progressPercent}%`}}
+                        />
+                      </div>
+                    )}
                   </div>
                 );
+
               })}
               {crafts.filter(c => !c.completed).length === 0 && (
                 <div className="text-gray-500 italic">No in-progress projects</div>
