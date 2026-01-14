@@ -975,7 +975,8 @@ export function calculateProcessingDifficulty(params) {
     targetPotency,
     outputUnits,
     alchemySkill,
-    labRating
+    labRating,
+    cumulativeBatchPenalty // Optional: if provided, overrides calculated batch size penalty
   } = params;
 
   let processStepDM = 0;
@@ -994,14 +995,20 @@ export function calculateProcessingDifficulty(params) {
   }
 
   // Batch Size Penalty
-  if (operation === 'refine') {
-    if (currentRefinement === 'crude' && targetRefinement === 'prepared') {
-      batchSizePenalty = -1 * outputUnits;
-    } else if (currentRefinement === 'prepared' && targetRefinement === 'refined') {
+  if (cumulativeBatchPenalty !== undefined) {
+    // Use cumulative penalty if provided (for unit-by-unit processing)
+    batchSizePenalty = cumulativeBatchPenalty;
+  } else {
+    // Use legacy calculation based on output units (for backwards compatibility)
+    if (operation === 'refine') {
+      if (currentRefinement === 'crude' && targetRefinement === 'prepared') {
+        batchSizePenalty = -1 * outputUnits;
+      } else if (currentRefinement === 'prepared' && targetRefinement === 'refined') {
+        batchSizePenalty = -2 * outputUnits;
+      }
+    } else if (operation === 'concentrate') {
       batchSizePenalty = -2 * outputUnits;
     }
-  } else if (operation === 'concentrate') {
-    batchSizePenalty = -2 * outputUnits;
   }
 
   // Potency Control Penalty

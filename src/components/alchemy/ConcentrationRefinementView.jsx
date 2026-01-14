@@ -20,7 +20,12 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
   const [outputUnits, setOutputUnits] = useState(1);
   const [selectedLabId, setSelectedLabId] = useState(labs?.[0]?.id || 'default');
   const [selectedWorkerId, setSelectedWorkerId] = useState(workers?.[0]?.id || '1');
-  const [roll, setRoll] = useState('');
+
+  // Processing state
+  const [processingState, setProcessingState] = useState('idle'); // 'idle', 'processing', 'completed', 'aborted'
+  const [currentUnitIndex, setCurrentUnitIndex] = useState(0);
+  const [currentRoll, setCurrentRoll] = useState('');
+  const [unitResults, setUnitResults] = useState([]);
   const [processingLog, setProcessingLog] = useState([]);
   const [showResults, setShowResults] = useState(false);
 
@@ -77,29 +82,91 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
       return;
     }
 
-    if (!roll) {
-      alert('Please enter or roll a 3d6 result');
+    // Initialize processing state
+    setProcessingState('processing');
+    setCurrentUnitIndex(0);
+    setCurrentRoll('');
+    setUnitResults([]);
+    setProcessingLog([]);
+    setShowResults(true);
+  }
+
+  function processCurrentUnit() {
+    if (!currentRoll) {
+      alert('Please enter or roll a 3d6 result for this unit');
       return;
     }
 
-    setProcessingLog([]);
-    setShowResults(false);
+    const rollValue = parseInt(currentRoll);
+    const unitNumber = currentUnitIndex + 1;
 
-    // Process each output unit sequentially
-    const results = [];
+    // Calculate cumulative batch penalty for this unit
+    const cumulativeBatchPenalty = -unitNumber;
+
+    // Recalculate difficulty with cumulative penalty
+    const currentRefinement = selectedReagent.refinement || 'crude';
+    const currentPotency = selectedReagent.basePotency || 'P1';
+
+    const unitDifficulty = calculateProcessingDifficulty({
+      operation,
+      currentRefinement,
+      targetRefinement,
+      inputPotency: currentPotency,
+      targetPotency: targetPotency,
+      outputUnits: 1, // Calculate for single unit
+      alchemySkill: selectedWorker.skills.alchemy,
+      labRating: selectedLab.rating,
+      cumulativeBatchPenalty
+    });
+
+    // Get current hazards from all previous successful outputs
+    const accumulatedHazards = unitResults
+      .filter(r => r.outputProduced)
+      .flatMap(r => r.hazardAdded ? [r.hazardAdded] : []);
+    const outputHazards = [...(selectedReagent.hazards || []), ...accumulatedHazards];
+
+    // Evaluate result
+    const result = evaluateProcessingResult(rollValue, unitDifficulty.effectiveSkill, outputHazards);
+
+    // Store result
+    const unitResult = {
+      attemptNumber: unitNumber,
+      roll: rollValue,
+      effectiveSkill: unitDifficulty.effectiveSkill,
+      batchPenalty: cumulativeBatchPenalty,
+      ...result
+    };
+
+    const newResults = [...unitResults, unitResult];
+    setUnitResults(newResults);
+    setProcessingLog(prev => [...prev, unitResult]);
+
+    // Check if this was the last unit
+    if (currentUnitIndex + 1 >= outputUnits) {
+      // Processing complete
+      setProcessingState('completed');
+      applyProcessingResults(newResults);
+    } else {
+      // Move to next unit
+      setCurrentUnitIndex(currentUnitIndex + 1);
+      setCurrentRoll('');
+    }
+  }
+
+  function abortProcessing() {
+    setProcessingState('aborted');
+    // Apply partial results and reclaim remaining ingredients
+    applyProcessingResults(unitResults, true);
+  }
+
+  function applyProcessingResults(results, isAborted = false) {
+    // Calculate totals from results
     let inputConsumed = 0;
     let outputProduced = 0;
     const outputHazards = [...(selectedReagent.hazards || [])];
 
-    for (let i = 0; i < outputUnits; i++) {
-      // Use the roll value for all attempts in this batch
-      const rollValue = parseInt(roll) || 10;
-
-      // Evaluate result
-      const result = evaluateProcessingResult(rollValue, difficultyCalc.effectiveSkill, outputHazards);
-
-      // Update counters
-      inputConsumed += 2; // Always consume 2U input per attempt
+    for (const result of results) {
+      inputConsumed += 2; // Always consume 2U per attempt
 
       if (result.outputProduced) {
         outputProduced += 1;
@@ -110,22 +177,8 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
           inputConsumed -= 1; // Critical success reclaims 1U
         }
       }
-
-      results.push({
-        attemptNumber: i + 1,
-        roll,
-        ...result
-      });
     }
 
-    setProcessingLog(results);
-    setShowResults(true);
-
-    // Apply results to reagents
-    applyProcessingResults(results, inputConsumed, outputProduced, outputHazards);
-  }
-
-  function applyProcessingResults(results, inputConsumed, outputProduced, outputHazards) {
     if (outputProduced === 0) {
       // No output, just reduce input reagent
       const updatedReagents = reagents.map(r => {
@@ -170,6 +223,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
       outputUnits: outputProduced,
       worker: selectedWorker.name,
       lab: selectedLab.name,
+      aborted: isAborted,
       results: results.map(r => ({
         attempt: r.attemptNumber,
         roll: r.roll,
@@ -247,26 +301,6 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
           Process reagents through refinement or concentration. Each operation requires Alchemy rolls and consumes 2U input per 1U output.
         </p>
 
-        {/* Roll Input */}
-        <div className="mb-4">
-          <label className="block text-sm text-gray-400 mb-2">Roll Result</label>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              value={roll}
-              onChange={(e) => setRoll(e.target.value)}
-              placeholder="3-18"
-              min="3"
-              max="18"
-              className="flex-1 bg-gray-700 px-3 py-2 rounded"
-            />
-            <DiceRoller onRoll={(total) => setRoll(String(total))} />
-          </div>
-          <p className="text-xs text-gray-500 mt-1">
-            This roll will be used for all {outputUnits} output unit attempt{outputUnits !== 1 ? 's' : ''}
-          </p>
-        </div>
-
         {/* Selection Grid */}
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
@@ -275,6 +309,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
               value={selectedReagentId || ''}
               onChange={(e) => setSelectedReagentId(e.target.value)}
               className="w-full bg-gray-700 px-3 py-2 rounded"
+              disabled={processingState !== 'idle'}
             >
               <option value="">-- Choose Reagent --</option>
               {reagents.filter(r => r.quantity > 0).map(r => (
@@ -291,6 +326,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
               value={operation}
               onChange={(e) => setOperation(e.target.value)}
               className="w-full bg-gray-700 px-3 py-2 rounded"
+              disabled={processingState !== 'idle'}
             >
               <option value="refine">Refine (Improve Quality)</option>
               <option value="concentrate">Concentrate (Increase Potency)</option>
@@ -306,6 +342,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
               value={selectedLabId}
               onChange={(e) => setSelectedLabId(e.target.value)}
               className="w-full bg-gray-700 px-3 py-2 rounded"
+              disabled={processingState !== 'idle'}
             >
               {(labs || [{ id: 'default', name: 'Basic Lab', rating: 0 }]).map(lab => (
                 <option key={lab.id} value={lab.id}>
@@ -321,6 +358,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
               value={selectedWorkerId}
               onChange={(e) => setSelectedWorkerId(e.target.value)}
               className="w-full bg-gray-700 px-3 py-2 rounded"
+              disabled={processingState !== 'idle'}
             >
               {workers.map(w => (
                 <option key={w.id} value={w.id}>
@@ -340,9 +378,10 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
             onChange={(e) => setOutputUnits(Math.max(1, parseInt(e.target.value) || 1))}
             className="w-full bg-gray-700 px-3 py-2 rounded"
             min="1"
+            disabled={processingState !== 'idle'}
           />
           <p className="text-xs text-gray-500 mt-1">
-            Requires {inputUnitsRequired}U input (2:1 ratio). Each attempt needs a separate roll.
+            Requires {inputUnitsRequired}U input (2:1 ratio). Each unit gets cumulative batch penalty (-1, -2, -3, etc.).
           </p>
         </div>
 
@@ -407,63 +446,230 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
           </div>
         )}
 
-        {/* Difficulty Display */}
-        {difficultyCalc && canProcess && (
-          <div className="bg-gray-700 p-4 rounded mb-4">
-            <h4 className="text-lg font-semibold mb-2">Processing Difficulty</h4>
-            <div className="grid grid-cols-2 gap-3 text-sm mb-2">
-              <div>
-                <span className="text-gray-400">Base Skill:</span>
-                <span className="ml-2 font-semibold text-blue-400">{difficultyCalc.alchemySkill}</span>
+        {/* Difficulty Display - Initial Preview */}
+        {difficultyCalc && canProcess && processingState === 'idle' && (() => {
+          const firstUnitDifficulty = calculateProcessingDifficulty({
+            operation,
+            currentRefinement: selectedReagent.refinement || 'crude',
+            targetRefinement,
+            inputPotency: selectedReagent.basePotency || 'P1',
+            targetPotency: targetPotency,
+            outputUnits: 1,
+            alchemySkill: selectedWorker.skills.alchemy,
+            labRating: selectedLab.rating,
+            cumulativeBatchPenalty: -1
+          });
+
+          return (
+            <div className="bg-gray-700 p-4 rounded mb-4">
+              <h4 className="text-lg font-semibold mb-2">
+                Processing Difficulty Preview
+                <span className="text-xs text-gray-400 ml-2 font-normal">(First Unit)</span>
+              </h4>
+              <div className="grid grid-cols-2 gap-3 text-sm mb-2">
+                <div>
+                  <span className="text-gray-400">Base Skill:</span>
+                  <span className="ml-2 font-semibold text-blue-400">{firstUnitDifficulty.alchemySkill}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Lab Rating:</span>
+                  <span className="ml-2 font-semibold text-green-400">+{firstUnitDifficulty.labRating}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Process Step:</span>
+                  <span className="ml-2 font-semibold text-orange-400">{firstUnitDifficulty.processStepDM}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Batch Penalty (1st):</span>
+                  <span className="ml-2 font-semibold text-yellow-400">{firstUnitDifficulty.batchSizePenalty}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Potency Control:</span>
+                  <span className="ml-2 font-semibold text-purple-400">{firstUnitDifficulty.potencyControlPenalty}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Effective Skill:</span>
+                  <span className="ml-2 font-bold text-cyan-400">{firstUnitDifficulty.effectiveSkill}</span>
+                </div>
               </div>
-              <div>
-                <span className="text-gray-400">Lab Rating:</span>
-                <span className="ml-2 font-semibold text-green-400">+{difficultyCalc.labRating}</span>
-              </div>
-              <div>
-                <span className="text-gray-400">Process Step:</span>
-                <span className="ml-2 font-semibold text-orange-400">{difficultyCalc.processStepDM}</span>
-              </div>
-              <div>
-                <span className="text-gray-400">Batch Size:</span>
-                <span className="ml-2 font-semibold text-yellow-400">{difficultyCalc.batchSizePenalty}</span>
-              </div>
-              <div>
-                <span className="text-gray-400">Potency Control:</span>
-                <span className="ml-2 font-semibold text-purple-400">{difficultyCalc.potencyControlPenalty}</span>
-              </div>
-              <div>
-                <span className="text-gray-400">Effective Skill:</span>
-                <span className="ml-2 font-bold text-cyan-400">{difficultyCalc.effectiveSkill}</span>
-              </div>
+              <p className="text-xs mt-2 font-mono">
+                <span className="text-blue-400">{firstUnitDifficulty.alchemySkill}</span>
+                <span className="text-gray-400"> + </span>
+                <span className="text-green-400">{firstUnitDifficulty.labRating}</span>
+                <span className="text-gray-400"> + </span>
+                <span className="text-orange-400">{firstUnitDifficulty.processStepDM}</span>
+                <span className="text-gray-400"> + </span>
+                <span className="text-yellow-400">{firstUnitDifficulty.batchSizePenalty}</span>
+                <span className="text-gray-400"> + </span>
+                <span className="text-purple-400">{firstUnitDifficulty.potencyControlPenalty}</span>
+                <span className="text-gray-400"> = </span>
+                <span className="text-cyan-400 font-bold">{firstUnitDifficulty.effectiveSkill}</span>
+              </p>
+              {outputUnits > 1 && (
+                <p className="text-xs text-yellow-400 mt-2">
+                  ⚠ Cumulative penalty: Unit 2 = -2, Unit 3 = -3, etc.
+                </p>
+              )}
             </div>
-            <p className="text-xs mt-2 font-mono">
-              <span className="text-blue-400">{difficultyCalc.alchemySkill}</span>
-              <span className="text-gray-400"> + </span>
-              <span className="text-green-400">{difficultyCalc.labRating}</span>
-              <span className="text-gray-400"> + </span>
-              <span className="text-orange-400">{difficultyCalc.processStepDM}</span>
-              <span className="text-gray-400"> + </span>
-              <span className="text-yellow-400">{difficultyCalc.batchSizePenalty}</span>
-              <span className="text-gray-400"> + </span>
-              <span className="text-purple-400">{difficultyCalc.potencyControlPenalty}</span>
-              <span className="text-gray-400"> = </span>
-              <span className="text-cyan-400 font-bold">{difficultyCalc.effectiveSkill}</span>
-            </p>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Process Button */}
-        <button
-          onClick={startProcessing}
-          disabled={!canProcess || !roll}
-          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-4 py-2 rounded font-semibold"
-        >
-          {operation === 'refine' ? 'Refine Reagent' : 'Concentrate Reagent'}
-        </button>
+        {processingState === 'idle' && (
+          <button
+            onClick={startProcessing}
+            disabled={!canProcess}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-4 py-2 rounded font-semibold"
+          >
+            Start Processing
+          </button>
+        )}
       </div>
 
-      {/* Processing Results */}
+      {/* Visual Progress Bar */}
+      {(processingState === 'processing' || processingState === 'completed' || processingState === 'aborted') && (
+        <div className="bg-gray-800 p-4 rounded">
+          <div className="flex justify-between items-center mb-3">
+            <h4 className="text-lg font-semibold">Processing Progress</h4>
+            {processingState === 'completed' && (
+              <span className="text-green-400 font-semibold">✓ Complete</span>
+            )}
+            {processingState === 'aborted' && (
+              <span className="text-orange-400 font-semibold">⚠ Aborted</span>
+            )}
+          </div>
+
+          {/* Progress boxes */}
+          <div className="flex gap-2 mb-4 flex-wrap">
+            {Array.from({ length: outputUnits }, (_, i) => {
+              const result = unitResults[i];
+              let bgColor = 'bg-gray-700'; // Not processed yet
+              let borderColor = 'border-gray-600';
+
+              if (result) {
+                if (result.success && !result.minor) {
+                  bgColor = 'bg-green-600';
+                  borderColor = 'border-green-500';
+                } else if (result.minor) {
+                  bgColor = 'bg-yellow-600';
+                  borderColor = 'border-yellow-500';
+                } else {
+                  bgColor = 'bg-red-600';
+                  borderColor = 'border-red-500';
+                }
+              } else if (i === currentUnitIndex && processingState === 'processing') {
+                bgColor = 'bg-blue-600';
+                borderColor = 'border-blue-500';
+              }
+
+              return (
+                <div
+                  key={i}
+                  className={`w-12 h-12 ${bgColor} border-2 ${borderColor} rounded flex items-center justify-center font-bold text-sm`}
+                  title={result ? `Unit ${i + 1}: ${result.success ? 'Success' : 'Failure'}` : `Unit ${i + 1}: Pending`}
+                >
+                  {i + 1}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Reset Button for Completed/Aborted */}
+          {(processingState === 'completed' || processingState === 'aborted') && (
+            <button
+              onClick={() => {
+                setProcessingState('idle');
+                setCurrentUnitIndex(0);
+                setCurrentRoll('');
+                setUnitResults([]);
+                setProcessingLog([]);
+                setShowResults(false);
+              }}
+              className="w-full bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-semibold"
+            >
+              Start New Batch
+            </button>
+          )}
+
+          {/* Current Unit Roll Input */}
+          {processingState === 'processing' && (
+            <div className="bg-gray-700 p-4 rounded mb-4">
+              <h5 className="font-semibold mb-2">
+                Unit {currentUnitIndex + 1} of {outputUnits}
+                <span className="text-yellow-400 ml-2">(Batch Penalty: -{currentUnitIndex + 1})</span>
+              </h5>
+
+              {/* Show difficulty for current unit */}
+              {difficultyCalc && (() => {
+                const unitDifficulty = calculateProcessingDifficulty({
+                  operation,
+                  currentRefinement: selectedReagent.refinement || 'crude',
+                  targetRefinement,
+                  inputPotency: selectedReagent.basePotency || 'P1',
+                  targetPotency: targetPotency,
+                  outputUnits: 1,
+                  alchemySkill: selectedWorker.skills.alchemy,
+                  labRating: selectedLab.rating,
+                  cumulativeBatchPenalty: -(currentUnitIndex + 1)
+                });
+
+                return (
+                  <div className="mb-3 text-sm">
+                    <div className="text-gray-400">
+                      Effective Skill: <span className="text-cyan-400 font-semibold">{unitDifficulty.effectiveSkill}</span>
+                    </div>
+                    <div className="text-xs font-mono mt-1">
+                      <span className="text-blue-400">{unitDifficulty.alchemySkill}</span>
+                      <span className="text-gray-400"> + </span>
+                      <span className="text-green-400">{unitDifficulty.labRating}</span>
+                      <span className="text-gray-400"> + </span>
+                      <span className="text-orange-400">{unitDifficulty.processStepDM}</span>
+                      <span className="text-gray-400"> + </span>
+                      <span className="text-yellow-400">{unitDifficulty.batchSizePenalty}</span>
+                      <span className="text-gray-400"> + </span>
+                      <span className="text-purple-400">{unitDifficulty.potencyControlPenalty}</span>
+                      <span className="text-gray-400"> = </span>
+                      <span className="text-cyan-400 font-bold">{unitDifficulty.effectiveSkill}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <label className="block text-sm text-gray-400 mb-2">Roll Result (3d6)</label>
+              <div className="flex items-center gap-2 mb-3">
+                <input
+                  type="number"
+                  value={currentRoll}
+                  onChange={(e) => setCurrentRoll(e.target.value)}
+                  placeholder="3-18"
+                  min="3"
+                  max="18"
+                  className="flex-1 bg-gray-600 px-3 py-2 rounded"
+                />
+                <DiceRoller onRoll={(total) => setCurrentRoll(String(total))} />
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={processCurrentUnit}
+                  disabled={!currentRoll}
+                  className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-4 py-2 rounded font-semibold"
+                >
+                  Process Unit {currentUnitIndex + 1}
+                </button>
+                <button
+                  onClick={abortProcessing}
+                  className="flex-1 bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-semibold"
+                >
+                  Abort Batch
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Processing Results Log */}
       {showResults && processingLog.length > 0 && (
         <div className="bg-gray-800 p-4 rounded">
           <h4 className="text-lg font-semibold mb-3">Processing Results</h4>
@@ -473,19 +679,24 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
                 key={idx}
                 className={`p-3 rounded ${
                   result.critical && result.success
-                    ? 'bg-green-900'
+                    ? 'bg-green-900 border-2 border-green-500'
                     : result.critical && !result.success
-                    ? 'bg-red-900'
+                    ? 'bg-red-900 border-2 border-red-500'
                     : result.minor
-                    ? 'bg-yellow-900'
+                    ? 'bg-yellow-900 border-2 border-yellow-500'
                     : result.success
-                    ? 'bg-green-800'
-                    : 'bg-red-800'
+                    ? 'bg-green-800 border border-green-600'
+                    : 'bg-red-800 border border-red-600'
                 }`}
               >
                 <div className="flex justify-between items-start">
-                  <span className="font-semibold">Attempt {result.attemptNumber}</span>
-                  <span className="text-sm">Roll: {result.roll}</span>
+                  <span className="font-semibold">
+                    Unit {result.attemptNumber}
+                    {result.batchPenalty && (
+                      <span className="text-xs text-yellow-400 ml-2">(Penalty: {result.batchPenalty})</span>
+                    )}
+                  </span>
+                  <span className="text-sm">Roll: {result.roll} vs {result.effectiveSkill}</span>
                 </div>
                 <p className="text-sm mt-1">{result.message}</p>
                 {result.hazardAdded && (
