@@ -1,227 +1,93 @@
 import React, { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
-import { ASPECTS, POTENCY_LEVELS, INGREDIENT_ROLES, HAZARD_TAGS } from '../../constants';
-import { toNumberOr } from '../../utils/helpers';
 import { getReagentAspectPoints } from '../../utils/alchemy';
 
-export function ReagentsView({ reagents, saveReagents }) {
-  const [showAdd, setShowAdd] = useState(false);
+export function ReagentsView({ reagents, alchemySettings }) {
   const [expanded, setExpanded] = useState({});
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
-  const [newName, setNewName] = useState('');
-  const [newPrimary, setNewPrimary] = useState('Water');
-  const [newSecondary, setNewSecondary] = useState('Air');
-  const [newTertiary, setNewTertiary] = useState('Fire');
-  const [newQuantity, setNewQuantity] = useState('10');
-  const [newBasePotency, setNewBasePotency] = useState('P1');
-  const [newPrimaryRole, setNewPrimaryRole] = useState('Active');
-  const [newRoles, setNewRoles] = useState(['Active']);
-  const [newHazards, setNewHazards] = useState([]);
-  const [newProcessingNotes, setNewProcessingNotes] = useState('');
+  const levelNames = ['Unidentified', 'Partial', 'Basic', 'Complete', 'Full'];
+  const showObviousRoles = alchemySettings?.showObviousRoles !== false;
+  const physicalRoles = ['Solvent', 'Binder', 'Tool'];
 
-  function addReagent() {
-    if (!newName.trim() || !newQuantity) {
-      alert('Enter name and quantity');
-      return;
-    }
+  function getVisibleInfo(reagent) {
+    const level = reagent.identificationLevel || 0;
+    const profile = reagent.falseProfile || reagent;
 
-    const newReagent = {
-      id: crypto.randomUUID(),
-      name: newName.trim(),
-      aspects: {
-        primary: newPrimary,
-        secondary: newSecondary,
-        tertiary: newTertiary
-      },
-      refinement: 'crude',
-      basePotency: newBasePotency,
-      concentrationSteps: 0,
-      primaryRole: newPrimaryRole,
-      roles: [...newRoles],
-      hazards: [...newHazards],
-      processingNotes: newProcessingNotes,
-      quantity: Math.max(0, toNumberOr(newQuantity, 0))
+    const visible = {
+      name: reagent.name,
+      quantity: reagent.quantity,
+      identificationLevel: level,
+      hasFalseProfile: !!reagent.falseProfile
     };
 
-    saveReagents([...reagents, newReagent]);
-    setNewName('');
-    setNewQuantity('10');
-    setNewBasePotency('P1');
-    setNewPrimaryRole('Active');
-    setNewRoles(['Active']);
-    setNewHazards([]);
-    setNewProcessingNotes('');
-    setShowAdd(false);
-  }
-
-  function toggleRole(role, currentRoles) {
-    if (currentRoles.includes(role)) {
-      return currentRoles.filter(r => r !== role);
-    } else {
-      return [...currentRoles, role];
+    // Show physical roles if setting enabled
+    if (showObviousRoles && reagent.roles) {
+      visible.physicalRoles = reagent.roles.filter(r => physicalRoles.includes(r));
     }
-  }
 
-  function toggleHazard(hazard, currentHazards) {
-    if (currentHazards.includes(hazard)) {
-      return currentHazards.filter(h => h !== hazard);
-    } else {
-      return [...currentHazards, hazard];
+    // Level 1+: Primary Aspect
+    if (level >= 1) {
+      visible.primaryAspect = profile.aspects?.primary;
     }
+
+    // Level 2+: Secondary Aspect
+    if (level >= 2) {
+      visible.secondaryAspect = profile.aspects?.secondary;
+    }
+
+    // Level 3+: Tertiary Aspect
+    if (level >= 3) {
+      visible.tertiaryAspect = profile.aspects?.tertiary;
+    }
+
+    // Level 4: Full Profile
+    if (level >= 4) {
+      visible.basePotency = profile.basePotency;
+      visible.concentrationSteps = profile.concentrationSteps || 0;
+      visible.refinement = profile.refinement;
+      visible.roles = profile.roles;
+      visible.primaryRole = profile.primaryRole;
+      visible.hazards = profile.hazards || [];
+      visible.processingNotes = profile.processingNotes;
+    }
+
+    return visible;
   }
 
   function getFinalPotency(basePotency, concentrationSteps) {
-    const baseLevel = POTENCY_LEVELS.indexOf(basePotency);
-    const final = Math.min(4, baseLevel + concentrationSteps);
-    return POTENCY_LEVELS[final];
+    const levels = ['P0', 'P1', 'P2', 'P3', 'P4'];
+    const baseLevel = levels.indexOf(basePotency || 'P1');
+    const final = Math.min(4, Math.max(0, baseLevel) + (concentrationSteps || 0));
+    return levels[final];
   }
 
   return (
     <div className="bg-gray-800 rounded-lg p-6">
-      {deleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg max-w-md">
-            <h3 className="text-xl font-bold mb-4">Confirm Delete</h3>
-            <p className="mb-6">Delete reagent "{deleteConfirm.name}"?</p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 bg-gray-600 rounded">Cancel</button>
-              <button onClick={() => {
-                saveReagents(reagents.filter(r => r.id !== deleteConfirm.id));
-                setDeleteConfirm(null);
-              }} className="px-4 py-2 bg-red-600 rounded">Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">Alchemy Reagents</h2>
-        <button onClick={() => setShowAdd(!showAdd)} className="flex items-center gap-2 bg-green-600 px-4 py-2 rounded">
-          <Plus size={20} /> Add Reagent
-        </button>
+        <div className="text-sm text-gray-400">
+          {reagents.length} reagent{reagents.length !== 1 ? 's' : ''} available
+        </div>
       </div>
 
-      {showAdd && (
-        <div className="bg-gray-700 p-4 rounded mb-4 space-y-3">
-          <div>
-            <label className="block text-sm mb-1">Reagent Name</label>
-            <input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className="w-full bg-gray-600 px-3 py-2 rounded"
-              placeholder="e.g., Lunar Moss"
-            />
-          </div>
+      <div className="mb-4 bg-blue-900 bg-opacity-30 border border-blue-500 p-3 rounded text-sm">
+        <div className="font-semibold mb-1">Information Display</div>
+        <div className="text-xs text-gray-300">
+          This view shows only <strong>known information</strong> based on reagent identification level.
+          Use the <strong>Analysis</strong> tab to identify reagents and reveal their properties.
+          Manage reagents (add/edit/delete) in the <strong>Manager</strong> tab.
+        </div>
+      </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-sm mb-1">Primary Aspect (3)</label>
-              <select value={newPrimary} onChange={(e) => setNewPrimary(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
-                {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Secondary Aspect (2)</label>
-              <select value={newSecondary} onChange={(e) => setNewSecondary(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
-                {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Tertiary Aspect (1)</label>
-              <select value={newTertiary} onChange={(e) => setNewTertiary(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
-                {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm mb-1">Base Potency</label>
-              <select value={newBasePotency} onChange={(e) => setNewBasePotency(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
-                {POTENCY_LEVELS.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Quantity (Units)</label>
-              <input
-                type="number"
-                value={newQuantity}
-                onChange={(e) => setNewQuantity(e.target.value)}
-                className="w-full bg-gray-600 px-3 py-2 rounded"
-                min="0"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1">Primary Role (for sorting)</label>
-            <select value={newPrimaryRole} onChange={(e) => setNewPrimaryRole(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
-              {INGREDIENT_ROLES.map(role => <option key={role} value={role}>{role}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm mb-2">Roles (multi-select)</label>
-            <div className="grid grid-cols-4 gap-2">
-              {INGREDIENT_ROLES.map(role => (
-                <label key={role} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={newRoles.includes(role)}
-                    onChange={() => setNewRoles(toggleRole(role, newRoles))}
-                    className="w-4 h-4"
-                  />
-                  <span>{role}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm mb-2">Hazards (multi-select)</label>
-            <div className="grid grid-cols-3 gap-2">
-              {HAZARD_TAGS.map(hazard => (
-                <label key={hazard} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={newHazards.includes(hazard)}
-                    onChange={() => setNewHazards(toggleHazard(hazard, newHazards))}
-                    className="w-4 h-4"
-                  />
-                  <span>{hazard}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm mb-1">Processing Notes (optional)</label>
-            <textarea
-              value={newProcessingNotes}
-              onChange={(e) => setNewProcessingNotes(e.target.value)}
-              placeholder="e.g., must be ground, requires heating, etc."
-              className="w-full bg-gray-600 px-3 py-2 rounded"
-              rows="2"
-            />
-          </div>
-
-          <div className="flex gap-2">
-            <button onClick={addReagent} className="bg-green-600 px-4 py-2 rounded flex-1">Save Reagent</button>
-            <button onClick={() => setShowAdd(false)} className="bg-red-600 px-4 py-2 rounded">×</button>
-          </div>
+      {reagents.length === 0 && (
+        <div className="text-center py-8 text-gray-500">
+          No reagents in inventory. Add reagents in the Manager tab.
         </div>
       )}
 
       <div className="space-y-2">
         {reagents.map(r => {
-          // Handle both old and new data formats
-          const basePotency = r.basePotency || r.potency || 'P1';
-          const concentrationSteps = r.concentrationSteps || 0;
-          const finalPotency = getFinalPotency(basePotency, concentrationSteps);
-          const primaryRole = r.primaryRole || (r.roles && r.roles[0]) || 'Active';
-          const roles = r.roles || ['Active'];
-          const hazards = r.hazards || [];
+          const info = getVisibleInfo(r);
+          const level = info.identificationLevel;
 
           return (
             <div key={r.id} className="bg-gray-700 rounded">
@@ -229,204 +95,192 @@ export function ReagentsView({ reagents, saveReagents }) {
                 className="flex items-center gap-4 p-3 cursor-pointer hover:bg-gray-600"
                 onClick={() => setExpanded(p => ({...p, [r.id]: !p[r.id]}))}
               >
-                <span className="flex-1 font-medium">{r.name}</span>
-                <span className="text-sm text-blue-400">{r.aspects.primary}/{r.aspects.secondary}/{r.aspects.tertiary}</span>
-                <span className="text-sm text-gray-400">{r.quantity}U</span>
-                <span className="text-sm text-purple-400">
-                  {basePotency}
-                  {concentrationSteps > 0 && ` +${concentrationSteps} → ${finalPotency}`}
+                <span className="flex-1 font-medium">{info.name}</span>
+
+                {/* Aspects display */}
+                <span className="text-sm text-blue-400">
+                  {level >= 1 ? info.primaryAspect : '???'}
+                  {' / '}
+                  {level >= 2 ? info.secondaryAspect : '???'}
+                  {' / '}
+                  {level >= 3 ? info.tertiaryAspect : '???'}
                 </span>
-                <span className="text-sm text-yellow-400">{primaryRole}</span>
-                {hazards.length > 0 && <span className="text-sm text-red-400">⚠ {hazards.length}</span>}
+
+                {/* Quantity */}
+                <span className="text-sm text-gray-400">{info.quantity}U</span>
+
+                {/* Identification level */}
+                <span className={`text-xs px-2 py-1 rounded ${
+                  level === 4 ? 'bg-green-600' :
+                  level >= 2 ? 'bg-yellow-600' :
+                  'bg-gray-600'
+                }`}>
+                  {levelNames[level]}
+                </span>
+
+                {/* False profile warning */}
+                {info.hasFalseProfile && (
+                  <span className="text-xs text-red-400">⚠️</span>
+                )}
+
                 <span className="text-gray-400">{expanded[r.id] ? '▼' : '▶'}</span>
               </div>
 
               {expanded[r.id] && (
                 <div className="px-3 pb-3 space-y-3 border-t border-gray-600 pt-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Name</label>
-                      <input
-                        value={r.name}
-                        onChange={(e) => saveReagents(reagents.map(x => x.id === r.id ? {...x, name: e.target.value} : x))}
-                        className="w-full bg-gray-600 px-3 py-1 rounded"
+                  {/* Identification Level */}
+                  <div className="bg-gray-800 p-3 rounded">
+                    <div className="text-sm font-semibold mb-2">Identification: Level {level}/4 - {levelNames[level]}</div>
+                    <div className="w-full bg-gray-600 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full"
+                        style={{width: `${(level / 4) * 100}%`}}
                       />
                     </div>
+                    {info.hasFalseProfile && (
+                      <div className="mt-2 text-xs text-red-300 bg-red-900 bg-opacity-30 p-2 rounded border border-red-500">
+                        ⚠️ This reagent has a false profile from a failed analysis. Edit in Manager tab to correct.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Basic Info */}
+                  <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Quantity (Units)</label>
-                      <input
-                        type="number"
-                        value={r.quantity}
-                        onChange={(e) => saveReagents(reagents.map(x => x.id === r.id ? {...x, quantity: Math.max(0, toNumberOr(e.target.value, r.quantity))} : x))}
-                        className="w-full bg-gray-600 px-3 py-1 rounded"
-                      />
+                      <span className="text-gray-400">Name:</span> {info.name}
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Quantity:</span> {info.quantity} Units
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Primary (3)</label>
-                      <select
-                        value={r.aspects.primary}
-                        onChange={(e) => saveReagents(reagents.map(x => x.id === r.id ? {...x, aspects: {...x.aspects, primary: e.target.value}} : x))}
-                        className="w-full bg-gray-600 px-3 py-1 rounded"
-                      >
-                        {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Secondary (2)</label>
-                      <select
-                        value={r.aspects.secondary}
-                        onChange={(e) => saveReagents(reagents.map(x => x.id === r.id ? {...x, aspects: {...x.aspects, secondary: e.target.value}} : x))}
-                        className="w-full bg-gray-600 px-3 py-1 rounded"
-                      >
-                        {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Tertiary (1)</label>
-                      <select
-                        value={r.aspects.tertiary}
-                        onChange={(e) => saveReagents(reagents.map(x => x.id === r.id ? {...x, aspects: {...x.aspects, tertiary: e.target.value}} : x))}
-                        className="w-full bg-gray-600 px-3 py-1 rounded"
-                      >
-                        {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Refinement Level</label>
-                      <select
-                        value={r.refinement}
-                        onChange={(e) => saveReagents(reagents.map(x => x.id === r.id ? {...x, refinement: e.target.value} : x))}
-                        className="w-full bg-gray-600 px-3 py-1 rounded"
-                      >
-                        <option value="crude">Crude (3/2/1)</option>
-                        <option value="prepared">Prepared (3/2)</option>
-                        <option value="refined">Refined (3 only)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Base Potency</label>
-                      <select
-                        value={basePotency}
-                        onChange={(e) => saveReagents(reagents.map(x => x.id === r.id ? {...x, basePotency: e.target.value} : x))}
-                        className="w-full bg-gray-600 px-3 py-1 rounded"
-                      >
-                        {POTENCY_LEVELS.map(p => <option key={p} value={p}>{p}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Concentration Steps (max {4 - POTENCY_LEVELS.indexOf(basePotency)})</label>
-                      <input
-                        type="number"
-                        value={concentrationSteps}
-                        min="0"
-                        max={4 - POTENCY_LEVELS.indexOf(basePotency)}
-                        onChange={(e) => {
-                          const maxSteps = 4 - POTENCY_LEVELS.indexOf(basePotency);
-                          const steps = Math.max(0, Math.min(maxSteps, toNumberOr(e.target.value, 0)));
-                          saveReagents(reagents.map(x => x.id === r.id ? {...x, concentrationSteps: steps} : x));
-                        }}
-                        className="w-full bg-gray-600 px-3 py-1 rounded"
-                      />
-                      <div className="text-xs text-gray-400 mt-1">
-                        Final: {finalPotency}
+                  {/* Aspects */}
+                  <div>
+                    <div className="text-sm font-semibold mb-2">Aspects</div>
+                    <div className="grid grid-cols-3 gap-3 text-sm">
+                      <div className="bg-gray-800 p-2 rounded">
+                        <div className="text-xs text-gray-500">Primary (3pts)</div>
+                        <div className={level >= 1 ? 'text-blue-400' : 'text-gray-500'}>
+                          {level >= 1 ? info.primaryAspect : '???'}
+                        </div>
+                      </div>
+                      <div className="bg-gray-800 p-2 rounded">
+                        <div className="text-xs text-gray-500">Secondary (2pts)</div>
+                        <div className={level >= 2 ? 'text-blue-400' : 'text-gray-500'}>
+                          {level >= 2 ? info.secondaryAspect : '???'}
+                        </div>
+                      </div>
+                      <div className="bg-gray-800 p-2 rounded">
+                        <div className="text-xs text-gray-500">Tertiary (1pt)</div>
+                        <div className={level >= 3 ? 'text-blue-400' : 'text-gray-500'}>
+                          {level >= 3 ? info.tertiaryAspect : '???'}
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Primary Role (for sorting)</label>
-                    <select
-                      value={primaryRole}
-                      onChange={(e) => saveReagents(reagents.map(x => x.id === r.id ? {...x, primaryRole: e.target.value} : x))}
-                      className="w-full bg-gray-600 px-3 py-1 rounded"
-                    >
-                      {INGREDIENT_ROLES.map(role => <option key={role} value={role}>{role}</option>)}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-2">Roles (multi-select)</label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {INGREDIENT_ROLES.map(role => (
-                        <label key={role} className="flex items-center gap-2 text-xs">
-                          <input
-                            type="checkbox"
-                            checked={roles.includes(role)}
-                            onChange={() => {
-                              const newRoles = toggleRole(role, roles);
-                              saveReagents(reagents.map(x => x.id === r.id ? {...x, roles: newRoles} : x));
-                            }}
-                            className="w-4 h-4"
-                          />
-                          <span>{role}</span>
-                        </label>
-                      ))}
+                  {/* Potency (Level 4 only) */}
+                  {level >= 4 && (
+                    <div>
+                      <div className="text-sm font-semibold mb-2">Potency</div>
+                      <div className="text-sm bg-gray-800 p-2 rounded">
+                        <span className="text-gray-400">Base:</span> {info.basePotency}
+                        {info.concentrationSteps > 0 && (
+                          <span className="text-purple-400">
+                            {' '}+{info.concentrationSteps} → {getFinalPotency(info.basePotency, info.concentrationSteps)}
+                          </span>
+                        )}
+                      </div>
                     </div>
+                  )}
+
+                  {/* Roles */}
+                  <div>
+                    <div className="text-sm font-semibold mb-2">Roles</div>
+                    {level >= 4 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {(info.roles || []).map(role => (
+                          <span key={role} className="text-xs px-2 py-1 bg-yellow-600 rounded">
+                            {role}
+                          </span>
+                        ))}
+                        {(!info.roles || info.roles.length === 0) && (
+                          <span className="text-xs text-gray-500">No roles defined</span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-sm">
+                        {info.physicalRoles && info.physicalRoles.length > 0 ? (
+                          <div>
+                            <div className="text-xs text-gray-400 mb-1">Obvious physical roles:</div>
+                            <div className="flex flex-wrap gap-2">
+                              {info.physicalRoles.map(role => (
+                                <span key={role} className="text-xs px-2 py-1 bg-gray-600 rounded">
+                                  {role}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-500">
+                            Unknown (requires full identification)
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-2">Hazards (multi-select)</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {HAZARD_TAGS.map(hazard => (
-                        <label key={hazard} className="flex items-center gap-2 text-xs">
-                          <input
-                            type="checkbox"
-                            checked={hazards.includes(hazard)}
-                            onChange={() => {
-                              const newHazards = toggleHazard(hazard, hazards);
-                              saveReagents(reagents.map(x => x.id === r.id ? {...x, hazards: newHazards} : x));
-                            }}
-                            className="w-4 h-4"
-                          />
-                          <span>{hazard}</span>
-                        </label>
-                      ))}
+                  {/* Hazards (Level 4 only) */}
+                  {level >= 4 && (
+                    <div>
+                      <div className="text-sm font-semibold mb-2">Hazards</div>
+                      {info.hazards && info.hazards.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {info.hazards.map(hazard => (
+                            <span key={hazard} className="text-xs px-2 py-1 bg-red-600 rounded">
+                              {hazard}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-500">No hazards</div>
+                      )}
                     </div>
-                  </div>
+                  )}
 
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Processing Notes</label>
-                    <textarea
-                      value={r.processingNotes || ''}
-                      onChange={(e) => saveReagents(reagents.map(x => x.id === r.id ? {...x, processingNotes: e.target.value} : x))}
-                      placeholder="e.g., must be ground, requires heating, etc."
-                      className="w-full bg-gray-600 px-3 py-2 rounded"
-                      rows="2"
-                    />
-                  </div>
-
-                  <div className="bg-gray-600 p-3 rounded">
-                    <div className="text-xs font-semibold mb-2">Active Aspects (after refinement)</div>
+                  {/* Refinement (Level 4 only) */}
+                  {level >= 4 && info.refinement && (
                     <div className="text-sm">
-                      {Object.entries(getReagentAspectPoints(r)).map(([aspect, points]) => (
-                        <span key={aspect} className="inline-block mr-3 text-blue-400">
-                          {aspect}: {points}
-                        </span>
-                      ))}
+                      <span className="text-gray-400">Refinement:</span>{' '}
+                      <span className="capitalize">{info.refinement}</span>
                     </div>
-                  </div>
+                  )}
 
-                  <button
-                    onClick={() => setDeleteConfirm({id: r.id, name: r.name})}
-                    className="w-full bg-red-600 px-4 py-2 rounded flex items-center justify-center gap-2"
-                  >
-                    <Trash2 size={16} /> Delete Reagent
-                  </button>
+                  {/* Processing Notes (Level 4 only) */}
+                  {level >= 4 && info.processingNotes && (
+                    <div>
+                      <div className="text-sm font-semibold mb-1">Processing Notes</div>
+                      <div className="text-xs text-gray-300 bg-gray-800 p-2 rounded">
+                        {info.processingNotes}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Call to action for unidentified/partially identified */}
+                  {level < 4 && (
+                    <div className="mt-3 bg-blue-900 bg-opacity-30 border border-blue-500 p-3 rounded text-xs">
+                      <div className="font-semibold mb-1">Need more information?</div>
+                      <div className="text-gray-300">
+                        Use the <strong>Analysis</strong> tab to perform identification and reveal additional properties.
+                        Each analysis consumes 1U of this reagent.
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           );
         })}
-
-        {reagents.length === 0 && (
-          <div className="text-gray-500 text-center py-8">No reagents yet. Add some to get started!</div>
-        )}
       </div>
     </div>
   );

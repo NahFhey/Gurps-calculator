@@ -86,3 +86,98 @@ export const QUALITY_OUTCOMES = {
   3: 'Flawed',
   4: 'Mishap'
 };
+
+// Tier calculation thresholds based on potency load of active ingredients
+// Potency load = sum of (potency index + concentration steps) for all actives
+export const TIER_THRESHOLDS = [
+  { tier: 1, minPotencyLoad: 0, maxPotencyLoad: 3 },   // P0-P1 actives
+  { tier: 2, minPotencyLoad: 4, maxPotencyLoad: 6 },   // P2 actives
+  { tier: 3, minPotencyLoad: 7, maxPotencyLoad: 9 },   // P3 actives
+  { tier: 4, minPotencyLoad: 10, maxPotencyLoad: 999 } // P4+ actives
+];
+
+// Required roles per vector type
+export const REQUIRED_ROLES_BY_VECTOR = {
+  'Potion': ['Active', 'Stabilizer', 'Solvent', 'Tool'],
+  'Salve/Poultice': ['Active', 'Binder', 'Tool'],
+  'Ink/Coating': ['Active', 'Binder', 'Tool'],
+  'Aerosol/Smoke': ['Active', 'Catalyst', 'Tool'],
+  'Bomb/Grenade': ['Active', 'Catalyst', 'Stabilizer', 'Tool']
+};
+
+// Penalty Scheme A: WR/DM adjustments for missing required roles
+export const ROLE_COVERAGE_PENALTIES = {
+  'Active': { wr: 999, dm: -999, message: 'Cannot brew without Active ingredient' },
+  'Tool': { wr: 999, dm: -999, message: 'Cannot brew without Tool ingredient' },
+  'Stabilizer': { wr: 2, dm: -1, message: 'Missing Stabilizer: +2 WR, -1 DM' },
+  'Solvent': { wr: 2, dm: -1, message: 'Missing Solvent: +2 WR, -1 DM' },
+  'Binder': { wr: 2, dm: -1, message: 'Missing Binder: +2 WR, -1 DM' },
+  'Catalyst': { wr: 1, dm: 0, message: 'Missing Catalyst: +1 WR' }
+};
+
+// Maximum constraints for batch composition
+export const MAX_REAGENTS_PER_BATCH = 8;
+
+export const MAX_UNITS_PER_REAGENT_BY_ROLE = {
+  'Active': 3,
+  'Catalyst': 2,
+  'Stabilizer': 2,
+  'Solvent': 5,     // Can use more for dilution
+  'Binder': 3,
+  'Vector': 1,
+  'Signature': 1,
+  'Tool': 1
+};
+
+// Hazard rules: triggers and effects
+export const HAZARD_RULES = {
+  'Flammable': {
+    triggerOn: ['mishap', 'quality_unstable_or_worse'],
+    effect: 'Fire damage to lab and workers',
+    wrMod: 1,
+    dmMod: 0,
+    severity: 'high'
+  },
+  'Volatile': {
+    triggerOn: ['failure', 'mishap'],
+    effect: 'Explosion - batch destroyed, possible injury',
+    wrMod: 2,
+    dmMod: 0,
+    severity: 'critical'
+  },
+  'Reactive': {
+    triggerOn: ['conflict_pairs_present'],
+    effect: 'Increased instability from aspect conflicts',
+    wrMod: 1,
+    dmMod: -1,
+    severity: 'medium'
+  },
+  'Unstable': {
+    triggerOn: ['any_failure'],
+    effect: 'Additional contamination on failure (CP +1 extra)',
+    wrMod: 1,
+    dmMod: 0,
+    severity: 'medium'
+  },
+  'Toxic': {
+    triggerOn: ['exposure', 'mishap'],
+    effect: 'HT roll or take toxic damage',
+    wrMod: 0,
+    dmMod: 0,
+    severity: 'high'
+  },
+  'Intoxicant': {
+    triggerOn: ['exposure'],
+    effect: 'IQ/DX penalties, possible unconsciousness',
+    wrMod: 0,
+    dmMod: 0,
+    severity: 'medium'
+  },
+  'Hallucinogenic': {
+    triggerOn: ['exposure'],
+    effect: 'Mental effects, hallucinations',
+    wrMod: 0,
+    dmMod: 0,
+    severity: 'medium'
+  }
+};

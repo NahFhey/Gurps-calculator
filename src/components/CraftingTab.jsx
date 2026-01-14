@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { QUALITIES } from '../constants';
 import { toNumberOr, upsertCraft, removeCraft, refundMaterialsFromProject } from '../utils/helpers';
+import { DiceRoller } from './DiceRoller';
 
 export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, materialTypes, workers, saveMaterials, saveCrafts, saveCraftDesigns }) {
   const [view, setView] = useState('list');
@@ -49,7 +50,7 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
     });
     setCurrentDate(today);
     setCurrentDay(1);
-    setSelectedWorker(workers[0] || '');
+    setSelectedWorker(workers[0]?.name || '');
     setView('craft');
   }
 
@@ -367,9 +368,9 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
               <div className="bg-gray-700 p-4 rounded grid grid-cols-2 gap-4">
                 <div><label className="block mb-2 text-sm">Date</label><input type="date" value={currentDate} onChange={(e) => setCurrentDate(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded" /></div>
                 <div><label className="block mb-2 text-sm">Day (In-Universe)</label><input type="number" min="1" value={currentDay} onChange={(e) => setCurrentDay(Math.max(1, toNumberOr(e.target.value, 1)))} className="w-full bg-gray-600 px-3 py-2 rounded" /></div>
-                <div><label className="block mb-2 text-sm">Worker</label><select value={selectedWorker} onChange={(e) => setSelectedWorker(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">{workers.map(w => <option key={w} value={w}>{w}</option>)}</select></div>
+                <div><label className="block mb-2 text-sm">Worker</label><select value={selectedWorker} onChange={(e) => { const worker = workers.find(w => w.name === e.target.value); setSelectedWorker(e.target.value); if (worker?.skills) setSkill(String(current.phase === 'design' ? worker.skills.designing : worker.skills.crafting)); }} className="w-full bg-gray-600 px-3 py-2 rounded">{workers.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}</select></div>
                 <div><label className="block mb-2 text-sm">Skill</label><input type="number" value={skill} onChange={(e) => setSkill(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded" /></div>
-                <div className="col-span-2"><label className="block mb-2 text-sm">Roll (3d6)</label><input type="number" value={roll} onChange={(e) => setRoll(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded" /></div>
+                <div className="col-span-2"><label className="block mb-2 text-sm">Roll (3d6)</label><div className="flex gap-2"><input type="number" value={roll} onChange={(e) => setRoll(e.target.value)} className="flex-1 bg-gray-600 px-3 py-2 rounded" /><DiceRoller onRoll={(total) => setRoll(String(total))} /></div></div>
               </div>
               <button onClick={() => {
                 const s = parseInt(skill), r = parseInt(roll);

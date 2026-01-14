@@ -1,11 +1,60 @@
 import React, { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { ASPECTS } from '../../constants';
-import { tallyAspects, computeDominantSecondary, getReagentAspectPoints } from '../../utils/alchemy';
+import { ASPECTS, REFINEMENT_LEVELS } from '../../constants';
+import { computeDominantSecondary } from '../../utils/alchemy';
 import { toNumberOr } from '../../utils/helpers';
 
 export function TallyWorksheetView({ reagents }) {
   const [worksheetItems, setWorksheetItems] = useState([]);
+
+  // Get aspect points respecting identification level
+  function getKnownAspectPoints(reagent, refinement) {
+    if (!reagent.aspects?.primary) return {};
+
+    const identificationLevel = reagent.identificationLevel || 0;
+    const activeSlots = REFINEMENT_LEVELS[refinement] || REFINEMENT_LEVELS.crude;
+    const points = {};
+
+    // Use false profile if it exists, otherwise use real data
+    const profile = reagent.falseProfile || reagent;
+
+    // Primary (3pts) - known at level 1+
+    if (identificationLevel >= 1 && activeSlots.includes('primary') && profile.aspects.primary) {
+      points[profile.aspects.primary] = (points[profile.aspects.primary] || 0) + 3;
+    }
+
+    // Secondary (2pts) - known at level 2+
+    if (identificationLevel >= 2 && activeSlots.includes('secondary') && profile.aspects.secondary) {
+      points[profile.aspects.secondary] = (points[profile.aspects.secondary] || 0) + 2;
+    }
+
+    // Tertiary (1pt) - known at level 3+
+    if (identificationLevel >= 3 && activeSlots.includes('tertiary') && profile.aspects.tertiary) {
+      points[profile.aspects.tertiary] = (points[profile.aspects.tertiary] || 0) + 1;
+    }
+
+    return points;
+  }
+
+  // Tally aspects from worksheet items (respecting identification)
+  function tallyKnownAspects(items, reagentsMap) {
+    const tally = {};
+
+    items.forEach(item => {
+      const reagent = reagentsMap.get(item.reagentId);
+      if (!reagent) return;
+
+      const points = getKnownAspectPoints(reagent, item.refinement);
+
+      Object.keys(points).forEach(aspect => {
+        if (aspect) {
+          tally[aspect] = (tally[aspect] || 0) + (points[aspect] * item.units);
+        }
+      });
+    });
+
+    return tally;
+  }
 
   function addItem() {
     if (reagents.length === 0) {
@@ -29,14 +78,9 @@ export function TallyWorksheetView({ reagents }) {
     setWorksheetItems(worksheetItems.map(i => i.id === id ? {...i, [field]: value} : i));
   }
 
-  // Calculate the tally
+  // Calculate the tally using known aspects only
   const reagentsMap = new Map(reagents.map(r => [r.id, r]));
-  const tally = tallyAspects(worksheetItems.map(item => ({
-    reagentId: item.reagentId,
-    role: 'active',
-    unitsUsed: item.units,
-    refinement: item.refinement
-  })), reagentsMap);
+  const tally = tallyKnownAspects(worksheetItems, reagentsMap);
 
   const { dominant, dominantValue, secondary, secondaryValue } = computeDominantSecondary(tally);
 
@@ -55,6 +99,15 @@ export function TallyWorksheetView({ reagents }) {
         </button>
       </div>
 
+      {/* Info box about identification */}
+      <div className="mb-4 bg-blue-900 bg-opacity-30 border border-blue-500 p-3 rounded text-sm">
+        <div className="font-semibold mb-1">Identification-Based Tally</div>
+        <div className="text-xs text-gray-300">
+          This worksheet only shows <strong>identified aspects</strong> based on each reagent's identification level.
+          Use the <strong>Analysis</strong> tab to identify reagents and reveal their aspects before adding them to your tally.
+        </div>
+      </div>
+
       {worksheetItems.length === 0 && (
         <div className="text-gray-500 text-center py-8">
           No reagents added yet. Click "Add Reagent" to start building your tally.
@@ -68,8 +121,7 @@ export function TallyWorksheetView({ reagents }) {
             <h3 className="text-sm font-semibold text-gray-300">Reagents</h3>
             {worksheetItems.map(item => {
               const reagent = reagentsMap.get(item.reagentId);
-              const tempReagent = reagent ? { ...reagent, refinement: item.refinement } : null;
-              const aspectPoints = tempReagent ? getReagentAspectPoints(tempReagent) : {};
+              const aspectPoints = reagent ? getKnownAspectPoints(reagent, item.refinement) : {};
 
               return (
                 <div key={item.id} className="bg-gray-700 p-3 rounded">
@@ -113,14 +165,25 @@ export function TallyWorksheetView({ reagents }) {
                     </button>
                   </div>
 
-                  {/* Show aspect contribution */}
+                  {/* Show aspect contribution (only known aspects) */}
                   {reagent && (
-                    <div className="mt-2 text-xs text-gray-400">
-                      Aspects: {reagent.aspects.primary} ({item.refinement === 'crude' ? '3' : item.refinement === 'prepared' ? '3' : '3'})
-                      {reagent.aspects.secondary && item.refinement !== 'refined' && `, ${reagent.aspects.secondary} (${item.refinement === 'crude' ? '2' : '2'})`}
-                      {reagent.aspects.tertiary && item.refinement === 'crude' && `, ${reagent.aspects.tertiary} (1)`}
-                      {' × ' + item.units + ' units = '}
-                      {Object.entries(aspectPoints).map(([asp, val]) => `${asp}:${val * item.units}`).join(', ')}
+                    <div className="mt-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded ${
+                          (reagent.identificationLevel || 0) === 0 ? 'bg-red-600' :
+                          (reagent.identificationLevel || 0) >= 4 ? 'bg-green-600' :
+                          'bg-yellow-600'
+                        }`}>
+                          ID: Level {reagent.identificationLevel || 0}
+                        </span>
+                        {Object.keys(aspectPoints).length === 0 ? (
+                          <span className="text-gray-500">Unknown aspects - identify reagent first</span>
+                        ) : (
+                          <span className="text-gray-400">
+                            Known aspects: {Object.entries(aspectPoints).map(([asp, val]) => `${asp}:${val * item.units}`).join(', ')}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -147,33 +210,40 @@ export function TallyWorksheetView({ reagents }) {
               </div>
             </div>
 
-            {/* Bar chart visualization */}
+            {/* Bar chart visualization - only show known aspects */}
             <div className="space-y-2">
-              <div className="text-xs text-gray-400 mb-2">Full Breakdown:</div>
-              {ASPECTS.map(aspect => {
-                const value = tally[aspect] || 0;
-                const maxValue = Math.max(...Object.values(tally), 1);
-                const percentage = (value / maxValue) * 100;
+              <div className="text-xs text-gray-400 mb-2">
+                Full Breakdown (Known Aspects Only):
+              </div>
+              {sortedTally.length === 0 ? (
+                <div className="text-center text-gray-500 py-4">
+                  No aspects identified yet. Identify reagents to see their aspects.
+                </div>
+              ) : (
+                sortedTally.map(([aspect, value]) => {
+                  const maxValue = Math.max(...Object.values(tally), 1);
+                  const percentage = (value / maxValue) * 100;
 
-                return (
-                  <div key={aspect} className="flex items-center gap-2">
-                    <div className="w-16 text-xs text-gray-300">{aspect}</div>
-                    <div className="flex-1 bg-gray-600 rounded-full h-6 relative">
-                      <div
-                        className={`h-6 rounded-full ${
-                          aspect === dominant ? 'bg-blue-500' :
-                          aspect === secondary ? 'bg-blue-400' :
-                          'bg-gray-500'
-                        }`}
-                        style={{ width: `${percentage}%` }}
-                      />
-                      <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold">
-                        {value}
-                      </span>
+                  return (
+                    <div key={aspect} className="flex items-center gap-2">
+                      <div className="w-16 text-xs text-gray-300">{aspect}</div>
+                      <div className="flex-1 bg-gray-600 rounded-full h-6 relative">
+                        <div
+                          className={`h-6 rounded-full ${
+                            aspect === dominant ? 'bg-blue-500' :
+                            aspect === secondary ? 'bg-blue-400' :
+                            'bg-gray-500'
+                          }`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                        <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold">
+                          {value}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
 
             {/* Summary */}

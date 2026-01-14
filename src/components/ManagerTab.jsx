@@ -1,9 +1,22 @@
 import React, { useState } from 'react';
-import { Plus, Save, X, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Plus, Save, X, Trash2, Eye, EyeOff, Shield, ShieldOff } from 'lucide-react';
 import { toNumberOr, refundMaterialsFromProject } from '../utils/helpers';
-import { TEMPLATES, ASPECTS } from '../constants';
+import { TEMPLATES, ASPECTS, POTENCY_LEVELS, INGREDIENT_ROLES, HAZARD_TAGS, VECTORS } from '../constants';
+import { calculateFormulaStats } from '../utils/alchemy';
+import { TBBuilderPanel } from './alchemy/TBBuilderPanel';
+import { ImportExportPanel } from './ImportExportPanel';
+import { GMLockModal } from './GMLockModal';
+import { unlockGMData, mergeGM } from '../utils/exportImport';
 
-export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTemplates, materials, effectFamilyMap, alchemySettings, saveMaterials, saveFoodTypes, saveMaterialTypes, saveWorkers, saveCrafts, saveCustomTemplates, saveEffectFamilyMap, saveAlchemySettings, renameMaterialType }) {
+export function ManagerTab({
+  foodTypes, materialTypes, workers, crafts, craftDesigns, customTemplates, materials,
+  effectFamilyMap, alchemySettings, alchemyReagents, alchemyFormulas, alchemyBatches,
+  foods, recipes, gmMode, gmLockData, setGmMode, setGmLockData,
+  saveMaterials, saveFoods, saveRecipes, saveFoodTypes, saveMaterialTypes, saveWorkers,
+  saveCrafts, saveCraftDesigns, saveCustomTemplates, saveEffectFamilyMap,
+  saveAlchemySettings, saveAlchemyReagents, saveAlchemyFormulas, saveAlchemyBatches,
+  renameMaterialType
+}) {
   const [view, setView] = useState('foodTypes');
   const [showAdd, setShowAdd] = useState(false);
   const [newType, setNewType] = useState('');
@@ -39,6 +52,92 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
   const [draftMatTypeName, setDraftMatTypeName] = useState({});
 
   const [newTypeColor, setNewTypeColor] = useState('#60A5FA');
+
+  // Formula designer state
+  const [formulaName, setFormulaName] = useState('');
+  const [ingredients, setIngredients] = useState([]);
+  const [selectedVector, setSelectedVector] = useState('Potion');
+  const [selectedTier, setSelectedTier] = useState(1);
+  const [formulaTraits, setFormulaTraits] = useState([]);
+  const [expandedFormula, setExpandedFormula] = useState(null);
+
+  // GM/Player mode state
+  const [showGMLockModal, setShowGMLockModal] = useState(false);
+  const [gmLockError, setGmLockError] = useState(null);
+
+  // Handle GM mode toggle
+  const handleGMModeToggle = () => {
+    if (!gmMode) {
+      // Entering GM mode
+      if (gmLockData) {
+        // Locked import - show password modal
+        setShowGMLockModal(true);
+      } else {
+        // No lock - enable GM mode with warning
+        if (confirm('No password lock detected. GM mode will be accessible to anyone with this file. Continue?')) {
+          setGmMode(true);
+        }
+      }
+    } else {
+      // Exiting GM mode
+      setGmMode(false);
+    }
+  };
+
+  // Handle GM unlock with password
+  const handleGMUnlock = async (password) => {
+    if (!gmLockData) {
+      setGmLockError('No GM lock data available');
+      return;
+    }
+
+    const result = await unlockGMData({ gmLock: gmLockData }, password);
+    if (!result.ok) {
+      setGmLockError(result.error);
+      return;
+    }
+
+    // Merge GM data into current state
+    const currentPublicState = {
+      materials, foods, recipes, foodTypes, materialTypes, workers,
+      customTemplates, craftDesigns, crafts,
+      alchemyReagents, alchemyFormulas, alchemyBatches,
+      effectFamilyMap, alchemySettings
+    };
+    const mergedState = mergeGM(currentPublicState, result.gmData);
+
+    // Apply merged state
+    if (mergedState.materials) saveMaterials(mergedState.materials);
+    if (mergedState.foods) saveFoods(mergedState.foods);
+    if (mergedState.recipes) saveRecipes(mergedState.recipes);
+    if (mergedState.alchemyReagents) saveAlchemyReagents(mergedState.alchemyReagents);
+    if (mergedState.alchemyFormulas) saveAlchemyFormulas(mergedState.alchemyFormulas);
+    if (mergedState.alchemyBatches) saveAlchemyBatches(mergedState.alchemyBatches);
+
+    // Enable GM mode
+    setGmMode(true);
+    setShowGMLockModal(false);
+    setGmLockError(null);
+  };
+
+  // Handle import from ImportExportPanel
+  const handleImport = (importedState) => {
+    // Apply all imported data to state
+    if (importedState.materials) saveMaterials(importedState.materials);
+    if (importedState.foods) saveFoods(importedState.foods);
+    if (importedState.recipes) saveRecipes(importedState.recipes);
+    if (importedState.foodTypes) saveFoodTypes(importedState.foodTypes);
+    if (importedState.materialTypes) saveMaterialTypes(importedState.materialTypes);
+    if (importedState.workers) saveWorkers(importedState.workers);
+    if (importedState.customTemplates) saveCustomTemplates(importedState.customTemplates);
+    if (importedState.craftDesigns) saveCraftDesigns(importedState.craftDesigns);
+    if (importedState.crafts) saveCrafts(importedState.crafts);
+    if (importedState.alchemyReagents) saveAlchemyReagents(importedState.alchemyReagents);
+    if (importedState.alchemyFormulas) saveAlchemyFormulas(importedState.alchemyFormulas);
+    if (importedState.alchemyBatches) saveAlchemyBatches(importedState.alchemyBatches);
+    if (importedState.effectFamilyMap) saveEffectFamilyMap(importedState.effectFamilyMap);
+    if (importedState.alchemySettings) saveAlchemySettings(importedState.alchemySettings);
+  };
 
   function addType() {
     const typeName = newType.trim().toLowerCase();
@@ -114,19 +213,171 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
     setNewTShots(''); setNewTBulk(''); setNewTRCl(''); setNewTLC(''); setNewTLocation(''); setNewTDR(''); setNewTFuse('');
   }
 
+  // Formula helper functions
+  function addIngredient() {
+    if (alchemyReagents.length === 0) {
+      alert('No reagents available!');
+      return;
+    }
+    setIngredients([...ingredients, {
+      id: crypto.randomUUID(),
+      reagentId: alchemyReagents[0].id,
+      role: 'Active',
+      unitsUsed: 1,
+      refinement: 'crude'
+    }]);
+  }
+
+  function removeIngredient(id) {
+    setIngredients(ingredients.filter(i => i.id !== id));
+  }
+
+  function updateIngredient(id, field, value) {
+    setIngredients(ingredients.map(i => i.id === id ? {...i, [field]: value} : i));
+  }
+
+  function createFormula() {
+    if (!formulaName.trim()) {
+      alert('Enter formula name');
+      return;
+    }
+    if (ingredients.length === 0) {
+      alert('Add at least one ingredient');
+      return;
+    }
+
+    const reagentsMap = new Map(alchemyReagents.map(r => [r.id, r]));
+
+    const ingredientsSnapshot = ingredients.map(ing => {
+      const r = reagentsMap.get(ing.reagentId);
+      return {
+        reagentId: ing.reagentId,
+        reagentName: r?.name || 'Unknown',
+        role: ing.role,
+        unitsUsed: ing.unitsUsed,
+        refinement: ing.refinement,
+        aspects: r ? {...r.aspects} : {}
+      };
+    });
+
+    const tempFormula = { ingredients: ingredientsSnapshot };
+    const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector);
+
+    // Check for critical validation failures
+    if (!stats.batchValidation.valid) {
+      alert('Cannot save formula: ' + stats.batchValidation.errors.join(', '));
+      return;
+    }
+
+    // Block if missing critical roles (Active, Tool, etc.)
+    if (stats.roleCoverage.wrDelta >= 999) {
+      const blockingMessages = stats.roleCoverage.messages.filter(msg =>
+        msg.includes('Cannot brew')
+      );
+      alert('Cannot save formula:\n\n' + blockingMessages.join('\n'));
+      return;
+    }
+
+    const newFormula = {
+      id: crypto.randomUUID(),
+      name: formulaName,
+      ingredients: ingredientsSnapshot,
+      tier: stats.tier, // Auto-calculated
+      calculatedTier: stats.calculatedTier,
+      potencyLoad: stats.potencyLoad,
+      vector: stats.vector,
+      baseWR: stats.baseWR,
+      baseDM: stats.baseDM,
+      dominantAspect: stats.dominantAspect,
+      secondaryAspect: stats.secondaryAspect,
+      basePotency: stats.basePotency,
+      finalPotency: stats.finalPotency,
+      concentrationSteps: stats.concentrationSteps,
+      totalConcentrationSteps: stats.totalConcentrationSteps,
+      traitBudget: stats.traitBudget,
+      hasMatchingStabilizer: stats.hasMatchingStabilizer,
+      traits: [...formulaTraits],
+      // Store validation results for future reference
+      roleCoverage: stats.roleCoverage,
+      hazards: stats.hazardEvaluation.hazards
+    };
+
+    saveAlchemyFormulas([...alchemyFormulas, newFormula]);
+    setFormulaName('');
+    setIngredients([]);
+    setSelectedVector('Potion');
+    setFormulaTraits([]);
+    setShowAdd(false);
+    alert('Formula created!');
+  }
+
   return (
     <div className="bg-gray-800 rounded-lg p-6">
+      {/* GM Lock Modal */}
+      <GMLockModal
+        isOpen={showGMLockModal}
+        onClose={() => {
+          setShowGMLockModal(false);
+          setGmLockError(null);
+        }}
+        onUnlock={handleGMUnlock}
+        error={gmLockError}
+      />
+
+      {/* GM/Player Mode Toggle */}
+      <div className="mb-6 flex items-center justify-between bg-gray-700 border border-gray-600 rounded-lg p-4">
+        <div className="flex items-center gap-3">
+          {gmMode ? (
+            <Shield className="text-yellow-400" size={24} />
+          ) : (
+            <ShieldOff className="text-gray-400" size={24} />
+          )}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-100">
+              {gmMode ? 'GM Mode Active' : 'Player Mode'}
+            </h3>
+            <p className="text-sm text-gray-400">
+              {gmMode
+                ? 'Full access to all features, hazards, and GM content'
+                : 'Limited access - GM content hidden'}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={handleGMModeToggle}
+          className={`px-6 py-3 rounded-lg font-semibold transition flex items-center gap-2 ${
+            gmMode
+              ? 'bg-yellow-600 hover:bg-yellow-500 text-white'
+              : 'bg-blue-600 hover:bg-blue-500 text-white'
+          }`}
+        >
+          {gmMode ? (
+            <>
+              <ShieldOff size={18} />
+              Exit GM Mode
+            </>
+          ) : (
+            <>
+              <Shield size={18} />
+              Enable GM Mode
+            </>
+          )}
+        </button>
+      </div>
+
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-800 p-6 rounded-lg max-w-md border-2 border-gray-600">
             <h3 className="text-xl font-bold mb-4">Confirm Delete</h3>
-            <p className="mb-6">{deleteConfirm.type === 'foodType' ? `Delete type "${deleteConfirm.value}"?` : deleteConfirm.type === 'materialType' ? `Delete type "${deleteConfirm.value}"?` : deleteConfirm.type === 'worker' ? `Delete worker "${deleteConfirm.value}"?` : deleteConfirm.type === 'project' ? `Delete project "${deleteConfirm.name}"?` : `Delete template "${deleteConfirm.name}"?`}</p>
+            <p className="mb-6">{deleteConfirm.type === 'foodType' ? `Delete type "${deleteConfirm.value}"?` : deleteConfirm.type === 'materialType' ? `Delete type "${deleteConfirm.value}"?` : deleteConfirm.type === 'worker' ? `Delete worker "${deleteConfirm.value}"?` : deleteConfirm.type === 'project' ? `Delete project "${deleteConfirm.name}"?` : deleteConfirm.type === 'reagent' ? `Delete reagent "${deleteConfirm.name}"?` : deleteConfirm.type === 'formula' ? `Delete formula "${deleteConfirm.name}"?` : `Delete template "${deleteConfirm.name}"?`}</p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 bg-gray-600 rounded">Cancel</button>
               <button onClick={() => {
                 if (deleteConfirm.type === 'foodType') saveFoodTypes(foodTypes.filter(t => t !== deleteConfirm.value));
                 else if (deleteConfirm.type === 'materialType') saveMaterialTypes(materialTypes.filter(t => t.name !== deleteConfirm.value));
-                else if (deleteConfirm.type === 'worker') saveWorkers(workers.filter(w => w !== deleteConfirm.value));
+                else if (deleteConfirm.type === 'worker') saveWorkers(workers.filter(w => w.id !== deleteConfirm.id));
+                else if (deleteConfirm.type === 'reagent') saveAlchemyReagents((alchemyReagents || []).filter(r => r.id !== deleteConfirm.id));
+                else if (deleteConfirm.type === 'formula') saveAlchemyFormulas(alchemyFormulas.filter(f => f.id !== deleteConfirm.id));
                 else if (deleteConfirm.type === 'project') {
                   const proj = crafts.find(c => c.id === deleteConfirm.id);
                   if (proj && !proj.completed) {
@@ -150,15 +401,35 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
         </div>
       )}
 
-      <div className="flex gap-2 mb-6 border-b border-gray-700">
+      <div className="flex gap-2 mb-6 border-b border-gray-700 flex-wrap">
+        <button onClick={() => setView('importExport')} className={`px-4 py-2 ${view === 'importExport' ? 'border-b-2 border-green-500 text-green-400' : 'text-gray-400'}`}>Import/Export</button>
         <button onClick={() => setView('foodTypes')} className={`px-4 py-2 ${view === 'foodTypes' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Food Types</button>
         <button onClick={() => setView('materialTypes')} className={`px-4 py-2 ${view === 'materialTypes' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Material Types</button>
         <button onClick={() => setView('workers')} className={`px-4 py-2 ${view === 'workers' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Workers</button>
         <button onClick={() => setView('projects')} className={`px-4 py-2 ${view === 'projects' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Projects</button>
         <button onClick={() => setView('templates')} className={`px-4 py-2 ${view === 'templates' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Templates</button>
+        <button onClick={() => setView('reagents')} className={`px-4 py-2 ${view === 'reagents' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Reagents</button>
+        <button onClick={() => setView('formulas')} className={`px-4 py-2 ${view === 'formulas' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Formulas</button>
         <button onClick={() => setView('effectFamilyMap')} className={`px-4 py-2 ${view === 'effectFamilyMap' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Effect Map</button>
         <button onClick={() => setView('alchemySettings')} className={`px-4 py-2 ${view === 'alchemySettings' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Alchemy Settings</button>
       </div>
+
+      {view === 'importExport' && (
+        <ImportExportPanel
+          state={{
+            materials, foods, recipes, foodTypes, materialTypes, workers,
+            customTemplates, craftDesigns, crafts,
+            alchemyReagents, alchemyFormulas, alchemyBatches,
+            effectFamilyMap, alchemySettings
+          }}
+          gmMode={gmMode}
+          gmLockData={gmLockData}
+          setGmMode={setGmMode}
+          setGmLockData={setGmLockData}
+          onImport={handleImport}
+          onShowGMLockModal={() => setShowGMLockModal(true)}
+        />
+      )}
 
       {view === 'foodTypes' && (
         <div>
@@ -417,21 +688,129 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
             <button onClick={() => setShowAdd(!showAdd)} className="bg-green-600 px-4 py-2 rounded"><Plus size={20} className="inline" /> Add</button>
           </div>
           {showAdd && (
-            <div className="bg-gray-700 p-4 rounded mb-4 flex gap-2">
-              <input value={newType} onChange={(e) => setNewType(e.target.value)} placeholder="Worker name" className="flex-1 bg-gray-600 px-3 py-2 rounded" />
-              <button onClick={() => {
-                if (!newType.trim() || workers.includes(newType)) { alert('Invalid or duplicate'); return; }
-                saveWorkers([...workers, newType]);
-                setNewType(''); setShowAdd(false);
-              }} className="bg-green-600 px-4 py-2 rounded"><Save size={20} /></button>
-              <button onClick={() => setShowAdd(false)} className="bg-red-600 px-4 py-2 rounded"><X size={20} /></button>
+            <div className="bg-gray-700 p-4 rounded mb-4 space-y-3">
+              <input value={newType} onChange={(e) => setNewType(e.target.value)} placeholder="Worker name" className="w-full bg-gray-600 px-3 py-2 rounded" />
+              <div className="grid grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Cooking</label>
+                  <input type="number" defaultValue="10" id="newWorkerCooking" className="w-full bg-gray-600 px-3 py-2 rounded" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Designing</label>
+                  <input type="number" defaultValue="10" id="newWorkerDesigning" className="w-full bg-gray-600 px-3 py-2 rounded" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Crafting</label>
+                  <input type="number" defaultValue="10" id="newWorkerCrafting" className="w-full bg-gray-600 px-3 py-2 rounded" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Alchemy</label>
+                  <input type="number" defaultValue="10" id="newWorkerAlchemy" className="w-full bg-gray-600 px-3 py-2 rounded" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => {
+                  if (!newType.trim()) { alert('Enter a name'); return; }
+                  if (workers.some(w => w.name === newType.trim())) { alert('Duplicate name'); return; }
+                  const newWorker = {
+                    id: crypto.randomUUID(),
+                    name: newType.trim(),
+                    skills: {
+                      cooking: toNumberOr(document.getElementById('newWorkerCooking').value, 10),
+                      designing: toNumberOr(document.getElementById('newWorkerDesigning').value, 10),
+                      crafting: toNumberOr(document.getElementById('newWorkerCrafting').value, 10),
+                      alchemy: toNumberOr(document.getElementById('newWorkerAlchemy').value, 10)
+                    }
+                  };
+                  saveWorkers([...workers, newWorker]);
+                  setNewType(''); setShowAdd(false);
+                }} className="flex-1 bg-green-600 px-4 py-2 rounded"><Save size={20} className="inline" /> Save</button>
+                <button onClick={() => setShowAdd(false)} className="bg-red-600 px-4 py-2 rounded"><X size={20} /></button>
+              </div>
             </div>
           )}
           <div className="space-y-2">
             {workers.map(w => (
-              <div key={w} className="flex items-center gap-4 bg-gray-700 p-3 rounded">
-                <input value={w} onChange={(e) => { const v = e.target.value; if (workers.includes(v) && v !== w) { alert('Duplicate'); return; } saveWorkers(workers.map(x => x === w ? v : x)); }} className="flex-1 bg-gray-600 px-3 py-1 rounded" />
-                <button onClick={() => setDeleteConfirm({type: 'worker', value: w})} className="text-red-400"><Trash2 size={20} /></button>
+              <div key={w.id} className="bg-gray-700 rounded">
+                <div
+                  className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-600"
+                  onClick={() => setExpanded(p => ({...p, [w.id]: !p[w.id]}))}
+                >
+                  <span className="flex-1 font-semibold">{w.name}</span>
+                  <span className="text-xs text-gray-400">Cook: {w.skills.cooking}</span>
+                  <span className="text-xs text-gray-400">Design: {w.skills.designing}</span>
+                  <span className="text-xs text-gray-400">Craft: {w.skills.crafting}</span>
+                  <span className="text-xs text-gray-400">Alch: {w.skills.alchemy}</span>
+                  <span className="text-gray-400">{expanded[w.id] ? '▼' : '▶'}</span>
+                </div>
+                {expanded[w.id] && (
+                  <div className="px-3 pb-3 space-y-3 border-t border-gray-600 pt-3">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Worker Name</label>
+                      <input
+                        value={w.name}
+                        onChange={(e) => {
+                          const newName = e.target.value;
+                          if (workers.some(x => x.name === newName && x.id !== w.id)) { alert('Duplicate name'); return; }
+                          saveWorkers(workers.map(x => x.id === w.id ? {...x, name: newName} : x));
+                        }}
+                        className="w-full bg-gray-600 px-3 py-2 rounded"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Cooking Skill</label>
+                        <input
+                          type="number"
+                          value={w.skills.cooking}
+                          onChange={(e) => {
+                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...x.skills, cooking: toNumberOr(e.target.value, 10)}} : x));
+                          }}
+                          className="w-full bg-gray-600 px-3 py-2 rounded"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Designing Skill</label>
+                        <input
+                          type="number"
+                          value={w.skills.designing}
+                          onChange={(e) => {
+                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...x.skills, designing: toNumberOr(e.target.value, 10)}} : x));
+                          }}
+                          className="w-full bg-gray-600 px-3 py-2 rounded"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Crafting Skill</label>
+                        <input
+                          type="number"
+                          value={w.skills.crafting}
+                          onChange={(e) => {
+                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...x.skills, crafting: toNumberOr(e.target.value, 10)}} : x));
+                          }}
+                          className="w-full bg-gray-600 px-3 py-2 rounded"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Alchemy Skill</label>
+                        <input
+                          type="number"
+                          value={w.skills.alchemy}
+                          onChange={(e) => {
+                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...x.skills, alchemy: toNumberOr(e.target.value, 10)}} : x));
+                          }}
+                          className="w-full bg-gray-600 px-3 py-2 rounded"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setDeleteConfirm({type: 'worker', value: w.name, id: w.id})}
+                      className="w-full bg-red-600 py-2 rounded text-sm"
+                    >
+                      <Trash2 size={16} className="inline" /> Delete Worker
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -890,6 +1269,721 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
         </div>
       )}
 
+      {view === 'reagents' && (
+        <div>
+          <div className="flex justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-bold">Reagent Management</h2>
+              <p className="text-sm text-gray-400 mt-1">
+                Full reagent properties including identification data. Players see limited info based on identification level.
+              </p>
+            </div>
+            <button onClick={() => setShowAdd(!showAdd)} className="bg-green-600 px-4 py-2 rounded h-fit">
+              <Plus size={20} className="inline" /> Add Reagent
+            </button>
+          </div>
+
+          {showAdd && (
+            <div className="bg-gray-700 p-4 rounded mb-4 space-y-3">
+              <div>
+                <label className="block text-sm mb-1">Reagent Name</label>
+                <input
+                  value={newType}
+                  onChange={(e) => setNewType(e.target.value)}
+                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                  placeholder="e.g., Lunar Moss"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-sm mb-1">Primary Aspect (3pts)</label>
+                  <select
+                    value={expanded.newPrimary || 'Water'}
+                    onChange={(e) => setExpanded({...expanded, newPrimary: e.target.value})}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  >
+                    {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Secondary Aspect (2pts)</label>
+                  <select
+                    value={expanded.newSecondary || 'Air'}
+                    onChange={(e) => setExpanded({...expanded, newSecondary: e.target.value})}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  >
+                    {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Tertiary Aspect (1pt)</label>
+                  <select
+                    value={expanded.newTertiary || 'Fire'}
+                    onChange={(e) => setExpanded({...expanded, newTertiary: e.target.value})}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  >
+                    {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-sm mb-1">Base Potency</label>
+                  <select
+                    value={expanded.newPotency || 'P1'}
+                    onChange={(e) => setExpanded({...expanded, newPotency: e.target.value})}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  >
+                    {POTENCY_LEVELS.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Refinement</label>
+                  <select
+                    value={expanded.newRefinement || 'crude'}
+                    onChange={(e) => setExpanded({...expanded, newRefinement: e.target.value})}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  >
+                    <option value="crude">Crude</option>
+                    <option value="prepared">Prepared</option>
+                    <option value="refined">Refined</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Quantity (Units)</label>
+                  <input
+                    type="number"
+                    value={expanded.newQuantity || '10'}
+                    onChange={(e) => setExpanded({...expanded, newQuantity: e.target.value})}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                    min="0"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm mb-2">Roles</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {INGREDIENT_ROLES.map(role => (
+                    <label key={role} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={(expanded.newRoles || []).includes(role)}
+                        onChange={(e) => {
+                          const roles = expanded.newRoles || [];
+                          setExpanded({
+                            ...expanded,
+                            newRoles: e.target.checked
+                              ? [...roles, role]
+                              : roles.filter(r => r !== role)
+                          });
+                        }}
+                        className="w-4 h-4"
+                      />
+                      <span>{role}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm mb-2">Hazards</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {HAZARD_TAGS.map(hazard => (
+                    <label key={hazard} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={(expanded.newHazards || []).includes(hazard)}
+                        onChange={(e) => {
+                          const hazards = expanded.newHazards || [];
+                          setExpanded({
+                            ...expanded,
+                            newHazards: e.target.checked
+                              ? [...hazards, hazard]
+                              : hazards.filter(h => h !== hazard)
+                          });
+                        }}
+                        className="w-4 h-4"
+                      />
+                      <span>{hazard}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    if (!newType.trim()) { alert('Enter reagent name'); return; }
+                    const newReagent = {
+                      id: crypto.randomUUID(),
+                      name: newType.trim(),
+                      aspects: {
+                        primary: expanded.newPrimary || 'Water',
+                        secondary: expanded.newSecondary || 'Air',
+                        tertiary: expanded.newTertiary || 'Fire'
+                      },
+                      refinement: expanded.newRefinement || 'crude',
+                      basePotency: expanded.newPotency || 'P1',
+                      concentrationSteps: 0,
+                      roles: expanded.newRoles || ['Active'],
+                      primaryRole: (expanded.newRoles || ['Active'])[0],
+                      hazards: expanded.newHazards || [],
+                      processingNotes: '',
+                      quantity: toNumberOr(expanded.newQuantity, 10),
+                      identificationLevel: 4, // New reagents start fully identified for GM
+                      analysisHistory: [],
+                      falseProfile: null
+                    };
+                    saveAlchemyReagents([...(alchemyReagents || []), newReagent]);
+                    setNewType('');
+                    setExpanded({});
+                    setShowAdd(false);
+                  }}
+                  className="flex-1 bg-green-600 px-4 py-2 rounded"
+                >
+                  <Save size={20} className="inline" /> Save Reagent
+                </button>
+                <button onClick={() => { setShowAdd(false); setNewType(''); setExpanded({}); }} className="bg-red-600 px-4 py-2 rounded">
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {(alchemyReagents || []).map(r => (
+              <div key={r.id} className="bg-gray-700 rounded">
+                <div
+                  className="flex items-center gap-4 p-3 cursor-pointer hover:bg-gray-600"
+                  onClick={() => setExpanded(p => ({...p, [r.id]: !p[r.id]}))}
+                >
+                  <span className="flex-1 font-medium">{r.name}</span>
+                  <span className="text-sm text-blue-400">
+                    {r.aspects?.primary}/{r.aspects?.secondary}/{r.aspects?.tertiary}
+                  </span>
+                  <span className="text-sm text-gray-400">{r.quantity}U</span>
+                  <span className="text-sm text-purple-400">{r.basePotency || 'P1'}</span>
+                  {r.identificationLevel < 4 && (
+                    <span className="text-xs px-2 py-1 bg-yellow-600 rounded">
+                      ID: {r.identificationLevel}/4
+                    </span>
+                  )}
+                  {r.falseProfile && (
+                    <span className="text-xs text-red-400">⚠️ False</span>
+                  )}
+                  <span className="text-gray-400">{expanded[r.id] ? '▼' : '▶'}</span>
+                </div>
+
+                {expanded[r.id] && (
+                  <div className="px-3 pb-3 space-y-3 border-t border-gray-600 pt-3">
+                    {/* Basic Info */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Name</label>
+                        <input
+                          value={r.name}
+                          onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, name: e.target.value} : x))}
+                          className="w-full bg-gray-600 px-3 py-1 rounded"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Quantity (Units)</label>
+                        <input
+                          type="number"
+                          value={r.quantity}
+                          onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, quantity: toNumberOr(e.target.value, 0)} : x))}
+                          className="w-full bg-gray-600 px-3 py-1 rounded"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Aspects */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Primary (3pts)</label>
+                        <select
+                          value={r.aspects?.primary || 'Water'}
+                          onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, aspects: {...x.aspects, primary: e.target.value}} : x))}
+                          className="w-full bg-gray-600 px-3 py-1 rounded"
+                        >
+                          {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Secondary (2pts)</label>
+                        <select
+                          value={r.aspects?.secondary || 'Air'}
+                          onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, aspects: {...x.aspects, secondary: e.target.value}} : x))}
+                          className="w-full bg-gray-600 px-3 py-1 rounded"
+                        >
+                          {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Tertiary (1pt)</label>
+                        <select
+                          value={r.aspects?.tertiary || 'Fire'}
+                          onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, aspects: {...x.aspects, tertiary: e.target.value}} : x))}
+                          className="w-full bg-gray-600 px-3 py-1 rounded"
+                        >
+                          {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Potency & Refinement */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Base Potency</label>
+                        <select
+                          value={r.basePotency || 'P1'}
+                          onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, basePotency: e.target.value} : x))}
+                          className="w-full bg-gray-600 px-3 py-1 rounded"
+                        >
+                          {POTENCY_LEVELS.map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Refinement</label>
+                        <select
+                          value={r.refinement || 'crude'}
+                          onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, refinement: e.target.value} : x))}
+                          className="w-full bg-gray-600 px-3 py-1 rounded"
+                        >
+                          <option value="crude">Crude</option>
+                          <option value="prepared">Prepared</option>
+                          <option value="refined">Refined</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Concentration Steps</label>
+                        <input
+                          type="number"
+                          value={r.concentrationSteps || 0}
+                          onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, concentrationSteps: toNumberOr(e.target.value, 0)} : x))}
+                          className="w-full bg-gray-600 px-3 py-1 rounded"
+                          min="0"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Roles */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-2">Roles</label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {INGREDIENT_ROLES.map(role => (
+                          <label key={role} className="flex items-center gap-2 text-xs">
+                            <input
+                              type="checkbox"
+                              checked={(r.roles || []).includes(role)}
+                              onChange={(e) => {
+                                const roles = r.roles || [];
+                                const newRoles = e.target.checked
+                                  ? [...roles, role]
+                                  : roles.filter(rl => rl !== role);
+                                saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, roles: newRoles, primaryRole: newRoles[0] || 'Active'} : x));
+                              }}
+                              className="w-4 h-4"
+                            />
+                            <span>{role}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Hazards */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-2">Hazards</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {HAZARD_TAGS.map(hazard => (
+                          <label key={hazard} className="flex items-center gap-2 text-xs">
+                            <input
+                              type="checkbox"
+                              checked={(r.hazards || []).includes(hazard)}
+                              onChange={(e) => {
+                                const hazards = r.hazards || [];
+                                const newHazards = e.target.checked
+                                  ? [...hazards, hazard]
+                                  : hazards.filter(h => h !== hazard);
+                                saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, hazards: newHazards} : x));
+                              }}
+                              className="w-4 h-4"
+                            />
+                            <span>{hazard}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Processing Notes */}
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Processing Notes</label>
+                      <textarea
+                        value={r.processingNotes || ''}
+                        onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, processingNotes: e.target.value} : x))}
+                        className="w-full bg-gray-600 px-3 py-2 rounded text-sm"
+                        rows="2"
+                        placeholder="e.g., must be ground, requires heating"
+                      />
+                    </div>
+
+                    {/* Identification Level */}
+                    <div className="bg-gray-800 p-3 rounded">
+                      <label className="block text-xs text-gray-400 mb-2">
+                        Identification Level (affects player view)
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min="0"
+                          max="4"
+                          value={r.identificationLevel || 0}
+                          onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, identificationLevel: parseInt(e.target.value)} : x))}
+                          className="flex-1"
+                        />
+                        <span className="text-sm font-semibold">{r.identificationLevel || 0}/4</span>
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        {r.identificationLevel === 0 && 'Unidentified'}
+                        {r.identificationLevel === 1 && 'Partial (Primary Aspect)'}
+                        {r.identificationLevel === 2 && 'Basic (Primary + Secondary)'}
+                        {r.identificationLevel === 3 && 'Complete (All Aspects)'}
+                        {r.identificationLevel === 4 && 'Full Profile'}
+                      </div>
+                    </div>
+
+                    {/* False Profile Warning/Editor */}
+                    {r.falseProfile && (
+                      <div className="bg-red-900 bg-opacity-30 border border-red-500 p-3 rounded">
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="text-sm font-semibold text-red-400">
+                            ⚠️ False Profile (from critical failure)
+                          </label>
+                          <button
+                            onClick={() => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, falseProfile: null} : x))}
+                            className="text-xs px-2 py-1 bg-red-600 rounded"
+                          >
+                            Clear False Profile
+                          </button>
+                        </div>
+                        <div className="text-xs text-gray-300">
+                          Players see: {r.falseProfile.aspects?.primary}/{r.falseProfile.aspects?.secondary}/{r.falseProfile.aspects?.tertiary} | {r.falseProfile.basePotency}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Delete Button */}
+                    <button
+                      onClick={() => setDeleteConfirm({type: 'reagent', id: r.id, name: r.name})}
+                      className="w-full bg-red-600 py-2 rounded text-sm"
+                    >
+                      <Trash2 size={16} className="inline" /> Delete Reagent
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {(!alchemyReagents || alchemyReagents.length === 0) && (
+              <div className="text-center py-8 text-gray-500">
+                No reagents. Add your first reagent above.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {view === 'formulas' && (
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h2 className="text-xl font-bold">Formula Design</h2>
+              <p className="text-sm text-gray-400 mt-1">
+                Design and manage alchemy formulas. Players can view and start batches from formulas in the Formulas tab.
+              </p>
+            </div>
+            <button onClick={() => setShowAdd(!showAdd)} className="flex items-center gap-2 bg-green-600 px-4 py-2 rounded h-fit">
+              <Plus size={20} /> {showAdd ? 'Cancel' : 'Design Formula'}
+            </button>
+          </div>
+
+          {showAdd && (
+            <div className="bg-gray-700 p-4 rounded mb-4 space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-3 sm:col-span-1">
+                  <label className="block text-sm mb-1">Formula Name</label>
+                  <input
+                    value={formulaName}
+                    onChange={(e) => setFormulaName(e.target.value)}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                    placeholder="e.g., Healing Draught"
+                  />
+                </div>
+                <div className="bg-gray-700 p-3 rounded">
+                  <div className="text-xs text-gray-400 mb-1">Tier (Auto-calculated from potency)</div>
+                  <div className="text-sm text-gray-300">
+                    Tier is now automatically determined by the potency load of active ingredients.
+                    The tier calculation happens when you add ingredients below.
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Vector Type</label>
+                  <select
+                    value={selectedVector}
+                    onChange={(e) => setSelectedVector(e.target.value)}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  >
+                    {VECTORS.map(v => (
+                      <option key={v.name} value={v.name}>
+                        {v.name} (WR {v.wrMod >= 0 ? '+' : ''}{v.wrMod}, DM {v.dmMod >= 0 ? '+' : ''}{v.dmMod})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-sm font-semibold">Ingredients</label>
+                  <button onClick={addIngredient} className="bg-blue-600 px-3 py-1 rounded text-sm">
+                    <Plus size={14} className="inline" /> Add Ingredient
+                  </button>
+                </div>
+
+                {ingredients.map(ing => {
+                  return (
+                    <div key={ing.id} className="bg-gray-600 p-3 rounded mb-2 space-y-2">
+                      <div className="grid grid-cols-4 gap-2">
+                        <select
+                          value={ing.reagentId}
+                          onChange={(e) => updateIngredient(ing.id, 'reagentId', e.target.value)}
+                          className="bg-gray-700 px-2 py-1 rounded text-sm"
+                        >
+                          {alchemyReagents.map(r => (
+                            <option key={r.id} value={r.id}>{r.name} ({r.quantity}U)</option>
+                          ))}
+                        </select>
+                        <select
+                          value={ing.role}
+                          onChange={(e) => updateIngredient(ing.id, 'role', e.target.value)}
+                          className="bg-gray-700 px-2 py-1 rounded text-sm"
+                        >
+                          {INGREDIENT_ROLES.map(role => (
+                            <option key={role} value={role}>{role}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={ing.refinement}
+                          onChange={(e) => updateIngredient(ing.id, 'refinement', e.target.value)}
+                          className="bg-gray-700 px-2 py-1 rounded text-sm"
+                        >
+                          <option value="crude">Crude</option>
+                          <option value="prepared">Prepared</option>
+                          <option value="refined">Refined</option>
+                        </select>
+                        <div className="flex gap-1">
+                          <input
+                            type="number"
+                            value={ing.unitsUsed}
+                            onChange={(e) => updateIngredient(ing.id, 'unitsUsed', Math.max(1, toNumberOr(e.target.value, 1)))}
+                            className="w-full bg-gray-700 px-2 py-1 rounded text-sm"
+                            min="1"
+                          />
+                          <button
+                            onClick={() => removeIngredient(ing.id)}
+                            className="bg-red-600 px-2 rounded"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {ingredients.length > 0 && (() => {
+                const reagentsMap = new Map(alchemyReagents.map(r => [r.id, r]));
+                const actives = ingredients.filter(i => i.role === 'Active' || i.role === 'active');
+                if (actives.length === 0) return null;
+
+                const ingredientsSnapshot = ingredients.map(ing => {
+                  const r = reagentsMap.get(ing.reagentId);
+                  return {
+                    reagentId: ing.reagentId,
+                    role: ing.role,
+                    unitsUsed: ing.unitsUsed,
+                    refinement: ing.refinement,
+                    aspects: r ? {...r.aspects} : {}
+                  };
+                });
+
+                const tempFormula = { ingredients: ingredientsSnapshot };
+                const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector);
+
+                return (
+                  <div className="space-y-3">
+                    {/* Validation warnings */}
+                    {!stats.roleCoverage.valid && (
+                      <div className="bg-red-900 bg-opacity-30 border border-red-500 p-3 rounded">
+                        <div className="text-sm font-semibold text-red-300 mb-1">⚠️ Missing Required Roles</div>
+                        <div className="text-xs text-red-200 space-y-1">
+                          {stats.roleCoverage.messages.map((msg, idx) => (
+                            <div key={idx}>• {msg}</div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {!stats.batchValidation.valid && (
+                      <div className="bg-red-900 bg-opacity-30 border border-red-500 p-3 rounded">
+                        <div className="text-sm font-semibold text-red-300 mb-1">⚠️ Constraint Violations</div>
+                        <div className="text-xs text-red-200 space-y-1">
+                          {stats.batchValidation.errors.map((err, idx) => (
+                            <div key={idx}>• {err}</div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {stats.batchValidation.warnings.length > 0 && (
+                      <div className="bg-yellow-900 bg-opacity-30 border border-yellow-500 p-3 rounded">
+                        <div className="text-sm font-semibold text-yellow-300 mb-1">⚠️ Warnings</div>
+                        <div className="text-xs text-yellow-200 space-y-1">
+                          {stats.batchValidation.warnings.map((warn, idx) => (
+                            <div key={idx}>• {warn}</div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {stats.hazardEvaluation.count > 0 && (
+                      <div className="bg-orange-900 bg-opacity-30 border border-orange-500 p-3 rounded">
+                        <div className="text-sm font-semibold text-orange-300 mb-1">⚠️ Hazards Present ({stats.hazardEvaluation.count})</div>
+                        <div className="text-xs text-orange-200 space-y-1">
+                          {stats.hazardEvaluation.details.map((h, idx) => (
+                            <div key={idx}>
+                              <strong>{h.hazard}</strong> ({h.source}): {h.effect}
+                              {h.wrMod > 0 && ` [+${h.wrMod} WR]`}
+                              {h.dmMod !== 0 && ` [${h.dmMod >= 0 ? '+' : ''}${h.dmMod} DM]`}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="bg-gray-600 p-3 rounded">
+                      <div className="text-sm font-semibold mb-2">Formula Preview</div>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="space-y-1">
+                          <div>
+                            Tier: <span className="text-yellow-400 font-bold">{stats.tier}</span>
+                            <span className="text-xs text-gray-400 ml-2">(Potency Load: {stats.potencyLoad})</span>
+                          </div>
+                          <div>Dominant: <span className="text-blue-400">{stats.dominantAspect || 'None'}</span></div>
+                          <div>Secondary: <span className="text-blue-400">{stats.secondaryAspect || 'None'}</span></div>
+                          <div>Potency: <span className="text-green-400">{stats.basePotency} {stats.concentrationSteps > 0 ? `+${stats.concentrationSteps} → ${stats.finalPotency}` : ''}</span></div>
+                        </div>
+                        <div className="space-y-1">
+                          <div>WR: <span className="text-orange-400">{stats.baseWR}</span></div>
+                          <div>DM: <span className="text-orange-400">{stats.baseDM >= 0 ? '+' : ''}{stats.baseDM}</span></div>
+                          <div>TB: <span className="text-purple-400">{stats.traitBudget} points</span></div>
+                          <div>Vector: <span className="text-gray-300">{stats.vector}</span></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <TBBuilderPanel
+                      traitBudget={stats.traitBudget}
+                      initialTraits={formulaTraits}
+                      onUpdate={setFormulaTraits}
+                    />
+                  </div>
+                );
+              })()}
+
+              <button onClick={createFormula} className="w-full bg-green-600 px-4 py-2 rounded">
+                Save Formula
+              </button>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {alchemyFormulas.map(f => (
+              <div key={f.id} className="bg-gray-700 p-4 rounded">
+                <div className="flex justify-between mb-2">
+                  <h3 className="font-semibold text-lg">{f.name}</h3>
+                  <div className="flex gap-2">
+                    <button onClick={() => setDeleteConfirm({type: 'formula', id: f.id, name: f.name})} className="bg-red-600 px-3 py-1 rounded text-sm">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+                <div className="text-sm space-y-1">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-gray-400">Tier:</span> <span className="text-yellow-400 font-bold">{f.tier || 1}</span> |
+                      <span className="text-gray-400 ml-2">TB:</span> <span className="text-purple-400">{f.traitBudget || 10}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Vector:</span> <span className="text-gray-300">{f.vector || 'Potion'}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Aspects:</span> <span className="text-blue-400">{f.dominantAspect}</span> / <span className="text-blue-400">{f.secondaryAspect}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400">Potency:</span> <span className="text-green-400">{f.finalPotency || f.potency || 'P1'}</span> |
+                    <span className="text-gray-400 ml-2">WR:</span> <span className="text-orange-400">{f.baseWR}</span> |
+                    <span className="text-gray-400 ml-2">DM:</span> <span className="text-orange-400">{f.baseDM >= 0 ? '+' : ''}{f.baseDM}</span>
+                  </div>
+                  <div className="text-xs text-gray-400 mt-2">
+                    {f.ingredients.map(i => `${i.reagentName} (${i.role}, ${i.unitsUsed}U)`).join(', ')}
+                  </div>
+
+                  {f.traits && f.traits.length > 0 && (
+                    <div className="text-xs text-purple-400 mt-2">
+                      Traits: {f.traits.map(t => `${t.name} (${t.cost}pts)`).join(', ')}
+                    </div>
+                  )}
+                </div>
+
+                {expandedFormula === f.id && f.traits && (
+                  <div className="mt-3">
+                    <TBBuilderPanel
+                      traitBudget={f.traitBudget || 10}
+                      initialTraits={f.traits || []}
+                      onUpdate={(newTraits) => {
+                        const updatedFormulas = alchemyFormulas.map(formula =>
+                          formula.id === f.id ? {...formula, traits: newTraits} : formula
+                        );
+                        saveAlchemyFormulas(updatedFormulas);
+                      }}
+                    />
+                  </div>
+                )}
+
+                {(f.traits && f.traits.length > 0) || expandedFormula === f.id ? (
+                  <button
+                    onClick={() => setExpandedFormula(expandedFormula === f.id ? null : f.id)}
+                    className="mt-2 text-xs text-purple-400 hover:text-purple-300"
+                  >
+                    {expandedFormula === f.id ? '▼ Hide Traits' : '▶ Show Traits'}
+                  </button>
+                ) : null}
+              </div>
+            ))}
+
+            {alchemyFormulas.length === 0 && (
+              <div className="text-gray-500 text-center py-8">No formulas yet. Design one to get started!</div>
+            )}
+          </div>
+        </div>
+      )}
+
       {view === 'alchemySettings' && (
         <div>
           <h2 className="text-xl font-bold mb-4">Alchemy Settings</h2>
@@ -968,6 +2062,28 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
               </label>
             </div>
 
+            <div className="border-t border-gray-600 pt-6">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={alchemySettings.showObviousRoles !== false}
+                  onChange={(e) => {
+                    saveAlchemySettings({
+                      ...alchemySettings,
+                      showObviousRoles: e.target.checked
+                    });
+                  }}
+                  className="w-5 h-5"
+                />
+                <div>
+                  <div className="text-sm font-semibold">Show Obvious Physical Roles</div>
+                  <p className="text-xs text-gray-400">
+                    Allow physical roles (Solvent, Binder, Tool) to be known from mundane inspection even when reagent is unidentified
+                  </p>
+                </div>
+              </label>
+            </div>
+
             <div className="bg-gray-800 p-4 rounded text-sm">
               <div className="font-semibold mb-2">Notes:</div>
               <ul className="list-disc list-inside space-y-1 text-gray-300">
@@ -975,6 +2091,8 @@ export function ManagerTab({ foodTypes, materialTypes, workers, crafts, customTe
                 <li>Higher lab rating = easier brewing, fewer work blocks needed</li>
                 <li>Work blocks can be customized for different campaign pacing</li>
                 <li>Auto-save creates a recipe copy when a batch completes successfully</li>
+                <li>Reagent identification requires Analysis (consumes 1U per attempt)</li>
+                <li>Physical roles setting allows Solvent/Binder/Tool to be visible even when unidentified</li>
                 <li>These are defaults; you can override them per batch</li>
               </ul>
             </div>

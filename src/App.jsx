@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Save, X, ChefHat, Hammer, Package, Beaker } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, ChefHat, Hammer, Package, Beaker, FileText } from 'lucide-react';
 import { TEMPLATES } from './constants';
 import { safeParse } from './utils/helpers';
 import { useKeyedDebouncedStorageSave } from './hooks/useStorage';
@@ -8,6 +8,8 @@ import { CookingTab } from './components/CookingTab';
 import { CraftingTab } from './components/CraftingTab';
 import { ManagerTab } from './components/ManagerTab';
 import { AlchemyTab } from './components/AlchemyTab';
+import { ChangelogTab } from './components/ChangelogTab';
+import { VERSION } from './version';
 
 export default function GURPSPartyTool() {
   console.log('GURPSPartyTool rendering');
@@ -31,7 +33,11 @@ export default function GURPSPartyTool() {
     { name: 'cloth', difficulty: -1, effects: '', ht: 6, drShift: 0, weightMod: -30, hpMod: -20 },
     { name: 'stone', difficulty: 1, effects: '', ht: 14, drShift: 0, weightMod: 50, hpMod: 10 }
   ]);
-  const [workers, setWorkers] = useState(['Worker 1', 'Worker 2', 'Worker 3']);
+  const [workers, setWorkers] = useState([
+    { id: '1', name: 'Worker 1', skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10 } },
+    { id: '2', name: 'Worker 2', skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10 } },
+    { id: '3', name: 'Worker 3', skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10 } }
+  ]);
   const [customTemplates, setCustomTemplates] = useState({ weapons: {}, armor: {}, ranged: {}, explosives: {} });
   const [alchemyReagents, setAlchemyReagents] = useState([]);
   const [alchemyFormulas, setAlchemyFormulas] = useState([]);
@@ -39,6 +45,8 @@ export default function GURPSPartyTool() {
   const [effectFamilyMap, setEffectFamilyMap] = useState({});
   const [alchemySettings, setAlchemySettings] = useState({ defaultLabRating: 0, workBlockMinutes: 120 });
   const [loading, setLoading] = useState(true);
+  const [gmMode, setGmMode] = useState(false);
+  const [gmLockData, setGmLockData] = useState(null); // Stores gmLock from locked imports
 
   useEffect(() => { loadData(); }, []);
 
@@ -71,7 +79,33 @@ export default function GURPSPartyTool() {
       if (foodsR?.value) setFoods(JSON.parse(foodsR.value));
       if (recipesR?.value) setRecipes(JSON.parse(recipesR.value));
       if (craftsR?.value) setCrafts(JSON.parse(craftsR.value));
-      if (workersR?.value) setWorkers(JSON.parse(workersR.value));
+
+      // Load workers with backward compatibility (convert string array to object array)
+      if (workersR?.value) {
+        const loadedWorkers = JSON.parse(workersR.value);
+        if (Array.isArray(loadedWorkers) && loadedWorkers.length > 0) {
+          if (typeof loadedWorkers[0] === 'string') {
+            // Old format - convert to new format
+            setWorkers(loadedWorkers.map((name, idx) => ({
+              id: String(idx + 1),
+              name,
+              skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10 }
+            })));
+          } else {
+            // New format - ensure all workers have required fields
+            setWorkers(loadedWorkers.map((w, idx) => ({
+              id: w.id || String(idx + 1),
+              name: w.name || `Worker ${idx + 1}`,
+              skills: {
+                cooking: w.skills?.cooking ?? 10,
+                designing: w.skills?.designing ?? 10,
+                crafting: w.skills?.crafting ?? 10,
+                alchemy: w.skills?.alchemy ?? 10
+              }
+            })));
+          }
+        }
+      }
 
       // Load food types with backward compatibility (convert string array to object array)
       if (typesR?.value) {
@@ -91,12 +125,26 @@ export default function GURPSPartyTool() {
       // Load craft designs
       setCraftDesigns(safeParse(craftDesignsR?.value, []));
 
-      // Load alchemy data
-      setAlchemyReagents(safeParse(reagentsR?.value, []));
+      // Load alchemy data with identification system migration
+      const loadedReagents = safeParse(reagentsR?.value, []);
+      const migratedReagents = loadedReagents.map(r => ({
+        ...r,
+        identificationLevel: r.identificationLevel ?? 0,
+        analysisHistory: r.analysisHistory ?? [],
+        falseProfile: r.falseProfile ?? null
+      }));
+      setAlchemyReagents(migratedReagents);
+
       setAlchemyFormulas(safeParse(formulasR?.value, []));
       setAlchemyBatches(safeParse(batchesR?.value, []));
       setEffectFamilyMap(safeParse(effectMapR?.value, {}));
-      setAlchemySettings(safeParse(alchemySettingsR?.value, { defaultLabRating: 0, workBlockMinutes: 120 }));
+
+      // Load alchemy settings with identification toggle
+      const loadedSettings = safeParse(alchemySettingsR?.value, { defaultLabRating: 0, workBlockMinutes: 120 });
+      setAlchemySettings({
+        ...loadedSettings,
+        showObviousRoles: loadedSettings.showObviousRoles ?? true
+      });
 
       // Load and ensure material types have all required properties
       if (matTypesR?.value) {
@@ -229,7 +277,9 @@ export default function GURPSPartyTool() {
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100">
       <div className="max-w-7xl mx-auto p-6">
-        <h1 className="text-3xl font-bold mb-6 text-center">GURPS Party Management</h1>
+        <h1 className="text-3xl font-bold mb-6 text-center">
+          GURPS Party Management <span className="text-xl text-gray-400">v{VERSION}</span>
+        </h1>
         <div className="flex gap-2 mb-6 border-b border-gray-700">
           <button onClick={() => setActiveTab('inventory')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'inventory' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
             <Package size={20} />Inventory
@@ -246,13 +296,17 @@ export default function GURPSPartyTool() {
           <button onClick={() => setActiveTab('alchemy')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'alchemy' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
             <Beaker size={20} />Alchemy
           </button>
+          <button onClick={() => setActiveTab('changelog')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'changelog' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+            <FileText size={20} />Changelog
+          </button>
         </div>
 
         {activeTab === 'inventory' && <InventoryTab materials={materials} foods={foods} foodTypes={foodTypes} materialTypes={materialTypes} saveMaterials={saveMaterials} saveFoods={saveFoods} />}
         {activeTab === 'cooking' && <CookingTab foods={foods} recipes={recipes} saveFoods={saveFoods} saveRecipes={saveRecipes} />}
         {activeTab === 'crafting' && <CraftingTab materials={materials} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materialTypes={materialTypes} workers={workers} saveMaterials={saveMaterials} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} />}
-        {activeTab === 'manager' && <ManagerTab foodTypes={foodTypes} materialTypes={materialTypes} workers={workers} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materials={materials} effectFamilyMap={effectFamilyMap} alchemySettings={alchemySettings} saveMaterials={saveMaterials} saveFoodTypes={saveFoodTypes} saveMaterialTypes={saveMaterialTypes} saveWorkers={saveWorkers} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} saveCustomTemplates={saveCustomTemplates} saveEffectFamilyMap={saveEffectFamilyMap} saveAlchemySettings={saveAlchemySettings} renameMaterialType={renameMaterialType} />}
+        {activeTab === 'manager' && <ManagerTab foodTypes={foodTypes} materialTypes={materialTypes} workers={workers} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materials={materials} effectFamilyMap={effectFamilyMap} alchemySettings={alchemySettings} alchemyReagents={alchemyReagents} alchemyFormulas={alchemyFormulas} alchemyBatches={alchemyBatches} foods={foods} recipes={recipes} gmMode={gmMode} gmLockData={gmLockData} setGmMode={setGmMode} setGmLockData={setGmLockData} saveMaterials={saveMaterials} saveFoods={saveFoods} saveRecipes={saveRecipes} saveFoodTypes={saveFoodTypes} saveMaterialTypes={saveMaterialTypes} saveWorkers={saveWorkers} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} saveCustomTemplates={saveCustomTemplates} saveEffectFamilyMap={saveEffectFamilyMap} saveAlchemySettings={saveAlchemySettings} saveAlchemyReagents={saveAlchemyReagents} saveAlchemyFormulas={saveAlchemyFormulas} saveAlchemyBatches={saveAlchemyBatches} renameMaterialType={renameMaterialType} />}
         {activeTab === 'alchemy' && <AlchemyTab reagents={alchemyReagents} formulas={alchemyFormulas} batches={alchemyBatches} workers={workers} alchemySettings={alchemySettings} saveReagents={saveAlchemyReagents} saveFormulas={saveAlchemyFormulas} saveBatches={saveAlchemyBatches} />}
+        {activeTab === 'changelog' && <ChangelogTab />}
       </div>
     </div>
   );
