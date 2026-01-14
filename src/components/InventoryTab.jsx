@@ -2,10 +2,14 @@ import React, { useState } from 'react';
 import { Plus, Save, X, Trash2 } from 'lucide-react';
 import { toNumberOr } from '../utils/helpers';
 
-export function InventoryTab({ materials, foods, foodTypes, materialTypes, saveMaterials, saveFoods }) {
+export function InventoryTab({ materials, foods, foodTypes, materialTypes, gmMode, saveMaterials, saveFoods }) {
   const [view, setView] = useState('materials');
   const [showAddMat, setShowAddMat] = useState(false);
   const [showAddFood, setShowAddFood] = useState(false);
+  const [useExistingMat, setUseExistingMat] = useState(false);
+  const [useExistingFood, setUseExistingFood] = useState(false);
+  const [selectedExistingMatId, setSelectedExistingMatId] = useState('');
+  const [selectedExistingFoodId, setSelectedExistingFoodId] = useState('');
   const [newMatName, setNewMatName] = useState('');
   const [newMatQty, setNewMatQty] = useState('');
   const [newMatType, setNewMatType] = useState('');
@@ -16,18 +20,108 @@ export function InventoryTab({ materials, foods, foodTypes, materialTypes, saveM
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   function addMat() {
+    if (useExistingMat) {
+      // Add to existing material
+      if (!selectedExistingMatId || !newMatQty) {
+        alert('Select existing material and enter quantity');
+        return;
+      }
+      saveMaterials(materials.map(m =>
+        m.id === selectedExistingMatId
+          ? { ...m, quantity: m.quantity + Math.max(0, toNumberOr(newMatQty, 0)) }
+          : m
+      ));
+      setUseExistingMat(false);
+      setSelectedExistingMatId('');
+      setNewMatQty('');
+      setShowAddMat(false);
+      return;
+    }
+
+    // Create new material
     if (!newMatName.trim() || !newMatQty || !newMatType) {
       alert('Fill all fields including material type');
       return;
     }
-    saveMaterials([...materials, { id: crypto.randomUUID(), name: newMatName, quantity: Math.max(0, toNumberOr(newMatQty, 0)), type: newMatType }]);
-    setNewMatName(''); setNewMatQty(''); setNewMatType(''); setShowAddMat(false);
+
+    // Check for duplicate (name + type match)
+    const existing = materials.find(m => m.name === newMatName.trim() && m.type === newMatType);
+    if (existing) {
+      // Merge with existing
+      saveMaterials(materials.map(m =>
+        m.id === existing.id
+          ? { ...m, quantity: m.quantity + Math.max(0, toNumberOr(newMatQty, 0)) }
+          : m
+      ));
+    } else {
+      // Create new entry
+      saveMaterials([...materials, {
+        id: crypto.randomUUID(),
+        name: newMatName.trim(),
+        quantity: Math.max(0, toNumberOr(newMatQty, 0)),
+        type: newMatType
+      }]);
+    }
+
+    setNewMatName('');
+    setNewMatQty('');
+    setNewMatType('');
+    setShowAddMat(false);
   }
 
   function addFood() {
-    if (!newFoodName.trim() || !newFoodQty || newFoodTypes.length === 0) { alert('Fill all fields and add at least one type'); return; }
-    saveFoods([...foods, { id: crypto.randomUUID(), name: newFoodName, quantity: Math.max(0, toNumberOr(newFoodQty, 0)), types: [...newFoodTypes] }]);
-    setNewFoodName(''); setNewFoodQty(''); setNewFoodTypes([]); setShowAddFood(false);
+    if (useExistingFood) {
+      // Add to existing food
+      if (!selectedExistingFoodId || !newFoodQty) {
+        alert('Select existing food and enter quantity');
+        return;
+      }
+      saveFoods(foods.map(f =>
+        f.id === selectedExistingFoodId
+          ? { ...f, quantity: f.quantity + Math.max(0, toNumberOr(newFoodQty, 0)) }
+          : f
+      ));
+      setUseExistingFood(false);
+      setSelectedExistingFoodId('');
+      setNewFoodQty('');
+      setShowAddFood(false);
+      return;
+    }
+
+    // Create new food
+    if (!newFoodName.trim() || !newFoodQty || newFoodTypes.length === 0) {
+      alert('Fill all fields and add at least one type');
+      return;
+    }
+
+    // Check for duplicate (name + types match)
+    const sortedNewTypes = [...newFoodTypes].sort().join(',');
+    const existing = foods.find(f => {
+      const sortedExistingTypes = [...(f.types || [])].sort().join(',');
+      return f.name === newFoodName.trim() && sortedExistingTypes === sortedNewTypes;
+    });
+
+    if (existing) {
+      // Merge with existing
+      saveFoods(foods.map(f =>
+        f.id === existing.id
+          ? { ...f, quantity: f.quantity + Math.max(0, toNumberOr(newFoodQty, 0)) }
+          : f
+      ));
+    } else {
+      // Create new entry
+      saveFoods([...foods, {
+        id: crypto.randomUUID(),
+        name: newFoodName.trim(),
+        quantity: Math.max(0, toNumberOr(newFoodQty, 0)),
+        types: [...newFoodTypes]
+      }]);
+    }
+
+    setNewFoodName('');
+    setNewFoodQty('');
+    setNewFoodTypes([]);
+    setShowAddFood(false);
   }
 
   const grouped = foods.reduce((g, f) => {
@@ -69,17 +163,89 @@ export function InventoryTab({ materials, foods, foodTypes, materialTypes, saveM
           </div>
           {showAddMat && (
             <div className="bg-gray-700 p-4 rounded mb-4 space-y-2">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={useExistingMat}
+                  onChange={(e) => {
+                    setUseExistingMat(e.target.checked);
+                    if (e.target.checked) {
+                      setNewMatName('');
+                      setNewMatType('');
+                    } else {
+                      setSelectedExistingMatId('');
+                    }
+                  }}
+                  className="w-4 h-4"
+                />
+                Use existing material
+              </label>
+              {useExistingMat ? (
+                <>
+                  <select
+                    value={selectedExistingMatId}
+                    onChange={(e) => setSelectedExistingMatId(e.target.value)}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  >
+                    <option value="">Select material...</option>
+                    {materials
+                      .filter(m => !newMatType || m.type === newMatType)
+                      .map(m => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.type}) - {m.quantity} lbs
+                        </option>
+                      ))}
+                  </select>
+                  {newMatType && (
+                    <div className="text-xs text-gray-400">
+                      Showing only {newMatType} materials
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="flex gap-2">
+                    <input
+                      value={newMatName}
+                      onChange={(e) => setNewMatName(e.target.value)}
+                      placeholder="Name"
+                      className="flex-1 bg-gray-600 px-3 py-2 rounded"
+                    />
+                  </div>
+                  <select
+                    value={newMatType}
+                    onChange={(e) => setNewMatType(e.target.value)}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  >
+                    <option value="">Select Type</option>
+                    {materialTypes.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
+                  </select>
+                </>
+              )}
+              <input
+                type="number"
+                value={newMatQty}
+                onChange={(e) => setNewMatQty(e.target.value)}
+                placeholder="Quantity to add"
+                className="w-full bg-gray-600 px-3 py-2 rounded"
+              />
               <div className="flex gap-2">
-                <input value={newMatName} onChange={(e) => setNewMatName(e.target.value)} placeholder="Name" className="flex-1 bg-gray-600 px-3 py-2 rounded" />
-                <input type="number" value={newMatQty} onChange={(e) => setNewMatQty(e.target.value)} placeholder="Qty" className="w-32 bg-gray-600 px-3 py-2 rounded" />
-              </div>
-              <select value={newMatType} onChange={(e) => setNewMatType(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
-                <option value="">Select Type</option>
-                {materialTypes.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
-              </select>
-              <div className="flex gap-2">
-                <button onClick={addMat} className="flex-1 bg-green-600 px-4 py-2 rounded"><Save size={20} className="inline" /> Save</button>
-                <button onClick={() => setShowAddMat(false)} className="bg-red-600 px-4 py-2 rounded"><X size={20} /></button>
+                <button onClick={addMat} className="flex-1 bg-green-600 px-4 py-2 rounded">
+                  <Save size={20} className="inline" /> {useExistingMat ? 'Add to Existing' : 'Save'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAddMat(false);
+                    setUseExistingMat(false);
+                    setSelectedExistingMatId('');
+                    setNewMatName('');
+                    setNewMatQty('');
+                    setNewMatType('');
+                  }}
+                  className="bg-red-600 px-4 py-2 rounded"
+                >
+                  <X size={20} />
+                </button>
               </div>
             </div>
           )}
@@ -106,8 +272,13 @@ export function InventoryTab({ materials, foods, foodTypes, materialTypes, saveM
                       <span className="text-gray-400 pb-1">lbs</span>
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Type</label>
-                      <select value={m.type || ''} onChange={(e) => saveMaterials(materials.map(x => x.id === m.id ? {...x, type: e.target.value} : x))} className="w-full bg-gray-600 px-3 py-1 rounded">
+                      <label className="block text-xs text-gray-400 mb-1">Type {!gmMode && <span className="text-yellow-400">(GM mode required to edit)</span>}</label>
+                      <select
+                        value={m.type || ''}
+                        onChange={(e) => saveMaterials(materials.map(x => x.id === m.id ? {...x, type: e.target.value} : x))}
+                        className="w-full bg-gray-600 px-3 py-1 rounded"
+                        disabled={!gmMode}
+                      >
                         <option value="">No Type</option>
                         {materialTypes.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
                       </select>
@@ -129,34 +300,100 @@ export function InventoryTab({ materials, foods, foodTypes, materialTypes, saveM
           </div>
           {showAddFood && (
             <div className="bg-gray-700 p-4 rounded mb-4 space-y-3">
-              <div className="flex gap-2">
-                <input value={newFoodName} onChange={(e) => setNewFoodName(e.target.value)} placeholder="Name" className="flex-1 bg-gray-600 px-3 py-2 rounded" />
-                <input type="number" value={newFoodQty} onChange={(e) => setNewFoodQty(e.target.value)} placeholder="Qty" className="w-32 bg-gray-600 px-3 py-2 rounded" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm">Types (required):</span>
-                  {newFoodTypes.length < 4 && <button onClick={() => {
-                    const firstType = typeof foodTypes[0] === 'string' ? foodTypes[0] : foodTypes[0].name;
-                    setNewFoodTypes([...newFoodTypes, firstType]);
-                  }} className="bg-blue-600 px-3 py-1 rounded text-sm"><Plus size={14} className="inline" /> Add</button>}
-                </div>
-                {newFoodTypes.map((t, i) => (
-                  <div key={i} className="flex gap-2 mb-2">
-                    <select value={t} onChange={(e) => { const u = [...newFoodTypes]; u[i] = e.target.value; setNewFoodTypes(u); }} className="flex-1 bg-gray-600 px-3 py-1 rounded">
-                      {foodTypes.map(ft => {
-                        const ftName = typeof ft === 'string' ? ft : ft.name;
-                        const ftColor = typeof ft === 'object' ? ft.color : '#60A5FA';
-                        return <option key={ftName} value={ftName} style={{color: ftColor}}>{ftName}</option>;
-                      })}
-                    </select>
-                    <button onClick={() => setNewFoodTypes(newFoodTypes.filter((_, j) => j !== i))} className="text-red-400"><X size={18} /></button>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={useExistingFood}
+                  onChange={(e) => {
+                    setUseExistingFood(e.target.checked);
+                    if (e.target.checked) {
+                      setNewFoodName('');
+                      setNewFoodTypes([]);
+                    } else {
+                      setSelectedExistingFoodId('');
+                    }
+                  }}
+                  className="w-4 h-4"
+                />
+                Use existing food
+              </label>
+              {useExistingFood ? (
+                <>
+                  <select
+                    value={selectedExistingFoodId}
+                    onChange={(e) => setSelectedExistingFoodId(e.target.value)}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  >
+                    <option value="">Select food...</option>
+                    {foods
+                      .filter(f => newFoodTypes.length === 0 || newFoodTypes.some(t => f.types?.includes(t)))
+                      .map(f => (
+                        <option key={f.id} value={f.id}>
+                          {f.name} ({f.types?.join(', ') || 'no type'}) - {f.quantity} lbs
+                        </option>
+                      ))}
+                  </select>
+                  {newFoodTypes.length > 0 && (
+                    <div className="text-xs text-gray-400">
+                      Showing foods with selected types
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <input
+                    value={newFoodName}
+                    onChange={(e) => setNewFoodName(e.target.value)}
+                    placeholder="Name"
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  />
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm">Types (required):</span>
+                      {newFoodTypes.length < 4 && <button onClick={() => {
+                        const firstType = typeof foodTypes[0] === 'string' ? foodTypes[0] : foodTypes[0].name;
+                        setNewFoodTypes([...newFoodTypes, firstType]);
+                      }} className="bg-blue-600 px-3 py-1 rounded text-sm"><Plus size={14} className="inline" /> Add</button>}
+                    </div>
+                    {newFoodTypes.map((t, i) => (
+                      <div key={i} className="flex gap-2 mb-2">
+                        <select value={t} onChange={(e) => { const u = [...newFoodTypes]; u[i] = e.target.value; setNewFoodTypes(u); }} className="flex-1 bg-gray-600 px-3 py-1 rounded">
+                          {foodTypes.map(ft => {
+                            const ftName = typeof ft === 'string' ? ft : ft.name;
+                            const ftColor = typeof ft === 'object' ? ft.color : '#60A5FA';
+                            return <option key={ftName} value={ftName} style={{color: ftColor}}>{ftName}</option>;
+                          })}
+                        </select>
+                        <button onClick={() => setNewFoodTypes(newFoodTypes.filter((_, j) => j !== i))} className="text-red-400"><X size={18} /></button>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              )}
+              <input
+                type="number"
+                value={newFoodQty}
+                onChange={(e) => setNewFoodQty(e.target.value)}
+                placeholder="Quantity to add"
+                className="w-full bg-gray-600 px-3 py-2 rounded"
+              />
               <div className="flex gap-2">
-                <button onClick={addFood} className="flex-1 bg-green-600 py-2 rounded">Save</button>
-                <button onClick={() => { setShowAddFood(false); setNewFoodName(''); setNewFoodQty(''); setNewFoodTypes([]); }} className="bg-red-600 px-4 py-2 rounded"><X size={20} /></button>
+                <button onClick={addFood} className="flex-1 bg-green-600 py-2 rounded">
+                  {useExistingFood ? 'Add to Existing' : 'Save'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAddFood(false);
+                    setUseExistingFood(false);
+                    setSelectedExistingFoodId('');
+                    setNewFoodName('');
+                    setNewFoodQty('');
+                    setNewFoodTypes([]);
+                  }}
+                  className="bg-red-600 px-4 py-2 rounded"
+                >
+                  <X size={20} />
+                </button>
               </div>
             </div>
           )}
@@ -198,8 +435,8 @@ export function InventoryTab({ materials, foods, foodTypes, materialTypes, saveM
                         </div>
                         <div>
                           <div className="flex gap-2 mb-2">
-                            <span className="text-sm">Types:</span>
-                            {f.types.length < 4 && <button onClick={() => {
+                            <span className="text-sm">Types: {!gmMode && <span className="text-yellow-400">(GM mode required to edit)</span>}</span>
+                            {gmMode && f.types.length < 4 && <button onClick={() => {
                               const firstType = typeof foodTypes[0] === 'string' ? foodTypes[0] : foodTypes[0].name;
                               saveFoods(foods.map(x => x.id === f.id ? {...x, types: [...x.types, firstType]} : x));
                             }} className="bg-blue-600 px-3 py-1 text-sm rounded"><Plus size={14} className="inline" /> Add</button>}
@@ -210,14 +447,19 @@ export function InventoryTab({ materials, foods, foodTypes, materialTypes, saveM
 
                             return (<div key={i} className="flex gap-2 mb-2 items-center">
                               <span className="w-4 h-4 rounded-full flex-shrink-0" style={{backgroundColor: selectedColor}} title={t}></span>
-                              <select value={t} onChange={(e) => saveFoods(foods.map(x => { if (x.id === f.id) { const nt = [...x.types]; nt[i] = e.target.value; return {...x, types: nt}; } return x; }))} className="flex-1 bg-gray-600 px-3 py-1 rounded">
+                              <select
+                                value={t}
+                                onChange={(e) => saveFoods(foods.map(x => { if (x.id === f.id) { const nt = [...x.types]; nt[i] = e.target.value; return {...x, types: nt}; } return x; }))}
+                                className="flex-1 bg-gray-600 px-3 py-1 rounded"
+                                disabled={!gmMode}
+                              >
                                 {foodTypes.map(ft => {
                                   const ftName = typeof ft === 'string' ? ft : ft.name;
                                   const ftColor = typeof ft === 'object' ? ft.color : '#60A5FA';
                                   return <option key={ftName} value={ftName} style={{color: ftColor}}>{ftName}</option>;
                                 })}
                               </select>
-                              <button onClick={() => saveFoods(foods.map(x => x.id === f.id ? {...x, types: x.types.filter((_, j) => j !== i)} : x))} className="text-red-400"><X size={18} /></button>
+                              {gmMode && <button onClick={() => saveFoods(foods.map(x => x.id === f.id ? {...x, types: x.types.filter((_, j) => j !== i)} : x))} className="text-red-400"><X size={18} /></button>}
                             </div>);
                           })}
                         </div>
