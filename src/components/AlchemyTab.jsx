@@ -6,9 +6,34 @@ import { TallyWorksheetView } from './alchemy/TallyWorksheetView';
 import { AnalysisView } from './alchemy/AnalysisView';
 import { ConcentrationRefinementView } from './alchemy/ConcentrationRefinementView';
 
+/**
+ * AlchemyTab Component - Main container for GURPS alchemy system
+ *
+ * This component provides navigation between the major alchemy subsystems:
+ * - Reagents: View and manage reagent inventory
+ * - Analysis: Identify unknown reagents through skill rolls
+ * - Processing: Refine and concentrate reagents
+ * - Formulas: Create and manage alchemical recipes
+ * - Batches: Track active brewing projects
+ * - Tally Worksheet: Summarize reagent aspects for brewing calculations
+ *
+ * @param {Object} props - Component props
+ * @param {Array<Object>} props.reagents - Reagent inventory
+ * @param {Array<Object>} props.formulas - Saved alchemical formulas
+ * @param {Array<Object>} props.batches - Active and completed brewing batches
+ * @param {Array<Object>} props.labs - Available alchemy labs with ratings
+ * @param {Array<Object>} props.workers - Available workers with alchemy skills
+ * @param {Object} props.alchemySettings - GM settings for alchemy system
+ * @param {Function} props.saveReagents - Callback to persist reagent changes
+ * @param {Function} props.saveFormulas - Callback to persist formula changes
+ * @param {Function} props.saveBatches - Callback to persist batch changes
+ * @param {Function} props.saveLabs - Callback to persist lab changes
+ * @returns {JSX.Element} The alchemy tab interface with sub-navigation
+ */
 export function AlchemyTab({ reagents, formulas, batches, labs, workers, alchemySettings, saveReagents, saveFormulas, saveBatches, saveLabs }) {
   const [view, setView] = useState('reagents');
 
+  // Count batches currently in brewing phase for badge display
   const activeCount = batches.filter(b => b.phase === 'brewing').length;
 
   return (

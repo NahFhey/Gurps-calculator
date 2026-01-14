@@ -1,9 +1,26 @@
 import React, { useState } from 'react';
 import { Dices } from 'lucide-react';
 
+/**
+ * DiceRoller Component - Interactive 3d6 dice roller for GURPS skill checks
+ *
+ * Provides a button to roll three six-sided dice and displays the individual
+ * dice results along with the total. Used throughout the application for
+ * skill checks, contests, and other GURPS mechanics requiring 3d6 rolls.
+ *
+ * @param {Object} props - Component props
+ * @param {Function} [props.onRoll] - Callback when dice are rolled, receives (total, rollResult)
+ * @param {number} [props.currentValue] - Current value (unused, for controlled component support)
+ * @param {boolean} [props.disabled=false] - Whether the roll button is disabled
+ * @returns {JSX.Element} Dice roller button with result display
+ */
 export function DiceRoller({ onRoll, currentValue, disabled = false }) {
   const [lastRoll, setLastRoll] = useState(null);
 
+  /**
+   * Rolls 3d6 and invokes the onRoll callback with results
+   * Generates three random values 1-6, calculates total, and updates state
+   */
   const rollDice = () => {
     const die1 = Math.floor(Math.random() * 6) + 1;
     const die2 = Math.floor(Math.random() * 6) + 1;

@@ -1,4 +1,25 @@
-// Template data for crafting items
+/**
+ * @fileoverview GURPS Calculator Constants and Configuration Data
+ *
+ * This module exports all constant values, templates, and configuration data
+ * used throughout the GURPS calculator application. Includes definitions for:
+ * - Crafting templates (weapons, armor, ranged, explosives)
+ * - Material and quality modifiers
+ * - Alchemy system constants (aspects, roles, potency, hazards)
+ * - Vector and tier configurations
+ * - Role coverage penalties and constraints
+ */
+
+/**
+ * Template data for crafting items
+ * Defines base stats for weapons, armor, ranged weapons, and explosives
+ *
+ * @type {Object}
+ * @property {Object} weapons - Melee weapon templates with damage, reach, parry, etc.
+ * @property {Object} armor - Armor templates with location, DR, cost
+ * @property {Object} ranged - Ranged weapon templates with Acc, range, RoF, etc.
+ * @property {Object} explosives - Explosive templates with damage, fuse, cost
+ */
 export const TEMPLATES = {
   weapons: {
     'dagger': { weight: 1, hp: 8, damage: 'thr-1 imp', reach: 'C,1', parry: '-1', cost: 20, ST: 5, notes: '' },
@@ -23,12 +44,24 @@ export const TEMPLATES = {
   }
 };
 
+/**
+ * Default material definitions with crafting modifiers
+ * Custom materials can override these in the Manager tab
+ *
+ * @type {Object<string, {difficulty: number, weightMod: number, hpMod: number, ht: number}>}
+ */
 export const MATERIALS = {
   'steel': { difficulty: 0, weightMod: 0, hpMod: 0, ht: 12 },
   'iron': { difficulty: -1, weightMod: 0.1, hpMod: 0, ht: 11 },
   'wood': { difficulty: -2, weightMod: -0.1, hpMod: 0, ht: 10 }
 };
 
+/**
+ * Quality levels for crafted items
+ * Each quality affects difficulty, cost multiplier, and HT bonus
+ *
+ * @type {Object<string, {difficulty: number, costMult: number, htBonus: number}>}
+ */
 export const QUALITIES = {
   'cheap': { difficulty: 2, costMult: 1/3, htBonus: -2 },
   'good': { difficulty: 0, costMult: 1, htBonus: 0 },
@@ -37,33 +70,82 @@ export const QUALITIES = {
   'legendary': { difficulty: -9, costMult: 100, htBonus: 6 }
 };
 
+/**
+ * Modification difficulty modifiers for crafting
+ * @type {Object<string, number>}
+ */
 export const MODS = {
   'minor add-on': -1,
   'major add-on': -2,
   'structural overhaul': -3
 };
 
-// Alchemy system constants
+// ============================================================================
+// ALCHEMY SYSTEM CONSTANTS
+// ============================================================================
+
+/**
+ * Elemental and magical aspects for reagents
+ * Reagents have primary, secondary, and tertiary aspects that determine effects
+ *
+ * @type {string[]}
+ */
 export const ASPECTS = ['Water', 'Air', 'Fire', 'Earth', 'Vital', 'Mind', 'Shadow', 'Light'];
 
+/**
+ * Refinement levels and which aspects are visible at each level
+ * crude: all aspects contribute but with noise
+ * prepared: primary + secondary
+ * refined: primary only (purest form)
+ *
+ * @type {Object<string, string[]>}
+ */
 export const REFINEMENT_LEVELS = {
   crude: ['primary', 'secondary', 'tertiary'],
   prepared: ['primary', 'secondary'],
   refined: ['primary']
 };
 
+/**
+ * Ingredient roles in alchemical formulas
+ * Each role contributes differently to the brewing process
+ *
+ * @type {string[]}
+ */
 export const INGREDIENT_ROLES = ['Active', 'Catalyst', 'Stabilizer', 'Solvent', 'Binder', 'Vector', 'Signature', 'Tool'];
 
+/**
+ * Potency levels from weakest to strongest
+ * Higher potency = more powerful effects but harder to work with
+ *
+ * @type {string[]}
+ */
 export const POTENCY_LEVELS = ['P0', 'P1', 'P2', 'P3', 'P4'];
 
+/**
+ * Hazard tags that can be applied to reagents
+ * Hazards add risk and complications during brewing
+ *
+ * @type {string[]}
+ */
 export const HAZARD_TAGS = ['Flammable', 'Volatile', 'Reactive', 'Unstable', 'Toxic', 'Intoxicant', 'Hallucinogenic'];
 
+/**
+ * Aspect conflict pairs - combining these aspects increases instability
+ * @type {Array<[string, string]>}
+ */
 export const CONFLICT_PAIRS = [
   ['Fire', 'Water'],
   ['Light', 'Shadow'],
   ['Shadow', 'Vital']
 ];
 
+/**
+ * Vector types for alchemical preparations
+ * Each vector has different WR/DM modifiers and trait budget efficiency
+ *
+ * @type {Array<{name: string, wrMod: number, dmMod: number, tbEfficiency: number}>}
+ */
 export const VECTORS = [
   { name: 'Potion', wrMod: 0, dmMod: 0, tbEfficiency: 1.0 },
   { name: 'Salve/Poultice', wrMod: 1, dmMod: -1, tbEfficiency: 1.0 },
@@ -72,6 +154,12 @@ export const VECTORS = [
   { name: 'Bomb/Grenade', wrMod: 3, dmMod: -3, tbEfficiency: 1.0 }
 ];
 
+/**
+ * Tier data defining base Work Required (WR), Difficulty Modifier (DM), and trait budget
+ * Higher tiers = more powerful but harder to brew
+ *
+ * @type {Object<number, {baseWR: number, baseDM: number, traitBudget: number}>}
+ */
 export const TIER_DATA = {
   1: { baseWR: 4, baseDM: 0, traitBudget: 10 },
   2: { baseWR: 8, baseDM: -1, traitBudget: 25 },
@@ -79,6 +167,10 @@ export const TIER_DATA = {
   4: { baseWR: 16, baseDM: -4, traitBudget: 100 }
 };
 
+/**
+ * Quality outcome labels based on Contamination Points (CP)
+ * @type {Object<number, string>}
+ */
 export const QUALITY_OUTCOMES = {
   0: 'Clean',
   1: 'Minor Flaw',
@@ -87,8 +179,12 @@ export const QUALITY_OUTCOMES = {
   4: 'Mishap'
 };
 
-// Tier calculation thresholds based on potency load of active ingredients
-// Potency load = sum of (potency index + concentration steps) for all actives
+/**
+ * Tier calculation thresholds based on potency load of active ingredients
+ * Potency load = sum of (potency index + concentration steps) for all actives
+ *
+ * @type {Array<{tier: number, minPotencyLoad: number, maxPotencyLoad: number}>}
+ */
 export const TIER_THRESHOLDS = [
   { tier: 1, minPotencyLoad: 0, maxPotencyLoad: 3 },   // P0-P1 actives
   { tier: 2, minPotencyLoad: 4, maxPotencyLoad: 6 },   // P2 actives
@@ -96,7 +192,12 @@ export const TIER_THRESHOLDS = [
   { tier: 4, minPotencyLoad: 10, maxPotencyLoad: 999 } // P4+ actives
 ];
 
-// Required roles per vector type
+/**
+ * Required ingredient roles for each vector type
+ * Missing required roles incur penalties
+ *
+ * @type {Object<string, string[]>}
+ */
 export const REQUIRED_ROLES_BY_VECTOR = {
   'Potion': ['Active', 'Stabilizer', 'Solvent', 'Tool'],
   'Salve/Poultice': ['Active', 'Binder', 'Tool'],
@@ -105,7 +206,12 @@ export const REQUIRED_ROLES_BY_VECTOR = {
   'Bomb/Grenade': ['Active', 'Catalyst', 'Stabilizer', 'Tool']
 };
 
-// Penalty Scheme A: WR/DM adjustments for missing required roles
+/**
+ * Penalty Scheme A: WR/DM adjustments for missing required roles
+ * Active and Tool are mandatory (wr: 999 = cannot brew)
+ *
+ * @type {Object<string, {wr: number, dm: number, message: string}>}
+ */
 export const ROLE_COVERAGE_PENALTIES = {
   'Active': { wr: 999, dm: -999, message: 'Cannot brew without Active ingredient' },
   'Tool': { wr: 999, dm: -999, message: 'Cannot brew without Tool ingredient' },
@@ -115,9 +221,18 @@ export const ROLE_COVERAGE_PENALTIES = {
   'Catalyst': { wr: 1, dm: 0, message: 'Missing Catalyst: +1 WR' }
 };
 
-// Maximum constraints for batch composition
+/**
+ * Maximum number of reagents allowed in a single batch
+ * @type {number}
+ */
 export const MAX_REAGENTS_PER_BATCH = 8;
 
+/**
+ * Maximum units of each reagent by role
+ * Different roles have different maximum contribution limits
+ *
+ * @type {Object<string, number>}
+ */
 export const MAX_UNITS_PER_REAGENT_BY_ROLE = {
   'Active': 3,
   'Catalyst': 2,
@@ -129,7 +244,12 @@ export const MAX_UNITS_PER_REAGENT_BY_ROLE = {
   'Tool': 1
 };
 
-// Hazard rules: triggers and effects
+/**
+ * Hazard rules defining triggers, effects, and severity
+ * Each hazard can trigger under different conditions and has various effects
+ *
+ * @type {Object<string, {triggerOn: string[], effect: string, wrMod: number, dmMod: number, severity: string}>}
+ */
 export const HAZARD_RULES = {
   'Flammable': {
     triggerOn: ['mishap', 'quality_unstable_or_worse'],

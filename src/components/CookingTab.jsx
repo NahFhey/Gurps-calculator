@@ -3,6 +3,30 @@ import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { toNumberOr } from '../utils/helpers';
 import { DiceRoller } from './DiceRoller';
 
+/**
+ * CookingTab Component - Manages recipe creation and cooking in GURPS
+ *
+ * This component handles two main workflows:
+ * 1. Recipe Creation - Create new recipes from available food ingredients
+ * 2. Recipe Remaking - Cook existing recipes with optional ingredient substitutions
+ *
+ * Key GURPS mechanics implemented:
+ * - Difficulty modifier based on unique ingredient count: -(unique - 1)
+ * - Skill rolls required based on ingredient types and critical success
+ * - Kitchen rating bonus applied to effective cooking skill
+ * - Critical success/failure thresholds per GURPS rules
+ * - Substitution penalties: -1 (same type), -3 (similar), -5 (unrelated)
+ *
+ * @param {Object} props - Component props
+ * @param {Array<Object>} props.foods - Available food inventory with id, name, types, quantity
+ * @param {Array<Object>} props.recipes - Saved recipes with ingredients, difficulty, skills
+ * @param {Function} props.saveFoods - Callback to persist food inventory changes
+ * @param {Function} props.saveRecipes - Callback to persist recipe changes
+ * @param {Array<Object>} props.workers - Available workers with cooking skills
+ * @param {Array<Object>} props.kitchens - Available kitchens with id, name, rating bonus
+ * @param {Array<Object>} props.cookingSkills - Skill table for random skill selection
+ * @returns {JSX.Element} The cooking tab interface
+ */
 export function CookingTab({ foods, recipes, saveFoods, saveRecipes, workers, kitchens, cookingSkills }) {
   const [view, setView] = useState('create');
   const [selected, setSelected] = useState([]);
@@ -25,19 +49,42 @@ export function CookingTab({ foods, recipes, saveFoods, saveRecipes, workers, ki
   const [remakeSkill, setRemakeSkill] = useState('');
   const [remakeRoll, setRemakeRoll] = useState('');
 
+  /**
+   * Computed recipe statistics based on selected ingredients
+   * Calculates difficulty modifier and required skill rolls per GURPS cooking rules
+   *
+   * @type {{unique: number, total: number, diff: number, rolls: number}}
+   * - unique: Count of distinct ingredients
+   * - total: Sum of all ingredient amounts (must match numPeople)
+   * - diff: Difficulty modifier = -(unique - 1), more ingredients = harder
+   * - rolls: Number of skill rolls = floor(unique/2) + extra types + critical bonus
+   */
   const stats = (() => {
     const unique = selected.length;
     const total = selected.reduce((s, i) => s + i.amount, 0);
+    // Difficulty penalty increases with ingredient complexity
     const diff = -(unique - 1);
+    // Base rolls: 1 per 2 unique ingredients
     let rolls = Math.floor(unique / 2);
+    // Additional rolls for multi-type ingredients (e.g., "meat/dairy" adds 1 roll)
     selected.forEach(i => {
       const f = foods.find(x => x.id === i.foodId);
       if (f) rolls += f.types.length - 1;
     });
+    // Critical success grants one extra skill roll
     if (crit) rolls += 1;
     return { unique, total, diff, rolls };
   })();
 
+  /**
+   * Creates a new recipe from selected ingredients
+   * Validates requirements, calculates skill check results, and persists the recipe
+   *
+   * GURPS Critical Success: roll <= 4, or 5 with skill >= 15, or 6 with skill >= 16
+   * GURPS Critical Failure: roll = 18, or 17 with skill <= 15, or 16 with skill <= 6
+   *
+   * @returns {void} - Alerts user with result and updates state
+   */
   function create() {
     if (stats.total !== numPeople || !name.trim() || skills.length !== stats.rolls) {
       alert('Check requirements'); return;
@@ -122,6 +169,15 @@ export function CookingTab({ foods, recipes, saveFoods, saveRecipes, workers, ki
     alert(`Recipe created! Result: ${result} (MoS: ${mos})`);
   }
 
+  /**
+   * Initiates the remake workflow for an existing recipe
+   * Checks ingredient availability and sets up substitution options
+   *
+   * @param {Object} recipe - The recipe to remake
+   * @param {string} recipe.id - Unique recipe identifier
+   * @param {string} recipe.name - Recipe name
+   * @param {Array<Object>} recipe.ingredients - Required ingredients with foodId, amount
+   */
   function startRemake(recipe) {
     setSelectedRecipe(recipe);
     const ingredients = recipe.ingredients.map(ing => {
@@ -142,6 +198,12 @@ export function CookingTab({ foods, recipes, saveFoods, saveRecipes, workers, ki
     setView('remake');
   }
 
+  /**
+   * Toggles between using original ingredient or substitutes
+   * Initializes substitute array when switching to substitution mode
+   *
+   * @param {number} index - Index of ingredient in remakeIngredients array
+   */
   function toggleSubstitute(index) {
     const updated = [...remakeIngredients];
     updated[index].useOriginal = !updated[index].useOriginal;
@@ -151,12 +213,30 @@ export function CookingTab({ foods, recipes, saveFoods, saveRecipes, workers, ki
     setRemakeIngredients(updated);
   }
 
+  /**
+   * Adds a new empty substitute slot for an ingredient
+   *
+   * @param {number} ingredientIndex - Index of ingredient to add substitute to
+   */
   function addSubstitute(ingredientIndex) {
     const updated = [...remakeIngredients];
     updated[ingredientIndex].substitutes.push({ foodId: null, amount: 1 });
     setRemakeIngredients(updated);
   }
 
+  /**
+   * Updates a substitute ingredient's field and auto-calculates penalty
+   *
+   * Penalty calculation based on food type matching:
+   * - Same type (e.g., meat -> meat): -1
+   * - Similar type (fruit <-> vegetable): -3
+   * - Unrelated type: -5
+   *
+   * @param {number} ingredientIndex - Index of ingredient in remakeIngredients
+   * @param {number} subIndex - Index of substitute within ingredient's substitutes array
+   * @param {string} field - Field to update ('foodId' or 'amount')
+   * @param {*} value - New value for the field
+   */
   function updateSubstitute(ingredientIndex, subIndex, field, value) {
     const updated = [...remakeIngredients];
     updated[ingredientIndex].substitutes[subIndex][field] = value;
@@ -186,18 +266,36 @@ export function CookingTab({ foods, recipes, saveFoods, saveRecipes, workers, ki
     setRemakeIngredients(updated);
   }
 
+  /**
+   * Manually overrides the substitution penalty for an ingredient
+   *
+   * @param {number} ingredientIndex - Index of ingredient
+   * @param {number} penalty - Penalty value (-1, -3, or -5)
+   */
   function updateSubstitutePenalty(ingredientIndex, penalty) {
     const updated = [...remakeIngredients];
     updated[ingredientIndex].penalty = penalty;
     setRemakeIngredients(updated);
   }
 
+  /**
+   * Removes a substitute from an ingredient's substitute list
+   *
+   * @param {number} ingredientIndex - Index of ingredient
+   * @param {number} subIndex - Index of substitute to remove
+   */
   function removeSubstitute(ingredientIndex, subIndex) {
     const updated = [...remakeIngredients];
     updated[ingredientIndex].substitutes.splice(subIndex, 1);
     setRemakeIngredients(updated);
   }
 
+  /**
+   * Calculates total difficulty modifier for remaking recipe
+   * Combines base recipe difficulty with all substitution penalties
+   *
+   * @returns {number} Total difficulty modifier (negative value)
+   */
   function calculateRemakeDifficulty() {
     if (!selectedRecipe) return 0;
     let totalPenalty = selectedRecipe.difficulty;
@@ -209,6 +307,22 @@ export function CookingTab({ foods, recipes, saveFoods, saveRecipes, workers, ki
     return totalPenalty;
   }
 
+  /**
+   * Executes the remake of an existing recipe
+   *
+   * This function:
+   * 1. Validates all substitutes are selected
+   * 2. Calculates effective skill with kitchen bonus
+   * 3. Determines success/failure using GURPS critical rules
+   * 4. Consumes ingredients (original or substitutes) from inventory
+   * 5. Records the creation log with full roll details
+   *
+   * Material consumption logic:
+   * - If using original: deduct from original food's quantity
+   * - If using substitutes: deduct from each substitute food's quantity
+   *
+   * @returns {void} - Alerts user with result and updates state
+   */
   function executeRemake() {
     for (let ing of remakeIngredients) {
       if (!ing.useOriginal) {

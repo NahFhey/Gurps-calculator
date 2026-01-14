@@ -1,11 +1,31 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, BookOpen } from 'lucide-react';
 
+/**
+ * RulesTab Component - Comprehensive rules reference for all game systems
+ *
+ * Displays expandable/collapsible documentation for each major system:
+ * - Inventory: Materials, food, types, GM mode restrictions
+ * - Cooking: Recipe creation, remaking, substitutions, kitchens
+ * - Crafting: Project phases, work shifts, quality, templates
+ * - Alchemy: Reagents, analysis, formulas, batches, concentration
+ * - Manager: GM mode, workers, facilities, import/export
+ *
+ * Each section contains multiple subsections with detailed mechanics.
+ *
+ * @param {Object} props - Component props
+ * @param {string|null} [props.initialSection=null] - Section to expand initially
+ * @returns {JSX.Element} The full rules reference interface
+ */
 export function RulesTab({ initialSection = null }) {
   const [expandedSections, setExpandedSections] = useState(
     initialSection ? { [initialSection]: true } : {}
   );
 
+  /**
+   * Toggles the expanded/collapsed state of a section
+   * @param {string} section - Section ID to toggle
+   */
   function toggleSection(section) {
     setExpandedSections(prev => ({
       ...prev,

@@ -2,9 +2,22 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { CHANGELOG } from '../version';
 
+/**
+ * ChangelogTab Component - Displays version history and release notes
+ *
+ * Renders an expandable/collapsible list of application versions with
+ * categorized change items. The most recent version is expanded by default.
+ *
+ * @returns {JSX.Element} The changelog interface
+ */
 export function ChangelogTab() {
+  // Track which version sections are expanded (latest is open by default)
   const [expanded, setExpanded] = useState({ [CHANGELOG[0].version]: true });
 
+  /**
+   * Toggles the expanded state of a version section
+   * @param {string} version - Version number to toggle
+   */
   const toggleVersion = (version) => {
     setExpanded(prev => ({ ...prev, [version]: !prev[version] }));
   };

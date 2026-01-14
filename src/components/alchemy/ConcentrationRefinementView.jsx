@@ -8,12 +8,46 @@ import {
 } from '../../utils/alchemy';
 import { POTENCY_LEVELS } from '../../constants';
 
+/**
+ * Refinement level progression for reagents
+ * crude -> prepared -> refined (terminal state)
+ * @type {Object<string, {next: string|null, label: string}>}
+ */
 const REFINEMENT_LEVELS = {
   crude: { next: 'prepared', label: 'Crude' },
   prepared: { next: 'refined', label: 'Prepared' },
   refined: { next: null, label: 'Refined' }
 };
 
+/**
+ * ConcentrationRefinementView Component - Manages GURPS alchemy reagent processing
+ *
+ * This component implements the alchemy processing system with two operations:
+ * 1. Refinement - Improves reagent quality (crude -> prepared -> refined)
+ * 2. Concentration - Increases reagent potency (P1 -> P2 -> P3 -> P4)
+ *
+ * Key mechanics implemented:
+ * - 2:1 input/output ratio (always consumes 2U input per 1U output attempt)
+ * - Cumulative batch penalty (-1 for first unit, -2 for second, etc.)
+ * - Unit-by-unit processing with individual roll results
+ * - Derived reagent creation with identityId linking for shared identification
+ * - Hazard accumulation on minor failures (MoF -1 to -2)
+ * - Critical success allows 1U input reclaim
+ *
+ * Processing workflow:
+ * 1. Select reagent, operation type, lab, and worker
+ * 2. Set desired output units (determines input consumption)
+ * 3. Start processing - enters unit-by-unit roll mode
+ * 4. Roll for each unit individually with cumulative penalties
+ * 5. Results applied: input consumed, output created or lost
+ *
+ * @param {Object} props - Component props
+ * @param {Array<Object>} props.reagents - Available reagents with quantity, refinement, potency
+ * @param {Array<Object>} props.labs - Available labs with id, name, rating bonus
+ * @param {Array<Object>} props.workers - Available workers with alchemy skill
+ * @param {Function} props.saveReagents - Callback to persist reagent inventory changes
+ * @returns {JSX.Element} The processing interface
+ */
 export function ConcentrationRefinementView({ reagents, labs, workers, saveReagents }) {
   const [selectedReagentId, setSelectedReagentId] = useState(null);
   const [operation, setOperation] = useState('refine'); // 'refine' or 'concentrate'
@@ -76,6 +110,12 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
     });
   }
 
+  /**
+   * Initializes a new processing batch
+   * Resets all processing state and enters 'processing' mode for unit-by-unit rolls
+   *
+   * @returns {void}
+   */
   function startProcessing() {
     if (!canProcess || !selectedReagent) {
       alert('Cannot process: check reagent selection and availability');
@@ -91,6 +131,20 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
     setShowResults(true);
   }
 
+  /**
+   * Processes the current unit with the entered roll value
+   *
+   * This function:
+   * 1. Calculates effective skill with cumulative batch penalty for this unit
+   * 2. Evaluates roll result (success, minor failure, failure, critical)
+   * 3. Tracks hazards accumulated from previous successful units
+   * 4. Stores result and either advances to next unit or completes processing
+   *
+   * Cumulative batch penalty: Each unit gets -N penalty where N = unit number
+   * (Unit 1 = -1, Unit 2 = -2, Unit 3 = -3, etc.)
+   *
+   * @returns {void}
+   */
   function processCurrentUnit() {
     if (!currentRoll) {
       alert('Please enter or roll a 3d6 result for this unit');
@@ -153,12 +207,45 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
     }
   }
 
+  /**
+   * Aborts the current processing batch early
+   * Applies partial results for completed units and sets state to aborted
+   *
+   * @returns {void}
+   */
   function abortProcessing() {
     setProcessingState('aborted');
     // Apply partial results and reclaim remaining ingredients
     applyProcessingResults(unitResults, true);
   }
 
+  /**
+   * Applies processing results to reagent inventory
+   *
+   * This is the core state mutation function that:
+   * 1. Calculates total input consumed (2U per attempt, minus reclaims)
+   * 2. Calculates total output produced (successful units only)
+   * 3. Aggregates hazards from minor failures across all units
+   * 4. Creates or updates derived reagent variant
+   * 5. Links derived reagent via identityId for shared identification
+   *
+   * Derived reagent naming:
+   * - Refinement adds prefix: "Prepared", "Refined"
+   * - Concentration adds suffix: "+1", "+2", etc.
+   * - Example: "Refined Nightshade +2"
+   *
+   * Identity linking:
+   * - All derived variants share identityId with source reagent
+   * - Identification progress on any variant applies to all
+   *
+   * @param {Array<Object>} results - Array of unit processing results
+   * @param {number} results[].attemptNumber - Which unit (1-indexed)
+   * @param {boolean} results[].outputProduced - Whether unit produced output
+   * @param {string} results[].hazardAdded - Hazard tag if minor failure
+   * @param {boolean} results[].reclaim - Whether critical success reclaimed input
+   * @param {boolean} [isAborted=false] - Whether processing was aborted early
+   * @returns {void}
+   */
   function applyProcessingResults(results, isAborted = false) {
     // Calculate totals from results
     let inputConsumed = 0;

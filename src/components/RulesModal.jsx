@@ -1,6 +1,18 @@
 import React from 'react';
 import { X, BookOpen } from 'lucide-react';
 
+/**
+ * RulesModal Component - Displays a modal popup with rules for a specific game section
+ *
+ * Provides quick-reference rules summaries for each major system (inventory, cooking,
+ * crafting, alchemy, manager). Used as a contextual help popup accessed from various
+ * parts of the application.
+ *
+ * @param {Object} props - Component props
+ * @param {string|null} props.section - Section key to display ('inventory', 'cooking', etc.)
+ * @param {Function} props.onClose - Callback to close the modal
+ * @returns {JSX.Element|null} Modal overlay with rules content, or null if section is falsy
+ */
 export function RulesModal({ section, onClose }) {
   if (!section) return null;
 

@@ -3,6 +3,34 @@ import { QUALITIES } from '../constants';
 import { toNumberOr, upsertCraft, removeCraft, refundMaterialsFromProject } from '../utils/helpers';
 import { DiceRoller } from './DiceRoller';
 
+/**
+ * CraftingTab Component - Manages GURPS crafting projects with design and craft phases
+ *
+ * This component implements the GURPS crafting system with three phases:
+ * 1. Setup Phase - Select template, quality, materials, and project dates
+ * 2. Design Phase - Make skill rolls to accumulate design hours (2 * HP target)
+ * 3. Craft Phase - Make skill rolls to accumulate craft hours (HP target)
+ *
+ * Key GURPS mechanics implemented:
+ * - Effective skill = base skill + total difficulty modifier
+ * - Design phase: crit success gives skill hours, success gives 8h, failures give 0-6h
+ * - Craft phase: crit success/success gives 8h, failures give 4h with quality penalties
+ * - Critical failure in craft phase destroys project and refunds materials
+ * - Quality levels: cheap, good, fine, very fine, legendary
+ * - Material properties affect final stats (HT, weight, HP modifiers)
+ *
+ * @param {Object} props - Component props
+ * @param {Array<Object>} props.materials - Available crafting materials with id, name, type, quantity
+ * @param {Array<Object>} props.crafts - Active and completed crafting projects
+ * @param {Array<Object>} props.craftDesigns - Saved design templates for quick-start crafting
+ * @param {Object} props.customTemplates - Template definitions by category (weapons, armor, etc.)
+ * @param {Array<Object>} props.materialTypes - Material type definitions with difficulty, HT, modifiers
+ * @param {Array<Object>} props.workers - Available workers with crafting/designing skills
+ * @param {Function} props.saveMaterials - Callback to persist material inventory changes
+ * @param {Function} props.saveCrafts - Callback to persist crafting project changes
+ * @param {Function} props.saveCraftDesigns - Callback to persist saved design changes
+ * @returns {JSX.Element} The crafting tab interface
+ */
 export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, materialTypes, workers, saveMaterials, saveCrafts, saveCraftDesigns }) {
   const [view, setView] = useState('list');
   const [current, setCurrent] = useState(null);
@@ -18,6 +46,12 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
 
   const allTemplates = customTemplates;
 
+  /**
+   * Initializes a new crafting project in setup phase
+   * Creates project with first available weapon template and default settings
+   *
+   * @returns {void} - Sets current project state and switches to craft view
+   */
   function startNew() {
     const weaponKeys = Object.keys(allTemplates.weapons || {});
     if (weaponKeys.length === 0) {
@@ -54,17 +88,41 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
     setView('craft');
   }
 
+  /**
+   * Calculates derived statistics for the current crafting project
+   *
+   * This function computes:
+   * - Final weight: base weight * (1 + material weight modifier %)
+   * - Final HP: base HP * (1 + material HP modifier %)
+   * - Final HT: averaged material HT + quality HT bonus
+   * - Total difficulty: averaged material difficulty + quality difficulty + mod penalties
+   * - Design time: 2 * final HP (hours needed in design phase)
+   * - Craft time: final HP (hours needed in craft phase)
+   *
+   * Material modifiers are averaged across all selected materials to support
+   * multi-material projects (e.g., sword with wood handle and steel blade).
+   *
+   * @returns {Object} Calculated stats object
+   * @property {number} finalWeight - Final item weight in lbs
+   * @property {number} finalHP - Final item hit points
+   * @property {number} finalHT - Final item health threshold
+   * @property {number} totalDifficulty - Net skill modifier (usually negative)
+   * @property {number} designTime - Hours required for design phase
+   * @property {number} craftTime - Hours required for craft phase
+   */
   function calcStats() {
     if (!current) return {};
     const t = allTemplates[current.templateType]?.[current.template];
     if (!t) return { finalWeight: 0, finalHP: 0, finalHT: 10, totalDifficulty: 0, designTime: 0, craftTime: 0 };
     const q = QUALITIES[current.quality];
 
-    let matDiff = 0;
-    let matHT = 10;
-    let matWeightMod = 0;
-    let matHPMod = 0;
+    // Initialize material modifiers with defaults
+    let matDiff = 0;    // Material difficulty modifier
+    let matHT = 10;     // Material health threshold
+    let matWeightMod = 0; // Material weight modifier (percentage)
+    let matHPMod = 0;     // Material HP modifier (percentage)
 
+    // Average modifiers across all selected materials
     if (current.selectedMaterials && current.selectedMaterials.length > 0) {
       const selectedMatTypes = current.selectedMaterials
         .map(sm => {
@@ -75,6 +133,7 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
         .filter(mt => mt !== null);
 
       if (selectedMatTypes.length > 0) {
+        // Average all material properties for composite items
         matDiff = Math.round(selectedMatTypes.reduce((sum, mt) => sum + mt.difficulty, 0) / selectedMatTypes.length);
         matHT = Math.round(selectedMatTypes.reduce((sum, mt) => sum + mt.ht, 0) / selectedMatTypes.length);
         matWeightMod = selectedMatTypes.reduce((sum, mt) => sum + (mt.weightMod || 0), 0) / selectedMatTypes.length;
@@ -82,9 +141,11 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
       }
     }
 
+    // Calculate final stats with material modifiers applied
     const w = Math.round(t.weight * (1 + matWeightMod / 100) * 10) / 10;
     const hp = Math.round(t.hp * (1 + matHPMod / 100));
     const ht = matHT + q.htBonus;
+    // Total difficulty = material + quality + mods (extra mods add -1 each after first)
     let diff = matDiff + q.difficulty;
     current.mods.forEach((mod, i) => { diff += mod.difficulty || 0; if (i > 0) diff -= 1; });
     return { finalWeight: w, finalHP: hp, finalHT: ht, totalDifficulty: diff, designTime: 2 * hp, craftTime: hp };

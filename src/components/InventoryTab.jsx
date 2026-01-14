@@ -2,6 +2,30 @@ import React, { useState } from 'react';
 import { Plus, Save, X, Trash2 } from 'lucide-react';
 import { toNumberOr } from '../utils/helpers';
 
+/**
+ * InventoryTab Component - Manages raw materials and food supplies inventory
+ *
+ * This component provides two inventory views:
+ * 1. Raw Materials - Crafting materials with types (wood, metal, etc.)
+ * 2. Food Supplies - Food items with type categories (meat, grain, etc.)
+ *
+ * Key features:
+ * - Add new items or add quantity to existing items
+ * - Automatic merging of duplicate entries (same name + type)
+ * - Expandable item details for editing
+ * - GM-mode required for editing item types (prevents player manipulation)
+ * - Delete confirmation modal
+ *
+ * @param {Object} props - Component props
+ * @param {Array<Object>} props.materials - Raw material inventory
+ * @param {Array<Object>} props.foods - Food supply inventory
+ * @param {Array<Object|string>} props.foodTypes - Available food type definitions
+ * @param {Array<Object>} props.materialTypes - Available material type definitions
+ * @param {boolean} props.gmMode - Whether GM mode is enabled (allows type editing)
+ * @param {Function} props.saveMaterials - Callback to persist material changes
+ * @param {Function} props.saveFoods - Callback to persist food changes
+ * @returns {JSX.Element} The inventory management interface
+ */
 export function InventoryTab({ materials, foods, foodTypes, materialTypes, gmMode, saveMaterials, saveFoods }) {
   const [view, setView] = useState('materials');
   const [showAddMat, setShowAddMat] = useState(false);
@@ -19,6 +43,11 @@ export function InventoryTab({ materials, foods, foodTypes, materialTypes, gmMod
   const [expanded, setExpanded] = useState({});
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
+  /**
+   * Adds a new material or quantity to existing material
+   * Handles both "add to existing" and "create new" workflows
+   * Automatically merges duplicates (same name + type)
+   */
   function addMat() {
     if (useExistingMat) {
       // Add to existing material
@@ -69,6 +98,11 @@ export function InventoryTab({ materials, foods, foodTypes, materialTypes, gmMod
     setShowAddMat(false);
   }
 
+  /**
+   * Adds a new food item or quantity to existing food
+   * Handles both "add to existing" and "create new" workflows
+   * Automatically merges duplicates (same name + types)
+   */
   function addFood() {
     if (useExistingFood) {
       // Add to existing food
