@@ -195,7 +195,7 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
       <div className="flex gap-2 mb-4">
         <button onClick={() => setView('list')} className={`px-4 py-2 rounded ${view === 'list' ? 'bg-blue-600' : 'bg-gray-700'}`}>Projects ({crafts.length})</button>
         <button onClick={() => setView('designs')} className={`px-4 py-2 rounded ${view === 'designs' ? 'bg-blue-600' : 'bg-gray-700'}`}>Saved Designs ({(craftDesigns || []).length})</button>
-        {!current && <button onClick={startNew} className="bg-green-600 px-4 py-2 rounded">New Project</button>}
+        <button onClick={startNew} className="bg-green-600 px-4 py-2 rounded">New Project</button>
         {current && (
           <button
             onClick={() => setAbandonConfirm(true)}
@@ -343,10 +343,26 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                   const newCur = {...current, phase: 'design', consumedMaterials};
                   setCurrent(newCur);
                   saveCrafts(upsertCraft(crafts, newCur));
+                  // Set default worker for design phase
+                  if (workers && workers.length > 0 && !selectedWorker) {
+                    const defaultWorker = workers[0];
+                    setSelectedWorker(defaultWorker.name);
+                    if (defaultWorker.skills) {
+                      setSkill(String(defaultWorker.skills.designing || 10));
+                    }
+                  }
                 } else {
                   const newCur = {...current, phase: 'design'};
                   setCurrent(newCur);
                   saveCrafts(upsertCraft(crafts, newCur));
+                  // Set default worker for design phase
+                  if (workers && workers.length > 0 && !selectedWorker) {
+                    const defaultWorker = workers[0];
+                    setSelectedWorker(defaultWorker.name);
+                    if (defaultWorker.skills) {
+                      setSkill(String(defaultWorker.skills.designing || 10));
+                    }
+                  }
                 }
               }} className="w-full bg-green-600 py-3 rounded">Start Design</button>
             </div>
@@ -409,6 +425,15 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                   newCur.designShifts = newShifts;
                   newCur.shifts = [];
                   saveCrafts(upsertCraft(crafts, newCur));
+                  // Reset worker selection for craft phase
+                  if (workers && workers.length > 0) {
+                    const defaultWorker = workers[0];
+                    setSelectedWorker(defaultWorker.name);
+                    if (defaultWorker.skills) {
+                      setSkill(String(defaultWorker.skills.crafting || 10));
+                    }
+                  }
+                  setRoll('');
                   // Show save design prompt
                   setSaveDesignPrompt(newCur);
                   return;
@@ -778,7 +803,16 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                           setCurrent(newCraft);
                           setCurrentDate(today);
                           setCurrentDay(1);
-                          setSelectedWorker(workers[0] || '');
+                          // Set default worker and skill for craft phase
+                          if (workers && workers.length > 0) {
+                            const defaultWorker = workers[0];
+                            setSelectedWorker(defaultWorker.name);
+                            if (defaultWorker.skills) {
+                              setSkill(String(defaultWorker.skills.crafting || 10));
+                            }
+                          } else {
+                            setSelectedWorker('');
+                          }
                           setView('craft');
                           alert('Craft started from design!');
                         }}
