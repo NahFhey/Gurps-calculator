@@ -98,8 +98,10 @@ export function AnalysisView({ reagents, labs, workers, alchemySettings, saveRea
       identificationLevelAfter: newIdentificationLevel
     };
 
-    // Update reagent
+    // Update reagent and all sister reagents sharing the same identityId
+    const targetIdentityId = selectedReagent.identityId || selectedReagent.id;
     const updatedReagents = reagents.map(r => {
+      // Check if this is the analyzed reagent
       if (r.id === selectedReagent.id) {
         return {
           ...r,
@@ -107,6 +109,16 @@ export function AnalysisView({ reagents, labs, workers, alchemySettings, saveRea
           identificationLevel: newIdentificationLevel,
           falseProfile: falseProfile,
           analysisHistory: [...(r.analysisHistory || []), analysisRecord]
+        };
+      }
+      // Check if this is a sister reagent (shares identityId)
+      const reagentIdentityId = r.identityId || r.id;
+      if (reagentIdentityId === targetIdentityId && r.id !== selectedReagent.id) {
+        // Update identification level but don't consume quantity or add history
+        return {
+          ...r,
+          identificationLevel: Math.max(r.identificationLevel, newIdentificationLevel),
+          falseProfile: falseProfile // Apply same false profile if crit fail
         };
       }
       return r;
