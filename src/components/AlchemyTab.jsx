@@ -53,7 +53,7 @@ export function AlchemyTab({ reagents, formulas, batches, labs, workers, alchemy
       </div>
 
       {view === 'reagents' && <ReagentsView reagents={reagents} alchemySettings={alchemySettings} />}
-      {view === 'analysis' && <AnalysisView reagents={reagents} workers={workers} alchemySettings={alchemySettings} saveReagents={saveReagents} />}
+      {view === 'analysis' && <AnalysisView reagents={reagents} labs={labs} workers={workers} alchemySettings={alchemySettings} saveReagents={saveReagents} />}
       {view === 'processing' && <ConcentrationRefinementView reagents={reagents} labs={labs} workers={workers} saveReagents={saveReagents} />}
       {view === 'formulas' && <FormulasView reagents={reagents} formulas={formulas} batches={batches} saveReagents={saveReagents} saveFormulas={saveFormulas} saveBatches={saveBatches} />}
       {view === 'batches' && <BatchesView batches={batches} workers={workers} formulas={formulas} reagents={reagents} saveBatches={saveBatches} saveFormulas={saveFormulas} saveReagents={saveReagents} />}

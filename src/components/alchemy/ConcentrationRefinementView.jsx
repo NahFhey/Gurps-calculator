@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { DiceRoller } from '../DiceRoller';
 import {
   calculateProcessingDifficulty,
   roll3d6,
@@ -19,8 +20,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
   const [outputUnits, setOutputUnits] = useState(1);
   const [selectedLabId, setSelectedLabId] = useState(labs?.[0]?.id || 'default');
   const [selectedWorkerId, setSelectedWorkerId] = useState(workers?.[0]?.id || '1');
-  const [gmMode, setGmMode] = useState(true);
-  const [manualRoll, setManualRoll] = useState('');
+  const [roll, setRoll] = useState('');
   const [processingLog, setProcessingLog] = useState([]);
   const [showResults, setShowResults] = useState(false);
 
@@ -77,6 +77,11 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
       return;
     }
 
+    if (!roll) {
+      alert('Please enter or roll a 3d6 result');
+      return;
+    }
+
     setProcessingLog([]);
     setShowResults(false);
 
@@ -87,11 +92,11 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
     const outputHazards = [...(selectedReagent.hazards || [])];
 
     for (let i = 0; i < outputUnits; i++) {
-      // Roll or get manual input
-      const roll = gmMode ? roll3d6() : parseInt(manualRoll) || 10;
+      // Use the roll value for all attempts in this batch
+      const rollValue = parseInt(roll) || 10;
 
       // Evaluate result
-      const result = evaluateProcessingResult(roll, difficultyCalc.effectiveSkill, outputHazards);
+      const result = evaluateProcessingResult(rollValue, difficultyCalc.effectiveSkill, outputHazards);
 
       // Update counters
       inputConsumed += 2; // Always consume 2U input per attempt
@@ -242,28 +247,24 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
           Process reagents through refinement or concentration. Each operation requires Alchemy rolls and consumes 2U input per 1U output.
         </p>
 
-        {/* Mode Toggle */}
-        <div className="mb-4 flex items-center gap-4">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={gmMode}
-              onChange={(e) => setGmMode(e.target.checked)}
-              className="w-4 h-4"
-            />
-            <span className="text-sm">GM Mode (Auto-roll)</span>
-          </label>
-          {!gmMode && (
+        {/* Roll Input */}
+        <div className="mb-4">
+          <label className="block text-sm text-gray-400 mb-2">Roll Result</label>
+          <div className="flex items-center gap-2">
             <input
               type="number"
-              value={manualRoll}
-              onChange={(e) => setManualRoll(e.target.value)}
-              placeholder="Enter roll (3-18)"
+              value={roll}
+              onChange={(e) => setRoll(e.target.value)}
+              placeholder="3-18"
               min="3"
               max="18"
-              className="bg-gray-700 px-3 py-1 rounded w-32 text-sm"
+              className="flex-1 bg-gray-700 px-3 py-2 rounded"
             />
-          )}
+            <DiceRoller onRoll={(total) => setRoll(String(total))} />
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            This roll will be used for all {outputUnits} output unit attempt{outputUnits !== 1 ? 's' : ''}
+          </p>
         </div>
 
         {/* Selection Grid */}
@@ -445,7 +446,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
         {/* Process Button */}
         <button
           onClick={startProcessing}
-          disabled={!canProcess || (!gmMode && !manualRoll)}
+          disabled={!canProcess || !roll}
           className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-4 py-2 rounded font-semibold"
         >
           {operation === 'refine' ? 'Refine Reagent' : 'Concentrate Reagent'}

@@ -1,7 +1,36 @@
 // Version and changelog information
-export const VERSION = '2.4.0';
+export const VERSION = '2.4.1';
 
 export const CHANGELOG = [
+  {
+    version: '2.4.1',
+    date: '2026-01-14',
+    title: 'Lab System Integration & UI Improvements',
+    changes: [
+      {
+        category: 'Lab Integration',
+        items: [
+          'Analysis tab: Lab selection with skill bonuses applied to identification rolls',
+          'Analysis tab: Lab info recorded in analysis history (lab name, rating, effective skill)',
+          'Batches tab: Lab selected at batch creation and locked for entire batch lifecycle',
+          'Batches tab: Lab rating applies to all work block skill calculations',
+          'Batches tab: Lab info displayed in batch details and work history',
+          'Consistent lab rating application across all alchemy operations'
+        ]
+      },
+      {
+        category: 'UI Improvements',
+        items: [
+          'Processing tab: Replaced GM mode toggle with DiceRoller button (matching Analysis UI)',
+          'Processing tab: Manual roll adjustment still available after dice roll',
+          'Analysis tab: Expanded to 3-column grid layout for worker, lab, and skill inputs',
+          'Analysis tab: Real-time effective skill calculation display with lab bonus breakdown',
+          'Batches tab: Detailed effective skill breakdown in work blocks showing lab contribution',
+          'Work history: Lab name and rating now displayed in shift records'
+        ]
+      }
+    ]
+  },
   {
     version: '2.4.0',
     date: '2026-01-14',

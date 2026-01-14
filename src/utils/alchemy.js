@@ -705,7 +705,7 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
  * @returns {Object} Updated batch object with new PP, CP, shifts, hazard events, and possibly completed status
  */
 export function applyWorkBlockResult(batch, skill, roll, worker, date) {
-  const effectiveSkill = skill + batch.DM;
+  const effectiveSkill = skill + batch.DM + (batch.labRating || 0);
 
   // PHASE 1: Classify roll outcome
   const isCritSuccess =
@@ -808,7 +808,9 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
     result,
     ppAdded: progressDelta,
     cpChange: cpDelta,
-    hazardEvents: hazardEvents.length > 0 ? hazardEvents : undefined
+    hazardEvents: hazardEvents.length > 0 ? hazardEvents : undefined,
+    labName: batch.labName || 'Basic Lab',
+    labRating: batch.labRating || 0
   };
 
   // PHASE 5: Handle destruction (skip progress if destroyed)
