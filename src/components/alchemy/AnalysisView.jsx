@@ -24,9 +24,10 @@ function getIdentificationResult(mos) {
   return 1; // Partial (Primary only)
 }
 
-export function AnalysisView({ reagents, workers, alchemySettings, saveReagents }) {
+export function AnalysisView({ reagents, labs, workers, alchemySettings, saveReagents }) {
   const [selectedReagent, setSelectedReagent] = useState(null);
   const [selectedWorker, setSelectedWorker] = useState('');
+  const [selectedLabId, setSelectedLabId] = useState(labs?.[0]?.id || 'default');
   const [skill, setSkill] = useState('');
   const [roll, setRoll] = useState('');
 
@@ -50,12 +51,17 @@ export function AnalysisView({ reagents, workers, alchemySettings, saveReagents 
       return;
     }
 
-    // Calculate margin of success
-    const mos = skillValue - rollValue;
+    // Get lab and apply lab rating bonus
+    const selectedLab = labs?.find(l => l.id === selectedLabId) || { id: 'default', name: 'Basic Lab', rating: 0 };
+    const labBonus = selectedLab.rating || 0;
+    const effectiveSkill = skillValue + labBonus;
 
-    // Determine if critical success or critical failure
-    const isCritSuccess = rollValue <= 4 || (rollValue === 5 && skillValue >= 15) || (rollValue === 6 && skillValue >= 16);
-    const isCritFail = rollValue === 18 || (rollValue === 17 && skillValue <= 15) || (rollValue === 16 && skillValue <= 6);
+    // Calculate margin of success with lab bonus
+    const mos = effectiveSkill - rollValue;
+
+    // Determine if critical success or critical failure (use effective skill with lab bonus)
+    const isCritSuccess = rollValue <= 4 || (rollValue === 5 && effectiveSkill >= 15) || (rollValue === 6 && effectiveSkill >= 16);
+    const isCritFail = rollValue === 18 || (rollValue === 17 && effectiveSkill <= 15) || (rollValue === 16 && effectiveSkill <= 6);
 
     let newIdentificationLevel = selectedReagent.identificationLevel;
     let falseProfile = selectedReagent.falseProfile;
@@ -81,7 +87,10 @@ export function AnalysisView({ reagents, workers, alchemySettings, saveReagents 
       id: crypto.randomUUID(),
       date: new Date().toISOString(),
       worker: selectedWorker,
+      lab: selectedLab.name,
       skill: skillValue,
+      labBonus: labBonus,
+      effectiveSkill: effectiveSkill,
       roll: rollValue,
       mos: mos,
       result: isCritSuccess ? 'Critical Success' : isCritFail ? 'Critical Failure' : mos >= 0 ? 'Success' : 'Failure',
@@ -166,7 +175,7 @@ export function AnalysisView({ reagents, workers, alchemySettings, saveReagents 
           {selectedReagent.quantity >= 1 && selectedReagent.identificationLevel < 4 && (
             <div className="bg-gray-700 p-4 rounded space-y-3">
               <h4 className="font-semibold">Perform Analysis</h4>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs mb-1">Worker</label>
                   <select
@@ -189,6 +198,20 @@ export function AnalysisView({ reagents, workers, alchemySettings, saveReagents 
                   </select>
                 </div>
                 <div>
+                  <label className="block text-xs mb-1">Lab</label>
+                  <select
+                    value={selectedLabId}
+                    onChange={(e) => setSelectedLabId(e.target.value)}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  >
+                    {(labs || [{ id: 'default', name: 'Basic Lab', rating: 0 }]).map(lab => (
+                      <option key={lab.id} value={lab.id}>
+                        {lab.name} (+{lab.rating})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
                   <label className="block text-xs mb-1">Alchemy Skill</label>
                   <input
                     type="number"
@@ -198,7 +221,7 @@ export function AnalysisView({ reagents, workers, alchemySettings, saveReagents 
                     placeholder="e.g., 14"
                   />
                 </div>
-                <div className="col-span-2">
+                <div className="col-span-3">
                   <label className="block text-xs mb-1">Roll (3d6)</label>
                   <div className="flex gap-2">
                     <input
@@ -214,7 +237,15 @@ export function AnalysisView({ reagents, workers, alchemySettings, saveReagents 
                   </div>
                   {skill && (
                     <div className="text-xs text-gray-400 mt-1">
-                      MoS: {roll ? parseInt(skill) - parseInt(roll) : '?'}
+                      {(() => {
+                        const selectedLab = labs?.find(l => l.id === selectedLabId) || { rating: 0 };
+                        const labBonus = selectedLab.rating || 0;
+                        const effectiveSkill = parseInt(skill) + labBonus;
+                        const mos = roll ? effectiveSkill - parseInt(roll) : '?';
+                        return labBonus > 0
+                          ? `Effective Skill: ${skill} + ${labBonus} (lab) = ${effectiveSkill} | MoS: ${mos}`
+                          : `MoS: ${mos}`;
+                      })()}
                     </div>
                   )}
                 </div>
