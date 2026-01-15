@@ -1,7 +1,7 @@
 {
   "name": "gurps-party-tool",
-  "version": "2.0.0",
-  "description": "GURPS Party Management Tool - Inventory, Cooking, Crafting & Alchemy",
+  "version": "2.1.0",
+  "description": "GURPS Party Management Tool - Inventory, Cooking, Crafting, Alchemy & Gathering",
   "main": "src/App.jsx",
   "type": "module",
   "scripts": {

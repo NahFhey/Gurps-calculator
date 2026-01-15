@@ -316,12 +316,18 @@ export function GatheringTab({
       return;
     }
 
+    // Calculate bait roll bonus for Line fishing with random catch
+    const baitRollBonus = (selectedMethod === 'Line' && isRandomCatch && selectedBaitItem)
+      ? (selectedBaitItem.rollBonus || 0)
+      : 0;
+
     let entry;
     try {
       if (selectedMethod === 'Net') {
         entry = rollNetCatch(resolvedTables.randomCatch, species);
       } else {
-        entry = rollOnCatchTable(resolvedTables.randomCatch);
+        // Apply bait roll bonus to the catch table roll
+        entry = rollOnCatchTable(resolvedTables.randomCatch, baitRollBonus);
       }
     } catch (error) {
       alert(error.message);
@@ -339,7 +345,8 @@ export function GatheringTab({
       isLarge: caughtSpecies?.tags?.includes('LargeFish'),
       struggled: false,
       struggleSuccess: null,
-      yields: null
+      yields: null,
+      baitRollBonus // Track for display
     };
 
     setCaughtFish(prev => [...prev, newCatch]);
@@ -415,37 +422,45 @@ export function GatheringTab({
 
   // Commit results to inventory
   function commitToInventory() {
-    // Calculate totals by food type and material type
-    const foodTotals = {};
-    const materialTotals = {};
+    // Calculate totals by species+type combination for proper naming
+    // Format: "Species Name Food/Material Type" (e.g., "Trout Fish" or "Salmon Scales")
+    const foodItems = {}; // { "speciesName|foodType": { speciesName, foodType, units } }
+    const materialItems = {}; // { "name": { name, type, units } }
 
-    yieldResults.forEach(({ species, yields }) => {
-      if (!yields) return;
+    yieldResults.forEach(({ species: sp, yields }) => {
+      if (!yields || !sp) return;
 
-      // Add meat
+      // Add meat - named as "SpeciesName FoodType"
       const foodType = yields.foodType || 'fish';
-      foodTotals[foodType] = (foodTotals[foodType] || 0) + yields.meatUnits;
+      const foodKey = `${sp.name}|${foodType}`;
+      if (!foodItems[foodKey]) {
+        foodItems[foodKey] = { speciesName: sp.name, foodType, units: 0 };
+      }
+      foodItems[foodKey].units += yields.meatUnits;
 
-      // Add secondary material
+      // Add secondary material - use secondaryNameOverride if set, else "SpeciesName MaterialType"
       if (yields.secondaryType && yields.secondaryUnits > 0) {
-        materialTotals[yields.secondaryType] = (materialTotals[yields.secondaryType] || 0) + yields.secondaryUnits;
+        const materialName = sp.secondaryNameOverride || `${sp.name} ${yields.secondaryType}`;
+        if (!materialItems[materialName]) {
+          materialItems[materialName] = { name: materialName, type: yields.secondaryType, units: 0 };
+        }
+        materialItems[materialName].units += yields.secondaryUnits;
       }
     });
 
-    // Update foods inventory
+    // Update foods inventory with proper naming
     const updatedFoods = [...foods];
-    Object.entries(foodTotals).forEach(([type, units]) => {
-      const existing = updatedFoods.find(f =>
-        f.name === `Fresh ${type}` || (f.types?.includes(type) && f.name.includes('Fresh'))
-      );
+    Object.values(foodItems).forEach(({ speciesName, foodType, units }) => {
+      const itemName = `${speciesName} ${foodType.charAt(0).toUpperCase() + foodType.slice(1)}`;
+      const existing = updatedFoods.find(f => f.name === itemName);
 
       if (existing) {
         existing.quantity = (existing.quantity || 0) + units;
       } else {
         updatedFoods.push({
           id: crypto.randomUUID(),
-          name: `Fresh ${type}`,
-          types: [type],
+          name: itemName,
+          types: [foodType],
           quantity: units,
           source: 'gathering'
         });
@@ -453,17 +468,17 @@ export function GatheringTab({
     });
     saveFoods(updatedFoods);
 
-    // Update materials inventory
+    // Update materials inventory with proper naming
     const updatedMaterials = [...materials];
-    Object.entries(materialTotals).forEach(([type, units]) => {
-      const existing = updatedMaterials.find(m => m.type === type || m.name.toLowerCase().includes(type));
+    Object.values(materialItems).forEach(({ name, type, units }) => {
+      const existing = updatedMaterials.find(m => m.name === name);
 
       if (existing) {
         existing.quantity = (existing.quantity || 0) + units;
       } else {
         updatedMaterials.push({
           id: crypto.randomUUID(),
-          name: type.charAt(0).toUpperCase() + type.slice(1),
+          name: name,
           type: type,
           quantity: units,
           source: 'gathering'
@@ -471,6 +486,16 @@ export function GatheringTab({
       }
     });
     saveMaterials(updatedMaterials);
+
+    // For session logging, aggregate totals by type
+    const foodTotals = {};
+    const materialTotals = {};
+    Object.values(foodItems).forEach(({ foodType, units }) => {
+      foodTotals[foodType] = (foodTotals[foodType] || 0) + units;
+    });
+    Object.values(materialItems).forEach(({ type, units }) => {
+      materialTotals[type] = (materialTotals[type] || 0) + units;
+    });
 
     // Save session
     const completedSession = {

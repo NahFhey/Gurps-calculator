@@ -474,6 +474,199 @@ export function RulesTab({ initialSection = null }) {
 - Includes all systems: inventory, recipes, projects, batches, workers, etc.`
         }
       ]
+    },
+    {
+      id: 'gathering',
+      title: 'Gathering System',
+      icon: '🎣',
+      subsections: [
+        {
+          title: 'Overview',
+          content: `The General Gathering System allows characters to gather resources from the environment.
+
+**Available Modes:**
+- Fishing: Catch fish using Line, Net, or Spear methods
+- Foraging, Mining, Logging: (Coming soon)
+
+**Session Workflow:**
+1. Select Mode and Environment
+2. Choose Leader and Helpers
+3. Select Fishing Method (for fishing)
+4. Choose Tools and Bait
+5. Roll for Daily Event (once per day per group)
+6. Roll for Fishing Success
+7. Roll on Catch Table
+8. Handle Large Fish Struggle (if applicable)
+9. Calculate Yields
+10. Commit to Inventory`
+        },
+        {
+          title: 'Fishing Methods',
+          content: `Three methods are available for fishing:
+
+**Line Fishing:**
+- Can target specific species or use random catch
+- Uses Fishing skill
+- Allows bait bonuses on catch table roll
+- Large fish require struggle (Quick Contest ST vs ST)
+
+**Net Fishing:**
+- Random catch only, cannot target specific species
+- Large fish are automatically rerolled (max 20 attempts)
+- Catches fish regardless of size via reroll
+- More reliable for smaller catches
+
+**Spear Fishing:**
+- Can target specific species
+- Uses Spear skill instead of Fishing
+- Stealth bonus applies
+- Best for targeting specific large fish
+- Large fish still require struggle`
+        },
+        {
+          title: 'Skill Resolution',
+          content: `Fishing uses standard GURPS skill resolution:
+
+**Effective Skill Calculation:**
+- Base: Worker's Fishing/Spear skill
+- Tool Bonus: From selected equipment
+- Bait Bonus: +1 for correct bait (attracts target species)
+- Bait Penalty: -2 for inappropriate bait
+- Large Fish Penalty: -2 when targeting large fish specifically
+- Environment Modifier: Location-specific adjustment
+- Retry Penalty: -1 cumulative per retry (max 3)
+
+**Success Rolls (3d6):**
+- Critical Success: 3-4 (extra fish)
+- Success: Roll ≤ Effective Skill
+- Failure: Roll > Effective Skill
+- Critical Failure: 17-18 (lose bait, possible equipment damage)
+
+**Fish Caught:**
+- Line: 1 fish on success, 2 on critical
+- Net: 1d fish on success, 1d+1 on critical
+- Spear: 1 fish on success, 2 on critical`
+        },
+        {
+          title: 'Daily Events',
+          content: `Once per day per group, a dynamic event may occur:
+
+**Event Roll (3d6):**
+- 3-6: Rare Event (dangerous/valuable)
+- 7-10: Mild Event (minor complication)
+- 11-18: No Event (normal gathering)
+
+**Group Key:**
+- Events are tracked per unique group composition
+- Same leader + helpers = same group
+- Change party members = new group key
+- Only one event roll per group per day
+
+**Event Tables:**
+- Each environment can define:
+  - Rare Event Table
+  - Mild Event Table
+- Events are rolled on environment-specific tables
+- Handle events before proceeding to fishing`
+        },
+        {
+          title: 'Large Fish Struggle',
+          content: `When catching large fish via Line or Spear, a struggle ensues:
+
+**Quick Contest:**
+- Character rolls 3d6 vs their ST
+- Fish automatically rolls 3d6 vs its ST
+- Winner = higher margin of success
+- Tie goes to higher ST (char wins if equal)
+
+**Fish ST:**
+- Defined per species (default range 12-18)
+- Default ST is 14 if not specified
+- Higher ST = harder to land
+
+**Results:**
+- Character wins: Fish is landed, proceed to yields
+- Fish wins: Fish escapes, no yield
+- Net fishing skips struggle (rerolls large fish instead)`
+        },
+        {
+          title: 'Yields & Inventory',
+          content: `Successful catches produce yields:
+
+**Yield Calculation:**
+- Meat: Roll species' meat yield formula (e.g., 2d6+1)
+- Secondary: Roll species' secondary formula if defined
+
+**Inventory Naming:**
+- Food items: "[Species Name] [Food Type]" (e.g., "Trout Fish")
+- Materials: Uses secondary name override if set
+- Default: "[Species Name] [Material Type]" (e.g., "Salmon Scales")
+
+**Food Types:**
+- Pull from existing food types in Manager
+- Determines recipe compatibility
+- Examples: fish, shellfish, etc.
+
+**Secondary Materials:**
+- Optional per species
+- Examples: scales, bones, shells, oil, roe
+- Stored in Materials inventory`
+        },
+        {
+          title: 'Manager: Species',
+          content: `Define gatherable species (fish, shellfish, etc.):
+
+**Properties:**
+- Name: Unique identifier
+- Type: fish, shellfish, crustacean
+- Tags: LargeFish, DeepWater, Coastal, etc.
+- Food Type: What type of food it produces
+- Meat Formula: Dice formula for meat yield
+- Secondary Material: Optional extra resource
+- Secondary Formula: Dice for secondary yield
+- Secondary Name Override: Custom name for material
+- ST: Strength for struggle (large fish only, 12-18)
+
+**Example:**
+- Name: Giant Salmon
+- Type: fish
+- Tags: LargeFish
+- Food Type: fish
+- Meat Formula: 3d+2
+- Secondary: scales
+- Secondary Formula: 1d
+- ST: 16`
+        },
+        {
+          title: 'Manager: Tools, Tables & Environments',
+          content: `Configure gathering equipment and locations:
+
+**Tools:**
+- Name, Type (fishing_rod, net, spear, etc.)
+- Allowed Modes and Methods
+- Skill Bonus: Added to fishing roll
+- Durability: (tracking planned, not active)
+- Notes: Special properties
+
+**Tables:**
+- Roll Method: 1d6, 2d6, or 3d6
+- Entries must match roll outcomes exactly
+- Entry types: species, nothing, event, special
+- Each entry maps roll value to result
+
+**Environments:**
+- Name and Supported Modes
+- Catch Table, Mild Event Table, Rare Event Table
+- Skill Modifier: Location difficulty
+- Must have at least one table assigned
+
+**Bait:**
+- Must attract at least one species
+- Roll Bonus: Added to catch table roll (Line only)
+- Tags for special properties
+- Quantity tracking for consumption`
+        }
+      ]
     }
   ];
 

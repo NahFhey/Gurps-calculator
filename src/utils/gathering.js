@@ -270,26 +270,43 @@ export function determineDynamicEventType(roll) {
  * @param {Object} table - The catch table with entries
  * @param {Array} table.entries - Array of table entries
  * @param {string} table.rollMethod - Roll method (e.g., "2d6")
- * @returns {Object} The selected entry result
+ * @param {number} [rollBonus=0] - Bonus to add to the roll (e.g., from bait)
+ * @returns {Object} The selected entry result with raw roll info
  */
-export function rollOnCatchTable(table) {
+export function rollOnCatchTable(table, rollBonus = 0) {
   if (!table || !table.entries || table.entries.length === 0) {
     return { resultType: 'nothing', text: 'Empty table' };
   }
 
   // Default to 2d6 for catch tables
   const rollMethod = table.rollMethod || '2d6';
-  const { total } = evaluateDiceFormula(rollMethod);
+  const { total: rawTotal } = evaluateDiceFormula(rollMethod);
+
+  // Apply roll bonus (capped at table max)
+  const range = getRollMethodRange(rollMethod);
+  const modifiedTotal = Math.min(range.max, rawTotal + rollBonus);
 
   // Find matching entry
-  const entry = table.entries.find(e => e.rollValue === total);
+  const entry = table.entries.find(e => e.rollValue === modifiedTotal);
 
   if (!entry) {
     // Fallback to closest or first entry
-    return table.entries[0];
+    return { ...table.entries[0], rawRoll: rawTotal, modifiedRoll: modifiedTotal, rollBonus };
   }
 
-  return entry;
+  return { ...entry, rawRoll: rawTotal, modifiedRoll: modifiedTotal, rollBonus };
+}
+
+/**
+ * Helper to get roll method range
+ */
+function getRollMethodRange(rollMethod) {
+  switch (rollMethod) {
+    case '1d6': return { min: 1, max: 6 };
+    case '2d6': return { min: 2, max: 12 };
+    case '3d6': return { min: 3, max: 18 };
+    default: return { min: 2, max: 12 };
+  }
 }
 
 /**

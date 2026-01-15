@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Save, X, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Plus, Save, X, Trash2, ChevronDown, ChevronRight, Edit2 } from 'lucide-react';
 import {
   GATHERING_MODES,
   GATHERING_TOOL_TYPES,
@@ -11,6 +11,20 @@ import {
   GATHERING_TABLE_TYPES,
   FISH_ST_RANGE
 } from '../constants';
+
+/**
+ * Helper to calculate expected entries for a roll method
+ * @param {string} rollMethod - e.g., '2d6', '1d6', '3d6'
+ * @returns {Object} - { min, max, count }
+ */
+function getRollMethodRange(rollMethod) {
+  switch (rollMethod) {
+    case '1d6': return { min: 1, max: 6, count: 6 };
+    case '2d6': return { min: 2, max: 12, count: 11 };
+    case '3d6': return { min: 3, max: 18, count: 16 };
+    default: return { min: 2, max: 12, count: 11 };
+  }
+}
 
 /**
  * GatheringManager Component - Manages gathering system configuration
@@ -32,6 +46,8 @@ export function GatheringManager({
   environments,
   bait,
   currentDay,
+  foodTypes = [],
+  materialTypes = [],
   saveSpecies,
   saveTools,
   saveTables,
@@ -43,6 +59,7 @@ export function GatheringManager({
   const [showAdd, setShowAdd] = useState(false);
   const [expanded, setExpanded] = useState({});
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [editingId, setEditingId] = useState(null);
 
   // Species form state
   const [newSpeciesName, setNewSpeciesName] = useState('');
@@ -52,8 +69,14 @@ export function GatheringManager({
   const [newSpeciesMeatFormula, setNewSpeciesMeatFormula] = useState('2d');
   const [newSpeciesSecondaryType, setNewSpeciesSecondaryType] = useState('');
   const [newSpeciesSecondaryFormula, setNewSpeciesSecondaryFormula] = useState('');
+  const [newSpeciesSecondaryNameOverride, setNewSpeciesSecondaryNameOverride] = useState('');
   const [newSpeciesST, setNewSpeciesST] = useState('14');
   const [newSpeciesSpecialRules, setNewSpeciesSpecialRules] = useState([]);
+
+  // Get food type names from manager
+  const availableFoodTypes = useMemo(() => {
+    return foodTypes.map(ft => typeof ft === 'string' ? ft : ft.name);
+  }, [foodTypes]);
 
   // Tool form state
   const [newToolName, setNewToolName] = useState('');
@@ -83,16 +106,16 @@ export function GatheringManager({
   const [newBaitTags, setNewBaitTags] = useState([]);
   const [newBaitAttracts, setNewBaitAttracts] = useState([]);
   const [newBaitQuantity, setNewBaitQuantity] = useState('10');
+  const [newBaitRollBonus, setNewBaitRollBonus] = useState('1');
 
-  // Add species
+  // Add or update species
   function addSpecies() {
     if (!newSpeciesName.trim()) {
       alert('Enter species name');
       return;
     }
 
-    const newEntry = {
-      id: crypto.randomUUID(),
+    const entryData = {
       name: newSpeciesName.trim(),
       type: newSpeciesType,
       tags: newSpeciesTags,
@@ -100,15 +123,39 @@ export function GatheringManager({
       yieldMeatFormula: newSpeciesMeatFormula || '1d',
       secondaryMaterialType: newSpeciesSecondaryType || null,
       yieldSecondaryFormula: newSpeciesSecondaryFormula || null,
+      secondaryNameOverride: newSpeciesSecondaryNameOverride.trim() || null,
       st: newSpeciesTags.includes('LargeFish') ? parseInt(newSpeciesST) || 14 : null,
       specialRules: newSpeciesSpecialRules
     };
 
-    saveSpecies([...species, newEntry]);
+    if (editingId) {
+      // Update existing
+      saveSpecies(species.map(s => s.id === editingId ? { ...s, ...entryData } : s));
+    } else {
+      // Add new
+      saveSpecies([...species, { id: crypto.randomUUID(), ...entryData }]);
+    }
     resetSpeciesForm();
   }
 
+  // Start editing a species
+  function editSpecies(s) {
+    setEditingId(s.id);
+    setNewSpeciesName(s.name);
+    setNewSpeciesType(s.type || 'fish');
+    setNewSpeciesTags(s.tags || []);
+    setNewSpeciesFoodType(s.foodType || 'fish');
+    setNewSpeciesMeatFormula(s.yieldMeatFormula || '2d');
+    setNewSpeciesSecondaryType(s.secondaryMaterialType || '');
+    setNewSpeciesSecondaryFormula(s.yieldSecondaryFormula || '');
+    setNewSpeciesSecondaryNameOverride(s.secondaryNameOverride || '');
+    setNewSpeciesST(String(s.st || 14));
+    setNewSpeciesSpecialRules(s.specialRules || []);
+    setShowAdd(true);
+  }
+
   function resetSpeciesForm() {
+    setEditingId(null);
     setNewSpeciesName('');
     setNewSpeciesType('fish');
     setNewSpeciesTags([]);
@@ -116,12 +163,13 @@ export function GatheringManager({
     setNewSpeciesMeatFormula('2d');
     setNewSpeciesSecondaryType('');
     setNewSpeciesSecondaryFormula('');
+    setNewSpeciesSecondaryNameOverride('');
     setNewSpeciesST('14');
     setNewSpeciesSpecialRules([]);
     setShowAdd(false);
   }
 
-  // Add tool
+  // Add or update tool
   function addTool() {
     if (!newToolName.trim()) {
       alert('Enter tool name');
@@ -133,8 +181,7 @@ export function GatheringManager({
       bonuses.push({ type: 'skill_bonus', skill: 'Fishing', value: parseInt(newToolSkillBonus) });
     }
 
-    const newEntry = {
-      id: crypto.randomUUID(),
+    const entryData = {
       name: newToolName.trim(),
       toolType: newToolType,
       allowedModes: newToolModes,
@@ -144,11 +191,28 @@ export function GatheringManager({
       notes: newToolNotes
     };
 
-    saveTools([...tools, newEntry]);
+    if (editingId) {
+      saveTools(tools.map(t => t.id === editingId ? { ...t, ...entryData } : t));
+    } else {
+      saveTools([...tools, { id: crypto.randomUUID(), ...entryData }]);
+    }
     resetToolForm();
   }
 
+  function editTool(t) {
+    setEditingId(t.id);
+    setNewToolName(t.name);
+    setNewToolType(t.toolType || 'fishing_rod');
+    setNewToolModes(t.allowedModes || ['Fishing']);
+    setNewToolMethods(t.allowedMethods || []);
+    setNewToolSkillBonus(String(t.bonuses?.find(b => b.type === 'skill_bonus')?.value || 0));
+    setNewToolDurability(t.durability ? String(t.durability) : '');
+    setNewToolNotes(t.notes || '');
+    setShowAdd(true);
+  }
+
   function resetToolForm() {
+    setEditingId(null);
     setNewToolName('');
     setNewToolType('fishing_rod');
     setNewToolModes(['Fishing']);
@@ -159,26 +223,46 @@ export function GatheringManager({
     setShowAdd(false);
   }
 
-  // Add table
+  // Add or update table
   function addTable() {
     if (!newTableName.trim()) {
       alert('Enter table name');
       return;
     }
 
-    const newEntry = {
-      id: crypto.randomUUID(),
+    // Validate entry count matches roll method
+    const range = getRollMethodRange(newTableRollMethod);
+    if (newTableEntries.length !== range.count) {
+      alert(`Table must have exactly ${range.count} entries for ${newTableRollMethod} (${range.min}-${range.max}). Currently has ${newTableEntries.length}.`);
+      return;
+    }
+
+    const entryData = {
       name: newTableName.trim(),
       tableType: newTableType,
       rollMethod: newTableRollMethod,
       entries: newTableEntries
     };
 
-    saveTables([...tables, newEntry]);
+    if (editingId) {
+      saveTables(tables.map(t => t.id === editingId ? { ...t, ...entryData } : t));
+    } else {
+      saveTables([...tables, { id: crypto.randomUUID(), ...entryData }]);
+    }
     resetTableForm();
   }
 
+  function editTable(t) {
+    setEditingId(t.id);
+    setNewTableName(t.name);
+    setNewTableType(t.tableType || 'FishingRandomCatch');
+    setNewTableRollMethod(t.rollMethod || '2d6');
+    setNewTableEntries(t.entries || []);
+    setShowAdd(true);
+  }
+
   function resetTableForm() {
+    setEditingId(null);
     setNewTableName('');
     setNewTableType('FishingRandomCatch');
     setNewTableRollMethod('2d6');
@@ -186,15 +270,36 @@ export function GatheringManager({
     setShowAdd(false);
   }
 
-  // Add environment
+  // Auto-populate table entries when roll method changes
+  function initializeTableEntries(rollMethod) {
+    const range = getRollMethodRange(rollMethod);
+    const entries = [];
+    for (let i = range.min; i <= range.max; i++) {
+      entries.push({
+        id: crypto.randomUUID(),
+        rollValue: i,
+        resultType: 'nothing',
+        speciesId: null,
+        text: ''
+      });
+    }
+    setNewTableEntries(entries);
+  }
+
+  // Add or update environment
   function addEnvironment() {
     if (!newEnvName.trim()) {
       alert('Enter environment name');
       return;
     }
 
-    const newEntry = {
-      id: crypto.randomUUID(),
+    // Validate at least one table is selected
+    if (!newEnvCatchTableId && !newEnvMildTableId && !newEnvRareTableId) {
+      alert('Environment must have at least one table selected (Catch, Mild Event, or Rare Event)');
+      return;
+    }
+
+    const entryData = {
       name: newEnvName.trim(),
       supportedModes: newEnvModes,
       defaultsByMode: {
@@ -207,11 +312,28 @@ export function GatheringManager({
       skillMod: parseInt(newEnvSkillMod) || 0
     };
 
-    saveEnvironments([...environments, newEntry]);
+    if (editingId) {
+      saveEnvironments(environments.map(e => e.id === editingId ? { ...e, ...entryData } : e));
+    } else {
+      saveEnvironments([...environments, { id: crypto.randomUUID(), ...entryData }]);
+    }
     resetEnvForm();
   }
 
+  function editEnvironment(e) {
+    setEditingId(e.id);
+    setNewEnvName(e.name);
+    setNewEnvModes(e.supportedModes || ['Fishing']);
+    const fishingDefaults = e.defaultsByMode?.Fishing || {};
+    setNewEnvCatchTableId(fishingDefaults.randomCatchTableId || '');
+    setNewEnvMildTableId(fishingDefaults.mildEventTableId || '');
+    setNewEnvRareTableId(fishingDefaults.rareEventTableId || '');
+    setNewEnvSkillMod(String(e.skillMod || 0));
+    setShowAdd(true);
+  }
+
   function resetEnvForm() {
+    setEditingId(null);
     setNewEnvName('');
     setNewEnvModes(['Fishing']);
     setNewEnvCatchTableId('');
@@ -221,31 +343,53 @@ export function GatheringManager({
     setShowAdd(false);
   }
 
-  // Add bait
+  // Add or update bait
   function addBait() {
     if (!newBaitName.trim()) {
       alert('Enter bait name');
       return;
     }
 
-    const newEntry = {
-      id: crypto.randomUUID(),
+    // Validate at least one species is selected
+    if (newBaitAttracts.length === 0) {
+      alert('Bait must attract at least one species');
+      return;
+    }
+
+    const entryData = {
       name: newBaitName.trim(),
       consumableType: 'bait',
       baitTags: newBaitTags,
       attractsSpeciesIds: newBaitAttracts,
-      quantity: parseInt(newBaitQuantity) || 10
+      quantity: parseInt(newBaitQuantity) || 10,
+      rollBonus: parseInt(newBaitRollBonus) || 1
     };
 
-    saveBait([...bait, newEntry]);
+    if (editingId) {
+      saveBait(bait.map(b => b.id === editingId ? { ...b, ...entryData } : b));
+    } else {
+      saveBait([...bait, { id: crypto.randomUUID(), ...entryData }]);
+    }
     resetBaitForm();
   }
 
+  function editBait(b) {
+    setEditingId(b.id);
+    setNewBaitName(b.name);
+    setNewBaitTags(b.baitTags || []);
+    setNewBaitAttracts(b.attractsSpeciesIds || []);
+    setNewBaitQuantity(String(b.quantity || 10));
+    setNewBaitRollBonus(String(b.rollBonus || 1));
+    setShowAdd(true);
+  }
+
   function resetBaitForm() {
+    setEditingId(null);
     setNewBaitName('');
     setNewBaitTags([]);
     setNewBaitAttracts([]);
     setNewBaitQuantity('10');
+    setNewBaitRollBonus('1');
     setShowAdd(false);
   }
 
@@ -370,8 +514,16 @@ export function GatheringManager({
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Food Type</label>
                   <select value={newSpeciesFoodType} onChange={(e) => setNewSpeciesFoodType(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
-                    <option value="fish">Fish</option>
-                    <option value="shellfish">Shellfish</option>
+                    {availableFoodTypes.length > 0 ? (
+                      availableFoodTypes.map(ft => (
+                        <option key={ft} value={ft}>{ft.charAt(0).toUpperCase() + ft.slice(1)}</option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="fish">Fish</option>
+                        <option value="shellfish">Shellfish</option>
+                      </>
+                    )}
                   </select>
                 </div>
                 <div>
@@ -407,6 +559,19 @@ export function GatheringManager({
                 </div>
               </div>
 
+              {newSpeciesSecondaryType && (
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Secondary Name Override (optional)</label>
+                  <input
+                    value={newSpeciesSecondaryNameOverride}
+                    onChange={(e) => setNewSpeciesSecondaryNameOverride(e.target.value)}
+                    placeholder={`Default: ${newSpeciesName || 'Species'} ${newSpeciesSecondaryType || 'Material'}`}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Leave blank for "{newSpeciesName || 'Species'} {newSpeciesSecondaryType || 'Material'}"</p>
+                </div>
+              )}
+
               {newSpeciesTags.includes('LargeFish') && (
                 <div className="w-1/2">
                   <label className="block text-xs text-gray-400 mb-1">ST (for struggle, {FISH_ST_RANGE.min}-{FISH_ST_RANGE.max})</label>
@@ -423,7 +588,7 @@ export function GatheringManager({
 
               <div className="flex gap-2 pt-2">
                 <button onClick={addSpecies} className="flex-1 bg-green-600 px-4 py-2 rounded">
-                  <Save size={16} className="inline mr-1" /> Save
+                  <Save size={16} className="inline mr-1" /> {editingId ? 'Update' : 'Save'}
                 </button>
                 <button onClick={resetSpeciesForm} className="bg-red-600 px-4 py-2 rounded">
                   <X size={16} />
@@ -454,7 +619,7 @@ export function GatheringManager({
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div><span className="text-gray-400">Meat:</span> {s.yieldMeatFormula} → {s.foodType}</div>
                         {s.secondaryMaterialType && (
-                          <div><span className="text-gray-400">Secondary:</span> {s.yieldSecondaryFormula} → {s.secondaryMaterialType}</div>
+                          <div><span className="text-gray-400">Secondary:</span> {s.yieldSecondaryFormula} → {s.secondaryNameOverride || `${s.name} ${s.secondaryMaterialType}`}</div>
                         )}
                         {s.st && <div><span className="text-gray-400">ST:</span> {s.st}</div>}
                       </div>
@@ -465,12 +630,20 @@ export function GatheringManager({
                           ))}
                         </div>
                       )}
-                      <button
-                        onClick={() => confirmDelete('species', s.id, s.name)}
-                        className="text-red-400 text-sm"
-                      >
-                        <Trash2 size={14} className="inline mr-1" /> Delete
-                      </button>
+                      <div className="flex gap-4">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); editSpecies(s); }}
+                          className="text-blue-400 text-sm"
+                        >
+                          <Edit2 size={14} className="inline mr-1" /> Edit
+                        </button>
+                        <button
+                          onClick={() => confirmDelete('species', s.id, s.name)}
+                          className="text-red-400 text-sm"
+                        >
+                          <Trash2 size={14} className="inline mr-1" /> Delete
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -593,7 +766,7 @@ export function GatheringManager({
 
               <div className="flex gap-2 pt-2">
                 <button onClick={addTool} className="flex-1 bg-green-600 px-4 py-2 rounded">
-                  <Save size={16} className="inline mr-1" /> Save
+                  <Save size={16} className="inline mr-1" /> {editingId ? 'Update' : 'Save'}
                 </button>
                 <button onClick={resetToolForm} className="bg-red-600 px-4 py-2 rounded">
                   <X size={16} />
@@ -615,9 +788,14 @@ export function GatheringManager({
                       <span className="text-green-400 ml-2">+{t.bonuses.find(b => b.type === 'skill_bonus').value}</span>
                     )}
                   </div>
-                  <button onClick={() => confirmDelete('tool', t.id, t.name)} className="text-red-400">
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="flex gap-2">
+                    <button onClick={() => editTool(t)} className="text-blue-400">
+                      <Edit2 size={16} />
+                    </button>
+                    <button onClick={() => confirmDelete('tool', t.id, t.name)} className="text-red-400">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               ))
             )}
@@ -658,12 +836,33 @@ export function GatheringManager({
               </div>
 
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Roll Method</label>
-                <select value={newTableRollMethod} onChange={(e) => setNewTableRollMethod(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
-                  <option value="2d6">2d6 (2-12)</option>
-                  <option value="1d6">1d6 (1-6)</option>
-                  <option value="3d6">3d6 (3-18)</option>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs text-gray-400">Roll Method</label>
+                  <button
+                    onClick={() => initializeTableEntries(newTableRollMethod)}
+                    className="text-xs text-blue-400 hover:text-blue-300"
+                    type="button"
+                  >
+                    Initialize Entries
+                  </button>
+                </div>
+                <select
+                  value={newTableRollMethod}
+                  onChange={(e) => {
+                    setNewTableRollMethod(e.target.value);
+                    if (newTableEntries.length === 0) {
+                      initializeTableEntries(e.target.value);
+                    }
+                  }}
+                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                >
+                  <option value="2d6">2d6 (2-12, 11 entries)</option>
+                  <option value="1d6">1d6 (1-6, 6 entries)</option>
+                  <option value="3d6">3d6 (3-18, 16 entries)</option>
                 </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Required entries: {getRollMethodRange(newTableRollMethod).count} | Current: {newTableEntries.length}
+                </p>
               </div>
 
               <div>
@@ -738,7 +937,7 @@ export function GatheringManager({
 
               <div className="flex gap-2 pt-2">
                 <button onClick={addTable} className="flex-1 bg-green-600 px-4 py-2 rounded">
-                  <Save size={16} className="inline mr-1" /> Save
+                  <Save size={16} className="inline mr-1" /> {editingId ? 'Update' : 'Save'}
                 </button>
                 <button onClick={resetTableForm} className="bg-red-600 px-4 py-2 rounded">
                   <X size={16} />
@@ -784,12 +983,20 @@ export function GatheringManager({
                           })}
                         </div>
                       )}
-                      <button
-                        onClick={() => confirmDelete('table', t.id, t.name)}
-                        className="text-red-400 text-sm mt-2"
-                      >
-                        <Trash2 size={14} className="inline mr-1" /> Delete
-                      </button>
+                      <div className="flex gap-4 mt-2">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); editTable(t); }}
+                          className="text-blue-400 text-sm"
+                        >
+                          <Edit2 size={14} className="inline mr-1" /> Edit
+                        </button>
+                        <button
+                          onClick={() => confirmDelete('table', t.id, t.name)}
+                          className="text-red-400 text-sm"
+                        >
+                          <Trash2 size={14} className="inline mr-1" /> Delete
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -887,7 +1094,7 @@ export function GatheringManager({
 
               <div className="flex gap-2 pt-2">
                 <button onClick={addEnvironment} className="flex-1 bg-green-600 px-4 py-2 rounded">
-                  <Save size={16} className="inline mr-1" /> Save
+                  <Save size={16} className="inline mr-1" /> {editingId ? 'Update' : 'Save'}
                 </button>
                 <button onClick={resetEnvForm} className="bg-red-600 px-4 py-2 rounded">
                   <X size={16} />
@@ -904,9 +1111,14 @@ export function GatheringManager({
                 <div key={e.id} className="bg-gray-700 p-3 rounded">
                   <div className="flex justify-between items-center">
                     <span className="font-medium">{e.name}</span>
-                    <button onClick={() => confirmDelete('environment', e.id, e.name)} className="text-red-400">
-                      <Trash2 size={16} />
-                    </button>
+                    <div className="flex gap-2">
+                      <button onClick={() => editEnvironment(e)} className="text-blue-400">
+                        <Edit2 size={16} />
+                      </button>
+                      <button onClick={() => confirmDelete('environment', e.id, e.name)} className="text-red-400">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
                   <div className="text-sm text-gray-400 mt-1">
                     Modes: {e.supportedModes?.join(', ') || 'All'}
@@ -976,7 +1188,7 @@ export function GatheringManager({
               </div>
 
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Attracts Species (for +1 bonus)</label>
+                <label className="block text-xs text-gray-400 mb-1">Attracts Species (required) *</label>
                 <select
                   multiple
                   value={newBaitAttracts}
@@ -987,11 +1199,25 @@ export function GatheringManager({
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>
+                <p className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple. Bait must attract at least one species.</p>
+              </div>
+
+              <div className="w-1/3">
+                <label className="block text-xs text-gray-400 mb-1">Roll Bonus (when used on random catch)</label>
+                <input
+                  type="number"
+                  value={newBaitRollBonus}
+                  onChange={(e) => setNewBaitRollBonus(e.target.value)}
+                  min="0"
+                  max="10"
+                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                />
+                <p className="text-xs text-gray-500 mt-1">Added to catch table roll when line fishing</p>
               </div>
 
               <div className="flex gap-2 pt-2">
                 <button onClick={addBait} className="flex-1 bg-green-600 px-4 py-2 rounded">
-                  <Save size={16} className="inline mr-1" /> Save
+                  <Save size={16} className="inline mr-1" /> {editingId ? 'Update' : 'Save'}
                 </button>
                 <button onClick={resetBaitForm} className="bg-red-600 px-4 py-2 rounded">
                   <X size={16} />
@@ -1009,6 +1235,9 @@ export function GatheringManager({
                   <div>
                     <span className="font-medium">{b.name}</span>
                     <span className="text-sm text-gray-400 ml-2">({b.quantity || 0} available)</span>
+                    {b.rollBonus > 0 && (
+                      <span className="text-green-400 ml-2">+{b.rollBonus} to catch roll</span>
+                    )}
                     {b.baitTags?.length > 0 && (
                       <div className="flex gap-1 mt-1">
                         {b.baitTags.map(tag => (
@@ -1026,6 +1255,9 @@ export function GatheringManager({
                       }}
                       className="w-20 bg-gray-600 px-2 py-1 rounded"
                     />
+                    <button onClick={() => editBait(b)} className="text-blue-400">
+                      <Edit2 size={16} />
+                    </button>
                     <button onClick={() => confirmDelete('bait', b.id, b.name)} className="text-red-400">
                       <Trash2 size={16} />
                     </button>

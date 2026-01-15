@@ -36,9 +36,9 @@ export default function GURPSPartyTool() {
     { name: 'stone', difficulty: 1, effects: '', ht: 14, drShift: 0, weightMod: 50, hpMod: 10 }
   ]);
   const [workers, setWorkers] = useState([
-    { id: '1', name: 'Worker 1', skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10 } },
-    { id: '2', name: 'Worker 2', skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10 } },
-    { id: '3', name: 'Worker 3', skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10 } }
+    { id: '1', name: 'Worker 1', skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10, fishing: 10, stealth: 10, spear: 10 }, st: 10 },
+    { id: '2', name: 'Worker 2', skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10, fishing: 10, stealth: 10, spear: 10 }, st: 10 },
+    { id: '3', name: 'Worker 3', skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10, fishing: 10, stealth: 10, spear: 10 }, st: 10 }
   ]);
   const [customTemplates, setCustomTemplates] = useState({ weapons: {}, armor: {}, ranged: {}, explosives: {} });
   const [alchemyReagents, setAlchemyReagents] = useState([]);
