@@ -11,6 +11,7 @@ import { AlchemyTab } from './components/AlchemyTab';
 import { ChangelogTab } from './components/ChangelogTab';
 import { RulesTab } from './components/RulesTab';
 import { GatheringTab } from './components/GatheringTab';
+import { DayPlannerTab } from './components/DayPlannerTab';
 import { VERSION } from './version';
 
 export default function GURPSPartyTool() {
@@ -463,13 +464,11 @@ export default function GURPSPartyTool() {
           saveGatheringSpecies={saveGatheringSpecies} saveGatheringTools={saveGatheringTools} saveGatheringTables={saveGatheringTables} saveGatheringEnvironments={saveGatheringEnvironments} saveGatheringBait={saveGatheringBait} saveGatheringCategories={saveGatheringCategories} saveGatheringItems={saveGatheringItems} saveCurrentDay={saveCurrentDay}
         />}
         {activeTab === 'alchemy' && <AlchemyTab reagents={alchemyReagents} formulas={alchemyFormulas} batches={alchemyBatches} labs={alchemyLabs} workers={workers} alchemySettings={alchemySettings} saveReagents={saveAlchemyReagents} saveFormulas={saveAlchemyFormulas} saveBatches={saveAlchemyBatches} saveLabs={saveAlchemyLabs} />}
-        {activeTab === 'gathering' && <GatheringTab
+        {activeTab === 'gathering' && <DayPlannerTab
           species={gatheringSpecies}
           tools={gatheringTools}
           tables={gatheringTables}
           environments={gatheringEnvironments}
-          sessions={gatheringSessions}
-          dailyEvents={gatheringDailyEvents}
           bait={gatheringBait}
           categories={gatheringCategories}
           items={gatheringItems}
@@ -478,9 +477,16 @@ export default function GURPSPartyTool() {
           materials={materials}
           foodTypes={foodTypes}
           materialTypes={materialTypes}
+          timeSlots={timeSlots}
+          taskAssignments={taskAssignments}
+          pendingDayLedger={pendingDayLedger}
           currentDay={currentDay}
-          saveSessions={saveGatheringSessions}
-          saveDailyEvents={saveGatheringDailyEvents}
+          currentSlot={currentSlot}
+          saveTimeSlots={saveTimeSlots}
+          saveTaskAssignments={saveTaskAssignments}
+          savePendingDayLedger={savePendingDayLedger}
+          saveCurrentDay={saveCurrentDay}
+          saveCurrentSlot={saveCurrentSlot}
           saveFoods={saveFoods}
           saveMaterials={saveMaterials}
         />}
