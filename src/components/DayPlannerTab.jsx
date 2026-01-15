@@ -477,32 +477,303 @@ function TaskDetailPanel({
   updateTask,
   completeTask
 }) {
+  const [validationError, setValidationError] = useState('');
+
   if (!task) return null;
 
+  /**
+   * Updates a field on the task
+   */
+  function updateField(field, value) {
+    const updatedTask = { ...task, [field]: value };
+
+    // Recalculate assignedWorkerIds if workers changed
+    if (field === 'leaderWorkerId' || field === 'helperWorkerIds') {
+      updatedTask.assignedWorkerIds = [
+        updatedTask.leaderWorkerId,
+        ...(updatedTask.helperWorkerIds || [])
+      ].filter(Boolean);
+    }
+
+    updateTask(updatedTask);
+  }
+
+  /**
+   * Validates and sets the leader
+   */
+  function setLeader(workerId) {
+    if (!workerId) {
+      updateField('leaderWorkerId', null);
+      setValidationError('');
+      return;
+    }
+
+    const validation = validateWorkerAssignment(
+      taskAssignments,
+      currentSlot,
+      workerId,
+      task.id
+    );
+
+    if (!validation.valid) {
+      setValidationError(validation.error);
+      return;
+    }
+
+    setValidationError('');
+    updateField('leaderWorkerId', workerId);
+  }
+
+  /**
+   * Validates and toggles a helper
+   */
+  function toggleHelper(workerId) {
+    const currentHelpers = task.helperWorkerIds || [];
+    const isCurrentlyHelper = currentHelpers.includes(workerId);
+
+    if (isCurrentlyHelper) {
+      // Remove helper
+      updateField('helperWorkerIds', currentHelpers.filter(id => id !== workerId));
+      setValidationError('');
+      return;
+    }
+
+    // Add helper - validate first
+    const validation = validateWorkerAssignment(
+      taskAssignments,
+      currentSlot,
+      workerId,
+      task.id
+    );
+
+    if (!validation.valid) {
+      setValidationError(validation.error);
+      return;
+    }
+
+    setValidationError('');
+    updateField('helperWorkerIds', [...currentHelpers, workerId]);
+  }
+
+  /**
+   * Toggles tool selection
+   */
+  function toggleTool(toolId) {
+    const currentTools = task.selectedToolIds || [];
+    const isSelected = currentTools.includes(toolId);
+
+    if (isSelected) {
+      updateField('selectedToolIds', currentTools.filter(id => id !== toolId));
+    } else {
+      updateField('selectedToolIds', [...currentTools, toolId]);
+    }
+  }
+
+  /**
+   * Filters tools available for this mode
+   */
+  const availableTools = tools.filter(tool =>
+    tool.allowedModes?.includes(task.mode)
+  );
+
+  /**
+   * Gets available environments for this mode
+   */
+  const availableEnvironments = environments.filter(env =>
+    env.supportedModes?.includes(task.mode)
+  );
+
+  /**
+   * Checks if task is ready to be completed
+   */
+  const canComplete = task.leaderWorkerId && task.environmentId;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-h-[calc(100vh-250px)] overflow-y-auto">
       <div>
         <h3 className="text-lg font-bold">{task.mode} Task</h3>
         <div className="text-sm text-gray-400">Order: {task.orderIndex + 1}</div>
-      </div>
-
-      {/* Basic task configuration will go here */}
-      <div className="p-3 bg-gray-700 rounded">
-        <div className="text-sm text-gray-400">
-          Task configuration and resolution UI will be implemented next.
-        </div>
-        <div className="text-xs text-gray-500 mt-2">
-          This will include worker assignment, environment selection, and mode-specific UI.
+        <div className="text-xs text-gray-500 mt-1">
+          Status: <span className={task.resolutionState === TASK_STATUS.Completed ? 'text-green-400' : 'text-yellow-400'}>
+            {task.resolutionState}
+          </span>
         </div>
       </div>
 
-      {task.resolutionState !== TASK_STATUS.Completed && (
-        <button
-          onClick={() => completeTask(task)}
-          className="w-full bg-green-600 px-4 py-2 rounded"
-        >
-          Complete Task
-        </button>
+      {/* Validation Error */}
+      {validationError && (
+        <div className="p-2 bg-red-900 border border-red-600 rounded text-sm">
+          {validationError}
+        </div>
+      )}
+
+      {/* Task is completed - show summary */}
+      {task.resolutionState === TASK_STATUS.Completed ? (
+        <div className="space-y-3">
+          <div className="p-3 bg-green-900 border border-green-600 rounded">
+            <div className="font-medium text-green-200">Task Completed</div>
+            <div className="text-sm text-green-300 mt-1">
+              Results added to pending day ledger
+            </div>
+          </div>
+
+          {task.notes && (
+            <div className="p-3 bg-gray-700 rounded">
+              <div className="text-xs text-gray-400 mb-1">Notes:</div>
+              <div className="text-sm">{task.notes}</div>
+            </div>
+          )}
+
+          {task.warnings && task.warnings.length > 0 && (
+            <div className="p-3 bg-yellow-900 border border-yellow-600 rounded">
+              <div className="text-xs text-yellow-300 mb-1">Warnings:</div>
+              {task.warnings.map((warning, idx) => (
+                <div key={idx} className="text-sm text-yellow-200">• {warning}</div>
+              ))}
+            </div>
+          )}
+
+          {task.inventoryDelta && task.inventoryDelta.length > 0 && (
+            <div className="p-3 bg-gray-700 rounded">
+              <div className="text-xs text-gray-400 mb-1">Inventory Pending:</div>
+              {task.inventoryDelta.map((delta, idx) => (
+                <div key={idx} className="text-sm">
+                  {delta.speciesName || delta.name}: {delta.units} units
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Task configuration */
+        <div className="space-y-4">
+          {/* Worker Assignment */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Leader *</label>
+            <select
+              value={task.leaderWorkerId || ''}
+              onChange={(e) => setLeader(e.target.value)}
+              className="w-full bg-gray-700 px-3 py-2 rounded"
+            >
+              <option value="">-- Select Leader --</option>
+              {workers.map(worker => (
+                <option key={worker.id} value={worker.id}>
+                  {worker.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Helpers */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Helpers (optional)</label>
+            <div className="space-y-1">
+              {workers
+                .filter(w => w.id !== task.leaderWorkerId)
+                .map(worker => (
+                  <label key={worker.id} className="flex items-center gap-2 p-2 bg-gray-700 rounded cursor-pointer hover:bg-gray-600">
+                    <input
+                      type="checkbox"
+                      checked={(task.helperWorkerIds || []).includes(worker.id)}
+                      onChange={() => toggleHelper(worker.id)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">{worker.name}</span>
+                  </label>
+                ))}
+            </div>
+          </div>
+
+          {/* Environment */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Environment *</label>
+            <select
+              value={task.environmentId || ''}
+              onChange={(e) => updateField('environmentId', e.target.value)}
+              className="w-full bg-gray-700 px-3 py-2 rounded"
+            >
+              <option value="">-- Select Environment --</option>
+              {availableEnvironments.map(env => (
+                <option key={env.id} value={env.id}>
+                  {env.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Tools */}
+          {availableTools.length > 0 && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium">Tools (optional)</label>
+              <div className="space-y-1">
+                {availableTools.map(tool => (
+                  <label key={tool.id} className="flex items-center gap-2 p-2 bg-gray-700 rounded cursor-pointer hover:bg-gray-600">
+                    <input
+                      type="checkbox"
+                      checked={(task.selectedToolIds || []).includes(tool.id)}
+                      onChange={() => toggleTool(tool.id)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">{tool.name}</span>
+                    {tool.bonuses && tool.bonuses.length > 0 && (
+                      <span className="text-xs text-green-400 ml-auto">
+                        +{tool.bonuses.find(b => b.type === 'skill_bonus')?.value || 0}
+                      </span>
+                    )}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Mode-specific configuration placeholder */}
+          <div className="p-3 bg-gray-700 rounded border border-gray-600">
+            <div className="text-sm text-gray-400">
+              Mode-specific configuration ({task.mode})
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              Method selection, intent, and resolution UI will be added next
+            </div>
+          </div>
+
+          {/* Complete button */}
+          {task.resolutionState !== TASK_STATUS.Completed && (
+            <div className="space-y-2">
+              {!canComplete && (
+                <div className="text-xs text-yellow-400">
+                  Assign a leader and select an environment to complete this task
+                </div>
+              )}
+              <button
+                onClick={() => {
+                  if (!canComplete) {
+                    alert('Please assign a leader and select an environment');
+                    return;
+                  }
+
+                  // TODO: Generate actual payload and inventory deltas
+                  // For now, just mark as complete with mock data
+                  const completedTask = {
+                    ...task,
+                    resolutionState: TASK_STATUS.Completed,
+                    notes: `${task.mode} task completed`,
+                    inventoryDelta: [],
+                    warnings: []
+                  };
+                  completeTask(completedTask);
+                }}
+                disabled={!canComplete}
+                className={`w-full px-4 py-2 rounded ${
+                  canComplete
+                    ? 'bg-green-600 hover:bg-green-500'
+                    : 'bg-gray-600 opacity-50 cursor-not-allowed'
+                }`}
+              >
+                Complete Task
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
