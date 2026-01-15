@@ -5,7 +5,7 @@ import { DiceRoller } from '../DiceRoller';
 import { INGREDIENT_ROLES, VECTORS } from '../../constants';
 import { toNumberOr } from '../../utils/helpers';
 
-export function BatchesView({ batches, workers, formulas, reagents, saveBatches, saveFormulas, saveReagents }) {
+export function BatchesView({ batches, workers, formulas, reagents, labs, saveBatches, saveFormulas, saveReagents }) {
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [workerName, setWorkerName] = useState('');
   const [skill, setSkill] = useState('');
@@ -23,6 +23,7 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
   const [ingredients, setIngredients] = useState([]);
   const [selectedVector, setSelectedVector] = useState('Potion');
   const [selectedTier, setSelectedTier] = useState(1);
+  const [selectedLabId, setSelectedLabId] = useState(labs?.[0]?.id || 'default');
 
   const activeBatches = batches.filter(b => b.phase === 'brewing');
   const completedBatches = batches.filter(b => b.phase !== 'brewing');
@@ -152,6 +153,9 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
 
     const reagentsMap = new Map(reagents.map(r => [r.id, r]));
 
+    // Get selected lab info
+    const selectedLab = labs?.find(l => l.id === selectedLabId) || { id: 'default', name: 'Basic Lab', rating: 0 };
+
     const ingredientsSnapshot = ingredients.map(ing => {
       const r = reagentsMap.get(ing.reagentId);
       return {
@@ -244,7 +248,11 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
       completedDate: null,
       // Store hazard info for triggering during work blocks
       hazards: stats.hazardEvaluation.hazards,
-      hazardDetails: stats.hazardEvaluation.details
+      hazardDetails: stats.hazardEvaluation.details,
+      // Store lab info (locked for entire batch)
+      labId: selectedLab.id,
+      labName: selectedLab.name,
+      labRating: selectedLab.rating
     };
 
     saveReagents(newReagents);
@@ -374,6 +382,10 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
                 {selectedBatch.forecast && <span className="text-green-400 ml-1">(Forecast +1)</span>}
               </div>
               <div>Vector: {selectedBatch.vector || 'Potion'}</div>
+              <div>
+                Lab: <span className="text-cyan-400">{selectedBatch.labName || 'Basic Lab'}</span>
+                <span className="text-gray-500 ml-1">(+{selectedBatch.labRating || 0})</span>
+              </div>
               <div>Dominant: {selectedBatch.dominantAspect}</div>
               <div>Potency: {selectedBatch.finalPotency || selectedBatch.potency || 'P1'}</div>
               <div>TB: <span className="text-purple-400">{selectedBatch.traitBudget || 10} pts</span></div>
@@ -502,7 +514,15 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
                   placeholder="e.g., 14"
                 />
                 <div className="text-xs text-gray-400 mt-1">
-                  Effective: {skill ? parseInt(skill) + selectedBatch.DM : '?'}
+                  {(() => {
+                    if (!skill) return 'Effective: ?';
+                    const baseSkill = parseInt(skill);
+                    const labBonus = selectedBatch.labRating || 0;
+                    const effective = baseSkill + selectedBatch.DM + labBonus;
+                    return labBonus > 0
+                      ? `Effective: ${baseSkill} + ${selectedBatch.DM} (DM) + ${labBonus} (lab) = ${effective}`
+                      : `Effective: ${baseSkill} + ${selectedBatch.DM} (DM) = ${effective}`;
+                  })()}
                 </div>
               </div>
               <div>
@@ -535,7 +555,8 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
                   <span className="text-gray-400">{s.date}</span>
                 </div>
                 <div className="text-xs text-gray-400 mt-1">
-                  {s.worker} | Skill {s.skill} → Effective {s.effectiveSkill} |
+                  {s.worker} | Lab: {s.labName || selectedBatch.labName || 'Basic Lab'} |
+                  Skill {s.skill} + {s.labRating !== undefined ? s.labRating : (selectedBatch.labRating || 0)} (lab) = {s.effectiveSkill} |
                   Roll: {s.roll} | PP +{s.ppAdded} |
                   CP {s.cpChange > 0 ? '+' : ''}{s.cpChange}
                 </div>
@@ -570,11 +591,19 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
                     placeholder="e.g., Experimental Potion"
                   />
                 </div>
-                <div className="bg-gray-700 p-2 rounded">
-                  <div className="text-xs text-gray-400 mb-1">Tier (Auto-calculated)</div>
-                  <div className="text-sm text-gray-300">
-                    Tier is automatically determined by the potency load of active ingredients.
-                  </div>
+                <div>
+                  <label className="block text-sm mb-1">Lab</label>
+                  <select
+                    value={selectedLabId}
+                    onChange={(e) => setSelectedLabId(e.target.value)}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  >
+                    {(labs || [{id: 'default', name: 'Basic Lab', rating: 0}]).map(lab => (
+                      <option key={lab.id} value={lab.id}>
+                        {lab.name} (+{lab.rating})
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm mb-1">Vector Type</label>
@@ -589,6 +618,12 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
                       </option>
                     ))}
                   </select>
+                </div>
+              </div>
+              <div className="bg-gray-600 p-2 rounded">
+                <div className="text-xs text-gray-400 mb-1">Tier (Auto-calculated)</div>
+                <div className="text-sm text-gray-300">
+                  Tier is automatically determined by the potency load of active ingredients.
                 </div>
               </div>
 
@@ -745,17 +780,26 @@ export function BatchesView({ batches, workers, formulas, reagents, saveBatches,
 
           <div>
             <h3 className="font-semibold mb-2">Active Batches ({activeBatches.length})</h3>
-            {activeBatches.map(b => (
-              <div key={b.id} className="bg-gray-700 p-3 rounded mb-2 cursor-pointer hover:bg-gray-600" onClick={() => setSelectedBatch(b)}>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">{b.formulaName}</span>
-                  <span className="text-sm text-gray-400">{b.PP}/{b.WR} PP | CP: {b.CP}</span>
+            {activeBatches.map(b => {
+              const progressPercent = Math.min(100, (b.PP / b.WR) * 100);
+              return (
+                <div key={b.id} className="bg-gray-700 p-3 rounded mb-2 cursor-pointer hover:bg-gray-600" onClick={() => setSelectedBatch(b)}>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">{b.formulaName}</span>
+                    <span className="text-sm text-gray-400">{b.PP}/{b.WR} PP | CP: {b.CP}</span>
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1 mb-2">
+                    Tier {b.tier || 1} | {b.vector || 'Potion'} | {b.dominantAspect} | Potency {b.finalPotency || b.potency || 'P1'} | {b.shifts.length} work blocks
+                  </div>
+                  <div className="w-full bg-gray-600 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{width: `${progressPercent}%`}}
+                    />
+                  </div>
                 </div>
-                <div className="text-xs text-gray-400 mt-1">
-                  Tier {b.tier || 1} | {b.vector || 'Potion'} | {b.dominantAspect} | Potency {b.finalPotency || b.potency || 'P1'} | {b.shifts.length} work blocks
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {activeBatches.length === 0 && (
               <div className="text-gray-500 text-center py-4">No active batches</div>
             )}

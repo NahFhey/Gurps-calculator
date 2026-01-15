@@ -3,6 +3,34 @@ import { QUALITIES } from '../constants';
 import { toNumberOr, upsertCraft, removeCraft, refundMaterialsFromProject } from '../utils/helpers';
 import { DiceRoller } from './DiceRoller';
 
+/**
+ * CraftingTab Component - Manages GURPS crafting projects with design and craft phases
+ *
+ * This component implements the GURPS crafting system with three phases:
+ * 1. Setup Phase - Select template, quality, materials, and project dates
+ * 2. Design Phase - Make skill rolls to accumulate design hours (2 * HP target)
+ * 3. Craft Phase - Make skill rolls to accumulate craft hours (HP target)
+ *
+ * Key GURPS mechanics implemented:
+ * - Effective skill = base skill + total difficulty modifier
+ * - Design phase: crit success gives skill hours, success gives 8h, failures give 0-6h
+ * - Craft phase: crit success/success gives 8h, failures give 4h with quality penalties
+ * - Critical failure in craft phase destroys project and refunds materials
+ * - Quality levels: cheap, good, fine, very fine, legendary
+ * - Material properties affect final stats (HT, weight, HP modifiers)
+ *
+ * @param {Object} props - Component props
+ * @param {Array<Object>} props.materials - Available crafting materials with id, name, type, quantity
+ * @param {Array<Object>} props.crafts - Active and completed crafting projects
+ * @param {Array<Object>} props.craftDesigns - Saved design templates for quick-start crafting
+ * @param {Object} props.customTemplates - Template definitions by category (weapons, armor, etc.)
+ * @param {Array<Object>} props.materialTypes - Material type definitions with difficulty, HT, modifiers
+ * @param {Array<Object>} props.workers - Available workers with crafting/designing skills
+ * @param {Function} props.saveMaterials - Callback to persist material inventory changes
+ * @param {Function} props.saveCrafts - Callback to persist crafting project changes
+ * @param {Function} props.saveCraftDesigns - Callback to persist saved design changes
+ * @returns {JSX.Element} The crafting tab interface
+ */
 export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, materialTypes, workers, saveMaterials, saveCrafts, saveCraftDesigns }) {
   const [view, setView] = useState('list');
   const [current, setCurrent] = useState(null);
@@ -18,6 +46,12 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
 
   const allTemplates = customTemplates;
 
+  /**
+   * Initializes a new crafting project in setup phase
+   * Creates project with first available weapon template and default settings
+   *
+   * @returns {void} - Sets current project state and switches to craft view
+   */
   function startNew() {
     const weaponKeys = Object.keys(allTemplates.weapons || {});
     if (weaponKeys.length === 0) {
@@ -54,17 +88,41 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
     setView('craft');
   }
 
+  /**
+   * Calculates derived statistics for the current crafting project
+   *
+   * This function computes:
+   * - Final weight: base weight * (1 + material weight modifier %)
+   * - Final HP: base HP * (1 + material HP modifier %)
+   * - Final HT: averaged material HT + quality HT bonus
+   * - Total difficulty: averaged material difficulty + quality difficulty + mod penalties
+   * - Design time: 2 * final HP (hours needed in design phase)
+   * - Craft time: final HP (hours needed in craft phase)
+   *
+   * Material modifiers are averaged across all selected materials to support
+   * multi-material projects (e.g., sword with wood handle and steel blade).
+   *
+   * @returns {Object} Calculated stats object
+   * @property {number} finalWeight - Final item weight in lbs
+   * @property {number} finalHP - Final item hit points
+   * @property {number} finalHT - Final item health threshold
+   * @property {number} totalDifficulty - Net skill modifier (usually negative)
+   * @property {number} designTime - Hours required for design phase
+   * @property {number} craftTime - Hours required for craft phase
+   */
   function calcStats() {
     if (!current) return {};
     const t = allTemplates[current.templateType]?.[current.template];
     if (!t) return { finalWeight: 0, finalHP: 0, finalHT: 10, totalDifficulty: 0, designTime: 0, craftTime: 0 };
     const q = QUALITIES[current.quality];
 
-    let matDiff = 0;
-    let matHT = 10;
-    let matWeightMod = 0;
-    let matHPMod = 0;
+    // Initialize material modifiers with defaults
+    let matDiff = 0;    // Material difficulty modifier
+    let matHT = 10;     // Material health threshold
+    let matWeightMod = 0; // Material weight modifier (percentage)
+    let matHPMod = 0;     // Material HP modifier (percentage)
 
+    // Average modifiers across all selected materials
     if (current.selectedMaterials && current.selectedMaterials.length > 0) {
       const selectedMatTypes = current.selectedMaterials
         .map(sm => {
@@ -75,6 +133,7 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
         .filter(mt => mt !== null);
 
       if (selectedMatTypes.length > 0) {
+        // Average all material properties for composite items
         matDiff = Math.round(selectedMatTypes.reduce((sum, mt) => sum + mt.difficulty, 0) / selectedMatTypes.length);
         matHT = Math.round(selectedMatTypes.reduce((sum, mt) => sum + mt.ht, 0) / selectedMatTypes.length);
         matWeightMod = selectedMatTypes.reduce((sum, mt) => sum + (mt.weightMod || 0), 0) / selectedMatTypes.length;
@@ -82,9 +141,11 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
       }
     }
 
+    // Calculate final stats with material modifiers applied
     const w = Math.round(t.weight * (1 + matWeightMod / 100) * 10) / 10;
     const hp = Math.round(t.hp * (1 + matHPMod / 100));
     const ht = matHT + q.htBonus;
+    // Total difficulty = material + quality + mods (extra mods add -1 each after first)
     let diff = matDiff + q.difficulty;
     current.mods.forEach((mod, i) => { diff += mod.difficulty || 0; if (i > 0) diff -= 1; });
     return { finalWeight: w, finalHP: hp, finalHT: ht, totalDifficulty: diff, designTime: 2 * hp, craftTime: hp };
@@ -195,7 +256,7 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
       <div className="flex gap-2 mb-4">
         <button onClick={() => setView('list')} className={`px-4 py-2 rounded ${view === 'list' ? 'bg-blue-600' : 'bg-gray-700'}`}>Projects ({crafts.length})</button>
         <button onClick={() => setView('designs')} className={`px-4 py-2 rounded ${view === 'designs' ? 'bg-blue-600' : 'bg-gray-700'}`}>Saved Designs ({(craftDesigns || []).length})</button>
-        {!current && <button onClick={startNew} className="bg-green-600 px-4 py-2 rounded">New Project</button>}
+        <button onClick={startNew} className="bg-green-600 px-4 py-2 rounded">New Project</button>
         {current && (
           <button
             onClick={() => setAbandonConfirm(true)}
@@ -343,10 +404,26 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                   const newCur = {...current, phase: 'design', consumedMaterials};
                   setCurrent(newCur);
                   saveCrafts(upsertCraft(crafts, newCur));
+                  // Set default worker for design phase
+                  if (workers && workers.length > 0 && !selectedWorker) {
+                    const defaultWorker = workers[0];
+                    setSelectedWorker(defaultWorker.name);
+                    if (defaultWorker.skills) {
+                      setSkill(String(defaultWorker.skills.designing || 10));
+                    }
+                  }
                 } else {
                   const newCur = {...current, phase: 'design'};
                   setCurrent(newCur);
                   saveCrafts(upsertCraft(crafts, newCur));
+                  // Set default worker for design phase
+                  if (workers && workers.length > 0 && !selectedWorker) {
+                    const defaultWorker = workers[0];
+                    setSelectedWorker(defaultWorker.name);
+                    if (defaultWorker.skills) {
+                      setSkill(String(defaultWorker.skills.designing || 10));
+                    }
+                  }
                 }
               }} className="w-full bg-green-600 py-3 rounded">Start Design</button>
             </div>
@@ -409,6 +486,15 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                   newCur.designShifts = newShifts;
                   newCur.shifts = [];
                   saveCrafts(upsertCraft(crafts, newCur));
+                  // Reset worker selection for craft phase
+                  if (workers && workers.length > 0) {
+                    const defaultWorker = workers[0];
+                    setSelectedWorker(defaultWorker.name);
+                    if (defaultWorker.skills) {
+                      setSkill(String(defaultWorker.skills.crafting || 10));
+                    }
+                  }
+                  setRoll('');
                   // Show save design prompt
                   setSaveDesignPrompt(newCur);
                   return;
@@ -447,16 +533,16 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                     const mat = materials.find(m => m.id === sm.selectedMaterialId || String(m.id) === sm.selectedMaterialId);
                     if (!mat || !mat.type) return null;
                     return materialTypes.find(mt => mt.name === mat.type);
-                  }).filter(mt => mt !== null);
+                  }).filter(mt => mt !== null && mt !== undefined);
                   if (matTypes.length > 0) {
-                    avgHT = Math.round(matTypes.reduce((sum, mt) => sum + mt.ht, 0) / matTypes.length);
+                    avgHT = Math.round(matTypes.reduce((sum, mt) => sum + (mt.ht || 10), 0) / matTypes.length);
                     avgWeightMod = matTypes.reduce((sum, mt) => sum + (mt.weightMod || 0), 0) / matTypes.length;
                     avgHPMod = matTypes.reduce((sum, mt) => sum + (mt.hpMod || 0), 0) / matTypes.length;
                   }
                 }
 
-                const finalWeight = Math.round(t.weight * (1 + avgWeightMod / 100) * 10) / 10;
-                const finalHP = Math.round(t.hp * (1 + avgHPMod / 100));
+                const finalWeight = Math.round((t.weight || 0) * (1 + avgWeightMod / 100) * 10) / 10;
+                const finalHP = Math.round((t.hp || 0) * (1 + avgHPMod / 100));
 
                 const materialList =
                   (c.consumedMaterials?.map(u => u.name).join(', '))
@@ -474,12 +560,35 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                 };
                 const phaseStyle = phaseStyles[c.phase] || phaseStyles.setup;
 
+                // Calculate progress
+                const designTime = 2 * finalHP;
+                const craftTime = finalHP;
+                const progress = (c.shifts || []).reduce((sum, s) => sum + (s.hoursAdded || 0), 0);
+                const designProgress = (c.designShifts || []).reduce((sum, s) => sum + (s.hoursAdded || 0), 0);
+
+                let targetHours = 0;
+                let currentProgress = 0;
+                if (c.phase === 'design') {
+                  targetHours = designTime;
+                  currentProgress = progress;
+                } else if (c.phase === 'craft') {
+                  targetHours = craftTime;
+                  currentProgress = progress;
+                } else {
+                  targetHours = 1;
+                  currentProgress = 0;
+                }
+                const progressPercent = targetHours > 0 ? Math.min(100, (currentProgress / targetHours) * 100) : 0;
+
                 return (
                   <div key={c.id} className={`${phaseStyle.bg} border ${phaseStyle.border} rounded p-4`}>
                     <div className="flex items-center justify-between mb-2">
-                      <div>
+                      <div className="flex-1">
                         <h3 className="font-semibold text-lg capitalize">{c.name || `${c.currentQuality} ${c.template}`}</h3>
                         <div className="text-sm text-gray-400">Phase: <span className={phaseStyle.text}>{c.phase}</span> | Started: {c.startDate || 'unknown'} {c.startDay && <span className="text-green-400">[Day {c.startDay}]</span>}</div>
+                        {c.phase !== 'setup' && (
+                          <div className="text-xs text-gray-400 mt-1">Progress: {currentProgress}/{targetHours}h ({Math.round(progressPercent)}%)</div>
+                        )}
                       </div>
                       <button onClick={() => {
                         setCurrent(c);
@@ -496,9 +605,18 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                       }} className="bg-blue-600 px-4 py-2 rounded">Resume</button>
                     </div>
                     <div className="text-sm text-gray-400">Materials: {materialList}</div>
-                    <div className="text-sm text-gray-400">W: {finalWeight} lbs | HP: {finalHP} | HT: {avgHT + q.htBonus}</div>
+                    <div className="text-sm text-gray-400 mb-2">W: {finalWeight} lbs | HP: {finalHP} | HT: {avgHT + q.htBonus}</div>
+                    {c.phase !== 'setup' && (
+                      <div className="w-full bg-gray-600 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full transition-all duration-300 ${phaseStyle.text === 'text-purple-400' ? 'bg-purple-600' : 'bg-green-600'}`}
+                          style={{width: `${progressPercent}%`}}
+                        />
+                      </div>
+                    )}
                   </div>
                 );
+
               })}
               {crafts.filter(c => !c.completed).length === 0 && (
                 <div className="text-gray-500 italic">No in-progress projects</div>
@@ -519,16 +637,16 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                     const mat = materials.find(m => m.id === sm.selectedMaterialId || String(m.id) === sm.selectedMaterialId);
                     if (!mat || !mat.type) return null;
                     return materialTypes.find(mt => mt.name === mat.type);
-                  }).filter(mt => mt !== null);
+                  }).filter(mt => mt !== null && mt !== undefined);
                   if (matTypes.length > 0) {
-                    avgHT = Math.round(matTypes.reduce((sum, mt) => sum + mt.ht, 0) / matTypes.length);
+                    avgHT = Math.round(matTypes.reduce((sum, mt) => sum + (mt.ht || 10), 0) / matTypes.length);
                     avgWeightMod = matTypes.reduce((sum, mt) => sum + (mt.weightMod || 0), 0) / matTypes.length;
                     avgHPMod = matTypes.reduce((sum, mt) => sum + (mt.hpMod || 0), 0) / matTypes.length;
                   }
                 }
 
-                const finalWeight = Math.round(t.weight * (1 + avgWeightMod / 100) * 10) / 10;
-                const finalHP = Math.round(t.hp * (1 + avgHPMod / 100));
+                const finalWeight = Math.round((t.weight || 0) * (1 + avgWeightMod / 100) * 10) / 10;
+                const finalHP = Math.round((t.hp || 0) * (1 + avgHPMod / 100));
 
                 const materialList =
                   (c.consumedMaterials?.map(u => `${u.name} (${u.type})`).join(', '))
@@ -778,7 +896,16 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                           setCurrent(newCraft);
                           setCurrentDate(today);
                           setCurrentDay(1);
-                          setSelectedWorker(workers[0] || '');
+                          // Set default worker and skill for craft phase
+                          if (workers && workers.length > 0) {
+                            const defaultWorker = workers[0];
+                            setSelectedWorker(defaultWorker.name);
+                            if (defaultWorker.skills) {
+                              setSkill(String(defaultWorker.skills.crafting || 10));
+                            }
+                          } else {
+                            setSelectedWorker('');
+                          }
                           setView('craft');
                           alert('Craft started from design!');
                         }}

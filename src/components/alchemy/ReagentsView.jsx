@@ -95,7 +95,12 @@ export function ReagentsView({ reagents, alchemySettings }) {
                 className="flex items-center gap-4 p-3 cursor-pointer hover:bg-gray-600"
                 onClick={() => setExpanded(p => ({...p, [r.id]: !p[r.id]}))}
               >
-                <span className="flex-1 font-medium">{info.name}</span>
+                <span className="flex-1 font-medium">
+                  {info.name}
+                  {r.baseReagentName && (
+                    <span className="ml-2 text-xs px-2 py-0.5 bg-purple-600 rounded" title="Derived reagent">⚗️</span>
+                  )}
+                </span>
 
                 {/* Aspects display */}
                 <span className="text-sm text-blue-400">
@@ -253,6 +258,57 @@ export function ReagentsView({ reagents, alchemySettings }) {
                     <div className="text-sm">
                       <span className="text-gray-400">Refinement:</span>{' '}
                       <span className="capitalize">{info.refinement}</span>
+                    </div>
+                  )}
+
+                  {/* Derived Reagent Indicator */}
+                  {r.baseReagentName && (
+                    <div className="bg-purple-900 bg-opacity-30 border border-purple-500 p-3 rounded text-sm">
+                      <div className="font-semibold mb-1 text-purple-300">⚗️ Derived Reagent</div>
+                      <div className="text-xs text-gray-300">
+                        <div><span className="text-gray-400">Base Material:</span> {r.baseReagentName}</div>
+                        {r.identityId && <div className="text-xs text-gray-500 mt-1">
+                          Shares identification progress with other {r.baseReagentName} variants
+                        </div>}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Processing Log */}
+                  {r.processingLog && r.processingLog.length > 0 && (
+                    <div>
+                      <div className="text-sm font-semibold mb-2">Processing History</div>
+                      <div className="space-y-2">
+                        {r.processingLog.slice().reverse().map((log, idx) => (
+                          <div key={idx} className="bg-gray-800 p-3 rounded text-xs">
+                            <div className="flex justify-between items-start mb-2">
+                              <span className="font-semibold text-cyan-400 capitalize">{log.operation}</span>
+                              <span className="text-gray-500">{new Date(log.timestamp).toLocaleDateString()}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-gray-300 mb-2">
+                              <div><span className="text-gray-400">Input:</span> {log.inputUnits}U</div>
+                              <div><span className="text-gray-400">Output:</span> {log.outputUnits}U</div>
+                              <div><span className="text-gray-400">Worker:</span> {log.worker}</div>
+                              <div><span className="text-gray-400">Lab:</span> {log.lab}</div>
+                            </div>
+                            {log.results && log.results.length > 0 && (
+                              <div className="border-t border-gray-700 pt-2 mt-2">
+                                <div className="text-gray-400 mb-1">Attempts:</div>
+                                <div className="space-y-1">
+                                  {log.results.map((result, ridx) => (
+                                    <div key={ridx} className="flex justify-between text-xs">
+                                      <span>#{result.attempt}: Roll {result.roll}</span>
+                                      <span className={result.success ? 'text-green-400' : 'text-red-400'}>
+                                        {result.success ? '✓' : '✗'}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 

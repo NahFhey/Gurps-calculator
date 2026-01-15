@@ -6,16 +6,20 @@ import { calculateFormulaStats } from '../utils/alchemy';
 import { TBBuilderPanel } from './alchemy/TBBuilderPanel';
 import { ImportExportPanel } from './ImportExportPanel';
 import { GMLockModal } from './GMLockModal';
+import { GatheringManager } from './GatheringManager';
 import { unlockGMData, mergeGM } from '../utils/exportImport';
 
 export function ManagerTab({
   foodTypes, materialTypes, workers, crafts, craftDesigns, customTemplates, materials,
-  effectFamilyMap, alchemySettings, alchemyReagents, alchemyFormulas, alchemyBatches,
+  effectFamilyMap, alchemySettings, alchemyReagents, alchemyFormulas, alchemyBatches, alchemyLabs, kitchens, cookingSkills,
   foods, recipes, gmMode, gmLockData, setGmMode, setGmLockData,
   saveMaterials, saveFoods, saveRecipes, saveFoodTypes, saveMaterialTypes, saveWorkers,
   saveCrafts, saveCraftDesigns, saveCustomTemplates, saveEffectFamilyMap,
-  saveAlchemySettings, saveAlchemyReagents, saveAlchemyFormulas, saveAlchemyBatches,
-  renameMaterialType
+  saveAlchemySettings, saveAlchemyReagents, saveAlchemyFormulas, saveAlchemyBatches, saveAlchemyLabs, saveKitchens, saveCookingSkills,
+  renameMaterialType,
+  // Gathering system props
+  gatheringSpecies, gatheringTools, gatheringTables, gatheringEnvironments, gatheringBait, currentDay,
+  saveGatheringSpecies, saveGatheringTools, saveGatheringTables, saveGatheringEnvironments, saveGatheringBait, saveCurrentDay
 }) {
   const [view, setView] = useState('foodTypes');
   const [showAdd, setShowAdd] = useState(false);
@@ -50,6 +54,19 @@ export function ManagerTab({
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [expanded, setExpanded] = useState({});
   const [draftMatTypeName, setDraftMatTypeName] = useState({});
+
+  // Lab management state
+  const [newLabName, setNewLabName] = useState('');
+  const [newLabRating, setNewLabRating] = useState('0');
+  const [newLabDescription, setNewLabDescription] = useState('');
+
+  // Kitchen management state
+  const [newKitchenName, setNewKitchenName] = useState('');
+  const [newKitchenRating, setNewKitchenRating] = useState('0');
+  const [newKitchenDescription, setNewKitchenDescription] = useState('');
+
+  // Cooking skills state
+  const [newSkillName, setNewSkillName] = useState('');
 
   const [newTypeColor, setNewTypeColor] = useState('#60A5FA');
 
@@ -135,6 +152,7 @@ export function ManagerTab({
     if (importedState.alchemyReagents) saveAlchemyReagents(importedState.alchemyReagents);
     if (importedState.alchemyFormulas) saveAlchemyFormulas(importedState.alchemyFormulas);
     if (importedState.alchemyBatches) saveAlchemyBatches(importedState.alchemyBatches);
+    if (importedState.alchemyLabs) saveAlchemyLabs(importedState.alchemyLabs);
     if (importedState.effectFamilyMap) saveEffectFamilyMap(importedState.effectFamilyMap);
     if (importedState.alchemySettings) saveAlchemySettings(importedState.alchemySettings);
   };
@@ -369,13 +387,16 @@ export function ManagerTab({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-800 p-6 rounded-lg max-w-md border-2 border-gray-600">
             <h3 className="text-xl font-bold mb-4">Confirm Delete</h3>
-            <p className="mb-6">{deleteConfirm.type === 'foodType' ? `Delete type "${deleteConfirm.value}"?` : deleteConfirm.type === 'materialType' ? `Delete type "${deleteConfirm.value}"?` : deleteConfirm.type === 'worker' ? `Delete worker "${deleteConfirm.value}"?` : deleteConfirm.type === 'project' ? `Delete project "${deleteConfirm.name}"?` : deleteConfirm.type === 'reagent' ? `Delete reagent "${deleteConfirm.name}"?` : deleteConfirm.type === 'formula' ? `Delete formula "${deleteConfirm.name}"?` : `Delete template "${deleteConfirm.name}"?`}</p>
+            <p className="mb-6">{deleteConfirm.type === 'foodType' ? `Delete type "${deleteConfirm.value}"?` : deleteConfirm.type === 'materialType' ? `Delete type "${deleteConfirm.value}"?` : deleteConfirm.type === 'worker' ? `Delete worker "${deleteConfirm.value}"?` : deleteConfirm.type === 'lab' ? `Delete lab "${deleteConfirm.value}"?` : deleteConfirm.type === 'kitchen' ? `Delete kitchen "${deleteConfirm.value}"?` : deleteConfirm.type === 'cookingSkill' ? `Delete cooking skill "${deleteConfirm.value}"?` : deleteConfirm.type === 'project' ? `Delete project "${deleteConfirm.name}"?` : deleteConfirm.type === 'reagent' ? `Delete reagent "${deleteConfirm.name}"?` : deleteConfirm.type === 'formula' ? `Delete formula "${deleteConfirm.name}"?` : `Delete template "${deleteConfirm.name}"?`}</p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 bg-gray-600 rounded">Cancel</button>
               <button onClick={() => {
-                if (deleteConfirm.type === 'foodType') saveFoodTypes(foodTypes.filter(t => t !== deleteConfirm.value));
+                if (deleteConfirm.type === 'foodType') saveFoodTypes(foodTypes.filter(t => t.name !== deleteConfirm.value));
                 else if (deleteConfirm.type === 'materialType') saveMaterialTypes(materialTypes.filter(t => t.name !== deleteConfirm.value));
                 else if (deleteConfirm.type === 'worker') saveWorkers(workers.filter(w => w.id !== deleteConfirm.id));
+                else if (deleteConfirm.type === 'lab') saveAlchemyLabs(alchemyLabs.filter(l => l.id !== deleteConfirm.id));
+                else if (deleteConfirm.type === 'kitchen') saveKitchens(kitchens.filter(k => k.id !== deleteConfirm.id));
+                else if (deleteConfirm.type === 'cookingSkill') saveCookingSkills(cookingSkills.filter(s => s.id !== deleteConfirm.id));
                 else if (deleteConfirm.type === 'reagent') saveAlchemyReagents((alchemyReagents || []).filter(r => r.id !== deleteConfirm.id));
                 else if (deleteConfirm.type === 'formula') saveAlchemyFormulas(alchemyFormulas.filter(f => f.id !== deleteConfirm.id));
                 else if (deleteConfirm.type === 'project') {
@@ -406,12 +427,16 @@ export function ManagerTab({
         <button onClick={() => setView('foodTypes')} className={`px-4 py-2 ${view === 'foodTypes' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Food Types</button>
         <button onClick={() => setView('materialTypes')} className={`px-4 py-2 ${view === 'materialTypes' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Material Types</button>
         <button onClick={() => setView('workers')} className={`px-4 py-2 ${view === 'workers' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Workers</button>
+        <button onClick={() => setView('labs')} className={`px-4 py-2 ${view === 'labs' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Labs</button>
+        <button onClick={() => setView('kitchens')} className={`px-4 py-2 ${view === 'kitchens' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Kitchens</button>
+        <button onClick={() => setView('skills')} className={`px-4 py-2 ${view === 'skills' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Skills</button>
         <button onClick={() => setView('projects')} className={`px-4 py-2 ${view === 'projects' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Projects</button>
         <button onClick={() => setView('templates')} className={`px-4 py-2 ${view === 'templates' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Templates</button>
         <button onClick={() => setView('reagents')} className={`px-4 py-2 ${view === 'reagents' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Reagents</button>
         <button onClick={() => setView('formulas')} className={`px-4 py-2 ${view === 'formulas' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Formulas</button>
         <button onClick={() => setView('effectFamilyMap')} className={`px-4 py-2 ${view === 'effectFamilyMap' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Effect Map</button>
         <button onClick={() => setView('alchemySettings')} className={`px-4 py-2 ${view === 'alchemySettings' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Alchemy Settings</button>
+        <button onClick={() => setView('gathering')} className={`px-4 py-2 ${view === 'gathering' ? 'border-b-2 border-cyan-500 text-cyan-400' : 'text-gray-400'}`}>Gathering</button>
       </div>
 
       {view === 'importExport' && (
@@ -419,8 +444,8 @@ export function ManagerTab({
           state={{
             materials, foods, recipes, foodTypes, materialTypes, workers,
             customTemplates, craftDesigns, crafts,
-            alchemyReagents, alchemyFormulas, alchemyBatches,
-            effectFamilyMap, alchemySettings
+            alchemyReagents, alchemyFormulas, alchemyBatches, alchemyLabs,
+            effectFamilyMap, alchemySettings, kitchens, cookingSkills
           }}
           gmMode={gmMode}
           gmLockData={gmLockData}
@@ -814,6 +839,337 @@ export function ManagerTab({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {view === 'labs' && (
+        <div>
+          <div className="flex justify-between mb-4">
+            <h2 className="text-xl font-bold">Alchemy Labs</h2>
+            <button onClick={() => setShowAdd(!showAdd)} className="bg-green-600 px-4 py-2 rounded"><Plus size={20} className="inline" /> Add</button>
+          </div>
+          {showAdd && (
+            <div className="bg-gray-700 p-4 rounded mb-4 space-y-3">
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Lab Name</label>
+                <input
+                  value={newLabName}
+                  onChange={(e) => setNewLabName(e.target.value)}
+                  placeholder="Lab name (e.g., 'Master's Workshop')"
+                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Lab Rating (0-4)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="4"
+                  value={newLabRating}
+                  onChange={(e) => setNewLabRating(e.target.value)}
+                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                />
+                <p className="text-xs text-gray-500 mt-1">Higher rating = better equipment, reduces processing difficulty</p>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Description (optional)</label>
+                <textarea
+                  value={newLabDescription}
+                  onChange={(e) => setNewLabDescription(e.target.value)}
+                  placeholder="Lab description or notes..."
+                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                  rows="2"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => {
+                  if (!newLabName.trim()) { alert('Enter a lab name'); return; }
+                  if (alchemyLabs.some(l => l.name === newLabName.trim())) { alert('Duplicate lab name'); return; }
+                  const rating = Math.max(0, Math.min(4, toNumberOr(newLabRating, 0)));
+                  const newLab = {
+                    id: crypto.randomUUID(),
+                    name: newLabName.trim(),
+                    rating: rating,
+                    description: newLabDescription.trim()
+                  };
+                  saveAlchemyLabs([...alchemyLabs, newLab]);
+                  setNewLabName('');
+                  setNewLabRating('0');
+                  setNewLabDescription('');
+                  setShowAdd(false);
+                }} className="flex-1 bg-green-600 px-4 py-2 rounded"><Save size={20} className="inline" /> Save</button>
+                <button onClick={() => {
+                  setShowAdd(false);
+                  setNewLabName('');
+                  setNewLabRating('0');
+                  setNewLabDescription('');
+                }} className="bg-red-600 px-4 py-2 rounded"><X size={20} /></button>
+              </div>
+            </div>
+          )}
+          <div className="space-y-2">
+            {alchemyLabs.map(lab => (
+              <div key={lab.id} className="bg-gray-700 rounded">
+                <div
+                  className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-600"
+                  onClick={() => setExpanded(p => ({...p, [lab.id]: !p[lab.id]}))}
+                >
+                  <span className="flex-1 font-semibold">{lab.name}</span>
+                  <span className="text-sm px-2 py-1 bg-blue-600 rounded">Rating {lab.rating}</span>
+                  <span className="text-xs text-gray-400">+{lab.rating} to processing skill</span>
+                  <span className="text-gray-400">{expanded[lab.id] ? '▼' : '▶'}</span>
+                </div>
+                {expanded[lab.id] && (
+                  <div className="px-3 pb-3 space-y-3 border-t border-gray-600 pt-3">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Lab Name</label>
+                      <input
+                        value={lab.name}
+                        onChange={(e) => {
+                          const newName = e.target.value;
+                          if (alchemyLabs.some(x => x.name === newName && x.id !== lab.id)) { alert('Duplicate name'); return; }
+                          saveAlchemyLabs(alchemyLabs.map(x => x.id === lab.id ? {...x, name: newName} : x));
+                        }}
+                        className="w-full bg-gray-600 px-3 py-2 rounded"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Lab Rating (0-4)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="4"
+                        value={lab.rating}
+                        onChange={(e) => {
+                          const rating = Math.max(0, Math.min(4, toNumberOr(e.target.value, 0)));
+                          saveAlchemyLabs(alchemyLabs.map(x => x.id === lab.id ? {...x, rating} : x));
+                        }}
+                        className="w-full bg-gray-600 px-3 py-2 rounded"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Current bonus: +{lab.rating} to Alchemy skill during processing</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Description</label>
+                      <textarea
+                        value={lab.description || ''}
+                        onChange={(e) => {
+                          saveAlchemyLabs(alchemyLabs.map(x => x.id === lab.id ? {...x, description: e.target.value} : x));
+                        }}
+                        className="w-full bg-gray-600 px-3 py-2 rounded"
+                        rows="2"
+                      />
+                    </div>
+                    <button
+                      onClick={() => setDeleteConfirm({type: 'lab', value: lab.name, id: lab.id})}
+                      className="w-full bg-red-600 py-2 rounded text-sm"
+                    >
+                      <Trash2 size={16} className="inline" /> Delete Lab
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {view === 'kitchens' && (
+        <div>
+          <div className="flex justify-between mb-4">
+            <h2 className="text-xl font-bold">Kitchens</h2>
+            <button onClick={() => setShowAdd(!showAdd)} className="bg-green-600 px-4 py-2 rounded"><Plus size={20} className="inline" /> Add</button>
+          </div>
+          {showAdd && (
+            <div className="bg-gray-700 p-4 rounded mb-4 space-y-3">
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Kitchen Name</label>
+                <input
+                  value={newKitchenName}
+                  onChange={(e) => setNewKitchenName(e.target.value)}
+                  placeholder="Kitchen name (e.g., 'Master Chef Kitchen')"
+                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Kitchen Rating (0-4)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="4"
+                  value={newKitchenRating}
+                  onChange={(e) => setNewKitchenRating(e.target.value)}
+                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                />
+                <p className="text-xs text-gray-500 mt-1">Higher rating = better equipment, improves cooking rolls</p>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Description (optional)</label>
+                <textarea
+                  value={newKitchenDescription}
+                  onChange={(e) => setNewKitchenDescription(e.target.value)}
+                  placeholder="Kitchen description or notes..."
+                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                  rows="2"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => {
+                  if (!newKitchenName.trim()) { alert('Enter a kitchen name'); return; }
+                  if (kitchens.some(k => k.name === newKitchenName.trim())) { alert('Duplicate kitchen name'); return; }
+                  const rating = Math.max(0, Math.min(4, toNumberOr(newKitchenRating, 0)));
+                  const newKitchen = {
+                    id: crypto.randomUUID(),
+                    name: newKitchenName.trim(),
+                    rating: rating,
+                    description: newKitchenDescription.trim()
+                  };
+                  saveKitchens([...kitchens, newKitchen]);
+                  setNewKitchenName('');
+                  setNewKitchenRating('0');
+                  setNewKitchenDescription('');
+                  setShowAdd(false);
+                }} className="flex-1 bg-green-600 px-4 py-2 rounded"><Save size={20} className="inline" /> Save</button>
+                <button onClick={() => {
+                  setShowAdd(false);
+                  setNewKitchenName('');
+                  setNewKitchenRating('0');
+                  setNewKitchenDescription('');
+                }} className="bg-red-600 px-4 py-2 rounded"><X size={20} /></button>
+              </div>
+            </div>
+          )}
+          <div className="space-y-2">
+            {kitchens.map(kitchen => (
+              <div key={kitchen.id} className="bg-gray-700 rounded">
+                <div
+                  className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-600"
+                  onClick={() => setExpanded(p => ({...p, [kitchen.id]: !p[kitchen.id]}))}
+                >
+                  <span className="flex-1 font-semibold">{kitchen.name}</span>
+                  <span className="text-sm px-2 py-1 bg-blue-600 rounded">Rating {kitchen.rating}</span>
+                  <span className="text-xs text-gray-400">+{kitchen.rating} to cooking skill</span>
+                  <span className="text-gray-400">{expanded[kitchen.id] ? '▼' : '▶'}</span>
+                </div>
+                {expanded[kitchen.id] && (
+                  <div className="px-3 pb-3 space-y-3 border-t border-gray-600 pt-3">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Kitchen Name</label>
+                      <input
+                        value={kitchen.name}
+                        onChange={(e) => {
+                          const newName = e.target.value;
+                          if (kitchens.some(x => x.name === newName && x.id !== kitchen.id)) { alert('Duplicate name'); return; }
+                          saveKitchens(kitchens.map(x => x.id === kitchen.id ? {...x, name: newName} : x));
+                        }}
+                        className="w-full bg-gray-600 px-3 py-2 rounded"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Kitchen Rating (0-4)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="4"
+                        value={kitchen.rating}
+                        onChange={(e) => {
+                          const rating = Math.max(0, Math.min(4, toNumberOr(e.target.value, 0)));
+                          saveKitchens(kitchens.map(x => x.id === kitchen.id ? {...x, rating} : x));
+                        }}
+                        className="w-full bg-gray-600 px-3 py-2 rounded"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Current bonus: +{kitchen.rating} to Cooking skill</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Description</label>
+                      <textarea
+                        value={kitchen.description || ''}
+                        onChange={(e) => {
+                          saveKitchens(kitchens.map(x => x.id === kitchen.id ? {...x, description: e.target.value} : x));
+                        }}
+                        className="w-full bg-gray-600 px-3 py-2 rounded"
+                        rows="2"
+                      />
+                    </div>
+                    <button
+                      onClick={() => setDeleteConfirm({type: 'kitchen', value: kitchen.name, id: kitchen.id})}
+                      className="w-full bg-red-600 py-2 rounded text-sm"
+                    >
+                      <Trash2 size={16} className="inline" /> Delete Kitchen
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {view === 'skills' && (
+        <div>
+          <div className="flex justify-between mb-4">
+            <h2 className="text-xl font-bold">Cooking Skills Table</h2>
+            {gmMode && <button onClick={() => setShowAdd(!showAdd)} className="bg-green-600 px-4 py-2 rounded"><Plus size={20} className="inline" /> Add Skill</button>}
+          </div>
+          {!gmMode && (
+            <div className="bg-yellow-900 bg-opacity-30 border border-yellow-600 p-4 rounded mb-4">
+              <p className="text-yellow-200">⚠️ GM Mode required to add/edit cooking skills</p>
+            </div>
+          )}
+          {showAdd && gmMode && (
+            <div className="bg-gray-700 p-4 rounded mb-4 space-y-3">
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Skill Name</label>
+                <input
+                  value={newSkillName}
+                  onChange={(e) => setNewSkillName(e.target.value)}
+                  placeholder="e.g., Cooking, Baking, Brewing, etc."
+                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                />
+                <p className="text-xs text-gray-500 mt-1">Any GURPS skill can be added</p>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => {
+                  if (!newSkillName.trim()) { alert('Enter a skill name'); return; }
+                  if (cookingSkills.some(s => s.name.toLowerCase() === newSkillName.trim().toLowerCase())) {
+                    alert('Skill already exists');
+                    return;
+                  }
+                  const newSkill = {
+                    id: crypto.randomUUID(),
+                    name: newSkillName.trim()
+                  };
+                  saveCookingSkills([...cookingSkills, newSkill]);
+                  setNewSkillName('');
+                  setShowAdd(false);
+                }} className="flex-1 bg-green-600 px-4 py-2 rounded"><Save size={20} className="inline" /> Save</button>
+                <button onClick={() => {
+                  setShowAdd(false);
+                  setNewSkillName('');
+                }} className="bg-red-600 px-4 py-2 rounded"><X size={20} /></button>
+              </div>
+            </div>
+          )}
+          {cookingSkills.length === 0 ? (
+            <div className="text-gray-500 text-center py-8">
+              No cooking skills defined yet. {gmMode ? 'Add skills to the table.' : 'Ask GM to add skills.'}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {cookingSkills.map(skill => (
+                <div key={skill.id} className="bg-gray-700 rounded p-3 flex items-center gap-3">
+                  <span className="flex-1 font-semibold">{skill.name}</span>
+                  {gmMode && (
+                    <button
+                      onClick={() => setDeleteConfirm({type: 'cookingSkill', value: skill.name, id: skill.id})}
+                      className="text-red-400 hover:text-red-300"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -2098,6 +2454,24 @@ export function ManagerTab({
             </div>
           </div>
         </div>
+      )}
+
+      {view === 'gathering' && (
+        <GatheringManager
+          species={gatheringSpecies || []}
+          tools={gatheringTools || []}
+          tables={gatheringTables || []}
+          environments={gatheringEnvironments || []}
+          bait={gatheringBait || []}
+          currentDay={currentDay || 1}
+          foodTypes={foodTypes || []}
+          saveSpecies={saveGatheringSpecies}
+          saveTools={saveGatheringTools}
+          saveTables={saveGatheringTables}
+          saveEnvironments={saveGatheringEnvironments}
+          saveBait={saveGatheringBait}
+          saveCurrentDay={saveCurrentDay}
+        />
       )}
     </div>
   );

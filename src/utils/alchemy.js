@@ -126,9 +126,9 @@ function countConflictsFromTally(tally) {
  * Calculates aspect points contributed by a reagent based on its refinement level.
  *
  * Refinement levels determine which aspect slots are active:
- * - **crude**: primary only (3 points)
- * - **prepared**: primary (3 pts) + secondary (2 pts)
- * - **refined**: primary (3 pts) + secondary (2 pts) + tertiary (1 pt)
+ * - **crude**: primary (3 pts) + secondary (2 pts) + tertiary (1 pt) - all aspects
+ * - **prepared**: primary (3 pts) + secondary (2 pts) - tertiary removed
+ * - **refined**: primary (3 pts) only - secondary and tertiary removed
  *
  * @param {Object} reagent - The reagent object
  * @param {Object} reagent.aspects - Aspect configuration
@@ -705,7 +705,7 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
  * @returns {Object} Updated batch object with new PP, CP, shifts, hazard events, and possibly completed status
  */
 export function applyWorkBlockResult(batch, skill, roll, worker, date) {
-  const effectiveSkill = skill + batch.DM;
+  const effectiveSkill = skill + batch.DM + (batch.labRating || 0);
 
   // PHASE 1: Classify roll outcome
   const isCritSuccess =
@@ -808,7 +808,9 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
     result,
     ppAdded: progressDelta,
     cpChange: cpDelta,
-    hazardEvents: hazardEvents.length > 0 ? hazardEvents : undefined
+    hazardEvents: hazardEvents.length > 0 ? hazardEvents : undefined,
+    labName: batch.labName || 'Basic Lab',
+    labRating: batch.labRating || 0
   };
 
   // PHASE 5: Handle destruction (skip progress if destroyed)
@@ -937,6 +939,215 @@ export function getHazardForDisplay(hazardId, hazardsPublic, gmHazards) {
       masked: true
     };
   }
+}
+
+/**
+ * Simulates a 3d6 dice roll.
+ * @returns {number} Result between 3 and 18
+ */
+export function roll3d6() {
+  const d1 = Math.floor(Math.random() * 6) + 1;
+  const d2 = Math.floor(Math.random() * 6) + 1;
+  const d3 = Math.floor(Math.random() * 6) + 1;
+  return d1 + d2 + d3;
+}
+
+/**
+ * Calculates the processing difficulty modifiers based on the addendum rules.
+ *
+ * @param {Object} params - Processing parameters
+ * @param {string} params.operation - 'refine' or 'concentrate'
+ * @param {string} params.currentRefinement - Current refinement level ('crude', 'prepared', 'refined')
+ * @param {string} params.targetRefinement - Target refinement level (for refinement operations)
+ * @param {string} params.inputPotency - Input reagent potency (for refinement)
+ * @param {string} params.targetPotency - Target potency (for concentration)
+ * @param {number} params.outputUnits - Number of output units being attempted
+ * @param {number} params.alchemySkill - Base Alchemy skill
+ * @param {number} params.labRating - Lab rating (0-4)
+ * @returns {Object} Difficulty calculation breakdown
+ */
+export function calculateProcessingDifficulty(params) {
+  const {
+    operation,
+    currentRefinement,
+    targetRefinement,
+    inputPotency,
+    targetPotency,
+    outputUnits,
+    alchemySkill,
+    labRating,
+    cumulativeBatchPenalty // Optional: if provided, overrides calculated batch size penalty
+  } = params;
+
+  let processStepDM = 0;
+  let batchSizePenalty = 0;
+  let potencyControlPenalty = 0;
+
+  // Process Step Difficulty
+  if (operation === 'refine') {
+    if (currentRefinement === 'crude' && targetRefinement === 'prepared') {
+      processStepDM = -1;
+    } else if (currentRefinement === 'prepared' && targetRefinement === 'refined') {
+      processStepDM = -2;
+    }
+  } else if (operation === 'concentrate') {
+    processStepDM = -2;
+  }
+
+  // Batch Size Penalty
+  if (cumulativeBatchPenalty !== undefined) {
+    // Use cumulative penalty if provided (for unit-by-unit processing)
+    batchSizePenalty = cumulativeBatchPenalty;
+  } else {
+    // Use legacy calculation based on output units (for backwards compatibility)
+    if (operation === 'refine') {
+      if (currentRefinement === 'crude' && targetRefinement === 'prepared') {
+        batchSizePenalty = -1 * outputUnits;
+      } else if (currentRefinement === 'prepared' && targetRefinement === 'refined') {
+        batchSizePenalty = -2 * outputUnits;
+      }
+    } else if (operation === 'concentrate') {
+      batchSizePenalty = -2 * outputUnits;
+    }
+  }
+
+  // Potency Control Penalty
+  const potencyToUse = operation === 'concentrate' ? targetPotency : inputPotency;
+  const potencyIndex = POTENCY_LEVELS.indexOf(potencyToUse);
+  potencyControlPenalty = potencyIndex >= 0 ? -potencyIndex : 0;
+
+  const effectiveSkill = alchemySkill + (labRating || 0) + processStepDM + batchSizePenalty + potencyControlPenalty;
+
+  return {
+    alchemySkill,
+    labRating: labRating || 0,
+    processStepDM,
+    batchSizePenalty,
+    potencyControlPenalty,
+    effectiveSkill,
+    breakdown: `${alchemySkill} (skill) + ${labRating || 0} (lab) ${processStepDM} (step) ${batchSizePenalty} (batch) ${potencyControlPenalty} (potency) = ${effectiveSkill}`
+  };
+}
+
+/**
+ * Selects a hazard to add for minor failure based on escalation rules.
+ *
+ * @param {Array<string>} existingHazards - Current hazards on the output reagent
+ * @returns {string} Hazard name to add
+ */
+export function selectHazardForMinorFailure(existingHazards = []) {
+  const hasVolatile = existingHazards.includes('Volatile');
+  const hazardCount = existingHazards.length;
+
+  // Default: add Volatile
+  if (!hasVolatile) {
+    return 'Volatile';
+  }
+
+  // Escalation: if already has Volatile, add Flammable or Reactive
+  // If already has 2+ hazards, add Unstable
+  if (hazardCount >= 2) {
+    return 'Unstable';
+  }
+
+  // Choose Flammable as default escalation (could be made more sophisticated)
+  return 'Flammable';
+}
+
+/**
+ * Evaluates a single processing attempt result.
+ *
+ * @param {number} roll - The 3d6 roll result
+ * @param {number} effectiveSkill - Effective skill for this attempt
+ * @param {Array<string>} currentHazards - Hazards on the output variant
+ * @returns {Object} Result evaluation
+ */
+export function evaluateProcessingResult(roll, effectiveSkill, currentHazards = []) {
+  const margin = Math.abs(roll - effectiveSkill);
+
+  // Success
+  if (roll <= effectiveSkill) {
+    if (roll <= 4) {
+      // Critical success
+      return {
+        success: true,
+        critical: true,
+        outputProduced: true,
+        hazardAdded: null,
+        message: `Critical Success! (rolled ${roll} vs ${effectiveSkill})`,
+        reclaim: true // May reclaim +1U input
+      };
+    }
+    return {
+      success: true,
+      critical: false,
+      outputProduced: true,
+      hazardAdded: null,
+      message: `Success (rolled ${roll} vs ${effectiveSkill}, MoS ${margin})`
+    };
+  }
+
+  // Failure
+  const mof = margin;
+
+  // Critical failure
+  if (roll >= 18 || (roll === 17 && effectiveSkill <= 15)) {
+    return {
+      success: false,
+      critical: true,
+      outputProduced: false,
+      hazardAdded: null,
+      message: `Critical Failure! (rolled ${roll} vs ${effectiveSkill}, MoF ${mof}) - Input consumed, no output`,
+      complication: true
+    };
+  }
+
+  // Minor failure (MoF -1 to -2)
+  if (mof >= 1 && mof <= 2) {
+    const hazard = selectHazardForMinorFailure(currentHazards);
+    return {
+      success: true, // Output is produced
+      minor: true,
+      outputProduced: true,
+      hazardAdded: hazard,
+      message: `Minor Failure (rolled ${roll} vs ${effectiveSkill}, MoF ${mof}) - Output tainted with ${hazard}`
+    };
+  }
+
+  // Regular failure (MoF >= 3)
+  return {
+    success: false,
+    critical: false,
+    outputProduced: false,
+    hazardAdded: null,
+    message: `Failure (rolled ${roll} vs ${effectiveSkill}, MoF ${mof}) - Input consumed, no output`
+  };
+}
+
+/**
+ * Creates a derived reagent name based on processing.
+ *
+ * @param {string} baseName - Original reagent name
+ * @param {string} refinement - Refinement level
+ * @param {number} concentrationSteps - Concentration steps
+ * @returns {string} Derived name
+ */
+export function createDerivedReagentName(baseName, refinement, concentrationSteps) {
+  let name = baseName;
+
+  // Add refinement suffix
+  if (refinement === 'prepared') {
+    name = `${name} (Prepared)`;
+  } else if (refinement === 'refined') {
+    name = `${name} (Refined)`;
+  }
+
+  // Add concentration suffix
+  if (concentrationSteps > 0) {
+    name = `${name} +${concentrationSteps}`;
+  }
+
+  return name;
 }
 
 /**

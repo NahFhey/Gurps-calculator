@@ -1,7 +1,117 @@
 // Version and changelog information
-export const VERSION = '2.3.0';
+export const VERSION = '2.4.1';
 
 export const CHANGELOG = [
+  {
+    version: '2.4.1',
+    date: '2026-01-14',
+    title: 'Lab System Integration & UI Improvements',
+    changes: [
+      {
+        category: 'Lab Integration',
+        items: [
+          'Analysis tab: Lab selection with skill bonuses applied to identification rolls',
+          'Analysis tab: Lab info recorded in analysis history (lab name, rating, effective skill)',
+          'Batches tab: Lab selected at batch creation and locked for entire batch lifecycle',
+          'Batches tab: Lab rating applies to all work block skill calculations',
+          'Batches tab: Lab info displayed in batch details and work history',
+          'Consistent lab rating application across all alchemy operations'
+        ]
+      },
+      {
+        category: 'UI Improvements',
+        items: [
+          'Processing tab: Replaced GM mode toggle with DiceRoller button (matching Analysis UI)',
+          'Processing tab: Manual roll adjustment still available after dice roll',
+          'Analysis tab: Expanded to 3-column grid layout for worker, lab, and skill inputs',
+          'Analysis tab: Real-time effective skill calculation display with lab bonus breakdown',
+          'Batches tab: Detailed effective skill breakdown in work blocks showing lab contribution',
+          'Work history: Lab name and rating now displayed in shift records'
+        ]
+      }
+    ]
+  },
+  {
+    version: '2.4.0',
+    date: '2026-01-14',
+    title: 'Reagent Processing System Overhaul',
+    changes: [
+      {
+        category: 'Processing System',
+        items: [
+          'Complete rewrite of concentration and refinement mechanics',
+          'Material cost system: 2U input → 1U output for all processing',
+          'Sequential batch processing with individual roll results per output unit',
+          'Risk mechanics: Success/Minor Failure/Failure/Critical outcomes',
+          'Minor failures (MoF -1 to -2) produce output but add hazards',
+          'Regular failures (MoF ≥ 3) consume input without producing output',
+          'Critical success may reclaim +1U input material',
+          'GM Mode (auto-roll) and Player Mode (manual input) support'
+        ]
+      },
+      {
+        category: 'Derived Reagents',
+        items: [
+          'Processing creates new reagent variants instead of upgrading in-place',
+          'Variants share identityId for unified identification progress',
+          'Hazards from processing apply only to output variant',
+          'Automatic naming: "Reagent (Prepared) +2" format',
+          'baseReagentName tracks original material for all variants',
+          'Processing logs stored per variant with complete attempt history'
+        ]
+      },
+      {
+        category: 'Difficulty Calculation',
+        items: [
+          'Process Step DM: Crude→Prepared (-1), Prepared→Refined (-2), Concentrate (-2)',
+          'Batch Size Penalty: -1 or -2 per output unit attempted',
+          'Potency Control Penalty: -(potency index) for target potency',
+          'Lab Rating Bonus: +0 to +4 based on equipment quality',
+          'Complete difficulty breakdown displayed before processing'
+        ]
+      },
+      {
+        category: 'Hazard Accretion',
+        items: [
+          'Auto-escalating hazard system for minor failures',
+          'First failure: adds Volatile',
+          'Has Volatile: adds Flammable',
+          'Has 2+ hazards: adds Unstable',
+          'Hazards accumulate on output only, not input reagent'
+        ]
+      },
+      {
+        category: 'Lab Management',
+        items: [
+          'New Labs section in Manager tab',
+          'Create/edit/delete alchemy labs with ratings 0-4',
+          'Lab descriptions for notes and flavor',
+          'Labs integrated into import/export system',
+          'Lab selection in Processing tab affects difficulty'
+        ]
+      },
+      {
+        category: 'UI Enhancements',
+        items: [
+          'Derived reagent indicator (⚗️ badge) in Reagents view',
+          'Complete processing history display with expandable logs',
+          'Shows worker, lab, input/output, and roll outcomes per attempt',
+          'Color-coded result feedback (green=success, yellow=minor fail, red=fail)',
+          'Real-time difficulty calculation with detailed breakdowns',
+          'Base material reference for all derived reagents'
+        ]
+      },
+      {
+        category: 'Documentation Fixes',
+        items: [
+          'Corrected refinement aspect system documentation (was backwards)',
+          'Crude: Primary (3) + Secondary (2) + Tertiary (1) - all aspects',
+          'Prepared: Primary (3) + Secondary (2) - tertiary removed',
+          'Refined: Primary (3) only - secondary and tertiary removed'
+        ]
+      }
+    ]
+  },
   {
     version: '2.3.0',
     date: '2026-01-13',
