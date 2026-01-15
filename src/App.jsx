@@ -36,9 +36,9 @@ export default function GURPSPartyTool() {
     { name: 'stone', difficulty: 1, effects: '', ht: 14, drShift: 0, weightMod: 50, hpMod: 10 }
   ]);
   const [workers, setWorkers] = useState([
-    { id: '1', name: 'Worker 1', skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10, fishing: 10, stealth: 10, spear: 10 }, st: 10 },
-    { id: '2', name: 'Worker 2', skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10, fishing: 10, stealth: 10, spear: 10 }, st: 10 },
-    { id: '3', name: 'Worker 3', skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10, fishing: 10, stealth: 10, spear: 10 }, st: 10 }
+    { id: '1', name: 'Worker 1', skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10, fishing: 10, stealth: 10, spear: 10, survival: 10, naturalist: 10, herbLore: 10 }, st: 10 },
+    { id: '2', name: 'Worker 2', skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10, fishing: 10, stealth: 10, spear: 10, survival: 10, naturalist: 10, herbLore: 10 }, st: 10 },
+    { id: '3', name: 'Worker 3', skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10, fishing: 10, stealth: 10, spear: 10, survival: 10, naturalist: 10, herbLore: 10 }, st: 10 }
   ]);
   const [customTemplates, setCustomTemplates] = useState({ weapons: {}, armor: {}, ranged: {}, explosives: {} });
   const [alchemyReagents, setAlchemyReagents] = useState([]);
@@ -65,6 +65,8 @@ export default function GURPSPartyTool() {
   const [gatheringSessions, setGatheringSessions] = useState([]);
   const [gatheringDailyEvents, setGatheringDailyEvents] = useState({}); // { dayKey: { groupKey: { rolled, resultType, ... } } }
   const [gatheringBait, setGatheringBait] = useState([]);
+  const [gatheringCategories, setGatheringCategories] = useState([]); // Foraging categories
+  const [gatheringItems, setGatheringItems] = useState([]); // Forageable items
   const [currentDay, setCurrentDay] = useState(1); // Campaign day counter
 
   useEffect(() => { loadData(); }, []);
@@ -79,7 +81,7 @@ export default function GURPSPartyTool() {
 
     try {
       const [matsR, foodsR, recipesR, craftsR, typesR, templatesR, matTypesR, workersR, reagentsR, formulasR, batchesR, labsR, kitchensR, cookingSkillsR, effectMapR, alchemySettingsR, craftDesignsR,
-        speciesR, toolsR, tablesR, environmentsR, sessionsR, dailyEventsR, baitR, currentDayR] = await Promise.all([
+        speciesR, toolsR, tablesR, environmentsR, sessionsR, dailyEventsR, baitR, categoriesR, itemsR, currentDayR] = await Promise.all([
         window.storage.get('materials', true).catch(() => null),
         window.storage.get('foods', true).catch(() => null),
         window.storage.get('recipes', true).catch(() => null),
@@ -105,6 +107,8 @@ export default function GURPSPartyTool() {
         window.storage.get('gatheringSessions', true).catch(() => null),
         window.storage.get('gatheringDailyEvents', true).catch(() => null),
         window.storage.get('gatheringBait', true).catch(() => null),
+        window.storage.get('gatheringCategories', true).catch(() => null),
+        window.storage.get('gatheringItems', true).catch(() => null),
         window.storage.get('currentDay', true).catch(() => null)
       ]);
       if (matsR?.value) setMaterials(JSON.parse(matsR.value));
@@ -135,7 +139,10 @@ export default function GURPSPartyTool() {
                 alchemy: w.skills?.alchemy ?? 10,
                 fishing: w.skills?.fishing ?? 10,
                 stealth: w.skills?.stealth ?? 10,
-                spear: w.skills?.spear ?? 10
+                spear: w.skills?.spear ?? 10,
+                survival: w.skills?.survival ?? 10,
+                naturalist: w.skills?.naturalist ?? 10,
+                herbLore: w.skills?.herbLore ?? 10
               },
               st: w.st ?? 10 // Strength for large fish struggle
             })));
@@ -225,6 +232,8 @@ export default function GURPSPartyTool() {
       setGatheringSessions(safeParse(sessionsR?.value, []));
       setGatheringDailyEvents(safeParse(dailyEventsR?.value, {}));
       setGatheringBait(safeParse(baitR?.value, []));
+      setGatheringCategories(safeParse(categoriesR?.value, []));
+      setGatheringItems(safeParse(itemsR?.value, []));
       setCurrentDay(safeParse(currentDayR?.value, 1));
     } catch (error) {
       console.error('Error loading:', error);
@@ -330,6 +339,14 @@ export default function GURPSPartyTool() {
     setGatheringBait(d);
     debouncedStorageSave('gatheringBait', d);
   }
+  async function saveGatheringCategories(d) {
+    setGatheringCategories(d);
+    debouncedStorageSave('gatheringCategories', d);
+  }
+  async function saveGatheringItems(d) {
+    setGatheringItems(d);
+    debouncedStorageSave('gatheringItems', d);
+  }
   async function saveCurrentDay(d) {
     setCurrentDay(d);
     debouncedStorageSave('currentDay', d);
@@ -406,8 +423,8 @@ export default function GURPSPartyTool() {
         {activeTab === 'cooking' && <CookingTab foods={foods} recipes={recipes} saveFoods={saveFoods} saveRecipes={saveRecipes} workers={workers} kitchens={kitchens} cookingSkills={cookingSkills} />}
         {activeTab === 'crafting' && <CraftingTab materials={materials} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materialTypes={materialTypes} workers={workers} saveMaterials={saveMaterials} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} />}
         {activeTab === 'manager' && <ManagerTab foodTypes={foodTypes} materialTypes={materialTypes} workers={workers} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materials={materials} effectFamilyMap={effectFamilyMap} alchemySettings={alchemySettings} alchemyReagents={alchemyReagents} alchemyFormulas={alchemyFormulas} alchemyBatches={alchemyBatches} alchemyLabs={alchemyLabs} kitchens={kitchens} cookingSkills={cookingSkills} foods={foods} recipes={recipes} gmMode={gmMode} gmLockData={gmLockData} setGmMode={setGmMode} setGmLockData={setGmLockData} saveMaterials={saveMaterials} saveFoods={saveFoods} saveRecipes={saveRecipes} saveFoodTypes={saveFoodTypes} saveMaterialTypes={saveMaterialTypes} saveWorkers={saveWorkers} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} saveCustomTemplates={saveCustomTemplates} saveEffectFamilyMap={saveEffectFamilyMap} saveAlchemySettings={saveAlchemySettings} saveAlchemyReagents={saveAlchemyReagents} saveAlchemyFormulas={saveAlchemyFormulas} saveAlchemyBatches={saveAlchemyBatches} saveAlchemyLabs={saveAlchemyLabs} saveKitchens={saveKitchens} saveCookingSkills={saveCookingSkills} renameMaterialType={renameMaterialType}
-          gatheringSpecies={gatheringSpecies} gatheringTools={gatheringTools} gatheringTables={gatheringTables} gatheringEnvironments={gatheringEnvironments} gatheringBait={gatheringBait} currentDay={currentDay}
-          saveGatheringSpecies={saveGatheringSpecies} saveGatheringTools={saveGatheringTools} saveGatheringTables={saveGatheringTables} saveGatheringEnvironments={saveGatheringEnvironments} saveGatheringBait={saveGatheringBait} saveCurrentDay={saveCurrentDay}
+          gatheringSpecies={gatheringSpecies} gatheringTools={gatheringTools} gatheringTables={gatheringTables} gatheringEnvironments={gatheringEnvironments} gatheringBait={gatheringBait} gatheringCategories={gatheringCategories} gatheringItems={gatheringItems} currentDay={currentDay}
+          saveGatheringSpecies={saveGatheringSpecies} saveGatheringTools={saveGatheringTools} saveGatheringTables={saveGatheringTables} saveGatheringEnvironments={saveGatheringEnvironments} saveGatheringBait={saveGatheringBait} saveGatheringCategories={saveGatheringCategories} saveGatheringItems={saveGatheringItems} saveCurrentDay={saveCurrentDay}
         />}
         {activeTab === 'alchemy' && <AlchemyTab reagents={alchemyReagents} formulas={alchemyFormulas} batches={alchemyBatches} labs={alchemyLabs} workers={workers} alchemySettings={alchemySettings} saveReagents={saveAlchemyReagents} saveFormulas={saveAlchemyFormulas} saveBatches={saveAlchemyBatches} saveLabs={saveAlchemyLabs} />}
         {activeTab === 'gathering' && <GatheringTab
@@ -418,6 +435,8 @@ export default function GURPSPartyTool() {
           sessions={gatheringSessions}
           dailyEvents={gatheringDailyEvents}
           bait={gatheringBait}
+          categories={gatheringCategories}
+          items={gatheringItems}
           workers={workers}
           foods={foods}
           materials={materials}

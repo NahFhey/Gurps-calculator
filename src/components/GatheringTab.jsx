@@ -6,7 +6,10 @@ import {
   FISHING_METHODS,
   DYNAMIC_EVENT_THRESHOLDS,
   DEFAULT_FISH_ST,
-  MAX_NET_REROLL_ATTEMPTS
+  MAX_NET_REROLL_ATTEMPTS,
+  FORAGING_SKILLS,
+  FORAGING_RARITIES,
+  FORAGING_CONTEXT_MODIFIERS
 } from '../constants';
 import {
   evaluateFishingRoll,
@@ -23,7 +26,12 @@ import {
   evaluateDiceFormula,
   roll3d6,
   isCriticalSuccess,
-  isCriticalFailure
+  isCriticalFailure,
+  calculateEffectiveForagingSkill,
+  evaluateForagingRoll,
+  determineForageFind,
+  calculateForageYields,
+  getToolYieldBonus
 } from '../utils/gathering';
 
 /**
@@ -50,6 +58,8 @@ export function GatheringTab({
   sessions,
   dailyEvents,
   bait,
+  categories,
+  items,
   workers,
   foods,
   materials,
@@ -94,6 +104,21 @@ export function GatheringTab({
   const [fishingResult, setFishingResult] = useState(null);
   const [caughtFish, setCaughtFish] = useState([]);
   const [retryCount, setRetryCount] = useState(0);
+
+  // Foraging-specific state
+  const [selectedSkill, setSelectedSkill] = useState('Survival');
+  const [isRandomForage, setIsRandomForage] = useState(true);
+  const [targetCategoryId, setTargetCategoryId] = useState('');
+  const [targetItemId, setTargetItemId] = useState('');
+  const [targetRarity, setTargetRarity] = useState('Common');
+  const [hasMapGuide, setHasMapGuide] = useState(false);
+  const [isUnfamiliar, setIsUnfamiliar] = useState(false);
+  const [isPeakSeason, setIsPeakSeason] = useState(false);
+  const [isDenseTerrain, setIsDenseTerrain] = useState(false);
+  const [isStormDamaged, setIsStormDamaged] = useState(false);
+  const [forageRoll, setForageRoll] = useState('');
+  const [forageResult, setForageResult] = useState(null);
+  const [forageFind, setForageFind] = useState(null);
 
   // Get filtered environments for selected mode
   const availableEnvironments = useMemo(() => {
@@ -186,6 +211,23 @@ export function GatheringTab({
       environmentMod: selectedEnvironment?.skillMod || 0
     });
   }, [leader, toolBonus, baitStatus, targetedSpecies, isRandomCatch, retryCount, selectedEnvironment]);
+
+  // Calculate effective foraging skill
+  const effectiveForagingSkill = useMemo(() => {
+    if (!leader || selectedMode !== 'Foraging') return { effectiveSkill: 10, breakdown: {} };
+
+    const baseSkill = leader.skills?.[selectedSkill.toLowerCase()] || 10;
+
+    return calculateEffectiveForagingSkill({
+      baseForagingSkill: baseSkill,
+      toolBonus,
+      hasMapGuide,
+      isUnfamiliar,
+      isPeakSeason,
+      targetRarity: !isRandomForage ? targetRarity : null,
+      environmentMod: selectedEnvironment?.skillMod || 0
+    });
+  }, [leader, selectedSkill, toolBonus, hasMapGuide, isUnfamiliar, isPeakSeason, targetRarity, isRandomForage, selectedEnvironment, selectedMode]);
 
   // Start a new gathering session
   function startSession() {
@@ -605,6 +647,31 @@ export function GatheringTab({
               </div>
             )}
 
+            {/* Skill Selection (Foraging) */}
+            {selectedMode === 'Foraging' && (
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Foraging Skill</label>
+                <div className="flex gap-4">
+                  {Object.entries(FORAGING_SKILLS).map(([key, skill]) => (
+                    <label key={key} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="skill"
+                        value={key}
+                        checked={selectedSkill === key}
+                        onChange={(e) => setSelectedSkill(e.target.value)}
+                        className="w-4 h-4"
+                      />
+                      <span>{skill.label} ({skill.attribute})</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Choose the skill to use for foraging
+                </p>
+              </div>
+            )}
+
             {/* Party Selection */}
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -682,6 +749,86 @@ export function GatheringTab({
                       </option>
                     ))}
                   </select>
+                )}
+              </div>
+            )}
+
+            {/* Intent (Foraging) */}
+            {selectedMode === 'Foraging' && (
+              <div className="bg-gray-700 p-3 rounded">
+                <label className="block text-sm text-gray-400 mb-2">
+                  <Target size={16} className="inline mr-1" /> Foraging Intent
+                </label>
+                <div className="flex gap-4 mb-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={isRandomForage}
+                      onChange={() => {
+                        setIsRandomForage(true);
+                        setTargetCategoryId('');
+                        setTargetItemId('');
+                      }}
+                      className="w-4 h-4"
+                    />
+                    <span>Random Forage</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={!isRandomForage}
+                      onChange={() => setIsRandomForage(false)}
+                      className="w-4 h-4"
+                    />
+                    <span>Targeted Search</span>
+                  </label>
+                </div>
+
+                {!isRandomForage && (
+                  <div className="space-y-2">
+                    <select
+                      value={targetCategoryId}
+                      onChange={(e) => {
+                        setTargetCategoryId(e.target.value);
+                        setTargetItemId('');
+                      }}
+                      className="w-full bg-gray-600 px-3 py-2 rounded"
+                    >
+                      <option value="">-- Select Category --</option>
+                      {categories?.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+
+                    {targetCategoryId && items?.filter(i => i.categoryId === targetCategoryId).length > 0 && (
+                      <select
+                        value={targetItemId}
+                        onChange={(e) => setTargetItemId(e.target.value)}
+                        className="w-full bg-gray-600 px-3 py-2 rounded"
+                      >
+                        <option value="">-- Or Select Specific Item --</option>
+                        {items?.filter(i => i.categoryId === targetCategoryId).map(i => (
+                          <option key={i.id} value={i.id}>
+                            {i.name} ({i.rarity})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                    {(targetCategoryId || targetItemId) && (
+                      <select
+                        value={targetRarity}
+                        onChange={(e) => setTargetRarity(e.target.value)}
+                        className="w-full bg-gray-600 px-3 py-2 rounded"
+                      >
+                        {Object.entries(FORAGING_RARITIES).map(([key, rarity]) => (
+                          <option key={key} value={key}>
+                            {rarity.label} ({rarity.penalty >= 0 ? '+' : ''}{rarity.penalty})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
                 )}
               </div>
             )}

@@ -455,3 +455,200 @@ export const DEFAULT_FISH_ST = 14;
  */
 export const FISH_ST_RANGE = { min: 12, max: 18 };
 
+// ============================================================================
+// FORAGING SYSTEM CONSTANTS
+// ============================================================================
+
+/**
+ * Foraging skills with their base attributes
+ * @type {Object<string, {label: string, attribute: string, description: string}>}
+ */
+export const FORAGING_SKILLS = {
+  Survival: {
+    label: 'Survival',
+    attribute: 'Per',
+    description: 'Perception-based wilderness survival skill for finding food and resources'
+  },
+  Naturalist: {
+    label: 'Naturalist',
+    attribute: 'IQ',
+    description: 'IQ-based knowledge of plants, animals, and ecosystems'
+  },
+  HerbLore: {
+    label: 'Herb Lore',
+    attribute: 'IQ',
+    description: 'IQ-based specialized knowledge of medicinal and culinary plants'
+  }
+};
+
+/**
+ * Foraging tool types
+ * @type {Object<string, string>}
+ */
+export const FORAGING_TOOL_TYPES = {
+  basket: 'Basket',
+  gloves: 'Gloves',
+  knife: 'Knife',
+  machete: 'Machete',
+  sickle: 'Sickle',
+  digging_tool: 'Digging Tool',
+  general: 'General Tool'
+};
+
+/**
+ * Foraging rarity levels with targeting penalties
+ * @type {Object<string, {label: string, penalty: number, description: string}>}
+ */
+export const FORAGING_RARITIES = {
+  Common: {
+    label: 'Common',
+    penalty: 0,
+    description: 'Easy to find, no penalty'
+  },
+  Uncommon: {
+    label: 'Uncommon',
+    penalty: -2,
+    description: 'Harder to find, -2 penalty'
+  },
+  Rare: {
+    label: 'Rare',
+    penalty: -4,
+    description: 'Difficult to find, -4 penalty'
+  },
+  VeryRare: {
+    label: 'Very Rare',
+    penalty: -6,
+    description: 'Very difficult to find, -6 penalty'
+  },
+  Legendary: {
+    label: 'Legendary',
+    penalty: -8,
+    description: 'Extremely rare, -8 penalty'
+  }
+};
+
+/**
+ * Context modifiers for foraging
+ * @type {Object<string, {label: string, modifier: number, description: string}>}
+ */
+export const FORAGING_CONTEXT_MODIFIERS = {
+  mapGuide: {
+    label: 'Map/Local Guide',
+    modifier: 1,
+    description: 'Character has a map or local guide'
+  },
+  unfamiliar: {
+    label: 'Unfamiliar/Hostile Region',
+    modifier: -2,
+    description: 'Character is unfamiliar with the area or it is hostile'
+  },
+  peakSeason: {
+    label: 'Peak Season',
+    modifier: 2,
+    description: 'Optimal season for foraging'
+  }
+};
+
+/**
+ * Predefined foraging category templates
+ * These can be customized in the Manager
+ * @type {Array<{name: string, yieldFormula: string, inventoryKind: string, description: string}>}
+ */
+export const FORAGING_CATEGORY_TEMPLATES = [
+  { name: 'Fruits', yieldFormula: '3d+1', inventoryKind: 'food', description: 'Edible fruits and berries' },
+  { name: 'Vegetables', yieldFormula: '3d', inventoryKind: 'food', description: 'Edible roots, tubers, and vegetables' },
+  { name: 'Grains', yieldFormula: '2d+2', inventoryKind: 'food', description: 'Wild grains and seeds' },
+  { name: 'Mushrooms', yieldFormula: '2d', inventoryKind: 'food', description: 'Edible fungi' },
+  { name: 'Herbs & Spices', yieldFormula: '1d+1', inventoryKind: 'food', description: 'Culinary herbs and spices' },
+  { name: 'Seeds & Nuts', yieldFormula: '2d+1', inventoryKind: 'food', description: 'Nuts and edible seeds' },
+  { name: 'Fibrous Plants', yieldFormula: '3d', inventoryKind: 'material', description: 'Common plant fibers for crafting' },
+  { name: 'Strong Fibers', yieldFormula: '2d', inventoryKind: 'material', description: 'Durable fibers for rope and textiles' },
+  { name: 'Rare Fibers', yieldFormula: '1d', inventoryKind: 'material', description: 'Exotic or specialty fibers' },
+  { name: 'Alchemical Ingredients', yieldFormula: '1d+1', inventoryKind: 'material', description: 'Reagents for alchemy' },
+  { name: 'Resin/Sap', yieldFormula: '1d+2', inventoryKind: 'material', description: 'Tree resins and saps' },
+  { name: 'Medicinal Herbs', yieldFormula: '1d', inventoryKind: 'material', description: 'Herbs with healing properties' }
+];
+
+/**
+ * Foraging roll outcomes with yield multipliers
+ * @type {Object}
+ */
+export const FORAGING_OUTCOMES = {
+  critSuccess: {
+    yieldMultiplier: 1.5,
+    bonusFind: true,
+    description: 'Critical Success - Full yield +50% bonus, plus rare find!'
+  },
+  success: {
+    yieldMultiplier: 1.0,
+    bonusFind: false,
+    description: 'Success - Full yield'
+  },
+  failure: {
+    yieldMultiplier: 0.5,
+    bonusFind: false,
+    randomFallback: true,
+    description: 'Failure - Half yield, random find if targeted'
+  },
+  critFailure: {
+    yieldMultiplier: 0.5,
+    hazard: true,
+    randomFallback: true,
+    description: 'Critical Failure - Half yield, hazard encountered!'
+  }
+};
+
+/**
+ * Foraging hazards for critical failures
+ * @type {string[]}
+ */
+export const FORAGING_HAZARDS = [
+  'Poisonous plant exposure (HT roll)',
+  'Thorns and brambles (minor injury)',
+  'Toxic spores inhaled (respiratory irritation)',
+  'Aggressive wildlife disturbed',
+  'Dangerous terrain (twisted ankle)',
+  'Allergic reaction to unknown plant'
+];
+
+/**
+ * Default food types for foraging categories
+ * @type {string[]}
+ */
+export const FORAGING_FOOD_TYPES = [
+  'fruits',
+  'vegetables',
+  'grains',
+  'mushrooms',
+  'herbs_spices',
+  'nuts_seeds',
+  'seaweed'
+];
+
+/**
+ * Default material types for foraging categories
+ * @type {string[]}
+ */
+export const FORAGING_MATERIAL_TYPES = [
+  'fiber',
+  'strong_fiber',
+  'rare_fiber',
+  'resin_sap',
+  'medicinal_herb',
+  'alchemical_ingredient',
+  'wood',
+  'bark',
+  'lichen'
+];
+
+/**
+ * Table entry result types for foraging find tables
+ * @type {string[]}
+ */
+export const FORAGING_FIND_RESULT_TYPES = [
+  'category',
+  'item',
+  'nothing',
+  'special'
+];
+
