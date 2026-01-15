@@ -23,6 +23,7 @@ import {
   getCurrentSlot,
   ensureDaySlotsExist
 } from '../utils/dayPlanner';
+import { resolveTask } from '../utils/taskResolution';
 
 /**
  * DayPlannerTab - Main component for the Day Planner gathering system
@@ -751,14 +752,43 @@ function TaskDetailPanel({
                     return;
                   }
 
-                  // TODO: Generate actual payload and inventory deltas
-                  // For now, just mark as complete with mock data
+                  // Get leader
+                  const leader = workers.find(w => w.id === task.leaderWorkerId);
+                  if (!leader) {
+                    alert('Leader not found');
+                    return;
+                  }
+
+                  // Get environment
+                  const env = environments.find(e => e.id === task.environmentId);
+                  if (!env) {
+                    alert('Environment not found');
+                    return;
+                  }
+
+                  // Get selected tools
+                  const selectedTools = tools.filter(t => (task.selectedToolIds || []).includes(t.id));
+
+                  // Resolve the task
+                  const resolution = resolveTask({
+                    task,
+                    leader,
+                    environment: env,
+                    tools: selectedTools,
+                    species,
+                    categories,
+                    items,
+                    tables
+                  });
+
+                  // Mark task as completed with resolution data
                   const completedTask = {
                     ...task,
                     resolutionState: TASK_STATUS.Completed,
-                    notes: `${task.mode} task completed`,
-                    inventoryDelta: [],
-                    warnings: []
+                    payload: resolution.payload,
+                    inventoryDelta: resolution.inventoryDelta,
+                    notes: resolution.notes,
+                    warnings: resolution.warnings
                   };
                   completeTask(completedTask);
                 }}
