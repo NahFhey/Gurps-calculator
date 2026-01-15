@@ -9,7 +9,11 @@ import {
   FISH_SECONDARY_MATERIALS,
   SPECIES_SPECIAL_RULES,
   GATHERING_TABLE_TYPES,
-  FISH_ST_RANGE
+  FISH_ST_RANGE,
+  FORAGING_TOOL_TYPES,
+  FORAGING_RARITIES,
+  FORAGING_FOOD_TYPES,
+  FORAGING_MATERIAL_TYPES
 } from '../constants';
 
 /**
@@ -45,6 +49,8 @@ export function GatheringManager({
   tables,
   environments,
   bait,
+  categories,
+  items,
   currentDay,
   foodTypes = [],
   materialTypes = [],
@@ -53,6 +59,8 @@ export function GatheringManager({
   saveTables,
   saveEnvironments,
   saveBait,
+  saveCategories,
+  saveItems,
   saveCurrentDay
 }) {
   const [view, setView] = useState('species');
@@ -107,6 +115,20 @@ export function GatheringManager({
   const [newBaitAttracts, setNewBaitAttracts] = useState([]);
   const [newBaitQuantity, setNewBaitQuantity] = useState('10');
   const [newBaitRollBonus, setNewBaitRollBonus] = useState('1');
+
+  // Category form state
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryYieldFormula, setNewCategoryYieldFormula] = useState('3d');
+  const [newCategoryInventoryKind, setNewCategoryInventoryKind] = useState('food');
+  const [newCategoryTypeId, setNewCategoryTypeId] = useState('');
+  const [newCategoryDescription, setNewCategoryDescription] = useState('');
+
+  // Item form state
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemCategoryId, setNewItemCategoryId] = useState('');
+  const [newItemRarity, setNewItemRarity] = useState('Common');
+  const [newItemDescription, setNewItemDescription] = useState('');
+  const [newItemYieldOverride, setNewItemYieldOverride] = useState('');
 
   // Add or update species
   function addSpecies() {
@@ -448,6 +470,8 @@ export function GatheringManager({
       {/* Sub-navigation */}
       <div className="flex gap-2 border-b border-gray-700 pb-2 flex-wrap">
         <button onClick={() => { setView('species'); setShowAdd(false); }} className={`px-3 py-1 rounded ${view === 'species' ? 'bg-blue-600' : 'bg-gray-700'}`}>Species</button>
+        <button onClick={() => { setView('categories'); setShowAdd(false); }} className={`px-3 py-1 rounded ${view === 'categories' ? 'bg-blue-600' : 'bg-gray-700'}`}>Categories</button>
+        <button onClick={() => { setView('items'); setShowAdd(false); }} className={`px-3 py-1 rounded ${view === 'items' ? 'bg-blue-600' : 'bg-gray-700'}`}>Items</button>
         <button onClick={() => { setView('tools'); setShowAdd(false); }} className={`px-3 py-1 rounded ${view === 'tools' ? 'bg-blue-600' : 'bg-gray-700'}`}>Tools</button>
         <button onClick={() => { setView('tables'); setShowAdd(false); }} className={`px-3 py-1 rounded ${view === 'tables' ? 'bg-blue-600' : 'bg-gray-700'}`}>Tables</button>
         <button onClick={() => { setView('environments'); setShowAdd(false); }} className={`px-3 py-1 rounded ${view === 'environments' ? 'bg-blue-600' : 'bg-gray-700'}`}>Environments</button>

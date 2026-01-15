@@ -145,8 +145,12 @@ export function GatheringTab({
     };
   }, [selectedEnvironment, selectedMode, tables]);
 
-  // Get filtered tools for selected method
+  // Get filtered tools for selected method/mode
   const availableTools = useMemo(() => {
+    if (selectedMode === 'Foraging') {
+      // Foraging doesn't use methods, just filter by mode
+      return tools.filter(tool => tool.allowedModes?.includes('Foraging'));
+    }
     return filterToolsForMethod(tools, selectedMode, selectedMethod);
   }, [tools, selectedMode, selectedMethod]);
 
@@ -351,6 +355,35 @@ export function GatheringTab({
     }
   }
 
+  // Roll for foraging
+  function rollForaging() {
+    if (!forageRoll) {
+      alert('Please enter or roll 3d6 for the foraging check');
+      return;
+    }
+
+    const roll = parseInt(forageRoll);
+    const result = evaluateForagingRoll(roll, effectiveForagingSkill.effectiveSkill, !isRandomForage);
+
+    setForageResult(result);
+
+    // Determine what was found
+    const targetCategory = targetCategoryId ? categories.find(c => c.id === targetCategoryId) : null;
+    const targetItem = targetItemId ? items.find(i => i.id === targetItemId) : null;
+
+    const findResult = determineForageFind({
+      rollResult: result,
+      findTable: resolvedTables.randomCatch, // Using randomCatch slot for find table
+      targetCategory,
+      targetItem
+    });
+
+    setForageFind(findResult);
+
+    // Move to yield phase
+    setSessionPhase('yield');
+  }
+
   // Roll for random catch
   function rollCatch(index) {
     if (!resolvedTables.randomCatch) {
@@ -450,6 +483,34 @@ export function GatheringTab({
     setYieldResults(prev => [...prev, { fishIndex, species: fish.species, yields }]);
   }
 
+  // Roll yields for foraging
+  function rollForageYields() {
+    if (!forageFind) return;
+
+    const category = categories.find(c => c.id === forageFind.categoryId);
+    const item = items.find(i => i.id === forageFind.itemId);
+
+    if (!category && !item) return;
+
+    // Calculate yield bonuses/penalties
+    const selectedToolObjects = tools.filter(t => selectedToolIds.includes(t.id));
+    const yieldDiceBonus = getToolYieldBonus(selectedToolObjects, category?.id);
+
+    let yieldDicePenalty = 0;
+    if (isStormDamaged) yieldDicePenalty += 1;
+    if (isDenseTerrain && selectedToolIds.length === 0) yieldDicePenalty += 1;
+
+    const yields = calculateForageYields({
+      category,
+      item,
+      yieldMultiplier: forageResult?.yieldMultiplier || 1.0,
+      yieldDiceBonus,
+      yieldDicePenalty
+    });
+
+    setYieldResults([{ category, item, yields }]);
+  }
+
   // Proceed to yield phase
   function proceedToYields() {
     // Check all large fish have been struggled
@@ -469,26 +530,56 @@ export function GatheringTab({
     const foodItems = {}; // { "speciesName|foodType": { speciesName, foodType, units } }
     const materialItems = {}; // { "name": { name, type, units } }
 
-    yieldResults.forEach(({ species: sp, yields }) => {
-      if (!yields || !sp) return;
+    if (selectedMode === 'Fishing') {
+      yieldResults.forEach(({ species: sp, yields }) => {
+        if (!yields || !sp) return;
 
-      // Add meat - named as "SpeciesName FoodType"
-      const foodType = yields.foodType || 'fish';
-      const foodKey = `${sp.name}|${foodType}`;
-      if (!foodItems[foodKey]) {
-        foodItems[foodKey] = { speciesName: sp.name, foodType, units: 0 };
-      }
-      foodItems[foodKey].units += yields.meatUnits;
-
-      // Add secondary material - use secondaryNameOverride if set, else "SpeciesName MaterialType"
-      if (yields.secondaryType && yields.secondaryUnits > 0) {
-        const materialName = sp.secondaryNameOverride || `${sp.name} ${yields.secondaryType}`;
-        if (!materialItems[materialName]) {
-          materialItems[materialName] = { name: materialName, type: yields.secondaryType, units: 0 };
+        // Add meat - named as "SpeciesName FoodType"
+        const foodType = yields.foodType || 'fish';
+        const foodKey = `${sp.name}|${foodType}`;
+        if (!foodItems[foodKey]) {
+          foodItems[foodKey] = { speciesName: sp.name, foodType, units: 0 };
         }
-        materialItems[materialName].units += yields.secondaryUnits;
-      }
-    });
+        foodItems[foodKey].units += yields.meatUnits;
+
+        // Add secondary material - use secondaryNameOverride if set, else "SpeciesName MaterialType"
+        if (yields.secondaryType && yields.secondaryUnits > 0) {
+          const materialName = sp.secondaryNameOverride || `${sp.name} ${yields.secondaryType}`;
+          if (!materialItems[materialName]) {
+            materialItems[materialName] = { name: materialName, type: yields.secondaryType, units: 0 };
+          }
+          materialItems[materialName].units += yields.secondaryUnits;
+        }
+      });
+    } else if (selectedMode === 'Foraging') {
+      // Handle foraging yields
+      yieldResults.forEach(({ category, item, yields }) => {
+        if (!yields || yields.units === 0) return;
+
+        const cat = category || categories.find(c => c.id === item?.categoryId);
+        if (!cat) return;
+
+        const inventoryKind = cat.inventoryOutput?.inventoryKind || 'food';
+        const typeId = cat.inventoryOutput?.typeId || cat.name.toLowerCase().replace(/\s+/g, '_');
+
+        // Get item name or use category name
+        const itemName = item?.name || cat.name;
+
+        if (inventoryKind === 'food') {
+          const foodKey = `${itemName}|${typeId}`;
+          if (!foodItems[foodKey]) {
+            foodItems[foodKey] = { speciesName: itemName, foodType: typeId, units: 0 };
+          }
+          foodItems[foodKey].units += yields.units;
+        } else {
+          // Material
+          if (!materialItems[itemName]) {
+            materialItems[itemName] = { name: itemName, type: typeId, units: 0 };
+          }
+          materialItems[itemName].units += yields.units;
+        }
+      });
+    }
 
     // Update foods inventory with proper naming
     const updatedFoods = [...foods];
@@ -563,10 +654,13 @@ export function GatheringTab({
     setSessionPhase('setup');
     setEventRoll('');
     setFishingRoll('');
+    setForageRoll('');
     setCatchRolls([]);
     setStruggleRoll('');
     setEventResult(null);
     setFishingResult(null);
+    setForageResult(null);
+    setForageFind(null);
     setCaughtFish([]);
     setYieldResults([]);
     setRetryCount(0);
@@ -833,6 +927,60 @@ export function GatheringTab({
               </div>
             )}
 
+            {/* Context Modifiers (Foraging) */}
+            {selectedMode === 'Foraging' && (
+              <div className="bg-gray-700 p-3 rounded">
+                <label className="block text-sm text-gray-400 mb-2">Context Modifiers</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={hasMapGuide}
+                      onChange={(e) => setHasMapGuide(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">Map/Local Guide (+1)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isUnfamiliar}
+                      onChange={(e) => setIsUnfamiliar(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">Unfamiliar/Hostile (-2)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isPeakSeason}
+                      onChange={(e) => setIsPeakSeason(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">Peak Season (+2)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isDenseTerrain}
+                      onChange={(e) => setIsDenseTerrain(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">Dense/Dangerous Terrain</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isStormDamaged}
+                      onChange={(e) => setIsStormDamaged(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">Storm Damaged (-1d yield)</span>
+                  </label>
+                </div>
+              </div>
+            )}
+
             {/* Equipment Selection */}
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -850,47 +998,69 @@ export function GatheringTab({
                   ))}
                 </select>
                 {availableTools.length === 0 && (
-                  <p className="text-xs text-yellow-400 mt-1">No tools configured for this method</p>
+                  <p className="text-xs text-yellow-400 mt-1">No tools configured for this {selectedMode === 'Fishing' ? 'method' : 'mode'}</p>
                 )}
               </div>
 
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Bait</label>
-                <select
-                  value={selectedBaitId}
-                  onChange={(e) => setSelectedBaitId(e.target.value)}
-                  className="w-full bg-gray-700 px-3 py-2 rounded"
-                >
-                  <option value="">-- No Bait --</option>
-                  {bait.filter(b => (b.quantity || 0) > 0).map(b => (
-                    <option key={b.id} value={b.id}>
-                      {b.name} ({b.quantity || 0} available)
-                    </option>
-                  ))}
-                </select>
-                {baitStatus.correct && (
-                  <p className="text-xs text-green-400 mt-1">✓ Correct bait for target (+1)</p>
-                )}
-                {baitStatus.inappropriate && (
-                  <p className="text-xs text-red-400 mt-1">✗ Wrong bait for target (-2)</p>
-                )}
-              </div>
+              {selectedMode === 'Fishing' && (
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Bait</label>
+                  <select
+                    value={selectedBaitId}
+                    onChange={(e) => setSelectedBaitId(e.target.value)}
+                    className="w-full bg-gray-700 px-3 py-2 rounded"
+                  >
+                    <option value="">-- No Bait --</option>
+                    {bait.filter(b => (b.quantity || 0) > 0).map(b => (
+                      <option key={b.id} value={b.id}>
+                        {b.name} ({b.quantity || 0} available)
+                      </option>
+                    ))}
+                  </select>
+                  {baitStatus.correct && (
+                    <p className="text-xs text-green-400 mt-1">✓ Correct bait for target (+1)</p>
+                  )}
+                  {baitStatus.inappropriate && (
+                    <p className="text-xs text-red-400 mt-1">✗ Wrong bait for target (-2)</p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Skill Summary */}
             <div className="bg-gray-700 p-3 rounded">
-              <h4 className="font-semibold mb-2">Effective Skill: {effectiveSkill.effectiveSkill}</h4>
-              <div className="text-sm text-gray-400 grid grid-cols-3 gap-2">
-                <span>Base: {effectiveSkill.breakdown.base}</span>
-                <span>Tool: {effectiveSkill.breakdown.tool >= 0 ? '+' : ''}{effectiveSkill.breakdown.tool}</span>
-                <span>Bait: {effectiveSkill.breakdown.bait >= 0 ? '+' : ''}{effectiveSkill.breakdown.bait}</span>
-                {effectiveSkill.breakdown.largeFish !== 0 && (
-                  <span>Large Fish: {effectiveSkill.breakdown.largeFish}</span>
-                )}
-                {effectiveSkill.breakdown.environment !== 0 && (
-                  <span>Environment: {effectiveSkill.breakdown.environment >= 0 ? '+' : ''}{effectiveSkill.breakdown.environment}</span>
-                )}
-              </div>
+              {selectedMode === 'Fishing' && (
+                <>
+                  <h4 className="font-semibold mb-2">Effective Skill: {effectiveSkill.effectiveSkill}</h4>
+                  <div className="text-sm text-gray-400 grid grid-cols-3 gap-2">
+                    <span>Base: {effectiveSkill.breakdown.base}</span>
+                    <span>Tool: {effectiveSkill.breakdown.tool >= 0 ? '+' : ''}{effectiveSkill.breakdown.tool}</span>
+                    <span>Bait: {effectiveSkill.breakdown.bait >= 0 ? '+' : ''}{effectiveSkill.breakdown.bait}</span>
+                    {effectiveSkill.breakdown.largeFish !== 0 && (
+                      <span>Large Fish: {effectiveSkill.breakdown.largeFish}</span>
+                    )}
+                    {effectiveSkill.breakdown.environment !== 0 && (
+                      <span>Environment: {effectiveSkill.breakdown.environment >= 0 ? '+' : ''}{effectiveSkill.breakdown.environment}</span>
+                    )}
+                  </div>
+                </>
+              )}
+              {selectedMode === 'Foraging' && (
+                <>
+                  <h4 className="font-semibold mb-2">Effective Skill: {effectiveForagingSkill.effectiveSkill} ({selectedSkill})</h4>
+                  <div className="text-sm text-gray-400 grid grid-cols-3 gap-2">
+                    <span>Base: {effectiveForagingSkill.breakdown.base}</span>
+                    <span>Tool: {effectiveForagingSkill.breakdown.tool >= 0 ? '+' : ''}{effectiveForagingSkill.breakdown.tool}</span>
+                    <span>Context: {effectiveForagingSkill.breakdown.context >= 0 ? '+' : ''}{effectiveForagingSkill.breakdown.context}</span>
+                    {effectiveForagingSkill.breakdown.rarity !== 0 && (
+                      <span>Rarity: {effectiveForagingSkill.breakdown.rarity >= 0 ? '+' : ''}{effectiveForagingSkill.breakdown.rarity}</span>
+                    )}
+                    {effectiveForagingSkill.breakdown.environment !== 0 && (
+                      <span>Environment: {effectiveForagingSkill.breakdown.environment >= 0 ? '+' : ''}{effectiveForagingSkill.breakdown.environment}</span>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Tables Info */}
@@ -968,7 +1138,7 @@ export function GatheringTab({
         )}
 
         {/* Fishing Phase */}
-        {sessionPhase === 'fishing' && (
+        {sessionPhase === 'fishing' && selectedMode === 'Fishing' && (
           <div className="space-y-4">
             <div className="bg-blue-900 p-4 rounded">
               <h3 className="text-lg font-semibold mb-2">Fishing Roll</h3>
@@ -1013,6 +1183,59 @@ export function GatheringTab({
                     You can retry (attempt {retryCount + 1}/3 at -{retryCount + 1} penalty)
                   </p>
                 )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Foraging Roll Phase */}
+        {sessionPhase === 'fishing' && selectedMode === 'Foraging' && (
+          <div className="space-y-4">
+            <div className="bg-green-900 p-4 rounded">
+              <h3 className="text-lg font-semibold mb-2">Foraging Roll</h3>
+              <p className="text-sm text-gray-300 mb-2">
+                Target: {effectiveForagingSkill.effectiveSkill} ({selectedSkill})
+              </p>
+
+              <div className="flex items-center gap-2 mb-4">
+                <input
+                  type="number"
+                  value={forageRoll}
+                  onChange={(e) => setForageRoll(e.target.value)}
+                  placeholder="3-18"
+                  min="3"
+                  max="18"
+                  className="flex-1 bg-gray-700 px-3 py-2 rounded"
+                />
+                <DiceRoller onRoll={(total) => setForageRoll(String(total))} />
+              </div>
+
+              <button
+                onClick={rollForaging}
+                disabled={!forageRoll}
+                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 py-2 rounded font-semibold"
+              >
+                Roll Foraging
+              </button>
+            </div>
+
+            {forageResult && (
+              <div className={`p-4 rounded ${forageResult.success ? 'bg-green-900' : 'bg-red-900'}`}>
+                <h4 className="font-semibold flex items-center gap-2">
+                  {forageResult.success ? <CheckCircle size={20} /> : <XCircle size={20} />}
+                  {forageResult.description}
+                </h4>
+                <p className="text-sm mt-1">
+                  Roll: {forageRoll} vs {effectiveForagingSkill.effectiveSkill} (Margin: {forageResult.margin})
+                </p>
+                {forageResult.hazard && (
+                  <p className="text-sm text-orange-400 mt-2">
+                    ⚠ Hazard: {forageResult.hazard}
+                  </p>
+                )}
+                <p className="text-sm text-purple-400 mt-2">
+                  Yield Multiplier: {Math.floor(forageResult.yieldMultiplier * 100)}%
+                </p>
               </div>
             )}
           </div>
@@ -1089,8 +1312,8 @@ export function GatheringTab({
           </div>
         )}
 
-        {/* Yield Phase */}
-        {sessionPhase === 'yield' && (
+        {/* Yield Phase - Fishing */}
+        {sessionPhase === 'yield' && selectedMode === 'Fishing' && (
           <div className="space-y-4">
             <div className="bg-purple-900 p-4 rounded">
               <h3 className="text-lg font-semibold mb-2">Calculate Yields</h3>
@@ -1135,6 +1358,80 @@ export function GatheringTab({
           </div>
         )}
 
+        {/* Yield Phase - Foraging */}
+        {sessionPhase === 'yield' && selectedMode === 'Foraging' && (
+          <div className="space-y-4">
+            <div className="bg-purple-900 p-4 rounded">
+              <h3 className="text-lg font-semibold mb-2">Foraging Results</h3>
+
+              {/* Find Result */}
+              <div className="bg-gray-800 p-3 rounded mb-3">
+                <h4 className="font-semibold mb-2">What You Found:</h4>
+                {forageFind?.type === 'category' && (
+                  <div>
+                    <span className="text-green-400">
+                      {categories.find(c => c.id === forageFind.categoryId)?.name || 'Unknown Category'}
+                    </span>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {categories.find(c => c.id === forageFind.categoryId)?.description}
+                    </p>
+                  </div>
+                )}
+                {forageFind?.type === 'item' && (
+                  <div>
+                    <span className="text-green-400">
+                      {items.find(i => i.id === forageFind.itemId)?.name || 'Unknown Item'}
+                    </span>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {items.find(i => i.id === forageFind.itemId)?.description}
+                    </p>
+                  </div>
+                )}
+                {forageFind?.type === 'nothing' && (
+                  <span className="text-gray-400">Nothing found</span>
+                )}
+                {forageFind?.type === 'special' && (
+                  <span className="text-yellow-400">{forageFind.text}</span>
+                )}
+              </div>
+
+              {/* Yield Calculation */}
+              {(forageFind?.type === 'category' || forageFind?.type === 'item') && (
+                <div className="bg-gray-800 p-3 rounded mb-3">
+                  <h4 className="font-semibold mb-2">Calculate Yield:</h4>
+                  {yieldResults.length === 0 ? (
+                    <button
+                      onClick={rollForageYields}
+                      className="w-full bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded"
+                    >
+                      Roll Yields
+                    </button>
+                  ) : (
+                    <div>
+                      <span className="text-purple-400 text-lg">
+                        {yieldResults[0]?.units || 0} Units
+                      </span>
+                      <div className="text-xs text-gray-400 mt-1">
+                        Formula: {yieldResults[0]?.modifiedFormula} × {Math.floor((forageResult?.yieldMultiplier || 1) * 100)}%
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {yieldResults.length > 0 && (
+                <button
+                  onClick={commitToInventory}
+                  className="w-full bg-purple-600 hover:bg-purple-700 py-2 rounded font-semibold mt-4"
+                >
+                  <Package size={18} className="inline mr-2" />
+                  Add to Inventory
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Complete Phase */}
         {sessionPhase === 'complete' && (
           <div className="space-y-4">
@@ -1144,7 +1441,7 @@ export function GatheringTab({
                 Session Complete
               </h3>
 
-              {yieldResults.length > 0 && (
+              {selectedMode === 'Fishing' && yieldResults.length > 0 && (
                 <div className="mb-4">
                   <h4 className="font-semibold mb-2">Catches:</h4>
                   {yieldResults.map((result, i) => (
@@ -1156,8 +1453,26 @@ export function GatheringTab({
                 </div>
               )}
 
-              {fishingResult && !fishingResult.success && (
+              {selectedMode === 'Foraging' && yieldResults.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="font-semibold mb-2">Foraged:</h4>
+                  {yieldResults.map((result, i) => {
+                    const itemName = result.item?.name || result.category?.name || 'Unknown';
+                    return (
+                      <div key={i} className="text-sm">
+                        {itemName}: {result.yields?.units}U
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {fishingResult && !fishingResult.success && selectedMode === 'Fishing' && (
                 <p className="text-gray-400">No fish caught this session.</p>
+              )}
+
+              {forageResult && !forageResult.success && selectedMode === 'Foraging' && (
+                <p className="text-gray-400">Nothing foraged this session.</p>
               )}
 
               <button
