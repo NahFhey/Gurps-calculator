@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Save, X, ChefHat, Hammer, Package, Beaker, FileText, BookOpen } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, ChefHat, Hammer, Package, Beaker, FileText, BookOpen, Fish } from 'lucide-react';
 import { TEMPLATES } from './constants';
 import { safeParse } from './utils/helpers';
 import { useKeyedDebouncedStorageSave } from './hooks/useStorage';
@@ -10,6 +10,7 @@ import { ManagerTab } from './components/ManagerTab';
 import { AlchemyTab } from './components/AlchemyTab';
 import { ChangelogTab } from './components/ChangelogTab';
 import { RulesTab } from './components/RulesTab';
+import { GatheringTab } from './components/GatheringTab';
 import { VERSION } from './version';
 
 export default function GURPSPartyTool() {
@@ -56,6 +57,16 @@ export default function GURPSPartyTool() {
   const [gmMode, setGmMode] = useState(false);
   const [gmLockData, setGmLockData] = useState(null); // Stores gmLock from locked imports
 
+  // Gathering system state
+  const [gatheringSpecies, setGatheringSpecies] = useState([]);
+  const [gatheringTools, setGatheringTools] = useState([]);
+  const [gatheringTables, setGatheringTables] = useState([]);
+  const [gatheringEnvironments, setGatheringEnvironments] = useState([]);
+  const [gatheringSessions, setGatheringSessions] = useState([]);
+  const [gatheringDailyEvents, setGatheringDailyEvents] = useState({}); // { dayKey: { groupKey: { rolled, resultType, ... } } }
+  const [gatheringBait, setGatheringBait] = useState([]);
+  const [currentDay, setCurrentDay] = useState(1); // Campaign day counter
+
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
@@ -67,7 +78,8 @@ export default function GURPSPartyTool() {
     }
 
     try {
-      const [matsR, foodsR, recipesR, craftsR, typesR, templatesR, matTypesR, workersR, reagentsR, formulasR, batchesR, labsR, kitchensR, cookingSkillsR, effectMapR, alchemySettingsR, craftDesignsR] = await Promise.all([
+      const [matsR, foodsR, recipesR, craftsR, typesR, templatesR, matTypesR, workersR, reagentsR, formulasR, batchesR, labsR, kitchensR, cookingSkillsR, effectMapR, alchemySettingsR, craftDesignsR,
+        speciesR, toolsR, tablesR, environmentsR, sessionsR, dailyEventsR, baitR, currentDayR] = await Promise.all([
         window.storage.get('materials', true).catch(() => null),
         window.storage.get('foods', true).catch(() => null),
         window.storage.get('recipes', true).catch(() => null),
@@ -84,7 +96,16 @@ export default function GURPSPartyTool() {
         window.storage.get('cookingSkills', true).catch(() => null),
         window.storage.get('effectFamilyMap', true).catch(() => null),
         window.storage.get('alchemySettings', true).catch(() => null),
-        window.storage.get('craftDesigns', true).catch(() => null)
+        window.storage.get('craftDesigns', true).catch(() => null),
+        // Gathering system data
+        window.storage.get('gatheringSpecies', true).catch(() => null),
+        window.storage.get('gatheringTools', true).catch(() => null),
+        window.storage.get('gatheringTables', true).catch(() => null),
+        window.storage.get('gatheringEnvironments', true).catch(() => null),
+        window.storage.get('gatheringSessions', true).catch(() => null),
+        window.storage.get('gatheringDailyEvents', true).catch(() => null),
+        window.storage.get('gatheringBait', true).catch(() => null),
+        window.storage.get('currentDay', true).catch(() => null)
       ]);
       if (matsR?.value) setMaterials(JSON.parse(matsR.value));
       if (foodsR?.value) setFoods(JSON.parse(foodsR.value));
@@ -100,10 +121,10 @@ export default function GURPSPartyTool() {
             setWorkers(loadedWorkers.map((name, idx) => ({
               id: String(idx + 1),
               name,
-              skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10 }
+              skills: { cooking: 10, designing: 10, crafting: 10, alchemy: 10, fishing: 10, stealth: 10, spear: 10 }
             })));
           } else {
-            // New format - ensure all workers have required fields
+            // New format - ensure all workers have required fields including gathering skills
             setWorkers(loadedWorkers.map((w, idx) => ({
               id: w.id || String(idx + 1),
               name: w.name || `Worker ${idx + 1}`,
@@ -111,8 +132,12 @@ export default function GURPSPartyTool() {
                 cooking: w.skills?.cooking ?? 10,
                 designing: w.skills?.designing ?? 10,
                 crafting: w.skills?.crafting ?? 10,
-                alchemy: w.skills?.alchemy ?? 10
-              }
+                alchemy: w.skills?.alchemy ?? 10,
+                fishing: w.skills?.fishing ?? 10,
+                stealth: w.skills?.stealth ?? 10,
+                spear: w.skills?.spear ?? 10
+              },
+              st: w.st ?? 10 // Strength for large fish struggle
             })));
           }
         }
@@ -191,6 +216,16 @@ export default function GURPSPartyTool() {
       if (needsSave) {
         try { await window.storage.set('customTemplates', JSON.stringify(templates), true); } catch (e) {}
       }
+
+      // Load gathering system data
+      setGatheringSpecies(safeParse(speciesR?.value, []));
+      setGatheringTools(safeParse(toolsR?.value, []));
+      setGatheringTables(safeParse(tablesR?.value, []));
+      setGatheringEnvironments(safeParse(environmentsR?.value, []));
+      setGatheringSessions(safeParse(sessionsR?.value, []));
+      setGatheringDailyEvents(safeParse(dailyEventsR?.value, {}));
+      setGatheringBait(safeParse(baitR?.value, []));
+      setCurrentDay(safeParse(currentDayR?.value, 1));
     } catch (error) {
       console.error('Error loading:', error);
     }
@@ -266,6 +301,40 @@ export default function GURPSPartyTool() {
     debouncedStorageSave('craftDesigns', d);
   }
 
+  // Gathering system save functions
+  async function saveGatheringSpecies(d) {
+    setGatheringSpecies(d);
+    debouncedStorageSave('gatheringSpecies', d);
+  }
+  async function saveGatheringTools(d) {
+    setGatheringTools(d);
+    debouncedStorageSave('gatheringTools', d);
+  }
+  async function saveGatheringTables(d) {
+    setGatheringTables(d);
+    debouncedStorageSave('gatheringTables', d);
+  }
+  async function saveGatheringEnvironments(d) {
+    setGatheringEnvironments(d);
+    debouncedStorageSave('gatheringEnvironments', d);
+  }
+  async function saveGatheringSessions(d) {
+    setGatheringSessions(d);
+    debouncedStorageSave('gatheringSessions', d);
+  }
+  async function saveGatheringDailyEvents(d) {
+    setGatheringDailyEvents(d);
+    debouncedStorageSave('gatheringDailyEvents', d);
+  }
+  async function saveGatheringBait(d) {
+    setGatheringBait(d);
+    debouncedStorageSave('gatheringBait', d);
+  }
+  async function saveCurrentDay(d) {
+    setCurrentDay(d);
+    debouncedStorageSave('currentDay', d);
+  }
+
   // Keyed debounced storage writer - maintains separate timers per key
   const debouncedStorageSave = useKeyedDebouncedStorageSave(500);
 
@@ -322,6 +391,9 @@ export default function GURPSPartyTool() {
           <button onClick={() => setActiveTab('alchemy')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'alchemy' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
             <Beaker size={20} />Alchemy
           </button>
+          <button onClick={() => setActiveTab('gathering')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'gathering' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+            <Fish size={20} />Gathering
+          </button>
           <button onClick={() => setActiveTab('rules')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'rules' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
             <BookOpen size={20} />Rules
           </button>
@@ -333,8 +405,30 @@ export default function GURPSPartyTool() {
         {activeTab === 'inventory' && <InventoryTab materials={materials} foods={foods} foodTypes={foodTypes} materialTypes={materialTypes} gmMode={gmMode} saveMaterials={saveMaterials} saveFoods={saveFoods} />}
         {activeTab === 'cooking' && <CookingTab foods={foods} recipes={recipes} saveFoods={saveFoods} saveRecipes={saveRecipes} workers={workers} kitchens={kitchens} cookingSkills={cookingSkills} />}
         {activeTab === 'crafting' && <CraftingTab materials={materials} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materialTypes={materialTypes} workers={workers} saveMaterials={saveMaterials} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} />}
-        {activeTab === 'manager' && <ManagerTab foodTypes={foodTypes} materialTypes={materialTypes} workers={workers} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materials={materials} effectFamilyMap={effectFamilyMap} alchemySettings={alchemySettings} alchemyReagents={alchemyReagents} alchemyFormulas={alchemyFormulas} alchemyBatches={alchemyBatches} alchemyLabs={alchemyLabs} kitchens={kitchens} cookingSkills={cookingSkills} foods={foods} recipes={recipes} gmMode={gmMode} gmLockData={gmLockData} setGmMode={setGmMode} setGmLockData={setGmLockData} saveMaterials={saveMaterials} saveFoods={saveFoods} saveRecipes={saveRecipes} saveFoodTypes={saveFoodTypes} saveMaterialTypes={saveMaterialTypes} saveWorkers={saveWorkers} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} saveCustomTemplates={saveCustomTemplates} saveEffectFamilyMap={saveEffectFamilyMap} saveAlchemySettings={saveAlchemySettings} saveAlchemyReagents={saveAlchemyReagents} saveAlchemyFormulas={saveAlchemyFormulas} saveAlchemyBatches={saveAlchemyBatches} saveAlchemyLabs={saveAlchemyLabs} saveKitchens={saveKitchens} saveCookingSkills={saveCookingSkills} renameMaterialType={renameMaterialType} />}
+        {activeTab === 'manager' && <ManagerTab foodTypes={foodTypes} materialTypes={materialTypes} workers={workers} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materials={materials} effectFamilyMap={effectFamilyMap} alchemySettings={alchemySettings} alchemyReagents={alchemyReagents} alchemyFormulas={alchemyFormulas} alchemyBatches={alchemyBatches} alchemyLabs={alchemyLabs} kitchens={kitchens} cookingSkills={cookingSkills} foods={foods} recipes={recipes} gmMode={gmMode} gmLockData={gmLockData} setGmMode={setGmMode} setGmLockData={setGmLockData} saveMaterials={saveMaterials} saveFoods={saveFoods} saveRecipes={saveRecipes} saveFoodTypes={saveFoodTypes} saveMaterialTypes={saveMaterialTypes} saveWorkers={saveWorkers} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} saveCustomTemplates={saveCustomTemplates} saveEffectFamilyMap={saveEffectFamilyMap} saveAlchemySettings={saveAlchemySettings} saveAlchemyReagents={saveAlchemyReagents} saveAlchemyFormulas={saveAlchemyFormulas} saveAlchemyBatches={saveAlchemyBatches} saveAlchemyLabs={saveAlchemyLabs} saveKitchens={saveKitchens} saveCookingSkills={saveCookingSkills} renameMaterialType={renameMaterialType}
+          gatheringSpecies={gatheringSpecies} gatheringTools={gatheringTools} gatheringTables={gatheringTables} gatheringEnvironments={gatheringEnvironments} gatheringBait={gatheringBait} currentDay={currentDay}
+          saveGatheringSpecies={saveGatheringSpecies} saveGatheringTools={saveGatheringTools} saveGatheringTables={saveGatheringTables} saveGatheringEnvironments={saveGatheringEnvironments} saveGatheringBait={saveGatheringBait} saveCurrentDay={saveCurrentDay}
+        />}
         {activeTab === 'alchemy' && <AlchemyTab reagents={alchemyReagents} formulas={alchemyFormulas} batches={alchemyBatches} labs={alchemyLabs} workers={workers} alchemySettings={alchemySettings} saveReagents={saveAlchemyReagents} saveFormulas={saveAlchemyFormulas} saveBatches={saveAlchemyBatches} saveLabs={saveAlchemyLabs} />}
+        {activeTab === 'gathering' && <GatheringTab
+          species={gatheringSpecies}
+          tools={gatheringTools}
+          tables={gatheringTables}
+          environments={gatheringEnvironments}
+          sessions={gatheringSessions}
+          dailyEvents={gatheringDailyEvents}
+          bait={gatheringBait}
+          workers={workers}
+          foods={foods}
+          materials={materials}
+          foodTypes={foodTypes}
+          materialTypes={materialTypes}
+          currentDay={currentDay}
+          saveSessions={saveGatheringSessions}
+          saveDailyEvents={saveGatheringDailyEvents}
+          saveFoods={saveFoods}
+          saveMaterials={saveMaterials}
+        />}
         {activeTab === 'rules' && <RulesTab />}
         {activeTab === 'changelog' && <ChangelogTab />}
       </div>

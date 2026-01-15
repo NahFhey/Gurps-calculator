@@ -301,3 +301,157 @@ export const HAZARD_RULES = {
     severity: 'medium'
   }
 };
+
+// ============================================================================
+// GATHERING SYSTEM CONSTANTS
+// ============================================================================
+
+/**
+ * Gathering modes supported by the system
+ * Each mode has different methods, tools, and resolution mechanics
+ *
+ * @type {string[]}
+ */
+export const GATHERING_MODES = ['Fishing', 'Foraging', 'Mining', 'Logging'];
+
+/**
+ * Fishing methods with their specific rules and restrictions
+ *
+ * @type {Object<string, {label: string, canTarget: boolean, toolTypes: string[], description: string}>}
+ */
+export const FISHING_METHODS = {
+  Line: {
+    label: 'Line Fishing',
+    canTarget: true,
+    toolTypes: ['fishing_rod', 'handline', 'general'],
+    description: 'Can target specific species. Success = 1 fish, crit = 2 fish. Up to 3 retry attempts at -1 cumulative.'
+  },
+  Net: {
+    label: 'Net Fishing',
+    canTarget: false,
+    toolTypes: ['net', 'general'],
+    description: 'Cannot target. Catches 1 + 1 per 3 MoS fish. Large fish are rerolled.'
+  },
+  Spear: {
+    label: 'Spear Fishing',
+    canTarget: true,
+    toolTypes: ['spear', 'general'],
+    description: 'Requires Stealth approach + Spear hit. Catches 1 fish (2 on crit). Often restricted to shallow water.'
+  }
+};
+
+/**
+ * Tool types for gathering system with display labels
+ *
+ * @type {Object<string, string>}
+ */
+export const GATHERING_TOOL_TYPES = {
+  fishing_rod: 'Fishing Rod',
+  handline: 'Handline',
+  net: 'Net',
+  spear: 'Spear',
+  general: 'General Tool'
+};
+
+/**
+ * Bait tags for consumables
+ *
+ * @type {string[]}
+ */
+export const BAIT_TAGS = ['Glow', 'Blood', 'Larva', 'Worm', 'Kelp', 'CrabChunk', 'Insect', 'Fish'];
+
+/**
+ * Species tags for fish and other gatherable creatures
+ *
+ * @type {string[]}
+ */
+export const SPECIES_TAGS = ['LargeFish', 'Common', 'Rare', 'Prize', 'Crustacean', 'Shellfish', 'Predator', 'Schooling'];
+
+/**
+ * Secondary material types from fish processing
+ *
+ * @type {string[]}
+ */
+export const FISH_SECONDARY_MATERIALS = ['scales', 'shell', 'oil', 'bone', 'glowflesh', 'fins', 'teeth', 'ink'];
+
+/**
+ * Special rules that can apply to fish species
+ *
+ * @type {string[]}
+ */
+export const SPECIES_SPECIAL_RULES = ['glows', 'hard_to_prepare', 'high_fat', 'toxin_possible', 'prized_meat', 'tough_scales'];
+
+/**
+ * Table types for the gathering system
+ *
+ * @type {string[]}
+ */
+export const GATHERING_TABLE_TYPES = [
+  'FishingRandomCatch',
+  'FishingEventMild',
+  'FishingEventRare',
+  'ForagingRandomFind',
+  'ForagingEventMild',
+  'ForagingEventRare'
+];
+
+/**
+ * Dynamic event roll thresholds (3d6)
+ * Once per day per gathering group
+ *
+ * @type {{rare: {min: number, max: number}, mild: {min: number, max: number}, none: {min: number, max: number}}}
+ */
+export const DYNAMIC_EVENT_THRESHOLDS = {
+  rare: { min: 3, max: 6 },    // 3-6: Rare event
+  mild: { min: 7, max: 10 },   // 7-10: Mild event
+  none: { min: 11, max: 18 }   // 11-18: No event
+};
+
+/**
+ * Fishing roll outcomes based on margin of success
+ *
+ * @type {Object}
+ */
+export const FISHING_OUTCOMES = {
+  critSuccess: { fish: 2, description: 'Critical Success - Catch 2 fish!' },
+  success: { fish: 1, description: 'Success - Catch 1 fish' },
+  failure: { fish: 0, description: 'Failure - No catch' },
+  critFailure: { fish: 0, description: 'Critical Failure - Line snapped / Net torn' }
+};
+
+/**
+ * Bait modifiers for fishing
+ *
+ * @type {Object}
+ */
+export const BAIT_MODIFIERS = {
+  correctBait: +1,       // Bait matches target species preference
+  inappropriateBait: -2, // Bait is wrong for target
+  noBait: 0              // No bait used
+};
+
+/**
+ * Large fish targeting penalty
+ * @type {number}
+ */
+export const LARGE_FISH_TARGETING_PENALTY = -2;
+
+/**
+ * Maximum net reroll attempts before error
+ * Prevents infinite loops on misconfigured tables
+ * @type {number}
+ */
+export const MAX_NET_REROLL_ATTEMPTS = 20;
+
+/**
+ * Default fish ST for large fish struggle if not specified
+ * @type {number}
+ */
+export const DEFAULT_FISH_ST = 14;
+
+/**
+ * Fish ST range for random generation
+ * @type {{min: number, max: number}}
+ */
+export const FISH_ST_RANGE = { min: 12, max: 18 };
+
