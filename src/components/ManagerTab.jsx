@@ -6,6 +6,7 @@ import { calculateFormulaStats } from '../utils/alchemy';
 import { TBBuilderPanel } from './alchemy/TBBuilderPanel';
 import { ImportExportPanel } from './ImportExportPanel';
 import { GMLockModal } from './GMLockModal';
+import { GatheringManager } from './GatheringManager';
 import { unlockGMData, mergeGM } from '../utils/exportImport';
 
 export function ManagerTab({
@@ -15,7 +16,10 @@ export function ManagerTab({
   saveMaterials, saveFoods, saveRecipes, saveFoodTypes, saveMaterialTypes, saveWorkers,
   saveCrafts, saveCraftDesigns, saveCustomTemplates, saveEffectFamilyMap,
   saveAlchemySettings, saveAlchemyReagents, saveAlchemyFormulas, saveAlchemyBatches, saveAlchemyLabs, saveKitchens, saveCookingSkills,
-  renameMaterialType
+  renameMaterialType,
+  // Gathering system props
+  gatheringSpecies, gatheringTools, gatheringTables, gatheringEnvironments, gatheringBait, currentDay,
+  saveGatheringSpecies, saveGatheringTools, saveGatheringTables, saveGatheringEnvironments, saveGatheringBait, saveCurrentDay
 }) {
   const [view, setView] = useState('foodTypes');
   const [showAdd, setShowAdd] = useState(false);
@@ -432,6 +436,7 @@ export function ManagerTab({
         <button onClick={() => setView('formulas')} className={`px-4 py-2 ${view === 'formulas' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Formulas</button>
         <button onClick={() => setView('effectFamilyMap')} className={`px-4 py-2 ${view === 'effectFamilyMap' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Effect Map</button>
         <button onClick={() => setView('alchemySettings')} className={`px-4 py-2 ${view === 'alchemySettings' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Alchemy Settings</button>
+        <button onClick={() => setView('gathering')} className={`px-4 py-2 ${view === 'gathering' ? 'border-b-2 border-cyan-500 text-cyan-400' : 'text-gray-400'}`}>Gathering</button>
       </div>
 
       {view === 'importExport' && (
@@ -2449,6 +2454,23 @@ export function ManagerTab({
             </div>
           </div>
         </div>
+      )}
+
+      {view === 'gathering' && (
+        <GatheringManager
+          species={gatheringSpecies || []}
+          tools={gatheringTools || []}
+          tables={gatheringTables || []}
+          environments={gatheringEnvironments || []}
+          bait={gatheringBait || []}
+          currentDay={currentDay || 1}
+          saveSpecies={saveGatheringSpecies}
+          saveTools={saveGatheringTools}
+          saveTables={saveGatheringTables}
+          saveEnvironments={saveGatheringEnvironments}
+          saveBait={saveGatheringBait}
+          saveCurrentDay={saveCurrentDay}
+        />
       )}
     </div>
   );
