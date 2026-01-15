@@ -652,3 +652,59 @@ export const FORAGING_FIND_RESULT_TYPES = [
   'special'
 ];
 
+// ============================================================================
+// DAY PLANNER SYSTEM CONSTANTS
+// ============================================================================
+
+/**
+ * Number of time slots per day (Morning, Afternoon, Night)
+ * Each slot represents 8 hours
+ * @type {number}
+ */
+export const SLOTS_PER_DAY = 3;
+
+/**
+ * Names for each time slot
+ * @type {string[]}
+ */
+export const SLOT_NAMES = ['Morning', 'Afternoon', 'Night'];
+
+/**
+ * Time slot statuses
+ * @type {Object.<string, string>}
+ */
+export const SLOT_STATUS = {
+  Planned: 'Planned',
+  InProgress: 'InProgress',
+  Resolved: 'Resolved'
+};
+
+/**
+ * Task assignment resolution states
+ * @type {Object.<string, string>}
+ */
+export const TASK_STATUS = {
+  Draft: 'Draft',
+  Resolving: 'Resolving',
+  Completed: 'Completed'
+};
+
+/**
+ * Pending day ledger statuses
+ * @type {Object.<string, string>}
+ */
+export const LEDGER_STATUS = {
+  Open: 'Open',
+  Committed: 'Committed'
+};
+
+/**
+ * Available gathering modes for task assignments
+ * @type {string[]}
+ */
+export const TASK_MODES = [
+  'Fishing',
+  'Foraging'
+  // 'Hunting', 'Logging', 'Mining' - future
+];
+

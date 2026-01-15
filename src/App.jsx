@@ -69,6 +69,12 @@ export default function GURPSPartyTool() {
   const [gatheringItems, setGatheringItems] = useState([]); // Forageable items
   const [currentDay, setCurrentDay] = useState(1); // Campaign day counter
 
+  // Day Planner system state
+  const [timeSlots, setTimeSlots] = useState([]); // TimeSlot objects
+  const [taskAssignments, setTaskAssignments] = useState([]); // TaskAssignment objects
+  const [pendingDayLedger, setPendingDayLedger] = useState(null); // Current day's pending results
+  const [currentSlot, setCurrentSlot] = useState(0); // Current slot index (0-2)
+
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
@@ -81,7 +87,8 @@ export default function GURPSPartyTool() {
 
     try {
       const [matsR, foodsR, recipesR, craftsR, typesR, templatesR, matTypesR, workersR, reagentsR, formulasR, batchesR, labsR, kitchensR, cookingSkillsR, effectMapR, alchemySettingsR, craftDesignsR,
-        speciesR, toolsR, tablesR, environmentsR, sessionsR, dailyEventsR, baitR, categoriesR, itemsR, currentDayR] = await Promise.all([
+        speciesR, toolsR, tablesR, environmentsR, sessionsR, dailyEventsR, baitR, categoriesR, itemsR, currentDayR,
+        timeSlotsR, taskAssignmentsR, pendingDayLedgerR, currentSlotR] = await Promise.all([
         window.storage.get('materials', true).catch(() => null),
         window.storage.get('foods', true).catch(() => null),
         window.storage.get('recipes', true).catch(() => null),
@@ -109,7 +116,12 @@ export default function GURPSPartyTool() {
         window.storage.get('gatheringBait', true).catch(() => null),
         window.storage.get('gatheringCategories', true).catch(() => null),
         window.storage.get('gatheringItems', true).catch(() => null),
-        window.storage.get('currentDay', true).catch(() => null)
+        window.storage.get('currentDay', true).catch(() => null),
+        // Day Planner system data
+        window.storage.get('timeSlots', true).catch(() => null),
+        window.storage.get('taskAssignments', true).catch(() => null),
+        window.storage.get('pendingDayLedger', true).catch(() => null),
+        window.storage.get('currentSlot', true).catch(() => null)
       ]);
       if (matsR?.value) setMaterials(JSON.parse(matsR.value));
       if (foodsR?.value) setFoods(JSON.parse(foodsR.value));
@@ -235,6 +247,12 @@ export default function GURPSPartyTool() {
       setGatheringCategories(safeParse(categoriesR?.value, []));
       setGatheringItems(safeParse(itemsR?.value, []));
       setCurrentDay(safeParse(currentDayR?.value, 1));
+
+      // Load Day Planner system data
+      setTimeSlots(safeParse(timeSlotsR?.value, []));
+      setTaskAssignments(safeParse(taskAssignmentsR?.value, []));
+      setPendingDayLedger(safeParse(pendingDayLedgerR?.value, null));
+      setCurrentSlot(safeParse(currentSlotR?.value, 0));
     } catch (error) {
       console.error('Error loading:', error);
     }
@@ -350,6 +368,24 @@ export default function GURPSPartyTool() {
   async function saveCurrentDay(d) {
     setCurrentDay(d);
     debouncedStorageSave('currentDay', d);
+  }
+
+  // Day Planner system save functions
+  async function saveTimeSlots(d) {
+    setTimeSlots(d);
+    debouncedStorageSave('timeSlots', d);
+  }
+  async function saveTaskAssignments(d) {
+    setTaskAssignments(d);
+    debouncedStorageSave('taskAssignments', d);
+  }
+  async function savePendingDayLedger(d) {
+    setPendingDayLedger(d);
+    debouncedStorageSave('pendingDayLedger', d);
+  }
+  async function saveCurrentSlot(d) {
+    setCurrentSlot(d);
+    debouncedStorageSave('currentSlot', d);
   }
 
   // Keyed debounced storage writer - maintains separate timers per key
