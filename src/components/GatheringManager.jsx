@@ -415,6 +415,99 @@ export function GatheringManager({
     setShowAdd(false);
   }
 
+  // Add or update category
+  function addCategory() {
+    if (!newCategoryName.trim()) {
+      alert('Enter category name');
+      return;
+    }
+
+    const entryData = {
+      name: newCategoryName.trim(),
+      yieldFormula: newCategoryYieldFormula || '3d',
+      inventoryOutput: {
+        inventoryKind: newCategoryInventoryKind,
+        typeId: newCategoryTypeId.trim() || newCategoryName.trim().toLowerCase().replace(/\s+/g, '_')
+      },
+      description: newCategoryDescription.trim()
+    };
+
+    if (editingId) {
+      saveCategories(categories.map(c => c.id === editingId ? { ...c, ...entryData } : c));
+    } else {
+      saveCategories([...categories, { id: crypto.randomUUID(), ...entryData }]);
+    }
+    resetCategoryForm();
+  }
+
+  function editCategory(c) {
+    setEditingId(c.id);
+    setNewCategoryName(c.name);
+    setNewCategoryYieldFormula(c.yieldFormula || '3d');
+    setNewCategoryInventoryKind(c.inventoryOutput?.inventoryKind || 'food');
+    setNewCategoryTypeId(c.inventoryOutput?.typeId || '');
+    setNewCategoryDescription(c.description || '');
+    setShowAdd(true);
+  }
+
+  function resetCategoryForm() {
+    setEditingId(null);
+    setNewCategoryName('');
+    setNewCategoryYieldFormula('3d');
+    setNewCategoryInventoryKind('food');
+    setNewCategoryTypeId('');
+    setNewCategoryDescription('');
+    setShowAdd(false);
+  }
+
+  // Add or update item
+  function addItem() {
+    if (!newItemName.trim()) {
+      alert('Enter item name');
+      return;
+    }
+
+    if (!newItemCategoryId) {
+      alert('Select a category for this item');
+      return;
+    }
+
+    const entryData = {
+      name: newItemName.trim(),
+      categoryId: newItemCategoryId,
+      rarity: newItemRarity,
+      description: newItemDescription.trim(),
+      yieldOverrideFormula: newItemYieldOverride.trim() || null
+    };
+
+    if (editingId) {
+      saveItems(items.map(i => i.id === editingId ? { ...i, ...entryData } : i));
+    } else {
+      saveItems([...items, { id: crypto.randomUUID(), ...entryData }]);
+    }
+    resetItemForm();
+  }
+
+  function editItem(i) {
+    setEditingId(i.id);
+    setNewItemName(i.name);
+    setNewItemCategoryId(i.categoryId || '');
+    setNewItemRarity(i.rarity || 'Common');
+    setNewItemDescription(i.description || '');
+    setNewItemYieldOverride(i.yieldOverrideFormula || '');
+    setShowAdd(true);
+  }
+
+  function resetItemForm() {
+    setEditingId(null);
+    setNewItemName('');
+    setNewItemCategoryId('');
+    setNewItemRarity('Common');
+    setNewItemDescription('');
+    setNewItemYieldOverride('');
+    setShowAdd(false);
+  }
+
   // Delete handlers
   function confirmDelete(type, id, name) {
     setDeleteConfirm({ type, id, name });
@@ -438,6 +531,12 @@ export function GatheringManager({
         break;
       case 'bait':
         saveBait(bait.filter(b => b.id !== deleteConfirm.id));
+        break;
+      case 'category':
+        saveCategories(categories.filter(c => c.id !== deleteConfirm.id));
+        break;
+      case 'item':
+        saveItems(items.filter(i => i.id !== deleteConfirm.id));
         break;
     }
     setDeleteConfirm(null);
@@ -672,6 +771,267 @@ export function GatheringManager({
                   )}
                 </div>
               ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Categories View */}
+      {view === 'categories' && (
+        <div>
+          <div className="flex justify-between mb-4">
+            <h3 className="text-lg font-bold">Foraging Categories ({categories.length})</h3>
+            <button onClick={() => setShowAdd(!showAdd)} className="bg-green-600 px-3 py-1 rounded text-sm">
+              <Plus size={16} className="inline" /> Add Category
+            </button>
+          </div>
+
+          {showAdd && (
+            <div className="bg-gray-700 p-4 rounded mb-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Name *</label>
+                  <input
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="e.g., Fruits"
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Yield Formula</label>
+                  <input
+                    value={newCategoryYieldFormula}
+                    onChange={(e) => setNewCategoryYieldFormula(e.target.value)}
+                    placeholder="e.g., 3d+1"
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Inventory Type</label>
+                  <select value={newCategoryInventoryKind} onChange={(e) => setNewCategoryInventoryKind(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                    <option value="food">Food</option>
+                    <option value="material">Material</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Type ID</label>
+                  {newCategoryInventoryKind === 'food' ? (
+                    <select value={newCategoryTypeId} onChange={(e) => setNewCategoryTypeId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                      <option value="">Auto-generate from name</option>
+                      {FORAGING_FOOD_TYPES.map(type => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <select value={newCategoryTypeId} onChange={(e) => setNewCategoryTypeId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                      <option value="">Auto-generate from name</option>
+                      {FORAGING_MATERIAL_TYPES.map(type => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Description</label>
+                <input
+                  value={newCategoryDescription}
+                  onChange={(e) => setNewCategoryDescription(e.target.value)}
+                  placeholder="Brief description of this category..."
+                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button onClick={addCategory} className="flex-1 bg-green-600 px-4 py-2 rounded">
+                  <Save size={16} className="inline mr-1" /> {editingId ? 'Update' : 'Save'}
+                </button>
+                <button onClick={resetCategoryForm} className="bg-red-600 px-4 py-2 rounded">
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {categories.length === 0 ? (
+              <p className="text-gray-500 italic">No categories defined. Add some to enable foraging!</p>
+            ) : (
+              categories.map(c => (
+                <div key={c.id} className="bg-gray-700 rounded">
+                  <div
+                    className="flex items-center gap-4 p-3 cursor-pointer hover:bg-gray-600"
+                    onClick={() => setExpanded(prev => ({ ...prev, [`cat-${c.id}`]: !prev[`cat-${c.id}`] }))}
+                  >
+                    <span>{expanded[`cat-${c.id}`] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}</span>
+                    <span className="flex-1 font-medium">{c.name}</span>
+                    <span className="text-sm text-gray-400">{c.yieldFormula}</span>
+                    <span className="text-xs bg-gray-600 px-2 py-1 rounded">
+                      {c.inventoryOutput?.inventoryKind || 'food'}
+                    </span>
+                  </div>
+                  {expanded[`cat-${c.id}`] && (
+                    <div className="px-3 pb-3 space-y-2 border-t border-gray-600 pt-2">
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div><span className="text-gray-400">Type ID:</span> {c.inventoryOutput?.typeId || 'N/A'}</div>
+                        <div><span className="text-gray-400">Yield:</span> {c.yieldFormula}</div>
+                      </div>
+                      {c.description && (
+                        <div className="text-sm text-gray-400">{c.description}</div>
+                      )}
+                      <div className="flex gap-4">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); editCategory(c); }}
+                          className="text-blue-400 text-sm"
+                        >
+                          <Edit2 size={14} className="inline mr-1" /> Edit
+                        </button>
+                        <button
+                          onClick={() => confirmDelete('category', c.id, c.name)}
+                          className="text-red-400 text-sm"
+                        >
+                          <Trash2 size={14} className="inline mr-1" /> Delete
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Items View */}
+      {view === 'items' && (
+        <div>
+          <div className="flex justify-between mb-4">
+            <h3 className="text-lg font-bold">Forageable Items ({items.length})</h3>
+            <button onClick={() => setShowAdd(!showAdd)} className="bg-green-600 px-3 py-1 rounded text-sm">
+              <Plus size={16} className="inline" /> Add Item
+            </button>
+          </div>
+
+          {showAdd && (
+            <div className="bg-gray-700 p-4 rounded mb-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Name *</label>
+                  <input
+                    value={newItemName}
+                    onChange={(e) => setNewItemName(e.target.value)}
+                    placeholder="e.g., Tamrya Berries"
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Category *</label>
+                  <select value={newItemCategoryId} onChange={(e) => setNewItemCategoryId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                    <option value="">-- Select Category --</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Rarity</label>
+                  <select value={newItemRarity} onChange={(e) => setNewItemRarity(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                    {Object.entries(FORAGING_RARITIES).map(([key, data]) => (
+                      <option key={key} value={key}>{data.label} ({data.penalty})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Yield Override (optional)</label>
+                  <input
+                    value={newItemYieldOverride}
+                    onChange={(e) => setNewItemYieldOverride(e.target.value)}
+                    placeholder="Leave blank to use category yield"
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Description</label>
+                <input
+                  value={newItemDescription}
+                  onChange={(e) => setNewItemDescription(e.target.value)}
+                  placeholder="Brief description of this item..."
+                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button onClick={addItem} className="flex-1 bg-green-600 px-4 py-2 rounded">
+                  <Save size={16} className="inline mr-1" /> {editingId ? 'Update' : 'Save'}
+                </button>
+                <button onClick={resetItemForm} className="bg-red-600 px-4 py-2 rounded">
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {items.length === 0 ? (
+              <p className="text-gray-500 italic">No items defined. Add specific forageable items!</p>
+            ) : (
+              items.map(i => {
+                const category = categories.find(c => c.id === i.categoryId);
+                const rarityData = FORAGING_RARITIES[i.rarity];
+                return (
+                  <div key={i.id} className="bg-gray-700 rounded">
+                    <div
+                      className="flex items-center gap-4 p-3 cursor-pointer hover:bg-gray-600"
+                      onClick={() => setExpanded(prev => ({ ...prev, [`item-${i.id}`]: !prev[`item-${i.id}`] }))}
+                    >
+                      <span>{expanded[`item-${i.id}`] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}</span>
+                      <span className="flex-1 font-medium">{i.name}</span>
+                      <span className="text-sm text-gray-400">{category?.name || 'Unknown'}</span>
+                      <span className="text-xs bg-purple-600 px-2 py-1 rounded">
+                        {rarityData?.label || i.rarity}
+                      </span>
+                    </div>
+                    {expanded[`item-${i.id}`] && (
+                      <div className="px-3 pb-3 space-y-2 border-t border-gray-600 pt-2">
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div><span className="text-gray-400">Category:</span> {category?.name || 'Unknown'}</div>
+                          <div><span className="text-gray-400">Rarity:</span> {rarityData?.label || i.rarity} ({rarityData?.penalty || 0})</div>
+                          {i.yieldOverrideFormula && (
+                            <div><span className="text-gray-400">Yield:</span> {i.yieldOverrideFormula}</div>
+                          )}
+                        </div>
+                        {i.description && (
+                          <div className="text-sm text-gray-400">{i.description}</div>
+                        )}
+                        <div className="flex gap-4">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); editItem(i); }}
+                            className="text-blue-400 text-sm"
+                          >
+                            <Edit2 size={14} className="inline mr-1" /> Edit
+                          </button>
+                          <button
+                            onClick={() => confirmDelete('item', i.id, i.name)}
+                            className="text-red-400 text-sm"
+                          >
+                            <Trash2 size={14} className="inline mr-1" /> Delete
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
             )}
           </div>
         </div>

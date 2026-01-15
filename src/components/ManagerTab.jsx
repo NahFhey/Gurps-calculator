@@ -18,8 +18,8 @@ export function ManagerTab({
   saveAlchemySettings, saveAlchemyReagents, saveAlchemyFormulas, saveAlchemyBatches, saveAlchemyLabs, saveKitchens, saveCookingSkills,
   renameMaterialType,
   // Gathering system props
-  gatheringSpecies, gatheringTools, gatheringTables, gatheringEnvironments, gatheringBait, currentDay,
-  saveGatheringSpecies, saveGatheringTools, saveGatheringTables, saveGatheringEnvironments, saveGatheringBait, saveCurrentDay
+  gatheringSpecies, gatheringTools, gatheringTables, gatheringEnvironments, gatheringBait, gatheringCategories, gatheringItems, currentDay,
+  saveGatheringSpecies, saveGatheringTools, saveGatheringTables, saveGatheringEnvironments, saveGatheringBait, saveGatheringCategories, saveGatheringItems, saveCurrentDay
 }) {
   const [view, setView] = useState('foodTypes');
   const [showAdd, setShowAdd] = useState(false);
@@ -2463,6 +2463,8 @@ export function ManagerTab({
           tables={gatheringTables || []}
           environments={gatheringEnvironments || []}
           bait={gatheringBait || []}
+          categories={gatheringCategories || []}
+          items={gatheringItems || []}
           currentDay={currentDay || 1}
           foodTypes={foodTypes || []}
           saveSpecies={saveGatheringSpecies}
@@ -2470,6 +2472,8 @@ export function ManagerTab({
           saveTables={saveGatheringTables}
           saveEnvironments={saveGatheringEnvironments}
           saveBait={saveGatheringBait}
+          saveCategories={saveGatheringCategories}
+          saveItems={saveGatheringItems}
           saveCurrentDay={saveCurrentDay}
         />
       )}
