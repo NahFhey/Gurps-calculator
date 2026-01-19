@@ -8,8 +8,8 @@
 import {
   calculateEffectiveFishingSkill,
   evaluateFishingRoll,
-  determineCatch,
-  calculateYields,
+  rollOnCatchTable,
+  calculateFishYields,
   calculateEffectiveForagingSkill,
   evaluateForagingRoll,
   determineForageFind,
@@ -79,49 +79,45 @@ export function resolveFishingTask({
     };
   }
 
-  // Determine catch
-  const catchResult = determineCatch({
-    rollResult,
-    catchTable,
-    targetSpecies: null // No targeting for now
-  });
+  // Roll on catch table
+  const tableEntry = rollOnCatchTable(catchTable);
 
   const inventoryDelta = [];
 
-  if (catchResult.type === 'species' && catchResult.speciesId) {
-    const caughtSpecies = species.find(s => s.id === catchResult.speciesId);
+  if (tableEntry.resultType === 'species' && tableEntry.speciesId) {
+    const caughtSpecies = species.find(s => s.id === tableEntry.speciesId);
 
     if (caughtSpecies) {
       // Calculate yields
-      const yields = calculateYields({
-        species: caughtSpecies,
-        baseYieldMultiplier: rollResult.yieldMultiplier,
-        method,
-        helperCount: task.helperWorkerIds?.length || 0
-      });
+      const yields = calculateFishYields(caughtSpecies);
 
-      notes.push(`Caught ${caughtSpecies.name}: ${yields.meat.finalUnits} meat`);
+      // Apply yield multiplier from roll result
+      const meatUnits = Math.floor(yields.meatUnits * (rollResult.yieldMultiplier || 1.0));
+      const secondaryUnits = Math.floor(yields.secondaryUnits * (rollResult.yieldMultiplier || 1.0));
+
+      notes.push(`Caught ${caughtSpecies.name}: ${meatUnits} meat`);
 
       // Add to inventory delta
       inventoryDelta.push({
         type: 'food',
         speciesName: caughtSpecies.name,
         foodType: caughtSpecies.foodType || 'fish',
-        units: yields.meat.finalUnits
+        units: meatUnits
       });
 
       // Add secondary material if any
-      if (yields.secondary && yields.secondary.finalUnits > 0) {
+      if (secondaryUnits > 0 && yields.secondaryType) {
+        const secondaryName = caughtSpecies.secondaryNameOverride || `${caughtSpecies.name} ${yields.secondaryType}`;
         inventoryDelta.push({
           type: 'material',
-          name: yields.secondary.name,
-          materialType: caughtSpecies.secondaryMaterialType,
-          units: yields.secondary.finalUnits
+          name: secondaryName,
+          materialType: yields.secondaryType,
+          units: secondaryUnits
         });
-        notes.push(`Also collected ${yields.secondary.finalUnits} ${yields.secondary.name}`);
+        notes.push(`Also collected ${secondaryUnits} ${secondaryName}`);
       }
     }
-  } else if (catchResult.type === 'nothing') {
+  } else if (tableEntry.resultType === 'nothing') {
     notes.push('Caught nothing');
   }
 
@@ -131,7 +127,7 @@ export function resolveFishingTask({
       roll,
       rollResult,
       effectiveSkill,
-      catchResult
+      tableEntry
     },
     inventoryDelta,
     notes: notes.join('. '),
