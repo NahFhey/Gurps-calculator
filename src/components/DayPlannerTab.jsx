@@ -105,8 +105,8 @@ export function DayPlannerTab({
    * Gets assigned workers for the current slot
    */
   const assignedWorkerIds = useMemo(() => {
-    return getAssignedWorkersForSlot(taskAssignments, currentSlot);
-  }, [taskAssignments, currentSlot]);
+    return getAssignedWorkersForSlot(taskAssignments, currentDay, currentSlot);
+  }, [taskAssignments, currentDay, currentSlot]);
 
   /**
    * Gets available (unassigned) workers for the current slot
@@ -432,6 +432,7 @@ export function DayPlannerTab({
               bait={bait}
               tables={tables}
               taskAssignments={taskAssignments}
+              currentDay={currentDay}
               currentSlot={currentSlot}
               updateTask={updateTask}
               completeTask={completeTask}
@@ -474,6 +475,7 @@ function TaskDetailPanel({
   bait,
   tables,
   taskAssignments,
+  currentDay,
   currentSlot,
   updateTask,
   completeTask
@@ -511,6 +513,7 @@ function TaskDetailPanel({
 
     const validation = validateWorkerAssignment(
       taskAssignments,
+      currentDay,
       currentSlot,
       workerId,
       task.id
@@ -542,6 +545,7 @@ function TaskDetailPanel({
     // Add helper - validate first
     const validation = validateWorkerAssignment(
       taskAssignments,
+      currentDay,
       currentSlot,
       workerId,
       task.id

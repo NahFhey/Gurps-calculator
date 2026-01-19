@@ -107,6 +107,9 @@ export function GatheringManager({
   const [newEnvCatchTableId, setNewEnvCatchTableId] = useState('');
   const [newEnvMildTableId, setNewEnvMildTableId] = useState('');
   const [newEnvRareTableId, setNewEnvRareTableId] = useState('');
+  const [newEnvForagingFindTableId, setNewEnvForagingFindTableId] = useState('');
+  const [newEnvForagingMildTableId, setNewEnvForagingMildTableId] = useState('');
+  const [newEnvForagingRareTableId, setNewEnvForagingRareTableId] = useState('');
   const [newEnvSkillMod, setNewEnvSkillMod] = useState('0');
 
   // Bait form state
@@ -315,22 +318,39 @@ export function GatheringManager({
       return;
     }
 
-    // Validate at least one table is selected
-    if (!newEnvCatchTableId && !newEnvMildTableId && !newEnvRareTableId) {
-      alert('Environment must have at least one table selected (Catch, Mild Event, or Rare Event)');
+    // Build defaultsByMode object
+    const defaultsByMode = {};
+
+    if (newEnvModes.includes('Fishing')) {
+      defaultsByMode.Fishing = {
+        randomCatchTableId: newEnvCatchTableId || null,
+        mildEventTableId: newEnvMildTableId || null,
+        rareEventTableId: newEnvRareTableId || null
+      };
+    }
+
+    if (newEnvModes.includes('Foraging')) {
+      defaultsByMode.Foraging = {
+        randomCatchTableId: newEnvForagingFindTableId || null,
+        mildEventTableId: newEnvForagingMildTableId || null,
+        rareEventTableId: newEnvForagingRareTableId || null
+      };
+    }
+
+    // Validate at least one table is selected across all modes
+    const hasTables = Object.values(defaultsByMode).some(mode =>
+      mode.randomCatchTableId || mode.mildEventTableId || mode.rareEventTableId
+    );
+
+    if (!hasTables) {
+      alert('Environment must have at least one table selected');
       return;
     }
 
     const entryData = {
       name: newEnvName.trim(),
       supportedModes: newEnvModes,
-      defaultsByMode: {
-        Fishing: {
-          randomCatchTableId: newEnvCatchTableId || null,
-          mildEventTableId: newEnvMildTableId || null,
-          rareEventTableId: newEnvRareTableId || null
-        }
-      },
+      defaultsByMode,
       skillMod: parseInt(newEnvSkillMod) || 0
     };
 
@@ -346,10 +366,17 @@ export function GatheringManager({
     setEditingId(e.id);
     setNewEnvName(e.name);
     setNewEnvModes(e.supportedModes || ['Fishing']);
+
     const fishingDefaults = e.defaultsByMode?.Fishing || {};
     setNewEnvCatchTableId(fishingDefaults.randomCatchTableId || '');
     setNewEnvMildTableId(fishingDefaults.mildEventTableId || '');
     setNewEnvRareTableId(fishingDefaults.rareEventTableId || '');
+
+    const foragingDefaults = e.defaultsByMode?.Foraging || {};
+    setNewEnvForagingFindTableId(foragingDefaults.randomCatchTableId || '');
+    setNewEnvForagingMildTableId(foragingDefaults.mildEventTableId || '');
+    setNewEnvForagingRareTableId(foragingDefaults.rareEventTableId || '');
+
     setNewEnvSkillMod(String(e.skillMod || 0));
     setShowAdd(true);
   }
@@ -361,6 +388,9 @@ export function GatheringManager({
     setNewEnvCatchTableId('');
     setNewEnvMildTableId('');
     setNewEnvRareTableId('');
+    setNewEnvForagingFindTableId('');
+    setNewEnvForagingMildTableId('');
+    setNewEnvForagingRareTableId('');
     setNewEnvSkillMod('0');
     setShowAdd(false);
   }
@@ -1435,35 +1465,75 @@ export function GatheringManager({
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Catch Table</label>
-                  <select value={newEnvCatchTableId} onChange={(e) => setNewEnvCatchTableId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
-                    <option value="">-- None --</option>
-                    {tables.filter(t => t.tableType.includes('RandomCatch')).map(t => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Mild Event Table</label>
-                  <select value={newEnvMildTableId} onChange={(e) => setNewEnvMildTableId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
-                    <option value="">-- None --</option>
-                    {tables.filter(t => t.tableType.includes('EventMild')).map(t => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Rare Event Table</label>
-                  <select value={newEnvRareTableId} onChange={(e) => setNewEnvRareTableId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
-                    <option value="">-- None --</option>
-                    {tables.filter(t => t.tableType.includes('EventRare')).map(t => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              {newEnvModes.includes('Fishing') && (
+                <>
+                  <div className="text-sm font-medium text-gray-300 mt-4 mb-2">Fishing Tables</div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Catch Table</label>
+                      <select value={newEnvCatchTableId} onChange={(e) => setNewEnvCatchTableId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                        <option value="">-- None --</option>
+                        {tables.filter(t => t.tableType.includes('RandomCatch')).map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Mild Event Table</label>
+                      <select value={newEnvMildTableId} onChange={(e) => setNewEnvMildTableId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                        <option value="">-- None --</option>
+                        {tables.filter(t => t.tableType.includes('EventMild')).map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Rare Event Table</label>
+                      <select value={newEnvRareTableId} onChange={(e) => setNewEnvRareTableId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                        <option value="">-- None --</option>
+                        {tables.filter(t => t.tableType.includes('EventRare')).map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {newEnvModes.includes('Foraging') && (
+                <>
+                  <div className="text-sm font-medium text-gray-300 mt-4 mb-2">Foraging Tables</div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Find Table</label>
+                      <select value={newEnvForagingFindTableId} onChange={(e) => setNewEnvForagingFindTableId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                        <option value="">-- None --</option>
+                        {tables.filter(t => t.tableType.includes('ForagingRandomFind')).map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Mild Event Table</label>
+                      <select value={newEnvForagingMildTableId} onChange={(e) => setNewEnvForagingMildTableId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                        <option value="">-- None --</option>
+                        {tables.filter(t => t.tableType.includes('ForagingEventMild')).map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Rare Event Table</label>
+                      <select value={newEnvForagingRareTableId} onChange={(e) => setNewEnvForagingRareTableId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                        <option value="">-- None --</option>
+                        {tables.filter(t => t.tableType.includes('ForagingEventRare')).map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
 
               <div className="w-1/3">
                 <label className="block text-xs text-gray-400 mb-1">Skill Modifier</label>

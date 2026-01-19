@@ -70,14 +70,15 @@ export function createPendingDayLedger(dayKey) {
 /**
  * Gets all assigned worker IDs for a given slot
  * @param {Object[]} tasks - Array of TaskAssignment objects
+ * @param {number} dayKey - The day number
  * @param {number} slotIndex - The slot index
  * @returns {string[]} Array of worker IDs assigned to tasks in this slot
  */
-export function getAssignedWorkersForSlot(tasks, slotIndex) {
+export function getAssignedWorkersForSlot(tasks, dayKey, slotIndex) {
   const assignedWorkers = new Set();
 
   tasks
-    .filter(task => task.slotIndex === slotIndex)
+    .filter(task => task.dayKey === dayKey && task.slotIndex === slotIndex)
     .forEach(task => {
       task.assignedWorkerIds.forEach(workerId => assignedWorkers.add(workerId));
     });
@@ -88,27 +89,29 @@ export function getAssignedWorkersForSlot(tasks, slotIndex) {
 /**
  * Checks if a worker is already assigned to a task in the given slot
  * @param {Object[]} tasks - Array of TaskAssignment objects
+ * @param {number} dayKey - The day number
  * @param {number} slotIndex - The slot index
  * @param {string} workerId - The worker ID to check
  * @returns {boolean} True if worker is already assigned
  */
-export function isWorkerAssignedInSlot(tasks, slotIndex, workerId) {
+export function isWorkerAssignedInSlot(tasks, dayKey, slotIndex, workerId) {
   return tasks
-    .filter(task => task.slotIndex === slotIndex)
+    .filter(task => task.dayKey === dayKey && task.slotIndex === slotIndex)
     .some(task => task.assignedWorkerIds.includes(workerId));
 }
 
 /**
  * Validates that a worker can be assigned to a task
  * @param {Object[]} tasks - Array of TaskAssignment objects
+ * @param {number} dayKey - The day number
  * @param {number} slotIndex - The slot index
  * @param {string} workerId - The worker ID to validate
  * @param {string} [excludeTaskId] - Task ID to exclude from validation (for editing)
  * @returns {Object} { valid: boolean, error: string }
  */
-export function validateWorkerAssignment(tasks, slotIndex, workerId, excludeTaskId = null) {
+export function validateWorkerAssignment(tasks, dayKey, slotIndex, workerId, excludeTaskId = null) {
   const relevantTasks = tasks
-    .filter(task => task.slotIndex === slotIndex && task.id !== excludeTaskId);
+    .filter(task => task.dayKey === dayKey && task.slotIndex === slotIndex && task.id !== excludeTaskId);
 
   const isAssigned = relevantTasks.some(task =>
     task.assignedWorkerIds.includes(workerId)
