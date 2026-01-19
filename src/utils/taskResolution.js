@@ -14,7 +14,8 @@ import {
   evaluateForagingRoll,
   determineForageFind,
   calculateForageYields,
-  getToolYieldBonus
+  getToolYieldBonus,
+  determineDynamicEventType
 } from './gathering';
 
 /**
@@ -80,7 +81,31 @@ export function resolveFishingTask({
   }
 
   // Roll on catch table
+  notes.push(`Rolling on table: ${catchTable.name}`);
   const tableEntry = rollOnCatchTable(catchTable);
+  notes.push(`Table roll: ${tableEntry.modifiedRoll || 'unknown'} → ${tableEntry.resultType}`);
+
+  // Check for dynamic events based on the roll
+  const eventType = determineDynamicEventType(roll);
+  let eventResult = null;
+
+  if (eventType !== 'none') {
+    const eventTableId = eventType === 'rare'
+      ? fishingDefaults.rareEventTableId
+      : fishingDefaults.mildEventTableId;
+
+    const eventTable = tables.find(t => t.id === eventTableId);
+
+    if (eventTable) {
+      eventResult = rollOnCatchTable(eventTable);
+      notes.push(`${eventType === 'rare' ? 'Rare' : 'Mild'} event: ${eventResult.text || 'Something happened'}`);
+      if (eventResult.text) {
+        warnings.push(eventResult.text);
+      }
+    } else {
+      notes.push(`${eventType === 'rare' ? 'Rare' : 'Mild'} event triggered but no table configured`);
+    }
+  }
 
   const inventoryDelta = [];
 
@@ -127,7 +152,9 @@ export function resolveFishingTask({
       roll,
       rollResult,
       effectiveSkill,
-      tableEntry
+      tableEntry,
+      eventType,
+      eventResult
     },
     inventoryDelta,
     notes: notes.join('. '),
@@ -209,6 +236,30 @@ export function resolveForagingTask({
     };
   }
 
+  notes.push(`Rolling on find table: ${findTable.name}`);
+
+  // Check for dynamic events based on the roll
+  const eventType = determineDynamicEventType(roll);
+  let eventResult = null;
+
+  if (eventType !== 'none') {
+    const eventTableId = eventType === 'rare'
+      ? foragingDefaults.rareEventTableId
+      : foragingDefaults.mildEventTableId;
+
+    const eventTable = tables.find(t => t.id === eventTableId);
+
+    if (eventTable) {
+      eventResult = rollOnCatchTable(eventTable);
+      notes.push(`${eventType === 'rare' ? 'Rare' : 'Mild'} event: ${eventResult.text || 'Something happened'}`);
+      if (eventResult.text) {
+        warnings.push(eventResult.text);
+      }
+    } else {
+      notes.push(`${eventType === 'rare' ? 'Rare' : 'Mild'} event triggered but no table configured`);
+    }
+  }
+
   // Determine find
   const targetCategory = task.intent?.targetCategoryId
     ? categories.find(c => c.id === task.intent.targetCategoryId)
@@ -223,6 +274,8 @@ export function resolveForagingTask({
     targetCategory,
     targetItem
   });
+
+  notes.push(`Find result: ${findResult.type} (source: ${findResult.source || 'unknown'})`);
 
   const inventoryDelta = [];
 
@@ -276,7 +329,9 @@ export function resolveForagingTask({
       roll,
       rollResult,
       effectiveSkill,
-      findResult
+      findResult,
+      eventType,
+      eventResult
     },
     inventoryDelta,
     notes: notes.join('. '),

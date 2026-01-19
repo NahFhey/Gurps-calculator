@@ -449,12 +449,71 @@ export function DayPlannerTab({
       {pendingDayLedger && pendingDayLedger.taskSummaries.length > 0 && (
         <div className="bg-gray-800 p-4 rounded-lg">
           <h3 className="text-lg font-bold mb-2">Pending Day Summary</h3>
-          <div className="text-sm text-gray-400">
+          <div className="text-sm text-gray-400 mb-3">
             {pendingDayLedger.taskSummaries.length} task(s) completed
           </div>
-          <div className="text-sm text-gray-400">
-            {pendingDayLedger.pendingInventoryDelta.length} item(s) pending commit
-          </div>
+
+          {pendingDayLedger.pendingInventoryDelta.length > 0 ? (
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-gray-300">Pending Inventory:</div>
+
+              {/* Food items */}
+              {(() => {
+                const foodItems = Object.values(
+                  pendingDayLedger.pendingInventoryDelta
+                    .filter(delta => delta.type === 'food')
+                    .reduce((acc, delta) => {
+                      const key = `${delta.speciesName}-${delta.foodType}`;
+                      if (!acc[key]) {
+                        acc[key] = { ...delta, units: 0 };
+                      }
+                      acc[key].units += delta.units;
+                      return acc;
+                    }, {})
+                );
+
+                return foodItems.length > 0 && (
+                  <div className="bg-gray-700 p-2 rounded text-sm">
+                    <div className="text-gray-400 text-xs mb-1">Food:</div>
+                    {foodItems.map((item, idx) => (
+                      <div key={idx} className="text-gray-200">
+                        • {item.speciesName}: {item.units} units ({item.foodType})
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* Material items */}
+              {(() => {
+                const materialItems = Object.values(
+                  pendingDayLedger.pendingInventoryDelta
+                    .filter(delta => delta.type === 'material')
+                    .reduce((acc, delta) => {
+                      const key = `${delta.name}-${delta.materialType}`;
+                      if (!acc[key]) {
+                        acc[key] = { ...delta, units: 0 };
+                      }
+                      acc[key].units += delta.units;
+                      return acc;
+                    }, {})
+                );
+
+                return materialItems.length > 0 && (
+                  <div className="bg-gray-700 p-2 rounded text-sm">
+                    <div className="text-gray-400 text-xs mb-1">Materials:</div>
+                    {materialItems.map((item, idx) => (
+                      <div key={idx} className="text-gray-200">
+                        • {item.name}: {item.units} units ({item.materialType})
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          ) : (
+            <div className="text-sm text-gray-500 italic">No items collected yet</div>
+          )}
         </div>
       )}
     </div>
