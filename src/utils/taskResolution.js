@@ -330,15 +330,24 @@ export function resolveForagingTask({
       const selectedToolObjects = tools;
       const yieldDiceBonus = getToolYieldBonus(selectedToolObjects, item.typeId);
 
+      // Ensure item has a valid yield formula
+      const itemWithFormula = {
+        ...item,
+        yieldFormula: item.yieldFormula || '1d'
+      };
+
       const yields = calculateForageYields({
         category: null,
-        item: { yieldOverrideFormula: item.yieldFormula },
+        item: itemWithFormula,
         yieldMultiplier: rollResult.yieldMultiplier || 1.0,
         yieldDiceBonus,
         yieldDicePenalty: 0
       });
 
-      notes.push(`Found ${item.name}: ${yields.units} units`);
+      // Ensure minimum 1 unit on success (when finding an actual item)
+      const finalUnits = rollResult.success && yields.units === 0 ? 1 : yields.units;
+
+      notes.push(`Found ${item.name}: ${finalUnits} units`);
 
       // Use item's direct inventory properties
       const inventoryKind = item.inventoryKind || 'food';
@@ -349,14 +358,14 @@ export function resolveForagingTask({
           type: 'food',
           speciesName: item.name,
           foodType: typeId,
-          units: yields.units
+          units: finalUnits
         });
       } else {
         inventoryDelta.push({
           type: 'material',
           name: item.name,
           materialType: typeId,
-          units: yields.units
+          units: finalUnits
         });
       }
     }

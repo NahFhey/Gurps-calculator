@@ -710,10 +710,22 @@ export function calculateForageYields({
   // Use item's yield formula (yieldFormula or yieldOverrideFormula), otherwise category's (deprecated)
   let baseFormula = item?.yieldOverrideFormula || item?.yieldFormula || category?.yieldFormula || '1d';
 
+  // Ensure formula is not empty or whitespace
+  if (typeof baseFormula === 'string') {
+    baseFormula = baseFormula.trim();
+  }
+  if (!baseFormula) {
+    baseFormula = '1d';
+  }
+
   // Parse and modify formula with bonuses/penalties
   const parsed = parseDiceFormula(baseFormula);
-  const modifiedCount = Math.max(1, parsed.count + yieldDiceBonus - yieldDicePenalty);
-  const modifiedFormula = `${modifiedCount}d${parsed.sides !== 6 ? parsed.sides : ''}${parsed.modifier >= 0 ? '+' : ''}${parsed.modifier || ''}`;
+
+  // Validate parsed values - ensure we have valid dice
+  const validCount = Math.max(1, parsed.count + yieldDiceBonus - yieldDicePenalty);
+  const validSides = parsed.sides > 0 ? parsed.sides : 6; // Default to d6 if invalid
+
+  const modifiedFormula = `${validCount}d${validSides !== 6 ? validSides : ''}${parsed.modifier >= 0 ? '+' : ''}${parsed.modifier || ''}`;
 
   // Roll the dice
   const result = evaluateDiceFormula(modifiedFormula);
