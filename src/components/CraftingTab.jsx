@@ -696,6 +696,17 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                         <div>W: {finalWeight} lbs</div>
                         <div>HP: {finalHP} | HT: {avgHT + q.htBonus}</div>
                       </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm(`Delete completed project "${c.name || c.template}"?`)) {
+                            saveCrafts(crafts.filter(x => x.id !== c.id));
+                          }
+                        }}
+                        className="bg-red-600 px-3 py-1 rounded hover:bg-red-700 text-sm"
+                      >
+                        Delete
+                      </button>
                       <span className="text-gray-400">{expandedCrafts[c.id] ? '▼' : '▶'}</span>
                     </div>
 
