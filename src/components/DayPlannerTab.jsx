@@ -876,30 +876,21 @@ function TaskDetailPanel({
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Target (optional)</label>
                 <select
-                  value={task.intent?.targetCategoryId || task.intent?.targetItemId || ''}
+                  value={task.intent?.targetItemId || ''}
                   onChange={(e) => {
                     const value = e.target.value;
                     if (!value) {
-                      updateField('intent', { ...task.intent, targetCategoryId: null, targetItemId: null });
-                    } else if (value.startsWith('cat-')) {
-                      updateField('intent', { ...task.intent, targetCategoryId: value.replace('cat-', ''), targetItemId: null });
-                    } else if (value.startsWith('item-')) {
-                      updateField('intent', { ...task.intent, targetCategoryId: null, targetItemId: value.replace('item-', '') });
+                      updateField('intent', { ...task.intent, targetItemId: null });
+                    } else {
+                      updateField('intent', { ...task.intent, targetItemId: value });
                     }
                   }}
                   className="w-full bg-gray-600 px-3 py-2 rounded"
                 >
                   <option value="">Random foraging</option>
-                  <optgroup label="Categories">
-                    {categories.map(c => (
-                      <option key={c.id} value={`cat-${c.id}`}>{c.name} (any)</option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Specific Items">
-                    {items.map(i => (
-                      <option key={i.id} value={`item-${i.id}`}>{i.name}</option>
-                    ))}
-                  </optgroup>
+                  {items.map(i => (
+                    <option key={i.id} value={i.id}>{i.name}</option>
+                  ))}
                 </select>
               </div>
 

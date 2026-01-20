@@ -128,10 +128,11 @@ export function GatheringManager({
 
   // Item form state
   const [newItemName, setNewItemName] = useState('');
-  const [newItemCategoryId, setNewItemCategoryId] = useState('');
+  const [newItemInventoryKind, setNewItemInventoryKind] = useState('food');
+  const [newItemTypeId, setNewItemTypeId] = useState('');
+  const [newItemYieldFormula, setNewItemYieldFormula] = useState('3d');
   const [newItemRarity, setNewItemRarity] = useState('Common');
   const [newItemDescription, setNewItemDescription] = useState('');
-  const [newItemYieldOverride, setNewItemYieldOverride] = useState('');
 
   // Add or update species
   function addSpecies() {
@@ -497,17 +498,13 @@ export function GatheringManager({
       return;
     }
 
-    if (!newItemCategoryId) {
-      alert('Select a category for this item');
-      return;
-    }
-
     const entryData = {
       name: newItemName.trim(),
-      categoryId: newItemCategoryId,
+      inventoryKind: newItemInventoryKind,
+      typeId: newItemTypeId.trim() || newItemName.trim().toLowerCase().replace(/\s+/g, '_'),
+      yieldFormula: newItemYieldFormula || '3d',
       rarity: newItemRarity,
-      description: newItemDescription.trim(),
-      yieldOverrideFormula: newItemYieldOverride.trim() || null
+      description: newItemDescription.trim()
     };
 
     if (editingId) {
@@ -521,20 +518,22 @@ export function GatheringManager({
   function editItem(i) {
     setEditingId(i.id);
     setNewItemName(i.name);
-    setNewItemCategoryId(i.categoryId || '');
+    setNewItemInventoryKind(i.inventoryKind || 'food');
+    setNewItemTypeId(i.typeId || '');
+    setNewItemYieldFormula(i.yieldFormula || '3d');
     setNewItemRarity(i.rarity || 'Common');
     setNewItemDescription(i.description || '');
-    setNewItemYieldOverride(i.yieldOverrideFormula || '');
     setShowAdd(true);
   }
 
   function resetItemForm() {
     setEditingId(null);
     setNewItemName('');
-    setNewItemCategoryId('');
+    setNewItemInventoryKind('food');
+    setNewItemTypeId('');
+    setNewItemYieldFormula('3d');
     setNewItemRarity('Common');
     setNewItemDescription('');
-    setNewItemYieldOverride('');
     setShowAdd(false);
   }
 
@@ -960,13 +959,41 @@ export function GatheringManager({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Category *</label>
-                  <select value={newItemCategoryId} onChange={(e) => setNewItemCategoryId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
-                    <option value="">-- Select Category --</option>
-                    {categories.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
+                  <label className="block text-xs text-gray-400 mb-1">Yield Formula</label>
+                  <input
+                    value={newItemYieldFormula}
+                    onChange={(e) => setNewItemYieldFormula(e.target.value)}
+                    placeholder="e.g., 3d+1"
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Inventory Type</label>
+                  <select value={newItemInventoryKind} onChange={(e) => setNewItemInventoryKind(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                    <option value="food">Food</option>
+                    <option value="material">Material</option>
                   </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Type ID</label>
+                  {newItemInventoryKind === 'food' ? (
+                    <select value={newItemTypeId} onChange={(e) => setNewItemTypeId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                      <option value="">Auto-generate from name</option>
+                      {FORAGING_FOOD_TYPES.map(type => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <select value={newItemTypeId} onChange={(e) => setNewItemTypeId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                      <option value="">Auto-generate from name</option>
+                      {FORAGING_MATERIAL_TYPES.map(type => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 
@@ -980,24 +1007,14 @@ export function GatheringManager({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Yield Override (optional)</label>
+                  <label className="block text-xs text-gray-400 mb-1">Description</label>
                   <input
-                    value={newItemYieldOverride}
-                    onChange={(e) => setNewItemYieldOverride(e.target.value)}
-                    placeholder="Leave blank to use category yield"
+                    value={newItemDescription}
+                    onChange={(e) => setNewItemDescription(e.target.value)}
+                    placeholder="Brief description..."
                     className="w-full bg-gray-600 px-3 py-2 rounded"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Description</label>
-                <input
-                  value={newItemDescription}
-                  onChange={(e) => setNewItemDescription(e.target.value)}
-                  placeholder="Brief description of this item..."
-                  className="w-full bg-gray-600 px-3 py-2 rounded"
-                />
               </div>
 
               <div className="flex gap-2 pt-2">
@@ -1016,7 +1033,6 @@ export function GatheringManager({
               <p className="text-gray-500 italic">No items defined. Add specific forageable items!</p>
             ) : (
               items.map(i => {
-                const category = categories.find(c => c.id === i.categoryId);
                 const rarityData = FORAGING_RARITIES[i.rarity];
                 return (
                   <div key={i.id} className="bg-gray-700 rounded">
@@ -1026,7 +1042,10 @@ export function GatheringManager({
                     >
                       <span>{expanded[`item-${i.id}`] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}</span>
                       <span className="flex-1 font-medium">{i.name}</span>
-                      <span className="text-sm text-gray-400">{category?.name || 'Unknown'}</span>
+                      <span className="text-sm text-gray-400">{i.yieldFormula}</span>
+                      <span className="text-xs bg-gray-600 px-2 py-1 rounded">
+                        {i.inventoryKind || 'food'}
+                      </span>
                       <span className="text-xs bg-purple-600 px-2 py-1 rounded">
                         {rarityData?.label || i.rarity}
                       </span>
@@ -1034,11 +1053,10 @@ export function GatheringManager({
                     {expanded[`item-${i.id}`] && (
                       <div className="px-3 pb-3 space-y-2 border-t border-gray-600 pt-2">
                         <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div><span className="text-gray-400">Category:</span> {category?.name || 'Unknown'}</div>
+                          <div><span className="text-gray-400">Type ID:</span> {i.typeId || 'N/A'}</div>
+                          <div><span className="text-gray-400">Yield:</span> {i.yieldFormula}</div>
+                          <div><span className="text-gray-400">Inventory:</span> {i.inventoryKind || 'food'}</div>
                           <div><span className="text-gray-400">Rarity:</span> {rarityData?.label || i.rarity} ({rarityData?.penalty || 0})</div>
-                          {i.yieldOverrideFormula && (
-                            <div><span className="text-gray-400">Yield:</span> {i.yieldOverrideFormula}</div>
-                          )}
                         </div>
                         {i.description && (
                           <div className="text-sm text-gray-400">{i.description}</div>

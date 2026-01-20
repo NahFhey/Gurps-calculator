@@ -645,9 +645,9 @@ export function evaluateForagingRoll(roll, effectiveSkill, isTargeted = false) {
  * @param {Object} params - Find determination parameters
  * @param {Object} params.rollResult - Result from evaluateForagingRoll
  * @param {Object} params.findTable - The biome find table
- * @param {Object} params.targetCategory - Target category if targeted search
+ * @param {Object} params.targetCategory - Target category if targeted search (deprecated)
  * @param {Object} params.targetItem - Target item if targeted search
- * @returns {Object} Find result with category/item information
+ * @returns {Object} Find result with item information
  */
 export function determineForageFind({
   rollResult,
@@ -655,13 +655,11 @@ export function determineForageFind({
   targetCategory = null,
   targetItem = null
 }) {
-  // If targeted search and successful, return target
-  if ((targetCategory || targetItem) && rollResult.success && !rollResult.randomFallback) {
+  // If targeted search and successful, return target item
+  if (targetItem && rollResult.success && !rollResult.randomFallback) {
     return {
-      type: targetItem ? 'item' : 'category',
-      categoryId: targetItem ? targetItem.categoryId : targetCategory?.id,
-      itemId: targetItem?.id,
-      category: targetCategory,
+      type: 'item',
+      itemId: targetItem.id,
       item: targetItem,
       source: 'targeted'
     };
@@ -680,7 +678,6 @@ export function determineForageFind({
 
   return {
     type: tableEntry.resultType,
-    categoryId: tableEntry.categoryId || null,
     itemId: tableEntry.itemId || null,
     tableEntry,
     source: 'random',
@@ -692,8 +689,8 @@ export function determineForageFind({
  * Calculates foraging yields with modifiers
  *
  * @param {Object} params - Yield calculation parameters
- * @param {Object} params.category - The foraging category
- * @param {Object} params.item - The forageable item (overrides category if present)
+ * @param {Object} params.category - The foraging category (deprecated, kept for backwards compatibility)
+ * @param {Object} params.item - The forageable item with yieldFormula or yieldOverrideFormula
  * @param {number} params.yieldMultiplier - Multiplier from roll outcome (0.5, 1.0, 1.5)
  * @param {number} params.yieldDiceBonus - Bonus dice from tools/conditions (+1d, etc.)
  * @param {number} params.yieldDicePenalty - Penalty dice from conditions (-1d, etc.)
@@ -710,8 +707,8 @@ export function calculateForageYields({
     return { units: 0, formula: null, rolls: [] };
   }
 
-  // Use item's yield formula if present, otherwise category's
-  let baseFormula = item?.yieldOverrideFormula || category?.yieldFormula || '1d';
+  // Use item's yield formula (yieldFormula or yieldOverrideFormula), otherwise category's (deprecated)
+  let baseFormula = item?.yieldOverrideFormula || item?.yieldFormula || category?.yieldFormula || '1d';
 
   // Parse and modify formula with bonuses/penalties
   const parsed = parseDiceFormula(baseFormula);
@@ -736,20 +733,21 @@ export function calculateForageYields({
 }
 
 /**
- * Gets tool yield bonuses for a specific category
+ * Gets tool yield bonuses for a specific type
  *
  * @param {Array<Object>} tools - Selected tools
- * @param {string} categoryId - Category to check for bonuses
- * @returns {number} Total yield dice bonus for this category
+ * @param {string} typeId - Type ID to check for bonuses (or categoryId for backwards compatibility)
+ * @returns {number} Total yield dice bonus for this type
  */
-export function getToolYieldBonus(tools, categoryId) {
-  if (!tools || !Array.isArray(tools) || !categoryId) return 0;
+export function getToolYieldBonus(tools, typeId) {
+  if (!tools || !Array.isArray(tools) || !typeId) return 0;
 
   return tools.reduce((total, tool) => {
     if (!tool.bonuses) return total;
 
+    // Check for both typeId and categoryId for backwards compatibility
     const yieldBonus = tool.bonuses.find(
-      b => b.type === 'yield_bonus' && b.categoryId === categoryId
+      b => b.type === 'yield_bonus' && (b.typeId === typeId || b.categoryId === typeId)
     );
 
     return total + (yieldBonus?.dice || 0);

@@ -293,9 +293,6 @@ export function resolveForagingTask({
   }
 
   // Determine find
-  const targetCategory = task.intent?.targetCategoryId
-    ? categories.find(c => c.id === task.intent.targetCategoryId)
-    : null;
   const targetItem = task.intent?.targetItemId
     ? items.find(i => i.id === task.intent.targetItemId)
     : null;
@@ -307,7 +304,6 @@ export function resolveForagingTask({
     notes.push(`Find table roll: ${manualRolls.tableRoll} → ${tableEntry.resultType}`);
     findResult = {
       type: tableEntry.resultType,
-      categoryId: tableEntry.categoryId || null,
       itemId: tableEntry.itemId || null,
       tableEntry,
       source: 'random',
@@ -317,7 +313,7 @@ export function resolveForagingTask({
     findResult = determineForageFind({
       rollResult,
       findTable,
-      targetCategory,
+      targetCategory: null,
       targetItem
     });
   }
@@ -326,41 +322,39 @@ export function resolveForagingTask({
 
   const inventoryDelta = [];
 
-  if (findResult.type === 'category' || findResult.type === 'item') {
-    const category = findResult.category || categories.find(c => c.id === findResult.categoryId);
+  if (findResult.type === 'item') {
     const item = findResult.item || (findResult.itemId ? items.find(i => i.id === findResult.itemId) : null);
 
-    if (category) {
-      // Calculate yields
+    if (item) {
+      // Calculate yields using item's yield formula
       const selectedToolObjects = tools;
-      const yieldDiceBonus = getToolYieldBonus(selectedToolObjects, category.id);
+      const yieldDiceBonus = getToolYieldBonus(selectedToolObjects, item.typeId);
 
       const yields = calculateForageYields({
-        category,
-        item,
+        category: null,
+        item: { yieldOverrideFormula: item.yieldFormula },
         yieldMultiplier: rollResult.yieldMultiplier || 1.0,
         yieldDiceBonus,
         yieldDicePenalty: 0
       });
 
-      const itemName = item?.name || category.name;
-      notes.push(`Found ${itemName}: ${yields.units} units`);
+      notes.push(`Found ${item.name}: ${yields.units} units`);
 
-      // Determine inventory kind and type
-      const inventoryKind = category.inventoryOutput?.inventoryKind || 'food';
-      const typeId = category.inventoryOutput?.typeId || category.name.toLowerCase().replace(/\s+/g, '_');
+      // Use item's direct inventory properties
+      const inventoryKind = item.inventoryKind || 'food';
+      const typeId = item.typeId || item.name.toLowerCase().replace(/\s+/g, '_');
 
       if (inventoryKind === 'food') {
         inventoryDelta.push({
           type: 'food',
-          speciesName: itemName,
+          speciesName: item.name,
           foodType: typeId,
           units: yields.units
         });
       } else {
         inventoryDelta.push({
           type: 'material',
-          name: itemName,
+          name: item.name,
           materialType: typeId,
           units: yields.units
         });
