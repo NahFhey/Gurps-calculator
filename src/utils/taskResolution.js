@@ -43,7 +43,7 @@ function rollOnTableWithManualValue(table, manualRoll = null) {
  * @param {Object[]} tools - Array of selected tool objects
  * @param {Object[]} species - Array of all species
  * @param {Object[]} tables - Array of all tables
- * @param {Object} manualRolls - Manual roll values { skillRoll, eventRoll, tableRoll }
+ * @param {Object} manualRolls - Manual roll values { skillRoll, eventCheckRoll, eventTableRoll, tableRoll }
  * @returns {Object} { payload, inventoryDelta, notes, warnings }
  */
 export function resolveFishingTask({
@@ -105,9 +105,13 @@ export function resolveFishingTask({
   const tableEntry = rollOnTableWithManualValue(catchTable, manualRolls?.tableRoll);
   notes.push(`Table roll: ${tableEntry.modifiedRoll || 'unknown'} → ${tableEntry.resultType}`);
 
-  // Check for dynamic events based on the roll
-  const eventType = determineDynamicEventType(roll);
+  // Check for dynamic events based on separate event check roll
+  const eventCheckRoll = manualRolls?.eventCheckRoll ||
+    (Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6) + 3);
+  const eventType = determineDynamicEventType(eventCheckRoll);
   let eventResult = null;
+
+  notes.push(`Event check roll: ${eventCheckRoll} → ${eventType}`);
 
   if (eventType !== 'none') {
     const eventTableId = eventType === 'rare'
@@ -117,7 +121,7 @@ export function resolveFishingTask({
     const eventTable = tables.find(t => t.id === eventTableId);
 
     if (eventTable) {
-      eventResult = rollOnTableWithManualValue(eventTable, manualRolls?.eventRoll);
+      eventResult = rollOnTableWithManualValue(eventTable, manualRolls?.eventTableRoll);
       notes.push(`${eventType === 'rare' ? 'Rare' : 'Mild'} event: ${eventResult.text || 'Something happened'}`);
       if (eventResult.text) {
         warnings.push(eventResult.text);
@@ -173,6 +177,7 @@ export function resolveFishingTask({
       rollResult,
       effectiveSkill,
       tableEntry,
+      eventCheckRoll,
       eventType,
       eventResult
     },
@@ -191,7 +196,7 @@ export function resolveFishingTask({
  * @param {Object[]} categories - Array of all foraging categories
  * @param {Object[]} items - Array of all forageable items
  * @param {Object[]} tables - Array of all tables
- * @param {Object} manualRolls - Manual roll values { skillRoll, eventRoll, tableRoll }
+ * @param {Object} manualRolls - Manual roll values { skillRoll, eventCheckRoll, eventTableRoll, tableRoll }
  * @returns {Object} { payload, inventoryDelta, notes, warnings }
  */
 export function resolveForagingTask({
@@ -261,9 +266,13 @@ export function resolveForagingTask({
 
   notes.push(`Rolling on find table: ${findTable.name}`);
 
-  // Check for dynamic events based on the roll
-  const eventType = determineDynamicEventType(roll);
+  // Check for dynamic events based on separate event check roll
+  const eventCheckRoll = manualRolls?.eventCheckRoll ||
+    (Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6) + 3);
+  const eventType = determineDynamicEventType(eventCheckRoll);
   let eventResult = null;
+
+  notes.push(`Event check roll: ${eventCheckRoll} → ${eventType}`);
 
   if (eventType !== 'none') {
     const eventTableId = eventType === 'rare'
@@ -273,7 +282,7 @@ export function resolveForagingTask({
     const eventTable = tables.find(t => t.id === eventTableId);
 
     if (eventTable) {
-      eventResult = rollOnTableWithManualValue(eventTable, manualRolls?.eventRoll);
+      eventResult = rollOnTableWithManualValue(eventTable, manualRolls?.eventTableRoll);
       notes.push(`${eventType === 'rare' ? 'Rare' : 'Mild'} event: ${eventResult.text || 'Something happened'}`);
       if (eventResult.text) {
         warnings.push(eventResult.text);
@@ -368,6 +377,7 @@ export function resolveForagingTask({
       rollResult,
       effectiveSkill,
       findResult,
+      eventCheckRoll,
       eventType,
       eventResult
     },

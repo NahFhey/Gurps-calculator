@@ -546,7 +546,8 @@ function TaskDetailPanel({
   // Manual resolution roll state
   const [isResolving, setIsResolving] = useState(false);
   const [skillRoll, setSkillRoll] = useState({ dice: [], total: 0 });
-  const [eventRoll, setEventRoll] = useState({ dice: [], total: 0 });
+  const [eventCheckRoll, setEventCheckRoll] = useState({ dice: [], total: 0 });
+  const [eventTableRoll, setEventTableRoll] = useState({ dice: [], total: 0 });
   const [tableRoll, setTableRoll] = useState({ dice: [], total: 0 });
 
   if (!task) return null;
@@ -864,9 +865,9 @@ function TaskDetailPanel({
               skillLabel = 'Foraging Skill';
             }
 
-            // Check if event was triggered
-            const eventType = skillRoll.total > 0 ? determineDynamicEventType(skillRoll.total) : 'none';
-            const showEventRoll = eventType !== 'none';
+            // Check if event was triggered based on separate event check roll
+            const eventType = eventCheckRoll.total > 0 ? determineDynamicEventType(eventCheckRoll.total) : 'none';
+            const showEventTableRoll = eventType !== 'none';
 
             // Get table info
             const modeDefaults = env.defaultsByMode?.[task.mode] || {};
@@ -881,7 +882,7 @@ function TaskDetailPanel({
             const eventTableName = eventTable?.name || `${eventType === 'rare' ? 'Rare' : 'Mild'} Event`;
 
             // Can finalize when all required rolls are done
-            const canFinalize = skillRoll.total > 0 && tableRoll.total > 0 && (!showEventRoll || eventRoll.total > 0);
+            const canFinalize = skillRoll.total > 0 && eventCheckRoll.total > 0 && tableRoll.total > 0 && (!showEventTableRoll || eventTableRoll.total > 0);
 
             return (
               <div className="space-y-3 bg-gray-800 p-4 rounded border-2 border-purple-500">
@@ -899,8 +900,19 @@ function TaskDetailPanel({
                   onTotalChange={(total) => setSkillRoll({ ...skillRoll, total })}
                 />
 
-                {/* 2. Event Roll (if triggered) */}
-                {showEventRoll && (
+                {/* 2. Event Check Roll */}
+                <DiceRoller
+                  label="Event Check (3-6=Rare, 7-10=Mild)"
+                  diceCount={3}
+                  diceSides={6}
+                  dice={eventCheckRoll.dice}
+                  total={eventCheckRoll.total}
+                  onRoll={(dice, total) => setEventCheckRoll({ dice, total })}
+                  onTotalChange={(total) => setEventCheckRoll({ ...eventCheckRoll, total })}
+                />
+
+                {/* 3. Event Table Roll (if event triggered) */}
+                {showEventTableRoll && (
                   <div className="border-l-4 border-yellow-500 pl-3">
                     <div className="text-xs text-yellow-300 mb-1">
                       {eventType === 'rare' ? 'Rare' : 'Mild'} Event Triggered!
@@ -909,15 +921,15 @@ function TaskDetailPanel({
                       label={eventTableName}
                       diceCount={2}
                       diceSides={6}
-                      dice={eventRoll.dice}
-                      total={eventRoll.total}
-                      onRoll={(dice, total) => setEventRoll({ dice, total })}
-                      onTotalChange={(total) => setEventRoll({ ...eventRoll, total })}
+                      dice={eventTableRoll.dice}
+                      total={eventTableRoll.total}
+                      onRoll={(dice, total) => setEventTableRoll({ dice, total })}
+                      onTotalChange={(total) => setEventTableRoll({ ...eventTableRoll, total })}
                     />
                   </div>
                 )}
 
-                {/* 3. Table Roll */}
+                {/* 4. Catch/Find Table Roll */}
                 {skillRoll.total > 0 && (
                   <DiceRoller
                     label={tableName}
@@ -936,7 +948,8 @@ function TaskDetailPanel({
                     onClick={() => {
                       setIsResolving(false);
                       setSkillRoll({ dice: [], total: 0 });
-                      setEventRoll({ dice: [], total: 0 });
+                      setEventCheckRoll({ dice: [], total: 0 });
+                      setEventTableRoll({ dice: [], total: 0 });
                       setTableRoll({ dice: [], total: 0 });
                     }}
                     className="flex-1 px-4 py-2 rounded bg-gray-600 hover:bg-gray-500"
@@ -957,7 +970,8 @@ function TaskDetailPanel({
                         tables,
                         manualRolls: {
                           skillRoll: skillRoll.total,
-                          eventRoll: showEventRoll ? eventRoll.total : null,
+                          eventCheckRoll: eventCheckRoll.total,
+                          eventTableRoll: showEventTableRoll ? eventTableRoll.total : null,
                           tableRoll: tableRoll.total
                         }
                       });
@@ -976,7 +990,8 @@ function TaskDetailPanel({
                       // Reset state
                       setIsResolving(false);
                       setSkillRoll({ dice: [], total: 0 });
-                      setEventRoll({ dice: [], total: 0 });
+                      setEventCheckRoll({ dice: [], total: 0 });
+                      setEventTableRoll({ dice: [], total: 0 });
                       setTableRoll({ dice: [], total: 0 });
                     }}
                     disabled={!canFinalize}
