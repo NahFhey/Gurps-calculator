@@ -6,7 +6,9 @@ import {
   SLOT_NAMES,
   SLOT_STATUS,
   TASK_STATUS,
-  TASK_MODES
+  TASK_MODES,
+  FISHING_METHODS,
+  FORAGING_RARITIES
 } from '../constants';
 import {
   createTimeSlot,
@@ -799,15 +801,157 @@ function TaskDetailPanel({
             </div>
           )}
 
-          {/* Mode-specific configuration placeholder */}
-          <div className="p-3 bg-gray-700 rounded border border-gray-600">
-            <div className="text-sm text-gray-400">
-              Mode-specific configuration ({task.mode})
+          {/* Mode-specific configuration */}
+          {task.mode === 'Fishing' && (
+            <div className="p-3 bg-gray-700 rounded border border-gray-600 space-y-3">
+              <div className="text-sm font-medium text-gray-300">Fishing Configuration</div>
+
+              {/* Method Selection */}
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Method</label>
+                <select
+                  value={task.method || 'Line'}
+                  onChange={(e) => updateField('method', e.target.value)}
+                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                >
+                  {Object.keys(FISHING_METHODS).map(method => (
+                    <option key={method} value={method}>{method}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Bait Selection (only for Line fishing) */}
+              {task.method === 'Line' && (
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Bait (optional)</label>
+                  <select
+                    value={task.baitId || ''}
+                    onChange={(e) => updateField('baitId', e.target.value)}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  >
+                    <option value="">No bait</option>
+                    {bait.map(b => (
+                      <option key={b.id} value={b.id}>{b.name} ({b.quantity} remaining)</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Target Species */}
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Target Species (optional)</label>
+                <select
+                  value={task.targetSpeciesId || ''}
+                  onChange={(e) => updateField('targetSpeciesId', e.target.value)}
+                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                >
+                  <option value="">Any species</option>
+                  {species.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div className="text-xs text-gray-500 mt-1">
-              Method selection, intent, and resolution UI will be added next
+          )}
+
+          {task.mode === 'Foraging' && (
+            <div className="p-3 bg-gray-700 rounded border border-gray-600 space-y-3">
+              <div className="text-sm font-medium text-gray-300">Foraging Configuration</div>
+
+              {/* Skill Selection */}
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Skill</label>
+                <select
+                  value={task.intent?.skill || 'Survival'}
+                  onChange={(e) => updateField('intent', { ...task.intent, skill: e.target.value })}
+                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                >
+                  <option value="Survival">Survival</option>
+                  <option value="Naturalist">Naturalist</option>
+                  <option value="Herb Lore">Herb Lore</option>
+                </select>
+              </div>
+
+              {/* Target Selection */}
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Target (optional)</label>
+                <select
+                  value={task.intent?.targetCategoryId || task.intent?.targetItemId || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (!value) {
+                      updateField('intent', { ...task.intent, targetCategoryId: null, targetItemId: null });
+                    } else if (value.startsWith('cat-')) {
+                      updateField('intent', { ...task.intent, targetCategoryId: value.replace('cat-', ''), targetItemId: null });
+                    } else if (value.startsWith('item-')) {
+                      updateField('intent', { ...task.intent, targetCategoryId: null, targetItemId: value.replace('item-', '') });
+                    }
+                  }}
+                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                >
+                  <option value="">Random foraging</option>
+                  <optgroup label="Categories">
+                    {categories.map(c => (
+                      <option key={c.id} value={`cat-${c.id}`}>{c.name} (any)</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Specific Items">
+                    {items.map(i => (
+                      <option key={i.id} value={`item-${i.id}`}>{i.name}</option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
+
+              {/* Context Modifiers */}
+              <div className="space-y-2">
+                <div className="text-xs text-gray-400">Context Modifiers</div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={task.intent?.isUnfamiliar || false}
+                    onChange={(e) => updateField('intent', { ...task.intent, isUnfamiliar: e.target.checked })}
+                    className="w-4 h-4"
+                  />
+                  Unfamiliar terrain (-4)
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={task.intent?.hasMapGuide || false}
+                    onChange={(e) => updateField('intent', { ...task.intent, hasMapGuide: e.target.checked })}
+                    className="w-4 h-4"
+                  />
+                  Has map/guide (+2)
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={task.intent?.isPeakSeason || false}
+                    onChange={(e) => updateField('intent', { ...task.intent, isPeakSeason: e.target.checked })}
+                    className="w-4 h-4"
+                  />
+                  Peak season (+1)
+                </label>
+              </div>
+
+              {/* Target Rarity (only if targeting) */}
+              {(task.intent?.targetCategoryId || task.intent?.targetItemId) && (
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Rarity Penalty</label>
+                  <select
+                    value={task.intent?.targetRarity || 'Common'}
+                    onChange={(e) => updateField('intent', { ...task.intent, targetRarity: e.target.value })}
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  >
+                    {Object.entries(FORAGING_RARITIES).map(([key, data]) => (
+                      <option key={key} value={key}>{data.label} ({data.penalty})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
-          </div>
+          )}
 
           {/* Resolution UI */}
           {task.resolutionState !== TASK_STATUS.Completed && !isResolving && (
@@ -902,7 +1046,7 @@ function TaskDetailPanel({
 
                 {/* 2. Event Check Roll */}
                 <DiceRoller
-                  label="Event Check (3-6=Rare, 7-10=Mild)"
+                  label="Event Check"
                   diceCount={3}
                   diceSides={6}
                   dice={eventCheckRoll.dice}
