@@ -1293,6 +1293,7 @@ export function GatheringManager({
                       className="w-24 bg-gray-600 px-2 py-1 rounded"
                     >
                       <option value="species">Species</option>
+                      <option value="item">Item</option>
                       <option value="nothing">Nothing</option>
                       <option value="event">Event</option>
                       <option value="special">Special</option>
@@ -1310,6 +1311,22 @@ export function GatheringManager({
                         <option value="">-- Select Species --</option>
                         {species.map(s => (
                           <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    )}
+                    {entry.resultType === 'item' && (
+                      <select
+                        value={entry.itemId || ''}
+                        onChange={(e) => {
+                          const updated = [...newTableEntries];
+                          updated[idx].itemId = e.target.value;
+                          setNewTableEntries(updated);
+                        }}
+                        className="flex-1 bg-gray-600 px-2 py-1 rounded"
+                      >
+                        <option value="">-- Select Item --</option>
+                        {items.map(i => (
+                          <option key={i.id} value={i.id}>{i.name}</option>
                         ))}
                       </select>
                     )}
@@ -1370,11 +1387,15 @@ export function GatheringManager({
                             const speciesName = entry.speciesId
                               ? species.find(s => s.id === entry.speciesId)?.name
                               : null;
+                            const itemName = entry.itemId
+                              ? items.find(i => i.id === entry.itemId)?.name
+                              : null;
                             return (
                               <div key={entry.id} className="text-sm flex gap-2">
                                 <span className="text-gray-400 w-8">{entry.rollValue}:</span>
                                 <span>
                                   {entry.resultType === 'species' && speciesName}
+                                  {entry.resultType === 'item' && itemName}
                                   {entry.resultType === 'nothing' && 'Nothing'}
                                   {(entry.resultType === 'event' || entry.resultType === 'special') && entry.text}
                                 </span>
