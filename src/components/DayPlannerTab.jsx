@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Moon, ChevronRight, Trash2, Edit2, Users, CheckCircle, Circle } from 'lucide-react';
+import { DiceRoller } from './DiceRoller';
 import {
   SLOTS_PER_DAY,
   SLOT_NAMES,
@@ -24,6 +25,7 @@ import {
   ensureDaySlotsExist
 } from '../utils/dayPlanner';
 import { resolveTask } from '../utils/taskResolution';
+import { determineDynamicEventType } from '../utils/gathering';
 
 /**
  * DayPlannerTab - Main component for the Day Planner gathering system
@@ -541,6 +543,12 @@ function TaskDetailPanel({
 }) {
   const [validationError, setValidationError] = useState('');
 
+  // Manual resolution roll state
+  const [isResolving, setIsResolving] = useState(false);
+  const [skillRoll, setSkillRoll] = useState({ dice: [], total: 0 });
+  const [eventRoll, setEventRoll] = useState({ dice: [], total: 0 });
+  const [tableRoll, setTableRoll] = useState({ dice: [], total: 0 });
+
   if (!task) return null;
 
   /**
@@ -800,8 +808,8 @@ function TaskDetailPanel({
             </div>
           </div>
 
-          {/* Complete button */}
-          {task.resolutionState !== TASK_STATUS.Completed && (
+          {/* Resolution UI */}
+          {task.resolutionState !== TASK_STATUS.Completed && !isResolving && (
             <div className="space-y-2">
               {!canComplete && (
                 <div className="text-xs text-yellow-400">
@@ -809,63 +817,181 @@ function TaskDetailPanel({
                 </div>
               )}
               <button
-                onClick={() => {
-                  if (!canComplete) {
-                    alert('Please assign a leader and select an environment');
-                    return;
-                  }
-
-                  // Get leader
-                  const leader = workers.find(w => w.id === task.leaderWorkerId);
-                  if (!leader) {
-                    alert('Leader not found');
-                    return;
-                  }
-
-                  // Get environment
-                  const env = environments.find(e => e.id === task.environmentId);
-                  if (!env) {
-                    alert('Environment not found');
-                    return;
-                  }
-
-                  // Get selected tools
-                  const selectedTools = tools.filter(t => (task.selectedToolIds || []).includes(t.id));
-
-                  // Resolve the task
-                  const resolution = resolveTask({
-                    task,
-                    leader,
-                    environment: env,
-                    tools: selectedTools,
-                    species,
-                    categories,
-                    items,
-                    tables
-                  });
-
-                  // Mark task as completed with resolution data
-                  const completedTask = {
-                    ...task,
-                    resolutionState: TASK_STATUS.Completed,
-                    payload: resolution.payload,
-                    inventoryDelta: resolution.inventoryDelta,
-                    notes: resolution.notes,
-                    warnings: resolution.warnings
-                  };
-                  completeTask(completedTask);
-                }}
+                onClick={() => setIsResolving(true)}
                 disabled={!canComplete}
                 className={`w-full px-4 py-2 rounded ${
                   canComplete
-                    ? 'bg-green-600 hover:bg-green-500'
+                    ? 'bg-purple-600 hover:bg-purple-500'
                     : 'bg-gray-600 opacity-50 cursor-not-allowed'
                 }`}
               >
-                Complete Task
+                Begin Resolution
               </button>
             </div>
           )}
+
+          {/* Manual Roll UI */}
+          {isResolving && task.resolutionState !== TASK_STATUS.Completed && (() => {
+            // Get leader and environment for skill calculation
+            const leader = workers.find(w => w.id === task.leaderWorkerId);
+            const env = environments.find(e => e.id === task.environmentId);
+            const selectedTools = tools.filter(t => (task.selectedToolIds || []).includes(t.id));
+
+            if (!leader || !env) {
+              return (
+                <div className="text-red-400">Error: Missing leader or environment</div>
+              );
+            }
+
+            // Calculate effective skill based on mode
+            let effectiveSkill = 10;
+            let skillLabel = 'Skill';
+            if (task.mode === 'Fishing') {
+              const baseFishingSkill = leader.skills?.fishing || 10;
+              const toolBonus = selectedTools.reduce((sum, tool) => {
+                const skillBonus = tool.bonuses?.find(b => b.type === 'skill_bonus');
+                return sum + (skillBonus?.value || 0);
+              }, 0);
+              effectiveSkill = baseFishingSkill + toolBonus + (env.skillMod || 0);
+              skillLabel = 'Fishing Skill';
+            } else if (task.mode === 'Foraging') {
+              const baseForagingSkill = leader.skills?.survival || 10;
+              const toolBonus = selectedTools.reduce((sum, tool) => {
+                const skillBonus = tool.bonuses?.find(b => b.type === 'skill_bonus');
+                return sum + (skillBonus?.value || 0);
+              }, 0);
+              effectiveSkill = baseForagingSkill + toolBonus + (env.skillMod || 0);
+              skillLabel = 'Foraging Skill';
+            }
+
+            // Check if event was triggered
+            const eventType = skillRoll.total > 0 ? determineDynamicEventType(skillRoll.total) : 'none';
+            const showEventRoll = eventType !== 'none';
+
+            // Get table info
+            const modeDefaults = env.defaultsByMode?.[task.mode] || {};
+            const findTable = tables.find(t => t.id === modeDefaults.randomCatchTableId);
+            const tableName = findTable?.name || 'Table';
+            const tableRollMethod = findTable?.rollMethod || '2d6';
+            const tableDiceCount = tableRollMethod === '1d6' ? 1 : tableRollMethod === '3d6' ? 3 : 2;
+
+            // Check if event table exists
+            const eventTableId = eventType === 'rare' ? modeDefaults.rareEventTableId : modeDefaults.mildEventTableId;
+            const eventTable = tables.find(t => t.id === eventTableId);
+            const eventTableName = eventTable?.name || `${eventType === 'rare' ? 'Rare' : 'Mild'} Event`;
+
+            // Can finalize when all required rolls are done
+            const canFinalize = skillRoll.total > 0 && tableRoll.total > 0 && (!showEventRoll || eventRoll.total > 0);
+
+            return (
+              <div className="space-y-3 bg-gray-800 p-4 rounded border-2 border-purple-500">
+                <div className="text-lg font-bold text-purple-300">Manual Resolution</div>
+
+                {/* 1. Skill Roll */}
+                <DiceRoller
+                  label={skillLabel}
+                  diceCount={3}
+                  diceSides={6}
+                  dice={skillRoll.dice}
+                  total={skillRoll.total}
+                  targetNumber={effectiveSkill}
+                  onRoll={(dice, total) => setSkillRoll({ dice, total })}
+                  onTotalChange={(total) => setSkillRoll({ ...skillRoll, total })}
+                />
+
+                {/* 2. Event Roll (if triggered) */}
+                {showEventRoll && (
+                  <div className="border-l-4 border-yellow-500 pl-3">
+                    <div className="text-xs text-yellow-300 mb-1">
+                      {eventType === 'rare' ? 'Rare' : 'Mild'} Event Triggered!
+                    </div>
+                    <DiceRoller
+                      label={eventTableName}
+                      diceCount={2}
+                      diceSides={6}
+                      dice={eventRoll.dice}
+                      total={eventRoll.total}
+                      onRoll={(dice, total) => setEventRoll({ dice, total })}
+                      onTotalChange={(total) => setEventRoll({ ...eventRoll, total })}
+                    />
+                  </div>
+                )}
+
+                {/* 3. Table Roll */}
+                {skillRoll.total > 0 && (
+                  <DiceRoller
+                    label={tableName}
+                    diceCount={tableDiceCount}
+                    diceSides={6}
+                    dice={tableRoll.dice}
+                    total={tableRoll.total}
+                    onRoll={(dice, total) => setTableRoll({ dice, total })}
+                    onTotalChange={(total) => setTableRoll({ ...tableRoll, total })}
+                  />
+                )}
+
+                {/* Finalize Button */}
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => {
+                      setIsResolving(false);
+                      setSkillRoll({ dice: [], total: 0 });
+                      setEventRoll({ dice: [], total: 0 });
+                      setTableRoll({ dice: [], total: 0 });
+                    }}
+                    className="flex-1 px-4 py-2 rounded bg-gray-600 hover:bg-gray-500"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Resolve task with manual roll values
+                      const resolution = resolveTask({
+                        task,
+                        leader,
+                        environment: env,
+                        tools: selectedTools,
+                        species,
+                        categories,
+                        items,
+                        tables,
+                        manualRolls: {
+                          skillRoll: skillRoll.total,
+                          eventRoll: showEventRoll ? eventRoll.total : null,
+                          tableRoll: tableRoll.total
+                        }
+                      });
+
+                      // Mark task as completed
+                      const completedTask = {
+                        ...task,
+                        resolutionState: TASK_STATUS.Completed,
+                        payload: resolution.payload,
+                        inventoryDelta: resolution.inventoryDelta,
+                        notes: resolution.notes,
+                        warnings: resolution.warnings
+                      };
+                      completeTask(completedTask);
+
+                      // Reset state
+                      setIsResolving(false);
+                      setSkillRoll({ dice: [], total: 0 });
+                      setEventRoll({ dice: [], total: 0 });
+                      setTableRoll({ dice: [], total: 0 });
+                    }}
+                    disabled={!canFinalize}
+                    className={`flex-1 px-4 py-2 rounded ${
+                      canFinalize
+                        ? 'bg-green-600 hover:bg-green-500'
+                        : 'bg-gray-600 opacity-50 cursor-not-allowed'
+                    }`}
+                  >
+                    Finalize Task
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>

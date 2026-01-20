@@ -19,6 +19,23 @@ import {
 } from './gathering';
 
 /**
+ * Helper to roll on a table with manual or automatic roll
+ */
+function rollOnTableWithManualValue(table, manualRoll = null) {
+  if (manualRoll !== null) {
+    // Use manual roll - find matching entry
+    const entry = table.entries?.find(e => e.rollValue === manualRoll);
+    if (entry) {
+      return { ...entry, rawRoll: manualRoll, modifiedRoll: manualRoll, rollBonus: 0 };
+    }
+    // Fallback to first entry if no match
+    return { ...table.entries[0], rawRoll: manualRoll, modifiedRoll: manualRoll, rollBonus: 0 };
+  }
+  // Auto-roll
+  return rollOnCatchTable(table);
+}
+
+/**
  * Resolves a Fishing task and generates inventory deltas
  * @param {Object} task - TaskAssignment object
  * @param {Object} leader - Worker object for the leader
@@ -26,6 +43,7 @@ import {
  * @param {Object[]} tools - Array of selected tool objects
  * @param {Object[]} species - Array of all species
  * @param {Object[]} tables - Array of all tables
+ * @param {Object} manualRolls - Manual roll values { skillRoll, eventRoll, tableRoll }
  * @returns {Object} { payload, inventoryDelta, notes, warnings }
  */
 export function resolveFishingTask({
@@ -34,7 +52,8 @@ export function resolveFishingTask({
   environment,
   tools,
   species,
-  tables
+  tables,
+  manualRolls = null
 }) {
   const warnings = [];
   const notes = [];
@@ -58,8 +77,9 @@ export function resolveFishingTask({
     environmentMod: environment.skillMod || 0
   });
 
-  // Roll 3d6 for fishing attempt
-  const roll = Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6) + 3;
+  // Use manual roll if provided, otherwise auto-roll
+  const roll = manualRolls?.skillRoll ||
+    (Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6) + 3);
 
   // Evaluate roll
   const rollResult = evaluateFishingRoll(roll, effectiveSkill, method);
@@ -80,9 +100,9 @@ export function resolveFishingTask({
     };
   }
 
-  // Roll on catch table
+  // Roll on catch table (with manual roll if provided)
   notes.push(`Rolling on table: ${catchTable.name}`);
-  const tableEntry = rollOnCatchTable(catchTable);
+  const tableEntry = rollOnTableWithManualValue(catchTable, manualRolls?.tableRoll);
   notes.push(`Table roll: ${tableEntry.modifiedRoll || 'unknown'} → ${tableEntry.resultType}`);
 
   // Check for dynamic events based on the roll
@@ -97,7 +117,7 @@ export function resolveFishingTask({
     const eventTable = tables.find(t => t.id === eventTableId);
 
     if (eventTable) {
-      eventResult = rollOnCatchTable(eventTable);
+      eventResult = rollOnTableWithManualValue(eventTable, manualRolls?.eventRoll);
       notes.push(`${eventType === 'rare' ? 'Rare' : 'Mild'} event: ${eventResult.text || 'Something happened'}`);
       if (eventResult.text) {
         warnings.push(eventResult.text);
@@ -171,6 +191,7 @@ export function resolveFishingTask({
  * @param {Object[]} categories - Array of all foraging categories
  * @param {Object[]} items - Array of all forageable items
  * @param {Object[]} tables - Array of all tables
+ * @param {Object} manualRolls - Manual roll values { skillRoll, eventRoll, tableRoll }
  * @returns {Object} { payload, inventoryDelta, notes, warnings }
  */
 export function resolveForagingTask({
@@ -180,7 +201,8 @@ export function resolveForagingTask({
   tools,
   categories,
   items,
-  tables
+  tables,
+  manualRolls = null
 }) {
   const warnings = [];
   const notes = [];
@@ -209,8 +231,9 @@ export function resolveForagingTask({
     targetRarity: task.intent?.targetRarity || null
   });
 
-  // Roll 3d6 for foraging attempt
-  const roll = Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6) + 3;
+  // Use manual roll if provided, otherwise auto-roll
+  const roll = manualRolls?.skillRoll ||
+    (Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6) + 3);
 
   // Evaluate roll
   const isTargeted = task.intent?.targetCategoryId || task.intent?.targetItemId;
@@ -250,7 +273,7 @@ export function resolveForagingTask({
     const eventTable = tables.find(t => t.id === eventTableId);
 
     if (eventTable) {
-      eventResult = rollOnCatchTable(eventTable);
+      eventResult = rollOnTableWithManualValue(eventTable, manualRolls?.eventRoll);
       notes.push(`${eventType === 'rare' ? 'Rare' : 'Mild'} event: ${eventResult.text || 'Something happened'}`);
       if (eventResult.text) {
         warnings.push(eventResult.text);
@@ -268,12 +291,27 @@ export function resolveForagingTask({
     ? items.find(i => i.id === task.intent.targetItemId)
     : null;
 
-  const findResult = determineForageFind({
-    rollResult,
-    findTable,
-    targetCategory,
-    targetItem
-  });
+  // Roll on find table manually if provided, otherwise determineForageFind will auto-roll
+  let findResult;
+  if (manualRolls?.tableRoll) {
+    const tableEntry = rollOnTableWithManualValue(findTable, manualRolls.tableRoll);
+    notes.push(`Find table roll: ${manualRolls.tableRoll} → ${tableEntry.resultType}`);
+    findResult = {
+      type: tableEntry.resultType,
+      categoryId: tableEntry.categoryId || null,
+      itemId: tableEntry.itemId || null,
+      tableEntry,
+      source: 'random',
+      text: tableEntry.text
+    };
+  } else {
+    findResult = determineForageFind({
+      rollResult,
+      findTable,
+      targetCategory,
+      targetItem
+    });
+  }
 
   notes.push(`Find result: ${findResult.type} (source: ${findResult.source || 'unknown'})`);
 
