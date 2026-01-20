@@ -790,24 +790,24 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                           <div className="bg-gray-600 p-3 rounded">
                             <div className="text-sm font-semibold mb-2">Project History</div>
                             <div className="space-y-2 max-h-48 overflow-y-auto">
-                              {c.designShifts?.length > 0 && (
+                              {Array.isArray(c.designShifts) && c.designShifts.length > 0 && (
                                 <>
                                   <div className="text-xs font-semibold text-yellow-400 mt-2">Design Phase</div>
-                                  {c.designShifts.map((s, i) => (
-                                    <div key={s.id} className="text-xs bg-gray-700 p-2 rounded">
-                                      <div>Shift {i+1}: {s.result} {s.date && <span className="text-blue-400">({s.date})</span>} {s.day && <span className="text-green-400">[Day {s.day}]</span>}</div>
-                                      <div className="text-gray-400">{s.worker && <span>Worker: {s.worker} | </span>}Skill {s.skill} → Eff {s.effectiveSkill} | Roll: {s.roll} | +{s.hoursAdded}h{s.qualityChange !== 0 && ` | Qual ${s.qualityChange > 0 ? '+' : ''}${s.qualityChange}`}</div>
+                                  {c.designShifts.filter(s => s).map((s, i) => (
+                                    <div key={s.id || i} className="text-xs bg-gray-700 p-2 rounded">
+                                      <div>Shift {i+1}: {s.result || 'unknown'} {s.date && <span className="text-blue-400">({s.date})</span>} {s.day && <span className="text-green-400">[Day {s.day}]</span>}</div>
+                                      <div className="text-gray-400">{s.worker && <span>Worker: {s.worker} | </span>}Skill {s.skill || '?'} → Eff {s.effectiveSkill || '?'} | Roll: {s.roll || '?'} | +{s.hoursAdded || 0}h{s.qualityChange !== 0 && s.qualityChange !== undefined && ` | Qual ${s.qualityChange > 0 ? '+' : ''}${s.qualityChange}`}</div>
                                     </div>
                                   ))}
                                 </>
                               )}
-                              {c.shifts?.length > 0 && (
+                              {Array.isArray(c.shifts) && c.shifts.length > 0 && (
                                 <>
                                   <div className="text-xs font-semibold text-green-400 mt-2">Craft Phase</div>
-                                  {c.shifts.map((s, i) => (
-                                    <div key={s.id} className="text-xs bg-gray-700 p-2 rounded">
-                                      <div>Shift {i+1}: {s.result} {s.date && <span className="text-blue-400">({s.date})</span>} {s.day && <span className="text-green-400">[Day {s.day}]</span>}</div>
-                                      <div className="text-gray-400">{s.worker && <span>Worker: {s.worker} | </span>}Skill {s.skill} → Eff {s.effectiveSkill} | Roll: {s.roll} | +{s.hoursAdded}h{s.qualityChange !== 0 && ` | Qual ${s.qualityChange > 0 ? '+' : ''}${s.qualityChange}`}</div>
+                                  {c.shifts.filter(s => s).map((s, i) => (
+                                    <div key={s.id || i} className="text-xs bg-gray-700 p-2 rounded">
+                                      <div>Shift {i+1}: {s.result || 'unknown'} {s.date && <span className="text-blue-400">({s.date})</span>} {s.day && <span className="text-green-400">[Day {s.day}]</span>}</div>
+                                      <div className="text-gray-400">{s.worker && <span>Worker: {s.worker} | </span>}Skill {s.skill || '?'} → Eff {s.effectiveSkill || '?'} | Roll: {s.roll || '?'} | +{s.hoursAdded || 0}h{s.qualityChange !== 0 && s.qualityChange !== undefined && ` | Qual ${s.qualityChange > 0 ? '+' : ''}${s.qualityChange}`}</div>
                                     </div>
                                   ))}
                                 </>
