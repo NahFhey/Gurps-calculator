@@ -1,7 +1,85 @@
 // Version and changelog information
-export const VERSION = '2.4.1';
+export const VERSION = '2.4.2';
 
 export const CHANGELOG = [
+  {
+    version: '2.4.2',
+    date: '2026-01-20',
+    title: 'Foraging System & Bug Fixes',
+    changes: [
+      {
+        category: 'Foraging System',
+        items: [
+          'Complete foraging mode implementation with skill-based searching',
+          'Three foraging skills supported: Survival, Naturalist, Herb Lore',
+          'Target-specific items or random foraging with rarity penalties',
+          'Context modifiers: Map/Guide (+1), Unfamiliar (-2), Peak Season (+2)',
+          'Critical success grants 1.5x yield and bonus finds',
+          'Critical failure applies random hazards (poison ivy, bee sting, etc.)',
+          'Day Planner integration with manual dice rolling',
+          'Separate event rolls from skill rolls for better outcomes'
+        ]
+      },
+      {
+        category: 'Item System Overhaul',
+        items: [
+          'Removed category system in favor of direct item types',
+          'Items now reference food/material types directly from Manager',
+          'Each item has its own yield formula (XdY format)',
+          'Items specify inventory kind (food/material) and type ID',
+          'Tool yield bonuses now apply to specific type IDs',
+          'Tables can reference items directly without category layer',
+          'Minimum 1 unit guarantee on successful foraging'
+        ]
+      },
+      {
+        category: 'Day Planner Enhancement',
+        items: [
+          'Event Check now separate from Skill Roll (4 rolls total)',
+          'Event probability removed from UI label for cleaner display',
+          'Mode-specific configuration panels (Fishing, Foraging)',
+          'Fishing config: Method, Bait, Target Species',
+          'Foraging config: Skill, Target Item, Context Modifiers, Rarity',
+          'Manual roll system with colored 3d6 dice display',
+          'Results commit at end of day with delta tracking'
+        ]
+      },
+      {
+        category: 'Manager Updates',
+        items: [
+          'Removed Categories tab (no longer needed)',
+          'Items tab: Create forageable items with direct properties',
+          'Type ID dropdowns now pull from editable food/material types',
+          'Tool yield bonus configuration for foraging tools',
+          'Tools can grant +Xd to specific food/material types',
+          'Table entries support "Item" result type',
+          'Item selection dropdowns in table configuration'
+        ]
+      },
+      {
+        category: 'Bug Fixes',
+        items: [
+          'Fixed crash when clicking foods with no type assigned',
+          'Fixed crash when viewing legacy crafting projects',
+          'Added defensive checks for undefined/null food types',
+          'Added defensive checks for malformed craft data',
+          'Filter out invalid entries in craft lists',
+          'Improved error handling for missing template data',
+          'Handle empty or whitespace yield formulas gracefully'
+        ]
+      },
+      {
+        category: 'Documentation',
+        items: [
+          'Added Foraging System section to Rules tab',
+          'Documented foraging skills, targeting, and modifiers',
+          'Added foraging items and yield calculation guide',
+          'Updated Gathering System overview for both modes',
+          'Documented Day Planner workflow and integration'
+        ]
+      }
+    ]
+  },
   {
     version: '2.4.1',
     date: '2026-01-14',
