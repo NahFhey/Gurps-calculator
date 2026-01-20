@@ -597,19 +597,31 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                           <div className="text-xs text-gray-400 mt-1">Progress: {currentProgress}/{targetHours}h ({Math.round(progressPercent)}%)</div>
                         )}
                       </div>
-                      <button onClick={() => {
-                        setCurrent(c);
-                        setCurrentDate(new Date().toISOString().split('T')[0]);
-                        if (c.shifts && c.shifts.length > 0) {
-                          const lastShift = c.shifts[c.shifts.length - 1];
-                          setSelectedWorker(lastShift.worker || workers[0] || '');
-                          setCurrentDay(lastShift.day || c.startDay || 1);
-                        } else {
-                          setSelectedWorker(workers[0] || '');
-                          setCurrentDay(c.startDay || 1);
-                        }
-                        setView('craft');
-                      }} className="bg-blue-600 px-4 py-2 rounded">Resume</button>
+                      <div className="flex gap-2">
+                        <button onClick={() => {
+                          setCurrent(c);
+                          setCurrentDate(new Date().toISOString().split('T')[0]);
+                          if (c.shifts && c.shifts.length > 0) {
+                            const lastShift = c.shifts[c.shifts.length - 1];
+                            setSelectedWorker(lastShift.worker || workers[0] || '');
+                            setCurrentDay(lastShift.day || c.startDay || 1);
+                          } else {
+                            setSelectedWorker(workers[0] || '');
+                            setCurrentDay(c.startDay || 1);
+                          }
+                          setView('craft');
+                        }} className="bg-blue-600 px-4 py-2 rounded">Resume</button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Delete in-progress project "${c.name || c.template}"?`)) {
+                              saveCrafts(crafts.filter(x => x.id !== c.id));
+                            }
+                          }}
+                          className="bg-red-600 px-4 py-2 rounded hover:bg-red-700"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                     <div className="text-sm text-gray-400">Materials: {materialList}</div>
                     <div className="text-sm text-gray-400 mb-2">W: {finalWeight} lbs | HP: {finalHP} | HT: {avgHT + q.htBonus}</div>
@@ -803,6 +815,20 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                             </div>
                           </div>
                         )}
+
+                        {/* Delete Button */}
+                        <div className="pt-3 border-t border-gray-600">
+                          <button
+                            onClick={() => {
+                              if (confirm(`Delete completed project "${c.name || c.template}"?`)) {
+                                saveCrafts(crafts.filter(x => x.id !== c.id));
+                              }
+                            }}
+                            className="w-full px-4 py-2 bg-red-600 rounded hover:bg-red-700 text-sm"
+                          >
+                            Delete Completed Project
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
