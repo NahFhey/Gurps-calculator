@@ -524,15 +524,21 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
             <h2 className="text-xl font-bold mb-4 text-yellow-400">In-Progress Projects</h2>
             <div className="space-y-4">
               {crafts.filter(c => !c.completed).map(c => {
+                // Defensive checks for legacy data
+                if (!c.templateType || !c.template) {
+                  return null; // Skip crafts with missing template data
+                }
+
                 const t = allTemplates[c.templateType]?.[c.template] || {weight: 0, hp: 0};
-                const q = QUALITIES[c.currentQuality] || {htBonus: 0};
+                const q = QUALITIES[c.currentQuality || 'typical'] || QUALITIES['typical'] || {htBonus: 0};
 
                 let avgHT = 10, avgWeightMod = 0, avgHPMod = 0;
-                if (c.selectedMaterials && c.selectedMaterials.length > 0) {
+                if (c.selectedMaterials && Array.isArray(c.selectedMaterials) && c.selectedMaterials.length > 0) {
                   const matTypes = c.selectedMaterials.map(sm => {
+                    if (!sm || !sm.selectedMaterialId) return null;
                     const mat = materials.find(m => m.id === sm.selectedMaterialId || String(m.id) === sm.selectedMaterialId);
                     if (!mat || !mat.type) return null;
-                    return materialTypes.find(mt => mt.name === mat.type);
+                    return materialTypes.find(mt => mt && mt.name === mat.type);
                   }).filter(mt => mt !== null && mt !== undefined);
                   if (matTypes.length > 0) {
                     avgHT = Math.round(matTypes.reduce((sum, mt) => sum + (mt.ht || 10), 0) / matTypes.length);
@@ -545,11 +551,12 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                 const finalHP = Math.round((t.hp || 0) * (1 + avgHPMod / 100));
 
                 const materialList =
-                  (c.consumedMaterials?.map(u => u.name).join(', '))
-                  || (c.selectedMaterials?.map(sm => {
+                  (c.consumedMaterials && Array.isArray(c.consumedMaterials) ? c.consumedMaterials.map(u => u?.name || 'unknown').join(', ') : null)
+                  || (c.selectedMaterials && Array.isArray(c.selectedMaterials) ? c.selectedMaterials.map(sm => {
+                    if (!sm || !sm.selectedMaterialId) return 'unknown';
                     const mat = materials.find(m => m.id === sm.selectedMaterialId || String(m.id) === sm.selectedMaterialId);
                     return mat ? `${mat.name}` : 'unknown';
-                  }).join(', '))
+                  }).join(', ') : null)
                   || 'no materials';
 
                 // Phase-specific colors
@@ -617,7 +624,7 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                   </div>
                 );
 
-              })}
+              }).filter(Boolean)}
               {crafts.filter(c => !c.completed).length === 0 && (
                 <div className="text-gray-500 italic">No in-progress projects</div>
               )}
@@ -628,15 +635,21 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
             <h2 className="text-xl font-bold mb-4 text-green-400">Completed Projects</h2>
             <div className="space-y-4">
               {crafts.filter(c => c.completed).map(c => {
+                // Defensive checks for legacy data
+                if (!c.templateType || !c.template) {
+                  return null; // Skip crafts with missing template data
+                }
+
                 const t = allTemplates[c.templateType]?.[c.template] || {weight: 0, hp: 0};
-                const q = QUALITIES[c.currentQuality] || {htBonus: 0};
+                const q = QUALITIES[c.currentQuality || 'typical'] || QUALITIES['typical'] || {htBonus: 0};
 
                 let avgHT = 10, avgWeightMod = 0, avgHPMod = 0;
-                if (c.selectedMaterials && c.selectedMaterials.length > 0) {
+                if (c.selectedMaterials && Array.isArray(c.selectedMaterials) && c.selectedMaterials.length > 0) {
                   const matTypes = c.selectedMaterials.map(sm => {
+                    if (!sm || !sm.selectedMaterialId) return null;
                     const mat = materials.find(m => m.id === sm.selectedMaterialId || String(m.id) === sm.selectedMaterialId);
                     if (!mat || !mat.type) return null;
-                    return materialTypes.find(mt => mt.name === mat.type);
+                    return materialTypes.find(mt => mt && mt.name === mat.type);
                   }).filter(mt => mt !== null && mt !== undefined);
                   if (matTypes.length > 0) {
                     avgHT = Math.round(matTypes.reduce((sum, mt) => sum + (mt.ht || 10), 0) / matTypes.length);
@@ -649,11 +662,12 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                 const finalHP = Math.round((t.hp || 0) * (1 + avgHPMod / 100));
 
                 const materialList =
-                  (c.consumedMaterials?.map(u => `${u.name} (${u.type})`).join(', '))
-                  || (c.selectedMaterials?.map(sm => {
+                  (c.consumedMaterials && Array.isArray(c.consumedMaterials) ? c.consumedMaterials.map(u => `${u?.name || 'unknown'} (${u?.type || 'unknown'})`).join(', ') : null)
+                  || (c.selectedMaterials && Array.isArray(c.selectedMaterials) ? c.selectedMaterials.map(sm => {
+                    if (!sm || !sm.selectedMaterialId) return 'unknown';
                     const mat = materials.find(m => m.id === sm.selectedMaterialId || String(m.id) === sm.selectedMaterialId);
                     return mat ? `${mat.name} (${mat.type})` : 'unknown';
-                  }).join(', '))
+                  }).join(', ') : null)
                   || 'no materials';
 
                 return (
@@ -793,7 +807,7 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                     )}
                   </div>
                 );
-              })}
+              }).filter(Boolean)}
               {crafts.filter(c => c.completed).length === 0 && (
                 <div className="text-gray-500 italic">No completed projects</div>
               )}

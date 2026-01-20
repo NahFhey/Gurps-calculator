@@ -470,12 +470,12 @@ export function InventoryTab({ materials, foods, foodTypes, materialTypes, gmMod
                         <div>
                           <div className="flex gap-2 mb-2">
                             <span className="text-sm">Types: {!gmMode && <span className="text-yellow-400">(GM mode required to edit)</span>}</span>
-                            {gmMode && f.types.length < 4 && <button onClick={() => {
+                            {gmMode && (f.types || []).length < 4 && <button onClick={() => {
                               const firstType = typeof foodTypes[0] === 'string' ? foodTypes[0] : foodTypes[0].name;
-                              saveFoods(foods.map(x => x.id === f.id ? {...x, types: [...x.types, firstType]} : x));
+                              saveFoods(foods.map(x => x.id === f.id ? {...x, types: [...(x.types || []), firstType]} : x));
                             }} className="bg-blue-600 px-3 py-1 text-sm rounded"><Plus size={14} className="inline" /> Add</button>}
                           </div>
-                          {f.types.map((t, i) => {
+                          {(f.types || []).map((t, i) => {
                             const selectedType = foodTypes.find(ft => (typeof ft === 'string' ? ft : ft.name) === t);
                             const selectedColor = typeof selectedType === 'object' ? selectedType.color : '#60A5FA';
 
@@ -483,7 +483,7 @@ export function InventoryTab({ materials, foods, foodTypes, materialTypes, gmMod
                               <span className="w-4 h-4 rounded-full flex-shrink-0" style={{backgroundColor: selectedColor}} title={t}></span>
                               <select
                                 value={t}
-                                onChange={(e) => saveFoods(foods.map(x => { if (x.id === f.id) { const nt = [...x.types]; nt[i] = e.target.value; return {...x, types: nt}; } return x; }))}
+                                onChange={(e) => saveFoods(foods.map(x => { if (x.id === f.id) { const nt = [...(x.types || [])]; nt[i] = e.target.value; return {...x, types: nt}; } return x; }))}
                                 className="flex-1 bg-gray-600 px-3 py-1 rounded"
                                 disabled={!gmMode}
                               >
@@ -493,7 +493,7 @@ export function InventoryTab({ materials, foods, foodTypes, materialTypes, gmMod
                                   return <option key={ftName} value={ftName} style={{color: ftColor}}>{ftName}</option>;
                                 })}
                               </select>
-                              {gmMode && <button onClick={() => saveFoods(foods.map(x => x.id === f.id ? {...x, types: x.types.filter((_, j) => j !== i)} : x))} className="text-red-400"><X size={18} /></button>}
+                              {gmMode && <button onClick={() => saveFoods(foods.map(x => x.id === f.id ? {...x, types: (x.types || []).filter((_, j) => j !== i)} : x))} className="text-red-400"><X size={18} /></button>}
                             </div>);
                           })}
                         </div>
