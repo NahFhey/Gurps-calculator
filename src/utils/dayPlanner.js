@@ -258,20 +258,22 @@ export function commitPendingDayLedger(ledger, currentFoods, currentMaterials) {
   // Process each inventory delta
   ledger.pendingInventoryDelta.forEach(delta => {
     if (delta.type === 'food') {
+      // Food items use name and types array in inventory
       const existingIndex = updatedFoods.findIndex(
-        f => f.speciesName === delta.speciesName && f.foodType === delta.foodType
+        f => f.name === delta.speciesName && f.types?.includes(delta.foodType)
       );
 
       if (existingIndex >= 0) {
         updatedFoods[existingIndex] = {
           ...updatedFoods[existingIndex],
-          units: updatedFoods[existingIndex].units + delta.units
+          quantity: updatedFoods[existingIndex].quantity + delta.units
         };
       } else {
         updatedFoods.push({
-          speciesName: delta.speciesName,
-          foodType: delta.foodType,
-          units: delta.units
+          id: crypto.randomUUID(),
+          name: delta.speciesName,
+          quantity: delta.units,
+          types: [delta.foodType]
         });
       }
     } else if (delta.type === 'material') {
@@ -282,13 +284,14 @@ export function commitPendingDayLedger(ledger, currentFoods, currentMaterials) {
       if (existingIndex >= 0) {
         updatedMaterials[existingIndex] = {
           ...updatedMaterials[existingIndex],
-          units: updatedMaterials[existingIndex].units + delta.units
+          quantity: updatedMaterials[existingIndex].quantity + delta.units
         };
       } else {
         updatedMaterials.push({
+          id: crypto.randomUUID(),
           name: delta.name,
           type: delta.materialType,
-          units: delta.units
+          quantity: delta.units
         });
       }
     }
