@@ -296,11 +296,7 @@ export function resolveForagingTask({
     }
   }
 
-  // Determine find
-  const targetItem = task.intent?.targetItemId
-    ? items.find(i => i.id === task.intent.targetItemId)
-    : null;
-
+  // Determine find (targetItem already declared above for rarity check)
   // Roll on find table manually if provided, otherwise determineForageFind will auto-roll
   let findResult;
   if (manualRolls?.tableRoll) {
