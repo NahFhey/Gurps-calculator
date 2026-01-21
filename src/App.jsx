@@ -235,7 +235,11 @@ export default function GURPSPartyTool() {
 
       setCustomTemplates(templates);
       if (needsSave) {
-        try { await window.storage.set('customTemplates', JSON.stringify(templates), true); } catch (e) {}
+        try {
+          await window.storage.set('customTemplates', JSON.stringify(templates), true);
+        } catch (e) {
+          logger.error('Failed to save custom templates:', e);
+        }
       }
 
       // Load gathering system data

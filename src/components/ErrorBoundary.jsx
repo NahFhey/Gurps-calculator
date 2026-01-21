@@ -29,9 +29,9 @@ export class ErrorBoundary extends React.Component {
     logger.error('ErrorBoundary caught an error:', error, errorInfo);
   }
 
-  handleReload = () => {
+  handleReload() {
     window.location.reload();
-  };
+  }
 
   render() {
     if (this.state.hasError) {
