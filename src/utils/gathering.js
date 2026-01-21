@@ -16,7 +16,11 @@ import {
   BAIT_MODIFIERS,
   LARGE_FISH_TARGETING_PENALTY,
   MAX_NET_REROLL_ATTEMPTS,
-  DEFAULT_FISH_ST
+  DEFAULT_FISH_ST,
+  FORAGING_OUTCOMES,
+  FORAGING_CONTEXT_MODIFIERS,
+  FORAGING_RARITIES,
+  FORAGING_HAZARDS
 } from '../constants';
 
 /**
@@ -517,4 +521,247 @@ export function createGatheringSession({
     committedToInventory: false,
     createdAt: new Date().toISOString()
   };
+}
+
+// ============================================================================
+// FORAGING SYSTEM UTILITIES
+// ============================================================================
+
+/**
+ * Calculates effective foraging skill with all modifiers
+ *
+ * @param {Object} params - Calculation parameters
+ * @param {number} params.baseForagingSkill - Worker's base foraging skill
+ * @param {number} params.toolBonus - Bonus from selected tools
+ * @param {boolean} params.hasMapGuide - Whether character has map/local guide (+1)
+ * @param {boolean} params.isUnfamiliar - Whether region is unfamiliar/hostile (-2)
+ * @param {boolean} params.isPeakSeason - Whether it's peak season (+2)
+ * @param {string} params.targetRarity - Target rarity (Common/Uncommon/Rare/VeryRare/Legendary)
+ * @param {number} params.environmentMod - Environment-specific modifier
+ * @returns {{effectiveSkill: number, breakdown: Object}} Calculated skill with breakdown
+ */
+export function calculateEffectiveForagingSkill({
+  baseForagingSkill,
+  toolBonus = 0,
+  hasMapGuide = false,
+  isUnfamiliar = false,
+  isPeakSeason = false,
+  targetRarity = null,
+  environmentMod = 0
+}) {
+  let contextMod = 0;
+  if (hasMapGuide) contextMod += FORAGING_CONTEXT_MODIFIERS.mapGuide.modifier;
+  if (isUnfamiliar) contextMod += FORAGING_CONTEXT_MODIFIERS.unfamiliar.modifier;
+  if (isPeakSeason) contextMod += FORAGING_CONTEXT_MODIFIERS.peakSeason.modifier;
+
+  const rarityPenalty = targetRarity && FORAGING_RARITIES[targetRarity]
+    ? FORAGING_RARITIES[targetRarity].penalty
+    : 0;
+
+  const effectiveSkill = baseForagingSkill + toolBonus + contextMod + rarityPenalty + environmentMod;
+
+  return {
+    effectiveSkill,
+    breakdown: {
+      base: baseForagingSkill,
+      tool: toolBonus,
+      context: contextMod,
+      rarity: rarityPenalty,
+      environment: environmentMod
+    }
+  };
+}
+
+/**
+ * Evaluates a foraging roll and returns the outcome
+ *
+ * @param {number} roll - The 3d6 roll result
+ * @param {number} effectiveSkill - Foraging skill + modifiers
+ * @param {boolean} isTargeted - Whether this is a targeted search
+ * @returns {Object} Outcome with yield multiplier and description
+ */
+export function evaluateForagingRoll(roll, effectiveSkill, isTargeted = false) {
+  const margin = effectiveSkill - roll;
+  const critSuccess = isCriticalSuccess(roll, effectiveSkill);
+  const critFailure = isCriticalFailure(roll, effectiveSkill);
+  const success = roll <= effectiveSkill && !critFailure;
+
+  if (critFailure) {
+    // Random hazard on critical failure
+    const hazard = FORAGING_HAZARDS[Math.floor(Math.random() * FORAGING_HAZARDS.length)];
+    return {
+      outcome: 'critFailure',
+      success: false,
+      critFailure: true,
+      critSuccess: false,
+      margin,
+      yieldMultiplier: FORAGING_OUTCOMES.critFailure.yieldMultiplier,
+      hazard,
+      randomFallback: isTargeted,
+      description: FORAGING_OUTCOMES.critFailure.description + ` (${hazard})`
+    };
+  }
+
+  if (critSuccess) {
+    return {
+      outcome: 'critSuccess',
+      success: true,
+      critFailure: false,
+      critSuccess: true,
+      margin,
+      yieldMultiplier: FORAGING_OUTCOMES.critSuccess.yieldMultiplier,
+      bonusFind: true,
+      description: FORAGING_OUTCOMES.critSuccess.description
+    };
+  }
+
+  if (success) {
+    return {
+      outcome: 'success',
+      success: true,
+      critFailure: false,
+      critSuccess: false,
+      margin,
+      yieldMultiplier: FORAGING_OUTCOMES.success.yieldMultiplier,
+      description: FORAGING_OUTCOMES.success.description
+    };
+  }
+
+  return {
+    outcome: 'failure',
+    success: false,
+    critFailure: false,
+    critSuccess: false,
+    margin,
+    yieldMultiplier: FORAGING_OUTCOMES.failure.yieldMultiplier,
+    randomFallback: isTargeted,
+    description: FORAGING_OUTCOMES.failure.description
+  };
+}
+
+/**
+ * Determines what was found during foraging
+ *
+ * @param {Object} params - Find determination parameters
+ * @param {Object} params.rollResult - Result from evaluateForagingRoll
+ * @param {Object} params.findTable - The biome find table
+ * @param {Object} params.targetCategory - Target category if targeted search (deprecated)
+ * @param {Object} params.targetItem - Target item if targeted search
+ * @returns {Object} Find result with item information
+ */
+export function determineForageFind({
+  rollResult,
+  findTable,
+  targetCategory = null,
+  targetItem = null
+}) {
+  // If targeted search and successful, return target item
+  if (targetItem && rollResult.success && !rollResult.randomFallback) {
+    return {
+      type: 'item',
+      itemId: targetItem.id,
+      item: targetItem,
+      source: 'targeted'
+    };
+  }
+
+  // Otherwise roll on random table
+  if (!findTable || !findTable.entries || findTable.entries.length === 0) {
+    return {
+      type: 'nothing',
+      source: 'random',
+      text: 'No find table configured'
+    };
+  }
+
+  const tableEntry = rollOnCatchTable(findTable);
+
+  return {
+    type: tableEntry.resultType,
+    itemId: tableEntry.itemId || null,
+    tableEntry,
+    source: 'random',
+    text: tableEntry.text
+  };
+}
+
+/**
+ * Calculates foraging yields with modifiers
+ *
+ * @param {Object} params - Yield calculation parameters
+ * @param {Object} params.category - The foraging category (deprecated, kept for backwards compatibility)
+ * @param {Object} params.item - The forageable item with yieldFormula or yieldOverrideFormula
+ * @param {number} params.yieldMultiplier - Multiplier from roll outcome (0.5, 1.0, 1.5)
+ * @param {number} params.yieldDiceBonus - Bonus dice from tools/conditions (+1d, etc.)
+ * @param {number} params.yieldDicePenalty - Penalty dice from conditions (-1d, etc.)
+ * @returns {Object} Yield result with units
+ */
+export function calculateForageYields({
+  category,
+  item = null,
+  yieldMultiplier = 1.0,
+  yieldDiceBonus = 0,
+  yieldDicePenalty = 0
+}) {
+  if (!category && !item) {
+    return { units: 0, formula: null, rolls: [] };
+  }
+
+  // Use item's yield formula (yieldFormula or yieldOverrideFormula), otherwise category's (deprecated)
+  let baseFormula = item?.yieldOverrideFormula || item?.yieldFormula || category?.yieldFormula || '1d';
+
+  // Ensure formula is not empty or whitespace
+  if (typeof baseFormula === 'string') {
+    baseFormula = baseFormula.trim();
+  }
+  if (!baseFormula) {
+    baseFormula = '1d';
+  }
+
+  // Parse and modify formula with bonuses/penalties
+  const parsed = parseDiceFormula(baseFormula);
+
+  // Validate parsed values - ensure we have valid dice
+  const validCount = Math.max(1, parsed.count + yieldDiceBonus - yieldDicePenalty);
+  const validSides = parsed.sides > 0 ? parsed.sides : 6; // Default to d6 if invalid
+
+  const modifiedFormula = `${validCount}d${validSides !== 6 ? validSides : ''}${parsed.modifier >= 0 ? '+' : ''}${parsed.modifier || ''}`;
+
+  // Roll the dice
+  const result = evaluateDiceFormula(modifiedFormula);
+
+  // Apply multiplier (round down)
+  const finalUnits = Math.floor(result.total * yieldMultiplier);
+
+  return {
+    units: Math.max(0, finalUnits),
+    baseFormula,
+    modifiedFormula,
+    rolls: result.rolls,
+    rawTotal: result.total,
+    multiplier: yieldMultiplier,
+    finalUnits
+  };
+}
+
+/**
+ * Gets tool yield bonuses for a specific type
+ *
+ * @param {Array<Object>} tools - Selected tools
+ * @param {string} typeId - Type ID to check for bonuses (or categoryId for backwards compatibility)
+ * @returns {number} Total yield dice bonus for this type
+ */
+export function getToolYieldBonus(tools, typeId) {
+  if (!tools || !Array.isArray(tools) || !typeId) return 0;
+
+  return tools.reduce((total, tool) => {
+    if (!tool.bonuses) return total;
+
+    // Check for both typeId and categoryId for backwards compatibility
+    const yieldBonus = tool.bonuses.find(
+      b => b.type === 'yield_bonus' && (b.typeId === typeId || b.categoryId === typeId)
+    );
+
+    return total + (yieldBonus?.dice || 0);
+  }, 0);
 }

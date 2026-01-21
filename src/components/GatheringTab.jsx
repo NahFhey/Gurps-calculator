@@ -6,7 +6,10 @@ import {
   FISHING_METHODS,
   DYNAMIC_EVENT_THRESHOLDS,
   DEFAULT_FISH_ST,
-  MAX_NET_REROLL_ATTEMPTS
+  MAX_NET_REROLL_ATTEMPTS,
+  FORAGING_SKILLS,
+  FORAGING_RARITIES,
+  FORAGING_CONTEXT_MODIFIERS
 } from '../constants';
 import {
   evaluateFishingRoll,
@@ -21,9 +24,15 @@ import {
   filterToolsForMethod,
   createGatheringSession,
   evaluateDiceFormula,
+  parseDiceFormula,
   roll3d6,
   isCriticalSuccess,
-  isCriticalFailure
+  isCriticalFailure,
+  calculateEffectiveForagingSkill,
+  evaluateForagingRoll,
+  determineForageFind,
+  calculateForageYields,
+  getToolYieldBonus
 } from '../utils/gathering';
 
 /**
@@ -50,6 +59,8 @@ export function GatheringTab({
   sessions,
   dailyEvents,
   bait,
+  categories,
+  items,
   workers,
   foods,
   materials,
@@ -83,8 +94,8 @@ export function GatheringTab({
   const [sessionPhase, setSessionPhase] = useState('setup'); // setup, event, fishing, catch, yield, complete
 
   // Roll inputs
-  const [eventRoll, setEventRoll] = useState('');
-  const [fishingRoll, setFishingRoll] = useState('');
+  const [eventRoll, setEventRoll] = useState({ dice: [], total: 0 });
+  const [fishingRoll, setFishingRoll] = useState({ dice: [], total: 0 });
   const [catchRolls, setCatchRolls] = useState([]);
   const [struggleRoll, setStruggleRoll] = useState('');
   const [yieldResults, setYieldResults] = useState([]);
@@ -94,6 +105,21 @@ export function GatheringTab({
   const [fishingResult, setFishingResult] = useState(null);
   const [caughtFish, setCaughtFish] = useState([]);
   const [retryCount, setRetryCount] = useState(0);
+
+  // Foraging-specific state
+  const [selectedSkill, setSelectedSkill] = useState('Survival');
+  const [isRandomForage, setIsRandomForage] = useState(true);
+  const [targetCategoryId, setTargetCategoryId] = useState('');
+  const [targetItemId, setTargetItemId] = useState('');
+  const [targetRarity, setTargetRarity] = useState('Common');
+  const [hasMapGuide, setHasMapGuide] = useState(false);
+  const [isUnfamiliar, setIsUnfamiliar] = useState(false);
+  const [isPeakSeason, setIsPeakSeason] = useState(false);
+  const [isDenseTerrain, setIsDenseTerrain] = useState(false);
+  const [isStormDamaged, setIsStormDamaged] = useState(false);
+  const [forageRoll, setForageRoll] = useState({ dice: [], total: 0 });
+  const [forageResult, setForageResult] = useState(null);
+  const [forageFind, setForageFind] = useState(null);
 
   // Get filtered environments for selected mode
   const availableEnvironments = useMemo(() => {
@@ -120,8 +146,12 @@ export function GatheringTab({
     };
   }, [selectedEnvironment, selectedMode, tables]);
 
-  // Get filtered tools for selected method
+  // Get filtered tools for selected method/mode
   const availableTools = useMemo(() => {
+    if (selectedMode === 'Foraging') {
+      // Foraging doesn't use methods, just filter by mode
+      return tools.filter(tool => tool.allowedModes?.includes('Foraging'));
+    }
     return filterToolsForMethod(tools, selectedMode, selectedMethod);
   }, [tools, selectedMode, selectedMethod]);
 
@@ -187,6 +217,23 @@ export function GatheringTab({
     });
   }, [leader, toolBonus, baitStatus, targetedSpecies, isRandomCatch, retryCount, selectedEnvironment]);
 
+  // Calculate effective foraging skill
+  const effectiveForagingSkill = useMemo(() => {
+    if (!leader || selectedMode !== 'Foraging') return { effectiveSkill: 10, breakdown: {} };
+
+    const baseSkill = leader.skills?.[selectedSkill.toLowerCase()] || 10;
+
+    return calculateEffectiveForagingSkill({
+      baseForagingSkill: baseSkill,
+      toolBonus,
+      hasMapGuide,
+      isUnfamiliar,
+      isPeakSeason,
+      targetRarity: !isRandomForage ? targetRarity : null,
+      environmentMod: selectedEnvironment?.skillMod || 0
+    });
+  }, [leader, selectedSkill, toolBonus, hasMapGuide, isUnfamiliar, isPeakSeason, targetRarity, isRandomForage, selectedEnvironment, selectedMode]);
+
   // Start a new gathering session
   function startSession() {
     if (!selectedEnvironmentId || !leaderId) {
@@ -232,7 +279,7 @@ export function GatheringTab({
       return;
     }
 
-    const roll = parseInt(eventRoll);
+    const roll = eventRoll.total;
     const eventType = determineDynamicEventType(roll);
 
     let eventEntry = null;
@@ -282,7 +329,7 @@ export function GatheringTab({
       return;
     }
 
-    const roll = parseInt(fishingRoll);
+    const roll = fishingRoll.total;
     const result = evaluateFishingRoll(roll, effectiveSkill.effectiveSkill, selectedMethod);
 
     setFishingResult(result);
@@ -307,6 +354,35 @@ export function GatheringTab({
       // No catch, session complete
       setSessionPhase('complete');
     }
+  }
+
+  // Roll for foraging
+  function rollForaging() {
+    if (!forageRoll) {
+      alert('Please enter or roll 3d6 for the foraging check');
+      return;
+    }
+
+    const roll = forageRoll.total;
+    const result = evaluateForagingRoll(roll, effectiveForagingSkill.effectiveSkill, !isRandomForage);
+
+    setForageResult(result);
+
+    // Determine what was found
+    const targetCategory = targetCategoryId ? categories.find(c => c.id === targetCategoryId) : null;
+    const targetItem = targetItemId ? items.find(i => i.id === targetItemId) : null;
+
+    const findResult = determineForageFind({
+      rollResult: result,
+      findTable: resolvedTables.randomCatch, // Using randomCatch slot for find table
+      targetCategory,
+      targetItem
+    });
+
+    setForageFind(findResult);
+
+    // Move to yield phase
+    setSessionPhase('yield');
   }
 
   // Roll for random catch
@@ -408,6 +484,34 @@ export function GatheringTab({
     setYieldResults(prev => [...prev, { fishIndex, species: fish.species, yields }]);
   }
 
+  // Roll yields for foraging
+  function rollForageYields() {
+    if (!forageFind) return;
+
+    const category = categories.find(c => c.id === forageFind.categoryId);
+    const item = items.find(i => i.id === forageFind.itemId);
+
+    if (!category && !item) return;
+
+    // Calculate yield bonuses/penalties
+    const selectedToolObjects = tools.filter(t => selectedToolIds.includes(t.id));
+    const yieldDiceBonus = getToolYieldBonus(selectedToolObjects, category?.id);
+
+    let yieldDicePenalty = 0;
+    if (isStormDamaged) yieldDicePenalty += 1;
+    if (isDenseTerrain && selectedToolIds.length === 0) yieldDicePenalty += 1;
+
+    const yields = calculateForageYields({
+      category,
+      item,
+      yieldMultiplier: forageResult?.yieldMultiplier || 1.0,
+      yieldDiceBonus,
+      yieldDicePenalty
+    });
+
+    setYieldResults([{ category, item, yields }]);
+  }
+
   // Proceed to yield phase
   function proceedToYields() {
     // Check all large fish have been struggled
@@ -427,26 +531,56 @@ export function GatheringTab({
     const foodItems = {}; // { "speciesName|foodType": { speciesName, foodType, units } }
     const materialItems = {}; // { "name": { name, type, units } }
 
-    yieldResults.forEach(({ species: sp, yields }) => {
-      if (!yields || !sp) return;
+    if (selectedMode === 'Fishing') {
+      yieldResults.forEach(({ species: sp, yields }) => {
+        if (!yields || !sp) return;
 
-      // Add meat - named as "SpeciesName FoodType"
-      const foodType = yields.foodType || 'fish';
-      const foodKey = `${sp.name}|${foodType}`;
-      if (!foodItems[foodKey]) {
-        foodItems[foodKey] = { speciesName: sp.name, foodType, units: 0 };
-      }
-      foodItems[foodKey].units += yields.meatUnits;
-
-      // Add secondary material - use secondaryNameOverride if set, else "SpeciesName MaterialType"
-      if (yields.secondaryType && yields.secondaryUnits > 0) {
-        const materialName = sp.secondaryNameOverride || `${sp.name} ${yields.secondaryType}`;
-        if (!materialItems[materialName]) {
-          materialItems[materialName] = { name: materialName, type: yields.secondaryType, units: 0 };
+        // Add meat - named as "SpeciesName FoodType"
+        const foodType = yields.foodType || 'fish';
+        const foodKey = `${sp.name}|${foodType}`;
+        if (!foodItems[foodKey]) {
+          foodItems[foodKey] = { speciesName: sp.name, foodType, units: 0 };
         }
-        materialItems[materialName].units += yields.secondaryUnits;
-      }
-    });
+        foodItems[foodKey].units += yields.meatUnits;
+
+        // Add secondary material - use secondaryNameOverride if set, else "SpeciesName MaterialType"
+        if (yields.secondaryType && yields.secondaryUnits > 0) {
+          const materialName = sp.secondaryNameOverride || `${sp.name} ${yields.secondaryType}`;
+          if (!materialItems[materialName]) {
+            materialItems[materialName] = { name: materialName, type: yields.secondaryType, units: 0 };
+          }
+          materialItems[materialName].units += yields.secondaryUnits;
+        }
+      });
+    } else if (selectedMode === 'Foraging') {
+      // Handle foraging yields
+      yieldResults.forEach(({ category, item, yields }) => {
+        if (!yields || yields.units === 0) return;
+
+        const cat = category || categories.find(c => c.id === item?.categoryId);
+        if (!cat) return;
+
+        const inventoryKind = cat.inventoryOutput?.inventoryKind || 'food';
+        const typeId = cat.inventoryOutput?.typeId || cat.name.toLowerCase().replace(/\s+/g, '_');
+
+        // Get item name or use category name
+        const itemName = item?.name || cat.name;
+
+        if (inventoryKind === 'food') {
+          const foodKey = `${itemName}|${typeId}`;
+          if (!foodItems[foodKey]) {
+            foodItems[foodKey] = { speciesName: itemName, foodType: typeId, units: 0 };
+          }
+          foodItems[foodKey].units += yields.units;
+        } else {
+          // Material
+          if (!materialItems[itemName]) {
+            materialItems[itemName] = { name: itemName, type: typeId, units: 0 };
+          }
+          materialItems[itemName].units += yields.units;
+        }
+      });
+    }
 
     // Update foods inventory with proper naming
     const updatedFoods = [...foods];
@@ -521,10 +655,13 @@ export function GatheringTab({
     setSessionPhase('setup');
     setEventRoll('');
     setFishingRoll('');
+    setForageRoll('');
     setCatchRolls([]);
     setStruggleRoll('');
     setEventResult(null);
     setFishingResult(null);
+    setForageResult(null);
+    setForageFind(null);
     setCaughtFish([]);
     setYieldResults([]);
     setRetryCount(0);
@@ -601,6 +738,31 @@ export function GatheringTab({
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {FISHING_METHODS[selectedMethod]?.description}
+                </p>
+              </div>
+            )}
+
+            {/* Skill Selection (Foraging) */}
+            {selectedMode === 'Foraging' && (
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Foraging Skill</label>
+                <div className="flex gap-4">
+                  {Object.entries(FORAGING_SKILLS).map(([key, skill]) => (
+                    <label key={key} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="skill"
+                        value={key}
+                        checked={selectedSkill === key}
+                        onChange={(e) => setSelectedSkill(e.target.value)}
+                        className="w-4 h-4"
+                      />
+                      <span>{skill.label} ({skill.attribute})</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Choose the skill to use for foraging
                 </p>
               </div>
             )}
@@ -686,6 +848,140 @@ export function GatheringTab({
               </div>
             )}
 
+            {/* Intent (Foraging) */}
+            {selectedMode === 'Foraging' && (
+              <div className="bg-gray-700 p-3 rounded">
+                <label className="block text-sm text-gray-400 mb-2">
+                  <Target size={16} className="inline mr-1" /> Foraging Intent
+                </label>
+                <div className="flex gap-4 mb-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={isRandomForage}
+                      onChange={() => {
+                        setIsRandomForage(true);
+                        setTargetCategoryId('');
+                        setTargetItemId('');
+                      }}
+                      className="w-4 h-4"
+                    />
+                    <span>Random Forage</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={!isRandomForage}
+                      onChange={() => setIsRandomForage(false)}
+                      className="w-4 h-4"
+                    />
+                    <span>Targeted Search</span>
+                  </label>
+                </div>
+
+                {!isRandomForage && (
+                  <div className="space-y-2">
+                    <select
+                      value={targetCategoryId}
+                      onChange={(e) => {
+                        setTargetCategoryId(e.target.value);
+                        setTargetItemId('');
+                      }}
+                      className="w-full bg-gray-600 px-3 py-2 rounded"
+                    >
+                      <option value="">-- Select Category --</option>
+                      {categories?.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+
+                    {targetCategoryId && items?.filter(i => i.categoryId === targetCategoryId).length > 0 && (
+                      <select
+                        value={targetItemId}
+                        onChange={(e) => setTargetItemId(e.target.value)}
+                        className="w-full bg-gray-600 px-3 py-2 rounded"
+                      >
+                        <option value="">-- Or Select Specific Item --</option>
+                        {items?.filter(i => i.categoryId === targetCategoryId).map(i => (
+                          <option key={i.id} value={i.id}>
+                            {i.name} ({i.rarity})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                    {(targetCategoryId || targetItemId) && (
+                      <select
+                        value={targetRarity}
+                        onChange={(e) => setTargetRarity(e.target.value)}
+                        className="w-full bg-gray-600 px-3 py-2 rounded"
+                      >
+                        {Object.entries(FORAGING_RARITIES).map(([key, rarity]) => (
+                          <option key={key} value={key}>
+                            {rarity.label} ({rarity.penalty >= 0 ? '+' : ''}{rarity.penalty})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Context Modifiers (Foraging) */}
+            {selectedMode === 'Foraging' && (
+              <div className="bg-gray-700 p-3 rounded">
+                <label className="block text-sm text-gray-400 mb-2">Context Modifiers</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={hasMapGuide}
+                      onChange={(e) => setHasMapGuide(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">Map/Local Guide (+1)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isUnfamiliar}
+                      onChange={(e) => setIsUnfamiliar(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">Unfamiliar/Hostile (-2)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isPeakSeason}
+                      onChange={(e) => setIsPeakSeason(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">Peak Season (+2)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isDenseTerrain}
+                      onChange={(e) => setIsDenseTerrain(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">Dense/Dangerous Terrain</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isStormDamaged}
+                      onChange={(e) => setIsStormDamaged(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">Storm Damaged (-1d yield)</span>
+                  </label>
+                </div>
+              </div>
+            )}
+
             {/* Equipment Selection */}
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -703,47 +999,69 @@ export function GatheringTab({
                   ))}
                 </select>
                 {availableTools.length === 0 && (
-                  <p className="text-xs text-yellow-400 mt-1">No tools configured for this method</p>
+                  <p className="text-xs text-yellow-400 mt-1">No tools configured for this {selectedMode === 'Fishing' ? 'method' : 'mode'}</p>
                 )}
               </div>
 
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Bait</label>
-                <select
-                  value={selectedBaitId}
-                  onChange={(e) => setSelectedBaitId(e.target.value)}
-                  className="w-full bg-gray-700 px-3 py-2 rounded"
-                >
-                  <option value="">-- No Bait --</option>
-                  {bait.filter(b => (b.quantity || 0) > 0).map(b => (
-                    <option key={b.id} value={b.id}>
-                      {b.name} ({b.quantity || 0} available)
-                    </option>
-                  ))}
-                </select>
-                {baitStatus.correct && (
-                  <p className="text-xs text-green-400 mt-1">✓ Correct bait for target (+1)</p>
-                )}
-                {baitStatus.inappropriate && (
-                  <p className="text-xs text-red-400 mt-1">✗ Wrong bait for target (-2)</p>
-                )}
-              </div>
+              {selectedMode === 'Fishing' && (
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Bait</label>
+                  <select
+                    value={selectedBaitId}
+                    onChange={(e) => setSelectedBaitId(e.target.value)}
+                    className="w-full bg-gray-700 px-3 py-2 rounded"
+                  >
+                    <option value="">-- No Bait --</option>
+                    {bait.filter(b => (b.quantity || 0) > 0).map(b => (
+                      <option key={b.id} value={b.id}>
+                        {b.name} ({b.quantity || 0} available)
+                      </option>
+                    ))}
+                  </select>
+                  {baitStatus.correct && (
+                    <p className="text-xs text-green-400 mt-1">✓ Correct bait for target (+1)</p>
+                  )}
+                  {baitStatus.inappropriate && (
+                    <p className="text-xs text-red-400 mt-1">✗ Wrong bait for target (-2)</p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Skill Summary */}
             <div className="bg-gray-700 p-3 rounded">
-              <h4 className="font-semibold mb-2">Effective Skill: {effectiveSkill.effectiveSkill}</h4>
-              <div className="text-sm text-gray-400 grid grid-cols-3 gap-2">
-                <span>Base: {effectiveSkill.breakdown.base}</span>
-                <span>Tool: {effectiveSkill.breakdown.tool >= 0 ? '+' : ''}{effectiveSkill.breakdown.tool}</span>
-                <span>Bait: {effectiveSkill.breakdown.bait >= 0 ? '+' : ''}{effectiveSkill.breakdown.bait}</span>
-                {effectiveSkill.breakdown.largeFish !== 0 && (
-                  <span>Large Fish: {effectiveSkill.breakdown.largeFish}</span>
-                )}
-                {effectiveSkill.breakdown.environment !== 0 && (
-                  <span>Environment: {effectiveSkill.breakdown.environment >= 0 ? '+' : ''}{effectiveSkill.breakdown.environment}</span>
-                )}
-              </div>
+              {selectedMode === 'Fishing' && (
+                <>
+                  <h4 className="font-semibold mb-2">Effective Skill: {effectiveSkill.effectiveSkill}</h4>
+                  <div className="text-sm text-gray-400 grid grid-cols-3 gap-2">
+                    <span>Base: {effectiveSkill.breakdown.base}</span>
+                    <span>Tool: {effectiveSkill.breakdown.tool >= 0 ? '+' : ''}{effectiveSkill.breakdown.tool}</span>
+                    <span>Bait: {effectiveSkill.breakdown.bait >= 0 ? '+' : ''}{effectiveSkill.breakdown.bait}</span>
+                    {effectiveSkill.breakdown.largeFish !== 0 && (
+                      <span>Large Fish: {effectiveSkill.breakdown.largeFish}</span>
+                    )}
+                    {effectiveSkill.breakdown.environment !== 0 && (
+                      <span>Environment: {effectiveSkill.breakdown.environment >= 0 ? '+' : ''}{effectiveSkill.breakdown.environment}</span>
+                    )}
+                  </div>
+                </>
+              )}
+              {selectedMode === 'Foraging' && (
+                <>
+                  <h4 className="font-semibold mb-2">Effective Skill: {effectiveForagingSkill.effectiveSkill} ({selectedSkill})</h4>
+                  <div className="text-sm text-gray-400 grid grid-cols-3 gap-2">
+                    <span>Base: {effectiveForagingSkill.breakdown.base}</span>
+                    <span>Tool: {effectiveForagingSkill.breakdown.tool >= 0 ? '+' : ''}{effectiveForagingSkill.breakdown.tool}</span>
+                    <span>Context: {effectiveForagingSkill.breakdown.context >= 0 ? '+' : ''}{effectiveForagingSkill.breakdown.context}</span>
+                    {effectiveForagingSkill.breakdown.rarity !== 0 && (
+                      <span>Rarity: {effectiveForagingSkill.breakdown.rarity >= 0 ? '+' : ''}{effectiveForagingSkill.breakdown.rarity}</span>
+                    )}
+                    {effectiveForagingSkill.breakdown.environment !== 0 && (
+                      <span>Environment: {effectiveForagingSkill.breakdown.environment >= 0 ? '+' : ''}{effectiveForagingSkill.breakdown.environment}</span>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Tables Info */}
@@ -784,19 +1102,23 @@ export function GatheringTab({
               <div className="flex items-center gap-2 mb-4">
                 <input
                   type="number"
-                  value={eventRoll}
-                  onChange={(e) => setEventRoll(e.target.value)}
+                  value={eventRoll.total || ''}
+                  onChange={(e) => setEventRoll({ dice: [], total: parseInt(e.target.value) || 0 })}
                   placeholder="3-18"
                   min="3"
                   max="18"
                   className="flex-1 bg-gray-700 px-3 py-2 rounded"
                 />
-                <DiceRoller onRoll={(total) => setEventRoll(String(total))} />
+                <DiceRoller
+                  dice={eventRoll.dice}
+                  total={eventRoll.total}
+                  onRoll={(dice, total) => setEventRoll({ dice, total })}
+                />
               </div>
 
               <button
                 onClick={rollDailyEvent}
-                disabled={!eventRoll}
+                disabled={!eventRoll.total}
                 className="w-full bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 py-2 rounded font-semibold"
               >
                 Resolve Daily Event
@@ -821,7 +1143,7 @@ export function GatheringTab({
         )}
 
         {/* Fishing Phase */}
-        {sessionPhase === 'fishing' && (
+        {sessionPhase === 'fishing' && selectedMode === 'Fishing' && (
           <div className="space-y-4">
             <div className="bg-blue-900 p-4 rounded">
               <h3 className="text-lg font-semibold mb-2">Fishing Roll</h3>
@@ -833,19 +1155,23 @@ export function GatheringTab({
               <div className="flex items-center gap-2 mb-4">
                 <input
                   type="number"
-                  value={fishingRoll}
-                  onChange={(e) => setFishingRoll(e.target.value)}
+                  value={fishingRoll.total || ''}
+                  onChange={(e) => setFishingRoll({ dice: [], total: parseInt(e.target.value) || 0 })}
                   placeholder="3-18"
                   min="3"
                   max="18"
                   className="flex-1 bg-gray-700 px-3 py-2 rounded"
                 />
-                <DiceRoller onRoll={(total) => setFishingRoll(String(total))} />
+                <DiceRoller
+                  dice={fishingRoll.dice}
+                  total={fishingRoll.total}
+                  onRoll={(dice, total) => setFishingRoll({ dice, total })}
+                />
               </div>
 
               <button
                 onClick={rollFishing}
-                disabled={!fishingRoll}
+                disabled={!fishingRoll.total}
                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 py-2 rounded font-semibold"
               >
                 Roll Fishing
@@ -866,6 +1192,63 @@ export function GatheringTab({
                     You can retry (attempt {retryCount + 1}/3 at -{retryCount + 1} penalty)
                   </p>
                 )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Foraging Roll Phase */}
+        {sessionPhase === 'fishing' && selectedMode === 'Foraging' && (
+          <div className="space-y-4">
+            <div className="bg-green-900 p-4 rounded">
+              <h3 className="text-lg font-semibold mb-2">Foraging Roll</h3>
+              <p className="text-sm text-gray-300 mb-2">
+                Target: {effectiveForagingSkill.effectiveSkill} ({selectedSkill})
+              </p>
+
+              <div className="flex items-center gap-2 mb-4">
+                <input
+                  type="number"
+                  value={forageRoll.total || ''}
+                  onChange={(e) => setForageRoll({ dice: [], total: parseInt(e.target.value) || 0 })}
+                  placeholder="3-18"
+                  min="3"
+                  max="18"
+                  className="flex-1 bg-gray-700 px-3 py-2 rounded"
+                />
+                <DiceRoller
+                  dice={forageRoll.dice}
+                  total={forageRoll.total}
+                  onRoll={(dice, total) => setForageRoll({ dice, total })}
+                />
+              </div>
+
+              <button
+                onClick={rollForaging}
+                disabled={!forageRoll.total}
+                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 py-2 rounded font-semibold"
+              >
+                Roll Foraging
+              </button>
+            </div>
+
+            {forageResult && (
+              <div className={`p-4 rounded ${forageResult.success ? 'bg-green-900' : 'bg-red-900'}`}>
+                <h4 className="font-semibold flex items-center gap-2">
+                  {forageResult.success ? <CheckCircle size={20} /> : <XCircle size={20} />}
+                  {forageResult.description}
+                </h4>
+                <p className="text-sm mt-1">
+                  Roll: {forageRoll} vs {effectiveForagingSkill.effectiveSkill} (Margin: {forageResult.margin})
+                </p>
+                {forageResult.hazard && (
+                  <p className="text-sm text-orange-400 mt-2">
+                    ⚠ Hazard: {forageResult.hazard}
+                  </p>
+                )}
+                <p className="text-sm text-purple-400 mt-2">
+                  Yield Multiplier: {Math.floor(forageResult.yieldMultiplier * 100)}%
+                </p>
               </div>
             )}
           </div>
@@ -942,40 +1325,249 @@ export function GatheringTab({
           </div>
         )}
 
-        {/* Yield Phase */}
-        {sessionPhase === 'yield' && (
+        {/* Yield Phase - Fishing */}
+        {sessionPhase === 'yield' && selectedMode === 'Fishing' && (
           <div className="space-y-4">
             <div className="bg-purple-900 p-4 rounded">
               <h3 className="text-lg font-semibold mb-2">Calculate Yields</h3>
 
-              {caughtFish.filter(f => !f.isLarge || f.struggleSuccess).map((fish, i) => (
-                <div key={i} className="bg-gray-800 p-3 rounded mb-2">
-                  <div className="flex justify-between items-center">
-                    <span>{fish.species?.name || 'Unknown Fish'}</span>
-                    {fish.yields ? (
-                      <span className="text-purple-400">
-                        {fish.yields.meatUnits}U meat
-                        {fish.yields.secondaryUnits > 0 && `, ${fish.yields.secondaryUnits}U ${fish.yields.secondaryType}`}
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => rollYields(fish.index)}
-                        className="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded text-sm"
-                      >
-                        Roll Yields
-                      </button>
+              {caughtFish.filter(f => !f.isLarge || f.struggleSuccess).map((fish, fishIdx) => {
+                if (!fish.species) return null;
+
+                // Parse meat yield formula
+                const meatFormula = fish.species.yieldMeatFormula || '1d';
+                const meatParsed = parseDiceFormula(meatFormula);
+
+                // Parse secondary yield formula if exists
+                const hasSecondary = fish.species.yieldSecondaryFormula && fish.species.secondaryMaterialType;
+                let secondaryParsed;
+                if (hasSecondary) {
+                  secondaryParsed = parseDiceFormula(fish.species.yieldSecondaryFormula);
+                }
+
+                return (
+                  <div key={fishIdx} className="bg-gray-800 p-3 rounded mb-3 space-y-3">
+                    <div className="font-medium text-blue-200">{fish.species.name}</div>
+
+                    {/* Meat Yield Roller */}
+                    <div>
+                      <div className="text-xs text-gray-400 mb-2">
+                        Meat Yield: {meatFormula}
+                      </div>
+                      <DiceRoller
+                        label="Meat Yield"
+                        diceCount={meatParsed.count || 1}
+                        diceSides={meatParsed.sides || 6}
+                        modifier={meatParsed.modifier || 0}
+                        dice={fish.yields?.meatDice || []}
+                        total={fish.yields?.meatUnits || 0}
+                        onRoll={(dice, total) => {
+                          // Update fish with new meat yield
+                          setCaughtFish(prev => prev.map((f, i) =>
+                            i === fish.index ? {
+                              ...f,
+                              yields: {
+                                ...(f.yields || {}),
+                                meatUnits: total,
+                                meatDice: dice
+                              }
+                            } : f
+                          ));
+                        }}
+                        onTotalChange={(total) => {
+                          setCaughtFish(prev => prev.map((f, i) =>
+                            i === fish.index ? {
+                              ...f,
+                              yields: {
+                                ...(f.yields || {}),
+                                meatUnits: total,
+                                meatDice: []
+                              }
+                            } : f
+                          ));
+                        }}
+                      />
+                    </div>
+
+                    {/* Secondary Material Yield Roller */}
+                    {hasSecondary && (
+                      <div>
+                        <div className="text-xs text-gray-400 mb-2">
+                          {fish.species.secondaryMaterialType}: {fish.species.yieldSecondaryFormula}
+                        </div>
+                        <DiceRoller
+                          label={fish.species.secondaryMaterialType}
+                          diceCount={secondaryParsed.count || 1}
+                          diceSides={secondaryParsed.sides || 6}
+                          modifier={secondaryParsed.modifier || 0}
+                          dice={fish.yields?.secondaryDice || []}
+                          total={fish.yields?.secondaryUnits || 0}
+                          onRoll={(dice, total) => {
+                            setCaughtFish(prev => prev.map((f, i) =>
+                              i === fish.index ? {
+                                ...f,
+                                yields: {
+                                  ...(f.yields || {}),
+                                  secondaryUnits: total,
+                                  secondaryDice: dice,
+                                  secondaryType: fish.species.secondaryMaterialType
+                                }
+                              } : f
+                            ));
+                          }}
+                          onTotalChange={(total) => {
+                            setCaughtFish(prev => prev.map((f, i) =>
+                              i === fish.index ? {
+                                ...f,
+                                yields: {
+                                  ...(f.yields || {}),
+                                  secondaryUnits: total,
+                                  secondaryDice: [],
+                                  secondaryType: fish.species.secondaryMaterialType
+                                }
+                              } : f
+                            ));
+                          }}
+                        />
+                      </div>
                     )}
                   </div>
-                  {fish.species && (
-                    <div className="text-xs text-gray-400 mt-1">
-                      Meat: {fish.species.yieldMeatFormula}
-                      {fish.species.yieldSecondaryFormula && ` | ${fish.species.secondaryMaterialType}: ${fish.species.yieldSecondaryFormula}`}
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
 
-              {yieldResults.length === caughtFish.filter(f => !f.isLarge || f.struggleSuccess).length && (
+              {caughtFish.filter(f => (!f.isLarge || f.struggleSuccess) && f.yields).length === caughtFish.filter(f => !f.isLarge || f.struggleSuccess).length &&
+               caughtFish.filter(f => !f.isLarge || f.struggleSuccess).length > 0 && (
+                <button
+                  onClick={() => {
+                    // Update yield results with current fish yields
+                    const results = caughtFish
+                      .filter(f => (!f.isLarge || f.struggleSuccess) && f.yields)
+                      .map(f => ({
+                        fishIndex: f.index,
+                        species: f.species,
+                        yields: f.yields
+                      }));
+                    setYieldResults(results);
+                    commitToInventory();
+                  }}
+                  className="w-full bg-purple-600 hover:bg-purple-700 py-2 rounded font-semibold mt-4"
+                >
+                  <Package size={18} className="inline mr-2" />
+                  Add to Inventory
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Yield Phase - Foraging */}
+        {sessionPhase === 'yield' && selectedMode === 'Foraging' && (
+          <div className="space-y-4">
+            <div className="bg-purple-900 p-4 rounded">
+              <h3 className="text-lg font-semibold mb-2">Foraging Results</h3>
+
+              {/* Find Result */}
+              <div className="bg-gray-800 p-3 rounded mb-3">
+                <h4 className="font-semibold mb-2">What You Found:</h4>
+                {forageFind?.type === 'category' && (
+                  <div>
+                    <span className="text-green-400">
+                      {categories.find(c => c.id === forageFind.categoryId)?.name || 'Unknown Category'}
+                    </span>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {categories.find(c => c.id === forageFind.categoryId)?.description}
+                    </p>
+                  </div>
+                )}
+                {forageFind?.type === 'item' && (
+                  <div>
+                    <span className="text-green-400">
+                      {items.find(i => i.id === forageFind.itemId)?.name || 'Unknown Item'}
+                    </span>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {items.find(i => i.id === forageFind.itemId)?.description}
+                    </p>
+                  </div>
+                )}
+                {forageFind?.type === 'nothing' && (
+                  <span className="text-gray-400">Nothing found</span>
+                )}
+                {forageFind?.type === 'special' && (
+                  <span className="text-yellow-400">{forageFind.text}</span>
+                )}
+              </div>
+
+              {/* Yield Calculation */}
+              {(forageFind?.type === 'category' || forageFind?.type === 'item') && (() => {
+                const category = categories.find(c => c.id === forageFind.categoryId);
+                const item = items.find(i => i.id === forageFind.itemId);
+
+                if (!category && !item) return null;
+
+                // Get yield formula
+                const yieldFormula = item?.yieldFormula || category?.yieldFormula || '1d';
+                const parsed = parseDiceFormula(yieldFormula);
+
+                // Get current yield from results if already rolled
+                const currentYield = yieldResults[0]?.yields?.units || 0;
+                const currentDice = yieldResults[0]?.yields?.dice || [];
+
+                return (
+                  <div className="bg-gray-800 p-3 rounded mb-3">
+                    <h4 className="font-semibold mb-2">Calculate Yield:</h4>
+                    <div className="text-xs text-gray-400 mb-2">
+                      Formula: {yieldFormula} × {Math.floor((forageResult?.yieldMultiplier || 1) * 100)}%
+                    </div>
+                    <DiceRoller
+                      label="Roll for Yield"
+                      diceCount={parsed.count || 1}
+                      diceSides={parsed.sides || 6}
+                      modifier={parsed.modifier || 0}
+                      dice={currentDice}
+                      total={currentYield}
+                      onRoll={(dice, total) => {
+                        // Apply yield multiplier
+                        const finalUnits = Math.floor(total * (forageResult?.yieldMultiplier || 1.0));
+                        setYieldResults([{
+                          category,
+                          item,
+                          yields: {
+                            units: finalUnits,
+                            dice,
+                            baseFormula: yieldFormula,
+                            modifiedFormula: yieldFormula,
+                            rawTotal: total,
+                            multiplier: forageResult?.yieldMultiplier || 1.0
+                          }
+                        }]);
+                      }}
+                      onTotalChange={(total) => {
+                        // Apply yield multiplier
+                        const finalUnits = Math.floor(total * (forageResult?.yieldMultiplier || 1.0));
+                        setYieldResults([{
+                          category,
+                          item,
+                          yields: {
+                            units: finalUnits,
+                            dice: [],
+                            baseFormula: yieldFormula,
+                            modifiedFormula: yieldFormula,
+                            rawTotal: total,
+                            multiplier: forageResult?.yieldMultiplier || 1.0
+                          }
+                        }]);
+                      }}
+                    />
+                    {currentYield > 0 && (
+                      <div className="text-sm text-purple-300 mt-2">
+                        Final Yield: {currentYield} units
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {yieldResults.length > 0 && (
                 <button
                   onClick={commitToInventory}
                   className="w-full bg-purple-600 hover:bg-purple-700 py-2 rounded font-semibold mt-4"
@@ -997,7 +1589,7 @@ export function GatheringTab({
                 Session Complete
               </h3>
 
-              {yieldResults.length > 0 && (
+              {selectedMode === 'Fishing' && yieldResults.length > 0 && (
                 <div className="mb-4">
                   <h4 className="font-semibold mb-2">Catches:</h4>
                   {yieldResults.map((result, i) => (
@@ -1009,8 +1601,26 @@ export function GatheringTab({
                 </div>
               )}
 
-              {fishingResult && !fishingResult.success && (
+              {selectedMode === 'Foraging' && yieldResults.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="font-semibold mb-2">Foraged:</h4>
+                  {yieldResults.map((result, i) => {
+                    const itemName = result.item?.name || result.category?.name || 'Unknown';
+                    return (
+                      <div key={i} className="text-sm">
+                        {itemName}: {result.yields?.units}U
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {fishingResult && !fishingResult.success && selectedMode === 'Fishing' && (
                 <p className="text-gray-400">No fish caught this session.</p>
+              )}
+
+              {forageResult && !forageResult.success && selectedMode === 'Foraging' && (
+                <p className="text-gray-400">Nothing foraged this session.</p>
               )}
 
               <button

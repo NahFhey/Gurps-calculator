@@ -58,7 +58,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
   // Processing state
   const [processingState, setProcessingState] = useState('idle'); // 'idle', 'processing', 'completed', 'aborted'
   const [currentUnitIndex, setCurrentUnitIndex] = useState(0);
-  const [currentRoll, setCurrentRoll] = useState('');
+  const [currentRoll, setCurrentRoll] = useState({ dice: [], total: 0 });
   const [unitResults, setUnitResults] = useState([]);
   const [processingLog, setProcessingLog] = useState([]);
   const [showResults, setShowResults] = useState(false);
@@ -151,7 +151,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
       return;
     }
 
-    const rollValue = parseInt(currentRoll);
+    const rollValue = currentRoll.total;
     const unitNumber = currentUnitIndex + 1;
 
     // Calculate cumulative batch penalty for this unit
@@ -726,14 +726,18 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
               <div className="flex items-center gap-2 mb-3">
                 <input
                   type="number"
-                  value={currentRoll}
-                  onChange={(e) => setCurrentRoll(e.target.value)}
+                  value={currentRoll.total || ''}
+                  onChange={(e) => setCurrentRoll({ dice: [], total: parseInt(e.target.value) || 0 })}
                   placeholder="3-18"
                   min="3"
                   max="18"
                   className="flex-1 bg-gray-600 px-3 py-2 rounded"
                 />
-                <DiceRoller onRoll={(total) => setCurrentRoll(String(total))} />
+                <DiceRoller
+                  dice={currentRoll.dice}
+                  total={currentRoll.total}
+                  onRoll={(dice, total) => setCurrentRoll({ dice, total })}
+                />
               </div>
 
               <div className="flex gap-2">

@@ -38,7 +38,7 @@ export function CookingTab({ foods, recipes, saveFoods, saveRecipes, workers, ki
   const [selectedWorker, setSelectedWorker] = useState('');
   const [selectedKitchenId, setSelectedKitchenId] = useState(kitchens?.[0]?.id || 'default');
   const [cookingSkillValue, setCookingSkillValue] = useState('');
-  const [roll, setRoll] = useState('');
+  const [roll, setRoll] = useState({ dice: [], total: 0 });
   const [expandedRecipes, setExpandedRecipes] = useState({});
 
   // Remake recipe state
@@ -47,7 +47,7 @@ export function CookingTab({ foods, recipes, saveFoods, saveRecipes, workers, ki
   const [remakeWorker, setRemakeWorker] = useState('');
   const [remakeKitchenId, setRemakeKitchenId] = useState(kitchens?.[0]?.id || 'default');
   const [remakeSkill, setRemakeSkill] = useState('');
-  const [remakeRoll, setRemakeRoll] = useState('');
+  const [remakeRoll, setRemakeRoll] = useState({ dice: [], total: 0 });
 
   /**
    * Computed recipe statistics based on selected ingredients
@@ -89,13 +89,13 @@ export function CookingTab({ foods, recipes, saveFoods, saveRecipes, workers, ki
     if (stats.total !== numPeople || !name.trim() || skills.length !== stats.rolls) {
       alert('Check requirements'); return;
     }
-    if (!selectedWorker || !cookingSkillValue || !roll) {
+    if (!selectedWorker || !cookingSkillValue || !roll.total) {
       alert('Please select worker, skill, and roll for recipe creation');
       return;
     }
 
     const skillValue = parseInt(cookingSkillValue);
-    const rollValue = parseInt(roll);
+    const rollValue = roll.total;
 
     if (isNaN(skillValue) || isNaN(rollValue)) {
       alert('Invalid skill or roll values');
@@ -335,13 +335,13 @@ export function CookingTab({ foods, recipes, saveFoods, saveRecipes, workers, ki
       }
     }
 
-    if (!remakeWorker || !remakeSkill || !remakeRoll) {
+    if (!remakeWorker || !remakeSkill || !remakeRoll.total) {
       alert('Please select worker, skill, and roll for remaking recipe');
       return;
     }
 
     const skillValue = parseInt(remakeSkill);
-    const rollValue = parseInt(remakeRoll);
+    const rollValue = remakeRoll.total;
 
     if (isNaN(skillValue) || isNaN(rollValue)) {
       alert('Invalid skill or roll values');
@@ -557,14 +557,18 @@ export function CookingTab({ foods, recipes, saveFoods, saveRecipes, workers, ki
                 <div className="flex gap-2">
                   <input
                     type="number"
-                    value={roll}
-                    onChange={(e) => setRoll(e.target.value)}
+                    value={roll.total || ''}
+                    onChange={(e) => setRoll({ dice: [], total: parseInt(e.target.value) || 0 })}
                     className="flex-1 bg-gray-600 px-3 py-2 rounded"
                     placeholder="3-18"
                     min="3"
                     max="18"
                   />
-                  <DiceRoller onRoll={(total) => setRoll(String(total))} />
+                  <DiceRoller
+                    dice={roll.dice}
+                    total={roll.total}
+                    onRoll={(dice, total) => setRoll({ dice, total })}
+                  />
                 </div>
                 {cookingSkillValue && (
                   <div className="text-xs text-gray-400 mt-1">
@@ -572,7 +576,7 @@ export function CookingTab({ foods, recipes, saveFoods, saveRecipes, workers, ki
                       const selectedKitchen = kitchens?.find(k => k.id === selectedKitchenId) || { rating: 0 };
                       const kitchenBonus = selectedKitchen.rating || 0;
                       const effectiveSkill = parseInt(cookingSkillValue) + kitchenBonus;
-                      const mos = roll ? effectiveSkill - parseInt(roll) : '?';
+                      const mos = roll.total ? effectiveSkill - roll.total : '?';
                       return kitchenBonus > 0
                         ? `Effective Skill: ${cookingSkillValue} + ${kitchenBonus} (kitchen) = ${effectiveSkill} | MoS: ${mos}`
                         : `MoS: ${mos}`;
@@ -866,14 +870,18 @@ export function CookingTab({ foods, recipes, saveFoods, saveRecipes, workers, ki
                 <div className="flex gap-2">
                   <input
                     type="number"
-                    value={remakeRoll}
-                    onChange={(e) => setRemakeRoll(e.target.value)}
+                    value={remakeRoll.total || ''}
+                    onChange={(e) => setRemakeRoll({ dice: [], total: parseInt(e.target.value) || 0 })}
                     className="flex-1 bg-gray-600 px-3 py-2 rounded"
                     placeholder="3-18"
                     min="3"
                     max="18"
                   />
-                  <DiceRoller onRoll={(total) => setRemakeRoll(String(total))} />
+                  <DiceRoller
+                    dice={remakeRoll.dice}
+                    total={remakeRoll.total}
+                    onRoll={(dice, total) => setRemakeRoll({ dice, total })}
+                  />
                 </div>
                 {remakeSkill && (
                   <div className="text-xs text-gray-400 mt-1">
@@ -881,7 +889,7 @@ export function CookingTab({ foods, recipes, saveFoods, saveRecipes, workers, ki
                       const selectedKitchen = kitchens?.find(k => k.id === remakeKitchenId) || { rating: 0 };
                       const kitchenBonus = selectedKitchen.rating || 0;
                       const effectiveSkill = parseInt(remakeSkill) + kitchenBonus;
-                      const mos = remakeRoll ? effectiveSkill - parseInt(remakeRoll) : '?';
+                      const mos = remakeRoll.total ? effectiveSkill - remakeRoll.total : '?';
                       return kitchenBonus > 0
                         ? `Effective Skill: ${remakeSkill} + ${kitchenBonus} (kitchen) = ${effectiveSkill} | MoS: ${mos}`
                         : `MoS: ${mos}`;

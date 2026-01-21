@@ -9,7 +9,11 @@ import {
   FISH_SECONDARY_MATERIALS,
   SPECIES_SPECIAL_RULES,
   GATHERING_TABLE_TYPES,
-  FISH_ST_RANGE
+  FISH_ST_RANGE,
+  FORAGING_TOOL_TYPES,
+  FORAGING_RARITIES,
+  FORAGING_FOOD_TYPES,
+  FORAGING_MATERIAL_TYPES
 } from '../constants';
 
 /**
@@ -45,6 +49,8 @@ export function GatheringManager({
   tables,
   environments,
   bait,
+  categories,
+  items,
   currentDay,
   foodTypes = [],
   materialTypes = [],
@@ -53,6 +59,8 @@ export function GatheringManager({
   saveTables,
   saveEnvironments,
   saveBait,
+  saveCategories,
+  saveItems,
   saveCurrentDay
 }) {
   const [view, setView] = useState('species');
@@ -78,12 +86,18 @@ export function GatheringManager({
     return foodTypes.map(ft => typeof ft === 'string' ? ft : ft.name);
   }, [foodTypes]);
 
+  // Get material type names from manager
+  const availableMaterialTypes = useMemo(() => {
+    return materialTypes.map(mt => typeof mt === 'string' ? mt : mt.name);
+  }, [materialTypes]);
+
   // Tool form state
   const [newToolName, setNewToolName] = useState('');
   const [newToolType, setNewToolType] = useState('fishing_rod');
   const [newToolModes, setNewToolModes] = useState(['Fishing']);
   const [newToolMethods, setNewToolMethods] = useState([]);
   const [newToolSkillBonus, setNewToolSkillBonus] = useState('0');
+  const [newToolYieldBonuses, setNewToolYieldBonuses] = useState([]);
   const [newToolDurability, setNewToolDurability] = useState('');
   const [newToolNotes, setNewToolNotes] = useState('');
 
@@ -99,6 +113,9 @@ export function GatheringManager({
   const [newEnvCatchTableId, setNewEnvCatchTableId] = useState('');
   const [newEnvMildTableId, setNewEnvMildTableId] = useState('');
   const [newEnvRareTableId, setNewEnvRareTableId] = useState('');
+  const [newEnvForagingFindTableId, setNewEnvForagingFindTableId] = useState('');
+  const [newEnvForagingMildTableId, setNewEnvForagingMildTableId] = useState('');
+  const [newEnvForagingRareTableId, setNewEnvForagingRareTableId] = useState('');
   const [newEnvSkillMod, setNewEnvSkillMod] = useState('0');
 
   // Bait form state
@@ -107,6 +124,21 @@ export function GatheringManager({
   const [newBaitAttracts, setNewBaitAttracts] = useState([]);
   const [newBaitQuantity, setNewBaitQuantity] = useState('10');
   const [newBaitRollBonus, setNewBaitRollBonus] = useState('1');
+
+  // Category form state
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryYieldFormula, setNewCategoryYieldFormula] = useState('3d');
+  const [newCategoryInventoryKind, setNewCategoryInventoryKind] = useState('food');
+  const [newCategoryTypeId, setNewCategoryTypeId] = useState('');
+  const [newCategoryDescription, setNewCategoryDescription] = useState('');
+
+  // Item form state
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemInventoryKind, setNewItemInventoryKind] = useState('food');
+  const [newItemTypeId, setNewItemTypeId] = useState('');
+  const [newItemYieldFormula, setNewItemYieldFormula] = useState('3d');
+  const [newItemRarity, setNewItemRarity] = useState('Common');
+  const [newItemDescription, setNewItemDescription] = useState('');
 
   // Add or update species
   function addSpecies() {
@@ -181,6 +213,13 @@ export function GatheringManager({
       bonuses.push({ type: 'skill_bonus', skill: 'Fishing', value: parseInt(newToolSkillBonus) });
     }
 
+    // Add yield bonuses
+    newToolYieldBonuses.forEach(yb => {
+      if (yb.typeId && yb.dice) {
+        bonuses.push({ type: 'yield_bonus', typeId: yb.typeId, dice: parseInt(yb.dice) });
+      }
+    });
+
     const entryData = {
       name: newToolName.trim(),
       toolType: newToolType,
@@ -206,6 +245,14 @@ export function GatheringManager({
     setNewToolModes(t.allowedModes || ['Fishing']);
     setNewToolMethods(t.allowedMethods || []);
     setNewToolSkillBonus(String(t.bonuses?.find(b => b.type === 'skill_bonus')?.value || 0));
+
+    // Load yield bonuses
+    const yieldBonuses = t.bonuses?.filter(b => b.type === 'yield_bonus').map(yb => ({
+      typeId: yb.typeId || yb.categoryId, // Support old categoryId for backwards compatibility
+      dice: String(yb.dice || 0)
+    })) || [];
+    setNewToolYieldBonuses(yieldBonuses);
+
     setNewToolDurability(t.durability ? String(t.durability) : '');
     setNewToolNotes(t.notes || '');
     setShowAdd(true);
@@ -218,6 +265,7 @@ export function GatheringManager({
     setNewToolModes(['Fishing']);
     setNewToolMethods([]);
     setNewToolSkillBonus('0');
+    setNewToolYieldBonuses([]);
     setNewToolDurability('');
     setNewToolNotes('');
     setShowAdd(false);
@@ -293,22 +341,39 @@ export function GatheringManager({
       return;
     }
 
-    // Validate at least one table is selected
-    if (!newEnvCatchTableId && !newEnvMildTableId && !newEnvRareTableId) {
-      alert('Environment must have at least one table selected (Catch, Mild Event, or Rare Event)');
+    // Build defaultsByMode object
+    const defaultsByMode = {};
+
+    if (newEnvModes.includes('Fishing')) {
+      defaultsByMode.Fishing = {
+        randomCatchTableId: newEnvCatchTableId || null,
+        mildEventTableId: newEnvMildTableId || null,
+        rareEventTableId: newEnvRareTableId || null
+      };
+    }
+
+    if (newEnvModes.includes('Foraging')) {
+      defaultsByMode.Foraging = {
+        randomCatchTableId: newEnvForagingFindTableId || null,
+        mildEventTableId: newEnvForagingMildTableId || null,
+        rareEventTableId: newEnvForagingRareTableId || null
+      };
+    }
+
+    // Validate at least one table is selected across all modes
+    const hasTables = Object.values(defaultsByMode).some(mode =>
+      mode.randomCatchTableId || mode.mildEventTableId || mode.rareEventTableId
+    );
+
+    if (!hasTables) {
+      alert('Environment must have at least one table selected');
       return;
     }
 
     const entryData = {
       name: newEnvName.trim(),
       supportedModes: newEnvModes,
-      defaultsByMode: {
-        Fishing: {
-          randomCatchTableId: newEnvCatchTableId || null,
-          mildEventTableId: newEnvMildTableId || null,
-          rareEventTableId: newEnvRareTableId || null
-        }
-      },
+      defaultsByMode,
       skillMod: parseInt(newEnvSkillMod) || 0
     };
 
@@ -324,10 +389,17 @@ export function GatheringManager({
     setEditingId(e.id);
     setNewEnvName(e.name);
     setNewEnvModes(e.supportedModes || ['Fishing']);
+
     const fishingDefaults = e.defaultsByMode?.Fishing || {};
     setNewEnvCatchTableId(fishingDefaults.randomCatchTableId || '');
     setNewEnvMildTableId(fishingDefaults.mildEventTableId || '');
     setNewEnvRareTableId(fishingDefaults.rareEventTableId || '');
+
+    const foragingDefaults = e.defaultsByMode?.Foraging || {};
+    setNewEnvForagingFindTableId(foragingDefaults.randomCatchTableId || '');
+    setNewEnvForagingMildTableId(foragingDefaults.mildEventTableId || '');
+    setNewEnvForagingRareTableId(foragingDefaults.rareEventTableId || '');
+
     setNewEnvSkillMod(String(e.skillMod || 0));
     setShowAdd(true);
   }
@@ -339,6 +411,9 @@ export function GatheringManager({
     setNewEnvCatchTableId('');
     setNewEnvMildTableId('');
     setNewEnvRareTableId('');
+    setNewEnvForagingFindTableId('');
+    setNewEnvForagingMildTableId('');
+    setNewEnvForagingRareTableId('');
     setNewEnvSkillMod('0');
     setShowAdd(false);
   }
@@ -393,6 +468,97 @@ export function GatheringManager({
     setShowAdd(false);
   }
 
+  // Add or update category
+  function addCategory() {
+    if (!newCategoryName.trim()) {
+      alert('Enter category name');
+      return;
+    }
+
+    const entryData = {
+      name: newCategoryName.trim(),
+      yieldFormula: newCategoryYieldFormula || '3d',
+      inventoryOutput: {
+        inventoryKind: newCategoryInventoryKind,
+        typeId: newCategoryTypeId.trim() || newCategoryName.trim().toLowerCase().replace(/\s+/g, '_')
+      },
+      description: newCategoryDescription.trim()
+    };
+
+    if (editingId) {
+      saveCategories(categories.map(c => c.id === editingId ? { ...c, ...entryData } : c));
+    } else {
+      saveCategories([...categories, { id: crypto.randomUUID(), ...entryData }]);
+    }
+    resetCategoryForm();
+  }
+
+  function editCategory(c) {
+    setEditingId(c.id);
+    setNewCategoryName(c.name);
+    setNewCategoryYieldFormula(c.yieldFormula || '3d');
+    setNewCategoryInventoryKind(c.inventoryOutput?.inventoryKind || 'food');
+    setNewCategoryTypeId(c.inventoryOutput?.typeId || '');
+    setNewCategoryDescription(c.description || '');
+    setShowAdd(true);
+  }
+
+  function resetCategoryForm() {
+    setEditingId(null);
+    setNewCategoryName('');
+    setNewCategoryYieldFormula('3d');
+    setNewCategoryInventoryKind('food');
+    setNewCategoryTypeId('');
+    setNewCategoryDescription('');
+    setShowAdd(false);
+  }
+
+  // Add or update item
+  function addItem() {
+    if (!newItemName.trim()) {
+      alert('Enter item name');
+      return;
+    }
+
+    const entryData = {
+      name: newItemName.trim(),
+      inventoryKind: newItemInventoryKind,
+      typeId: newItemTypeId.trim() || newItemName.trim().toLowerCase().replace(/\s+/g, '_'),
+      yieldFormula: newItemYieldFormula || '3d',
+      rarity: newItemRarity,
+      description: newItemDescription.trim()
+    };
+
+    if (editingId) {
+      saveItems(items.map(i => i.id === editingId ? { ...i, ...entryData } : i));
+    } else {
+      saveItems([...items, { id: crypto.randomUUID(), ...entryData }]);
+    }
+    resetItemForm();
+  }
+
+  function editItem(i) {
+    setEditingId(i.id);
+    setNewItemName(i.name);
+    setNewItemInventoryKind(i.inventoryKind || 'food');
+    setNewItemTypeId(i.typeId || '');
+    setNewItemYieldFormula(i.yieldFormula || '3d');
+    setNewItemRarity(i.rarity || 'Common');
+    setNewItemDescription(i.description || '');
+    setShowAdd(true);
+  }
+
+  function resetItemForm() {
+    setEditingId(null);
+    setNewItemName('');
+    setNewItemInventoryKind('food');
+    setNewItemTypeId('');
+    setNewItemYieldFormula('3d');
+    setNewItemRarity('Common');
+    setNewItemDescription('');
+    setShowAdd(false);
+  }
+
   // Delete handlers
   function confirmDelete(type, id, name) {
     setDeleteConfirm({ type, id, name });
@@ -416,6 +582,12 @@ export function GatheringManager({
         break;
       case 'bait':
         saveBait(bait.filter(b => b.id !== deleteConfirm.id));
+        break;
+      case 'category':
+        saveCategories(categories.filter(c => c.id !== deleteConfirm.id));
+        break;
+      case 'item':
+        saveItems(items.filter(i => i.id !== deleteConfirm.id));
         break;
     }
     setDeleteConfirm(null);
@@ -448,6 +620,7 @@ export function GatheringManager({
       {/* Sub-navigation */}
       <div className="flex gap-2 border-b border-gray-700 pb-2 flex-wrap">
         <button onClick={() => { setView('species'); setShowAdd(false); }} className={`px-3 py-1 rounded ${view === 'species' ? 'bg-blue-600' : 'bg-gray-700'}`}>Species</button>
+        <button onClick={() => { setView('items'); setShowAdd(false); }} className={`px-3 py-1 rounded ${view === 'items' ? 'bg-blue-600' : 'bg-gray-700'}`}>Items</button>
         <button onClick={() => { setView('tools'); setShowAdd(false); }} className={`px-3 py-1 rounded ${view === 'tools' ? 'bg-blue-600' : 'bg-gray-700'}`}>Tools</button>
         <button onClick={() => { setView('tables'); setShowAdd(false); }} className={`px-3 py-1 rounded ${view === 'tables' ? 'bg-blue-600' : 'bg-gray-700'}`}>Tables</button>
         <button onClick={() => { setView('environments'); setShowAdd(false); }} className={`px-3 py-1 rounded ${view === 'environments' ? 'bg-blue-600' : 'bg-gray-700'}`}>Environments</button>
@@ -653,6 +826,156 @@ export function GatheringManager({
         </div>
       )}
 
+
+      {/* Items View */}
+      {view === 'items' && (
+        <div>
+          <div className="flex justify-between mb-4">
+            <h3 className="text-lg font-bold">Forageable Items ({items.length})</h3>
+            <button onClick={() => setShowAdd(!showAdd)} className="bg-green-600 px-3 py-1 rounded text-sm">
+              <Plus size={16} className="inline" /> Add Item
+            </button>
+          </div>
+
+          {showAdd && (
+            <div className="bg-gray-700 p-4 rounded mb-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Name *</label>
+                  <input
+                    value={newItemName}
+                    onChange={(e) => setNewItemName(e.target.value)}
+                    placeholder="e.g., Tamrya Berries"
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Yield Formula</label>
+                  <input
+                    value={newItemYieldFormula}
+                    onChange={(e) => setNewItemYieldFormula(e.target.value)}
+                    placeholder="e.g., 3d+1"
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Inventory Type</label>
+                  <select value={newItemInventoryKind} onChange={(e) => setNewItemInventoryKind(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                    <option value="food">Food</option>
+                    <option value="material">Material</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Type ID</label>
+                  {newItemInventoryKind === 'food' ? (
+                    <select value={newItemTypeId} onChange={(e) => setNewItemTypeId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                      <option value="">Auto-generate from name</option>
+                      {availableFoodTypes.map(type => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <select value={newItemTypeId} onChange={(e) => setNewItemTypeId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                      <option value="">Auto-generate from name</option>
+                      {availableMaterialTypes.map(type => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Rarity</label>
+                  <select value={newItemRarity} onChange={(e) => setNewItemRarity(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                    {Object.entries(FORAGING_RARITIES).map(([key, data]) => (
+                      <option key={key} value={key}>{data.label} ({data.penalty})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Description</label>
+                  <input
+                    value={newItemDescription}
+                    onChange={(e) => setNewItemDescription(e.target.value)}
+                    placeholder="Brief description..."
+                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button onClick={addItem} className="flex-1 bg-green-600 px-4 py-2 rounded">
+                  <Save size={16} className="inline mr-1" /> {editingId ? 'Update' : 'Save'}
+                </button>
+                <button onClick={resetItemForm} className="bg-red-600 px-4 py-2 rounded">
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {items.length === 0 ? (
+              <p className="text-gray-500 italic">No items defined. Add specific forageable items!</p>
+            ) : (
+              items.map(i => {
+                const rarityData = FORAGING_RARITIES[i.rarity];
+                return (
+                  <div key={i.id} className="bg-gray-700 rounded">
+                    <div
+                      className="flex items-center gap-4 p-3 cursor-pointer hover:bg-gray-600"
+                      onClick={() => setExpanded(prev => ({ ...prev, [`item-${i.id}`]: !prev[`item-${i.id}`] }))}
+                    >
+                      <span>{expanded[`item-${i.id}`] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}</span>
+                      <span className="flex-1 font-medium">{i.name}</span>
+                      <span className="text-sm text-gray-400">{i.yieldFormula}</span>
+                      <span className="text-xs bg-gray-600 px-2 py-1 rounded">
+                        {i.inventoryKind || 'food'}
+                      </span>
+                      <span className="text-xs bg-purple-600 px-2 py-1 rounded">
+                        {rarityData?.label || i.rarity}
+                      </span>
+                    </div>
+                    {expanded[`item-${i.id}`] && (
+                      <div className="px-3 pb-3 space-y-2 border-t border-gray-600 pt-2">
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div><span className="text-gray-400">Type ID:</span> {i.typeId || 'N/A'}</div>
+                          <div><span className="text-gray-400">Yield:</span> {i.yieldFormula}</div>
+                          <div><span className="text-gray-400">Inventory:</span> {i.inventoryKind || 'food'}</div>
+                          <div><span className="text-gray-400">Rarity:</span> {rarityData?.label || i.rarity} ({rarityData?.penalty || 0})</div>
+                        </div>
+                        {i.description && (
+                          <div className="text-sm text-gray-400">{i.description}</div>
+                        )}
+                        <div className="flex gap-4">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); editItem(i); }}
+                            className="text-blue-400 text-sm"
+                          >
+                            <Edit2 size={14} className="inline mr-1" /> Edit
+                          </button>
+                          <button
+                            onClick={() => confirmDelete('item', i.id, i.name)}
+                            className="text-red-400 text-sm"
+                          >
+                            <Trash2 size={14} className="inline mr-1" /> Delete
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Tools View */}
       {view === 'tools' && (
         <div>
@@ -764,6 +1087,71 @@ export function GatheringManager({
                 />
               </div>
 
+              {/* Yield Bonuses for Foraging */}
+              {newToolModes.includes('Foraging') && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs text-gray-400">Yield Bonuses (Foraging)</label>
+                    <button
+                      type="button"
+                      onClick={() => setNewToolYieldBonuses([...newToolYieldBonuses, { typeId: '', dice: '1' }])}
+                      className="text-xs bg-blue-600 px-2 py-1 rounded"
+                    >
+                      <Plus size={12} className="inline" /> Add
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {newToolYieldBonuses.map((yb, idx) => (
+                      <div key={idx} className="flex gap-2 items-center">
+                        <select
+                          value={yb.typeId}
+                          onChange={(e) => {
+                            const updated = [...newToolYieldBonuses];
+                            updated[idx].typeId = e.target.value;
+                            setNewToolYieldBonuses(updated);
+                          }}
+                          className="flex-1 bg-gray-600 px-2 py-1 rounded text-sm"
+                        >
+                          <option value="">Select type...</option>
+                          <optgroup label="Food Types">
+                            {availableFoodTypes.map(type => (
+                              <option key={type} value={type}>{type}</option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="Material Types">
+                            {availableMaterialTypes.map(type => (
+                              <option key={type} value={type}>{type}</option>
+                            ))}
+                          </optgroup>
+                        </select>
+                        <input
+                          type="number"
+                          value={yb.dice}
+                          onChange={(e) => {
+                            const updated = [...newToolYieldBonuses];
+                            updated[idx].dice = e.target.value;
+                            setNewToolYieldBonuses(updated);
+                          }}
+                          placeholder="Dice"
+                          className="w-16 bg-gray-600 px-2 py-1 rounded text-sm text-center"
+                        />
+                        <span className="text-xs text-gray-400">d</span>
+                        <button
+                          type="button"
+                          onClick={() => setNewToolYieldBonuses(newToolYieldBonuses.filter((_, i) => i !== idx))}
+                          className="text-red-400"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
+                    {newToolYieldBonuses.length === 0 && (
+                      <p className="text-xs text-gray-500 italic">No yield bonuses configured</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-2 pt-2">
                 <button onClick={addTool} className="flex-1 bg-green-600 px-4 py-2 rounded">
                   <Save size={16} className="inline mr-1" /> {editingId ? 'Update' : 'Save'}
@@ -779,25 +1167,37 @@ export function GatheringManager({
             {tools.length === 0 ? (
               <p className="text-gray-500 italic">No tools defined. Add fishing rods, nets, etc.</p>
             ) : (
-              tools.map(t => (
-                <div key={t.id} className="bg-gray-700 p-3 rounded flex justify-between items-center">
-                  <div>
-                    <span className="font-medium">{t.name}</span>
-                    <span className="text-sm text-gray-400 ml-2">({GATHERING_TOOL_TYPES[t.toolType] || t.toolType})</span>
-                    {t.bonuses?.find(b => b.type === 'skill_bonus')?.value > 0 && (
-                      <span className="text-green-400 ml-2">+{t.bonuses.find(b => b.type === 'skill_bonus').value}</span>
-                    )}
+              tools.map(t => {
+                const yieldBonuses = t.bonuses?.filter(b => b.type === 'yield_bonus') || [];
+                return (
+                  <div key={t.id} className="bg-gray-700 p-3 rounded">
+                    <div className="flex justify-between items-center">
+                      <div className="flex-1">
+                        <div>
+                          <span className="font-medium">{t.name}</span>
+                          <span className="text-sm text-gray-400 ml-2">({GATHERING_TOOL_TYPES[t.toolType] || t.toolType})</span>
+                          {t.bonuses?.find(b => b.type === 'skill_bonus')?.value > 0 && (
+                            <span className="text-green-400 ml-2">+{t.bonuses.find(b => b.type === 'skill_bonus').value}</span>
+                          )}
+                        </div>
+                        {yieldBonuses.length > 0 && (
+                          <div className="text-xs text-gray-400 mt-1">
+                            Yield bonuses: {yieldBonuses.map(yb => `${yb.typeId || yb.categoryId}: +${yb.dice}d`).join(', ')}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => editTool(t)} className="text-blue-400">
+                          <Edit2 size={16} />
+                        </button>
+                        <button onClick={() => confirmDelete('tool', t.id, t.name)} className="text-red-400">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => editTool(t)} className="text-blue-400">
-                      <Edit2 size={16} />
-                    </button>
-                    <button onClick={() => confirmDelete('tool', t.id, t.name)} className="text-red-400">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -893,6 +1293,7 @@ export function GatheringManager({
                       className="w-24 bg-gray-600 px-2 py-1 rounded"
                     >
                       <option value="species">Species</option>
+                      <option value="item">Item</option>
                       <option value="nothing">Nothing</option>
                       <option value="event">Event</option>
                       <option value="special">Special</option>
@@ -910,6 +1311,22 @@ export function GatheringManager({
                         <option value="">-- Select Species --</option>
                         {species.map(s => (
                           <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    )}
+                    {entry.resultType === 'item' && (
+                      <select
+                        value={entry.itemId || ''}
+                        onChange={(e) => {
+                          const updated = [...newTableEntries];
+                          updated[idx].itemId = e.target.value;
+                          setNewTableEntries(updated);
+                        }}
+                        className="flex-1 bg-gray-600 px-2 py-1 rounded"
+                      >
+                        <option value="">-- Select Item --</option>
+                        {items.map(i => (
+                          <option key={i.id} value={i.id}>{i.name}</option>
                         ))}
                       </select>
                     )}
@@ -970,11 +1387,15 @@ export function GatheringManager({
                             const speciesName = entry.speciesId
                               ? species.find(s => s.id === entry.speciesId)?.name
                               : null;
+                            const itemName = entry.itemId
+                              ? items.find(i => i.id === entry.itemId)?.name
+                              : null;
                             return (
                               <div key={entry.id} className="text-sm flex gap-2">
                                 <span className="text-gray-400 w-8">{entry.rollValue}:</span>
                                 <span>
                                   {entry.resultType === 'species' && speciesName}
+                                  {entry.resultType === 'item' && itemName}
                                   {entry.resultType === 'nothing' && 'Nothing'}
                                   {(entry.resultType === 'event' || entry.resultType === 'special') && entry.text}
                                 </span>
@@ -1051,35 +1472,75 @@ export function GatheringManager({
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Catch Table</label>
-                  <select value={newEnvCatchTableId} onChange={(e) => setNewEnvCatchTableId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
-                    <option value="">-- None --</option>
-                    {tables.filter(t => t.tableType.includes('RandomCatch')).map(t => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Mild Event Table</label>
-                  <select value={newEnvMildTableId} onChange={(e) => setNewEnvMildTableId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
-                    <option value="">-- None --</option>
-                    {tables.filter(t => t.tableType.includes('EventMild')).map(t => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Rare Event Table</label>
-                  <select value={newEnvRareTableId} onChange={(e) => setNewEnvRareTableId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
-                    <option value="">-- None --</option>
-                    {tables.filter(t => t.tableType.includes('EventRare')).map(t => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              {newEnvModes.includes('Fishing') && (
+                <>
+                  <div className="text-sm font-medium text-gray-300 mt-4 mb-2">Fishing Tables</div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Catch Table</label>
+                      <select value={newEnvCatchTableId} onChange={(e) => setNewEnvCatchTableId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                        <option value="">-- None --</option>
+                        {tables.filter(t => t.tableType.includes('RandomCatch')).map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Mild Event Table</label>
+                      <select value={newEnvMildTableId} onChange={(e) => setNewEnvMildTableId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                        <option value="">-- None --</option>
+                        {tables.filter(t => t.tableType.includes('EventMild')).map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Rare Event Table</label>
+                      <select value={newEnvRareTableId} onChange={(e) => setNewEnvRareTableId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                        <option value="">-- None --</option>
+                        {tables.filter(t => t.tableType.includes('EventRare')).map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {newEnvModes.includes('Foraging') && (
+                <>
+                  <div className="text-sm font-medium text-gray-300 mt-4 mb-2">Foraging Tables</div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Find Table</label>
+                      <select value={newEnvForagingFindTableId} onChange={(e) => setNewEnvForagingFindTableId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                        <option value="">-- None --</option>
+                        {tables.filter(t => t.tableType.includes('ForagingRandomFind')).map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Mild Event Table</label>
+                      <select value={newEnvForagingMildTableId} onChange={(e) => setNewEnvForagingMildTableId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                        <option value="">-- None --</option>
+                        {tables.filter(t => t.tableType.includes('ForagingEventMild')).map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Rare Event Table</label>
+                      <select value={newEnvForagingRareTableId} onChange={(e) => setNewEnvForagingRareTableId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                        <option value="">-- None --</option>
+                        {tables.filter(t => t.tableType.includes('ForagingEventRare')).map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
 
               <div className="w-1/3">
                 <label className="block text-xs text-gray-400 mb-1">Skill Modifier</label>

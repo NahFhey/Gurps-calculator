@@ -35,7 +35,7 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
   const [view, setView] = useState('list');
   const [current, setCurrent] = useState(null);
   const [skill, setSkill] = useState('');
-  const [roll, setRoll] = useState('');
+  const [roll, setRoll] = useState({ dice: [], total: 0 });
   const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0]);
   const [currentDay, setCurrentDay] = useState(1);
   const [selectedWorker, setSelectedWorker] = useState('');
@@ -447,11 +447,11 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                 <div><label className="block mb-2 text-sm">Day (In-Universe)</label><input type="number" min="1" value={currentDay} onChange={(e) => setCurrentDay(Math.max(1, toNumberOr(e.target.value, 1)))} className="w-full bg-gray-600 px-3 py-2 rounded" /></div>
                 <div><label className="block mb-2 text-sm">Worker</label><select value={selectedWorker} onChange={(e) => { const worker = workers.find(w => w.name === e.target.value); setSelectedWorker(e.target.value); if (worker?.skills) setSkill(String(current.phase === 'design' ? worker.skills.designing : worker.skills.crafting)); }} className="w-full bg-gray-600 px-3 py-2 rounded">{workers.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}</select></div>
                 <div><label className="block mb-2 text-sm">Skill</label><input type="number" value={skill} onChange={(e) => setSkill(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded" /></div>
-                <div className="col-span-2"><label className="block mb-2 text-sm">Roll (3d6)</label><div className="flex gap-2"><input type="number" value={roll} onChange={(e) => setRoll(e.target.value)} className="flex-1 bg-gray-600 px-3 py-2 rounded" /><DiceRoller onRoll={(total) => setRoll(String(total))} /></div></div>
+                <div className="col-span-2"><label className="block mb-2 text-sm">Roll (3d6)</label><div className="flex gap-2"><input type="number" value={roll.total || ''} onChange={(e) => setRoll({ dice: [], total: parseInt(e.target.value) || 0 })} className="flex-1 bg-gray-600 px-3 py-2 rounded" /><DiceRoller dice={roll.dice} total={roll.total} onRoll={(dice, total) => setRoll({ dice, total })} /></div></div>
               </div>
               <button onClick={() => {
-                const s = parseInt(skill), r = parseInt(roll);
-                if (isNaN(s) || isNaN(r) || !selectedWorker || !currentDate || isNaN(currentDay)) { alert('Fill all fields'); return; }
+                const s = parseInt(skill), r = roll.total;
+                if (isNaN(s) || !r || !selectedWorker || !currentDate || isNaN(currentDay)) { alert('Fill all fields'); return; }
                 const eff = s + stats.totalDifficulty;
                 let hrs = 0, qc = 0, res = '';
                 if (current.phase === 'design') {
@@ -524,15 +524,21 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
             <h2 className="text-xl font-bold mb-4 text-yellow-400">In-Progress Projects</h2>
             <div className="space-y-4">
               {crafts.filter(c => !c.completed).map(c => {
+                // Defensive checks for legacy data
+                if (!c.templateType || !c.template) {
+                  return null; // Skip crafts with missing template data
+                }
+
                 const t = allTemplates[c.templateType]?.[c.template] || {weight: 0, hp: 0};
-                const q = QUALITIES[c.currentQuality] || {htBonus: 0};
+                const q = QUALITIES[c.currentQuality || 'typical'] || QUALITIES['typical'] || {htBonus: 0};
 
                 let avgHT = 10, avgWeightMod = 0, avgHPMod = 0;
-                if (c.selectedMaterials && c.selectedMaterials.length > 0) {
+                if (c.selectedMaterials && Array.isArray(c.selectedMaterials) && c.selectedMaterials.length > 0) {
                   const matTypes = c.selectedMaterials.map(sm => {
+                    if (!sm || !sm.selectedMaterialId) return null;
                     const mat = materials.find(m => m.id === sm.selectedMaterialId || String(m.id) === sm.selectedMaterialId);
                     if (!mat || !mat.type) return null;
-                    return materialTypes.find(mt => mt.name === mat.type);
+                    return materialTypes.find(mt => mt && mt.name === mat.type);
                   }).filter(mt => mt !== null && mt !== undefined);
                   if (matTypes.length > 0) {
                     avgHT = Math.round(matTypes.reduce((sum, mt) => sum + (mt.ht || 10), 0) / matTypes.length);
@@ -545,11 +551,12 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                 const finalHP = Math.round((t.hp || 0) * (1 + avgHPMod / 100));
 
                 const materialList =
-                  (c.consumedMaterials?.map(u => u.name).join(', '))
-                  || (c.selectedMaterials?.map(sm => {
+                  (c.consumedMaterials && Array.isArray(c.consumedMaterials) ? c.consumedMaterials.map(u => u?.name || 'unknown').join(', ') : null)
+                  || (c.selectedMaterials && Array.isArray(c.selectedMaterials) ? c.selectedMaterials.map(sm => {
+                    if (!sm || !sm.selectedMaterialId) return 'unknown';
                     const mat = materials.find(m => m.id === sm.selectedMaterialId || String(m.id) === sm.selectedMaterialId);
                     return mat ? `${mat.name}` : 'unknown';
-                  }).join(', '))
+                  }).join(', ') : null)
                   || 'no materials';
 
                 // Phase-specific colors
@@ -590,19 +597,31 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                           <div className="text-xs text-gray-400 mt-1">Progress: {currentProgress}/{targetHours}h ({Math.round(progressPercent)}%)</div>
                         )}
                       </div>
-                      <button onClick={() => {
-                        setCurrent(c);
-                        setCurrentDate(new Date().toISOString().split('T')[0]);
-                        if (c.shifts && c.shifts.length > 0) {
-                          const lastShift = c.shifts[c.shifts.length - 1];
-                          setSelectedWorker(lastShift.worker || workers[0] || '');
-                          setCurrentDay(lastShift.day || c.startDay || 1);
-                        } else {
-                          setSelectedWorker(workers[0] || '');
-                          setCurrentDay(c.startDay || 1);
-                        }
-                        setView('craft');
-                      }} className="bg-blue-600 px-4 py-2 rounded">Resume</button>
+                      <div className="flex gap-2">
+                        <button onClick={() => {
+                          setCurrent(c);
+                          setCurrentDate(new Date().toISOString().split('T')[0]);
+                          if (c.shifts && c.shifts.length > 0) {
+                            const lastShift = c.shifts[c.shifts.length - 1];
+                            setSelectedWorker(lastShift.worker || workers[0] || '');
+                            setCurrentDay(lastShift.day || c.startDay || 1);
+                          } else {
+                            setSelectedWorker(workers[0] || '');
+                            setCurrentDay(c.startDay || 1);
+                          }
+                          setView('craft');
+                        }} className="bg-blue-600 px-4 py-2 rounded">Resume</button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Delete in-progress project "${c.name || c.template}"?`)) {
+                              saveCrafts(crafts.filter(x => x.id !== c.id));
+                            }
+                          }}
+                          className="bg-red-600 px-4 py-2 rounded hover:bg-red-700"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                     <div className="text-sm text-gray-400">Materials: {materialList}</div>
                     <div className="text-sm text-gray-400 mb-2">W: {finalWeight} lbs | HP: {finalHP} | HT: {avgHT + q.htBonus}</div>
@@ -617,7 +636,7 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                   </div>
                 );
 
-              })}
+              }).filter(Boolean)}
               {crafts.filter(c => !c.completed).length === 0 && (
                 <div className="text-gray-500 italic">No in-progress projects</div>
               )}
@@ -628,15 +647,21 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
             <h2 className="text-xl font-bold mb-4 text-green-400">Completed Projects</h2>
             <div className="space-y-4">
               {crafts.filter(c => c.completed).map(c => {
+                // Defensive checks for legacy data
+                if (!c.templateType || !c.template) {
+                  return null; // Skip crafts with missing template data
+                }
+
                 const t = allTemplates[c.templateType]?.[c.template] || {weight: 0, hp: 0};
-                const q = QUALITIES[c.currentQuality] || {htBonus: 0};
+                const q = QUALITIES[c.currentQuality || 'typical'] || QUALITIES['typical'] || {htBonus: 0};
 
                 let avgHT = 10, avgWeightMod = 0, avgHPMod = 0;
-                if (c.selectedMaterials && c.selectedMaterials.length > 0) {
+                if (c.selectedMaterials && Array.isArray(c.selectedMaterials) && c.selectedMaterials.length > 0) {
                   const matTypes = c.selectedMaterials.map(sm => {
+                    if (!sm || !sm.selectedMaterialId) return null;
                     const mat = materials.find(m => m.id === sm.selectedMaterialId || String(m.id) === sm.selectedMaterialId);
                     if (!mat || !mat.type) return null;
-                    return materialTypes.find(mt => mt.name === mat.type);
+                    return materialTypes.find(mt => mt && mt.name === mat.type);
                   }).filter(mt => mt !== null && mt !== undefined);
                   if (matTypes.length > 0) {
                     avgHT = Math.round(matTypes.reduce((sum, mt) => sum + (mt.ht || 10), 0) / matTypes.length);
@@ -649,11 +674,12 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                 const finalHP = Math.round((t.hp || 0) * (1 + avgHPMod / 100));
 
                 const materialList =
-                  (c.consumedMaterials?.map(u => `${u.name} (${u.type})`).join(', '))
-                  || (c.selectedMaterials?.map(sm => {
+                  (c.consumedMaterials && Array.isArray(c.consumedMaterials) ? c.consumedMaterials.map(u => `${u?.name || 'unknown'} (${u?.type || 'unknown'})`).join(', ') : null)
+                  || (c.selectedMaterials && Array.isArray(c.selectedMaterials) ? c.selectedMaterials.map(sm => {
+                    if (!sm || !sm.selectedMaterialId) return 'unknown';
                     const mat = materials.find(m => m.id === sm.selectedMaterialId || String(m.id) === sm.selectedMaterialId);
                     return mat ? `${mat.name} (${mat.type})` : 'unknown';
-                  }).join(', '))
+                  }).join(', ') : null)
                   || 'no materials';
 
                 return (
@@ -670,6 +696,17 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                         <div>W: {finalWeight} lbs</div>
                         <div>HP: {finalHP} | HT: {avgHT + q.htBonus}</div>
                       </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm(`Delete completed project "${c.name || c.template}"?`)) {
+                            saveCrafts(crafts.filter(x => x.id !== c.id));
+                          }
+                        }}
+                        className="bg-red-600 px-3 py-1 rounded hover:bg-red-700 text-sm"
+                      >
+                        Delete
+                      </button>
                       <span className="text-gray-400">{expandedCrafts[c.id] ? '▼' : '▶'}</span>
                     </div>
 
@@ -764,24 +801,24 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                           <div className="bg-gray-600 p-3 rounded">
                             <div className="text-sm font-semibold mb-2">Project History</div>
                             <div className="space-y-2 max-h-48 overflow-y-auto">
-                              {c.designShifts?.length > 0 && (
+                              {Array.isArray(c.designShifts) && c.designShifts.length > 0 && (
                                 <>
                                   <div className="text-xs font-semibold text-yellow-400 mt-2">Design Phase</div>
-                                  {c.designShifts.map((s, i) => (
-                                    <div key={s.id} className="text-xs bg-gray-700 p-2 rounded">
-                                      <div>Shift {i+1}: {s.result} {s.date && <span className="text-blue-400">({s.date})</span>} {s.day && <span className="text-green-400">[Day {s.day}]</span>}</div>
-                                      <div className="text-gray-400">{s.worker && <span>Worker: {s.worker} | </span>}Skill {s.skill} → Eff {s.effectiveSkill} | Roll: {s.roll} | +{s.hoursAdded}h{s.qualityChange !== 0 && ` | Qual ${s.qualityChange > 0 ? '+' : ''}${s.qualityChange}`}</div>
+                                  {c.designShifts.filter(s => s).map((s, i) => (
+                                    <div key={s.id || i} className="text-xs bg-gray-700 p-2 rounded">
+                                      <div>Shift {i+1}: {s.result || 'unknown'} {s.date && <span className="text-blue-400">({s.date})</span>} {s.day && <span className="text-green-400">[Day {s.day}]</span>}</div>
+                                      <div className="text-gray-400">{s.worker && <span>Worker: {s.worker} | </span>}Skill {s.skill || '?'} → Eff {s.effectiveSkill || '?'} | Roll: {s.roll || '?'} | +{s.hoursAdded || 0}h{s.qualityChange !== 0 && s.qualityChange !== undefined && ` | Qual ${s.qualityChange > 0 ? '+' : ''}${s.qualityChange}`}</div>
                                     </div>
                                   ))}
                                 </>
                               )}
-                              {c.shifts?.length > 0 && (
+                              {Array.isArray(c.shifts) && c.shifts.length > 0 && (
                                 <>
                                   <div className="text-xs font-semibold text-green-400 mt-2">Craft Phase</div>
-                                  {c.shifts.map((s, i) => (
-                                    <div key={s.id} className="text-xs bg-gray-700 p-2 rounded">
-                                      <div>Shift {i+1}: {s.result} {s.date && <span className="text-blue-400">({s.date})</span>} {s.day && <span className="text-green-400">[Day {s.day}]</span>}</div>
-                                      <div className="text-gray-400">{s.worker && <span>Worker: {s.worker} | </span>}Skill {s.skill} → Eff {s.effectiveSkill} | Roll: {s.roll} | +{s.hoursAdded}h{s.qualityChange !== 0 && ` | Qual ${s.qualityChange > 0 ? '+' : ''}${s.qualityChange}`}</div>
+                                  {c.shifts.filter(s => s).map((s, i) => (
+                                    <div key={s.id || i} className="text-xs bg-gray-700 p-2 rounded">
+                                      <div>Shift {i+1}: {s.result || 'unknown'} {s.date && <span className="text-blue-400">({s.date})</span>} {s.day && <span className="text-green-400">[Day {s.day}]</span>}</div>
+                                      <div className="text-gray-400">{s.worker && <span>Worker: {s.worker} | </span>}Skill {s.skill || '?'} → Eff {s.effectiveSkill || '?'} | Roll: {s.roll || '?'} | +{s.hoursAdded || 0}h{s.qualityChange !== 0 && s.qualityChange !== undefined && ` | Qual ${s.qualityChange > 0 ? '+' : ''}${s.qualityChange}`}</div>
                                     </div>
                                   ))}
                                 </>
@@ -789,11 +826,25 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                             </div>
                           </div>
                         )}
+
+                        {/* Delete Button */}
+                        <div className="pt-3 border-t border-gray-600">
+                          <button
+                            onClick={() => {
+                              if (confirm(`Delete completed project "${c.name || c.template}"?`)) {
+                                saveCrafts(crafts.filter(x => x.id !== c.id));
+                              }
+                            }}
+                            className="w-full px-4 py-2 bg-red-600 rounded hover:bg-red-700 text-sm"
+                          >
+                            Delete Completed Project
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
                 );
-              })}
+              }).filter(Boolean)}
               {crafts.filter(c => c.completed).length === 0 && (
                 <div className="text-gray-500 italic">No completed projects</div>
               )}

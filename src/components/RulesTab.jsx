@@ -486,19 +486,26 @@ export function RulesTab({ initialSection = null }) {
 
 **Available Modes:**
 - Fishing: Catch fish using Line, Net, or Spear methods
-- Foraging, Mining, Logging: (Coming soon)
+- Foraging: Search for plants, fungi, and other forageable items
+- Mining, Logging: (Coming soon)
 
-**Session Workflow:**
+**Shared Workflow:**
 1. Select Mode and Environment
-2. Choose Leader and Helpers
-3. Select Fishing Method (for fishing)
-4. Choose Tools and Bait
+2. Choose Leader and Helpers (if any)
+3. Configure mode-specific settings (method, target, etc.)
+4. Select Tools and Consumables
 5. Roll for Daily Event (once per day per group)
-6. Roll for Fishing Success
-7. Roll on Catch Table
-8. Handle Large Fish Struggle (if applicable)
+6. Roll for Skill Success
+7. Roll on Appropriate Table (Catch/Find)
+8. Handle Special Mechanics (struggle, hazards)
 9. Calculate Yields
-10. Commit to Inventory`
+10. Commit to Inventory
+
+**Day Planner Integration:**
+- Tasks are created via Day Planner tab
+- Manual dice rolling with colored 3d6 display
+- Event rolls are separate from skill rolls
+- Results are committed at end of day`
         },
         {
           title: 'Fishing Methods',
@@ -611,6 +618,92 @@ export function RulesTab({ initialSection = null }) {
 - Optional per species
 - Examples: scales, bones, shells, oil, roe
 - Stored in Materials inventory`
+        },
+        {
+          title: 'Foraging System',
+          content: `Search for plants, fungi, and other forageable resources:
+
+**Foraging Skills:**
+- Survival: General wilderness foraging
+- Naturalist: Scientific plant knowledge
+- Herb Lore: Medicinal and special plants
+
+**Targeting:**
+- Random: Roll on environment's find table
+- Targeted: Search for specific item with rarity penalty
+- Rarity Penalties: Common (0), Uncommon (-2), Rare (-4), Very Rare (-6), Legendary (-8)
+
+**Context Modifiers:**
+- Map/Local Guide: +1 (familiar with area)
+- Unfamiliar/Hostile Region: -2 (unknown terrain)
+- Peak Season: +2 (best harvest time)
+
+**Success Resolution:**
+- Critical Success: 1.5x yield multiplier, bonus find
+- Success: 1.0x yield multiplier
+- Failure (targeted): Falls back to random table
+- Critical Failure: 0.5x yield multiplier + random hazard
+
+**Hazards on Critical Failure:**
+- Poison Ivy, Bee Sting, Twisted Ankle
+- Thorn Scrape, Mild Allergic Reaction
+- Encountered Predator, Lost Item`
+        },
+        {
+          title: 'Foraging Items & Yields',
+          content: `Forageable items are defined with direct properties:
+
+**Item Properties:**
+- Name: Unique identifier (e.g., "Tamrya Berries")
+- Inventory Kind: food or material
+- Type ID: References food/material types from Manager
+- Yield Formula: Dice formula (e.g., "3d", "2d6+1")
+- Rarity: Common/Uncommon/Rare/Very Rare/Legendary
+- Description: Flavor text
+
+**Tool Yield Bonuses:**
+- Tools can grant +Xd to specific types
+- Example: Berry Basket grants +1d to "berries" type
+- Bonuses apply before multipliers
+- Multiple tools stack
+
+**Yield Calculation:**
+1. Roll base yield formula (e.g., 3d6)
+2. Apply tool bonuses (+1d, +2d, etc.)
+3. Apply outcome multiplier (0.5x, 1.0x, 1.5x)
+4. Round down to final units
+5. Minimum 1 unit on successful finds
+
+**Example:**
+- Apples (food, "fruit" type, yield: 3d)
+- Success roll: 3d = 11
+- Berry Basket: +0d (doesn't apply to fruit)
+- Multiplier: 1.0x (success)
+- Final: 11 units`
+        },
+        {
+          title: 'Manager: Forageable Items',
+          content: `Define forageable items in the Items section:
+
+**Item Creation:**
+- Name: What the item is called
+- Yield Formula: Base dice (1d, 2d, 3d+1, etc.)
+- Inventory Type: food or material
+- Type ID: Select from your food/material types
+- Rarity: Determines targeting penalty
+- Description: Optional notes
+
+**Type Management:**
+- Food/Material types managed in Manager tab
+- Items pull from your custom type lists
+- Tools can target specific types for bonuses
+- Types determine inventory categorization
+
+**Table Integration:**
+- Find tables can reference items directly
+- No category layer needed
+- Select "Item" as result type in tables
+- Choose specific item from dropdown`
         },
         {
           title: 'Manager: Species',
