@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import PropTypes from 'prop-types';
 import { Plus, Moon, ChevronRight, Trash2, Edit2, Users, CheckCircle, Circle } from 'lucide-react';
 import { DiceRoller } from './DiceRoller';
 import {
@@ -1341,3 +1342,35 @@ function TaskDetailPanel({
     </div>
   );
 }
+
+DayPlannerTab.propTypes = {
+  // Gathering data
+  species: PropTypes.array.isRequired,
+  tools: PropTypes.array.isRequired,
+  tables: PropTypes.array.isRequired,
+  environments: PropTypes.array.isRequired,
+  bait: PropTypes.array.isRequired,
+  categories: PropTypes.array.isRequired,
+  items: PropTypes.array.isRequired,
+  workers: PropTypes.array.isRequired,
+  foods: PropTypes.array.isRequired,
+  materials: PropTypes.array.isRequired,
+  foodTypes: PropTypes.array.isRequired,
+  materialTypes: PropTypes.array.isRequired,
+
+  // Day Planner data
+  timeSlots: PropTypes.array.isRequired,
+  taskAssignments: PropTypes.array.isRequired,
+  pendingDayLedger: PropTypes.object,
+  currentDay: PropTypes.number.isRequired,
+  currentSlot: PropTypes.number.isRequired,
+
+  // Save functions
+  saveTimeSlots: PropTypes.func.isRequired,
+  saveTaskAssignments: PropTypes.func.isRequired,
+  savePendingDayLedger: PropTypes.func.isRequired,
+  saveCurrentDay: PropTypes.func.isRequired,
+  saveCurrentSlot: PropTypes.func.isRequired,
+  saveFoods: PropTypes.func.isRequired,
+  saveMaterials: PropTypes.func.isRequired
+};

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { Plus, Save, X, Trash2, Eye, EyeOff, Shield, ShieldOff } from 'lucide-react';
 import { toNumberOr, refundMaterialsFromProject } from '../utils/helpers';
 import { TEMPLATES, ASPECTS, POTENCY_LEVELS, INGREDIENT_ROLES, HAZARD_TAGS, VECTORS } from '../constants';
@@ -2514,3 +2515,74 @@ export function ManagerTab({
     </div>
   );
 }
+
+ManagerTab.propTypes = {
+  // Inventory
+  foodTypes: PropTypes.array.isRequired,
+  materialTypes: PropTypes.array.isRequired,
+  materials: PropTypes.array.isRequired,
+  foods: PropTypes.array.isRequired,
+
+  // Workers and crafting
+  workers: PropTypes.array.isRequired,
+  crafts: PropTypes.array.isRequired,
+  craftDesigns: PropTypes.array.isRequired,
+  customTemplates: PropTypes.object.isRequired,
+
+  // Alchemy
+  effectFamilyMap: PropTypes.object.isRequired,
+  alchemySettings: PropTypes.object.isRequired,
+  alchemyReagents: PropTypes.array.isRequired,
+  alchemyFormulas: PropTypes.array.isRequired,
+  alchemyBatches: PropTypes.array.isRequired,
+  alchemyLabs: PropTypes.array.isRequired,
+
+  // Cooking
+  kitchens: PropTypes.array.isRequired,
+  cookingSkills: PropTypes.array.isRequired,
+  recipes: PropTypes.array.isRequired,
+
+  // GM Mode
+  gmMode: PropTypes.bool.isRequired,
+  gmLockData: PropTypes.object,
+  setGmMode: PropTypes.func.isRequired,
+  setGmLockData: PropTypes.func.isRequired,
+
+  // Save functions
+  saveMaterials: PropTypes.func.isRequired,
+  saveFoods: PropTypes.func.isRequired,
+  saveRecipes: PropTypes.func.isRequired,
+  saveFoodTypes: PropTypes.func.isRequired,
+  saveMaterialTypes: PropTypes.func.isRequired,
+  saveWorkers: PropTypes.func.isRequired,
+  saveCrafts: PropTypes.func.isRequired,
+  saveCraftDesigns: PropTypes.func.isRequired,
+  saveCustomTemplates: PropTypes.func.isRequired,
+  saveEffectFamilyMap: PropTypes.func.isRequired,
+  saveAlchemySettings: PropTypes.func.isRequired,
+  saveAlchemyReagents: PropTypes.func.isRequired,
+  saveAlchemyFormulas: PropTypes.func.isRequired,
+  saveAlchemyBatches: PropTypes.func.isRequired,
+  saveAlchemyLabs: PropTypes.func.isRequired,
+  saveKitchens: PropTypes.func.isRequired,
+  saveCookingSkills: PropTypes.func.isRequired,
+  renameMaterialType: PropTypes.func.isRequired,
+
+  // Gathering system
+  gatheringSpecies: PropTypes.array.isRequired,
+  gatheringTools: PropTypes.array.isRequired,
+  gatheringTables: PropTypes.array.isRequired,
+  gatheringEnvironments: PropTypes.array.isRequired,
+  gatheringBait: PropTypes.array.isRequired,
+  gatheringCategories: PropTypes.array.isRequired,
+  gatheringItems: PropTypes.array.isRequired,
+  currentDay: PropTypes.number.isRequired,
+  saveGatheringSpecies: PropTypes.func.isRequired,
+  saveGatheringTools: PropTypes.func.isRequired,
+  saveGatheringTables: PropTypes.func.isRequired,
+  saveGatheringEnvironments: PropTypes.func.isRequired,
+  saveGatheringBait: PropTypes.func.isRequired,
+  saveGatheringCategories: PropTypes.func.isRequired,
+  saveGatheringItems: PropTypes.func.isRequired,
+  saveCurrentDay: PropTypes.func.isRequired
+};
