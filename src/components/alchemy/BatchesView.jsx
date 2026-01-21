@@ -9,7 +9,7 @@ export function BatchesView({ batches, workers, formulas, reagents, labs, saveBa
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [workerName, setWorkerName] = useState('');
   const [skill, setSkill] = useState('');
-  const [roll, setRoll] = useState('');
+  const [roll, setRoll] = useState({ dice: [], total: 0 });
   const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0]);
   const [showForecast, setShowForecast] = useState(false);
   const [showMicroAssay, setShowMicroAssay] = useState(false);
@@ -265,7 +265,7 @@ export function BatchesView({ batches, workers, formulas, reagents, labs, saveBa
   }
 
   function addWorkBlock() {
-    if (!selectedBatch || !workerName || !skill || !roll) {
+    if (!selectedBatch || !workerName || !skill || !roll.total) {
       alert('Fill all fields');
       return;
     }
@@ -273,7 +273,7 @@ export function BatchesView({ batches, workers, formulas, reagents, labs, saveBa
     const updated = applyWorkBlockResult(
       selectedBatch,
       parseInt(skill),
-      parseInt(roll),
+      roll.total,
       workerName,
       currentDate
     );
@@ -530,14 +530,18 @@ export function BatchesView({ batches, workers, formulas, reagents, labs, saveBa
                 <div className="flex gap-2 items-start">
                   <input
                     type="number"
-                    value={roll}
-                    onChange={(e) => setRoll(e.target.value)}
+                    value={roll.total || ''}
+                    onChange={(e) => setRoll({ dice: [], total: parseInt(e.target.value) || 0 })}
                     className="flex-1 bg-gray-600 px-3 py-2 rounded"
                     placeholder="3-18"
                     min="3"
                     max="18"
                   />
-                  <DiceRoller onRoll={(dice, total) => setRoll(String(total))} />
+                  <DiceRoller
+                    dice={roll.dice}
+                    total={roll.total}
+                    onRoll={(dice, total) => setRoll({ dice, total })}
+                  />
                 </div>
               </div>
             </div>

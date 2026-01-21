@@ -93,8 +93,8 @@ export function GatheringTab({
   const [sessionPhase, setSessionPhase] = useState('setup'); // setup, event, fishing, catch, yield, complete
 
   // Roll inputs
-  const [eventRoll, setEventRoll] = useState('');
-  const [fishingRoll, setFishingRoll] = useState('');
+  const [eventRoll, setEventRoll] = useState({ dice: [], total: 0 });
+  const [fishingRoll, setFishingRoll] = useState({ dice: [], total: 0 });
   const [catchRolls, setCatchRolls] = useState([]);
   const [struggleRoll, setStruggleRoll] = useState('');
   const [yieldResults, setYieldResults] = useState([]);
@@ -116,7 +116,7 @@ export function GatheringTab({
   const [isPeakSeason, setIsPeakSeason] = useState(false);
   const [isDenseTerrain, setIsDenseTerrain] = useState(false);
   const [isStormDamaged, setIsStormDamaged] = useState(false);
-  const [forageRoll, setForageRoll] = useState('');
+  const [forageRoll, setForageRoll] = useState({ dice: [], total: 0 });
   const [forageResult, setForageResult] = useState(null);
   const [forageFind, setForageFind] = useState(null);
 
@@ -278,7 +278,7 @@ export function GatheringTab({
       return;
     }
 
-    const roll = parseInt(eventRoll);
+    const roll = eventRoll.total;
     const eventType = determineDynamicEventType(roll);
 
     let eventEntry = null;
@@ -328,7 +328,7 @@ export function GatheringTab({
       return;
     }
 
-    const roll = parseInt(fishingRoll);
+    const roll = fishingRoll.total;
     const result = evaluateFishingRoll(roll, effectiveSkill.effectiveSkill, selectedMethod);
 
     setFishingResult(result);
@@ -362,7 +362,7 @@ export function GatheringTab({
       return;
     }
 
-    const roll = parseInt(forageRoll);
+    const roll = forageRoll.total;
     const result = evaluateForagingRoll(roll, effectiveForagingSkill.effectiveSkill, !isRandomForage);
 
     setForageResult(result);
@@ -1101,19 +1101,23 @@ export function GatheringTab({
               <div className="flex items-center gap-2 mb-4">
                 <input
                   type="number"
-                  value={eventRoll}
-                  onChange={(e) => setEventRoll(e.target.value)}
+                  value={eventRoll.total || ''}
+                  onChange={(e) => setEventRoll({ dice: [], total: parseInt(e.target.value) || 0 })}
                   placeholder="3-18"
                   min="3"
                   max="18"
                   className="flex-1 bg-gray-700 px-3 py-2 rounded"
                 />
-                <DiceRoller onRoll={(dice, total) => setEventRoll(String(total))} />
+                <DiceRoller
+                  dice={eventRoll.dice}
+                  total={eventRoll.total}
+                  onRoll={(dice, total) => setEventRoll({ dice, total })}
+                />
               </div>
 
               <button
                 onClick={rollDailyEvent}
-                disabled={!eventRoll}
+                disabled={!eventRoll.total}
                 className="w-full bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 py-2 rounded font-semibold"
               >
                 Resolve Daily Event
@@ -1150,19 +1154,23 @@ export function GatheringTab({
               <div className="flex items-center gap-2 mb-4">
                 <input
                   type="number"
-                  value={fishingRoll}
-                  onChange={(e) => setFishingRoll(e.target.value)}
+                  value={fishingRoll.total || ''}
+                  onChange={(e) => setFishingRoll({ dice: [], total: parseInt(e.target.value) || 0 })}
                   placeholder="3-18"
                   min="3"
                   max="18"
                   className="flex-1 bg-gray-700 px-3 py-2 rounded"
                 />
-                <DiceRoller onRoll={(dice, total) => setFishingRoll(String(total))} />
+                <DiceRoller
+                  dice={fishingRoll.dice}
+                  total={fishingRoll.total}
+                  onRoll={(dice, total) => setFishingRoll({ dice, total })}
+                />
               </div>
 
               <button
                 onClick={rollFishing}
-                disabled={!fishingRoll}
+                disabled={!fishingRoll.total}
                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 py-2 rounded font-semibold"
               >
                 Roll Fishing
@@ -1200,19 +1208,23 @@ export function GatheringTab({
               <div className="flex items-center gap-2 mb-4">
                 <input
                   type="number"
-                  value={forageRoll}
-                  onChange={(e) => setForageRoll(e.target.value)}
+                  value={forageRoll.total || ''}
+                  onChange={(e) => setForageRoll({ dice: [], total: parseInt(e.target.value) || 0 })}
                   placeholder="3-18"
                   min="3"
                   max="18"
                   className="flex-1 bg-gray-700 px-3 py-2 rounded"
                 />
-                <DiceRoller onRoll={(dice, total) => setForageRoll(String(total))} />
+                <DiceRoller
+                  dice={forageRoll.dice}
+                  total={forageRoll.total}
+                  onRoll={(dice, total) => setForageRoll({ dice, total })}
+                />
               </div>
 
               <button
                 onClick={rollForaging}
-                disabled={!forageRoll}
+                disabled={!forageRoll.total}
                 className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 py-2 rounded font-semibold"
               >
                 Roll Foraging

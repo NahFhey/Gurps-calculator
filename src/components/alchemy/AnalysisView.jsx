@@ -29,16 +29,16 @@ export function AnalysisView({ reagents, labs, workers, alchemySettings, saveRea
   const [selectedWorker, setSelectedWorker] = useState('');
   const [selectedLabId, setSelectedLabId] = useState(labs?.[0]?.id || 'default');
   const [skill, setSkill] = useState('');
-  const [roll, setRoll] = useState('');
+  const [roll, setRoll] = useState({ dice: [], total: 0 });
 
   function performAnalysis() {
-    if (!selectedReagent || !skill || !roll) {
+    if (!selectedReagent || !skill || !roll.total) {
       alert('Fill all fields');
       return;
     }
 
     const skillValue = parseInt(skill);
-    const rollValue = parseInt(roll);
+    const rollValue = roll.total;
 
     if (isNaN(skillValue) || isNaN(rollValue)) {
       alert('Invalid skill or roll values');
@@ -238,14 +238,18 @@ export function AnalysisView({ reagents, labs, workers, alchemySettings, saveRea
                   <div className="flex gap-2">
                     <input
                       type="number"
-                      value={roll}
-                      onChange={(e) => setRoll(e.target.value)}
+                      value={roll.total || ''}
+                      onChange={(e) => setRoll({ dice: [], total: parseInt(e.target.value) || 0 })}
                       className="flex-1 bg-gray-600 px-3 py-2 rounded"
                       placeholder="3-18"
                       min="3"
                       max="18"
                     />
-                    <DiceRoller onRoll={(dice, total) => setRoll(String(total))} />
+                    <DiceRoller
+                      dice={roll.dice}
+                      total={roll.total}
+                      onRoll={(dice, total) => setRoll({ dice, total })}
+                    />
                   </div>
                   {skill && (
                     <div className="text-xs text-gray-400 mt-1">
@@ -253,7 +257,7 @@ export function AnalysisView({ reagents, labs, workers, alchemySettings, saveRea
                         const selectedLab = labs?.find(l => l.id === selectedLabId) || { rating: 0 };
                         const labBonus = selectedLab.rating || 0;
                         const effectiveSkill = parseInt(skill) + labBonus;
-                        const mos = roll ? effectiveSkill - parseInt(roll) : '?';
+                        const mos = roll.total ? effectiveSkill - roll.total : '?';
                         return labBonus > 0
                           ? `Effective Skill: ${skill} + ${labBonus} (lab) = ${effectiveSkill} | MoS: ${mos}`
                           : `MoS: ${mos}`;

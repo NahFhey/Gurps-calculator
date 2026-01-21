@@ -35,7 +35,7 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
   const [view, setView] = useState('list');
   const [current, setCurrent] = useState(null);
   const [skill, setSkill] = useState('');
-  const [roll, setRoll] = useState('');
+  const [roll, setRoll] = useState({ dice: [], total: 0 });
   const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0]);
   const [currentDay, setCurrentDay] = useState(1);
   const [selectedWorker, setSelectedWorker] = useState('');
@@ -447,11 +447,11 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                 <div><label className="block mb-2 text-sm">Day (In-Universe)</label><input type="number" min="1" value={currentDay} onChange={(e) => setCurrentDay(Math.max(1, toNumberOr(e.target.value, 1)))} className="w-full bg-gray-600 px-3 py-2 rounded" /></div>
                 <div><label className="block mb-2 text-sm">Worker</label><select value={selectedWorker} onChange={(e) => { const worker = workers.find(w => w.name === e.target.value); setSelectedWorker(e.target.value); if (worker?.skills) setSkill(String(current.phase === 'design' ? worker.skills.designing : worker.skills.crafting)); }} className="w-full bg-gray-600 px-3 py-2 rounded">{workers.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}</select></div>
                 <div><label className="block mb-2 text-sm">Skill</label><input type="number" value={skill} onChange={(e) => setSkill(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded" /></div>
-                <div className="col-span-2"><label className="block mb-2 text-sm">Roll (3d6)</label><div className="flex gap-2"><input type="number" value={roll} onChange={(e) => setRoll(e.target.value)} className="flex-1 bg-gray-600 px-3 py-2 rounded" /><DiceRoller onRoll={(dice, total) => setRoll(String(total))} /></div></div>
+                <div className="col-span-2"><label className="block mb-2 text-sm">Roll (3d6)</label><div className="flex gap-2"><input type="number" value={roll.total || ''} onChange={(e) => setRoll({ dice: [], total: parseInt(e.target.value) || 0 })} className="flex-1 bg-gray-600 px-3 py-2 rounded" /><DiceRoller dice={roll.dice} total={roll.total} onRoll={(dice, total) => setRoll({ dice, total })} /></div></div>
               </div>
               <button onClick={() => {
-                const s = parseInt(skill), r = parseInt(roll);
-                if (isNaN(s) || isNaN(r) || !selectedWorker || !currentDate || isNaN(currentDay)) { alert('Fill all fields'); return; }
+                const s = parseInt(skill), r = roll.total;
+                if (isNaN(s) || !r || !selectedWorker || !currentDate || isNaN(currentDay)) { alert('Fill all fields'); return; }
                 const eff = s + stats.totalDifficulty;
                 let hrs = 0, qc = 0, res = '';
                 if (current.phase === 'design') {
