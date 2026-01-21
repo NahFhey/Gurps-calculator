@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Edit2, Save, X, ChefHat, Hammer, Package, Beaker, FileText, BookOpen, Fish } from 'lucide-react';
 import { TEMPLATES } from './constants';
 import { safeParse } from './utils/helpers';
+import { logger } from './utils/logger';
 import { useKeyedDebouncedStorageSave } from './hooks/useStorage';
 import { InventoryTab } from './components/InventoryTab';
 import { CookingTab } from './components/CookingTab';
@@ -15,7 +16,7 @@ import { DayPlannerTab } from './components/DayPlannerTab';
 import { VERSION } from './version';
 
 export default function GURPSPartyTool() {
-  console.log('GURPSPartyTool rendering');
+  logger.log('GURPSPartyTool rendering');
   const [activeTab, setActiveTab] = useState('inventory');
   const [materials, setMaterials] = useState([]);
   const [foods, setFoods] = useState([]);
@@ -81,7 +82,7 @@ export default function GURPSPartyTool() {
   async function loadData() {
     // Guard against missing storage
     if (!window?.storage?.get || !window?.storage?.set) {
-      console.warn('Storage unavailable');
+      logger.warn('Storage unavailable');
       setLoading(false);
       return;
     }
@@ -255,7 +256,7 @@ export default function GURPSPartyTool() {
       setPendingDayLedger(safeParse(pendingDayLedgerR?.value, null));
       setCurrentSlot(safeParse(currentSlotR?.value, 0));
     } catch (error) {
-      console.error('Error loading:', error);
+      logger.error('Error loading:', error);
     }
     setLoading(false);
   }
