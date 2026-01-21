@@ -927,10 +927,11 @@ function TaskDetailPanel({
               </div>
 
               {/* Target Rarity Display (only if targeting) */}
-              {task.intent?.targetItemId && (() => {
+              {task.intent?.targetItemId && items && FORAGING_RARITIES && (() => {
                 const targetItem = items.find(i => i.id === task.intent.targetItemId);
-                const rarity = targetItem?.rarity || 'Common';
-                const rarityData = FORAGING_RARITIES[rarity] || FORAGING_RARITIES.Common;
+                if (!targetItem) return null;
+                const rarity = targetItem.rarity || 'Common';
+                const rarityData = FORAGING_RARITIES[rarity] || FORAGING_RARITIES.Common || { label: rarity, penalty: 0 };
                 return (
                   <div className="p-2 bg-gray-600 rounded">
                     <div className="text-xs text-gray-400 mb-1">Target Rarity</div>
