@@ -762,11 +762,11 @@ export function ManagerTab({
                   onClick={() => setExpanded(p => ({...p, [w.id]: !p[w.id]}))}
                 >
                   <span className="flex-1 font-semibold">{w.name}</span>
-                  <span className="text-xs text-gray-400">Cook: {w.skills.cooking}</span>
-                  <span className="text-xs text-gray-400">Design: {w.skills.designing}</span>
-                  <span className="text-xs text-gray-400">Craft: {w.skills.crafting}</span>
-                  <span className="text-xs text-gray-400">Alch: {w.skills.alchemy}</span>
-                  <span className="text-xs text-gray-400">Surv: {w.skills.survival || 10}</span>
+                  <span className="text-xs text-gray-400">Cook: {w.skills?.cooking || 10}</span>
+                  <span className="text-xs text-gray-400">Design: {w.skills?.designing || 10}</span>
+                  <span className="text-xs text-gray-400">Craft: {w.skills?.crafting || 10}</span>
+                  <span className="text-xs text-gray-400">Alch: {w.skills?.alchemy || 10}</span>
+                  <span className="text-xs text-gray-400">Surv: {w.skills?.survival || 10}</span>
                   <span className="text-gray-400">{expanded[w.id] ? '▼' : '▶'}</span>
                 </div>
                 {expanded[w.id] && (
@@ -788,9 +788,9 @@ export function ManagerTab({
                         <label className="block text-xs text-gray-400 mb-1">Cooking Skill</label>
                         <input
                           type="number"
-                          value={w.skills.cooking}
+                          value={w.skills?.cooking || 10}
                           onChange={(e) => {
-                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...x.skills, cooking: toNumberOr(e.target.value, 10)}} : x));
+                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...(x.skills || {}), cooking: toNumberOr(e.target.value, 10)}} : x));
                           }}
                           className="w-full bg-gray-600 px-3 py-2 rounded"
                         />
@@ -799,9 +799,9 @@ export function ManagerTab({
                         <label className="block text-xs text-gray-400 mb-1">Designing Skill</label>
                         <input
                           type="number"
-                          value={w.skills.designing}
+                          value={w.skills?.designing || 10}
                           onChange={(e) => {
-                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...x.skills, designing: toNumberOr(e.target.value, 10)}} : x));
+                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...(x.skills || {}), designing: toNumberOr(e.target.value, 10)}} : x));
                           }}
                           className="w-full bg-gray-600 px-3 py-2 rounded"
                         />
@@ -810,9 +810,9 @@ export function ManagerTab({
                         <label className="block text-xs text-gray-400 mb-1">Crafting Skill</label>
                         <input
                           type="number"
-                          value={w.skills.crafting}
+                          value={w.skills?.crafting || 10}
                           onChange={(e) => {
-                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...x.skills, crafting: toNumberOr(e.target.value, 10)}} : x));
+                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...(x.skills || {}), crafting: toNumberOr(e.target.value, 10)}} : x));
                           }}
                           className="w-full bg-gray-600 px-3 py-2 rounded"
                         />
@@ -821,9 +821,9 @@ export function ManagerTab({
                         <label className="block text-xs text-gray-400 mb-1">Alchemy Skill</label>
                         <input
                           type="number"
-                          value={w.skills.alchemy}
+                          value={w.skills?.alchemy || 10}
                           onChange={(e) => {
-                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...x.skills, alchemy: toNumberOr(e.target.value, 10)}} : x));
+                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...(x.skills || {}), alchemy: toNumberOr(e.target.value, 10)}} : x));
                           }}
                           className="w-full bg-gray-600 px-3 py-2 rounded"
                         />
@@ -832,9 +832,9 @@ export function ManagerTab({
                         <label className="block text-xs text-gray-400 mb-1">Survival Skill</label>
                         <input
                           type="number"
-                          value={w.skills.survival || 10}
+                          value={w.skills?.survival || 10}
                           onChange={(e) => {
-                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...x.skills, survival: toNumberOr(e.target.value, 10)}} : x));
+                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...(x.skills || {}), survival: toNumberOr(e.target.value, 10)}} : x));
                           }}
                           className="w-full bg-gray-600 px-3 py-2 rounded"
                         />
@@ -843,9 +843,9 @@ export function ManagerTab({
                         <label className="block text-xs text-gray-400 mb-1">Naturalist Skill</label>
                         <input
                           type="number"
-                          value={w.skills.naturalist || 10}
+                          value={w.skills?.naturalist || 10}
                           onChange={(e) => {
-                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...x.skills, naturalist: toNumberOr(e.target.value, 10)}} : x));
+                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...(x.skills || {}), naturalist: toNumberOr(e.target.value, 10)}} : x));
                           }}
                           className="w-full bg-gray-600 px-3 py-2 rounded"
                         />
@@ -854,9 +854,9 @@ export function ManagerTab({
                         <label className="block text-xs text-gray-400 mb-1">Herb Lore Skill</label>
                         <input
                           type="number"
-                          value={w.skills.herbLore || 10}
+                          value={w.skills?.herbLore || 10}
                           onChange={(e) => {
-                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...x.skills, herbLore: toNumberOr(e.target.value, 10)}} : x));
+                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...(x.skills || {}), herbLore: toNumberOr(e.target.value, 10)}} : x));
                           }}
                           className="w-full bg-gray-600 px-3 py-2 rounded"
                         />
