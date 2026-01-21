@@ -756,6 +756,135 @@ function TaskDetailPanel({
             );
           })()}
 
+          {/* Show caught species for fishing tasks */}
+          {task.mode === 'Fishing' && task.payload?.tableEntry?.resultType === 'species' && (() => {
+            const speciesId = task.payload.tableEntry.speciesId;
+            const caughtSpecies = species.find(s => s.id === speciesId);
+            if (!caughtSpecies) return null;
+
+            // Parse meat yield formula
+            const meatFormula = caughtSpecies.yieldMeatFormula || '1d';
+            const meatParsed = parseDiceFormula(meatFormula);
+            const meatDiceCount = meatParsed.count || 1;
+            const meatDiceSides = meatParsed.sides || 6;
+            const meatModValue = meatParsed.modifier || 0;
+
+            // Get current meat yield from inventory delta
+            const meatDelta = task.inventoryDelta?.find(d =>
+              d.type === 'food' && d.speciesName === caughtSpecies.name
+            );
+            const currentMeatYield = meatDelta?.units || 0;
+
+            // Parse secondary yield formula if exists
+            const hasSecondary = caughtSpecies.yieldSecondaryFormula && caughtSpecies.secondaryMaterialType;
+            let secondaryDiceCount, secondaryDiceSides, secondaryModValue, currentSecondaryYield, secondaryDelta, secondaryName;
+
+            if (hasSecondary) {
+              const secondaryFormula = caughtSpecies.yieldSecondaryFormula;
+              const secondaryParsed = parseDiceFormula(secondaryFormula);
+              secondaryDiceCount = secondaryParsed.count || 1;
+              secondaryDiceSides = secondaryParsed.sides || 6;
+              secondaryModValue = secondaryParsed.modifier || 0;
+
+              secondaryName = caughtSpecies.secondaryNameOverride || `${caughtSpecies.name} ${caughtSpecies.secondaryMaterialType}`;
+              secondaryDelta = task.inventoryDelta?.find(d =>
+                d.type === 'material' && d.name === secondaryName
+              );
+              currentSecondaryYield = secondaryDelta?.units || 0;
+            }
+
+            return (
+              <div className="p-3 bg-blue-900 border border-blue-600 rounded space-y-3">
+                <div>
+                  <div className="font-medium text-blue-200 mb-2">Caught Species</div>
+                  <div className="text-sm text-blue-100 mb-1">{caughtSpecies.name}</div>
+                </div>
+
+                {/* Meat Yield Roller */}
+                <div>
+                  <div className="text-xs text-blue-300 mb-2">
+                    Meat Yield Formula: {meatFormula}
+                  </div>
+                  <DiceRoller
+                    label="Roll for Meat Yield"
+                    diceCount={meatDiceCount}
+                    diceSides={meatDiceSides}
+                    modifier={meatModValue}
+                    dice={[]}
+                    total={currentMeatYield}
+                    onRoll={(dice, total) => {
+                      // Update meat yield in inventory delta
+                      const updatedDelta = (task.inventoryDelta || []).map(d => {
+                        if (d.type === 'food' && d.speciesName === caughtSpecies.name) {
+                          return { ...d, units: total };
+                        }
+                        return d;
+                      });
+                      updateTask({
+                        ...task,
+                        inventoryDelta: updatedDelta
+                      });
+                    }}
+                    onTotalChange={(total) => {
+                      const updatedDelta = (task.inventoryDelta || []).map(d => {
+                        if (d.type === 'food' && d.speciesName === caughtSpecies.name) {
+                          return { ...d, units: total };
+                        }
+                        return d;
+                      });
+                      updateTask({
+                        ...task,
+                        inventoryDelta: updatedDelta
+                      });
+                    }}
+                  />
+                </div>
+
+                {/* Secondary Material Yield Roller */}
+                {hasSecondary && (
+                  <div>
+                    <div className="text-xs text-blue-300 mb-2">
+                      {secondaryName} Formula: {caughtSpecies.yieldSecondaryFormula}
+                    </div>
+                    <DiceRoller
+                      label={`Roll for ${caughtSpecies.secondaryMaterialType}`}
+                      diceCount={secondaryDiceCount}
+                      diceSides={secondaryDiceSides}
+                      modifier={secondaryModValue}
+                      dice={[]}
+                      total={currentSecondaryYield}
+                      onRoll={(dice, total) => {
+                        // Update secondary yield in inventory delta
+                        const updatedDelta = (task.inventoryDelta || []).map(d => {
+                          if (d.type === 'material' && d.name === secondaryName) {
+                            return { ...d, units: total };
+                          }
+                          return d;
+                        });
+                        updateTask({
+                          ...task,
+                          inventoryDelta: updatedDelta
+                        });
+                      }}
+                      onTotalChange={(total) => {
+                        const updatedDelta = (task.inventoryDelta || []).map(d => {
+                          if (d.type === 'material' && d.name === secondaryName) {
+                            return { ...d, units: total };
+                          }
+                          return d;
+                        });
+                        updateTask({
+                          ...task,
+                          inventoryDelta: updatedDelta
+                        });
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {task.notes && (
             <div className="p-3 bg-gray-700 rounded">
               <div className="text-xs text-gray-400 mb-1">Notes:</div>

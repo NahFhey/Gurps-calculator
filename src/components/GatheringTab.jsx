@@ -24,6 +24,7 @@ import {
   filterToolsForMethod,
   createGatheringSession,
   evaluateDiceFormula,
+  parseDiceFormula,
   roll3d6,
   isCriticalSuccess,
   isCriticalFailure,
@@ -1330,36 +1331,125 @@ export function GatheringTab({
             <div className="bg-purple-900 p-4 rounded">
               <h3 className="text-lg font-semibold mb-2">Calculate Yields</h3>
 
-              {caughtFish.filter(f => !f.isLarge || f.struggleSuccess).map((fish, i) => (
-                <div key={i} className="bg-gray-800 p-3 rounded mb-2">
-                  <div className="flex justify-between items-center">
-                    <span>{fish.species?.name || 'Unknown Fish'}</span>
-                    {fish.yields ? (
-                      <span className="text-purple-400">
-                        {fish.yields.meatUnits}U meat
-                        {fish.yields.secondaryUnits > 0 && `, ${fish.yields.secondaryUnits}U ${fish.yields.secondaryType}`}
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => rollYields(fish.index)}
-                        className="bg-purple-600 hover:bg-purple-700 px-3 py-1 rounded text-sm"
-                      >
-                        Roll Yields
-                      </button>
+              {caughtFish.filter(f => !f.isLarge || f.struggleSuccess).map((fish, fishIdx) => {
+                if (!fish.species) return null;
+
+                // Parse meat yield formula
+                const meatFormula = fish.species.yieldMeatFormula || '1d';
+                const meatParsed = parseDiceFormula(meatFormula);
+
+                // Parse secondary yield formula if exists
+                const hasSecondary = fish.species.yieldSecondaryFormula && fish.species.secondaryMaterialType;
+                let secondaryParsed;
+                if (hasSecondary) {
+                  secondaryParsed = parseDiceFormula(fish.species.yieldSecondaryFormula);
+                }
+
+                return (
+                  <div key={fishIdx} className="bg-gray-800 p-3 rounded mb-3 space-y-3">
+                    <div className="font-medium text-blue-200">{fish.species.name}</div>
+
+                    {/* Meat Yield Roller */}
+                    <div>
+                      <div className="text-xs text-gray-400 mb-2">
+                        Meat Yield: {meatFormula}
+                      </div>
+                      <DiceRoller
+                        label="Meat Yield"
+                        diceCount={meatParsed.count || 1}
+                        diceSides={meatParsed.sides || 6}
+                        modifier={meatParsed.modifier || 0}
+                        dice={fish.yields?.meatDice || []}
+                        total={fish.yields?.meatUnits || 0}
+                        onRoll={(dice, total) => {
+                          // Update fish with new meat yield
+                          setCaughtFish(prev => prev.map((f, i) =>
+                            i === fish.index ? {
+                              ...f,
+                              yields: {
+                                ...(f.yields || {}),
+                                meatUnits: total,
+                                meatDice: dice
+                              }
+                            } : f
+                          ));
+                        }}
+                        onTotalChange={(total) => {
+                          setCaughtFish(prev => prev.map((f, i) =>
+                            i === fish.index ? {
+                              ...f,
+                              yields: {
+                                ...(f.yields || {}),
+                                meatUnits: total,
+                                meatDice: []
+                              }
+                            } : f
+                          ));
+                        }}
+                      />
+                    </div>
+
+                    {/* Secondary Material Yield Roller */}
+                    {hasSecondary && (
+                      <div>
+                        <div className="text-xs text-gray-400 mb-2">
+                          {fish.species.secondaryMaterialType}: {fish.species.yieldSecondaryFormula}
+                        </div>
+                        <DiceRoller
+                          label={fish.species.secondaryMaterialType}
+                          diceCount={secondaryParsed.count || 1}
+                          diceSides={secondaryParsed.sides || 6}
+                          modifier={secondaryParsed.modifier || 0}
+                          dice={fish.yields?.secondaryDice || []}
+                          total={fish.yields?.secondaryUnits || 0}
+                          onRoll={(dice, total) => {
+                            setCaughtFish(prev => prev.map((f, i) =>
+                              i === fish.index ? {
+                                ...f,
+                                yields: {
+                                  ...(f.yields || {}),
+                                  secondaryUnits: total,
+                                  secondaryDice: dice,
+                                  secondaryType: fish.species.secondaryMaterialType
+                                }
+                              } : f
+                            ));
+                          }}
+                          onTotalChange={(total) => {
+                            setCaughtFish(prev => prev.map((f, i) =>
+                              i === fish.index ? {
+                                ...f,
+                                yields: {
+                                  ...(f.yields || {}),
+                                  secondaryUnits: total,
+                                  secondaryDice: [],
+                                  secondaryType: fish.species.secondaryMaterialType
+                                }
+                              } : f
+                            ));
+                          }}
+                        />
+                      </div>
                     )}
                   </div>
-                  {fish.species && (
-                    <div className="text-xs text-gray-400 mt-1">
-                      Meat: {fish.species.yieldMeatFormula}
-                      {fish.species.yieldSecondaryFormula && ` | ${fish.species.secondaryMaterialType}: ${fish.species.yieldSecondaryFormula}`}
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
 
-              {yieldResults.length === caughtFish.filter(f => !f.isLarge || f.struggleSuccess).length && (
+              {caughtFish.filter(f => (!f.isLarge || f.struggleSuccess) && f.yields).length === caughtFish.filter(f => !f.isLarge || f.struggleSuccess).length &&
+               caughtFish.filter(f => !f.isLarge || f.struggleSuccess).length > 0 && (
                 <button
-                  onClick={commitToInventory}
+                  onClick={() => {
+                    // Update yield results with current fish yields
+                    const results = caughtFish
+                      .filter(f => (!f.isLarge || f.struggleSuccess) && f.yields)
+                      .map(f => ({
+                        fishIndex: f.index,
+                        species: f.species,
+                        yields: f.yields
+                      }));
+                    setYieldResults(results);
+                    commitToInventory();
+                  }}
                   className="w-full bg-purple-600 hover:bg-purple-700 py-2 rounded font-semibold mt-4"
                 >
                   <Package size={18} className="inline mr-2" />
@@ -1408,28 +1498,74 @@ export function GatheringTab({
               </div>
 
               {/* Yield Calculation */}
-              {(forageFind?.type === 'category' || forageFind?.type === 'item') && (
-                <div className="bg-gray-800 p-3 rounded mb-3">
-                  <h4 className="font-semibold mb-2">Calculate Yield:</h4>
-                  {yieldResults.length === 0 ? (
-                    <button
-                      onClick={rollForageYields}
-                      className="w-full bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded"
-                    >
-                      Roll Yields
-                    </button>
-                  ) : (
-                    <div>
-                      <span className="text-purple-400 text-lg">
-                        {yieldResults[0]?.units || 0} Units
-                      </span>
-                      <div className="text-xs text-gray-400 mt-1">
-                        Formula: {yieldResults[0]?.modifiedFormula} × {Math.floor((forageResult?.yieldMultiplier || 1) * 100)}%
-                      </div>
+              {(forageFind?.type === 'category' || forageFind?.type === 'item') && (() => {
+                const category = categories.find(c => c.id === forageFind.categoryId);
+                const item = items.find(i => i.id === forageFind.itemId);
+
+                if (!category && !item) return null;
+
+                // Get yield formula
+                const yieldFormula = item?.yieldFormula || category?.yieldFormula || '1d';
+                const parsed = parseDiceFormula(yieldFormula);
+
+                // Get current yield from results if already rolled
+                const currentYield = yieldResults[0]?.yields?.units || 0;
+                const currentDice = yieldResults[0]?.yields?.dice || [];
+
+                return (
+                  <div className="bg-gray-800 p-3 rounded mb-3">
+                    <h4 className="font-semibold mb-2">Calculate Yield:</h4>
+                    <div className="text-xs text-gray-400 mb-2">
+                      Formula: {yieldFormula} × {Math.floor((forageResult?.yieldMultiplier || 1) * 100)}%
                     </div>
-                  )}
-                </div>
-              )}
+                    <DiceRoller
+                      label="Roll for Yield"
+                      diceCount={parsed.count || 1}
+                      diceSides={parsed.sides || 6}
+                      modifier={parsed.modifier || 0}
+                      dice={currentDice}
+                      total={currentYield}
+                      onRoll={(dice, total) => {
+                        // Apply yield multiplier
+                        const finalUnits = Math.floor(total * (forageResult?.yieldMultiplier || 1.0));
+                        setYieldResults([{
+                          category,
+                          item,
+                          yields: {
+                            units: finalUnits,
+                            dice,
+                            baseFormula: yieldFormula,
+                            modifiedFormula: yieldFormula,
+                            rawTotal: total,
+                            multiplier: forageResult?.yieldMultiplier || 1.0
+                          }
+                        }]);
+                      }}
+                      onTotalChange={(total) => {
+                        // Apply yield multiplier
+                        const finalUnits = Math.floor(total * (forageResult?.yieldMultiplier || 1.0));
+                        setYieldResults([{
+                          category,
+                          item,
+                          yields: {
+                            units: finalUnits,
+                            dice: [],
+                            baseFormula: yieldFormula,
+                            modifiedFormula: yieldFormula,
+                            rawTotal: total,
+                            multiplier: forageResult?.yieldMultiplier || 1.0
+                          }
+                        }]);
+                      }}
+                    />
+                    {currentYield > 0 && (
+                      <div className="text-sm text-purple-300 mt-2">
+                        Final Yield: {currentYield} units
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {yieldResults.length > 0 && (
                 <button
