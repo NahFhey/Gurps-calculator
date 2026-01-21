@@ -14,6 +14,11 @@ import { RulesTab } from './components/RulesTab';
 import { GatheringTab } from './components/GatheringTab';
 import { DayPlannerTab } from './components/DayPlannerTab';
 import { VERSION } from './version';
+import InventoryContext from './contexts/InventoryContext';
+import CraftingContext from './contexts/CraftingContext';
+import AlchemyContext from './contexts/AlchemyContext';
+import GatheringContext from './contexts/GatheringContext';
+import ConfigContext from './contexts/ConfigContext';
 
 export default function GURPSPartyTool() {
   logger.log('GURPSPartyTool rendering');
@@ -343,8 +348,95 @@ export default function GURPSPartyTool() {
 
   if (loading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
 
+  // Context values
+  const inventoryValue = {
+    materials,
+    foods,
+    foodTypes,
+    materialTypes,
+    saveMaterials,
+    saveFoods,
+    saveFoodTypes,
+    saveMaterialTypes
+  };
+
+  const craftingValue = {
+    crafts,
+    craftDesigns,
+    customTemplates,
+    saveCrafts,
+    saveCraftDesigns,
+    saveCustomTemplates
+  };
+
+  const alchemyValue = {
+    alchemyReagents,
+    alchemyFormulas,
+    alchemyBatches,
+    alchemyLabs,
+    alchemySettings,
+    effectFamilyMap,
+    saveAlchemyReagents,
+    saveAlchemyFormulas,
+    saveAlchemyBatches,
+    saveAlchemyLabs,
+    saveAlchemySettings,
+    saveEffectFamilyMap
+  };
+
+  const gatheringValue = {
+    gatheringSpecies,
+    gatheringTools,
+    gatheringTables,
+    gatheringEnvironments,
+    gatheringSessions,
+    gatheringDailyEvents,
+    gatheringBait,
+    gatheringCategories,
+    gatheringItems,
+    currentDay,
+    timeSlots,
+    taskAssignments,
+    pendingDayLedger,
+    currentSlot,
+    saveGatheringSpecies,
+    saveGatheringTools,
+    saveGatheringTables,
+    saveGatheringEnvironments,
+    saveGatheringSessions,
+    saveGatheringDailyEvents,
+    saveGatheringBait,
+    saveGatheringCategories,
+    saveGatheringItems,
+    saveCurrentDay,
+    saveTimeSlots,
+    saveTaskAssignments,
+    savePendingDayLedger,
+    saveCurrentSlot
+  };
+
+  const configValue = {
+    workers,
+    recipes,
+    kitchens,
+    cookingSkills,
+    gmMode,
+    gmLockData,
+    saveWorkers,
+    saveRecipes,
+    saveKitchens,
+    saveCookingSkills,
+    setGmMode,
+    setGmLockData
+  };
+
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100">
+    <InventoryContext.Provider value={inventoryValue}>
+      <CraftingContext.Provider value={craftingValue}>
+        <AlchemyContext.Provider value={alchemyValue}>
+          <GatheringContext.Provider value={gatheringValue}>
+            <ConfigContext.Provider value={configValue}>
+              <div className="min-h-screen bg-gray-900 text-gray-100">
       <div className="max-w-7xl mx-auto p-6">
         <h1 className="text-3xl font-bold mb-6 text-center">
           GURPS Party Management <span className="text-xl text-gray-400">v{VERSION}</span>
@@ -376,14 +468,14 @@ export default function GURPSPartyTool() {
           </button>
         </div>
 
-        {activeTab === 'inventory' && <InventoryTab materials={materials} foods={foods} foodTypes={foodTypes} materialTypes={materialTypes} gmMode={gmMode} saveMaterials={saveMaterials} saveFoods={saveFoods} />}
-        {activeTab === 'cooking' && <CookingTab foods={foods} recipes={recipes} saveFoods={saveFoods} saveRecipes={saveRecipes} workers={workers} kitchens={kitchens} cookingSkills={cookingSkills} />}
-        {activeTab === 'crafting' && <CraftingTab materials={materials} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materialTypes={materialTypes} workers={workers} saveMaterials={saveMaterials} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} />}
+        {activeTab === 'inventory' && <InventoryTab />}
+        {activeTab === 'cooking' && <CookingTab />}
+        {activeTab === 'crafting' && <CraftingTab />}
         {activeTab === 'manager' && <ManagerTab foodTypes={foodTypes} materialTypes={materialTypes} workers={workers} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materials={materials} effectFamilyMap={effectFamilyMap} alchemySettings={alchemySettings} alchemyReagents={alchemyReagents} alchemyFormulas={alchemyFormulas} alchemyBatches={alchemyBatches} alchemyLabs={alchemyLabs} kitchens={kitchens} cookingSkills={cookingSkills} foods={foods} recipes={recipes} gmMode={gmMode} gmLockData={gmLockData} setGmMode={setGmMode} setGmLockData={setGmLockData} saveMaterials={saveMaterials} saveFoods={saveFoods} saveRecipes={saveRecipes} saveFoodTypes={saveFoodTypes} saveMaterialTypes={saveMaterialTypes} saveWorkers={saveWorkers} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} saveCustomTemplates={saveCustomTemplates} saveEffectFamilyMap={saveEffectFamilyMap} saveAlchemySettings={saveAlchemySettings} saveAlchemyReagents={saveAlchemyReagents} saveAlchemyFormulas={saveAlchemyFormulas} saveAlchemyBatches={saveAlchemyBatches} saveAlchemyLabs={saveAlchemyLabs} saveKitchens={saveKitchens} saveCookingSkills={saveCookingSkills} renameMaterialType={renameMaterialType}
           gatheringSpecies={gatheringSpecies} gatheringTools={gatheringTools} gatheringTables={gatheringTables} gatheringEnvironments={gatheringEnvironments} gatheringBait={gatheringBait} gatheringCategories={gatheringCategories} gatheringItems={gatheringItems} currentDay={currentDay}
           saveGatheringSpecies={saveGatheringSpecies} saveGatheringTools={saveGatheringTools} saveGatheringTables={saveGatheringTables} saveGatheringEnvironments={saveGatheringEnvironments} saveGatheringBait={saveGatheringBait} saveGatheringCategories={saveGatheringCategories} saveGatheringItems={saveGatheringItems} saveCurrentDay={saveCurrentDay}
         />}
-        {activeTab === 'alchemy' && <AlchemyTab reagents={alchemyReagents} formulas={alchemyFormulas} batches={alchemyBatches} labs={alchemyLabs} workers={workers} alchemySettings={alchemySettings} saveReagents={saveAlchemyReagents} saveFormulas={saveAlchemyFormulas} saveBatches={saveAlchemyBatches} saveLabs={saveAlchemyLabs} />}
+        {activeTab === 'alchemy' && <AlchemyTab />}
         {activeTab === 'gathering' && <DayPlannerTab
           species={gatheringSpecies}
           tools={gatheringTools}
@@ -412,7 +504,12 @@ export default function GURPSPartyTool() {
         />}
         {activeTab === 'rules' && <RulesTab />}
         {activeTab === 'changelog' && <ChangelogTab />}
-      </div>
-    </div>
+              </div>
+            </div>
+            </ConfigContext.Provider>
+          </GatheringContext.Provider>
+        </AlchemyContext.Provider>
+      </CraftingContext.Provider>
+    </InventoryContext.Provider>
   );
 }
