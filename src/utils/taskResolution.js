@@ -326,6 +326,9 @@ export function resolveForagingTask({
     const item = findResult.item || (findResult.itemId ? items.find(i => i.id === findResult.itemId) : null);
 
     if (item) {
+      // Attach the full item to findResult for display later
+      findResult.item = item;
+
       // Calculate yields using item's yield formula
       const selectedToolObjects = tools;
       const yieldDiceBonus = getToolYieldBonus(selectedToolObjects, item.typeId);
