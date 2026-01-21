@@ -27,7 +27,7 @@ import {
   ensureDaySlotsExist
 } from '../utils/dayPlanner';
 import { resolveTask } from '../utils/taskResolution';
-import { determineDynamicEventType } from '../utils/gathering';
+import { determineDynamicEventType, parseDiceFormula } from '../utils/gathering';
 
 /**
  * DayPlannerTab - Main component for the Day Planner gathering system
@@ -691,6 +691,70 @@ function TaskDetailPanel({
               Results added to pending day ledger
             </div>
           </div>
+
+          {/* Show found item for foraging tasks */}
+          {task.mode === 'Foraging' && task.payload?.findResult?.type === 'item' && (() => {
+            const foundItem = task.payload.findResult.item;
+            if (!foundItem) return null;
+
+            // Parse yield formula to get dice info
+            const formula = foundItem.yieldFormula || '1d';
+            const parsed = parseDiceFormula(formula);
+            const diceCount = parsed.count || 1;
+            const diceSides = parsed.sides || 6;
+            const modValue = parsed.modifier || 0;
+
+            // Get current yield from inventory delta
+            const currentDelta = task.inventoryDelta?.find(d =>
+              (d.speciesName || d.name) === foundItem.name
+            );
+            const currentYield = currentDelta?.units || 0;
+
+            return (
+              <div className="p-3 bg-purple-900 border border-purple-600 rounded">
+                <div className="font-medium text-purple-200 mb-2">Found Item</div>
+                <div className="text-sm text-purple-100 mb-1">{foundItem.name}</div>
+                <div className="text-xs text-purple-300 mb-3">
+                  Yield Formula: {formula}
+                </div>
+
+                <DiceRoller
+                  label="Roll for Yield"
+                  diceCount={diceCount}
+                  diceSides={diceSides}
+                  modifier={modValue}
+                  dice={[]}
+                  total={currentYield}
+                  onRoll={(dice, total) => {
+                    // Update inventory delta with new yield
+                    const updatedDelta = (task.inventoryDelta || []).map(d => {
+                      if ((d.speciesName || d.name) === foundItem.name) {
+                        return { ...d, units: total };
+                      }
+                      return d;
+                    });
+                    updateTask({
+                      ...task,
+                      inventoryDelta: updatedDelta
+                    });
+                  }}
+                  onTotalChange={(total) => {
+                    // Update inventory delta with manual yield
+                    const updatedDelta = (task.inventoryDelta || []).map(d => {
+                      if ((d.speciesName || d.name) === foundItem.name) {
+                        return { ...d, units: total };
+                      }
+                      return d;
+                    });
+                    updateTask({
+                      ...task,
+                      inventoryDelta: updatedDelta
+                    });
+                  }}
+                />
+              </div>
+            );
+          })()}
 
           {task.notes && (
             <div className="p-3 bg-gray-700 rounded">
