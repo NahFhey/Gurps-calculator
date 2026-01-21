@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { Plus } from 'lucide-react';
 import { applyWorkBlockResult, calculateFormulaStats } from '../../utils/alchemy';
 import { DiceRoller } from '../DiceRoller';
@@ -872,3 +873,14 @@ export function BatchesView({ batches, workers, formulas, reagents, labs, saveBa
     </div>
   );
 }
+
+BatchesView.propTypes = {
+  batches: PropTypes.array.isRequired,
+  workers: PropTypes.array.isRequired,
+  formulas: PropTypes.array.isRequired,
+  reagents: PropTypes.array.isRequired,
+  labs: PropTypes.array.isRequired,
+  saveBatches: PropTypes.func.isRequired,
+  saveFormulas: PropTypes.func.isRequired,
+  saveReagents: PropTypes.func.isRequired
+};

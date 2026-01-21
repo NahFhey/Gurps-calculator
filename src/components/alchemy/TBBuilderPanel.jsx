@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { Plus, Trash2 } from 'lucide-react';
 import { toNumberOr } from '../../utils/helpers';
 
@@ -205,3 +206,13 @@ export function TBBuilderPanel({ traitBudget, initialTraits = [], onUpdate }) {
     </div>
   );
 }
+
+TBBuilderPanel.propTypes = {
+  traitBudget: PropTypes.number.isRequired,
+  initialTraits: PropTypes.array,
+  onUpdate: PropTypes.func.isRequired
+};
+
+TBBuilderPanel.defaultProps = {
+  initialTraits: []
+};

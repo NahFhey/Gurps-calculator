@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { DiceRoller } from '../DiceRoller';
 import { ASPECTS } from '../../constants';
 
@@ -352,3 +353,11 @@ export function AnalysisView({ reagents, labs, workers, alchemySettings, saveRea
     </div>
   );
 }
+
+AnalysisView.propTypes = {
+  reagents: PropTypes.array.isRequired,
+  labs: PropTypes.array.isRequired,
+  workers: PropTypes.array.isRequired,
+  alchemySettings: PropTypes.object,
+  saveReagents: PropTypes.func.isRequired
+};

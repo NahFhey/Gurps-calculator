@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { Plus, Save, X, Trash2, ChevronDown, ChevronRight, Edit2 } from 'lucide-react';
 import {
   GATHERING_MODES,
@@ -1771,3 +1772,29 @@ export function GatheringManager({
     </div>
   );
 }
+
+GatheringManager.propTypes = {
+  species: PropTypes.array.isRequired,
+  tools: PropTypes.array.isRequired,
+  tables: PropTypes.array.isRequired,
+  environments: PropTypes.array.isRequired,
+  bait: PropTypes.array.isRequired,
+  categories: PropTypes.array.isRequired,
+  items: PropTypes.array.isRequired,
+  currentDay: PropTypes.number.isRequired,
+  foodTypes: PropTypes.array,
+  materialTypes: PropTypes.array,
+  saveSpecies: PropTypes.func.isRequired,
+  saveTools: PropTypes.func.isRequired,
+  saveTables: PropTypes.func.isRequired,
+  saveEnvironments: PropTypes.func.isRequired,
+  saveBait: PropTypes.func.isRequired,
+  saveCategories: PropTypes.func.isRequired,
+  saveItems: PropTypes.func.isRequired,
+  saveCurrentDay: PropTypes.func.isRequired
+};
+
+GatheringManager.defaultProps = {
+  foodTypes: [],
+  materialTypes: []
+};

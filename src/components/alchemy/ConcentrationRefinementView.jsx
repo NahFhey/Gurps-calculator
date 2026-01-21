@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { DiceRoller } from '../DiceRoller';
 import {
   calculateProcessingDifficulty,
@@ -841,3 +842,10 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
     </div>
   );
 }
+
+ConcentrationRefinementView.propTypes = {
+  reagents: PropTypes.array.isRequired,
+  labs: PropTypes.array.isRequired,
+  workers: PropTypes.array.isRequired,
+  saveReagents: PropTypes.func.isRequired
+};
