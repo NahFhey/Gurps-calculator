@@ -709,6 +709,7 @@ function TaskDetailPanel({
               (d.speciesName || d.name) === foundItem.name
             );
             const currentYield = currentDelta?.units || 0;
+            const currentDice = currentDelta?.dice || [];
 
             return (
               <div className="p-3 bg-purple-900 border border-purple-600 rounded">
@@ -723,13 +724,13 @@ function TaskDetailPanel({
                   diceCount={diceCount}
                   diceSides={diceSides}
                   modifier={modValue}
-                  dice={[]}
+                  dice={currentDice}
                   total={currentYield}
                   onRoll={(dice, total) => {
-                    // Update inventory delta with new yield
+                    // Update inventory delta with new yield and dice
                     const updatedDelta = (task.inventoryDelta || []).map(d => {
                       if ((d.speciesName || d.name) === foundItem.name) {
-                        return { ...d, units: total };
+                        return { ...d, units: total, dice };
                       }
                       return d;
                     });
@@ -742,7 +743,7 @@ function TaskDetailPanel({
                     // Update inventory delta with manual yield
                     const updatedDelta = (task.inventoryDelta || []).map(d => {
                       if ((d.speciesName || d.name) === foundItem.name) {
-                        return { ...d, units: total };
+                        return { ...d, units: total, dice: [] };
                       }
                       return d;
                     });
@@ -774,10 +775,11 @@ function TaskDetailPanel({
               d.type === 'food' && d.speciesName === caughtSpecies.name
             );
             const currentMeatYield = meatDelta?.units || 0;
+            const currentMeatDice = meatDelta?.dice || [];
 
             // Parse secondary yield formula if exists
             const hasSecondary = caughtSpecies.yieldSecondaryFormula && caughtSpecies.secondaryMaterialType;
-            let secondaryDiceCount, secondaryDiceSides, secondaryModValue, currentSecondaryYield, secondaryDelta, secondaryName;
+            let secondaryDiceCount, secondaryDiceSides, secondaryModValue, currentSecondaryYield, currentSecondaryDice, secondaryDelta, secondaryName;
 
             if (hasSecondary) {
               const secondaryFormula = caughtSpecies.yieldSecondaryFormula;
@@ -791,6 +793,7 @@ function TaskDetailPanel({
                 d.type === 'material' && d.name === secondaryName
               );
               currentSecondaryYield = secondaryDelta?.units || 0;
+              currentSecondaryDice = secondaryDelta?.dice || [];
             }
 
             return (
@@ -810,13 +813,13 @@ function TaskDetailPanel({
                     diceCount={meatDiceCount}
                     diceSides={meatDiceSides}
                     modifier={meatModValue}
-                    dice={[]}
+                    dice={currentMeatDice}
                     total={currentMeatYield}
                     onRoll={(dice, total) => {
-                      // Update meat yield in inventory delta
+                      // Update meat yield in inventory delta with dice
                       const updatedDelta = (task.inventoryDelta || []).map(d => {
                         if (d.type === 'food' && d.speciesName === caughtSpecies.name) {
-                          return { ...d, units: total };
+                          return { ...d, units: total, dice };
                         }
                         return d;
                       });
@@ -828,7 +831,7 @@ function TaskDetailPanel({
                     onTotalChange={(total) => {
                       const updatedDelta = (task.inventoryDelta || []).map(d => {
                         if (d.type === 'food' && d.speciesName === caughtSpecies.name) {
-                          return { ...d, units: total };
+                          return { ...d, units: total, dice: [] };
                         }
                         return d;
                       });
@@ -851,13 +854,13 @@ function TaskDetailPanel({
                       diceCount={secondaryDiceCount}
                       diceSides={secondaryDiceSides}
                       modifier={secondaryModValue}
-                      dice={[]}
+                      dice={currentSecondaryDice}
                       total={currentSecondaryYield}
                       onRoll={(dice, total) => {
-                        // Update secondary yield in inventory delta
+                        // Update secondary yield in inventory delta with dice
                         const updatedDelta = (task.inventoryDelta || []).map(d => {
                           if (d.type === 'material' && d.name === secondaryName) {
-                            return { ...d, units: total };
+                            return { ...d, units: total, dice };
                           }
                           return d;
                         });
@@ -869,7 +872,7 @@ function TaskDetailPanel({
                       onTotalChange={(total) => {
                         const updatedDelta = (task.inventoryDelta || []).map(d => {
                           if (d.type === 'material' && d.name === secondaryName) {
-                            return { ...d, units: total };
+                            return { ...d, units: total, dice: [] };
                           }
                           return d;
                         });
