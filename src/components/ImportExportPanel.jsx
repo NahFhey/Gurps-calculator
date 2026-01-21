@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { Download, Upload, Lock, Unlock, FileJson, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { exportUnlocked, exportLocked, importFile, unlockGMData, downloadJSON, mergeGM } from '../utils/exportImport';
 
@@ -336,3 +337,13 @@ export function ImportExportPanel({
     </div>
   );
 }
+
+ImportExportPanel.propTypes = {
+  state: PropTypes.object.isRequired,
+  gmMode: PropTypes.bool.isRequired,
+  gmLockData: PropTypes.object,
+  setGmMode: PropTypes.func.isRequired,
+  setGmLockData: PropTypes.func.isRequired,
+  onImport: PropTypes.func.isRequired,
+  onShowGMLockModal: PropTypes.func.isRequired
+};

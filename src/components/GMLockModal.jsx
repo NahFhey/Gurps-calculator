@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { Lock, Unlock, X, AlertTriangle } from 'lucide-react';
 
 /**
@@ -143,3 +144,10 @@ export function GMLockModal({ isOpen, onClose, onUnlock, error }) {
     </div>
   );
 }
+
+GMLockModal.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onUnlock: PropTypes.func.isRequired,
+  error: PropTypes.string
+};
