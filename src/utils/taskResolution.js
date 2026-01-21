@@ -225,6 +225,10 @@ export function resolveForagingTask({
   // Get base foraging skill
   const baseForagingSkill = leader.skills?.[skillKey] || 10;
 
+  // Get target item rarity if targeting
+  const targetItem = task.intent?.targetItemId ? items.find(i => i.id === task.intent.targetItemId) : null;
+  const targetRarity = targetItem?.rarity || null;
+
   // Calculate effective skill
   const { effectiveSkill } = calculateEffectiveForagingSkill({
     baseForagingSkill,
@@ -233,7 +237,7 @@ export function resolveForagingTask({
     isUnfamiliar: task.intent?.isUnfamiliar || false,
     hasMapGuide: task.intent?.hasMapGuide || false,
     isPeakSeason: task.intent?.isPeakSeason || false,
-    targetRarity: task.intent?.targetRarity || null
+    targetRarity
   });
 
   // Use manual roll if provided, otherwise auto-roll

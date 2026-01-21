@@ -766,6 +766,7 @@ export function ManagerTab({
                   <span className="text-xs text-gray-400">Design: {w.skills.designing}</span>
                   <span className="text-xs text-gray-400">Craft: {w.skills.crafting}</span>
                   <span className="text-xs text-gray-400">Alch: {w.skills.alchemy}</span>
+                  <span className="text-xs text-gray-400">Surv: {w.skills.survival || 10}</span>
                   <span className="text-gray-400">{expanded[w.id] ? '▼' : '▶'}</span>
                 </div>
                 {expanded[w.id] && (
@@ -823,6 +824,39 @@ export function ManagerTab({
                           value={w.skills.alchemy}
                           onChange={(e) => {
                             saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...x.skills, alchemy: toNumberOr(e.target.value, 10)}} : x));
+                          }}
+                          className="w-full bg-gray-600 px-3 py-2 rounded"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Survival Skill</label>
+                        <input
+                          type="number"
+                          value={w.skills.survival || 10}
+                          onChange={(e) => {
+                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...x.skills, survival: toNumberOr(e.target.value, 10)}} : x));
+                          }}
+                          className="w-full bg-gray-600 px-3 py-2 rounded"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Naturalist Skill</label>
+                        <input
+                          type="number"
+                          value={w.skills.naturalist || 10}
+                          onChange={(e) => {
+                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...x.skills, naturalist: toNumberOr(e.target.value, 10)}} : x));
+                          }}
+                          className="w-full bg-gray-600 px-3 py-2 rounded"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Herb Lore Skill</label>
+                        <input
+                          type="number"
+                          value={w.skills.herbLore || 10}
+                          onChange={(e) => {
+                            saveWorkers(workers.map(x => x.id === w.id ? {...x, skills: {...x.skills, herbLore: toNumberOr(e.target.value, 10)}} : x));
                           }}
                           className="w-full bg-gray-600 px-3 py-2 rounded"
                         />

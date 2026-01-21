@@ -926,21 +926,18 @@ function TaskDetailPanel({
                 </label>
               </div>
 
-              {/* Target Rarity (only if targeting) */}
-              {(task.intent?.targetCategoryId || task.intent?.targetItemId) && (
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Rarity Penalty</label>
-                  <select
-                    value={task.intent?.targetRarity || 'Common'}
-                    onChange={(e) => updateField('intent', { ...task.intent, targetRarity: e.target.value })}
-                    className="w-full bg-gray-600 px-3 py-2 rounded"
-                  >
-                    {Object.entries(FORAGING_RARITIES).map(([key, data]) => (
-                      <option key={key} value={key}>{data.label} ({data.penalty})</option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              {/* Target Rarity Display (only if targeting) */}
+              {task.intent?.targetItemId && (() => {
+                const targetItem = items.find(i => i.id === task.intent.targetItemId);
+                const rarity = targetItem?.rarity || 'Common';
+                const rarityData = FORAGING_RARITIES[rarity] || FORAGING_RARITIES.Common;
+                return (
+                  <div className="p-2 bg-gray-600 rounded">
+                    <div className="text-xs text-gray-400 mb-1">Target Rarity</div>
+                    <div className="text-sm text-gray-200">{rarityData.label} ({rarityData.penalty})</div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
