@@ -1108,7 +1108,7 @@ export function GatheringTab({
                   max="18"
                   className="flex-1 bg-gray-700 px-3 py-2 rounded"
                 />
-                <DiceRoller onRoll={(total) => setEventRoll(String(total))} />
+                <DiceRoller onRoll={(dice, total) => setEventRoll(String(total))} />
               </div>
 
               <button
@@ -1157,7 +1157,7 @@ export function GatheringTab({
                   max="18"
                   className="flex-1 bg-gray-700 px-3 py-2 rounded"
                 />
-                <DiceRoller onRoll={(total) => setFishingRoll(String(total))} />
+                <DiceRoller onRoll={(dice, total) => setFishingRoll(String(total))} />
               </div>
 
               <button
@@ -1207,7 +1207,7 @@ export function GatheringTab({
                   max="18"
                   className="flex-1 bg-gray-700 px-3 py-2 rounded"
                 />
-                <DiceRoller onRoll={(total) => setForageRoll(String(total))} />
+                <DiceRoller onRoll={(dice, total) => setForageRoll(String(total))} />
               </div>
 
               <button

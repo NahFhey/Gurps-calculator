@@ -245,7 +245,7 @@ export function AnalysisView({ reagents, labs, workers, alchemySettings, saveRea
                       min="3"
                       max="18"
                     />
-                    <DiceRoller onRoll={(total) => setRoll(String(total))} />
+                    <DiceRoller onRoll={(dice, total) => setRoll(String(total))} />
                   </div>
                   {skill && (
                     <div className="text-xs text-gray-400 mt-1">

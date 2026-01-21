@@ -537,7 +537,7 @@ export function BatchesView({ batches, workers, formulas, reagents, labs, saveBa
                     min="3"
                     max="18"
                   />
-                  <DiceRoller onRoll={(total) => setRoll(String(total))} />
+                  <DiceRoller onRoll={(dice, total) => setRoll(String(total))} />
                 </div>
               </div>
             </div>

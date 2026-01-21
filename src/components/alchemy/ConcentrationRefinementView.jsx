@@ -733,7 +733,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
                   max="18"
                   className="flex-1 bg-gray-600 px-3 py-2 rounded"
                 />
-                <DiceRoller onRoll={(total) => setCurrentRoll(String(total))} />
+                <DiceRoller onRoll={(dice, total) => setCurrentRoll(String(total))} />
               </div>
 
               <div className="flex gap-2">

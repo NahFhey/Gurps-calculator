@@ -564,7 +564,7 @@ export function CookingTab({ foods, recipes, saveFoods, saveRecipes, workers, ki
                     min="3"
                     max="18"
                   />
-                  <DiceRoller onRoll={(total) => setRoll(String(total))} />
+                  <DiceRoller onRoll={(dice, total) => setRoll(String(total))} />
                 </div>
                 {cookingSkillValue && (
                   <div className="text-xs text-gray-400 mt-1">
@@ -873,7 +873,7 @@ export function CookingTab({ foods, recipes, saveFoods, saveRecipes, workers, ki
                     min="3"
                     max="18"
                   />
-                  <DiceRoller onRoll={(total) => setRemakeRoll(String(total))} />
+                  <DiceRoller onRoll={(dice, total) => setRemakeRoll(String(total))} />
                 </div>
                 {remakeSkill && (
                   <div className="text-xs text-gray-400 mt-1">
