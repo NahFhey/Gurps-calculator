@@ -53,12 +53,19 @@ export function generateTurnOrder(combatants) {
 
 /**
  * Format a combat log entry for display
+ * Handles both Phase 1 (old format) and Phase 2 (structured format)
  * @param {Object} entry - Log entry object
  * @returns {string} Formatted log entry text
  */
 export function formatLogEntry(entry) {
   const timestamp = new Date(entry.timestamp).toLocaleTimeString();
 
+  // Phase 2 structured format - just use the text field
+  if (entry.entryType) {
+    return `[${timestamp}] ${entry.text}`;
+  }
+
+  // Phase 1 format (backward compatibility)
   switch (entry.type) {
     case 'combat_start':
       return `[${timestamp}] Combat started`;
@@ -117,11 +124,171 @@ export function exportCombatLog(logEntries, encounterInfo = {}) {
 }
 
 /**
+ * Export active combat as JSON (Phase 2 format)
+ * Includes combat state and history
+ * @param {Object} combatState - Combat state object
+ * @param {Object} historyState - History state object
+ * @returns {string} JSON string
+ */
+export function exportActiveCombat(combatState, historyState) {
+  const exportData = {
+    version: 1,
+    exportDate: new Date().toISOString(),
+    combatState,
+    history: historyState
+  };
+
+  return JSON.stringify(exportData, null, 2);
+}
+
+/**
+ * Parse and validate imported combat JSON
+ * @param {string} jsonString - JSON string to parse
+ * @returns {{valid: boolean, data: Object|null, error: string|null}}
+ */
+export function parseImportedCombat(jsonString) {
+  try {
+    const data = JSON.parse(jsonString);
+
+    if (!data || typeof data !== 'object') {
+      return { valid: false, data: null, error: 'Invalid JSON format' };
+    }
+
+    if (!data.combatState) {
+      return { valid: false, data: null, error: 'Missing combatState in import' };
+    }
+
+    return { valid: true, data, error: null };
+  } catch (error) {
+    return { valid: false, data: null, error: error.message };
+  }
+}
+
+/**
  * Generate unique ID for combat entities
  * @returns {string} Unique ID
  */
 export function generateId() {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * Create a structured log entry (Phase 2 format)
+ * @param {Object} params - Log entry parameters
+ * @returns {Object} Structured log entry
+ */
+export function createLogEntry({
+  entryType,
+  round,
+  turn,
+  actorInstanceId = null,
+  targetInstanceId = null,
+  text,
+  hpDelta = null,
+  fpDelta = null,
+  mpDelta = null,
+  roll = null
+}) {
+  return {
+    id: generateId(),
+    timestamp: new Date().toISOString(),
+    round,
+    turn,
+    entryType,
+    actorInstanceId,
+    targetInstanceId,
+    text,
+    hpDelta,
+    fpDelta,
+    mpDelta,
+    roll
+  };
+}
+
+/**
+ * Create a turn change log entry
+ */
+export function createTurnLogEntry(round, turn, actorInstanceId, actorName) {
+  return createLogEntry({
+    entryType: 'turn',
+    round,
+    turn,
+    actorInstanceId,
+    text: `${actorName}'s turn`
+  });
+}
+
+/**
+ * Create a resource change log entry
+ */
+export function createResourceLogEntry(round, turn, actorInstanceId, actorName, resource, oldValue, newValue) {
+  const delta = newValue - oldValue;
+  const deltaStr = delta > 0 ? `+${delta}` : `${delta}`;
+
+  let resourceDelta = {};
+  if (resource === 'HP') {
+    resourceDelta.hpDelta = delta;
+  } else if (resource === 'FP') {
+    resourceDelta.fpDelta = delta;
+  } else if (resource === 'MP') {
+    resourceDelta.mpDelta = delta;
+  }
+
+  return createLogEntry({
+    entryType: 'resource',
+    round,
+    turn,
+    actorInstanceId,
+    text: `${actorName}: ${resource} ${oldValue} → ${newValue} (${deltaStr})`,
+    ...resourceDelta
+  });
+}
+
+/**
+ * Create a roll log entry
+ */
+export function createRollLogEntry(round, turn, actorInstanceId, actorName, rollResult) {
+  const { expression, dice, modifier, total, target, margin, success } = rollResult;
+
+  let text;
+  if (target !== undefined) {
+    const marginStr = margin >= 0 ? `+${margin}` : `${margin}`;
+    const resultStr = success ? 'SUCCESS' : 'FAILURE';
+    text = `${actorName} rolled ${expression}: ${total} vs ${target} [${marginStr}] ${resultStr}`;
+  } else {
+    text = `${actorName} rolled ${expression}: ${total}`;
+  }
+
+  return createLogEntry({
+    entryType: 'roll',
+    round,
+    turn,
+    actorInstanceId,
+    text,
+    roll: {
+      expression,
+      dice,
+      modifier: modifier || 0,
+      total,
+      target: target !== undefined ? target : null,
+      margin: margin !== undefined ? margin : null,
+      success: success !== undefined ? success : null
+    }
+  });
+}
+
+/**
+ * Create a note log entry
+ */
+export function createNoteLogEntry(round, turn, actorInstanceId, actorName, note) {
+  const text = actorName ? `${actorName}: ${note}` : note;
+  return createLogEntry({
+    entryType: 'note',
+    round,
+    turn,
+    actorInstanceId,
+    text
+  });
 }
 
 /**

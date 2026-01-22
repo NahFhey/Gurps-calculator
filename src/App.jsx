@@ -86,6 +86,7 @@ export default function GURPSPartyTool() {
   // Combat Runner system state
   const [combatCharacters, setCombatCharacters] = useState([]); // Character library
   const [combatActive, setCombatActive] = useState(null); // Active combat session
+  const [combatActiveHistory, setCombatActiveHistory] = useState(null); // Phase 2 undo/redo history
   const [combatHistory, setCombatHistory] = useState([]); // Past combat sessions (max 50)
   const [combatTombstones, setCombatTombstones] = useState([]); // Deleted characters referenced by history
 
@@ -137,6 +138,7 @@ export default function GURPSPartyTool() {
   const saveCurrentSlot = createSaveFunction(setCurrentSlot, 'currentSlot');
   const saveCombatCharacters = createSaveFunction(setCombatCharacters, 'combatCharacters');
   const saveCombatActive = createSaveFunction(setCombatActive, 'combatActive');
+  const saveCombatActiveHistory = createSaveFunction(setCombatActiveHistory, 'combatActiveHistory');
   const saveCombatHistory = createSaveFunction(setCombatHistory, 'combatHistory');
   const saveCombatTombstones = createSaveFunction(setCombatTombstones, 'combatTombstones');
 
@@ -154,7 +156,7 @@ export default function GURPSPartyTool() {
       const [matsR, foodsR, recipesR, craftsR, typesR, templatesR, matTypesR, workersR, reagentsR, formulasR, batchesR, labsR, kitchensR, cookingSkillsR, effectMapR, alchemySettingsR, craftDesignsR,
         speciesR, toolsR, tablesR, environmentsR, sessionsR, dailyEventsR, baitR, categoriesR, itemsR, currentDayR,
         timeSlotsR, taskAssignmentsR, pendingDayLedgerR, currentSlotR,
-        combatCharactersR, combatActiveR, combatHistoryR, combatTombstonesR] = await Promise.all([
+        combatCharactersR, combatActiveR, combatActiveHistoryR, combatHistoryR, combatTombstonesR] = await Promise.all([
         window.storage.get('materials', true).catch(() => null),
         window.storage.get('foods', true).catch(() => null),
         window.storage.get('recipes', true).catch(() => null),
@@ -191,6 +193,7 @@ export default function GURPSPartyTool() {
         // Combat Runner system data
         window.storage.get('combatCharacters', true).catch(() => null),
         window.storage.get('combatActive', true).catch(() => null),
+        window.storage.get('combatActiveHistory', true).catch(() => null),
         window.storage.get('combatHistory', true).catch(() => null),
         window.storage.get('combatTombstones', true).catch(() => null)
       ]);
@@ -332,6 +335,7 @@ export default function GURPSPartyTool() {
       // Load Combat Runner system data
       setCombatCharacters(safeParse(combatCharactersR?.value, []));
       setCombatActive(safeParse(combatActiveR?.value, null));
+      setCombatActiveHistory(safeParse(combatActiveHistoryR?.value, null));
       setCombatHistory(safeParse(combatHistoryR?.value, []));
       setCombatTombstones(safeParse(combatTombstonesR?.value, []));
     } catch (error) {
@@ -456,10 +460,12 @@ export default function GURPSPartyTool() {
   const combatValue = {
     combatCharacters,
     combatActive,
+    combatActiveHistory,
     combatHistory,
     combatTombstones,
     saveCombatCharacters,
     saveCombatActive,
+    saveCombatActiveHistory,
     saveCombatHistory,
     saveCombatTombstones
   };
