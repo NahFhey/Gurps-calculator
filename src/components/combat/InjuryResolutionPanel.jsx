@@ -147,6 +147,7 @@ export default function InjuryResolutionPanel({
       damageBreakdown: createInjuryBreakdown(injuryResult),
       effects: resolvedEffects,
       newHP,
+      targetInstanceId: target.instanceId,
       damageType,
       expression: useManual ? 'manual' : expression,
       modifiers: useManual ? [] : [...modifiers]
