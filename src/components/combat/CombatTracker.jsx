@@ -42,6 +42,7 @@ export default function CombatTracker() {
 
   // Phase 5: View mode (session-only, defaults to Player View)
   const [viewMode, setViewMode] = useState(ViewMode.PLAYER);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   // Migrate Phase 1 combat on load if needed
   useEffect(() => {
@@ -640,6 +641,57 @@ export default function CombatTracker() {
     URL.revokeObjectURL(url);
   };
 
+  // Phase 5: Export Player View (unencrypted, filtered)
+  const handleExportPlayerView = () => {
+    if (!combatReveal) {
+      alert('Reveal state not initialized. Cannot export player view.');
+      return;
+    }
+
+    const json = exportCombatPlayerView(combatActive, combatReveal, history);
+
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `combat-player-view-${combatActive.name}-${Date.now()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Phase 5: Export GM Locked (encrypted)
+  const handleExportGMLocked = async () => {
+    if (!combatReveal) {
+      alert('Reveal state not initialized. Cannot export GM locked combat.');
+      return;
+    }
+
+    const password = window.prompt(
+      'Enter GM password to encrypt combat data:\n\n' +
+      'This password will be required to unlock the full combat state.\n' +
+      'Players can view the filtered version without the password.'
+    );
+
+    if (!password) {
+      return; // User cancelled
+    }
+
+    try {
+      const json = await exportCombatGMLocked(combatActive, combatReveal, history, password);
+
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `combat-gm-locked-${combatActive.name}-${Date.now()}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      alert(`Export failed: ${error.message}`);
+    }
+  };
+
+  // Legacy: Export full combat (Phase 2 format, unencrypted)
   const handleSaveCombat = () => {
     const validation = validateCombatExport(combatActive, history);
     if (!validation.valid) {
@@ -658,36 +710,93 @@ export default function CombatTracker() {
     URL.revokeObjectURL(url);
   };
 
-  const handleLoadCombat = () => {
+  const handleLoadCombat = async () => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
-    input.onchange = (e) => {
+    input.onchange = async (e) => {
       const file = e.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         const jsonString = event.target.result;
-        const parsed = parseImportedCombat(jsonString);
 
-        if (!parsed.valid) {
+        // Try Phase 5 import first
+        let parsed = await importCombatWithGMLock(jsonString);
+
+        // Fallback to legacy import if Phase 5 fails
+        if (!parsed.valid && !parsed.isLocked) {
+          parsed = parseImportedCombat(jsonString);
+          if (parsed.valid) {
+            // Legacy format
+            const validation = validateCombatImport(parsed.data);
+            if (!validation.valid) {
+              alert(`Validation error: ${validation.errors.join(', ')}`);
+              return;
+            }
+
+            if (!confirm('Load this combat? Current combat will be replaced.')) {
+              return;
+            }
+
+            saveCombatActive(validation.combatState);
+            saveCombatActiveHistory(validation.historyState);
+            return;
+          }
+        }
+
+        if (!parsed.valid && !parsed.isLocked) {
           alert(`Import error: ${parsed.error}`);
           return;
         }
 
-        const validation = validateCombatImport(parsed.data);
-        if (!validation.valid) {
-          alert(`Validation error: ${validation.errors.join(', ')}`);
+        // Handle GM-locked import
+        if (parsed.isLocked) {
+          const password = window.prompt(
+            'This combat is GM-locked. Enter password to unlock full state.\n\n' +
+            '(Cancel to load player view only)'
+          );
+
+          if (password) {
+            // Try unlocking
+            const unlocked = await importCombatWithGMLock(jsonString, password);
+
+            if (!unlocked.valid) {
+              alert(`Failed to unlock: ${unlocked.error}\n\nLoading player view instead.`);
+              // Fall through to load player view
+            } else {
+              // Successfully unlocked
+              if (!confirm('Load unlocked GM combat? Current combat will be replaced.')) {
+                return;
+              }
+
+              saveCombatActive(unlocked.data.combatState);
+              saveCombatActiveHistory(unlocked.data.history || null);
+              saveCombatReveal(unlocked.data.revealState || null);
+              return;
+            }
+          }
+
+          // Load player view (locked or failed unlock)
+          if (!confirm('Load player view (limited info)? Current combat will be replaced.')) {
+            return;
+          }
+
+          saveCombatActive(parsed.data.combatState);
+          saveCombatActiveHistory(null); // No history in player view
+          saveCombatReveal(parsed.data.revealState || null);
           return;
         }
 
+        // Phase 5 format, not locked
         if (!confirm('Load this combat? Current combat will be replaced.')) {
           return;
         }
 
-        saveCombatActive(validation.combatState);
-        saveCombatActiveHistory(validation.historyState);
+        saveCombatActive(parsed.data.combatState);
+        saveCombatActiveHistory(parsed.data.history || null);
+        saveCombatReveal(parsed.data.revealState || null);
       };
       reader.readAsText(file);
     };
@@ -723,29 +832,56 @@ export default function CombatTracker() {
             Redo ({getRedoCount(history)})
           </button>
 
-          {/* Save/Load */}
-          <button
-            onClick={handleSaveCombat}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded"
-          >
-            <Save size={16} />
-            Save
-          </button>
+          {/* Phase 5: Export Menu */}
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded"
+            >
+              <Download size={16} />
+              Export
+            </button>
+            {showExportMenu && (
+              <div className="absolute top-full right-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-50 min-w-64">
+                <button
+                  onClick={() => { handleExportPlayerView(); setShowExportMenu(false); }}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-700 border-b border-gray-700"
+                >
+                  <div className="font-medium text-blue-400">Export Player View</div>
+                  <div className="text-xs text-gray-400">Filtered, safe to share with players</div>
+                </button>
+                <button
+                  onClick={() => { handleExportGMLocked(); setShowExportMenu(false); }}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-700 border-b border-gray-700"
+                >
+                  <div className="font-medium text-purple-400">Export GM Locked</div>
+                  <div className="text-xs text-gray-400">Password-encrypted full state</div>
+                </button>
+                <button
+                  onClick={() => { handleSaveCombat(); setShowExportMenu(false); }}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-700 border-b border-gray-700"
+                >
+                  <div className="font-medium text-green-400">Export Full (Legacy)</div>
+                  <div className="text-xs text-gray-400">Unencrypted, all data</div>
+                </button>
+                <button
+                  onClick={() => { handleExportLog(); setShowExportMenu(false); }}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-700"
+                >
+                  <div className="font-medium text-gray-300">Export Log Only</div>
+                  <div className="text-xs text-gray-400">Text file of combat log</div>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Load */}
           <button
             onClick={handleLoadCombat}
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded"
           >
             <Upload size={16} />
             Load
-          </button>
-
-          {/* Export Log */}
-          <button
-            onClick={handleExportLog}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
-          >
-            <Download size={16} />
-            Export Log
           </button>
 
           {/* End Combat */}
