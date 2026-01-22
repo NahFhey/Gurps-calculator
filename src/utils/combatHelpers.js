@@ -4,6 +4,9 @@
  */
 
 import { HP_STATUS } from '../constants';
+import { getCombatView } from './combatViewFilter';
+import { filterLogForPlayerView } from './combatLogFilter';
+import { encryptJSON, decryptJSON } from './cryptoLock';
 
 /**
  * Calculate HP status based on current and max HP
@@ -495,10 +498,6 @@ export function createEffectLogEntry({
  * @returns {string} JSON string (unencrypted, filtered)
  */
 export function exportCombatPlayerView(combatState, revealState, historyState = null) {
-  // Import here to avoid circular dependency
-  const { getCombatView } = require('./combatViewFilter');
-  const { filterLogForPlayerView } = require('./combatLogFilter');
-
   // Get filtered view
   const combatView = getCombatView(combatState, revealState, 'player');
 
@@ -535,11 +534,6 @@ export function exportCombatPlayerView(combatState, revealState, historyState = 
  * @returns {Promise<string>} JSON string with gmLock
  */
 export async function exportCombatGMLocked(combatState, revealState, historyState, password) {
-  // Import here to avoid circular dependency
-  const { getCombatView } = require('./combatViewFilter');
-  const { filterLogForPlayerView } = require('./combatLogFilter');
-  const { encryptJSON } = require('./cryptoLock');
-
   // Get filtered player view
   const combatView = getCombatView(combatState, revealState, 'player');
   const filteredLog = filterLogForPlayerView(combatState.log, revealState, combatState);
@@ -594,8 +588,6 @@ export async function importCombatWithGMLock(jsonString, password = null) {
 
     if (isLocked && password) {
       // Attempt to unlock
-      const { decryptJSON } = require('./cryptoLock');
-
       try {
         const gmSecrets = await decryptJSON(data.gmLock, password);
 
