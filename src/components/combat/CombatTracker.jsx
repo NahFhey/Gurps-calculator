@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, X, Download, Plus, Undo, Redo, Save, Upload, Dices } from 'lucide-react';
 import { useCombat } from '../../contexts/CombatContext';
-import { calculateHPStatus, exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, exportActiveCombat, parseImportedCombat } from '../../utils/combatHelpers';
+import { calculateHPStatus, exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, createActionLogEntry, createInjuryLogEntry, createEffectLogEntry, exportActiveCombat, parseImportedCombat } from '../../utils/combatHelpers';
 import { MAX_COMBAT_HISTORY } from '../../constants';
 import { roll, rollVsTarget, formatRoll } from '../../utils/dice';
 import { createTurnAdvanceAction, createSetResourceAction, createAddLogEntryAction } from '../../utils/combatActions';
 import { addAction, canUndo, canRedo, getUndoCount, getRedoCount, undo, redo, createHistoryState, createSnapshot } from '../../utils/combatHistory';
 import { validateCombatState, validateCombatExport, validateCombatImport } from '../../utils/combatValidation';
+import { clearShock, applyEffect, getActiveEffects } from '../../utils/effectsEngine';
+import ActionPanel from './ActionPanel';
 
 /**
- * Combat Tracker Component - Phase 2
- * Active combat management with turn tracking, resource management, logging, dice tools, and undo/redo
+ * Combat Tracker Component - Phase 3
+ * Active combat management with turn tracking, resource management, logging, dice tools, undo/redo, and action assist
  */
 export default function CombatTracker() {
   const {
@@ -19,13 +21,15 @@ export default function CombatTracker() {
     combatActiveHistory,
     saveCombatActiveHistory,
     combatHistory,
-    saveCombatHistory
+    saveCombatHistory,
+    combatRulesPreset
   } = useCombat();
 
   const [noteText, setNoteText] = useState('');
   const [diceExpression, setDiceExpression] = useState('3d6');
   const [rollTarget, setRollTarget] = useState('');
   const [showDicePanel, setShowDicePanel] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(true);
 
   // Migrate Phase 1 combat on load if needed
   useEffect(() => {
@@ -105,20 +109,27 @@ export default function CombatTracker() {
     // Create TURN_ADVANCE action
     const action = createTurnAdvanceAction(fromRound, fromTurnIndex, toRound, toTurnIndex);
 
+    // Get next actor and clear shock penalty (Phase 4)
+    const nextActorInstanceId = combatActive.turnOrder[toTurnIndex];
+    const nextActor = combatActive.participants.find(p => p.instanceId === nextActorInstanceId);
+
+    // Clear shock penalty on turn start
+    const updatedParticipants = combatActive.participants.map(p =>
+      p.instanceId === nextActorInstanceId ? clearShock(p) : p
+    );
+
     // Apply to state immediately
     const newCombat = {
       ...combatActive,
       currentRound: toRound,
-      currentTurnIndex: toTurnIndex
+      currentTurnIndex: toTurnIndex,
+      participants: updatedParticipants
     };
 
     saveCombatActive(newCombat);
     recordAction(action);
 
     // Add log entries for new round and new turn
-    const nextActorInstanceId = combatActive.turnOrder[toTurnIndex];
-    const nextActor = combatActive.participants.find(p => p.instanceId === nextActorInstanceId);
-
     if (isNewRound) {
       const roundLogEntry = createTurnLogEntry(toRound, toTurnIndex, null, `=== Round ${toRound} ===`);
       const roundAction = createAddLogEntryAction(roundLogEntry);
@@ -286,6 +297,256 @@ export default function CombatTracker() {
 
     recordAction(action);
     setNoteText('');
+  };
+
+  // ============================================================================
+  // Phase 3: Action Panel Handlers
+  // ============================================================================
+
+  const handleActionComplete = (actionData) => {
+    const { maneuver, kind, attack, defense, damage, injury, note, targetInstanceId, newHP } = actionData;
+
+    // Get target if applicable
+    const target = targetInstanceId
+      ? combatActive.participants.find(p => p.instanceId === targetInstanceId)
+      : null;
+
+    // Handle Phase 4 injury workflow
+    if (kind === 'injury' && injury && targetInstanceId) {
+      // Create injury log entry
+      const injuryLogEntry = createInjuryLogEntry({
+        round: combatActive.currentRound,
+        turn: combatActive.currentTurnIndex,
+        targetInstanceId,
+        targetName: target?.name,
+        hitLocation: injury.hitLocation,
+        damageBreakdown: injury.damageBreakdown,
+        effects: null // Will add effect logs separately
+      });
+
+      let updatedParticipants = [...combatActive.participants];
+      let logEntries = [injuryLogEntry];
+
+      // Apply HP change
+      updatedParticipants = updatedParticipants.map(p =>
+        p.instanceId === targetInstanceId
+          ? { ...p, currentHP: newHP }
+          : p
+      );
+
+      // Apply effects to target
+      if (injury.effects && injury.effects.length > 0) {
+        injury.effects.forEach(effect => {
+          // Apply shock
+          if (effect.type === 'shock' && effect.autoApplied) {
+            updatedParticipants = updatedParticipants.map(p =>
+              p.instanceId === targetInstanceId
+                ? applyEffect(p, 'shock', { value: effect.value })
+                : p
+            );
+
+            logEntries.push(createEffectLogEntry({
+              round: combatActive.currentRound,
+              turn: combatActive.currentTurnIndex,
+              targetInstanceId,
+              targetName: target?.name,
+              effectType: 'shock',
+              effectData: { value: effect.value },
+              text: `${target?.name}: Shock penalty ${effect.value} until next turn`
+            }));
+          }
+
+          // Apply stun
+          if (effect.type === 'knockdownStun' && effect.success === false) {
+            updatedParticipants = updatedParticipants.map(p =>
+              p.instanceId === targetInstanceId
+                ? applyEffect(p, 'stunned', { stunned: true })
+                : p
+            );
+
+            logEntries.push(createEffectLogEntry({
+              round: combatActive.currentRound,
+              turn: combatActive.currentTurnIndex,
+              targetInstanceId,
+              targetName: target?.name,
+              effectType: 'stunned',
+              effectData: { stunned: true },
+              text: `${target?.name}: Stunned!`
+            }));
+          }
+
+          // Apply unconsciousness
+          if (effect.type === 'consciousnessCheck' && effect.success === false) {
+            updatedParticipants = updatedParticipants.map(p =>
+              p.instanceId === targetInstanceId
+                ? applyEffect(p, 'unconscious', { unconscious: true })
+                : p
+            );
+
+            logEntries.push(createEffectLogEntry({
+              round: combatActive.currentRound,
+              turn: combatActive.currentTurnIndex,
+              targetInstanceId,
+              targetName: target?.name,
+              effectType: 'unconscious',
+              effectData: { unconscious: true },
+              text: `${target?.name}: Unconscious!`
+            }));
+          }
+
+          // Apply death
+          if ((effect.type === 'deathCheck' && effect.success === false) || effect.type === 'autoDeath') {
+            updatedParticipants = updatedParticipants.map(p =>
+              p.instanceId === targetInstanceId
+                ? applyEffect(p, 'dead', { dead: true })
+                : p
+            );
+
+            logEntries.push(createEffectLogEntry({
+              round: combatActive.currentRound,
+              turn: combatActive.currentTurnIndex,
+              targetInstanceId,
+              targetName: target?.name,
+              effectType: 'dead',
+              effectData: { dead: true },
+              text: `${target?.name}: Dead!`
+            }));
+          }
+
+          // Apply bleeding
+          if (effect.type === 'bleeding' && effect.outcome === 'yes') {
+            updatedParticipants = updatedParticipants.map(p =>
+              p.instanceId === targetInstanceId
+                ? applyEffect(p, 'bleeding', { bleeding: true, rate: 1, round: combatActive.currentRound })
+                : p
+            );
+
+            logEntries.push(createEffectLogEntry({
+              round: combatActive.currentRound,
+              turn: combatActive.currentTurnIndex,
+              targetInstanceId,
+              targetName: target?.name,
+              effectType: 'bleeding',
+              effectData: { rate: 1 },
+              text: `${target?.name}: Bleeding (1 HP/turn)`
+            }));
+          }
+
+          // Apply crippling
+          if (effect.type === 'crippling' && effect.autoApplied) {
+            updatedParticipants = updatedParticipants.map(p =>
+              p.instanceId === targetInstanceId
+                ? applyEffect(p, 'crippling', { locationKey: effect.locationKey })
+                : p
+            );
+
+            logEntries.push(createEffectLogEntry({
+              round: combatActive.currentRound,
+              turn: combatActive.currentTurnIndex,
+              targetInstanceId,
+              targetName: target?.name,
+              effectType: 'crippling',
+              effectData: { locationKey: effect.locationKey, locationLabel: effect.locationLabel },
+              text: `${target?.name}: ${effect.locationLabel} crippled!`
+            }));
+          }
+        });
+      }
+
+      // Update state
+      const newCombat = {
+        ...combatActive,
+        participants: updatedParticipants,
+        log: [...combatActive.log, ...logEntries]
+      };
+
+      saveCombatActive(newCombat);
+
+      // Record resource change action
+      if (target) {
+        const resourceAction = createSetResourceAction(
+          targetInstanceId,
+          'HP',
+          target.currentHP,
+          newHP
+        );
+        recordAction(resourceAction);
+      }
+
+      // Record log actions
+      logEntries.forEach(entry => {
+        recordAction(createAddLogEntryAction(entry));
+      });
+
+      return;
+    }
+
+    // Create action log entry (for non-injury actions)
+    const logEntry = createActionLogEntry({
+      round: combatActive.currentRound,
+      turn: combatActive.currentTurnIndex,
+      actorInstanceId: currentActorInstanceId,
+      actorName: currentActor?.name,
+      targetInstanceId,
+      targetName: target?.name,
+      maneuver,
+      action: { kind, attack, defense, damage }
+    });
+
+    // Update state with log
+    let newCombat = {
+      ...combatActive,
+      log: [...combatActive.log, logEntry]
+    };
+
+    // If damage was applied, also update target HP (legacy Phase 3 support)
+    if (kind === 'damage' && targetInstanceId && newHP !== undefined) {
+      const updatedParticipants = combatActive.participants.map(p =>
+        p.instanceId === targetInstanceId
+          ? { ...p, currentHP: newHP }
+          : p
+      );
+
+      newCombat = {
+        ...newCombat,
+        participants: updatedParticipants
+      };
+
+      // Record resource change action
+      const resourceAction = createSetResourceAction(
+        targetInstanceId,
+        'HP',
+        target.currentHP,
+        newHP
+      );
+      recordAction(resourceAction);
+    }
+
+    // If it's just a note action, create a simpler note entry instead
+    if (kind === 'note' && note) {
+      const noteEntry = createNoteLogEntry(
+        combatActive.currentRound,
+        combatActive.currentTurnIndex,
+        currentActorInstanceId,
+        currentActor?.name,
+        maneuver ? `[${maneuver}] ${note}` : note
+      );
+
+      newCombat = {
+        ...combatActive,
+        log: [...combatActive.log, noteEntry]
+      };
+
+      const noteAction = createAddLogEntryAction(noteEntry);
+      saveCombatActive(newCombat);
+      recordAction(noteAction);
+      return;
+    }
+
+    // Save state and record action
+    saveCombatActive(newCombat);
+    const logAction = createAddLogEntryAction(logEntry);
+    recordAction(logAction);
   };
 
   // ============================================================================
@@ -484,6 +745,16 @@ export default function CombatTracker() {
           </div>
         </div>
       </div>
+
+      {/* Action Panel (Phase 3) */}
+      <ActionPanel
+        currentActor={currentActor}
+        participants={combatActive.participants}
+        onActionComplete={handleActionComplete}
+        combatRulesPreset={combatRulesPreset || 'standard'}
+        expanded={showActionPanel}
+        onToggleExpanded={() => setShowActionPanel(!showActionPanel)}
+      />
 
       {/* Dice Panel */}
       <div className="bg-gray-800 rounded-lg p-4">
@@ -730,16 +1001,42 @@ function ParticipantCard({ participant, isCurrent, onUpdateResource }) {
           </div>
         )}
       </div>
+
+      {/* Phase 4: Status Effects */}
+      {(() => {
+        const effects = getActiveEffects(participant);
+        if (effects.length === 0) return null;
+        return (
+          <div className="mt-2 pt-2 border-t border-gray-700">
+            <div className="text-xs text-gray-400 mb-1">Effects:</div>
+            <div className="flex flex-wrap gap-1">
+              {effects.map((effect, index) => (
+                <span
+                  key={index}
+                  className="text-xs px-2 py-0.5 bg-red-900/50 text-red-300 rounded"
+                >
+                  {effect}
+                </span>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
 
 /**
  * Format log entry for display
- * Renders special components for roll entries with colored dice
+ * Renders special components for roll entries with colored dice and action entries
  */
 function formatLogEntry(entry) {
   const timestamp = new Date(entry.timestamp).toLocaleTimeString();
+
+  // Phase 3 action entry with detailed breakdown
+  if (entry.entryType === 'action' && entry.action) {
+    return <ActionLogEntry timestamp={timestamp} entry={entry} />;
+  }
 
   // Phase 2 structured format with roll data
   if (entry.entryType === 'roll' && entry.roll) {
@@ -805,5 +1102,44 @@ function RollLogEntry({ timestamp, entry }) {
         </span>
       )}
     </span>
+  );
+}
+
+/**
+ * Action Log Entry Component (Phase 3)
+ * Displays combat actions with detailed breakdown
+ */
+function ActionLogEntry({ timestamp, entry }) {
+  const { action, maneuver } = entry;
+
+  return (
+    <div className="bg-gray-900 rounded p-2 my-1">
+      <div className="text-xs text-gray-500">[{timestamp}]</div>
+      <div className="font-semibold">{entry.text}</div>
+
+      {/* Show modifier details if available */}
+      {action.attack && action.attack.modifiers && action.attack.modifiers.length > 0 && (
+        <div className="text-xs text-gray-400 mt-1">
+          Modifiers: {action.attack.modifiers.map(m => `${m.label} ${m.value >= 0 ? '+' : ''}${m.value}`).join(', ')}
+        </div>
+      )}
+
+      {action.defense && action.defense.modifiers && action.defense.modifiers.length > 0 && (
+        <div className="text-xs text-gray-400 mt-1">
+          Modifiers: {action.defense.modifiers.map(m => `${m.label} ${m.value >= 0 ? '+' : ''}${m.value}`).join(', ')}
+        </div>
+      )}
+
+      {action.damage && (
+        <div className="text-xs text-gray-400 mt-1">
+          {action.damage.expression && action.damage.expression !== 'manual' && (
+            <span>Damage: {action.damage.expression} → {action.damage.rolledDamage}</span>
+          )}
+          {action.damage.generalDRUsed > 0 && (
+            <span> | DR: {action.damage.generalDRUsed}</span>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

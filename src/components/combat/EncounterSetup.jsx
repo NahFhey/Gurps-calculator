@@ -43,7 +43,14 @@ export default function EncounterSetup() {
         libraryId: character.id, // Track original library character
         currentHP: character.hp,
         currentFP: character.fp || 0,
-        currentMP: character.mp || 0
+        currentMP: character.mp || 0,
+        // Phase 4 fields
+        shockPenalty: 0,
+        isStunned: false,
+        isUnconscious: false,
+        isDead: false,
+        bleeding: null,
+        crippled: []
       };
       setParticipants([...participants, participant]);
     }

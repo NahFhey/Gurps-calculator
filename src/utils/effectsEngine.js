@@ -1,0 +1,345 @@
+/**
+ * Effects Engine
+ * Handles injury effects: shock, major wounds, stun, consciousness, death, bleeding, crippling
+ */
+
+import { rollVsTarget } from './dice';
+
+/**
+ * Combat rules presets
+ */
+export const COMBAT_RULES_PRESETS = {
+  LITE: 'lite',
+  STANDARD: 'standard',
+  CRUNCHY: 'crunchy'
+};
+
+/**
+ * Calculate shock penalty from injury
+ * @param {number} injury - Injury sustained
+ * @param {number} maxHP - Maximum HP
+ * @returns {number} Shock penalty (negative number, e.g., -4)
+ */
+export function calculateShockPenalty(injury, maxHP) {
+  // Shock = -1 per full HP of injury, max -4
+  const penalty = Math.min(4, Math.floor(injury));
+  return -penalty;
+}
+
+/**
+ * Check if injury qualifies as a major wound
+ * @param {number} injury - Injury sustained in one blow
+ * @param {number} maxHP - Maximum HP
+ * @returns {boolean} True if major wound
+ */
+export function isMajorWound(injury, maxHP) {
+  // Major wound = injury > HP/2
+  return injury > (maxHP / 2);
+}
+
+/**
+ * Check if injury qualifies for knockdown/stun
+ * @param {number} injury - Injury sustained
+ * @param {number} maxHP - Maximum HP
+ * @returns {boolean} True if knockdown check needed
+ */
+export function requiresKnockdownCheck(injury, maxHP) {
+  // Same threshold as major wound
+  return isMajorWound(injury, maxHP);
+}
+
+/**
+ * Determine consciousness/death checks based on HP
+ * @param {number} currentHP - Current HP after injury
+ * @param {number} maxHP - Maximum HP
+ * @returns {Object} Check requirements
+ */
+export function getHPChecks(currentHP, maxHP) {
+  const checks = {
+    consciousness: false,
+    death: false,
+    autoUnconsciousness: false,
+    autoDeath: false
+  };
+
+  // At 0 or below: consciousness check
+  if (currentHP <= 0) {
+    checks.consciousness = true;
+  }
+
+  // At -1×HP or below: death check every turn
+  if (currentHP <= -maxHP) {
+    checks.death = true;
+  }
+
+  // At -5×HP: automatic death
+  if (currentHP <= -5 * maxHP) {
+    checks.autoDeath = true;
+    checks.death = false; // No check needed, already dead
+  }
+
+  // At -10×HP or total destruction: automatic death
+  if (currentHP <= -10 * maxHP) {
+    checks.autoDeath = true;
+    checks.death = false;
+  }
+
+  return checks;
+}
+
+/**
+ * Check if limb/extremity is crippled
+ * @param {Object} location - Hit location
+ * @param {number} injury - Injury sustained
+ * @param {number} maxHP - Maximum HP
+ * @returns {boolean} True if location crippled
+ */
+export function isLocationCrippled(location, injury, maxHP) {
+  if (!location) return false;
+
+  // Extremities: crippled at > HP/3 injury
+  if (location.isExtremity) {
+    return injury > (maxHP / 3);
+  }
+
+  // Limbs: crippled at > HP/2 injury
+  if (location.isLimb) {
+    return injury > (maxHP / 2);
+  }
+
+  return false;
+}
+
+/**
+ * Generate effects prompts based on injury and rules preset
+ * @param {Object} params - Effect parameters
+ * @returns {Array} Array of effect prompt objects
+ */
+export function generateEffectsPrompts({
+  injury,
+  injuryResult,
+  currentHP,
+  newHP,
+  maxHP,
+  combatRulesPreset = 'standard',
+  target
+}) {
+  const prompts = [];
+
+  // Skip all effects for lite preset except HP checks
+  if (combatRulesPreset === 'lite') {
+    // Only check for death/unconsciousness
+    const hpChecks = getHPChecks(newHP, maxHP);
+    if (hpChecks.autoDeath) {
+      prompts.push({
+        type: 'autoDeath',
+        description: 'Target has reached -5×HP or worse and is automatically dead'
+      });
+    } else if (hpChecks.death) {
+      prompts.push({
+        type: 'deathCheck',
+        description: 'Target must make a HT roll to avoid death',
+        checkType: 'HT',
+        target: target.ht
+      });
+    } else if (hpChecks.consciousness) {
+      prompts.push({
+        type: 'consciousnessCheck',
+        description: 'Target must make a HT roll to stay conscious',
+        checkType: 'HT',
+        target: target.ht
+      });
+    }
+    return prompts;
+  }
+
+  // Standard and Crunchy presets
+
+  // 1. Shock (always applied automatically if injury > 0)
+  if (injury > 0) {
+    const shockPenalty = calculateShockPenalty(injury, maxHP);
+    prompts.push({
+      type: 'shock',
+      description: `Shock penalty: ${shockPenalty} until next turn`,
+      value: shockPenalty,
+      autoApply: true
+    });
+  }
+
+  // 2. Major wound check
+  if (isMajorWound(injury, maxHP)) {
+    prompts.push({
+      type: 'majorWound',
+      description: `Major wound! (Injury ${injury} > HP/2 ${Math.floor(maxHP/2)})`,
+      requiresCheck: true
+    });
+
+    // 3. Knockdown/Stun check (follows major wound)
+    prompts.push({
+      type: 'knockdownStun',
+      description: 'Roll HT to avoid knockdown and stunning',
+      checkType: 'HT',
+      target: target.ht,
+      penalty: 0
+    });
+  }
+
+  // 4. HP-based consciousness/death checks
+  const hpChecks = getHPChecks(newHP, maxHP);
+
+  if (hpChecks.autoDeath) {
+    prompts.push({
+      type: 'autoDeath',
+      description: 'Target has reached -5×HP or worse and is automatically dead',
+      autoApply: true
+    });
+  } else if (hpChecks.death) {
+    prompts.push({
+      type: 'deathCheck',
+      description: `HT roll to avoid death (HP at ${newHP}, death threshold -${maxHP})`,
+      checkType: 'HT',
+      target: target.ht
+    });
+  } else if (hpChecks.consciousness) {
+    prompts.push({
+      type: 'consciousnessCheck',
+      description: `HT roll to stay conscious (HP at ${newHP})`,
+      checkType: 'HT',
+      target: target.ht
+    });
+  }
+
+  // Crunchy additions
+  if (combatRulesPreset === 'crunchy') {
+    // 5. Crippling injury check
+    const location = injuryResult.location;
+    if (location && isLocationCrippled(location, injury, maxHP)) {
+      prompts.push({
+        type: 'crippling',
+        description: `${location.label} crippled! (Injury ${injury} exceeds crippling threshold)`,
+        locationKey: location.key,
+        locationLabel: location.label,
+        autoApply: true
+      });
+    }
+
+    // 6. Bleeding (major wounds can cause bleeding)
+    if (isMajorWound(injury, maxHP)) {
+      prompts.push({
+        type: 'bleeding',
+        description: 'Start bleeding? (GM decision)',
+        optional: true
+      });
+    }
+  }
+
+  return prompts;
+}
+
+/**
+ * Perform a HT check and return result
+ * @param {number} ht - HT attribute
+ * @param {number} penalty - Penalty to apply (e.g., -4)
+ * @returns {Object} Roll result with success/failure
+ */
+export function performHTCheck(ht, penalty = 0) {
+  const target = ht + penalty;
+  return rollVsTarget('3d6', target);
+}
+
+/**
+ * Apply effect result to combatant state
+ * @param {Object} combatant - Combatant object
+ * @param {string} effectType - Type of effect
+ * @param {*} effectData - Effect-specific data
+ * @returns {Object} Updated combatant state
+ */
+export function applyEffect(combatant, effectType, effectData) {
+  const updates = { ...combatant };
+
+  switch (effectType) {
+    case 'shock':
+      updates.shockPenalty = effectData.value;
+      break;
+
+    case 'stunned':
+      updates.isStunned = effectData.stunned;
+      break;
+
+    case 'unconscious':
+      updates.isUnconscious = effectData.unconscious;
+      break;
+
+    case 'dead':
+      updates.isDead = effectData.dead;
+      break;
+
+    case 'bleeding':
+      updates.bleeding = effectData.bleeding ? {
+        rate: effectData.rate || 1,
+        lastCheckedAtRound: effectData.round
+      } : null;
+      break;
+
+    case 'crippling':
+      if (!updates.crippled) {
+        updates.crippled = [];
+      }
+      if (!updates.crippled.includes(effectData.locationKey)) {
+        updates.crippled.push(effectData.locationKey);
+      }
+      break;
+
+    default:
+      break;
+  }
+
+  return updates;
+}
+
+/**
+ * Clear shock penalty (call at start of combatant's turn)
+ * @param {Object} combatant - Combatant object
+ * @returns {Object} Updated combatant state
+ */
+export function clearShock(combatant) {
+  return {
+    ...combatant,
+    shockPenalty: 0
+  };
+}
+
+/**
+ * Get all active effects summary for display
+ * @param {Object} combatant - Combatant object
+ * @returns {Array} Array of effect descriptions
+ */
+export function getActiveEffects(combatant) {
+  const effects = [];
+
+  if (combatant.shockPenalty && combatant.shockPenalty < 0) {
+    effects.push(`Shock ${combatant.shockPenalty}`);
+  }
+
+  if (combatant.isStunned) {
+    effects.push('Stunned');
+  }
+
+  if (combatant.isUnconscious) {
+    effects.push('Unconscious');
+  }
+
+  if (combatant.isDead) {
+    effects.push('Dead');
+  }
+
+  if (combatant.bleeding) {
+    effects.push(`Bleeding (${combatant.bleeding.rate}/turn)`);
+  }
+
+  if (combatant.crippled && combatant.crippled.length > 0) {
+    effects.push(`Crippled: ${combatant.crippled.join(', ')}`);
+  }
+
+  return effects;
+}

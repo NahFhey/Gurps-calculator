@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
-import { Users, Swords, History, ScrollText } from 'lucide-react';
+import { Users, Swords, History, ScrollText, Settings } from 'lucide-react';
 import { useCombat } from '../contexts/CombatContext';
 import CharacterLibrary from './combat/CharacterLibrary';
 import EncounterSetup from './combat/EncounterSetup';
 import CombatTracker from './combat/CombatTracker';
 import CombatHistory from './combat/CombatHistory';
+import CombatRulesSettings from './combat/CombatRulesSettings';
 
 /**
  * Main Combat Runner tab component
  * Manages character library, encounter setup, and active combat
  */
 export function CombatTab() {
-  const [view, setView] = useState('library'); // 'library', 'setup', 'tracker', 'history'
-  const { combatActive } = useCombat();
+  const [view, setView] = useState('library'); // 'library', 'setup', 'tracker', 'history', 'settings'
+  const { combatActive, combatRulesPreset, saveCombatRulesPreset } = useCombat();
 
   // If there's an active combat, automatically show tracker
   const currentView = combatActive ? 'tracker' : view;
@@ -65,6 +66,18 @@ export function CombatTab() {
           History
         </button>
 
+        <button
+          onClick={() => setView('settings')}
+          className={`flex items-center gap-2 px-4 py-2 rounded ${
+            currentView === 'settings'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
+        >
+          <Settings size={20} />
+          Rules Settings
+        </button>
+
         {combatActive && (
           <button
             onClick={() => setView('tracker')}
@@ -79,6 +92,12 @@ export function CombatTab() {
       {currentView === 'library' && <CharacterLibrary />}
       {currentView === 'setup' && <EncounterSetup />}
       {currentView === 'history' && <CombatHistory />}
+      {currentView === 'settings' && (
+        <CombatRulesSettings
+          preset={combatRulesPreset || 'standard'}
+          onPresetChange={saveCombatRulesPreset}
+        />
+      )}
       {currentView === 'tracker' && combatActive && <CombatTracker />}
     </div>
   );
