@@ -1,11 +1,12 @@
 /**
- * Combat Log Filter (Phase 5)
+ * Combat Log Filter (Phase 5 & 6)
  *
  * Filters combat log entries for Player View to prevent leaking secret information.
  * Implements the PLAYER-SAFE LOG REDACTION POLICY.
  */
 
 import { RevealMode } from './combatReveal.js';
+import { isConditionObvious } from '../constants/conditions.js';
 
 /**
  * Get participant category/side (participants use 'category', not 'side')
@@ -25,7 +26,9 @@ function getParticipantSide(participant) {
 export function filterLogForPlayerView(log, revealState, combatState) {
   if (!log || log.length === 0) return [];
 
-  return log.map(entry => filterLogEntry(entry, revealState, combatState));
+  return log
+    .map(entry => filterLogEntry(entry, revealState, combatState))
+    .filter(entry => entry !== null); // Phase 6: Filter out completely hidden entries
 }
 
 /**
@@ -72,6 +75,12 @@ function filterLogEntry(entry, revealState, combatState) {
 
     case 'effect':
       return filterEffectEntry(entry, actorReveal, actor);
+
+    case 'item': // Phase 6
+      return filterItemEntry(entry, actorReveal, targetReveal, actor, target);
+
+    case 'condition': // Phase 6
+      return filterConditionEntry(entry, targetReveal, target);
 
     default:
       // Unknown entry type - show generic text
@@ -406,4 +415,68 @@ function redactNames(text, actorReveal, targetReveal, actor, target) {
   }
 
   return result;
+}
+
+/**
+ * Phase 6: Filter item usage entries
+ *
+ * Show item usage if:
+ * - Actor is player/ally (always show)
+ * - Actor is enemy but HP revealed (show all actions)
+ */
+function filterItemEntry(entry, actorReveal, targetReveal, actor, target) {
+  const actorSide = getParticipantSide(actor);
+
+  // Show if actor is player/ally or if HP revealed
+  if (actorSide === 'player' || actorSide === 'ally' || actorReveal?.hp?.mode === RevealMode.NUMERIC_EXACT) {
+    return {
+      ...entry,
+      text: redactNames(entry.text, actorReveal, targetReveal, actor, target)
+    };
+  }
+
+  // Hide enemy item usage unless revealed
+  const actorName = getDisplayName(actor, actorReveal);
+  return {
+    ...entry,
+    text: `${actorName} used an item`,
+    item: {
+      ...entry.item,
+      itemName: 'Unknown Item',
+      qtyBefore: null,
+      qtyAfter: null
+    },
+    effect: {} // Hide effect details
+  };
+}
+
+/**
+ * Phase 6: Filter condition change entries
+ *
+ * Show condition changes if:
+ * - Target is player/ally (always show)
+ * - Target is enemy and condition is "obvious" (prone, unconscious, burning, etc.)
+ * - Target is enemy and HP revealed (show all conditions)
+ */
+function filterConditionEntry(entry, targetReveal, target) {
+  const targetSide = getParticipantSide(target);
+
+  // Show if target is player/ally or if HP revealed
+  if (targetSide === 'player' || targetSide === 'ally' || targetReveal?.hp?.mode === RevealMode.NUMERIC_EXACT) {
+    return {
+      ...entry,
+      text: redactName(entry.text, targetReveal, target)
+    };
+  }
+
+  // For enemies, only show if condition is obvious
+  if (isConditionObvious(entry.conditionId)) {
+    return {
+      ...entry,
+      text: redactName(entry.text, targetReveal, target)
+    };
+  }
+
+  // Hide non-obvious enemy condition changes
+  return null; // Completely filter out this log entry
 }
