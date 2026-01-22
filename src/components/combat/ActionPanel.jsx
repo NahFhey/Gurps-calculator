@@ -2,17 +2,18 @@ import React, { useState } from 'react';
 import { Swords, Shield, Zap, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import AttackAssist from './AttackAssist';
 import DefenseAssist from './DefenseAssist';
-import DamageAssist from './DamageAssist';
+import InjuryResolutionPanel from './InjuryResolutionPanel';
 
 /**
- * ActionPanel Component - Phase 3
+ * ActionPanel Component - Phase 3 & 4
  * Main action interface for the active combatant
- * Provides workflows for Attack, Defense, Damage, and Notes
+ * Provides workflows for Attack, Defense, Damage (Injury), and Notes
  */
 export default function ActionPanel({
   currentActor,
   participants,
   onActionComplete,
+  combatRulesPreset = 'standard',
   expanded = true,
   onToggleExpanded
 }) {
@@ -71,13 +72,13 @@ export default function ActionPanel({
     setSelectedManeuver(null);
   };
 
-  const handleDamageComplete = (damageData) => {
+  const handleDamageComplete = (injuryData) => {
     onActionComplete({
       maneuver: selectedManeuver,
-      kind: 'damage',
-      damage: damageData.damage,
-      targetInstanceId: damageData.targetInstanceId,
-      newHP: damageData.newHP
+      kind: 'injury',
+      injury: injuryData,
+      targetInstanceId: injuryData.targetInstanceId || targets[0]?.instanceId,
+      newHP: injuryData.newHP
     });
 
     // Reset
@@ -211,7 +212,7 @@ export default function ActionPanel({
 
       {activeWorkflow === 'damage' && (
         <div className="border-t border-gray-700 pt-4">
-          <h4 className="text-lg font-semibold mb-3">Damage Workflow</h4>
+          <h4 className="text-lg font-semibold mb-3">Injury Workflow (Phase 4)</h4>
           <div className="mb-3">
             <label className="block text-sm font-semibold mb-2">Target</label>
             <select
@@ -226,9 +227,10 @@ export default function ActionPanel({
             </select>
           </div>
           {targets.length > 0 && (
-            <DamageAssist
+            <InjuryResolutionPanel
               attacker={currentActor}
               target={targets.find(t => t.instanceId === document.getElementById('damage-target-select')?.value) || targets[0]}
+              combatRulesPreset={combatRulesPreset}
               onComplete={handleDamageComplete}
               onCancel={handleCancelWorkflow}
             />

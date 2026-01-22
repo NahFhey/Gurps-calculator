@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { X, Plus, Trash2, Copy } from 'lucide-react';
 import { COMBAT_CATEGORIES } from '../../constants';
+import { HUMANOID_DR_FIELDS, HIT_LOCATION_PROFILES } from '../../constants/hitLocationConstants';
 
 /**
  * Character Form - Create/Edit character modal
@@ -25,6 +26,8 @@ export default function CharacterForm({ character, onSave, onCancel }) {
     parry: 8,
     block: 8,
     dr: 0,
+    hitLocationProfileId: HIT_LOCATION_PROFILES.HUMANOID,
+    drByLocation: {},
     attacks: [],
     notes: ''
   });
@@ -48,6 +51,8 @@ export default function CharacterForm({ character, onSave, onCancel }) {
         parry: character.parry || 8,
         block: character.block || 8,
         dr: character.dr || 0,
+        hitLocationProfileId: character.hitLocationProfileId || HIT_LOCATION_PROFILES.HUMANOID,
+        drByLocation: character.drByLocation || {},
         attacks: character.attacks || [],
         notes: character.notes || ''
       });
@@ -79,6 +84,41 @@ export default function CharacterForm({ character, onSave, onCancel }) {
       attacks: prev.attacks.map((attack, i) =>
         i === index ? { ...attack, [field]: value } : attack
       )
+    }));
+  };
+
+  // DR by location management
+  const setLocationDR = (key, valueStr) => {
+    setFormData(prev => {
+      const next = { ...prev, drByLocation: { ...(prev.drByLocation || {}) } };
+      if (valueStr === '' || valueStr == null) {
+        delete next.drByLocation[key];
+      } else {
+        const n = Math.max(0, Math.floor(Number(valueStr)));
+        if (Number.isFinite(n)) {
+          next.drByLocation[key] = n;
+        }
+      }
+      return next;
+    });
+  };
+
+  const copyGeneralDRToAll = () => {
+    const generalDR = formData.dr || 0;
+    const newDrByLocation = {};
+    HUMANOID_DR_FIELDS.forEach(field => {
+      newDrByLocation[field.key] = generalDR;
+    });
+    setFormData(prev => ({
+      ...prev,
+      drByLocation: newDrByLocation
+    }));
+  };
+
+  const clearLocationDR = () => {
+    setFormData(prev => ({
+      ...prev,
+      drByLocation: {}
     }));
   };
 
@@ -300,7 +340,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                 />
               </div>
               <div>
-                <label className="block text-sm mb-2">DR</label>
+                <label className="block text-sm mb-2">General DR</label>
                 <input
                   type="number"
                   value={formData.dr}
@@ -308,8 +348,74 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                   className="w-full px-3 py-2 bg-gray-700 rounded"
                   min="0"
                 />
+                <div className="text-xs text-gray-400 mt-1">Fallback for all locations</div>
               </div>
             </div>
+          </div>
+
+          {/* Hit Location Profile */}
+          <div>
+            <h3 className="text-lg font-semibold mb-3">Hit Location Profile</h3>
+            <div className="mb-3">
+              <label className="block text-sm mb-2">Profile</label>
+              <select
+                value={formData.hitLocationProfileId}
+                onChange={(e) => handleChange('hitLocationProfileId', e.target.value)}
+                className="w-full px-3 py-2 bg-gray-700 rounded"
+              >
+                <option value={HIT_LOCATION_PROFILES.HUMANOID}>Humanoid</option>
+              </select>
+            </div>
+
+            {/* DR by Location Editor */}
+            {formData.hitLocationProfileId === HIT_LOCATION_PROFILES.HUMANOID && (
+              <div className="bg-gray-900 rounded p-4">
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="font-semibold">DR by Location</h4>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={copyGeneralDRToAll}
+                      className="flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm"
+                      title="Copy General DR to all locations"
+                    >
+                      <Copy size={14} />
+                      Copy General DR
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearLocationDR}
+                      className="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm"
+                      title="Clear all location DR"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {HUMANOID_DR_FIELDS.map(field => {
+                    const value = formData.drByLocation[field.key];
+                    return (
+                      <div key={field.key}>
+                        <label className="block text-xs text-gray-400 mb-1">{field.label}</label>
+                        <input
+                          type="number"
+                          value={value !== undefined ? value : ''}
+                          onChange={(e) => setLocationDR(field.key, e.target.value)}
+                          placeholder={`(General DR: ${formData.dr})`}
+                          className="w-full px-2 py-1 bg-gray-700 rounded text-sm"
+                          min="0"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="text-xs text-gray-400 mt-3">
+                  Empty fields will use General DR ({formData.dr})
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Attacks (Phase 3) */}

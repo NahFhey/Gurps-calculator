@@ -398,3 +398,78 @@ export function createNumberedEnemies(baseName, quantity, template) {
 
   return enemies;
 }
+
+/**
+ * Create an injury resolution log entry (Phase 4)
+ * For detailed injury pipeline with hit location, DR, wounding, effects
+ *
+ * @param {Object} params - Injury parameters
+ * @returns {Object} Structured injury log entry
+ */
+export function createInjuryLogEntry({
+  round,
+  turn,
+  targetInstanceId,
+  targetName,
+  hitLocation,
+  damageBreakdown,
+  effects = null
+}) {
+  let text = `${targetName} takes ${damageBreakdown.injuryApplied} injury`;
+
+  if (hitLocation && hitLocation.locationLabel) {
+    text += ` to ${hitLocation.locationLabel}`;
+  }
+
+  if (damageBreakdown.raw && damageBreakdown.dr !== undefined) {
+    text += ` (${damageBreakdown.raw} - ${damageBreakdown.dr} DR = ${damageBreakdown.penetrating}`;
+    if (damageBreakdown.woundingMultiplier && damageBreakdown.woundingMultiplier !== 1) {
+      text += ` × ${damageBreakdown.woundingMultiplier}`;
+    }
+    text += `)`;
+  }
+
+  return {
+    id: generateId(),
+    timestamp: new Date().toISOString(),
+    round,
+    turn,
+    entryType: 'injury',
+    targetInstanceId,
+    text,
+    hitLocation,
+    damageBreakdown,
+    effects
+  };
+}
+
+/**
+ * Create an effect resolution log entry (Phase 4)
+ * For shock, major wound, stun, consciousness, death, bleeding, crippling
+ *
+ * @param {Object} params - Effect parameters
+ * @returns {Object} Structured effect log entry
+ */
+export function createEffectLogEntry({
+  round,
+  turn,
+  targetInstanceId,
+  targetName,
+  effectType,
+  effectData,
+  text = null
+}) {
+  let displayText = text || `${targetName}: ${effectType}`;
+
+  return {
+    id: generateId(),
+    timestamp: new Date().toISOString(),
+    round,
+    turn,
+    entryType: 'effect',
+    targetInstanceId,
+    text: displayText,
+    effectType,
+    effectData
+  };
+}
