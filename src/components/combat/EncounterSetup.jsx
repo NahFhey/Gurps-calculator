@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Play, ChevronUp, ChevronDown, X } from 'lucide-react';
 import { useCombat } from '../../contexts/CombatContext';
-import { generateTurnOrder, createNumberedEnemies, generateId } from '../../utils/combatHelpers';
+import { generateTurnOrder, createNumberedEnemies, generateId, createLogEntry, createTurnLogEntry } from '../../utils/combatHelpers';
 import { MAX_COMBAT_HISTORY } from '../../constants';
+import { createHistoryState } from '../../utils/combatHistory';
 
 /**
  * Encounter Setup Component
@@ -12,6 +13,7 @@ export default function EncounterSetup() {
   const {
     combatCharacters,
     saveCombatActive,
+    saveCombatActiveHistory,
     combatHistory,
     saveCombatHistory
   } = useCombat();
@@ -87,35 +89,49 @@ export default function EncounterSetup() {
       return;
     }
 
+    // Migrate participants to use instanceId
+    const migratedParticipants = participants.map(p => ({
+      ...p,
+      instanceId: p.id, // Use the encounter-generated ID as instanceId
+      id: p.id // Keep for backward compatibility
+    }));
+
+    // Get first actor
+    const firstActorInstanceId = turnOrder[0];
+    const firstActor = migratedParticipants.find(p => p.instanceId === firstActorInstanceId);
+
+    // Create Phase 2 combat state
     const combat = {
+      version: 2, // Phase 2
       id: generateId(),
       name: encounterName || `Combat ${combatHistory.length + 1}`,
       startTime: Date.now(),
-      participants: participants,
-      turnOrder: turnOrder,
+      participants: migratedParticipants,
+      turnOrder: turnOrder, // Already uses instanceIds
       currentTurnIndex: 0,
       currentRound: 1,
       log: [
-        {
-          type: 'combat_start',
-          timestamp: Date.now(),
-          message: 'Combat started'
-        },
-        {
-          type: 'round_change',
-          timestamp: Date.now(),
-          round: 1
-        },
-        {
-          type: 'turn_change',
-          timestamp: Date.now(),
-          actorId: turnOrder[0],
-          actorName: participants.find(p => p.id === turnOrder[0])?.name
-        }
+        createLogEntry({
+          entryType: 'note',
+          round: 1,
+          turn: 0,
+          text: 'Combat started'
+        }),
+        createLogEntry({
+          entryType: 'turn',
+          round: 1,
+          turn: 0,
+          text: `=== Round 1 ===`
+        }),
+        createTurnLogEntry(1, 0, firstActorInstanceId, firstActor?.name)
       ]
     };
 
+    // Create empty history state for Phase 2
+    const history = createHistoryState();
+
     saveCombatActive(combat);
+    saveCombatActiveHistory(history);
   };
 
   // Clear encounter
