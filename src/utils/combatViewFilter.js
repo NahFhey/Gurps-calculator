@@ -223,13 +223,9 @@ function filterNumericResource(current, max, reveal) {
 
     case RevealMode.NUMERIC_UNKNOWN:
     default:
-      // For HP: still show band for gameplay purposes
-      // For FP/MP: truly unknown
-      const hpBand = calculateHPBand(current, max);
+      // Truly unknown - don't reveal actual health status
       return {
-        mode: RevealMode.NUMERIC_BAND, // Changed from UNKNOWN to BAND
-        band: hpBand,
-        bandText: getHPBandText(hpBand)
+        mode: RevealMode.NUMERIC_UNKNOWN
       };
   }
 }
