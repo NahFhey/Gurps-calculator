@@ -16,12 +16,31 @@ export default function DamageAssist({
   onComplete,
   onCancel
 }) {
+  // Phase 5: Extract DR value from filtered structure
+  const getInitialDR = () => {
+    if (!target.dr) return '0';
+
+    // Phase 5 filtered structure
+    if (typeof target.dr === 'object' && target.dr.general) {
+      if (target.dr.general.mode === 'exact' && target.dr.general.value !== undefined) {
+        return target.dr.general.value.toString();
+      }
+      if (target.dr.general.mode === 'minKnown' && target.dr.general.min !== undefined) {
+        return target.dr.general.min.toString(); // Use minimum known value
+      }
+      return '0'; // Unknown
+    }
+
+    // Legacy: simple number
+    return target.dr.toString();
+  };
+
   const [expression, setExpression] = useState(damageExpression || '');
   const [manualDamage, setManualDamage] = useState('');
   const [useManual, setUseManual] = useState(false);
   const [modifiers, setModifiers] = useState([]);
   const [rollResult, setRollResult] = useState(null);
-  const [drValue, setDrValue] = useState(target.dr?.toString() || '0');
+  const [drValue, setDrValue] = useState(getInitialDR());
   const [damageResult, setDamageResult] = useState(null);
 
   const handleRollDamage = () => {

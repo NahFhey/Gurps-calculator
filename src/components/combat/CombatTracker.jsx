@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, X, Download, Plus, Undo, Redo, Save, Upload, Dices } from 'lucide-react';
 import { useCombat } from '../../contexts/CombatContext';
-import { calculateHPStatus, exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, createActionLogEntry, createInjuryLogEntry, createEffectLogEntry, exportActiveCombat, parseImportedCombat } from '../../utils/combatHelpers';
+import { calculateHPStatus, exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, createActionLogEntry, createInjuryLogEntry, createEffectLogEntry, exportActiveCombat, parseImportedCombat, exportCombatPlayerView, exportCombatGMLocked, importCombatWithGMLock } from '../../utils/combatHelpers';
 import { MAX_COMBAT_HISTORY } from '../../constants';
 import { roll, rollVsTarget, formatRoll } from '../../utils/dice';
 import { createTurnAdvanceAction, createSetResourceAction, createAddLogEntryAction } from '../../utils/combatActions';
 import { addAction, canUndo, canRedo, getUndoCount, getRedoCount, undo, redo, createHistoryState, createSnapshot } from '../../utils/combatHistory';
 import { validateCombatState, validateCombatExport, validateCombatImport } from '../../utils/combatValidation';
 import { clearShock, applyEffect, getActiveEffects } from '../../utils/effectsEngine';
+import { getCombatView, ViewMode } from '../../utils/combatViewFilter';
+import { createInitialRevealState } from '../../utils/combatReveal';
+import { filterLogForPlayerView } from '../../utils/combatLogFilter';
 import ActionPanel from './ActionPanel';
+import ViewModeToggle from './ViewModeToggle';
+import RevealPanel from './RevealPanel';
 
 /**
  * Combat Tracker Component - Phase 3
@@ -22,7 +27,11 @@ export default function CombatTracker() {
     saveCombatActiveHistory,
     combatHistory,
     saveCombatHistory,
-    combatRulesPreset
+    combatRulesPreset,
+    combatReveal,
+    saveCombatReveal,
+    gmMode,
+    setGmMode
   } = useCombat();
 
   const [noteText, setNoteText] = useState('');
@@ -30,6 +39,10 @@ export default function CombatTracker() {
   const [rollTarget, setRollTarget] = useState('');
   const [showDicePanel, setShowDicePanel] = useState(false);
   const [showActionPanel, setShowActionPanel] = useState(true);
+
+  // Phase 5: View mode (session-only, defaults to Player View)
+  const [viewMode, setViewMode] = useState(ViewMode.PLAYER);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   // Migrate Phase 1 combat on load if needed
   useEffect(() => {
@@ -47,17 +60,47 @@ export default function CombatTracker() {
     }
   }, [combatActive]);
 
+  // Phase 5: Force Player View when GM Mode locks
+  useEffect(() => {
+    if (!gmMode && viewMode === ViewMode.GM) {
+      setViewMode(ViewMode.PLAYER);
+    }
+  }, [gmMode]);
+
+  // Phase 5: Initialize reveal state if missing
+  useEffect(() => {
+    if (combatActive && !combatReveal) {
+      const initialReveal = createInitialRevealState(
+        combatActive.id,
+        combatActive.participants
+      );
+      saveCombatReveal(initialReveal);
+    }
+  }, [combatActive, combatReveal]);
+
   if (!combatActive) {
     return <div className="text-center text-gray-400 py-8">No active combat</div>;
   }
+
+  // Phase 5: Compute view model (filters based on reveal state + view mode)
+  const combatView = getCombatView(combatActive, combatReveal, viewMode);
+
+  // Phase 5: Filter log for Player View
+  const displayLog = viewMode === ViewMode.PLAYER && combatReveal
+    ? filterLogForPlayerView(combatActive.log, combatReveal, combatActive)
+    : combatActive.log;
 
   // Ensure history exists
   const history = combatActiveHistory || createHistoryState();
 
   const currentActorInstanceId = combatActive.turnOrder[combatActive.currentTurnIndex];
-  const currentActor = combatActive.participants.find(p => p.instanceId === currentActorInstanceId);
+  // Use combatView for display (respects reveal state)
+  const currentActor = combatView.participants.find(p => p.instanceId === currentActorInstanceId);
+  // Use combatActive for truth state (for actions/modifications)
+  const currentActorTruth = combatActive.participants.find(p => p.instanceId === currentActorInstanceId);
 
   // Get base state (combat at start, before any actions)
+  // Phase 5: Also get base reveal state
   const baseState = createSnapshot(combatActive); // For now, treat current as base (simplified)
 
   // ============================================================================
@@ -66,9 +109,10 @@ export default function CombatTracker() {
 
   /**
    * Record an action and update state
+   * Phase 5: Also pass reveal state to create checkpoints with it
    */
   const recordAction = (action) => {
-    const newHistory = addAction(history, action, combatActive);
+    const newHistory = addAction(history, action, combatActive, combatReveal);
     saveCombatActiveHistory(newHistory);
   };
 
@@ -79,17 +123,25 @@ export default function CombatTracker() {
   const handleUndo = () => {
     if (!canUndo(history)) return;
 
-    const { newHistory, newCombatState } = undo(baseState, history, combatActive);
-    saveCombatActive(newCombatState);
-    saveCombatActiveHistory(newHistory);
+    // Phase 5: Pass and restore reveal state
+    const result = undo(baseState, history, combatActive, combatReveal);
+    saveCombatActive(result.newCombatState);
+    saveCombatActiveHistory(result.newHistory);
+    if (result.newRevealState) {
+      saveCombatReveal(result.newRevealState);
+    }
   };
 
   const handleRedo = () => {
     if (!canRedo(history)) return;
 
-    const { newHistory, newCombatState } = redo(baseState, history, combatActive);
-    saveCombatActive(newCombatState);
-    saveCombatActiveHistory(newHistory);
+    // Phase 5: Pass and restore reveal state
+    const result = redo(baseState, history, combatActive, combatReveal);
+    saveCombatActive(result.newCombatState);
+    saveCombatActiveHistory(result.newHistory);
+    if (result.newRevealState) {
+      saveCombatReveal(result.newRevealState);
+    }
   };
 
   // ============================================================================
@@ -584,7 +636,8 @@ export default function CombatTracker() {
   // ============================================================================
 
   const handleExportLog = () => {
-    const text = exportCombatLog(combatActive.log, {
+    // Phase 5: Export filtered log if in Player View
+    const text = exportCombatLog(displayLog, {
       name: combatActive.name,
       date: combatActive.startTime
     });
@@ -598,6 +651,57 @@ export default function CombatTracker() {
     URL.revokeObjectURL(url);
   };
 
+  // Phase 5: Export Player View (unencrypted, filtered)
+  const handleExportPlayerView = () => {
+    if (!combatReveal) {
+      alert('Reveal state not initialized. Cannot export player view.');
+      return;
+    }
+
+    const json = exportCombatPlayerView(combatActive, combatReveal, history);
+
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `combat-player-view-${combatActive.name}-${Date.now()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Phase 5: Export GM Locked (encrypted)
+  const handleExportGMLocked = async () => {
+    if (!combatReveal) {
+      alert('Reveal state not initialized. Cannot export GM locked combat.');
+      return;
+    }
+
+    const password = window.prompt(
+      'Enter GM password to encrypt combat data:\n\n' +
+      'This password will be required to unlock the full combat state.\n' +
+      'Players can view the filtered version without the password.'
+    );
+
+    if (!password) {
+      return; // User cancelled
+    }
+
+    try {
+      const json = await exportCombatGMLocked(combatActive, combatReveal, history, password);
+
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `combat-gm-locked-${combatActive.name}-${Date.now()}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      alert(`Export failed: ${error.message}`);
+    }
+  };
+
+  // Legacy: Export full combat (Phase 2 format, unencrypted)
   const handleSaveCombat = () => {
     const validation = validateCombatExport(combatActive, history);
     if (!validation.valid) {
@@ -616,36 +720,93 @@ export default function CombatTracker() {
     URL.revokeObjectURL(url);
   };
 
-  const handleLoadCombat = () => {
+  const handleLoadCombat = async () => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
-    input.onchange = (e) => {
+    input.onchange = async (e) => {
       const file = e.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         const jsonString = event.target.result;
-        const parsed = parseImportedCombat(jsonString);
 
-        if (!parsed.valid) {
+        // Try Phase 5 import first
+        let parsed = await importCombatWithGMLock(jsonString);
+
+        // Fallback to legacy import if Phase 5 fails
+        if (!parsed.valid && !parsed.isLocked) {
+          parsed = parseImportedCombat(jsonString);
+          if (parsed.valid) {
+            // Legacy format
+            const validation = validateCombatImport(parsed.data);
+            if (!validation.valid) {
+              alert(`Validation error: ${validation.errors.join(', ')}`);
+              return;
+            }
+
+            if (!confirm('Load this combat? Current combat will be replaced.')) {
+              return;
+            }
+
+            saveCombatActive(validation.combatState);
+            saveCombatActiveHistory(validation.historyState);
+            return;
+          }
+        }
+
+        if (!parsed.valid && !parsed.isLocked) {
           alert(`Import error: ${parsed.error}`);
           return;
         }
 
-        const validation = validateCombatImport(parsed.data);
-        if (!validation.valid) {
-          alert(`Validation error: ${validation.errors.join(', ')}`);
+        // Handle GM-locked import
+        if (parsed.isLocked) {
+          const password = window.prompt(
+            'This combat is GM-locked. Enter password to unlock full state.\n\n' +
+            '(Cancel to load player view only)'
+          );
+
+          if (password) {
+            // Try unlocking
+            const unlocked = await importCombatWithGMLock(jsonString, password);
+
+            if (!unlocked.valid) {
+              alert(`Failed to unlock: ${unlocked.error}\n\nLoading player view instead.`);
+              // Fall through to load player view
+            } else {
+              // Successfully unlocked
+              if (!confirm('Load unlocked GM combat? Current combat will be replaced.')) {
+                return;
+              }
+
+              saveCombatActive(unlocked.data.combatState);
+              saveCombatActiveHistory(unlocked.data.history || null);
+              saveCombatReveal(unlocked.data.revealState || null);
+              return;
+            }
+          }
+
+          // Load player view (locked or failed unlock)
+          if (!confirm('Load player view (limited info)? Current combat will be replaced.')) {
+            return;
+          }
+
+          saveCombatActive(parsed.data.combatState);
+          saveCombatActiveHistory(null); // No history in player view
+          saveCombatReveal(parsed.data.revealState || null);
           return;
         }
 
+        // Phase 5 format, not locked
         if (!confirm('Load this combat? Current combat will be replaced.')) {
           return;
         }
 
-        saveCombatActive(validation.combatState);
-        saveCombatActiveHistory(validation.historyState);
+        saveCombatActive(parsed.data.combatState);
+        saveCombatActiveHistory(parsed.data.history || null);
+        saveCombatReveal(parsed.data.revealState || null);
       };
       reader.readAsText(file);
     };
@@ -681,29 +842,56 @@ export default function CombatTracker() {
             Redo ({getRedoCount(history)})
           </button>
 
-          {/* Save/Load */}
-          <button
-            onClick={handleSaveCombat}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded"
-          >
-            <Save size={16} />
-            Save
-          </button>
+          {/* Phase 5: Export Menu */}
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded"
+            >
+              <Download size={16} />
+              Export
+            </button>
+            {showExportMenu && (
+              <div className="absolute top-full right-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-50 min-w-64">
+                <button
+                  onClick={() => { handleExportPlayerView(); setShowExportMenu(false); }}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-700 border-b border-gray-700"
+                >
+                  <div className="font-medium text-blue-400">Export Player View</div>
+                  <div className="text-xs text-gray-400">Filtered, safe to share with players</div>
+                </button>
+                <button
+                  onClick={() => { handleExportGMLocked(); setShowExportMenu(false); }}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-700 border-b border-gray-700"
+                >
+                  <div className="font-medium text-purple-400">Export GM Locked</div>
+                  <div className="text-xs text-gray-400">Password-encrypted full state</div>
+                </button>
+                <button
+                  onClick={() => { handleSaveCombat(); setShowExportMenu(false); }}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-700 border-b border-gray-700"
+                >
+                  <div className="font-medium text-green-400">Export Full (Legacy)</div>
+                  <div className="text-xs text-gray-400">Unencrypted, all data</div>
+                </button>
+                <button
+                  onClick={() => { handleExportLog(); setShowExportMenu(false); }}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-700"
+                >
+                  <div className="font-medium text-gray-300">Export Log Only</div>
+                  <div className="text-xs text-gray-400">Text file of combat log</div>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Load */}
           <button
             onClick={handleLoadCombat}
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded"
           >
             <Upload size={16} />
             Load
-          </button>
-
-          {/* Export Log */}
-          <button
-            onClick={handleExportLog}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
-          >
-            <Download size={16} />
-            Export Log
           </button>
 
           {/* End Combat */}
@@ -716,6 +904,14 @@ export default function CombatTracker() {
           </button>
         </div>
       </div>
+
+      {/* Phase 5: View Mode Toggle */}
+      <ViewModeToggle
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        gmMode={gmMode}
+        setGmMode={setGmMode}
+      />
 
       {/* Current Turn */}
       <div className="bg-gradient-to-r from-blue-900 to-gray-800 rounded-lg p-4 border-2 border-blue-500">
@@ -749,12 +945,22 @@ export default function CombatTracker() {
       {/* Action Panel (Phase 3) */}
       <ActionPanel
         currentActor={currentActor}
-        participants={combatActive.participants}
+        participants={combatView.participants}
         onActionComplete={handleActionComplete}
         combatRulesPreset={combatRulesPreset || 'standard'}
         expanded={showActionPanel}
         onToggleExpanded={() => setShowActionPanel(!showActionPanel)}
       />
+
+      {/* Phase 5: Reveal Panel (GM View only) */}
+      {viewMode === ViewMode.GM && (
+        <RevealPanel
+          combatActive={combatActive}
+          combatReveal={combatReveal}
+          saveCombatReveal={saveCombatReveal}
+          viewMode={viewMode}
+        />
+      )}
 
       {/* Dice Panel */}
       <div className="bg-gray-800 rounded-lg p-4">
@@ -822,10 +1028,11 @@ export default function CombatTracker() {
         <div className="space-y-2">
           <h3 className="text-lg font-semibold">Participants</h3>
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {combatActive.participants.map(p => (
+            {combatView.participants.map(p => (
               <ParticipantCard
                 key={p.instanceId}
                 participant={p}
+                viewMode={viewMode}
                 isCurrent={p.instanceId === currentActorInstanceId}
                 onUpdateResource={updateResource}
               />
@@ -837,7 +1044,7 @@ export default function CombatTracker() {
         <div className="space-y-2">
           <h3 className="text-lg font-semibold">Combat Log</h3>
           <div className="bg-gray-800 rounded p-4 h-96 overflow-y-auto font-mono text-sm">
-            {combatActive.log.map((entry, index) => {
+            {displayLog.map((entry, index) => {
               const formatted = formatLogEntry(entry);
               return (
                 <div key={entry.id || index} className="mb-1">
@@ -871,14 +1078,71 @@ export default function CombatTracker() {
 }
 
 /**
- * Participant Card Component
+ * Participant Card Component - Phase 5 compatible
  * Shows participant status with editable resources
+ * Handles both truth state (GM View) and filtered state (Player View)
  */
-function ParticipantCard({ participant, isCurrent, onUpdateResource }) {
+function ParticipantCard({ participant, isCurrent, onUpdateResource, viewMode }) {
   const [editing, setEditing] = useState(null); // 'HP', 'FP', or 'MP'
   const [editValue, setEditValue] = useState('');
 
-  const hpStatus = calculateHPStatus(participant.currentHP, participant.hp);
+  // Phase 5: Extract values based on data structure (truth vs filtered)
+  const getHPValues = () => {
+    if (participant.hp && typeof participant.hp === 'object') {
+      // Filtered state
+      return {
+        mode: participant.hp.mode,
+        current: participant.hp.current,
+        max: participant.hp.max,
+        band: participant.hp.band,
+        bandText: participant.hp.bandText
+      };
+    }
+    // Truth state (backward compat)
+    return {
+      mode: 'exact',
+      current: participant.currentHP,
+      max: participant.hp || participant.maxHP
+    };
+  };
+
+  const getFPValues = () => {
+    if (participant.fp && typeof participant.fp === 'object') {
+      return {
+        mode: participant.fp.mode,
+        current: participant.fp.current,
+        max: participant.fp.max
+      };
+    }
+    return {
+      mode: 'exact',
+      current: participant.currentFP,
+      max: participant.fp || participant.maxFP
+    };
+  };
+
+  const getMPValues = () => {
+    if (participant.mp && typeof participant.mp === 'object') {
+      return {
+        mode: participant.mp.mode,
+        current: participant.mp.current,
+        max: participant.mp.max
+      };
+    }
+    return {
+      mode: 'exact',
+      current: participant.currentMP,
+      max: participant.mp || participant.maxMP
+    };
+  };
+
+  const hp = getHPValues();
+  const fp = getFPValues();
+  const mp = getMPValues();
+
+  const hpStatus = hp.mode === 'exact'
+    ? calculateHPStatus(hp.current, hp.max)
+    : (hp.band || 'unknown');
 
   const getHPStatusColor = (status) => {
     switch (status) {
@@ -891,8 +1155,20 @@ function ParticipantCard({ participant, isCurrent, onUpdateResource }) {
   };
 
   const startEdit = (resource) => {
+    // Only allow editing if we have exact values (not hidden/unknown)
+    let currentValue;
+    if (resource === 'HP' && hp.mode === 'exact') {
+      currentValue = hp.current;
+    } else if (resource === 'FP' && fp.mode === 'exact') {
+      currentValue = fp.current;
+    } else if (resource === 'MP' && mp.mode === 'exact') {
+      currentValue = mp.current;
+    } else {
+      return; // Can't edit hidden/unknown values
+    }
+
     setEditing(resource);
-    setEditValue(participant[`current${resource}`].toString());
+    setEditValue(currentValue.toString());
   };
 
   const saveEdit = () => {
@@ -924,7 +1200,11 @@ function ParticipantCard({ participant, isCurrent, onUpdateResource }) {
         {/* HP */}
         <div>
           <div className="text-xs text-gray-400">HP</div>
-          {editing === 'HP' ? (
+          {hp.mode === 'unknown' ? (
+            <div className="text-gray-500 italic">Unknown</div>
+          ) : hp.mode === 'band' ? (
+            <div className="text-yellow-400">{hp.bandText}</div>
+          ) : editing === 'HP' ? (
             <input
               type="number"
               value={editValue}
@@ -942,7 +1222,7 @@ function ParticipantCard({ participant, isCurrent, onUpdateResource }) {
               onClick={() => startEdit('HP')}
               className="cursor-pointer hover:bg-gray-700 px-1 rounded"
             >
-              {participant.currentHP}/{participant.hp}
+              {hp.current}/{hp.max}
             </div>
           )}
         </div>
@@ -950,7 +1230,9 @@ function ParticipantCard({ participant, isCurrent, onUpdateResource }) {
         {/* FP */}
         <div>
           <div className="text-xs text-gray-400">FP</div>
-          {editing === 'FP' ? (
+          {fp.mode === 'unknown' ? (
+            <div className="text-gray-500 italic">Unknown</div>
+          ) : editing === 'FP' ? (
             <input
               type="number"
               value={editValue}
@@ -968,16 +1250,18 @@ function ParticipantCard({ participant, isCurrent, onUpdateResource }) {
               onClick={() => startEdit('FP')}
               className="cursor-pointer hover:bg-gray-700 px-1 rounded"
             >
-              {participant.currentFP}/{participant.fp}
+              {fp.current}/{fp.max}
             </div>
           )}
         </div>
 
         {/* MP */}
-        {participant.mp > 0 && (
+        {mp.max > 0 && (
           <div>
             <div className="text-xs text-gray-400">MP</div>
-            {editing === 'MP' ? (
+            {mp.mode === 'unknown' ? (
+              <div className="text-gray-500 italic">Unknown</div>
+            ) : editing === 'MP' ? (
               <input
                 type="number"
                 value={editValue}
@@ -995,7 +1279,7 @@ function ParticipantCard({ participant, isCurrent, onUpdateResource }) {
                 onClick={() => startEdit('MP')}
                 className="cursor-pointer hover:bg-gray-700 px-1 rounded"
               >
-                {participant.currentMP}/{participant.mp}
+                {mp.current}/{mp.max}
               </div>
             )}
           </div>

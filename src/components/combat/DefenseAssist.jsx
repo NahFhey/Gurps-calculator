@@ -19,16 +19,33 @@ export default function DefenseAssist({
   const [modifiers, setModifiers] = useState([]);
   const [rollResult, setRollResult] = useState(null);
 
+  // Phase 5: Extract defense value from filtered structure
+  const extractDefenseValue = (defenseField) => {
+    if (!defenseField) return null;
+
+    // Phase 5 filtered structure
+    if (typeof defenseField === 'object' && defenseField.mode) {
+      if (defenseField.mode === 'exact' || defenseField.mode === 'approx') {
+        return defenseField.value;
+      }
+      return null; // Unknown
+    }
+
+    // Legacy: simple number
+    return defenseField;
+  };
+
   // Get base defense value
   const getBaseDefense = () => {
     if (defenseType === 'custom') {
       return parseInt(customBaseDefense) || 0;
     }
 
+    // Phase 5: Extract values from filtered structure
     const defenseValues = {
-      dodge: defender.dodge,
-      parry: defender.parry,
-      block: defender.block
+      dodge: extractDefenseValue(defender.defenses?.dodge ?? defender.dodge),
+      parry: extractDefenseValue(defender.defenses?.parry ?? defender.parry),
+      block: extractDefenseValue(defender.defenses?.block ?? defender.block)
     };
 
     return defenseValues[defenseType] || 0;
@@ -65,6 +82,11 @@ export default function DefenseAssist({
     return baseDefense !== null && baseDefense !== undefined;
   };
 
+  // Phase 5: Get display values for defense buttons
+  const dodgeValue = extractDefenseValue(defender.defenses?.dodge ?? defender.dodge);
+  const parryValue = extractDefenseValue(defender.defenses?.parry ?? defender.parry);
+  const blockValue = extractDefenseValue(defender.defenses?.block ?? defender.block);
+
   return (
     <div className="space-y-4">
       {/* Defense Type Selection */}
@@ -81,8 +103,8 @@ export default function DefenseAssist({
           >
             <div className="font-semibold">Dodge</div>
             <div className="text-sm text-gray-400">
-              {defender.dodge !== null && defender.dodge !== undefined
-                ? `Base: ${defender.dodge}`
+              {dodgeValue !== null && dodgeValue !== undefined
+                ? `Base: ${dodgeValue}`
                 : 'Not set'}
             </div>
           </button>
@@ -97,8 +119,8 @@ export default function DefenseAssist({
           >
             <div className="font-semibold">Parry</div>
             <div className="text-sm text-gray-400">
-              {defender.parry !== null && defender.parry !== undefined
-                ? `Base: ${defender.parry}`
+              {parryValue !== null && parryValue !== undefined
+                ? `Base: ${parryValue}`
                 : 'Not set'}
             </div>
           </button>
@@ -113,8 +135,8 @@ export default function DefenseAssist({
           >
             <div className="font-semibold">Block</div>
             <div className="text-sm text-gray-400">
-              {defender.block !== null && defender.block !== undefined
-                ? `Base: ${defender.block}`
+              {blockValue !== null && blockValue !== undefined
+                ? `Base: ${blockValue}`
                 : 'Not set'}
             </div>
           </button>
