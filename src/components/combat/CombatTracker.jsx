@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, X, Download, Plus, Undo, Redo, Save, Upload, Dices } from 'lucide-react';
 import { useCombat } from '../../contexts/CombatContext';
-import { calculateHPStatus, exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, createActionLogEntry, createInjuryLogEntry, createEffectLogEntry, exportActiveCombat, parseImportedCombat, exportCombatPlayerView, exportCombatGMLocked, importCombatWithGMLock } from '../../utils/combatHelpers';
+import { calculateHPStatus, exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, createActionLogEntry, createInjuryLogEntry, createEffectLogEntry, createConditionLogEntry, exportActiveCombat, parseImportedCombat, exportCombatPlayerView, exportCombatGMLocked, importCombatWithGMLock } from '../../utils/combatHelpers';
 import { MAX_COMBAT_HISTORY } from '../../constants';
 import { roll, rollVsTarget, formatRoll } from '../../utils/dice';
-import { createTurnAdvanceAction, createSetResourceAction, createAddLogEntryAction } from '../../utils/combatActions';
+import { createTurnAdvanceAction, createSetResourceAction, createAddLogEntryAction, createAddConditionAction, createRemoveConditionAction, createUpdateConditionAction } from '../../utils/combatActions';
 import { addAction, canUndo, canRedo, getUndoCount, getRedoCount, undo, redo, createHistoryState, createSnapshot } from '../../utils/combatHistory';
 import { validateCombatState, validateCombatExport, validateCombatImport } from '../../utils/combatValidation';
 import { clearShock, applyEffect, getActiveEffects } from '../../utils/effectsEngine';
 import { getCombatView, ViewMode } from '../../utils/combatViewFilter';
 import { createInitialRevealState } from '../../utils/combatReveal';
 import { filterLogForPlayerView } from '../../utils/combatLogFilter';
+import { tickConditionsTurn, tickConditionsRound, getActiveConditions } from '../../utils/conditionsEngine';
 import ActionPanel from './ActionPanel';
 import ViewModeToggle from './ViewModeToggle';
 import RevealPanel from './RevealPanel';
+import ConditionBadge from './ConditionBadge';
 
 /**
  * Combat Tracker Component - Phase 3
@@ -166,9 +168,37 @@ export default function CombatTracker() {
     const nextActor = combatActive.participants.find(p => p.instanceId === nextActorInstanceId);
 
     // Clear shock penalty on turn start
-    const updatedParticipants = combatActive.participants.map(p =>
+    let updatedParticipants = combatActive.participants.map(p =>
       p.instanceId === nextActorInstanceId ? clearShock(p) : p
     );
+
+    // Phase 6: Tick conditions
+    const expiredConditions = [];
+
+    // If new round, tick round-based conditions for ALL participants
+    if (isNewRound) {
+      updatedParticipants = updatedParticipants.map(p => {
+        const result = tickConditionsRound(p, toRound);
+        if (result.expired.length > 0) {
+          expiredConditions.push(...result.expired.map(c => ({ participant: p, condition: c })));
+        }
+        return result.combatant;
+      });
+    }
+
+    // Tick turn-based conditions for the next actor
+    const nextActorUpdated = updatedParticipants.find(p => p.instanceId === nextActorInstanceId);
+    if (nextActorUpdated) {
+      const result = tickConditionsTurn(nextActorUpdated, toRound);
+      if (result.expired.length > 0) {
+        expiredConditions.push(...result.expired.map(c => ({ participant: nextActorUpdated, condition: c })));
+      }
+
+      // Replace in array
+      updatedParticipants = updatedParticipants.map(p =>
+        p.instanceId === nextActorInstanceId ? result.combatant : p
+      );
+    }
 
     // Apply to state immediately
     const newCombat = {
@@ -182,26 +212,40 @@ export default function CombatTracker() {
     recordAction(action);
 
     // Add log entries for new round and new turn
+    const logEntries = [];
+
     if (isNewRound) {
       const roundLogEntry = createTurnLogEntry(toRound, toTurnIndex, null, `=== Round ${toRound} ===`);
       const roundAction = createAddLogEntryAction(roundLogEntry);
       recordAction(roundAction);
-
-      // Also add to state
-      saveCombatActive({
-        ...newCombat,
-        log: [...newCombat.log, roundLogEntry]
-      });
+      logEntries.push(roundLogEntry);
     }
 
     const turnLogEntry = createTurnLogEntry(toRound, toTurnIndex, nextActorInstanceId, nextActor?.name);
     const turnAction = createAddLogEntryAction(turnLogEntry);
     recordAction(turnAction);
+    logEntries.push(turnLogEntry);
 
-    // Update state with new log
+    // Phase 6: Add expired condition log entries
+    for (const { participant, condition } of expiredConditions) {
+      const condLogEntry = createConditionLogEntry({
+        round: toRound,
+        turn: toTurnIndex,
+        targetInstanceId: participant.instanceId,
+        targetName: participant.name,
+        changeType: 'expired',
+        conditionId: condition.conditionId,
+        conditionLabel: condition.label
+      });
+      const condAction = createAddLogEntryAction(condLogEntry);
+      recordAction(condAction);
+      logEntries.push(condLogEntry);
+    }
+
+    // Update state with new logs
     saveCombatActive(prev => ({
       ...prev,
-      log: [...prev.log, turnLogEntry]
+      log: [...prev.log, ...logEntries]
     }));
   };
 
@@ -278,6 +322,154 @@ export default function CombatTracker() {
     }));
 
     recordAction(logAction);
+  };
+
+  // ============================================================================
+  // Phase 6: Condition Management
+  // ============================================================================
+
+  const handleAddCondition = (conditionInstance) => {
+    if (!currentActorTruth) return;
+
+    // Create ADD_CONDITION action
+    const conditionAction = createAddConditionAction(currentActorTruth.instanceId, conditionInstance);
+
+    // Apply to state
+    const updatedParticipants = combatActive.participants.map(p => {
+      if (p.instanceId === currentActorTruth.instanceId) {
+        const conditions = p.conditions || [];
+        return {
+          ...p,
+          conditions: [...conditions, conditionInstance]
+        };
+      }
+      return p;
+    });
+
+    const newCombat = {
+      ...combatActive,
+      participants: updatedParticipants
+    };
+
+    saveCombatActive(newCombat);
+    recordAction(conditionAction);
+
+    // Create log entry
+    const logEntry = createConditionLogEntry({
+      round: combatActive.currentRound,
+      turn: combatActive.currentTurnIndex,
+      targetInstanceId: currentActorTruth.instanceId,
+      targetName: currentActorTruth.name,
+      changeType: 'applied',
+      conditionId: conditionInstance.conditionId,
+      conditionLabel: conditionInstance.label,
+      duration: conditionInstance.duration,
+      source: conditionInstance.source
+    });
+
+    const logAction = createAddLogEntryAction(logEntry);
+
+    saveCombatActive(prev => ({
+      ...prev,
+      log: [...prev.log, logEntry]
+    }));
+
+    recordAction(logAction);
+  };
+
+  const handleRemoveCondition = (conditionInstanceId) => {
+    if (!currentActorTruth) return;
+
+    // Find the condition being removed
+    const conditions = currentActorTruth.conditions || [];
+    const conditionToRemove = conditions.find(c => c.instanceId === conditionInstanceId);
+    if (!conditionToRemove) return;
+
+    // Create REMOVE_CONDITION action
+    const conditionAction = createRemoveConditionAction(currentActorTruth.instanceId, conditionToRemove);
+
+    // Apply to state
+    const updatedParticipants = combatActive.participants.map(p => {
+      if (p.instanceId === currentActorTruth.instanceId) {
+        return {
+          ...p,
+          conditions: (p.conditions || []).filter(c => c.instanceId !== conditionInstanceId)
+        };
+      }
+      return p;
+    });
+
+    const newCombat = {
+      ...combatActive,
+      participants: updatedParticipants
+    };
+
+    saveCombatActive(newCombat);
+    recordAction(conditionAction);
+
+    // Create log entry
+    const logEntry = createConditionLogEntry({
+      round: combatActive.currentRound,
+      turn: combatActive.currentTurnIndex,
+      targetInstanceId: currentActorTruth.instanceId,
+      targetName: currentActorTruth.name,
+      changeType: 'removed',
+      conditionId: conditionToRemove.conditionId,
+      conditionLabel: conditionToRemove.label
+    });
+
+    const logAction = createAddLogEntryAction(logEntry);
+
+    saveCombatActive(prev => ({
+      ...prev,
+      log: [...prev.log, logEntry]
+    }));
+
+    recordAction(logAction);
+  };
+
+  const handleUpdateCondition = (conditionInstanceId, newDuration) => {
+    if (!currentActorTruth) return;
+
+    // Find the condition being updated
+    const conditions = currentActorTruth.conditions || [];
+    const conditionToUpdate = conditions.find(c => c.instanceId === conditionInstanceId);
+    if (!conditionToUpdate) return;
+
+    // Create updated condition
+    const updatedCondition = {
+      ...conditionToUpdate,
+      duration: newDuration
+    };
+
+    // Create UPDATE_CONDITION action
+    const conditionAction = createUpdateConditionAction(
+      currentActorTruth.instanceId,
+      conditionInstanceId,
+      conditionToUpdate,
+      updatedCondition
+    );
+
+    // Apply to state
+    const updatedParticipants = combatActive.participants.map(p => {
+      if (p.instanceId === currentActorTruth.instanceId) {
+        return {
+          ...p,
+          conditions: (p.conditions || []).map(c =>
+            c.instanceId === conditionInstanceId ? updatedCondition : c
+          )
+        };
+      }
+      return p;
+    });
+
+    const newCombat = {
+      ...combatActive,
+      participants: updatedParticipants
+    };
+
+    saveCombatActive(newCombat);
+    recordAction(conditionAction);
   };
 
   // ============================================================================
@@ -942,7 +1134,7 @@ export default function CombatTracker() {
         </div>
       </div>
 
-      {/* Action Panel (Phase 3) */}
+      {/* Action Panel (Phase 3, 4, 6) */}
       <ActionPanel
         currentActor={currentActor}
         participants={combatView.participants}
@@ -950,6 +1142,11 @@ export default function CombatTracker() {
         combatRulesPreset={combatRulesPreset || 'standard'}
         expanded={showActionPanel}
         onToggleExpanded={() => setShowActionPanel(!showActionPanel)}
+        currentRound={combatActive.currentRound}
+        currentTurn={combatActive.currentTurnIndex}
+        onAddCondition={handleAddCondition}
+        onRemoveCondition={handleRemoveCondition}
+        onUpdateCondition={handleUpdateCondition}
       />
 
       {/* Phase 5: Reveal Panel (GM View only) */}
@@ -1301,6 +1498,27 @@ function ParticipantCard({ participant, isCurrent, onUpdateResource, viewMode })
                 >
                   {effect}
                 </span>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Phase 6: Conditions */}
+      {(() => {
+        const conditions = getActiveConditions(participant);
+        if (conditions.length === 0) return null;
+        return (
+          <div className="mt-2 pt-2 border-t border-gray-700">
+            <div className="text-xs text-gray-400 mb-1">Conditions:</div>
+            <div className="flex flex-wrap gap-1">
+              {conditions.map(condition => (
+                <ConditionBadge
+                  key={condition.instanceId}
+                  condition={condition}
+                  currentRound={participant.currentRound || 0}
+                  showDuration={true}
+                />
               ))}
             </div>
           </div>
