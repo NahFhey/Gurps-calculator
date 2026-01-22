@@ -8,7 +8,12 @@ import { createTurnAdvanceAction, createSetResourceAction, createAddLogEntryActi
 import { addAction, canUndo, canRedo, getUndoCount, getRedoCount, undo, redo, createHistoryState, createSnapshot } from '../../utils/combatHistory';
 import { validateCombatState, validateCombatExport, validateCombatImport } from '../../utils/combatValidation';
 import { clearShock, applyEffect, getActiveEffects } from '../../utils/effectsEngine';
+import { getCombatView, ViewMode } from '../../utils/combatViewFilter';
+import { createInitialRevealState } from '../../utils/combatReveal';
+import { filterLogForPlayerView } from '../../utils/combatLogFilter';
 import ActionPanel from './ActionPanel';
+import ViewModeToggle from './ViewModeToggle';
+import RevealPanel from './RevealPanel';
 
 /**
  * Combat Tracker Component - Phase 3
@@ -22,7 +27,11 @@ export default function CombatTracker() {
     saveCombatActiveHistory,
     combatHistory,
     saveCombatHistory,
-    combatRulesPreset
+    combatRulesPreset,
+    combatReveal,
+    saveCombatReveal,
+    gmMode,
+    setGmMode
   } = useCombat();
 
   const [noteText, setNoteText] = useState('');
@@ -30,6 +39,9 @@ export default function CombatTracker() {
   const [rollTarget, setRollTarget] = useState('');
   const [showDicePanel, setShowDicePanel] = useState(false);
   const [showActionPanel, setShowActionPanel] = useState(true);
+
+  // Phase 5: View mode (session-only, defaults to Player View)
+  const [viewMode, setViewMode] = useState(ViewMode.PLAYER);
 
   // Migrate Phase 1 combat on load if needed
   useEffect(() => {
@@ -47,15 +59,44 @@ export default function CombatTracker() {
     }
   }, [combatActive]);
 
+  // Phase 5: Force Player View when GM Mode locks
+  useEffect(() => {
+    if (!gmMode && viewMode === ViewMode.GM) {
+      setViewMode(ViewMode.PLAYER);
+    }
+  }, [gmMode]);
+
+  // Phase 5: Initialize reveal state if missing
+  useEffect(() => {
+    if (combatActive && !combatReveal) {
+      const initialReveal = createInitialRevealState(
+        combatActive.id,
+        combatActive.participants
+      );
+      saveCombatReveal(initialReveal);
+    }
+  }, [combatActive, combatReveal]);
+
   if (!combatActive) {
     return <div className="text-center text-gray-400 py-8">No active combat</div>;
   }
+
+  // Phase 5: Compute view model (filters based on reveal state + view mode)
+  const combatView = getCombatView(combatActive, combatReveal, viewMode);
+
+  // Phase 5: Filter log for Player View
+  const displayLog = viewMode === ViewMode.PLAYER && combatReveal
+    ? filterLogForPlayerView(combatActive.log, combatReveal, combatActive)
+    : combatActive.log;
 
   // Ensure history exists
   const history = combatActiveHistory || createHistoryState();
 
   const currentActorInstanceId = combatActive.turnOrder[combatActive.currentTurnIndex];
-  const currentActor = combatActive.participants.find(p => p.instanceId === currentActorInstanceId);
+  // Use combatView for display (respects reveal state)
+  const currentActor = combatView.participants.find(p => p.instanceId === currentActorInstanceId);
+  // Use combatActive for truth state (for actions/modifications)
+  const currentActorTruth = combatActive.participants.find(p => p.instanceId === currentActorInstanceId);
 
   // Get base state (combat at start, before any actions)
   const baseState = createSnapshot(combatActive); // For now, treat current as base (simplified)
@@ -584,7 +625,8 @@ export default function CombatTracker() {
   // ============================================================================
 
   const handleExportLog = () => {
-    const text = exportCombatLog(combatActive.log, {
+    // Phase 5: Export filtered log if in Player View
+    const text = exportCombatLog(displayLog, {
       name: combatActive.name,
       date: combatActive.startTime
     });
@@ -717,6 +759,14 @@ export default function CombatTracker() {
         </div>
       </div>
 
+      {/* Phase 5: View Mode Toggle */}
+      <ViewModeToggle
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        gmMode={gmMode}
+        setGmMode={setGmMode}
+      />
+
       {/* Current Turn */}
       <div className="bg-gradient-to-r from-blue-900 to-gray-800 rounded-lg p-4 border-2 border-blue-500">
         <div className="flex justify-between items-center">
@@ -749,12 +799,22 @@ export default function CombatTracker() {
       {/* Action Panel (Phase 3) */}
       <ActionPanel
         currentActor={currentActor}
-        participants={combatActive.participants}
+        participants={combatView.participants}
         onActionComplete={handleActionComplete}
         combatRulesPreset={combatRulesPreset || 'standard'}
         expanded={showActionPanel}
         onToggleExpanded={() => setShowActionPanel(!showActionPanel)}
       />
+
+      {/* Phase 5: Reveal Panel (GM View only) */}
+      {viewMode === ViewMode.GM && (
+        <RevealPanel
+          combatActive={combatActive}
+          combatReveal={combatReveal}
+          saveCombatReveal={saveCombatReveal}
+          viewMode={viewMode}
+        />
+      )}
 
       {/* Dice Panel */}
       <div className="bg-gray-800 rounded-lg p-4">
@@ -822,10 +882,11 @@ export default function CombatTracker() {
         <div className="space-y-2">
           <h3 className="text-lg font-semibold">Participants</h3>
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {combatActive.participants.map(p => (
+            {combatView.participants.map(p => (
               <ParticipantCard
                 key={p.instanceId}
                 participant={p}
+                viewMode={viewMode}
                 isCurrent={p.instanceId === currentActorInstanceId}
                 onUpdateResource={updateResource}
               />
@@ -837,7 +898,7 @@ export default function CombatTracker() {
         <div className="space-y-2">
           <h3 className="text-lg font-semibold">Combat Log</h3>
           <div className="bg-gray-800 rounded p-4 h-96 overflow-y-auto font-mono text-sm">
-            {combatActive.log.map((entry, index) => {
+            {displayLog.map((entry, index) => {
               const formatted = formatLogEntry(entry);
               return (
                 <div key={entry.id || index} className="mb-1">
@@ -871,14 +932,71 @@ export default function CombatTracker() {
 }
 
 /**
- * Participant Card Component
+ * Participant Card Component - Phase 5 compatible
  * Shows participant status with editable resources
+ * Handles both truth state (GM View) and filtered state (Player View)
  */
-function ParticipantCard({ participant, isCurrent, onUpdateResource }) {
+function ParticipantCard({ participant, isCurrent, onUpdateResource, viewMode }) {
   const [editing, setEditing] = useState(null); // 'HP', 'FP', or 'MP'
   const [editValue, setEditValue] = useState('');
 
-  const hpStatus = calculateHPStatus(participant.currentHP, participant.hp);
+  // Phase 5: Extract values based on data structure (truth vs filtered)
+  const getHPValues = () => {
+    if (participant.hp && typeof participant.hp === 'object') {
+      // Filtered state
+      return {
+        mode: participant.hp.mode,
+        current: participant.hp.current,
+        max: participant.hp.max,
+        band: participant.hp.band,
+        bandText: participant.hp.bandText
+      };
+    }
+    // Truth state (backward compat)
+    return {
+      mode: 'exact',
+      current: participant.currentHP,
+      max: participant.hp || participant.maxHP
+    };
+  };
+
+  const getFPValues = () => {
+    if (participant.fp && typeof participant.fp === 'object') {
+      return {
+        mode: participant.fp.mode,
+        current: participant.fp.current,
+        max: participant.fp.max
+      };
+    }
+    return {
+      mode: 'exact',
+      current: participant.currentFP,
+      max: participant.fp || participant.maxFP
+    };
+  };
+
+  const getMPValues = () => {
+    if (participant.mp && typeof participant.mp === 'object') {
+      return {
+        mode: participant.mp.mode,
+        current: participant.mp.current,
+        max: participant.mp.max
+      };
+    }
+    return {
+      mode: 'exact',
+      current: participant.currentMP,
+      max: participant.mp || participant.maxMP
+    };
+  };
+
+  const hp = getHPValues();
+  const fp = getFPValues();
+  const mp = getMPValues();
+
+  const hpStatus = hp.mode === 'exact'
+    ? calculateHPStatus(hp.current, hp.max)
+    : (hp.band || 'unknown');
 
   const getHPStatusColor = (status) => {
     switch (status) {
@@ -891,8 +1009,20 @@ function ParticipantCard({ participant, isCurrent, onUpdateResource }) {
   };
 
   const startEdit = (resource) => {
+    // Only allow editing if we have exact values (not hidden/unknown)
+    let currentValue;
+    if (resource === 'HP' && hp.mode === 'exact') {
+      currentValue = hp.current;
+    } else if (resource === 'FP' && fp.mode === 'exact') {
+      currentValue = fp.current;
+    } else if (resource === 'MP' && mp.mode === 'exact') {
+      currentValue = mp.current;
+    } else {
+      return; // Can't edit hidden/unknown values
+    }
+
     setEditing(resource);
-    setEditValue(participant[`current${resource}`].toString());
+    setEditValue(currentValue.toString());
   };
 
   const saveEdit = () => {
@@ -924,7 +1054,11 @@ function ParticipantCard({ participant, isCurrent, onUpdateResource }) {
         {/* HP */}
         <div>
           <div className="text-xs text-gray-400">HP</div>
-          {editing === 'HP' ? (
+          {hp.mode === 'unknown' ? (
+            <div className="text-gray-500 italic">Unknown</div>
+          ) : hp.mode === 'band' ? (
+            <div className="text-yellow-400">{hp.bandText}</div>
+          ) : editing === 'HP' ? (
             <input
               type="number"
               value={editValue}
@@ -942,7 +1076,7 @@ function ParticipantCard({ participant, isCurrent, onUpdateResource }) {
               onClick={() => startEdit('HP')}
               className="cursor-pointer hover:bg-gray-700 px-1 rounded"
             >
-              {participant.currentHP}/{participant.hp}
+              {hp.current}/{hp.max}
             </div>
           )}
         </div>
@@ -950,7 +1084,9 @@ function ParticipantCard({ participant, isCurrent, onUpdateResource }) {
         {/* FP */}
         <div>
           <div className="text-xs text-gray-400">FP</div>
-          {editing === 'FP' ? (
+          {fp.mode === 'unknown' ? (
+            <div className="text-gray-500 italic">Unknown</div>
+          ) : editing === 'FP' ? (
             <input
               type="number"
               value={editValue}
@@ -968,16 +1104,18 @@ function ParticipantCard({ participant, isCurrent, onUpdateResource }) {
               onClick={() => startEdit('FP')}
               className="cursor-pointer hover:bg-gray-700 px-1 rounded"
             >
-              {participant.currentFP}/{participant.fp}
+              {fp.current}/{fp.max}
             </div>
           )}
         </div>
 
         {/* MP */}
-        {participant.mp > 0 && (
+        {mp.max > 0 && (
           <div>
             <div className="text-xs text-gray-400">MP</div>
-            {editing === 'MP' ? (
+            {mp.mode === 'unknown' ? (
+              <div className="text-gray-500 italic">Unknown</div>
+            ) : editing === 'MP' ? (
               <input
                 type="number"
                 value={editValue}
@@ -995,7 +1133,7 @@ function ParticipantCard({ participant, isCurrent, onUpdateResource }) {
                 onClick={() => startEdit('MP')}
                 className="cursor-pointer hover:bg-gray-700 px-1 rounded"
               >
-                {participant.currentMP}/{participant.mp}
+                {mp.current}/{mp.max}
               </div>
             )}
           </div>
