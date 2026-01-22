@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Plus, Trash2 } from 'lucide-react';
 import { COMBAT_CATEGORIES } from '../../constants';
 
 /**
@@ -25,6 +25,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
     parry: 8,
     block: 8,
     dr: 0,
+    attacks: [],
     notes: ''
   });
 
@@ -47,6 +48,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
         parry: character.parry || 8,
         block: character.block || 8,
         dr: character.dr || 0,
+        attacks: character.attacks || [],
         notes: character.notes || ''
       });
     }
@@ -54,6 +56,30 @@ export default function CharacterForm({ character, onSave, onCancel }) {
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Attack management
+  const addAttack = () => {
+    setFormData(prev => ({
+      ...prev,
+      attacks: [...prev.attacks, { name: '', skill: 10, damage: '', notes: '' }]
+    }));
+  };
+
+  const removeAttack = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      attacks: prev.attacks.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateAttack = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      attacks: prev.attacks.map((attack, i) =>
+        i === index ? { ...attack, [field]: value } : attack
+      )
+    }));
   };
 
   // Auto-calculate derived stats when base attributes change
@@ -284,6 +310,91 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Attacks (Phase 3) */}
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-semibold">Attacks</h3>
+              <button
+                type="button"
+                onClick={addAttack}
+                className="flex items-center gap-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm"
+              >
+                <Plus size={16} />
+                Add Attack
+              </button>
+            </div>
+
+            {formData.attacks.length === 0 ? (
+              <div className="text-sm text-gray-400 text-center py-4 bg-gray-900 rounded">
+                No attacks configured. Click "Add Attack" to add one.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {formData.attacks.map((attack, index) => (
+                  <div key={index} className="bg-gray-900 rounded p-3 space-y-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-semibold text-gray-400">Attack #{index + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeAttack(index)}
+                        className="p-1 text-red-400 hover:text-red-300"
+                        title="Remove attack"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Name</label>
+                        <input
+                          type="text"
+                          value={attack.name}
+                          onChange={(e) => updateAttack(index, 'name', e.target.value)}
+                          placeholder="e.g., Broadsword, Punch"
+                          className="w-full px-2 py-1 bg-gray-700 rounded text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Skill</label>
+                        <input
+                          type="number"
+                          value={attack.skill}
+                          onChange={(e) => updateAttack(index, 'skill', parseInt(e.target.value) || 10)}
+                          className="w-full px-2 py-1 bg-gray-700 rounded text-sm"
+                          min="0"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Damage</label>
+                        <input
+                          type="text"
+                          value={attack.damage}
+                          onChange={(e) => updateAttack(index, 'damage', e.target.value)}
+                          placeholder="e.g., 2d+1, sw+2"
+                          className="w-full px-2 py-1 bg-gray-700 rounded text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Notes</label>
+                        <input
+                          type="text"
+                          value={attack.notes}
+                          onChange={(e) => updateAttack(index, 'notes', e.target.value)}
+                          placeholder="Optional"
+                          className="w-full px-2 py-1 bg-gray-700 rounded text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Notes */}

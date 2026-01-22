@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, X, Download, Plus, Undo, Redo, Save, Upload, Dices } from 'lucide-react';
 import { useCombat } from '../../contexts/CombatContext';
-import { calculateHPStatus, exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, exportActiveCombat, parseImportedCombat } from '../../utils/combatHelpers';
+import { calculateHPStatus, exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, createActionLogEntry, exportActiveCombat, parseImportedCombat } from '../../utils/combatHelpers';
 import { MAX_COMBAT_HISTORY } from '../../constants';
 import { roll, rollVsTarget, formatRoll } from '../../utils/dice';
 import { createTurnAdvanceAction, createSetResourceAction, createAddLogEntryAction } from '../../utils/combatActions';
 import { addAction, canUndo, canRedo, getUndoCount, getRedoCount, undo, redo, createHistoryState, createSnapshot } from '../../utils/combatHistory';
 import { validateCombatState, validateCombatExport, validateCombatImport } from '../../utils/combatValidation';
+import ActionPanel from './ActionPanel';
 
 /**
- * Combat Tracker Component - Phase 2
- * Active combat management with turn tracking, resource management, logging, dice tools, and undo/redo
+ * Combat Tracker Component - Phase 3
+ * Active combat management with turn tracking, resource management, logging, dice tools, undo/redo, and action assist
  */
 export default function CombatTracker() {
   const {
@@ -26,6 +27,7 @@ export default function CombatTracker() {
   const [diceExpression, setDiceExpression] = useState('3d6');
   const [rollTarget, setRollTarget] = useState('');
   const [showDicePanel, setShowDicePanel] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(true);
 
   // Migrate Phase 1 combat on load if needed
   useEffect(() => {
@@ -289,6 +291,86 @@ export default function CombatTracker() {
   };
 
   // ============================================================================
+  // Phase 3: Action Panel Handlers
+  // ============================================================================
+
+  const handleActionComplete = (actionData) => {
+    const { maneuver, kind, attack, defense, damage, note, targetInstanceId, newHP } = actionData;
+
+    // Get target if applicable
+    const target = targetInstanceId
+      ? combatActive.participants.find(p => p.instanceId === targetInstanceId)
+      : null;
+
+    // Create action log entry
+    const logEntry = createActionLogEntry({
+      round: combatActive.currentRound,
+      turn: combatActive.currentTurnIndex,
+      actorInstanceId: currentActorInstanceId,
+      actorName: currentActor?.name,
+      targetInstanceId,
+      targetName: target?.name,
+      maneuver,
+      action: { kind, attack, defense, damage }
+    });
+
+    // Update state with log
+    let newCombat = {
+      ...combatActive,
+      log: [...combatActive.log, logEntry]
+    };
+
+    // If damage was applied, also update target HP
+    if (kind === 'damage' && targetInstanceId && newHP !== undefined) {
+      const updatedParticipants = combatActive.participants.map(p =>
+        p.instanceId === targetInstanceId
+          ? { ...p, currentHP: newHP }
+          : p
+      );
+
+      newCombat = {
+        ...newCombat,
+        participants: updatedParticipants
+      };
+
+      // Record resource change action
+      const resourceAction = createSetResourceAction(
+        targetInstanceId,
+        'HP',
+        target.currentHP,
+        newHP
+      );
+      recordAction(resourceAction);
+    }
+
+    // If it's just a note action, create a simpler note entry instead
+    if (kind === 'note' && note) {
+      const noteEntry = createNoteLogEntry(
+        combatActive.currentRound,
+        combatActive.currentTurnIndex,
+        currentActorInstanceId,
+        currentActor?.name,
+        maneuver ? `[${maneuver}] ${note}` : note
+      );
+
+      newCombat = {
+        ...combatActive,
+        log: [...combatActive.log, noteEntry]
+      };
+
+      const noteAction = createAddLogEntryAction(noteEntry);
+      saveCombatActive(newCombat);
+      recordAction(noteAction);
+      return;
+    }
+
+    // Save state and record action
+    saveCombatActive(newCombat);
+    const logAction = createAddLogEntryAction(logEntry);
+    recordAction(logAction);
+  };
+
+  // ============================================================================
   // Combat End
   // ============================================================================
 
@@ -484,6 +566,15 @@ export default function CombatTracker() {
           </div>
         </div>
       </div>
+
+      {/* Action Panel (Phase 3) */}
+      <ActionPanel
+        currentActor={currentActor}
+        participants={combatActive.participants}
+        onActionComplete={handleActionComplete}
+        expanded={showActionPanel}
+        onToggleExpanded={() => setShowActionPanel(!showActionPanel)}
+      />
 
       {/* Dice Panel */}
       <div className="bg-gray-800 rounded-lg p-4">
@@ -736,10 +827,15 @@ function ParticipantCard({ participant, isCurrent, onUpdateResource }) {
 
 /**
  * Format log entry for display
- * Renders special components for roll entries with colored dice
+ * Renders special components for roll entries with colored dice and action entries
  */
 function formatLogEntry(entry) {
   const timestamp = new Date(entry.timestamp).toLocaleTimeString();
+
+  // Phase 3 action entry with detailed breakdown
+  if (entry.entryType === 'action' && entry.action) {
+    return <ActionLogEntry timestamp={timestamp} entry={entry} />;
+  }
 
   // Phase 2 structured format with roll data
   if (entry.entryType === 'roll' && entry.roll) {
@@ -805,5 +901,44 @@ function RollLogEntry({ timestamp, entry }) {
         </span>
       )}
     </span>
+  );
+}
+
+/**
+ * Action Log Entry Component (Phase 3)
+ * Displays combat actions with detailed breakdown
+ */
+function ActionLogEntry({ timestamp, entry }) {
+  const { action, maneuver } = entry;
+
+  return (
+    <div className="bg-gray-900 rounded p-2 my-1">
+      <div className="text-xs text-gray-500">[{timestamp}]</div>
+      <div className="font-semibold">{entry.text}</div>
+
+      {/* Show modifier details if available */}
+      {action.attack && action.attack.modifiers && action.attack.modifiers.length > 0 && (
+        <div className="text-xs text-gray-400 mt-1">
+          Modifiers: {action.attack.modifiers.map(m => `${m.label} ${m.value >= 0 ? '+' : ''}${m.value}`).join(', ')}
+        </div>
+      )}
+
+      {action.defense && action.defense.modifiers && action.defense.modifiers.length > 0 && (
+        <div className="text-xs text-gray-400 mt-1">
+          Modifiers: {action.defense.modifiers.map(m => `${m.label} ${m.value >= 0 ? '+' : ''}${m.value}`).join(', ')}
+        </div>
+      )}
+
+      {action.damage && (
+        <div className="text-xs text-gray-400 mt-1">
+          {action.damage.expression && action.damage.expression !== 'manual' && (
+            <span>Damage: {action.damage.expression} → {action.damage.rolledDamage}</span>
+          )}
+          {action.damage.generalDRUsed > 0 && (
+            <span> | DR: {action.damage.generalDRUsed}</span>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

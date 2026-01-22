@@ -292,6 +292,88 @@ export function createNoteLogEntry(round, turn, actorInstanceId, actorName, note
 }
 
 /**
+ * Create an action log entry (Phase 3)
+ * For structured combat actions (attack/defense/damage)
+ *
+ * @param {Object} params - Action parameters
+ * @returns {Object} Structured action log entry
+ */
+export function createActionLogEntry({
+  round,
+  turn,
+  actorInstanceId,
+  actorName,
+  targetInstanceId = null,
+  targetName = null,
+  maneuver = null,
+  action = null
+}) {
+  // Build descriptive text
+  let text = actorName;
+
+  if (maneuver) {
+    text += ` (${maneuver})`;
+  }
+
+  if (action) {
+    if (action.kind === 'attack' && action.attack) {
+      const att = action.attack;
+      text += ` attacks`;
+      if (targetName) {
+        text += ` ${targetName}`;
+      }
+      text += ` with ${att.name}`;
+      if (att.rollTotal !== null && att.rollTotal !== undefined) {
+        text += ` [${att.rollTotal} vs ${att.effectiveSkill}`;
+        if (att.margin !== null && att.margin !== undefined) {
+          const marginStr = att.margin >= 0 ? `+${att.margin}` : `${att.margin}`;
+          text += `, ${marginStr}`;
+          text += att.success ? ' SUCCESS' : ' FAILURE';
+        }
+        text += `]`;
+      }
+    } else if (action.kind === 'defense' && action.defense) {
+      const def = action.defense;
+      text += ` defends`;
+      if (def.type) {
+        text += ` (${def.type})`;
+      }
+      if (def.rollTotal !== null && def.rollTotal !== undefined) {
+        text += ` [${def.rollTotal} vs ${def.effectiveDefense}`;
+        if (def.margin !== null && def.margin !== undefined) {
+          const marginStr = def.margin >= 0 ? `+${def.margin}` : `${def.margin}`;
+          text += `, ${marginStr}`;
+          text += def.success ? ' SUCCESS' : ' FAILURE';
+        }
+        text += `]`;
+      }
+    } else if (action.kind === 'damage' && action.damage) {
+      const dmg = action.damage;
+      text += ` takes`;
+      if (dmg.penetrating !== null && dmg.penetrating !== undefined) {
+        text += ` ${dmg.penetrating} HP`;
+        if (dmg.generalDRUsed) {
+          text += ` (${dmg.rolledDamage} - ${dmg.generalDRUsed} DR)`;
+        }
+      }
+    }
+  }
+
+  return {
+    id: generateId(),
+    timestamp: new Date().toISOString(),
+    round,
+    turn,
+    entryType: 'action',
+    actorInstanceId,
+    targetInstanceId,
+    text,
+    maneuver,
+    action
+  };
+}
+
+/**
  * Auto-number enemies with same base name
  * e.g., "Goblin" with quantity 3 becomes ["Goblin #1", "Goblin #2", "Goblin #3"]
  *
