@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit2, ChefHat, Hammer, Package, Beaker, FileText, BookOpen, Fish } from 'lucide-react';
+import { Edit2, ChefHat, Hammer, Package, Beaker, FileText, BookOpen, Fish, Swords } from 'lucide-react';
 import { safeParse } from './utils/helpers';
 import { logger } from './utils/logger';
 import { useKeyedDebouncedStorageSave } from './hooks/useStorage';
@@ -11,6 +11,7 @@ import { AlchemyTab } from './components/AlchemyTab';
 import { ChangelogTab } from './components/ChangelogTab';
 import { RulesTab } from './components/RulesTab';
 import { DayPlannerTab } from './components/DayPlannerTab';
+import { CombatTab } from './components/CombatTab';
 import { VERSION } from './version';
 import { TEMPLATES } from './constants';
 import InventoryContext from './contexts/InventoryContext';
@@ -18,6 +19,7 @@ import CraftingContext from './contexts/CraftingContext';
 import AlchemyContext from './contexts/AlchemyContext';
 import GatheringContext from './contexts/GatheringContext';
 import ConfigContext from './contexts/ConfigContext';
+import CombatContext from './contexts/CombatContext';
 
 export default function GURPSPartyTool() {
   logger.log('GURPSPartyTool rendering');
@@ -81,6 +83,12 @@ export default function GURPSPartyTool() {
   const [pendingDayLedger, setPendingDayLedger] = useState(null); // Current day's pending results
   const [currentSlot, setCurrentSlot] = useState(0); // Current slot index (0-2)
 
+  // Combat Runner system state
+  const [combatCharacters, setCombatCharacters] = useState([]); // Character library
+  const [combatActive, setCombatActive] = useState(null); // Active combat session
+  const [combatHistory, setCombatHistory] = useState([]); // Past combat sessions (max 50)
+  const [combatTombstones, setCombatTombstones] = useState([]); // Deleted characters referenced by history
+
   // Keyed debounced storage writer - maintains separate timers per key
   const debouncedStorageSave = useKeyedDebouncedStorageSave(500);
 
@@ -127,6 +135,10 @@ export default function GURPSPartyTool() {
   const saveTaskAssignments = createSaveFunction(setTaskAssignments, 'taskAssignments');
   const savePendingDayLedger = createSaveFunction(setPendingDayLedger, 'pendingDayLedger');
   const saveCurrentSlot = createSaveFunction(setCurrentSlot, 'currentSlot');
+  const saveCombatCharacters = createSaveFunction(setCombatCharacters, 'combatCharacters');
+  const saveCombatActive = createSaveFunction(setCombatActive, 'combatActive');
+  const saveCombatHistory = createSaveFunction(setCombatHistory, 'combatHistory');
+  const saveCombatTombstones = createSaveFunction(setCombatTombstones, 'combatTombstones');
 
   useEffect(() => { loadData(); }, []);
 
@@ -141,7 +153,8 @@ export default function GURPSPartyTool() {
     try {
       const [matsR, foodsR, recipesR, craftsR, typesR, templatesR, matTypesR, workersR, reagentsR, formulasR, batchesR, labsR, kitchensR, cookingSkillsR, effectMapR, alchemySettingsR, craftDesignsR,
         speciesR, toolsR, tablesR, environmentsR, sessionsR, dailyEventsR, baitR, categoriesR, itemsR, currentDayR,
-        timeSlotsR, taskAssignmentsR, pendingDayLedgerR, currentSlotR] = await Promise.all([
+        timeSlotsR, taskAssignmentsR, pendingDayLedgerR, currentSlotR,
+        combatCharactersR, combatActiveR, combatHistoryR, combatTombstonesR] = await Promise.all([
         window.storage.get('materials', true).catch(() => null),
         window.storage.get('foods', true).catch(() => null),
         window.storage.get('recipes', true).catch(() => null),
@@ -174,7 +187,12 @@ export default function GURPSPartyTool() {
         window.storage.get('timeSlots', true).catch(() => null),
         window.storage.get('taskAssignments', true).catch(() => null),
         window.storage.get('pendingDayLedger', true).catch(() => null),
-        window.storage.get('currentSlot', true).catch(() => null)
+        window.storage.get('currentSlot', true).catch(() => null),
+        // Combat Runner system data
+        window.storage.get('combatCharacters', true).catch(() => null),
+        window.storage.get('combatActive', true).catch(() => null),
+        window.storage.get('combatHistory', true).catch(() => null),
+        window.storage.get('combatTombstones', true).catch(() => null)
       ]);
       if (matsR?.value) setMaterials(JSON.parse(matsR.value));
       if (foodsR?.value) setFoods(JSON.parse(foodsR.value));
@@ -310,6 +328,12 @@ export default function GURPSPartyTool() {
       setTaskAssignments(safeParse(taskAssignmentsR?.value, []));
       setPendingDayLedger(safeParse(pendingDayLedgerR?.value, null));
       setCurrentSlot(safeParse(currentSlotR?.value, 0));
+
+      // Load Combat Runner system data
+      setCombatCharacters(safeParse(combatCharactersR?.value, []));
+      setCombatActive(safeParse(combatActiveR?.value, null));
+      setCombatHistory(safeParse(combatHistoryR?.value, []));
+      setCombatTombstones(safeParse(combatTombstonesR?.value, []));
     } catch (error) {
       logger.error('Error loading:', error);
     }
@@ -429,13 +453,25 @@ export default function GURPSPartyTool() {
     setGmLockData
   };
 
+  const combatValue = {
+    combatCharacters,
+    combatActive,
+    combatHistory,
+    combatTombstones,
+    saveCombatCharacters,
+    saveCombatActive,
+    saveCombatHistory,
+    saveCombatTombstones
+  };
+
   return (
     <InventoryContext.Provider value={inventoryValue}>
       <CraftingContext.Provider value={craftingValue}>
         <AlchemyContext.Provider value={alchemyValue}>
           <GatheringContext.Provider value={gatheringValue}>
             <ConfigContext.Provider value={configValue}>
-              <div className="min-h-screen bg-gray-900 text-gray-100">
+              <CombatContext.Provider value={combatValue}>
+                <div className="min-h-screen bg-gray-900 text-gray-100">
       <div className="max-w-7xl mx-auto p-6">
         <h1 className="text-3xl font-bold mb-6 text-center">
           GURPS Party Management <span className="text-xl text-gray-400">v{VERSION}</span>
@@ -458,6 +494,9 @@ export default function GURPSPartyTool() {
           </button>
           <button onClick={() => setActiveTab('gathering')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'gathering' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
             <Fish size={20} />Gathering
+          </button>
+          <button onClick={() => setActiveTab('combat')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'combat' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+            <Swords size={20} />Combat
           </button>
           <button onClick={() => setActiveTab('rules')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'rules' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
             <BookOpen size={20} />Rules
@@ -501,10 +540,12 @@ export default function GURPSPartyTool() {
           saveFoods={saveFoods}
           saveMaterials={saveMaterials}
         />}
+        {activeTab === 'combat' && <CombatTab />}
         {activeTab === 'rules' && <RulesTab />}
         {activeTab === 'changelog' && <ChangelogTab />}
+                </div>
               </div>
-            </div>
+              </CombatContext.Provider>
             </ConfigContext.Provider>
           </GatheringContext.Provider>
         </AlchemyContext.Provider>
