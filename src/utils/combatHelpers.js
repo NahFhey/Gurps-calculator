@@ -480,3 +480,179 @@ export function createEffectLogEntry({
     effectData
   };
 }
+
+// ============================================================================
+// Phase 5: Progressive Reveal Export/Import
+// ============================================================================
+
+/**
+ * Export combat in Player View format (Phase 5)
+ * Filters combat state based on reveal state - safe to share with players
+ *
+ * @param {Object} combatState - Full combat state
+ * @param {Object} revealState - Reveal state
+ * @param {Object} historyState - History state (optional)
+ * @returns {string} JSON string (unencrypted, filtered)
+ */
+export function exportCombatPlayerView(combatState, revealState, historyState = null) {
+  // Import here to avoid circular dependency
+  const { getCombatView } = require('./combatViewFilter');
+  const { filterLogForPlayerView } = require('./combatLogFilter');
+
+  // Get filtered view
+  const combatView = getCombatView(combatState, revealState, 'player');
+
+  // Filter log
+  const filteredLog = filterLogForPlayerView(combatState.log, revealState, combatState);
+
+  // Build player-safe export
+  const exportData = {
+    version: 2, // Phase 5 format
+    exportDate: new Date().toISOString(),
+    exportType: 'player-view',
+    combatState: {
+      ...combatView,
+      log: filteredLog
+    },
+    // Include reveal state so the view can be reconstructed
+    revealState,
+    // Do NOT include history - players don't need undo/redo
+    history: null
+  };
+
+  return JSON.stringify(exportData, null, 2);
+}
+
+/**
+ * Export combat with GM lock (Phase 5)
+ * Public payload: player-safe view
+ * Encrypted payload: full truth state + reveal state
+ *
+ * @param {Object} combatState - Full combat state
+ * @param {Object} revealState - Reveal state
+ * @param {Object} historyState - History state (optional)
+ * @param {string} password - GM password for encryption
+ * @returns {Promise<string>} JSON string with gmLock
+ */
+export async function exportCombatGMLocked(combatState, revealState, historyState, password) {
+  // Import here to avoid circular dependency
+  const { getCombatView } = require('./combatViewFilter');
+  const { filterLogForPlayerView } = require('./combatLogFilter');
+  const { encryptJSON } = require('./cryptoLock');
+
+  // Get filtered player view
+  const combatView = getCombatView(combatState, revealState, 'player');
+  const filteredLog = filterLogForPlayerView(combatState.log, revealState, combatState);
+
+  // Build GM secret payload (will be encrypted)
+  const gmSecrets = {
+    combatStateTruth: combatState,
+    revealState,
+    history: historyState
+  };
+
+  // Encrypt GM secrets
+  const gmLock = await encryptJSON(gmSecrets, password);
+
+  // Build export with public player view + encrypted GM data
+  const exportData = {
+    version: 2, // Phase 5 format
+    exportDate: new Date().toISOString(),
+    exportType: 'gm-locked',
+    combatState: {
+      ...combatView,
+      log: filteredLog
+    },
+    // Encrypted GM data
+    gmLock
+  };
+
+  return JSON.stringify(exportData, null, 2);
+}
+
+/**
+ * Import and optionally unlock GM-locked combat (Phase 5)
+ *
+ * @param {string} jsonString - JSON string to import
+ * @param {string|null} password - GM password (if unlocking)
+ * @returns {Promise<{valid: boolean, data: Object|null, error: string|null, isLocked: boolean}>}
+ */
+export async function importCombatWithGMLock(jsonString, password = null) {
+  try {
+    const data = JSON.parse(jsonString);
+
+    if (!data || typeof data !== 'object') {
+      return { valid: false, data: null, error: 'Invalid JSON format', isLocked: false };
+    }
+
+    if (!data.combatState) {
+      return { valid: false, data: null, error: 'Missing combatState in import', isLocked: false };
+    }
+
+    // Check if this is a GM-locked export
+    const isLocked = data.exportType === 'gm-locked' && data.gmLock;
+
+    if (isLocked && password) {
+      // Attempt to unlock
+      const { decryptJSON } = require('./cryptoLock');
+
+      try {
+        const gmSecrets = await decryptJSON(data.gmLock, password);
+
+        // Return full truth data
+        return {
+          valid: true,
+          data: {
+            combatState: gmSecrets.combatStateTruth,
+            revealState: gmSecrets.revealState,
+            history: gmSecrets.history,
+            exportType: data.exportType
+          },
+          error: null,
+          isLocked: false // Successfully unlocked
+        };
+      } catch (unlockError) {
+        return {
+          valid: false,
+          data: null,
+          error: `Failed to unlock: ${unlockError.message}`,
+          isLocked: true
+        };
+      }
+    } else if (isLocked) {
+      // Locked but no password provided - return player view
+      return {
+        valid: true,
+        data: {
+          combatState: data.combatState,
+          revealState: data.revealState || null,
+          history: null,
+          exportType: data.exportType,
+          gmLock: data.gmLock // Store for later unlocking
+        },
+        error: null,
+        isLocked: true
+      };
+    } else {
+      // Not locked (player-view export or legacy)
+      return {
+        valid: true,
+        data: {
+          combatState: data.combatState,
+          revealState: data.revealState || null,
+          history: data.history || null,
+          exportType: data.exportType || 'legacy'
+        },
+        error: null,
+        isLocked: false
+      };
+    }
+  } catch (error) {
+    return {
+      valid: false,
+      data: null,
+      error: error.message,
+      isLocked: false
+    };
+  }
+}
