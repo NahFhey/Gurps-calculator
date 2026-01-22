@@ -91,6 +91,7 @@ export default function GURPSPartyTool() {
   const [combatTombstones, setCombatTombstones] = useState([]); // Deleted characters referenced by history
   const [combatRulesPreset, setCombatRulesPreset] = useState('standard'); // Phase 4 combat rules preset
   const [combatReveal, setCombatReveal] = useState(null); // Phase 5 reveal state for active combat
+  const [combatItems, setCombatItems] = useState([]); // Phase 6 combat items inventory
 
   // Keyed debounced storage writer - maintains separate timers per key
   const debouncedStorageSave = useKeyedDebouncedStorageSave(500);
@@ -145,6 +146,7 @@ export default function GURPSPartyTool() {
   const saveCombatTombstones = createSaveFunction(setCombatTombstones, 'combatTombstones');
   const saveCombatRulesPreset = createSaveFunction(setCombatRulesPreset, 'combatRulesPreset');
   const saveCombatReveal = createSaveFunction(setCombatReveal, 'combatReveal');
+  const saveCombatItems = createSaveFunction(setCombatItems, 'combatItems');
 
   useEffect(() => { loadData(); }, []);
 
@@ -160,7 +162,7 @@ export default function GURPSPartyTool() {
       const [matsR, foodsR, recipesR, craftsR, typesR, templatesR, matTypesR, workersR, reagentsR, formulasR, batchesR, labsR, kitchensR, cookingSkillsR, effectMapR, alchemySettingsR, craftDesignsR,
         speciesR, toolsR, tablesR, environmentsR, sessionsR, dailyEventsR, baitR, categoriesR, itemsR, currentDayR,
         timeSlotsR, taskAssignmentsR, pendingDayLedgerR, currentSlotR,
-        combatCharactersR, combatActiveR, combatActiveHistoryR, combatHistoryR, combatTombstonesR, combatRulesPresetR, combatRevealR] = await Promise.all([
+        combatCharactersR, combatActiveR, combatActiveHistoryR, combatHistoryR, combatTombstonesR, combatRulesPresetR, combatRevealR, combatItemsR] = await Promise.all([
         window.storage.get('materials', true).catch(() => null),
         window.storage.get('foods', true).catch(() => null),
         window.storage.get('recipes', true).catch(() => null),
@@ -201,7 +203,8 @@ export default function GURPSPartyTool() {
         window.storage.get('combatHistory', true).catch(() => null),
         window.storage.get('combatTombstones', true).catch(() => null),
         window.storage.get('combatRulesPreset', true).catch(() => null),
-        window.storage.get('combatReveal', true).catch(() => null)
+        window.storage.get('combatReveal', true).catch(() => null),
+        window.storage.get('combatItems', true).catch(() => null)
       ]);
       if (matsR?.value) setMaterials(JSON.parse(matsR.value));
       if (foodsR?.value) setFoods(JSON.parse(foodsR.value));
@@ -346,6 +349,7 @@ export default function GURPSPartyTool() {
       setCombatTombstones(safeParse(combatTombstonesR?.value, []));
       setCombatRulesPreset(safeParse(combatRulesPresetR?.value, 'standard'));
       setCombatReveal(safeParse(combatRevealR?.value, null));
+      setCombatItems(safeParse(combatItemsR?.value, [])); // Phase 6
     } catch (error) {
       logger.error('Error loading:', error);
     }
@@ -473,6 +477,7 @@ export default function GURPSPartyTool() {
     combatTombstones,
     combatRulesPreset,
     combatReveal,
+    combatItems, // Phase 6
     saveCombatCharacters,
     saveCombatActive,
     saveCombatActiveHistory,
@@ -480,6 +485,7 @@ export default function GURPSPartyTool() {
     saveCombatTombstones,
     saveCombatRulesPreset,
     saveCombatReveal,
+    saveCombatItems, // Phase 6
     gmMode,
     setGmMode
   };

@@ -402,7 +402,9 @@ export function createNumberedEnemies(baseName, quantity, template) {
       isUnconscious: false,
       isDead: false,
       bleeding: null,
-      crippled: []
+      crippled: [],
+      // Phase 6 fields
+      conditions: []
     });
   }
 
@@ -481,6 +483,108 @@ export function createEffectLogEntry({
     text: displayText,
     effectType,
     effectData
+  };
+}
+
+// ============================================================================
+// Phase 6: Items and Conditions Log Entries
+// ============================================================================
+
+/**
+ * Create an item usage log entry (Phase 6)
+ *
+ * @param {Object} params - Item usage parameters
+ * @returns {Object} Structured item log entry
+ */
+export function createItemLogEntry({
+  round,
+  turn,
+  actorInstanceId,
+  actorName,
+  targetInstanceId,
+  targetName,
+  item,
+  effect,
+  text = null
+}) {
+  let displayText = text;
+  if (!displayText) {
+    if (targetInstanceId && targetInstanceId !== actorInstanceId) {
+      displayText = `${actorName} used ${item.itemName} on ${targetName}`;
+    } else {
+      displayText = `${actorName} used ${item.itemName}`;
+    }
+  }
+
+  return {
+    id: generateId(),
+    timestamp: new Date().toISOString(),
+    round,
+    turn,
+    entryType: 'item',
+    actorInstanceId,
+    targetInstanceId,
+    text: displayText,
+    item: {
+      itemId: item.itemId,
+      itemName: item.itemName,
+      qtyBefore: item.qtyBefore,
+      qtyAfter: item.qtyAfter
+    },
+    effect: effect || {}
+  };
+}
+
+/**
+ * Create a condition change log entry (Phase 6)
+ *
+ * @param {Object} params - Condition parameters
+ * @returns {Object} Structured condition log entry
+ */
+export function createConditionLogEntry({
+  round,
+  turn,
+  targetInstanceId,
+  targetName,
+  changeType, // 'applied' | 'removed' | 'expired'
+  conditionId,
+  conditionLabel,
+  duration = null,
+  source = null,
+  text = null
+}) {
+  let displayText = text;
+  if (!displayText) {
+    switch (changeType) {
+      case 'applied':
+        displayText = source
+          ? `${targetName}: ${conditionLabel} applied (${source})`
+          : `${targetName}: ${conditionLabel} applied`;
+        break;
+      case 'removed':
+        displayText = `${targetName}: ${conditionLabel} removed`;
+        break;
+      case 'expired':
+        displayText = `${targetName}: ${conditionLabel} expired`;
+        break;
+      default:
+        displayText = `${targetName}: ${conditionLabel} (${changeType})`;
+    }
+  }
+
+  return {
+    id: generateId(),
+    timestamp: new Date().toISOString(),
+    round,
+    turn,
+    entryType: 'condition',
+    targetInstanceId,
+    text: displayText,
+    changeType,
+    conditionId,
+    conditionLabel,
+    duration,
+    source
   };
 }
 

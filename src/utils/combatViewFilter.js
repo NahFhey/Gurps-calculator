@@ -1,5 +1,5 @@
 /**
- * Combat View Filter (Phase 5)
+ * Combat View Filter (Phase 5 & 6)
  *
  * Produces filtered view models from truth state + reveal state.
  * Enforces information security: Player View cannot access hidden data.
@@ -11,6 +11,7 @@ import {
   calculateHPBand,
   getHPBandText
 } from './combatReveal.js';
+import { isConditionObvious } from '../constants/conditions.js';
 
 /**
  * View modes
@@ -158,6 +159,13 @@ function filterParticipant(participant, revealState) {
     filtered.isDead = participant.isDead || false;
     filtered.isUnconscious = participant.isUnconscious || false;
   }
+
+  // Phase 6: Conditions - filter based on obviousness
+  filtered.conditions = filterConditions(
+    participant.conditions,
+    side,
+    reveal.hp.mode === RevealMode.NUMERIC_EXACT
+  );
 
   return filtered;
 }
@@ -356,6 +364,38 @@ function filterNotes(notes, notesReveal) {
     return notes;
   }
   return ''; // Hidden
+}
+
+/**
+ * Phase 6: Filter conditions based on visibility rules
+ *
+ * Rules:
+ * - Player/ally conditions: always show all
+ * - Enemy conditions: show only "obvious" ones (prone, unconscious, burning, etc.)
+ *   unless HP is revealed (exact mode)
+ *
+ * @param {array} conditions - Array of condition instances
+ * @param {string} side - Combatant's side/category (player/ally/enemy)
+ * @param {boolean} hpRevealed - Whether HP is in exact mode
+ * @returns {array} Filtered conditions
+ */
+function filterConditions(conditions, side, hpRevealed) {
+  if (!conditions || !Array.isArray(conditions)) {
+    return [];
+  }
+
+  // Player/ally: show all conditions
+  if (side === 'player' || side === 'ally') {
+    return conditions;
+  }
+
+  // Enemy: show all if HP revealed, otherwise only obvious
+  if (hpRevealed) {
+    return conditions;
+  }
+
+  // Filter to obvious conditions only
+  return conditions.filter(c => isConditionObvious(c.conditionId));
 }
 
 /**

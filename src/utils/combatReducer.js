@@ -40,6 +40,19 @@ export function applyAction(state, action) {
     case ACTION_TYPES.LOAD_COMBAT_STATE:
       return applyLoadCombatState(state, action.payload);
 
+    // Phase 6 actions
+    case ACTION_TYPES.ADD_CONDITION:
+      return applyAddCondition(state, action.payload);
+
+    case ACTION_TYPES.REMOVE_CONDITION:
+      return applyRemoveCondition(state, action.payload);
+
+    case ACTION_TYPES.UPDATE_CONDITION:
+      return applyUpdateCondition(state, action.payload);
+
+    case ACTION_TYPES.USE_ITEM:
+      return applyUseItem(state, action.payload);
+
     default:
       console.warn('Unknown action type:', action.type);
       return state;
@@ -80,6 +93,19 @@ export function applyInverse(state, action) {
 
     case ACTION_TYPES.LOAD_COMBAT_STATE:
       return applyLoadCombatState(state, action.inverse);
+
+    // Phase 6 inverses
+    case ACTION_TYPES.ADD_CONDITION:
+      return applyRemoveCondition(state, action.inverse);
+
+    case ACTION_TYPES.REMOVE_CONDITION:
+      return applyAddCondition(state, action.inverse);
+
+    case ACTION_TYPES.UPDATE_CONDITION:
+      return applyUpdateCondition(state, action.inverse);
+
+    case ACTION_TYPES.USE_ITEM:
+      return applyUseItemInverse(state, action.inverse);
 
     default:
       console.warn('Unknown action type for inverse:', action.type);
@@ -191,4 +217,158 @@ function applyLoadCombatState(state, payload) {
   return {
     ...toSnapshot
   };
+}
+
+// ============================================================================
+// Phase 6 Action Appliers
+// ============================================================================
+
+/**
+ * Apply ADD_CONDITION
+ */
+function applyAddCondition(state, payload) {
+  const { instanceId, conditionInstance } = payload;
+
+  const updatedParticipants = state.participants.map(p => {
+    if (p.instanceId === instanceId) {
+      const conditions = p.conditions || [];
+      return {
+        ...p,
+        conditions: [...conditions, conditionInstance]
+      };
+    }
+    return p;
+  });
+
+  return {
+    ...state,
+    participants: updatedParticipants
+  };
+}
+
+/**
+ * Apply REMOVE_CONDITION
+ */
+function applyRemoveCondition(state, payload) {
+  const { instanceId, conditionInstanceId } = payload;
+
+  const updatedParticipants = state.participants.map(p => {
+    if (p.instanceId === instanceId) {
+      const conditions = p.conditions || [];
+      return {
+        ...p,
+        conditions: conditions.filter(c => c.instanceId !== conditionInstanceId)
+      };
+    }
+    return p;
+  });
+
+  return {
+    ...state,
+    participants: updatedParticipants
+  };
+}
+
+/**
+ * Apply UPDATE_CONDITION
+ */
+function applyUpdateCondition(state, payload) {
+  const { instanceId, conditionInstanceId, toCondition } = payload;
+
+  const updatedParticipants = state.participants.map(p => {
+    if (p.instanceId === instanceId) {
+      const conditions = p.conditions || [];
+      return {
+        ...p,
+        conditions: conditions.map(c =>
+          c.instanceId === conditionInstanceId ? toCondition : c
+        )
+      };
+    }
+    return p;
+  });
+
+  return {
+    ...state,
+    participants: updatedParticipants
+  };
+}
+
+/**
+ * Apply USE_ITEM
+ *
+ * This is a compound action that applies multiple changes:
+ * - Resource changes (HP/FP/MP deltas)
+ * - Conditions added
+ * - Conditions removed
+ *
+ * Note: Inventory delta is handled separately by the component layer
+ */
+function applyUseItem(state, payload) {
+  const { resourceChanges, conditionsAdded, conditionsRemoved } = payload;
+
+  let updatedState = { ...state };
+
+  // Apply resource changes
+  for (const rc of resourceChanges) {
+    updatedState = applySetResource(updatedState, {
+      instanceId: rc.instanceId,
+      resource: rc.resource,
+      to: rc.to
+    });
+  }
+
+  // Apply conditions added
+  for (const ca of conditionsAdded) {
+    updatedState = applyAddCondition(updatedState, {
+      instanceId: ca.instanceId,
+      conditionInstance: ca.conditionInstance
+    });
+  }
+
+  // Apply conditions removed
+  for (const cr of conditionsRemoved) {
+    updatedState = applyRemoveCondition(updatedState, {
+      instanceId: cr.instanceId,
+      conditionInstanceId: cr.conditionInstance.instanceId
+    });
+  }
+
+  return updatedState;
+}
+
+/**
+ * Apply USE_ITEM inverse (for undo)
+ */
+function applyUseItemInverse(state, payload) {
+  const { resourceChanges, conditionsAdded, conditionsRemoved } = payload;
+
+  let updatedState = { ...state };
+
+  // Reverse resource changes
+  for (const rc of resourceChanges) {
+    updatedState = applySetResource(updatedState, {
+      instanceId: rc.instanceId,
+      resource: rc.resource,
+      to: rc.to
+    });
+  }
+
+  // Reverse conditions added (remove them)
+  for (const ca of conditionsAdded) {
+    updatedState = applyRemoveCondition(updatedState, {
+      instanceId: ca.instanceId,
+      conditionInstanceId: ca.conditionInstance.instanceId
+    });
+  }
+
+  // Reverse conditions removed (add them back)
+  for (const cr of conditionsRemoved) {
+    updatedState = applyAddCondition(updatedState, {
+      instanceId: cr.instanceId,
+      conditionInstance: cr.conditionInstance
+    });
+  }
+
+  return updatedState;
 }

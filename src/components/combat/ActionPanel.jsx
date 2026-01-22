@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { Swords, Shield, Zap, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
+import { Swords, Shield, Zap, MessageSquare, ChevronDown, ChevronUp, Droplet, Activity } from 'lucide-react';
 import AttackAssist from './AttackAssist';
 import DefenseAssist from './DefenseAssist';
 import InjuryResolutionPanel from './InjuryResolutionPanel';
+import ConditionsPanel from './ConditionsPanel';
 
 /**
- * ActionPanel Component - Phase 3 & 4
+ * ActionPanel Component - Phase 3, 4 & 6
  * Main action interface for the active combatant
- * Provides workflows for Attack, Defense, Damage (Injury), and Notes
+ * Provides workflows for Attack, Defense, Damage (Injury), Notes, Items, and Conditions
  */
 export default function ActionPanel({
   currentActor,
@@ -15,10 +16,16 @@ export default function ActionPanel({
   onActionComplete,
   combatRulesPreset = 'standard',
   expanded = true,
-  onToggleExpanded
+  onToggleExpanded,
+  // Phase 6: Condition management handlers
+  currentRound = 0,
+  currentTurn = 0,
+  onAddCondition,
+  onRemoveCondition,
+  onUpdateCondition
 }) {
   const [selectedManeuver, setSelectedManeuver] = useState(null);
-  const [activeWorkflow, setActiveWorkflow] = useState(null); // 'attack', 'defense', 'damage', 'note', or null
+  const [activeWorkflow, setActiveWorkflow] = useState(null); // 'attack', 'defense', 'damage', 'note', 'conditions', 'items', or null
   const [noteText, setNoteText] = useState('');
   const [selectedTargetId, setSelectedTargetId] = useState(null);
 
@@ -187,6 +194,20 @@ export default function ActionPanel({
               <MessageSquare size={20} />
               Note
             </button>
+            <button
+              onClick={() => handleStartWorkflow('items')}
+              className="flex items-center justify-center gap-2 p-3 bg-purple-600 hover:bg-purple-700 rounded"
+            >
+              <Droplet size={20} />
+              Items
+            </button>
+            <button
+              onClick={() => handleStartWorkflow('conditions')}
+              className="flex items-center justify-center gap-2 p-3 bg-indigo-600 hover:bg-indigo-700 rounded"
+            >
+              <Activity size={20} />
+              Conditions
+            </button>
           </div>
         </div>
       )}
@@ -273,6 +294,44 @@ export default function ActionPanel({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Phase 6: Conditions Workflow */}
+      {activeWorkflow === 'conditions' && (
+        <div className="border-t border-gray-700 pt-4">
+          <ConditionsPanel
+            participant={currentActor}
+            currentRound={currentRound}
+            currentTurn={currentTurn}
+            onAddCondition={onAddCondition}
+            onRemoveCondition={onRemoveCondition}
+            onUpdateCondition={onUpdateCondition}
+          />
+          <div className="mt-4">
+            <button
+              onClick={handleCancelWorkflow}
+              className="w-full px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Phase 6: Items Workflow (placeholder) */}
+      {activeWorkflow === 'items' && (
+        <div className="border-t border-gray-700 pt-4">
+          <h4 className="text-lg font-semibold mb-3">Use Item (Phase 6)</h4>
+          <div className="text-gray-400 text-sm mb-4">
+            Item system coming soon...
+          </div>
+          <button
+            onClick={handleCancelWorkflow}
+            className="w-full px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded"
+          >
+            Close
+          </button>
         </div>
       )}
     </div>
