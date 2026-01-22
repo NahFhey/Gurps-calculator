@@ -13,15 +13,15 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
 
   if (!combatActive || !combatReveal) return null;
 
-  // Filter to only show enemies and objects (players/allies are always revealed)
+  // Filter to only show enemies (players/allies/objects are always fully revealed)
   const controllableCombatants = combatActive.participants.filter(
-    p => p.side === 'enemy' || p.side === 'object'
+    p => p.side === 'enemy'
   );
 
   if (controllableCombatants.length === 0) {
     return (
       <div className="bg-gray-800 rounded-lg p-4 text-gray-400 text-center">
-        No enemy combatants to reveal (all participants are players/allies)
+        No enemy combatants to reveal (all participants are players/allies/objects)
       </div>
     );
   }

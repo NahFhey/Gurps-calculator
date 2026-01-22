@@ -83,8 +83,9 @@ export function getHPBandText(band) {
  * @returns {object} Default reveal state
  */
 export function createDefaultRevealForInstance(instanceId, side, participant = null) {
-  // Players and allies: full reveal by default
-  if (side === 'player' || side === 'ally') {
+  // Players, allies, and objects: full reveal by default
+  // Only enemies have hidden information
+  if (side === 'player' || side === 'ally' || side === 'object') {
     return {
       name: RevealMode.NAME_FULL,
       tags: RevealMode.NOTES_FULL,
@@ -105,7 +106,7 @@ export function createDefaultRevealForInstance(instanceId, side, participant = n
     };
   }
 
-  // Enemies and unknown objects: hidden by default
+  // Enemies only: hidden by default
   return {
     name: RevealMode.NAME_HIDDEN,
     tags: RevealMode.NOTES_HIDDEN,
