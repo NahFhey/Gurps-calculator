@@ -219,20 +219,55 @@ export function getLocationByKey(profileId, locationKey) {
 }
 
 /**
+ * Extract DR value from either filtered (Phase 5) or legacy structure
+ * @param {*} drValue - DR value (could be number or Phase 5 object)
+ * @returns {number} Actual DR number
+ */
+function extractDRValue(drValue) {
+  if (drValue === null || drValue === undefined) return 0;
+
+  // Phase 5 filtered structure: {mode: 'exact', value: 4} or {mode: 'minKnown', min: 3}
+  if (typeof drValue === 'object') {
+    if (drValue.mode === 'exact' && drValue.value !== undefined) {
+      return drValue.value;
+    }
+    if (drValue.mode === 'minKnown' && drValue.min !== undefined) {
+      return drValue.min; // Use minimum known value
+    }
+    // Unknown DR
+    return 0;
+  }
+
+  // Legacy: simple number
+  return drValue;
+}
+
+/**
  * Get DR for a specific location on a character
  * Falls back to general DR if location DR is not set
+ * Phase 5 compatible: handles both filtered and legacy DR structures
  * @param {Object} character - Character object
  * @param {string} locationKey - Location key
  * @returns {number} DR value
  */
 export function getLocationDR(character, locationKey) {
-  // Check if character has drByLocation and this specific location
+  // Phase 5: Check for filtered structure first
+  if (character.dr && typeof character.dr === 'object' && character.dr.byLocation) {
+    const locationDR = character.dr.byLocation[locationKey];
+    if (locationDR) {
+      return extractDRValue(locationDR);
+    }
+    // No specific location DR, use general
+    return extractDRValue(character.dr.general);
+  }
+
+  // Legacy: Check if character has drByLocation and this specific location
   if (character.drByLocation && typeof character.drByLocation[locationKey] === 'number') {
     return character.drByLocation[locationKey];
   }
 
-  // Fall back to general DR
-  return character.dr || 0;
+  // Fall back to general DR (could be number or Phase 5 object)
+  return extractDRValue(character.dr);
 }
 
 /**
