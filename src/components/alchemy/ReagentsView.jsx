@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getReagentAspectPoints } from '../../utils/alchemy';
+import PropTypes from 'prop-types';
 
 export function ReagentsView({ reagents, alchemySettings }) {
   const [expanded, setExpanded] = useState({});
@@ -341,3 +341,8 @@ export function ReagentsView({ reagents, alchemySettings }) {
     </div>
   );
 }
+
+ReagentsView.propTypes = {
+  reagents: PropTypes.array.isRequired,
+  alchemySettings: PropTypes.object
+};

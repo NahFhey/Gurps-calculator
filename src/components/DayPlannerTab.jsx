@@ -1,29 +1,25 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Moon, ChevronRight, Trash2, Edit2, Users, CheckCircle, Circle } from 'lucide-react';
+import PropTypes from 'prop-types';
+import { Plus, Moon, ChevronRight, Trash2, Users, CheckCircle, Circle } from 'lucide-react';
 import { DiceRoller } from './DiceRoller';
 import {
   SLOTS_PER_DAY,
   SLOT_NAMES,
-  SLOT_STATUS,
   TASK_STATUS,
   TASK_MODES,
   FISHING_METHODS,
   FORAGING_RARITIES
 } from '../constants';
 import {
-  createTimeSlot,
   createTaskAssignment,
   createPendingDayLedger,
   getAssignedWorkersForSlot,
-  isWorkerAssignedInSlot,
   validateWorkerAssignment,
-  updateTaskAssignedWorkers,
   getTasksForSlot,
   canAdvanceSlot,
   advanceToNextSlot,
   addTaskSummaryToLedger,
   commitPendingDayLedger,
-  getCurrentSlot,
   ensureDaySlotsExist
 } from '../utils/dayPlanner';
 import { resolveTask } from '../utils/taskResolution';
@@ -45,8 +41,8 @@ export function DayPlannerTab({
   workers,
   foods,
   materials,
-  foodTypes,
-  materialTypes,
+  _foodTypes, // Passed but not used in this component
+  _materialTypes, // Passed but not used in this component
 
   // Day Planner data
   timeSlots,
@@ -90,13 +86,6 @@ export function DayPlannerTab({
       savePendingDayLedger(newLedger);
     }
   }
-
-  /**
-   * Gets the current slot object
-   */
-  const currentSlotObj = useMemo(() => {
-    return getCurrentSlot(timeSlots, currentDay, currentSlot);
-  }, [timeSlots, currentDay, currentSlot]);
 
   /**
    * Gets tasks for the current slot
@@ -379,7 +368,7 @@ export function DayPlannerTab({
                 No tasks planned for this slot
               </div>
             ) : (
-              currentSlotTasks.map((task, index) => (
+              currentSlotTasks.map((task, _index) => (
                 <div
                   key={task.id}
                   onClick={() => setSelectedTaskId(task.id)}
@@ -1341,3 +1330,35 @@ function TaskDetailPanel({
     </div>
   );
 }
+
+DayPlannerTab.propTypes = {
+  // Gathering data
+  species: PropTypes.array.isRequired,
+  tools: PropTypes.array.isRequired,
+  tables: PropTypes.array.isRequired,
+  environments: PropTypes.array.isRequired,
+  bait: PropTypes.array.isRequired,
+  categories: PropTypes.array.isRequired,
+  items: PropTypes.array.isRequired,
+  workers: PropTypes.array.isRequired,
+  foods: PropTypes.array.isRequired,
+  materials: PropTypes.array.isRequired,
+  _foodTypes: PropTypes.array.isRequired,
+  _materialTypes: PropTypes.array.isRequired,
+
+  // Day Planner data
+  timeSlots: PropTypes.array.isRequired,
+  taskAssignments: PropTypes.array.isRequired,
+  pendingDayLedger: PropTypes.object,
+  currentDay: PropTypes.number.isRequired,
+  currentSlot: PropTypes.number.isRequired,
+
+  // Save functions
+  saveTimeSlots: PropTypes.func.isRequired,
+  saveTaskAssignments: PropTypes.func.isRequired,
+  savePendingDayLedger: PropTypes.func.isRequired,
+  saveCurrentDay: PropTypes.func.isRequired,
+  saveCurrentSlot: PropTypes.func.isRequired,
+  saveFoods: PropTypes.func.isRequired,
+  saveMaterials: PropTypes.func.isRequired
+};

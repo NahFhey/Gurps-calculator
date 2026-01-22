@@ -652,7 +652,7 @@ export function evaluateForagingRoll(roll, effectiveSkill, isTargeted = false) {
 export function determineForageFind({
   rollResult,
   findTable,
-  targetCategory = null,
+  _targetCategory = null,
   targetItem = null
 }) {
   // If targeted search and successful, return target item

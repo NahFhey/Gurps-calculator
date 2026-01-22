@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { Plus } from 'lucide-react';
 import { applyWorkBlockResult, calculateFormulaStats } from '../../utils/alchemy';
 import { DiceRoller } from '../DiceRoller';
-import { INGREDIENT_ROLES, VECTORS } from '../../constants';
+import { VECTORS } from '../../constants';
 import { toNumberOr } from '../../utils/helpers';
 
 export function BatchesView({ batches, workers, formulas, reagents, labs, saveBatches, saveFormulas, saveReagents }) {
@@ -22,7 +23,7 @@ export function BatchesView({ batches, workers, formulas, reagents, labs, saveBa
   const [batchName, setBatchName] = useState('');
   const [ingredients, setIngredients] = useState([]);
   const [selectedVector, setSelectedVector] = useState('Potion');
-  const [selectedTier, setSelectedTier] = useState(1);
+  const [_selectedTier, _setSelectedTier] = useState(1); // Tier is auto-calculated, not user-selected
   const [selectedLabId, setSelectedLabId] = useState(labs?.[0]?.id || 'default');
 
   const activeBatches = batches.filter(b => b.phase === 'brewing');
@@ -872,3 +873,14 @@ export function BatchesView({ batches, workers, formulas, reagents, labs, saveBa
     </div>
   );
 }
+
+BatchesView.propTypes = {
+  batches: PropTypes.array.isRequired,
+  workers: PropTypes.array.isRequired,
+  formulas: PropTypes.array.isRequired,
+  reagents: PropTypes.array.isRequired,
+  labs: PropTypes.array.isRequired,
+  saveBatches: PropTypes.func.isRequired,
+  saveFormulas: PropTypes.func.isRequired,
+  saveReagents: PropTypes.func.isRequired
+};

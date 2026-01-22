@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import { startBatchFromFormula } from '../../utils/alchemy';
 
 export function FormulasView({ reagents, formulas, batches, saveReagents, saveBatches }) {
@@ -76,3 +77,11 @@ export function FormulasView({ reagents, formulas, batches, saveReagents, saveBa
     </div>
   );
 }
+
+FormulasView.propTypes = {
+  reagents: PropTypes.array.isRequired,
+  formulas: PropTypes.array.isRequired,
+  batches: PropTypes.array.isRequired,
+  saveReagents: PropTypes.func.isRequired,
+  saveBatches: PropTypes.func.isRequired
+};

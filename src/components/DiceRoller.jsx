@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import { Dices } from 'lucide-react';
 
 /**
@@ -114,3 +115,27 @@ export function DiceRoller({
     </div>
   );
 }
+
+DiceRoller.propTypes = {
+  label: PropTypes.string,
+  diceCount: PropTypes.number,
+  diceSides: PropTypes.number,
+  dice: PropTypes.arrayOf(PropTypes.number),
+  total: PropTypes.number,
+  onRoll: PropTypes.func.isRequired,
+  onTotalChange: PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
+  targetNumber: PropTypes.number,
+  modifier: PropTypes.number
+};
+
+DiceRoller.defaultProps = {
+  label: 'Roll Dice',
+  diceCount: 3,
+  diceSides: 6,
+  dice: [],
+  total: 0,
+  disabled: false,
+  targetNumber: null,
+  modifier: 0
+};

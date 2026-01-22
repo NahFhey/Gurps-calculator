@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { Plus, Trash2 } from 'lucide-react';
-import { ASPECTS, REFINEMENT_LEVELS } from '../../constants';
+import { REFINEMENT_LEVELS } from '../../constants';
 import { computeDominantSecondary } from '../../utils/alchemy';
 import { toNumberOr } from '../../utils/helpers';
 
@@ -258,3 +259,7 @@ export function TallyWorksheetView({ reagents }) {
     </div>
   );
 }
+
+TallyWorksheetView.propTypes = {
+  reagents: PropTypes.array.isRequired
+};

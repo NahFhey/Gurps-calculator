@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { toNumberOr } from '../utils/helpers';
 import { DiceRoller } from './DiceRoller';
+import { useInventory } from '../contexts/InventoryContext';
+import { useConfig } from '../contexts/ConfigContext';
 
 /**
  * CookingTab Component - Manages recipe creation and cooking in GURPS
@@ -17,17 +19,12 @@ import { DiceRoller } from './DiceRoller';
  * - Critical success/failure thresholds per GURPS rules
  * - Substitution penalties: -1 (same type), -3 (similar), -5 (unrelated)
  *
- * @param {Object} props - Component props
- * @param {Array<Object>} props.foods - Available food inventory with id, name, types, quantity
- * @param {Array<Object>} props.recipes - Saved recipes with ingredients, difficulty, skills
- * @param {Function} props.saveFoods - Callback to persist food inventory changes
- * @param {Function} props.saveRecipes - Callback to persist recipe changes
- * @param {Array<Object>} props.workers - Available workers with cooking skills
- * @param {Array<Object>} props.kitchens - Available kitchens with id, name, rating bonus
- * @param {Array<Object>} props.cookingSkills - Skill table for random skill selection
  * @returns {JSX.Element} The cooking tab interface
  */
-export function CookingTab({ foods, recipes, saveFoods, saveRecipes, workers, kitchens, cookingSkills }) {
+export function CookingTab() {
+  // Get data from contexts
+  const { foods, saveFoods } = useInventory();
+  const { recipes, saveRecipes, workers, kitchens, cookingSkills } = useConfig();
   const [view, setView] = useState('create');
   const [selected, setSelected] = useState([]);
   const [numPeople, setNumPeople] = useState(10);

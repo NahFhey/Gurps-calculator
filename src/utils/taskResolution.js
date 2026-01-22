@@ -204,7 +204,7 @@ export function resolveForagingTask({
   leader,
   environment,
   tools,
-  categories,
+  _categories,
   items,
   tables,
   manualRolls = null

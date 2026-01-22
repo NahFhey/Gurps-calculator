@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Plus, Save, X, Trash2 } from 'lucide-react';
 import { toNumberOr } from '../utils/helpers';
+import { useInventory } from '../contexts/InventoryContext';
+import { useConfig } from '../contexts/ConfigContext';
 
 /**
  * InventoryTab Component - Manages raw materials and food supplies inventory
@@ -16,17 +18,12 @@ import { toNumberOr } from '../utils/helpers';
  * - GM-mode required for editing item types (prevents player manipulation)
  * - Delete confirmation modal
  *
- * @param {Object} props - Component props
- * @param {Array<Object>} props.materials - Raw material inventory
- * @param {Array<Object>} props.foods - Food supply inventory
- * @param {Array<Object|string>} props.foodTypes - Available food type definitions
- * @param {Array<Object>} props.materialTypes - Available material type definitions
- * @param {boolean} props.gmMode - Whether GM mode is enabled (allows type editing)
- * @param {Function} props.saveMaterials - Callback to persist material changes
- * @param {Function} props.saveFoods - Callback to persist food changes
  * @returns {JSX.Element} The inventory management interface
  */
-export function InventoryTab({ materials, foods, foodTypes, materialTypes, gmMode, saveMaterials, saveFoods }) {
+export function InventoryTab() {
+  // Get data from contexts
+  const { materials, foods, foodTypes, materialTypes, saveMaterials, saveFoods } = useInventory();
+  const { gmMode } = useConfig();
   const [view, setView] = useState('materials');
   const [showAddMat, setShowAddMat] = useState(false);
   const [showAddFood, setShowAddFood] = useState(false);

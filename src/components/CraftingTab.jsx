@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { QUALITIES } from '../constants';
 import { toNumberOr, upsertCraft, removeCraft, refundMaterialsFromProject } from '../utils/helpers';
 import { DiceRoller } from './DiceRoller';
+import { useInventory } from '../contexts/InventoryContext';
+import { useCrafting } from '../contexts/CraftingContext';
+import { useConfig } from '../contexts/ConfigContext';
 
 /**
  * CraftingTab Component - Manages GURPS crafting projects with design and craft phases
@@ -19,19 +22,13 @@ import { DiceRoller } from './DiceRoller';
  * - Quality levels: cheap, good, fine, very fine, legendary
  * - Material properties affect final stats (HT, weight, HP modifiers)
  *
- * @param {Object} props - Component props
- * @param {Array<Object>} props.materials - Available crafting materials with id, name, type, quantity
- * @param {Array<Object>} props.crafts - Active and completed crafting projects
- * @param {Array<Object>} props.craftDesigns - Saved design templates for quick-start crafting
- * @param {Object} props.customTemplates - Template definitions by category (weapons, armor, etc.)
- * @param {Array<Object>} props.materialTypes - Material type definitions with difficulty, HT, modifiers
- * @param {Array<Object>} props.workers - Available workers with crafting/designing skills
- * @param {Function} props.saveMaterials - Callback to persist material inventory changes
- * @param {Function} props.saveCrafts - Callback to persist crafting project changes
- * @param {Function} props.saveCraftDesigns - Callback to persist saved design changes
  * @returns {JSX.Element} The crafting tab interface
  */
-export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, materialTypes, workers, saveMaterials, saveCrafts, saveCraftDesigns }) {
+export function CraftingTab() {
+  // Get data from contexts
+  const { materials, materialTypes, saveMaterials } = useInventory();
+  const { crafts, craftDesigns, customTemplates, saveCrafts, saveCraftDesigns } = useCrafting();
+  const { workers } = useConfig();
   const [view, setView] = useState('list');
   const [current, setCurrent] = useState(null);
   const [skill, setSkill] = useState('');
@@ -571,7 +568,6 @@ export function CraftingTab({ materials, crafts, craftDesigns, customTemplates, 
                 const designTime = 2 * finalHP;
                 const craftTime = finalHP;
                 const progress = (c.shifts || []).reduce((sum, s) => sum + (s.hoursAdded || 0), 0);
-                const designProgress = (c.designShifts || []).reduce((sum, s) => sum + (s.hoursAdded || 0), 0);
 
                 let targetHours = 0;
                 let currentProgress = 0;

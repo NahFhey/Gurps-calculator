@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Save, X, ChefHat, Hammer, Package, Beaker, FileText, BookOpen, Fish } from 'lucide-react';
-import { TEMPLATES } from './constants';
+import { Edit2, ChefHat, Hammer, Package, Beaker, FileText, BookOpen, Fish } from 'lucide-react';
 import { safeParse } from './utils/helpers';
+import { logger } from './utils/logger';
 import { useKeyedDebouncedStorageSave } from './hooks/useStorage';
 import { InventoryTab } from './components/InventoryTab';
 import { CookingTab } from './components/CookingTab';
@@ -10,12 +10,17 @@ import { ManagerTab } from './components/ManagerTab';
 import { AlchemyTab } from './components/AlchemyTab';
 import { ChangelogTab } from './components/ChangelogTab';
 import { RulesTab } from './components/RulesTab';
-import { GatheringTab } from './components/GatheringTab';
 import { DayPlannerTab } from './components/DayPlannerTab';
 import { VERSION } from './version';
+import { TEMPLATES } from './constants';
+import InventoryContext from './contexts/InventoryContext';
+import CraftingContext from './contexts/CraftingContext';
+import AlchemyContext from './contexts/AlchemyContext';
+import GatheringContext from './contexts/GatheringContext';
+import ConfigContext from './contexts/ConfigContext';
 
 export default function GURPSPartyTool() {
-  console.log('GURPSPartyTool rendering');
+  logger.log('GURPSPartyTool rendering');
   const [activeTab, setActiveTab] = useState('inventory');
   const [materials, setMaterials] = useState([]);
   const [foods, setFoods] = useState([]);
@@ -76,12 +81,59 @@ export default function GURPSPartyTool() {
   const [pendingDayLedger, setPendingDayLedger] = useState(null); // Current day's pending results
   const [currentSlot, setCurrentSlot] = useState(0); // Current slot index (0-2)
 
+  // Keyed debounced storage writer - maintains separate timers per key
+  const debouncedStorageSave = useKeyedDebouncedStorageSave(500);
+
+  /**
+   * Factory function to create save functions
+   * Eliminates duplicate code by generating save functions dynamically
+   */
+  const createSaveFunction = (setState, key) => {
+    return (data) => {
+      setState(data);
+      debouncedStorageSave(key, data);
+    };
+  };
+
+  // Create save functions using factory
+  const saveMaterials = createSaveFunction(setMaterials, 'materials');
+  const saveFoods = createSaveFunction(setFoods, 'foods');
+  const saveRecipes = createSaveFunction(setRecipes, 'recipes');
+  const saveCrafts = createSaveFunction(setCrafts, 'crafts');
+  const saveFoodTypes = createSaveFunction(setFoodTypes, 'foodTypes');
+  const saveMaterialTypes = createSaveFunction(setMaterialTypes, 'materialTypes');
+  const saveWorkers = createSaveFunction(setWorkers, 'workers');
+  const saveCustomTemplates = createSaveFunction(setCustomTemplates, 'customTemplates');
+  const saveAlchemyReagents = createSaveFunction(setAlchemyReagents, 'alchemyReagents');
+  const saveAlchemyFormulas = createSaveFunction(setAlchemyFormulas, 'alchemyFormulas');
+  const saveAlchemyBatches = createSaveFunction(setAlchemyBatches, 'alchemyBatches');
+  const saveAlchemyLabs = createSaveFunction(setAlchemyLabs, 'alchemyLabs');
+  const saveKitchens = createSaveFunction(setKitchens, 'kitchens');
+  const saveCookingSkills = createSaveFunction(setCookingSkills, 'cookingSkills');
+  const saveEffectFamilyMap = createSaveFunction(setEffectFamilyMap, 'effectFamilyMap');
+  const saveAlchemySettings = createSaveFunction(setAlchemySettings, 'alchemySettings');
+  const saveCraftDesigns = createSaveFunction(setCraftDesigns, 'craftDesigns');
+  const saveGatheringSpecies = createSaveFunction(setGatheringSpecies, 'gatheringSpecies');
+  const saveGatheringTools = createSaveFunction(setGatheringTools, 'gatheringTools');
+  const saveGatheringTables = createSaveFunction(setGatheringTables, 'gatheringTables');
+  const saveGatheringEnvironments = createSaveFunction(setGatheringEnvironments, 'gatheringEnvironments');
+  const saveGatheringSessions = createSaveFunction(setGatheringSessions, 'gatheringSessions');
+  const saveGatheringDailyEvents = createSaveFunction(setGatheringDailyEvents, 'gatheringDailyEvents');
+  const saveGatheringBait = createSaveFunction(setGatheringBait, 'gatheringBait');
+  const saveGatheringCategories = createSaveFunction(setGatheringCategories, 'gatheringCategories');
+  const saveGatheringItems = createSaveFunction(setGatheringItems, 'gatheringItems');
+  const saveCurrentDay = createSaveFunction(setCurrentDay, 'currentDay');
+  const saveTimeSlots = createSaveFunction(setTimeSlots, 'timeSlots');
+  const saveTaskAssignments = createSaveFunction(setTaskAssignments, 'taskAssignments');
+  const savePendingDayLedger = createSaveFunction(setPendingDayLedger, 'pendingDayLedger');
+  const saveCurrentSlot = createSaveFunction(setCurrentSlot, 'currentSlot');
+
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
     // Guard against missing storage
     if (!window?.storage?.get || !window?.storage?.set) {
-      console.warn('Storage unavailable');
+      logger.warn('Storage unavailable');
       setLoading(false);
       return;
     }
@@ -234,7 +286,11 @@ export default function GURPSPartyTool() {
 
       setCustomTemplates(templates);
       if (needsSave) {
-        try { await window.storage.set('customTemplates', JSON.stringify(templates), true); } catch (e) {}
+        try {
+          await window.storage.set('customTemplates', JSON.stringify(templates), true);
+        } catch (e) {
+          logger.error('Failed to save custom templates:', e);
+        }
       }
 
       // Load gathering system data
@@ -255,142 +311,10 @@ export default function GURPSPartyTool() {
       setPendingDayLedger(safeParse(pendingDayLedgerR?.value, null));
       setCurrentSlot(safeParse(currentSlotR?.value, 0));
     } catch (error) {
-      console.error('Error loading:', error);
+      logger.error('Error loading:', error);
     }
     setLoading(false);
   }
-
-  async function saveMaterials(d) {
-    setMaterials(d);
-    debouncedStorageSave('materials', d);
-  }
-  async function saveFoods(d) {
-    setFoods(d);
-    debouncedStorageSave('foods', d);
-  }
-  async function saveRecipes(d) {
-    setRecipes(d);
-    debouncedStorageSave('recipes', d);
-  }
-  async function saveCrafts(d) {
-    setCrafts(d);
-    debouncedStorageSave('crafts', d);
-  }
-  async function saveFoodTypes(d) {
-    setFoodTypes(d);
-    debouncedStorageSave('foodTypes', d);
-  }
-  async function saveMaterialTypes(d) {
-    setMaterialTypes(d);
-    debouncedStorageSave('materialTypes', d);
-  }
-  async function saveWorkers(d) {
-    setWorkers(d);
-    debouncedStorageSave('workers', d);
-  }
-  async function saveCustomTemplates(d) {
-    setCustomTemplates(d);
-    debouncedStorageSave('customTemplates', d);
-  }
-  async function saveAlchemyReagents(d) {
-    setAlchemyReagents(d);
-    debouncedStorageSave('alchemyReagents', d);
-  }
-  async function saveAlchemyFormulas(d) {
-    setAlchemyFormulas(d);
-    debouncedStorageSave('alchemyFormulas', d);
-  }
-  async function saveAlchemyBatches(d) {
-    setAlchemyBatches(d);
-    debouncedStorageSave('alchemyBatches', d);
-  }
-  async function saveAlchemyLabs(d) {
-    setAlchemyLabs(d);
-    debouncedStorageSave('alchemyLabs', d);
-  }
-  async function saveKitchens(d) {
-    setKitchens(d);
-    debouncedStorageSave('kitchens', d);
-  }
-  async function saveCookingSkills(d) {
-    setCookingSkills(d);
-    debouncedStorageSave('cookingSkills', d);
-  }
-  async function saveEffectFamilyMap(d) {
-    setEffectFamilyMap(d);
-    debouncedStorageSave('effectFamilyMap', d);
-  }
-  async function saveAlchemySettings(d) {
-    setAlchemySettings(d);
-    debouncedStorageSave('alchemySettings', d);
-  }
-  async function saveCraftDesigns(d) {
-    setCraftDesigns(d);
-    debouncedStorageSave('craftDesigns', d);
-  }
-
-  // Gathering system save functions
-  async function saveGatheringSpecies(d) {
-    setGatheringSpecies(d);
-    debouncedStorageSave('gatheringSpecies', d);
-  }
-  async function saveGatheringTools(d) {
-    setGatheringTools(d);
-    debouncedStorageSave('gatheringTools', d);
-  }
-  async function saveGatheringTables(d) {
-    setGatheringTables(d);
-    debouncedStorageSave('gatheringTables', d);
-  }
-  async function saveGatheringEnvironments(d) {
-    setGatheringEnvironments(d);
-    debouncedStorageSave('gatheringEnvironments', d);
-  }
-  async function saveGatheringSessions(d) {
-    setGatheringSessions(d);
-    debouncedStorageSave('gatheringSessions', d);
-  }
-  async function saveGatheringDailyEvents(d) {
-    setGatheringDailyEvents(d);
-    debouncedStorageSave('gatheringDailyEvents', d);
-  }
-  async function saveGatheringBait(d) {
-    setGatheringBait(d);
-    debouncedStorageSave('gatheringBait', d);
-  }
-  async function saveGatheringCategories(d) {
-    setGatheringCategories(d);
-    debouncedStorageSave('gatheringCategories', d);
-  }
-  async function saveGatheringItems(d) {
-    setGatheringItems(d);
-    debouncedStorageSave('gatheringItems', d);
-  }
-  async function saveCurrentDay(d) {
-    setCurrentDay(d);
-    debouncedStorageSave('currentDay', d);
-  }
-
-  // Day Planner system save functions
-  async function saveTimeSlots(d) {
-    setTimeSlots(d);
-    debouncedStorageSave('timeSlots', d);
-  }
-  async function saveTaskAssignments(d) {
-    setTaskAssignments(d);
-    debouncedStorageSave('taskAssignments', d);
-  }
-  async function savePendingDayLedger(d) {
-    setPendingDayLedger(d);
-    debouncedStorageSave('pendingDayLedger', d);
-  }
-  async function saveCurrentSlot(d) {
-    setCurrentSlot(d);
-    debouncedStorageSave('currentSlot', d);
-  }
-
-  // Keyed debounced storage writer - maintains separate timers per key
-  const debouncedStorageSave = useKeyedDebouncedStorageSave(500);
 
   // Cascade material type rename to all dependent structures
   function renameMaterialType(oldName, newName) {
@@ -423,8 +347,95 @@ export default function GURPSPartyTool() {
 
   if (loading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
 
+  // Context values
+  const inventoryValue = {
+    materials,
+    foods,
+    foodTypes,
+    materialTypes,
+    saveMaterials,
+    saveFoods,
+    saveFoodTypes,
+    saveMaterialTypes
+  };
+
+  const craftingValue = {
+    crafts,
+    craftDesigns,
+    customTemplates,
+    saveCrafts,
+    saveCraftDesigns,
+    saveCustomTemplates
+  };
+
+  const alchemyValue = {
+    alchemyReagents,
+    alchemyFormulas,
+    alchemyBatches,
+    alchemyLabs,
+    alchemySettings,
+    effectFamilyMap,
+    saveAlchemyReagents,
+    saveAlchemyFormulas,
+    saveAlchemyBatches,
+    saveAlchemyLabs,
+    saveAlchemySettings,
+    saveEffectFamilyMap
+  };
+
+  const gatheringValue = {
+    gatheringSpecies,
+    gatheringTools,
+    gatheringTables,
+    gatheringEnvironments,
+    gatheringSessions,
+    gatheringDailyEvents,
+    gatheringBait,
+    gatheringCategories,
+    gatheringItems,
+    currentDay,
+    timeSlots,
+    taskAssignments,
+    pendingDayLedger,
+    currentSlot,
+    saveGatheringSpecies,
+    saveGatheringTools,
+    saveGatheringTables,
+    saveGatheringEnvironments,
+    saveGatheringSessions,
+    saveGatheringDailyEvents,
+    saveGatheringBait,
+    saveGatheringCategories,
+    saveGatheringItems,
+    saveCurrentDay,
+    saveTimeSlots,
+    saveTaskAssignments,
+    savePendingDayLedger,
+    saveCurrentSlot
+  };
+
+  const configValue = {
+    workers,
+    recipes,
+    kitchens,
+    cookingSkills,
+    gmMode,
+    gmLockData,
+    saveWorkers,
+    saveRecipes,
+    saveKitchens,
+    saveCookingSkills,
+    setGmMode,
+    setGmLockData
+  };
+
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100">
+    <InventoryContext.Provider value={inventoryValue}>
+      <CraftingContext.Provider value={craftingValue}>
+        <AlchemyContext.Provider value={alchemyValue}>
+          <GatheringContext.Provider value={gatheringValue}>
+            <ConfigContext.Provider value={configValue}>
+              <div className="min-h-screen bg-gray-900 text-gray-100">
       <div className="max-w-7xl mx-auto p-6">
         <h1 className="text-3xl font-bold mb-6 text-center">
           GURPS Party Management <span className="text-xl text-gray-400">v{VERSION}</span>
@@ -456,14 +467,14 @@ export default function GURPSPartyTool() {
           </button>
         </div>
 
-        {activeTab === 'inventory' && <InventoryTab materials={materials} foods={foods} foodTypes={foodTypes} materialTypes={materialTypes} gmMode={gmMode} saveMaterials={saveMaterials} saveFoods={saveFoods} />}
-        {activeTab === 'cooking' && <CookingTab foods={foods} recipes={recipes} saveFoods={saveFoods} saveRecipes={saveRecipes} workers={workers} kitchens={kitchens} cookingSkills={cookingSkills} />}
-        {activeTab === 'crafting' && <CraftingTab materials={materials} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materialTypes={materialTypes} workers={workers} saveMaterials={saveMaterials} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} />}
+        {activeTab === 'inventory' && <InventoryTab />}
+        {activeTab === 'cooking' && <CookingTab />}
+        {activeTab === 'crafting' && <CraftingTab />}
         {activeTab === 'manager' && <ManagerTab foodTypes={foodTypes} materialTypes={materialTypes} workers={workers} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materials={materials} effectFamilyMap={effectFamilyMap} alchemySettings={alchemySettings} alchemyReagents={alchemyReagents} alchemyFormulas={alchemyFormulas} alchemyBatches={alchemyBatches} alchemyLabs={alchemyLabs} kitchens={kitchens} cookingSkills={cookingSkills} foods={foods} recipes={recipes} gmMode={gmMode} gmLockData={gmLockData} setGmMode={setGmMode} setGmLockData={setGmLockData} saveMaterials={saveMaterials} saveFoods={saveFoods} saveRecipes={saveRecipes} saveFoodTypes={saveFoodTypes} saveMaterialTypes={saveMaterialTypes} saveWorkers={saveWorkers} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} saveCustomTemplates={saveCustomTemplates} saveEffectFamilyMap={saveEffectFamilyMap} saveAlchemySettings={saveAlchemySettings} saveAlchemyReagents={saveAlchemyReagents} saveAlchemyFormulas={saveAlchemyFormulas} saveAlchemyBatches={saveAlchemyBatches} saveAlchemyLabs={saveAlchemyLabs} saveKitchens={saveKitchens} saveCookingSkills={saveCookingSkills} renameMaterialType={renameMaterialType}
           gatheringSpecies={gatheringSpecies} gatheringTools={gatheringTools} gatheringTables={gatheringTables} gatheringEnvironments={gatheringEnvironments} gatheringBait={gatheringBait} gatheringCategories={gatheringCategories} gatheringItems={gatheringItems} currentDay={currentDay}
           saveGatheringSpecies={saveGatheringSpecies} saveGatheringTools={saveGatheringTools} saveGatheringTables={saveGatheringTables} saveGatheringEnvironments={saveGatheringEnvironments} saveGatheringBait={saveGatheringBait} saveGatheringCategories={saveGatheringCategories} saveGatheringItems={saveGatheringItems} saveCurrentDay={saveCurrentDay}
         />}
-        {activeTab === 'alchemy' && <AlchemyTab reagents={alchemyReagents} formulas={alchemyFormulas} batches={alchemyBatches} labs={alchemyLabs} workers={workers} alchemySettings={alchemySettings} saveReagents={saveAlchemyReagents} saveFormulas={saveAlchemyFormulas} saveBatches={saveAlchemyBatches} saveLabs={saveAlchemyLabs} />}
+        {activeTab === 'alchemy' && <AlchemyTab />}
         {activeTab === 'gathering' && <DayPlannerTab
           species={gatheringSpecies}
           tools={gatheringTools}
@@ -492,7 +503,12 @@ export default function GURPSPartyTool() {
         />}
         {activeTab === 'rules' && <RulesTab />}
         {activeTab === 'changelog' && <ChangelogTab />}
-      </div>
-    </div>
+              </div>
+            </div>
+            </ConfigContext.Provider>
+          </GatheringContext.Provider>
+        </AlchemyContext.Provider>
+      </CraftingContext.Provider>
+    </InventoryContext.Provider>
   );
 }

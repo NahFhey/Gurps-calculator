@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { ChevronDown, ChevronRight, BookOpen } from 'lucide-react';
 
 /**
@@ -809,3 +810,11 @@ export function RulesTab({ initialSection = null }) {
     </div>
   );
 }
+
+RulesTab.propTypes = {
+  initialSection: PropTypes.string
+};
+
+RulesTab.defaultProps = {
+  initialSection: null
+};

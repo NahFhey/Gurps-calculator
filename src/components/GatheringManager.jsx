@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
+import PropTypes from 'prop-types';
 import { Plus, Save, X, Trash2, ChevronDown, ChevronRight, Edit2 } from 'lucide-react';
 import {
   GATHERING_MODES,
@@ -7,13 +8,9 @@ import {
   BAIT_TAGS,
   SPECIES_TAGS,
   FISH_SECONDARY_MATERIALS,
-  SPECIES_SPECIAL_RULES,
   GATHERING_TABLE_TYPES,
   FISH_ST_RANGE,
-  FORAGING_TOOL_TYPES,
-  FORAGING_RARITIES,
-  FORAGING_FOOD_TYPES,
-  FORAGING_MATERIAL_TYPES
+  FORAGING_RARITIES
 } from '../constants';
 
 /**
@@ -465,51 +462,6 @@ export function GatheringManager({
     setNewBaitAttracts([]);
     setNewBaitQuantity('10');
     setNewBaitRollBonus('1');
-    setShowAdd(false);
-  }
-
-  // Add or update category
-  function addCategory() {
-    if (!newCategoryName.trim()) {
-      alert('Enter category name');
-      return;
-    }
-
-    const entryData = {
-      name: newCategoryName.trim(),
-      yieldFormula: newCategoryYieldFormula || '3d',
-      inventoryOutput: {
-        inventoryKind: newCategoryInventoryKind,
-        typeId: newCategoryTypeId.trim() || newCategoryName.trim().toLowerCase().replace(/\s+/g, '_')
-      },
-      description: newCategoryDescription.trim()
-    };
-
-    if (editingId) {
-      saveCategories(categories.map(c => c.id === editingId ? { ...c, ...entryData } : c));
-    } else {
-      saveCategories([...categories, { id: crypto.randomUUID(), ...entryData }]);
-    }
-    resetCategoryForm();
-  }
-
-  function editCategory(c) {
-    setEditingId(c.id);
-    setNewCategoryName(c.name);
-    setNewCategoryYieldFormula(c.yieldFormula || '3d');
-    setNewCategoryInventoryKind(c.inventoryOutput?.inventoryKind || 'food');
-    setNewCategoryTypeId(c.inventoryOutput?.typeId || '');
-    setNewCategoryDescription(c.description || '');
-    setShowAdd(true);
-  }
-
-  function resetCategoryForm() {
-    setEditingId(null);
-    setNewCategoryName('');
-    setNewCategoryYieldFormula('3d');
-    setNewCategoryInventoryKind('food');
-    setNewCategoryTypeId('');
-    setNewCategoryDescription('');
     setShowAdd(false);
   }
 
@@ -1771,3 +1723,29 @@ export function GatheringManager({
     </div>
   );
 }
+
+GatheringManager.propTypes = {
+  species: PropTypes.array.isRequired,
+  tools: PropTypes.array.isRequired,
+  tables: PropTypes.array.isRequired,
+  environments: PropTypes.array.isRequired,
+  bait: PropTypes.array.isRequired,
+  categories: PropTypes.array.isRequired,
+  items: PropTypes.array.isRequired,
+  currentDay: PropTypes.number.isRequired,
+  foodTypes: PropTypes.array,
+  materialTypes: PropTypes.array,
+  saveSpecies: PropTypes.func.isRequired,
+  saveTools: PropTypes.func.isRequired,
+  saveTables: PropTypes.func.isRequired,
+  saveEnvironments: PropTypes.func.isRequired,
+  saveBait: PropTypes.func.isRequired,
+  saveCategories: PropTypes.func.isRequired,
+  saveItems: PropTypes.func.isRequired,
+  saveCurrentDay: PropTypes.func.isRequired
+};
+
+GatheringManager.defaultProps = {
+  foodTypes: [],
+  materialTypes: []
+};

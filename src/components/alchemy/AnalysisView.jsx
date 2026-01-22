@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { DiceRoller } from '../DiceRoller';
 import { ASPECTS } from '../../constants';
 
@@ -24,7 +25,7 @@ function getIdentificationResult(mos) {
   return 1; // Partial (Primary only)
 }
 
-export function AnalysisView({ reagents, labs, workers, alchemySettings, saveReagents }) {
+export function AnalysisView({ reagents, labs, workers, _alchemySettings, saveReagents }) {
   const [selectedReagent, setSelectedReagent] = useState(null);
   const [selectedWorker, setSelectedWorker] = useState('');
   const [selectedLabId, setSelectedLabId] = useState(labs?.[0]?.id || 'default');
@@ -352,3 +353,11 @@ export function AnalysisView({ reagents, labs, workers, alchemySettings, saveRea
     </div>
   );
 }
+
+AnalysisView.propTypes = {
+  reagents: PropTypes.array.isRequired,
+  labs: PropTypes.array.isRequired,
+  workers: PropTypes.array.isRequired,
+  _alchemySettings: PropTypes.object,
+  saveReagents: PropTypes.func.isRequired
+};

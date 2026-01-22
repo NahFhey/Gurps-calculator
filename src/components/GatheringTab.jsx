@@ -1,15 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { Fish, Users, MapPin, Target, Crosshair, Dice6, Package, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { Fish, Users, Target, Package, CheckCircle, XCircle } from 'lucide-react';
 import { DiceRoller } from './DiceRoller';
 import {
   GATHERING_MODES,
   FISHING_METHODS,
-  DYNAMIC_EVENT_THRESHOLDS,
   DEFAULT_FISH_ST,
-  MAX_NET_REROLL_ATTEMPTS,
   FORAGING_SKILLS,
-  FORAGING_RARITIES,
-  FORAGING_CONTEXT_MODIFIERS
+  FORAGING_RARITIES
 } from '../constants';
 import {
   evaluateFishingRoll,
@@ -17,17 +14,13 @@ import {
   determineDynamicEventType,
   rollOnCatchTable,
   rollNetCatch,
-  resolveLargeFishStruggle,
   calculateFishYields,
   generateGroupKey,
   hasDailyEventBeenRolled,
   filterToolsForMethod,
   createGatheringSession,
-  evaluateDiceFormula,
   parseDiceFormula,
   roll3d6,
-  isCriticalSuccess,
-  isCriticalFailure,
   calculateEffectiveForagingSkill,
   evaluateForagingRoll,
   determineForageFind,

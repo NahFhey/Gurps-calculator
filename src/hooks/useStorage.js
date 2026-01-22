@@ -1,4 +1,5 @@
 import React from 'react';
+import { logger } from '../utils/logger';
 
 /**
  * @fileoverview Custom React hook for debounced storage operations
@@ -66,7 +67,7 @@ export function useKeyedDebouncedStorageSave(delay = 500) {
             localStorage.setItem(key, JSON.stringify(data));
           }
         } catch (e) {
-          console.error(`Storage flush failed for ${key}:`, e);
+          logger.error(`Storage flush failed for ${key}:`, e);
         }
       }
     } else {
@@ -86,7 +87,7 @@ export function useKeyedDebouncedStorageSave(delay = 500) {
             localStorage.setItem(k, JSON.stringify(data));
           }
         } catch (e) {
-          console.error(`Storage flush failed for ${k}:`, e);
+          logger.error(`Storage flush failed for ${k}:`, e);
         }
       }
     }
@@ -129,7 +130,7 @@ export function useKeyedDebouncedStorageSave(delay = 500) {
 
   // Setup beforeunload and unmount handlers
   React.useEffect(() => {
-    const handleBeforeUnload = (e) => {
+    const handleBeforeUnload = (_e) => {
       const pendingData = pendingDataRef.current;
       if (pendingData.size > 0) {
         // Flush all pending saves synchronously
@@ -144,7 +145,7 @@ export function useKeyedDebouncedStorageSave(delay = 500) {
               localStorage.setItem(k, JSON.stringify(data));
             }
           } catch (err) {
-            console.error(`Beforeunload save failed for ${k}:`, err);
+            logger.error(`Beforeunload save failed for ${k}:`, err);
           }
         }
       }
