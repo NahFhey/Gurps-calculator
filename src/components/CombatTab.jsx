@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
-import { Users, Swords, History } from 'lucide-react';
+import { Users, Swords, History, ScrollText } from 'lucide-react';
 import { useCombat } from '../contexts/CombatContext';
 import CharacterLibrary from './combat/CharacterLibrary';
 import EncounterSetup from './combat/EncounterSetup';
 import CombatTracker from './combat/CombatTracker';
+import CombatHistory from './combat/CombatHistory';
 
 /**
  * Main Combat Runner tab component
  * Manages character library, encounter setup, and active combat
  */
 export function CombatTab() {
-  const [view, setView] = useState('library'); // 'library', 'setup', 'tracker'
+  const [view, setView] = useState('library'); // 'library', 'setup', 'tracker', 'history'
   const { combatActive } = useCombat();
 
   // If there's an active combat, automatically show tracker
@@ -49,6 +50,21 @@ export function CombatTab() {
           Encounter Setup
         </button>
 
+        <button
+          onClick={() => setView('history')}
+          disabled={!!combatActive}
+          className={`flex items-center gap-2 px-4 py-2 rounded ${
+            currentView === 'history'
+              ? 'bg-blue-600 text-white'
+              : combatActive
+              ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
+        >
+          <ScrollText size={20} />
+          History
+        </button>
+
         {combatActive && (
           <button
             onClick={() => setView('tracker')}
@@ -62,6 +78,7 @@ export function CombatTab() {
 
       {currentView === 'library' && <CharacterLibrary />}
       {currentView === 'setup' && <EncounterSetup />}
+      {currentView === 'history' && <CombatHistory />}
       {currentView === 'tracker' && combatActive && <CombatTracker />}
     </div>
   );
