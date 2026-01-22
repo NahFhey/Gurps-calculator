@@ -15,7 +15,7 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
 
   // Filter to only show enemies (players/allies/objects are always fully revealed)
   const controllableCombatants = combatActive.participants.filter(
-    p => p.side === 'enemy'
+    p => (p.category || p.side) === 'enemy'
   );
 
   if (controllableCombatants.length === 0) {

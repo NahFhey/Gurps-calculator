@@ -138,7 +138,7 @@ export function createInitialRevealState(encounterId, participants) {
   const byInstanceId = {};
 
   for (const participant of participants) {
-    const side = participant.side || 'enemy'; // default to enemy if not specified
+    const side = participant.category || participant.side || 'enemy'; // Use category field (category is the actual field used)
     byInstanceId[participant.instanceId] = createDefaultRevealForInstance(
       participant.instanceId,
       side,

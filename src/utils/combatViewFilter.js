@@ -73,16 +73,17 @@ export function getCombatView(combatState, revealState, viewMode) {
  * @returns {object} Filtered participant (safe for Player View)
  */
 function filterParticipant(participant, revealState) {
+  const side = participant.category || participant.side || 'enemy'; // Use category field (category is the actual field used)
   const reveal = getRevealForInstance(
     revealState,
     participant.instanceId,
-    participant.side
+    side
   );
 
   const filtered = {
     instanceId: participant.instanceId,
     id: participant.id, // Legacy support
-    side: participant.side,
+    side: participant.category || participant.side, // Use category as side
     category: participant.category, // Always show category
     _reveal: reveal // Attach reveal metadata for UI rendering
   };

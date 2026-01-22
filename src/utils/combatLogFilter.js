@@ -8,6 +8,13 @@
 import { RevealMode } from './combatReveal.js';
 
 /**
+ * Get participant category/side (participants use 'category', not 'side')
+ */
+function getParticipantSide(participant) {
+  return participant?.category || participant?.side || 'enemy';
+}
+
+/**
  * Filter combat log for Player View
  *
  * @param {array} log - Full truth combat log
@@ -80,7 +87,7 @@ function filterLogEntry(entry, revealState, combatState) {
  */
 function filterResourceEntry(entry, actorReveal, actor) {
   // If actor is player/ally or HP is revealed as exact, show as-is
-  if (actor?.side === 'player' || actor?.side === 'ally' || actorReveal?.hp?.mode === RevealMode.NUMERIC_EXACT) {
+  if (getParticipantSide(actor) === 'player' || getParticipantSide(actor) === 'ally' || actorReveal?.hp?.mode === RevealMode.NUMERIC_EXACT) {
     return {
       ...entry,
       text: redactName(entry.text, actorReveal, actor)
@@ -116,7 +123,7 @@ function filterResourceEntry(entry, actorReveal, actor) {
  */
 function filterRollEntry(entry, actorReveal, actor) {
   // If actor is player/ally, show full roll
-  if (actor?.side === 'player' || actor?.side === 'ally') {
+  if (getParticipantSide(actor) === 'player' || getParticipantSide(actor) === 'ally') {
     return {
       ...entry,
       text: redactName(entry.text, actorReveal, actor)
@@ -164,7 +171,7 @@ function filterActionEntry(entry, actorReveal, targetReveal, actor, target) {
     if (!attack) return entry;
 
     // Show if actor is player/ally
-    if (actor?.side === 'player' || actor?.side === 'ally') {
+    if (getParticipantSide(actor) === 'player' || getParticipantSide(actor) === 'ally') {
       return {
         ...entry,
         text: redactNames(entry.text, actorReveal, targetReveal, actor, target)
@@ -193,7 +200,7 @@ function filterActionEntry(entry, actorReveal, targetReveal, actor, target) {
     if (!defense) return entry;
 
     // Show if defender is player/ally
-    if (target?.side === 'player' || target?.side === 'ally') {
+    if (getParticipantSide(target) === 'player' || getParticipantSide(target) === 'ally') {
       return {
         ...entry,
         text: redactNames(entry.text, actorReveal, targetReveal, actor, target)
@@ -232,7 +239,7 @@ function filterActionEntry(entry, actorReveal, targetReveal, actor, target) {
     if (!damage) return entry;
 
     // Show if target is player/ally
-    if (target?.side === 'player' || target?.side === 'ally') {
+    if (getParticipantSide(target) === 'player' || getParticipantSide(target) === 'ally') {
       return {
         ...entry,
         text: redactNames(entry.text, actorReveal, targetReveal, actor, target)
@@ -290,7 +297,7 @@ function filterInjuryEntry(entry, actorReveal, targetReveal, actor, target) {
   const targetName = getDisplayName(target, targetReveal);
 
   // Show if target is player/ally
-  if (target?.side === 'player' || target?.side === 'ally') {
+  if (getParticipantSide(target) === 'player' || getParticipantSide(target) === 'ally') {
     return {
       ...entry,
       text: redactNames(entry.text, actorReveal, targetReveal, actor, target)
@@ -331,7 +338,7 @@ function filterInjuryEntry(entry, actorReveal, targetReveal, actor, target) {
 function filterEffectEntry(entry, actorReveal, actor) {
   // Effects are generally visible (they have obvious in-game signs)
   // But hide for enemies if notes are hidden
-  if (actor?.side === 'enemy' && actorReveal?.notes === RevealMode.NOTES_HIDDEN) {
+  if (getParticipantSide(actor) === 'enemy' && actorReveal?.notes === RevealMode.NOTES_HIDDEN) {
     const name = getDisplayName(actor, actorReveal);
     return {
       ...entry,
