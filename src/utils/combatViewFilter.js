@@ -83,8 +83,16 @@ function filterParticipant(participant, revealState) {
     instanceId: participant.instanceId,
     id: participant.id, // Legacy support
     side: participant.side,
+    category: participant.category, // Always show category
     _reveal: reveal // Attach reveal metadata for UI rendering
   };
+
+  // Copy non-secret combat stats (always visible for UI purposes)
+  filtered.basicSpeed = participant.basicSpeed;
+  filtered.dx = participant.dx;
+  filtered.maxHP = participant.maxHP || participant.hp;
+  filtered.maxFP = participant.maxFP || participant.fp;
+  filtered.maxMP = participant.maxMP || participant.mp;
 
   // Name
   filtered.name = filterName(participant.name, participant.instanceId, reveal.name);
@@ -183,10 +191,17 @@ function filterTags(tags, tagsReveal) {
 
 /**
  * Filter numeric resource (HP/FP/MP)
+ * For HP: Always show health band for gameplay (healthy/wounded/critical/dead)
  */
 function filterNumericResource(current, max, reveal) {
   if (!reveal) {
-    return { mode: RevealMode.NUMERIC_UNKNOWN };
+    // Default: show band for HP (for gameplay), unknown for FP/MP
+    const band = calculateHPBand(current, max);
+    return {
+      mode: RevealMode.NUMERIC_BAND,
+      band,
+      bandText: getHPBandText(band)
+    };
   }
 
   switch (reveal.mode) {
@@ -207,8 +222,13 @@ function filterNumericResource(current, max, reveal) {
 
     case RevealMode.NUMERIC_UNKNOWN:
     default:
+      // For HP: still show band for gameplay purposes
+      // For FP/MP: truly unknown
+      const hpBand = calculateHPBand(current, max);
       return {
-        mode: RevealMode.NUMERIC_UNKNOWN
+        mode: RevealMode.NUMERIC_BAND, // Changed from UNKNOWN to BAND
+        band: hpBand,
+        bandText: getHPBandText(hpBand)
       };
   }
 }

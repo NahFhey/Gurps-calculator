@@ -100,19 +100,28 @@ export default function AttackAssist({
                     ? 'border-blue-500 bg-blue-900/30'
                     : 'border-gray-600 bg-gray-800 hover:bg-gray-700'
                 }`}
+                disabled={attack._hidden}
               >
                 <div className="flex justify-between items-start">
                   <div>
                     <div className="font-semibold">{attack.name}</div>
-                    <div className="text-sm text-gray-400">
-                      Skill: {attack.skill}
-                      {attack.damage && ` | Damage: ${attack.damage}`}
-                    </div>
-                    {attack.notes && (
-                      <div className="text-xs text-gray-500 mt-1">{attack.notes}</div>
+                    {attack._hidden ? (
+                      <div className="text-sm text-gray-500 italic">
+                        Stats unknown (use Custom Attack to specify)
+                      </div>
+                    ) : (
+                      <>
+                        <div className="text-sm text-gray-400">
+                          Skill: {attack.skill}
+                          {attack.damage && ` | Damage: ${attack.damage}`}
+                        </div>
+                        {attack.notes && (
+                          <div className="text-xs text-gray-500 mt-1">{attack.notes}</div>
+                        )}
+                      </>
                     )}
                   </div>
-                  {selectedAttack === attack && (
+                  {selectedAttack === attack && !attack._hidden && (
                     <Swords size={20} className="text-blue-400" />
                   )}
                 </div>
