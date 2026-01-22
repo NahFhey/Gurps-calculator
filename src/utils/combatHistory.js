@@ -38,12 +38,23 @@ export function createHistoryState(config = {}) {
 
 /**
  * Create a snapshot of combat state (without history metadata)
+ * Phase 5: Can optionally include reveal state
  * @param {object} combatState - Full combat state
+ * @param {object} revealState - Optional reveal state (Phase 5)
  * @returns {object} Snapshot
  */
-export function createSnapshot(combatState) {
+export function createSnapshot(combatState, revealState = null) {
   // Create a shallow copy without history reference
   const { history, ...snapshot } = combatState;
+
+  // Phase 5: Include reveal state if provided
+  if (revealState) {
+    return {
+      combatState: snapshot,
+      revealState: JSON.parse(JSON.stringify(revealState)) // Deep clone
+    };
+  }
+
   return snapshot;
 }
 
@@ -55,13 +66,15 @@ export function createSnapshot(combatState) {
  * Add an action to history
  * This records the action and advances the cursor
  * Also handles checkpoint creation and pruning
+ * Phase 5: Can optionally include reveal state in checkpoints
  *
  * @param {object} historyState - Current history state
  * @param {object} action - Action to add
  * @param {object} currentCombatState - Current combat state (for checkpoint)
+ * @param {object} currentRevealState - Current reveal state (Phase 5, optional)
  * @returns {object} New history state
  */
-export function addAction(historyState, action, currentCombatState) {
+export function addAction(historyState, action, currentCombatState, currentRevealState = null) {
   if (!historyState || !action) {
     throw new Error('addAction requires historyState and action');
   }
@@ -81,7 +94,7 @@ export function addAction(historyState, action, currentCombatState) {
   const shouldCreateCheckpoint = newCursor % checkpointEvery === 0;
 
   if (shouldCreateCheckpoint && currentCombatState) {
-    const snapshot = createSnapshot(currentCombatState);
+    const snapshot = createSnapshot(currentCombatState, currentRevealState);
     newCheckpoints.push({
       at: newCursor,
       snapshot
@@ -195,13 +208,15 @@ function findNearestCheckpoint(historyState, targetCursor) {
 /**
  * Rebuild combat state from history at a specific cursor position
  * Uses nearest checkpoint and replays actions forward
+ * Phase 5: Also returns reveal state if stored in checkpoints
  *
  * @param {object} baseState - Base combat state (at cursor 0)
  * @param {object} historyState - History state with actions and checkpoints
  * @param {number} targetCursor - Target cursor position to rebuild to
- * @returns {object} Rebuilt combat state
+ * @param {object} baseRevealState - Base reveal state (Phase 5, optional)
+ * @returns {object} Rebuilt combat state (or {combatState, revealState} if Phase 5)
  */
-export function rebuildState(baseState, historyState, targetCursor) {
+export function rebuildState(baseState, historyState, targetCursor, baseRevealState = null) {
   if (!baseState || !historyState) {
     throw new Error('rebuildState requires baseState and historyState');
   }
@@ -210,6 +225,9 @@ export function rebuildState(baseState, historyState, targetCursor) {
 
   // If target is 0, return base state
   if (targetCursor === 0) {
+    if (baseRevealState) {
+      return { combatState: baseState, revealState: baseRevealState };
+    }
     return baseState;
   }
 
@@ -217,12 +235,21 @@ export function rebuildState(baseState, historyState, targetCursor) {
   const checkpoint = findNearestCheckpoint(historyState, targetCursor);
 
   let state;
+  let revealState = baseRevealState;
   let startIndex;
 
   if (checkpoint) {
-    // Start from checkpoint
-    state = { ...checkpoint.snapshot };
-    startIndex = checkpoint.at;
+    // Phase 5: Check if checkpoint has reveal state
+    if (checkpoint.snapshot.combatState && checkpoint.snapshot.revealState) {
+      // Phase 5 format
+      state = { ...checkpoint.snapshot.combatState };
+      revealState = JSON.parse(JSON.stringify(checkpoint.snapshot.revealState));
+      startIndex = checkpoint.at;
+    } else {
+      // Legacy format
+      state = { ...checkpoint.snapshot };
+      startIndex = checkpoint.at;
+    }
   } else {
     // No checkpoint, start from base
     state = baseState;
@@ -236,6 +263,11 @@ export function rebuildState(baseState, historyState, targetCursor) {
       break;
     }
     state = applyAction(state, actions[i]);
+  }
+
+  // Phase 5: Return with reveal state if available
+  if (revealState) {
+    return { combatState: state, revealState };
   }
 
   return state;
@@ -267,60 +299,90 @@ export function moveCursor(historyState, newCursor) {
 
 /**
  * Perform undo: move cursor back and rebuild state
- * Returns { newHistory, newCombatState }
+ * Returns { newHistory, newCombatState, newRevealState? }
+ * Phase 5: Also returns reveal state if checkpoints contain it
  *
  * @param {object} baseState - Base combat state at cursor 0
  * @param {object} historyState - Current history state
  * @param {object} currentCombatState - Current combat state (optional, for optimization)
- * @returns {{newHistory: object, newCombatState: object}}
+ * @param {object} baseRevealState - Base reveal state (Phase 5, optional)
+ * @returns {{newHistory: object, newCombatState: object, newRevealState?: object}}
  */
-export function undo(baseState, historyState, currentCombatState = null) {
+export function undo(baseState, historyState, currentCombatState = null, baseRevealState = null) {
   if (!canUndo(historyState)) {
-    return { newHistory: historyState, newCombatState: currentCombatState || baseState };
+    const result = { newHistory: historyState, newCombatState: currentCombatState || baseState };
+    if (baseRevealState) result.newRevealState = baseRevealState;
+    return result;
   }
 
   const newCursor = historyState.cursor - 1;
   const newHistory = moveCursor(historyState, newCursor);
 
-  // Optimization: if we have current state, we can apply inverse instead of full rebuild
-  let newCombatState;
-  if (currentCombatState && historyState.cursor > 0) {
+  // Phase 5: For reveal state, always rebuild from checkpoints (no inverse operation)
+  // Optimization: if we have current state and no reveal state, we can apply inverse
+  let newCombatState, newRevealState;
+
+  if (baseRevealState) {
+    // Phase 5: Rebuild with reveal state
+    const rebuilt = rebuildState(baseState, newHistory, newCursor, baseRevealState);
+    newCombatState = rebuilt.combatState;
+    newRevealState = rebuilt.revealState;
+  } else if (currentCombatState && historyState.cursor > 0) {
+    // Legacy: Apply inverse
     const actionToUndo = historyState.actions[historyState.cursor - 1];
     newCombatState = applyInverse(currentCombatState, actionToUndo);
   } else {
+    // Legacy: Full rebuild
     newCombatState = rebuildState(baseState, newHistory, newCursor);
   }
 
-  return { newHistory, newCombatState };
+  const result = { newHistory, newCombatState };
+  if (newRevealState) result.newRevealState = newRevealState;
+  return result;
 }
 
 /**
  * Perform redo: move cursor forward and rebuild state
- * Returns { newHistory, newCombatState }
+ * Returns { newHistory, newCombatState, newRevealState? }
+ * Phase 5: Also returns reveal state if checkpoints contain it
  *
  * @param {object} baseState - Base combat state at cursor 0
  * @param {object} historyState - Current history state
  * @param {object} currentCombatState - Current combat state (optional, for optimization)
- * @returns {{newHistory: object, newCombatState: object}}
+ * @param {object} baseRevealState - Base reveal state (Phase 5, optional)
+ * @returns {{newHistory: object, newCombatState: object, newRevealState?: object}}
  */
-export function redo(baseState, historyState, currentCombatState = null) {
+export function redo(baseState, historyState, currentCombatState = null, baseRevealState = null) {
   if (!canRedo(historyState)) {
-    return { newHistory: historyState, newCombatState: currentCombatState || baseState };
+    const result = { newHistory: historyState, newCombatState: currentCombatState || baseState };
+    if (baseRevealState) result.newRevealState = baseRevealState;
+    return result;
   }
 
   const newCursor = historyState.cursor + 1;
   const newHistory = moveCursor(historyState, newCursor);
 
-  // Optimization: if we have current state, we can apply action instead of full rebuild
-  let newCombatState;
-  if (currentCombatState && historyState.cursor < historyState.actions.length) {
+  // Phase 5: For reveal state, always rebuild from checkpoints (no forward operation)
+  // Optimization: if we have current state and no reveal state, we can apply action
+  let newCombatState, newRevealState;
+
+  if (baseRevealState) {
+    // Phase 5: Rebuild with reveal state
+    const rebuilt = rebuildState(baseState, newHistory, newCursor, baseRevealState);
+    newCombatState = rebuilt.combatState;
+    newRevealState = rebuilt.revealState;
+  } else if (currentCombatState && historyState.cursor < historyState.actions.length) {
+    // Legacy: Apply action
     const actionToRedo = historyState.actions[historyState.cursor];
     newCombatState = applyAction(currentCombatState, actionToRedo);
   } else {
+    // Legacy: Full rebuild
     newCombatState = rebuildState(baseState, newHistory, newCursor);
   }
 
-  return { newHistory, newCombatState };
+  const result = { newHistory, newCombatState };
+  if (newRevealState) result.newRevealState = newRevealState;
+  return result;
 }
 
 // ============================================================================

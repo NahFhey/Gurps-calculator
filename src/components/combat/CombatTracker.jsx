@@ -100,6 +100,7 @@ export default function CombatTracker() {
   const currentActorTruth = combatActive.participants.find(p => p.instanceId === currentActorInstanceId);
 
   // Get base state (combat at start, before any actions)
+  // Phase 5: Also get base reveal state
   const baseState = createSnapshot(combatActive); // For now, treat current as base (simplified)
 
   // ============================================================================
@@ -108,9 +109,10 @@ export default function CombatTracker() {
 
   /**
    * Record an action and update state
+   * Phase 5: Also pass reveal state to create checkpoints with it
    */
   const recordAction = (action) => {
-    const newHistory = addAction(history, action, combatActive);
+    const newHistory = addAction(history, action, combatActive, combatReveal);
     saveCombatActiveHistory(newHistory);
   };
 
@@ -121,17 +123,25 @@ export default function CombatTracker() {
   const handleUndo = () => {
     if (!canUndo(history)) return;
 
-    const { newHistory, newCombatState } = undo(baseState, history, combatActive);
-    saveCombatActive(newCombatState);
-    saveCombatActiveHistory(newHistory);
+    // Phase 5: Pass and restore reveal state
+    const result = undo(baseState, history, combatActive, combatReveal);
+    saveCombatActive(result.newCombatState);
+    saveCombatActiveHistory(result.newHistory);
+    if (result.newRevealState) {
+      saveCombatReveal(result.newRevealState);
+    }
   };
 
   const handleRedo = () => {
     if (!canRedo(history)) return;
 
-    const { newHistory, newCombatState } = redo(baseState, history, combatActive);
-    saveCombatActive(newCombatState);
-    saveCombatActiveHistory(newHistory);
+    // Phase 5: Pass and restore reveal state
+    const result = redo(baseState, history, combatActive, combatReveal);
+    saveCombatActive(result.newCombatState);
+    saveCombatActiveHistory(result.newHistory);
+    if (result.newRevealState) {
+      saveCombatReveal(result.newRevealState);
+    }
   };
 
   // ============================================================================
