@@ -566,11 +566,14 @@ export default function CombatTracker() {
         <div className="space-y-2">
           <h3 className="text-lg font-semibold">Combat Log</h3>
           <div className="bg-gray-800 rounded p-4 h-96 overflow-y-auto font-mono text-sm">
-            {combatActive.log.map((entry, index) => (
-              <div key={entry.id || index} className="mb-1">
-                {formatLogEntry(entry)}
-              </div>
-            ))}
+            {combatActive.log.map((entry, index) => {
+              const formatted = formatLogEntry(entry);
+              return (
+                <div key={entry.id || index} className="mb-1">
+                  {formatted}
+                </div>
+              );
+            })}
           </div>
 
           {/* Add Note */}
@@ -733,16 +736,74 @@ function ParticipantCard({ participant, isCurrent, onUpdateResource }) {
 
 /**
  * Format log entry for display
- * Uses combatHelpers.formatLogEntry
+ * Renders special components for roll entries with colored dice
  */
 function formatLogEntry(entry) {
   const timestamp = new Date(entry.timestamp).toLocaleTimeString();
 
-  // Phase 2 structured format
+  // Phase 2 structured format with roll data
+  if (entry.entryType === 'roll' && entry.roll) {
+    return <RollLogEntry timestamp={timestamp} entry={entry} />;
+  }
+
+  // Regular Phase 2 structured format
   if (entry.entryType) {
     return `[${timestamp}] ${entry.text}`;
   }
 
   // Fallback for Phase 1
   return `[${timestamp}] ${entry.message || 'Unknown event'}`;
+}
+
+/**
+ * Roll Log Entry Component
+ * Displays roll with colored individual dice
+ */
+function RollLogEntry({ timestamp, entry }) {
+  const { roll } = entry;
+  const actorName = entry.text.split(' rolled ')[0]; // Extract actor name from text
+
+  // Colors for dice (cycling through a palette)
+  const diceColors = [
+    'text-red-400',
+    'text-blue-400',
+    'text-green-400',
+    'text-yellow-400',
+    'text-purple-400',
+    'text-pink-400',
+    'text-cyan-400',
+    'text-orange-400'
+  ];
+
+  const getDiceColor = (index) => diceColors[index % diceColors.length];
+
+  // Format: [timestamp] Name rolled 3d6 [3][4][5]: 12
+  return (
+    <span>
+      [{timestamp}] {actorName} rolled {roll.expression}{' '}
+      {roll.dice.map((die, index) => (
+        <span key={index} className={`font-bold ${getDiceColor(index)}`}>
+          [{die}]
+        </span>
+      ))}
+      {roll.modifier !== 0 && (
+        <span> {roll.modifier > 0 ? `+${roll.modifier}` : roll.modifier}</span>
+      )}
+      : {roll.total}
+      {roll.target !== null && (
+        <span>
+          {' vs '}
+          <span className="font-semibold">{roll.target}</span>
+          {' ['}
+          <span className={roll.margin >= 0 ? 'text-green-400 font-bold' : 'text-red-400 font-bold'}>
+            {roll.margin >= 0 ? `+${roll.margin}` : roll.margin}
+          </span>
+          {'] '}
+          <span className={roll.success ? 'text-green-400 font-bold' : 'text-red-400 font-bold'}>
+            {roll.success ? 'SUCCESS' : 'FAILURE'}
+          </span>
+        </span>
+      )}
+    </span>
+  );
 }

@@ -268,9 +268,11 @@ export function createRollLogEntry(round, turn, actorInstanceId, actorName, roll
     roll: {
       expression,
       dice,
+      modifier: modifier || 0,
       total,
-      target: target || null,
-      margin: margin !== undefined ? margin : null
+      target: target !== undefined ? target : null,
+      margin: margin !== undefined ? margin : null,
+      success: success !== undefined ? success : null
     }
   });
 }
