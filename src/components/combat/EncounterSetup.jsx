@@ -50,7 +50,9 @@ export default function EncounterSetup() {
         isUnconscious: false,
         isDead: false,
         bleeding: null,
-        crippled: []
+        crippled: [],
+        // Phase 6 fields
+        conditions: []
       };
       setParticipants([...participants, participant]);
     }

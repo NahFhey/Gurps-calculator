@@ -402,7 +402,9 @@ export function createNumberedEnemies(baseName, quantity, template) {
       isUnconscious: false,
       isDead: false,
       bleeding: null,
-      crippled: []
+      crippled: [],
+      // Phase 6 fields
+      conditions: []
     });
   }
 
