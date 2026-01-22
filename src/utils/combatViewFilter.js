@@ -104,24 +104,24 @@ function filterParticipant(participant, revealState) {
   // HP
   filtered.hp = filterNumericResource(
     participant.currentHP,
-    participant.maxHP,
+    participant.maxHP || participant.hp,
     reveal.hp
   );
 
   // FP
-  if (participant.maxFP !== undefined) {
+  if (participant.maxFP !== undefined || participant.fp !== undefined) {
     filtered.fp = filterNumericResource(
       participant.currentFP,
-      participant.maxFP,
+      participant.maxFP || participant.fp,
       reveal.fp
     );
   }
 
   // MP
-  if (participant.maxMP !== undefined) {
+  if (participant.maxMP !== undefined || participant.mp !== undefined) {
     filtered.mp = filterNumericResource(
       participant.currentMP,
-      participant.maxMP,
+      participant.maxMP || participant.mp,
       reveal.mp
     );
   }

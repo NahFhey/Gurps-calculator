@@ -38,6 +38,15 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
     saveCombatReveal(newReveal);
   };
 
+  const handleBatchRevealChange = (instanceId, updates) => {
+    // Apply all updates in sequence to avoid state conflicts
+    let newReveal = combatReveal;
+    for (const { field, value } of updates) {
+      newReveal = updateReveal(newReveal, instanceId, field, value);
+    }
+    saveCombatReveal(newReveal);
+  };
+
   return (
     <div className="bg-gray-800 rounded-lg p-4">
       <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
@@ -192,14 +201,16 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
                     <button
                       onClick={() => {
                         // Reveal all
-                        handleRevealChange(participant.instanceId, 'name', RevealMode.NAME_FULL);
-                        handleRevealChange(participant.instanceId, 'hp.mode', RevealMode.NUMERIC_EXACT);
-                        handleRevealChange(participant.instanceId, 'defenses.dodge', RevealMode.DEFENSE_EXACT);
-                        handleRevealChange(participant.instanceId, 'defenses.parry', RevealMode.DEFENSE_EXACT);
-                        handleRevealChange(participant.instanceId, 'defenses.block', RevealMode.DEFENSE_EXACT);
-                        handleRevealChange(participant.instanceId, 'dr.general', RevealMode.DR_EXACT);
-                        handleRevealChange(participant.instanceId, 'attacks', RevealMode.ATTACKS_FULL);
-                        handleRevealChange(participant.instanceId, 'notes', RevealMode.NOTES_FULL);
+                        handleBatchRevealChange(participant.instanceId, [
+                          { field: 'name', value: RevealMode.NAME_FULL },
+                          { field: 'hp.mode', value: RevealMode.NUMERIC_EXACT },
+                          { field: 'defenses.dodge', value: RevealMode.DEFENSE_EXACT },
+                          { field: 'defenses.parry', value: RevealMode.DEFENSE_EXACT },
+                          { field: 'defenses.block', value: RevealMode.DEFENSE_EXACT },
+                          { field: 'dr.general', value: RevealMode.DR_EXACT },
+                          { field: 'attacks', value: RevealMode.ATTACKS_FULL },
+                          { field: 'notes', value: RevealMode.NOTES_FULL }
+                        ]);
                       }}
                       className="flex-1 px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
                     >
@@ -208,14 +219,16 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
                     <button
                       onClick={() => {
                         // Hide all
-                        handleRevealChange(participant.instanceId, 'name', RevealMode.NAME_HIDDEN);
-                        handleRevealChange(participant.instanceId, 'hp.mode', RevealMode.NUMERIC_UNKNOWN);
-                        handleRevealChange(participant.instanceId, 'defenses.dodge', RevealMode.DEFENSE_UNKNOWN);
-                        handleRevealChange(participant.instanceId, 'defenses.parry', RevealMode.DEFENSE_UNKNOWN);
-                        handleRevealChange(participant.instanceId, 'defenses.block', RevealMode.DEFENSE_UNKNOWN);
-                        handleRevealChange(participant.instanceId, 'dr.general', RevealMode.DR_UNKNOWN);
-                        handleRevealChange(participant.instanceId, 'attacks', RevealMode.ATTACKS_HIDDEN);
-                        handleRevealChange(participant.instanceId, 'notes', RevealMode.NOTES_HIDDEN);
+                        handleBatchRevealChange(participant.instanceId, [
+                          { field: 'name', value: RevealMode.NAME_HIDDEN },
+                          { field: 'hp.mode', value: RevealMode.NUMERIC_UNKNOWN },
+                          { field: 'defenses.dodge', value: RevealMode.DEFENSE_UNKNOWN },
+                          { field: 'defenses.parry', value: RevealMode.DEFENSE_UNKNOWN },
+                          { field: 'defenses.block', value: RevealMode.DEFENSE_UNKNOWN },
+                          { field: 'dr.general', value: RevealMode.DR_UNKNOWN },
+                          { field: 'attacks', value: RevealMode.ATTACKS_HIDDEN },
+                          { field: 'notes', value: RevealMode.NOTES_HIDDEN }
+                        ]);
                       }}
                       className="flex-1 px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm"
                     >
