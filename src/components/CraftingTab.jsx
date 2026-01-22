@@ -568,7 +568,6 @@ export function CraftingTab() {
                 const designTime = 2 * finalHP;
                 const craftTime = finalHP;
                 const progress = (c.shifts || []).reduce((sum, s) => sum + (s.hoursAdded || 0), 0);
-                const designProgress = (c.designShifts || []).reduce((sum, s) => sum + (s.hoursAdded || 0), 0);
 
                 let targetHours = 0;
                 let currentProgress = 0;

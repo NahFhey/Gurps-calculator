@@ -8,7 +8,6 @@ import { Lock, Unlock, X, AlertTriangle } from 'lucide-react';
  */
 export function GMLockModal({ isOpen, onClose, onUnlock, error }) {
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -23,8 +22,7 @@ export function GMLockModal({ isOpen, onClose, onUnlock, error }) {
     try {
       await onUnlock(password);
       setPassword('');
-      setConfirmPassword('');
-    } catch (err) {
+    } catch {
       // Error will be displayed via error prop
     } finally {
       setIsUnlocking(false);

@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Logger utility for consistent logging across the application
  *

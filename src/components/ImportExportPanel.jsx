@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Download, Upload, Lock, Unlock, FileJson, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
-import { exportUnlocked, exportLocked, importFile, unlockGMData, downloadJSON, mergeGM } from '../utils/exportImport';
+import { exportUnlocked, exportLocked, importFile, downloadJSON, mergeGM } from '../utils/exportImport';
 
 /**
  * Panel for importing and exporting GURPS Tool data with GM/Player separation.
@@ -9,9 +9,9 @@ import { exportUnlocked, exportLocked, importFile, unlockGMData, downloadJSON, m
  */
 export function ImportExportPanel({
   state,
-  gmMode,
+  _gmMode,
   gmLockData,
-  setGmMode,
+  _setGmMode,
   setGmLockData,
   onImport,
   onShowGMLockModal
@@ -340,9 +340,9 @@ export function ImportExportPanel({
 
 ImportExportPanel.propTypes = {
   state: PropTypes.object.isRequired,
-  gmMode: PropTypes.bool.isRequired,
+  _gmMode: PropTypes.bool.isRequired,
   gmLockData: PropTypes.object,
-  setGmMode: PropTypes.func.isRequired,
+  _setGmMode: PropTypes.func.isRequired,
   setGmLockData: PropTypes.func.isRequired,
   onImport: PropTypes.func.isRequired,
   onShowGMLockModal: PropTypes.func.isRequired

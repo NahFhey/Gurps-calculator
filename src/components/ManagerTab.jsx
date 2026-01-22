@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Plus, Save, X, Trash2, Eye, EyeOff, Shield, ShieldOff } from 'lucide-react';
 import { toNumberOr, refundMaterialsFromProject } from '../utils/helpers';
-import { TEMPLATES, ASPECTS, POTENCY_LEVELS, INGREDIENT_ROLES, HAZARD_TAGS, VECTORS } from '../constants';
+import { ASPECTS, POTENCY_LEVELS, INGREDIENT_ROLES, HAZARD_TAGS, VECTORS } from '../constants';
 import { calculateFormulaStats } from '../utils/alchemy';
 import { TBBuilderPanel } from './alchemy/TBBuilderPanel';
 import { ImportExportPanel } from './ImportExportPanel';
@@ -75,7 +75,6 @@ export function ManagerTab({
   const [formulaName, setFormulaName] = useState('');
   const [ingredients, setIngredients] = useState([]);
   const [selectedVector, setSelectedVector] = useState('Potion');
-  const [selectedTier, setSelectedTier] = useState(1);
   const [formulaTraits, setFormulaTraits] = useState([]);
   const [expandedFormula, setExpandedFormula] = useState(null);
 

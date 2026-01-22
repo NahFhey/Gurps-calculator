@@ -3,7 +3,6 @@ import PropTypes from 'prop-types';
 import { DiceRoller } from '../DiceRoller';
 import {
   calculateProcessingDifficulty,
-  roll3d6,
   evaluateProcessingResult,
   createDerivedReagentName
 } from '../../utils/alchemy';
@@ -284,7 +283,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
 
     // Create or update derived reagent
     const currentRefinement = selectedReagent.refinement || 'crude';
-    const currentPotency = selectedReagent.basePotency || 'P1';
+    const _currentPotency = selectedReagent.basePotency || 'P1'; // Not used in this context
     const currentConcentration = selectedReagent.concentrationSteps || 0;
 
     let newRefinement = currentRefinement;

@@ -188,7 +188,7 @@ export function generateSampleItems(categories) {
  * @param {Array<Object>} items - Array of item objects
  * @returns {Array<Object>} Array of table objects
  */
-export function generateSampleBiomeTables(categories, items) {
+export function generateSampleBiomeTables(categories, _items) {
   const fruitsCategory = categories.find(c => c.name === 'Fruits');
   const vegetablesCategory = categories.find(c => c.name === 'Vegetables');
   const mushroomsCategory = categories.find(c => c.name === 'Mushrooms');

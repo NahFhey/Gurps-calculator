@@ -130,7 +130,7 @@ export function useKeyedDebouncedStorageSave(delay = 500) {
 
   // Setup beforeunload and unmount handlers
   React.useEffect(() => {
-    const handleBeforeUnload = (e) => {
+    const handleBeforeUnload = (_e) => {
       const pendingData = pendingDataRef.current;
       if (pendingData.size > 0) {
         // Flush all pending saves synchronously

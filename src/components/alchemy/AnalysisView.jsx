@@ -25,7 +25,7 @@ function getIdentificationResult(mos) {
   return 1; // Partial (Primary only)
 }
 
-export function AnalysisView({ reagents, labs, workers, alchemySettings, saveReagents }) {
+export function AnalysisView({ reagents, labs, workers, _alchemySettings, saveReagents }) {
   const [selectedReagent, setSelectedReagent] = useState(null);
   const [selectedWorker, setSelectedWorker] = useState('');
   const [selectedLabId, setSelectedLabId] = useState(labs?.[0]?.id || 'default');
@@ -358,6 +358,6 @@ AnalysisView.propTypes = {
   reagents: PropTypes.array.isRequired,
   labs: PropTypes.array.isRequired,
   workers: PropTypes.array.isRequired,
-  alchemySettings: PropTypes.object,
+  _alchemySettings: PropTypes.object,
   saveReagents: PropTypes.func.isRequired
 };

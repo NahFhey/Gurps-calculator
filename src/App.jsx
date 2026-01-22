@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Save, X, ChefHat, Hammer, Package, Beaker, FileText, BookOpen, Fish } from 'lucide-react';
-import { TEMPLATES } from './constants';
+import { Edit2, ChefHat, Hammer, Package, Beaker, FileText, BookOpen, Fish } from 'lucide-react';
 import { safeParse } from './utils/helpers';
 import { logger } from './utils/logger';
 import { useKeyedDebouncedStorageSave } from './hooks/useStorage';
@@ -11,9 +10,9 @@ import { ManagerTab } from './components/ManagerTab';
 import { AlchemyTab } from './components/AlchemyTab';
 import { ChangelogTab } from './components/ChangelogTab';
 import { RulesTab } from './components/RulesTab';
-import { GatheringTab } from './components/GatheringTab';
 import { DayPlannerTab } from './components/DayPlannerTab';
 import { VERSION } from './version';
+import { TEMPLATES } from './constants';
 import InventoryContext from './contexts/InventoryContext';
 import CraftingContext from './contexts/CraftingContext';
 import AlchemyContext from './contexts/AlchemyContext';

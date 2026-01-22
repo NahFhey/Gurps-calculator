@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
-import { getReagentAspectPoints } from '../../utils/alchemy';
 
 export function ReagentsView({ reagents, alchemySettings }) {
   const [expanded, setExpanded] = useState({});

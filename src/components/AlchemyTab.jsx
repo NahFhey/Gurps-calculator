@@ -31,8 +31,8 @@ export function AlchemyTab() {
     alchemySettings,
     saveAlchemyReagents: saveReagents,
     saveAlchemyFormulas: saveFormulas,
-    saveAlchemyBatches: saveBatches,
-    saveAlchemyLabs: saveLabs
+    saveAlchemyBatches: saveBatches
+    // saveAlchemyLabs: Labs managed in ManagerTab
   } = useAlchemy();
   const { workers } = useConfig();
   const [view, setView] = useState('reagents');
