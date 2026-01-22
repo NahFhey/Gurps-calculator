@@ -43,129 +43,117 @@ export function parseGCSText(text) {
 
   const lines = text.split('\n').map(line => line.trim());
 
-  // Try to extract character name (usually first non-empty line or after "Name:")
-  const nameLine = lines.find(line =>
-    line.toLowerCase().startsWith('name:') ||
-    line.toLowerCase().startsWith('character name:')
-  );
+  // Extract character name - GCS format: "Name: Character Name (points)"
+  const nameLine = lines.find(line => line.toLowerCase().startsWith('name:'));
   if (nameLine) {
-    result.data.name = nameLine.split(':')[1]?.trim() || '';
-  } else if (lines.length > 0 && lines[0]) {
-    // Fallback: use first non-empty line
-    result.data.name = lines[0];
-    result.issues.push('Name extracted from first line (uncertain)');
+    // Extract name between "Name:" and optional parentheses
+    const nameMatch = nameLine.match(/Name:\s*(.+?)(?:\s*\(\d+\))?$/i);
+    if (nameMatch) {
+      result.data.name = nameMatch[1].trim();
+    }
+  } else {
+    result.issues.push('Name not found');
   }
 
-  // Extract attributes (ST, DX, IQ, HT)
-  const stMatch = extractStat(lines, ['ST', 'Strength']);
-  if (stMatch !== null) {
-    result.data.st = stMatch;
+  // Extract Primary Attributes - GCS format: "Primary Attributes: ST 14 [0]; DX 13 [0]; IQ 10 [0]; HT 9 [0];"
+  const primaryLine = lines.find(line => line.toLowerCase().includes('primary attributes:'));
+  if (primaryLine) {
+    const stMatch = primaryLine.match(/ST\s+(\d+)/i);
+    const dxMatch = primaryLine.match(/DX\s+(\d+)/i);
+    const iqMatch = primaryLine.match(/IQ\s+(\d+)/i);
+    const htMatch = primaryLine.match(/HT\s+(\d+)/i);
+
+    if (stMatch) result.data.st = parseInt(stMatch[1]);
+    else result.issues.push('ST not found, using default (10)');
+
+    if (dxMatch) result.data.dx = parseInt(dxMatch[1]);
+    else result.issues.push('DX not found, using default (10)');
+
+    if (iqMatch) result.data.iq = parseInt(iqMatch[1]);
+    else result.issues.push('IQ not found, using default (10)');
+
+    if (htMatch) result.data.ht = parseInt(htMatch[1]);
+    else result.issues.push('HT not found, using default (10)');
   } else {
-    result.issues.push('ST not found, using default (10)');
+    result.issues.push('Primary Attributes line not found, using defaults');
   }
 
-  const dxMatch = extractStat(lines, ['DX', 'Dexterity']);
-  if (dxMatch !== null) {
-    result.data.dx = dxMatch;
+  // Extract Secondary Attributes - GCS format: "Secondary Attributes: ... Basic Speed 5.5 [0]; Basic Move 5 [0];"
+  const secondaryLine = lines.find(line => line.toLowerCase().includes('secondary attributes:'));
+  if (secondaryLine) {
+    const speedMatch = secondaryLine.match(/Basic Speed\s+([\d.]+)/i);
+    const moveMatch = secondaryLine.match(/Basic Move\s+(\d+)/i);
+
+    if (speedMatch) {
+      result.data.basicSpeed = parseFloat(speedMatch[1]);
+    } else {
+      result.data.basicSpeed = (result.data.dx + result.data.ht) / 4;
+      result.issues.push('Basic Speed not found, calculated from DX+HT');
+    }
+
+    if (moveMatch) {
+      result.data.basicMove = parseInt(moveMatch[1]);
+    } else {
+      result.data.basicMove = Math.floor(result.data.basicSpeed);
+      result.issues.push('Basic Move not found, calculated from Basic Speed');
+    }
   } else {
-    result.issues.push('DX not found, using default (10)');
+    result.data.basicSpeed = (result.data.dx + result.data.ht) / 4;
+    result.data.basicMove = Math.floor(result.data.basicSpeed);
+    result.issues.push('Secondary Attributes line not found, calculated defaults');
   }
 
-  const iqMatch = extractStat(lines, ['IQ', 'Intelligence']);
-  if (iqMatch !== null) {
-    result.data.iq = iqMatch;
-  } else {
-    result.issues.push('IQ not found, using default (10)');
-  }
+  // Extract Point Pools - GCS format: "Point Pools: FP 11 / 11 [0]; HP 14 / 14 [0];"
+  const poolsLine = lines.find(line => line.toLowerCase().includes('point pools:'));
+  if (poolsLine) {
+    // HP format: "HP 14 / 14 [0]" - we want the max (second number)
+    const hpMatch = poolsLine.match(/HP\s+\d+\s*\/\s*(\d+)/i);
+    if (hpMatch) {
+      result.data.hp = parseInt(hpMatch[1]);
+      result.data.currentHP = result.data.hp;
+    } else {
+      result.data.hp = result.data.ht;
+      result.data.currentHP = result.data.ht;
+      result.issues.push('HP not found, using HT');
+    }
 
-  const htMatch = extractStat(lines, ['HT', 'Health']);
-  if (htMatch !== null) {
-    result.data.ht = htMatch;
+    // FP format: "FP 11 / 11 [0]" - we want the max (second number)
+    const fpMatch = poolsLine.match(/FP\s+\d+\s*\/\s*(\d+)/i);
+    if (fpMatch) {
+      result.data.fp = parseInt(fpMatch[1]);
+      result.data.currentFP = result.data.fp;
+    } else {
+      result.data.fp = result.data.ht;
+      result.data.currentFP = result.data.ht;
+      result.issues.push('FP not found, using HT');
+    }
   } else {
-    result.issues.push('HT not found, using default (10)');
-  }
-
-  // Extract HP (may be modified from HT)
-  const hpMatch = extractStat(lines, ['HP', 'Hit Points', 'Hitpoints']);
-  if (hpMatch !== null) {
-    result.data.hp = hpMatch;
-    result.data.currentHP = hpMatch;
-  } else {
-    // Default HP = HT
     result.data.hp = result.data.ht;
     result.data.currentHP = result.data.ht;
-    result.issues.push('HP not found, using HT');
-  }
-
-  // Extract FP (may be modified from HT)
-  const fpMatch = extractStat(lines, ['FP', 'Fatigue Points', 'Fatigue']);
-  if (fpMatch !== null) {
-    result.data.fp = fpMatch;
-    result.data.currentFP = fpMatch;
-  } else {
-    // Default FP = HT
     result.data.fp = result.data.ht;
     result.data.currentFP = result.data.ht;
-    result.issues.push('FP not found, using HT');
+    result.issues.push('Point Pools line not found, using HT for HP/FP');
   }
 
-  // Extract Basic Speed (usually (DX + HT) / 4)
-  const speedMatch = extractStat(lines, ['Basic Speed', 'Speed']);
-  if (speedMatch !== null) {
-    result.data.basicSpeed = speedMatch;
-  } else {
-    // Calculate default
-    result.data.basicSpeed = (result.data.dx + result.data.ht) / 4;
-    result.issues.push('Basic Speed not found, calculated from DX+HT');
-  }
+  // Calculate Dodge (not usually in GCS export)
+  result.data.dodge = Math.floor(result.data.basicSpeed) + 3;
+  result.issues.push('Dodge calculated from Basic Speed');
 
-  // Extract Basic Move (usually floor of Basic Speed)
-  const moveMatch = extractStat(lines, ['Basic Move', 'Move']);
-  if (moveMatch !== null) {
-    result.data.basicMove = moveMatch;
-  } else {
-    // Calculate default
-    result.data.basicMove = Math.floor(result.data.basicSpeed);
-    result.issues.push('Basic Move not found, calculated from Basic Speed');
-  }
+  // Parry and Block are weapon/shield dependent, can't extract from this format
+  result.issues.push('Parry using default (8) - weapon dependent');
+  result.issues.push('Block using default (8) - shield dependent');
 
-  // Extract Dodge (usually Basic Speed + 3, rounded down)
-  const dodgeMatch = extractStat(lines, ['Dodge']);
-  if (dodgeMatch !== null) {
-    result.data.dodge = dodgeMatch;
-  } else {
-    result.data.dodge = Math.floor(result.data.basicSpeed) + 3;
-    result.issues.push('Dodge not found, calculated from Basic Speed');
-  }
-
-  // Extract Parry (complex, context-dependent)
-  const parryMatch = extractStat(lines, ['Parry']);
-  if (parryMatch !== null) {
-    result.data.parry = parryMatch;
-  } else {
-    result.issues.push('Parry not found, using default (8)');
-  }
-
-  // Extract Block (complex, context-dependent)
-  const blockMatch = extractStat(lines, ['Block']);
-  if (blockMatch !== null) {
-    result.data.block = blockMatch;
-  } else {
-    result.issues.push('Block not found, using default (8)');
-  }
-
-  // Extract DR (Damage Resistance)
-  const drMatch = extractStat(lines, ['DR', 'Damage Resistance']);
-  if (drMatch !== null) {
-    result.data.dr = drMatch;
-  } else {
-    result.issues.push('DR not found, using default (0)');
-  }
+  // DR could be in equipment or advantages, too complex to parse reliably
+  result.issues.push('DR using default (0) - check equipment/advantages manually');
 
   // Determine confidence level
-  if (result.issues.length === 0) {
+  const criticalIssues = result.issues.filter(i =>
+    i.includes('not found') && !i.includes('calculated') && !i.includes('default (8)') && !i.includes('default (0)')
+  );
+
+  if (criticalIssues.length === 0) {
     result.confidence = 'high';
-  } else if (result.issues.length <= 3) {
+  } else if (criticalIssues.length <= 2) {
     result.confidence = 'medium';
   } else {
     result.confidence = 'low';
@@ -183,8 +171,8 @@ export function parseGCSText(text) {
 }
 
 /**
- * Helper function to extract a stat value from text lines
- * Tries multiple label variants and number extraction patterns
+ * Helper function to extract a stat value from GCS semicolon-separated format
+ * Note: This is a legacy function, kept for potential future use with alternate formats
  *
  * @param {Array<string>} lines - Array of text lines
  * @param {Array<string>} labels - Possible labels for this stat
@@ -193,28 +181,20 @@ export function parseGCSText(text) {
 function extractStat(lines, labels) {
   for (const label of labels) {
     for (const line of lines) {
-      // Pattern 1: "Label: Value" or "Label Value"
+      // GCS semicolon format: "Label value [cost];"
+      const gcsPattern = new RegExp(`${label}[:\\s]+([\d.]+)(?:\\s*\\[|;)`, 'i');
+      const gcsMatch = line.match(gcsPattern);
+      if (gcsMatch) {
+        return parseFloat(gcsMatch[1]);
+      }
+
+      // Legacy patterns for other formats
       const pattern1 = new RegExp(`^${label}[:\\s]+([\\d.]+)`, 'i');
       const match1 = line.match(pattern1);
       if (match1) {
         return parseFloat(match1[1]);
       }
 
-      // Pattern 2: "Label [Value]" (bracketed)
-      const pattern2 = new RegExp(`${label}[:\\s]*\\[([\\d.]+)\\]`, 'i');
-      const match2 = line.match(pattern2);
-      if (match2) {
-        return parseFloat(match2[1]);
-      }
-
-      // Pattern 3: "Label (Value)" (parentheses)
-      const pattern3 = new RegExp(`${label}[:\\s]*\\(([\\d.]+)\\)`, 'i');
-      const match3 = line.match(pattern3);
-      if (match3) {
-        return parseFloat(match3[1]);
-      }
-
-      // Pattern 4: Tab-separated (common in GCS exports)
       const parts = line.split('\t');
       for (let i = 0; i < parts.length - 1; i++) {
         if (parts[i].toLowerCase().includes(label.toLowerCase())) {
