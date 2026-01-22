@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dices, AlertCircle, Skull, Heart, Droplet, BandAid } from 'lucide-react';
+import { Dices, AlertCircle, Skull, Heart, Droplet, Cross } from 'lucide-react';
 import { performHTCheck } from '../../utils/effectsEngine';
 
 /**
@@ -101,7 +101,7 @@ export default function EffectsPanel({
       case 'bleeding':
         return <Droplet size={20} className="text-red-400" />;
       case 'crippling':
-        return <BandAid size={20} className="text-orange-400" />;
+        return <Cross size={20} className="text-orange-400" />;
       default:
         return <AlertCircle size={20} className="text-gray-400" />;
     }
