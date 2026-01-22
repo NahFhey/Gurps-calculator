@@ -171,7 +171,7 @@ export function generateEffectsPrompts({
     prompts.push({
       type: 'majorWound',
       description: `Major wound! (Injury ${injury} > HP/2 ${Math.floor(maxHP/2)})`,
-      requiresCheck: true
+      autoApply: true
     });
 
     // 3. Knockdown/Stun check (follows major wound)
