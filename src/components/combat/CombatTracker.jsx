@@ -751,7 +751,7 @@ export default function CombatTracker() {
         currentActor={currentActor}
         participants={combatActive.participants}
         onActionComplete={handleActionComplete}
-        combatRulesPreset={combatRulesPreset}
+        combatRulesPreset={combatRulesPreset || 'standard'}
         expanded={showActionPanel}
         onToggleExpanded={() => setShowActionPanel(!showActionPanel)}
       />

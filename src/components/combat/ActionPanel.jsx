@@ -20,6 +20,7 @@ export default function ActionPanel({
   const [selectedManeuver, setSelectedManeuver] = useState(null);
   const [activeWorkflow, setActiveWorkflow] = useState(null); // 'attack', 'defense', 'damage', 'note', or null
   const [noteText, setNoteText] = useState('');
+  const [selectedTargetId, setSelectedTargetId] = useState(null);
 
   // Common maneuvers
   const MANEUVERS = [
@@ -41,6 +42,10 @@ export default function ActionPanel({
 
   const handleStartWorkflow = (workflow) => {
     setActiveWorkflow(workflow);
+    // Initialize target selection for damage workflow
+    if (workflow === 'damage' && targets.length > 0) {
+      setSelectedTargetId(targets[0].instanceId);
+    }
   };
 
   const handleCancelWorkflow = () => {
@@ -217,7 +222,8 @@ export default function ActionPanel({
             <label className="block text-sm font-semibold mb-2">Target</label>
             <select
               className="w-full px-3 py-2 bg-gray-700 rounded"
-              id="damage-target-select"
+              value={selectedTargetId || targets[0]?.instanceId || ''}
+              onChange={(e) => setSelectedTargetId(e.target.value)}
             >
               {targets.map((target) => (
                 <option key={target.instanceId} value={target.instanceId}>
@@ -229,7 +235,7 @@ export default function ActionPanel({
           {targets.length > 0 && (
             <InjuryResolutionPanel
               attacker={currentActor}
-              target={targets.find(t => t.instanceId === document.getElementById('damage-target-select')?.value) || targets[0]}
+              target={targets.find(t => t.instanceId === selectedTargetId) || targets[0]}
               combatRulesPreset={combatRulesPreset}
               onComplete={handleDamageComplete}
               onCancel={handleCancelWorkflow}

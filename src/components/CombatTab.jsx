@@ -94,7 +94,7 @@ export function CombatTab() {
       {currentView === 'history' && <CombatHistory />}
       {currentView === 'settings' && (
         <CombatRulesSettings
-          preset={combatRulesPreset}
+          preset={combatRulesPreset || 'standard'}
           onPresetChange={saveCombatRulesPreset}
         />
       )}
