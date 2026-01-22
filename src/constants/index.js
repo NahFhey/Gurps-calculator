@@ -708,3 +708,45 @@ export const TASK_MODES = [
   // 'Hunting', 'Logging', 'Mining' - future
 ];
 
+/**
+ * Combat Runner constants
+ */
+
+/**
+ * Character categories for combat
+ * @type {string[]}
+ */
+export const COMBAT_CATEGORIES = ['player', 'ally', 'enemy', 'object'];
+
+/**
+ * HP status thresholds for combatants
+ * These are based on GURPS HP status rules
+ */
+export const HP_STATUS = {
+  HEALTHY: 'healthy',     // HP > 1/3 max
+  INJURED: 'injured',     // HP > 0
+  CRITICAL: 'critical',   // HP <= 0 but > -HP
+  DEAD: 'dead'            // HP <= -HP
+};
+
+/**
+ * Combat log entry types
+ * @type {string[]}
+ */
+export const LOG_ENTRY_TYPES = [
+  'turn_change',
+  'round_change',
+  'hp_change',
+  'fp_change',
+  'mp_change',
+  'note',
+  'combat_start',
+  'combat_end'
+];
+
+/**
+ * Maximum number of combat history entries to keep
+ * @type {number}
+ */
+export const MAX_COMBAT_HISTORY = 50;
+
