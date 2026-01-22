@@ -15,7 +15,12 @@ export const ACTION_TYPES = {
   REMOVE_LOG_ENTRY: 'REMOVE_LOG_ENTRY',
   UPDATE_LOG_ENTRY: 'UPDATE_LOG_ENTRY',
   REORDER_TURN_ORDER: 'REORDER_TURN_ORDER',
-  LOAD_COMBAT_STATE: 'LOAD_COMBAT_STATE'
+  LOAD_COMBAT_STATE: 'LOAD_COMBAT_STATE',
+  // Phase 6 actions
+  ADD_CONDITION: 'ADD_CONDITION',
+  REMOVE_CONDITION: 'REMOVE_CONDITION',
+  UPDATE_CONDITION: 'UPDATE_CONDITION',
+  USE_ITEM: 'USE_ITEM'
 };
 
 /**
@@ -203,6 +208,147 @@ export function createLoadCombatStateAction(fromSnapshot, toSnapshot) {
     inverse: {
       fromSnapshot: toSnapshot,
       toSnapshot: fromSnapshot
+    }
+  };
+}
+
+/**
+ * Phase 6: Create an ADD_CONDITION action
+ * Records applying a condition to a combatant
+ *
+ * @param {string} instanceId - Combatant instance ID
+ * @param {object} conditionInstance - Condition instance object
+ * @returns {object} Action object
+ */
+export function createAddConditionAction(instanceId, conditionInstance) {
+  return {
+    id: generateId(),
+    ts: new Date().toISOString(),
+    type: ACTION_TYPES.ADD_CONDITION,
+    label: `Add condition: ${conditionInstance.label}`,
+    payload: {
+      instanceId,
+      conditionInstance
+    },
+    inverse: {
+      instanceId,
+      conditionInstanceId: conditionInstance.instanceId
+    }
+  };
+}
+
+/**
+ * Phase 6: Create a REMOVE_CONDITION action
+ * Records removing a condition from a combatant
+ *
+ * @param {string} instanceId - Combatant instance ID
+ * @param {object} conditionInstance - Condition instance being removed (for undo)
+ * @returns {object} Action object
+ */
+export function createRemoveConditionAction(instanceId, conditionInstance) {
+  return {
+    id: generateId(),
+    ts: new Date().toISOString(),
+    type: ACTION_TYPES.REMOVE_CONDITION,
+    label: `Remove condition: ${conditionInstance.label}`,
+    payload: {
+      instanceId,
+      conditionInstanceId: conditionInstance.instanceId,
+      conditionBackup: conditionInstance
+    },
+    inverse: {
+      instanceId,
+      conditionInstance: conditionInstance
+    }
+  };
+}
+
+/**
+ * Phase 6: Create an UPDATE_CONDITION action
+ * Records updating a condition's duration
+ *
+ * @param {string} instanceId - Combatant instance ID
+ * @param {string} conditionInstanceId - Condition instance ID
+ * @param {object} fromCondition - Condition before update
+ * @param {object} toCondition - Condition after update
+ * @returns {object} Action object
+ */
+export function createUpdateConditionAction(instanceId, conditionInstanceId, fromCondition, toCondition) {
+  return {
+    id: generateId(),
+    ts: new Date().toISOString(),
+    type: ACTION_TYPES.UPDATE_CONDITION,
+    label: `Update condition: ${toCondition.label}`,
+    payload: {
+      instanceId,
+      conditionInstanceId,
+      fromCondition,
+      toCondition
+    },
+    inverse: {
+      instanceId,
+      conditionInstanceId,
+      fromCondition: toCondition,
+      toCondition: fromCondition
+    }
+  };
+}
+
+/**
+ * Phase 6: Create a USE_ITEM action
+ * Records using an item in combat (includes inventory delta and effect application)
+ *
+ * @param {string} actorInstanceId - Actor using the item
+ * @param {string} targetInstanceId - Target of the item effect
+ * @param {object} item - Item being used
+ * @param {object} effect - Effect being applied
+ * @param {object} inventoryDelta - Inventory change for undo
+ * @param {array} resourceChanges - Array of {instanceId, resource, from, to}
+ * @param {array} conditionsAdded - Array of {instanceId, conditionInstance}
+ * @param {array} conditionsRemoved - Array of {instanceId, conditionInstance}
+ * @returns {object} Action object
+ */
+export function createUseItemAction({
+  actorInstanceId,
+  targetInstanceId,
+  item,
+  effect,
+  inventoryDelta,
+  resourceChanges = [],
+  conditionsAdded = [],
+  conditionsRemoved = []
+}) {
+  return {
+    id: generateId(),
+    ts: new Date().toISOString(),
+    type: ACTION_TYPES.USE_ITEM,
+    label: `Use ${item.name}`,
+    payload: {
+      actorInstanceId,
+      targetInstanceId,
+      item: {
+        id: item.id,
+        name: item.name,
+        quantityBefore: item.quantity + Math.abs(inventoryDelta.quantityChange),
+        quantityAfter: item.quantity
+      },
+      effect,
+      inventoryDelta,
+      resourceChanges,
+      conditionsAdded,
+      conditionsRemoved
+    },
+    inverse: {
+      actorInstanceId,
+      targetInstanceId,
+      inventoryDelta,
+      resourceChanges: resourceChanges.map(rc => ({
+        ...rc,
+        from: rc.to,
+        to: rc.from
+      })),
+      conditionsAdded: conditionsRemoved,
+      conditionsRemoved: conditionsAdded
     }
   };
 }
