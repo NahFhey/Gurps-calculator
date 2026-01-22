@@ -39,7 +39,7 @@ export function getCombatView(combatState, revealState, viewMode) {
       _revealState: revealState, // Attach for reveal panel UI
       participants: combatState.participants.map(p => ({
         ...p,
-        _reveal: getRevealForInstance(revealState, p.instanceId, p.side)
+        _reveal: getRevealForInstance(revealState, p.instanceId, p.category || p.side)
       }))
     };
   }
