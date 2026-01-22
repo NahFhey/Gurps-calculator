@@ -34,7 +34,7 @@ export default function CombatRulesSettings({ preset = 'standard', onPresetChang
 
       <div className="space-y-3">
         {Object.values(COMBAT_RULES_PRESETS).map(presetValue => {
-          const preset Info = presetDescriptions[presetValue];
+          const presetInfo = presetDescriptions[presetValue];
           const isSelected = preset === presetValue;
 
           return (

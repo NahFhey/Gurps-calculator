@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, X, Download, Plus, Undo, Redo, Save, Upload, Dices } from 'lucide-react';
 import { useCombat } from '../../contexts/CombatContext';
-import { calculateHPStatus, exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, createActionLogEntry, exportActiveCombat, parseImportedCombat } from '../../utils/combatHelpers';
+import { calculateHPStatus, exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, createActionLogEntry, createInjuryLogEntry, createEffectLogEntry, exportActiveCombat, parseImportedCombat } from '../../utils/combatHelpers';
 import { MAX_COMBAT_HISTORY } from '../../constants';
 import { roll, rollVsTarget, formatRoll } from '../../utils/dice';
 import { createTurnAdvanceAction, createSetResourceAction, createAddLogEntryAction } from '../../utils/combatActions';
 import { addAction, canUndo, canRedo, getUndoCount, getRedoCount, undo, redo, createHistoryState, createSnapshot } from '../../utils/combatHistory';
 import { validateCombatState, validateCombatExport, validateCombatImport } from '../../utils/combatValidation';
+import { clearShock, applyEffect, getActiveEffects } from '../../utils/effectsEngine';
 import ActionPanel from './ActionPanel';
 
 /**
@@ -20,7 +21,8 @@ export default function CombatTracker() {
     combatActiveHistory,
     saveCombatActiveHistory,
     combatHistory,
-    saveCombatHistory
+    saveCombatHistory,
+    combatRulesPreset
   } = useCombat();
 
   const [noteText, setNoteText] = useState('');
@@ -107,20 +109,27 @@ export default function CombatTracker() {
     // Create TURN_ADVANCE action
     const action = createTurnAdvanceAction(fromRound, fromTurnIndex, toRound, toTurnIndex);
 
+    // Get next actor and clear shock penalty (Phase 4)
+    const nextActorInstanceId = combatActive.turnOrder[toTurnIndex];
+    const nextActor = combatActive.participants.find(p => p.instanceId === nextActorInstanceId);
+
+    // Clear shock penalty on turn start
+    const updatedParticipants = combatActive.participants.map(p =>
+      p.instanceId === nextActorInstanceId ? clearShock(p) : p
+    );
+
     // Apply to state immediately
     const newCombat = {
       ...combatActive,
       currentRound: toRound,
-      currentTurnIndex: toTurnIndex
+      currentTurnIndex: toTurnIndex,
+      participants: updatedParticipants
     };
 
     saveCombatActive(newCombat);
     recordAction(action);
 
     // Add log entries for new round and new turn
-    const nextActorInstanceId = combatActive.turnOrder[toTurnIndex];
-    const nextActor = combatActive.participants.find(p => p.instanceId === nextActorInstanceId);
-
     if (isNewRound) {
       const roundLogEntry = createTurnLogEntry(toRound, toTurnIndex, null, `=== Round ${toRound} ===`);
       const roundAction = createAddLogEntryAction(roundLogEntry);
@@ -295,14 +304,184 @@ export default function CombatTracker() {
   // ============================================================================
 
   const handleActionComplete = (actionData) => {
-    const { maneuver, kind, attack, defense, damage, note, targetInstanceId, newHP } = actionData;
+    const { maneuver, kind, attack, defense, damage, injury, note, targetInstanceId, newHP } = actionData;
 
     // Get target if applicable
     const target = targetInstanceId
       ? combatActive.participants.find(p => p.instanceId === targetInstanceId)
       : null;
 
-    // Create action log entry
+    // Handle Phase 4 injury workflow
+    if (kind === 'injury' && injury && targetInstanceId) {
+      // Create injury log entry
+      const injuryLogEntry = createInjuryLogEntry({
+        round: combatActive.currentRound,
+        turn: combatActive.currentTurnIndex,
+        targetInstanceId,
+        targetName: target?.name,
+        hitLocation: injury.hitLocation,
+        damageBreakdown: injury.damageBreakdown,
+        effects: null // Will add effect logs separately
+      });
+
+      let updatedParticipants = [...combatActive.participants];
+      let logEntries = [injuryLogEntry];
+
+      // Apply HP change
+      updatedParticipants = updatedParticipants.map(p =>
+        p.instanceId === targetInstanceId
+          ? { ...p, currentHP: newHP }
+          : p
+      );
+
+      // Apply effects to target
+      if (injury.effects && injury.effects.length > 0) {
+        injury.effects.forEach(effect => {
+          // Apply shock
+          if (effect.type === 'shock' && effect.autoApplied) {
+            updatedParticipants = updatedParticipants.map(p =>
+              p.instanceId === targetInstanceId
+                ? applyEffect(p, 'shock', { value: effect.value })
+                : p
+            );
+
+            logEntries.push(createEffectLogEntry({
+              round: combatActive.currentRound,
+              turn: combatActive.currentTurnIndex,
+              targetInstanceId,
+              targetName: target?.name,
+              effectType: 'shock',
+              effectData: { value: effect.value },
+              text: `${target?.name}: Shock penalty ${effect.value} until next turn`
+            }));
+          }
+
+          // Apply stun
+          if (effect.type === 'knockdownStun' && effect.success === false) {
+            updatedParticipants = updatedParticipants.map(p =>
+              p.instanceId === targetInstanceId
+                ? applyEffect(p, 'stunned', { stunned: true })
+                : p
+            );
+
+            logEntries.push(createEffectLogEntry({
+              round: combatActive.currentRound,
+              turn: combatActive.currentTurnIndex,
+              targetInstanceId,
+              targetName: target?.name,
+              effectType: 'stunned',
+              effectData: { stunned: true },
+              text: `${target?.name}: Stunned!`
+            }));
+          }
+
+          // Apply unconsciousness
+          if (effect.type === 'consciousnessCheck' && effect.success === false) {
+            updatedParticipants = updatedParticipants.map(p =>
+              p.instanceId === targetInstanceId
+                ? applyEffect(p, 'unconscious', { unconscious: true })
+                : p
+            );
+
+            logEntries.push(createEffectLogEntry({
+              round: combatActive.currentRound,
+              turn: combatActive.currentTurnIndex,
+              targetInstanceId,
+              targetName: target?.name,
+              effectType: 'unconscious',
+              effectData: { unconscious: true },
+              text: `${target?.name}: Unconscious!`
+            }));
+          }
+
+          // Apply death
+          if ((effect.type === 'deathCheck' && effect.success === false) || effect.type === 'autoDeath') {
+            updatedParticipants = updatedParticipants.map(p =>
+              p.instanceId === targetInstanceId
+                ? applyEffect(p, 'dead', { dead: true })
+                : p
+            );
+
+            logEntries.push(createEffectLogEntry({
+              round: combatActive.currentRound,
+              turn: combatActive.currentTurnIndex,
+              targetInstanceId,
+              targetName: target?.name,
+              effectType: 'dead',
+              effectData: { dead: true },
+              text: `${target?.name}: Dead!`
+            }));
+          }
+
+          // Apply bleeding
+          if (effect.type === 'bleeding' && effect.outcome === 'yes') {
+            updatedParticipants = updatedParticipants.map(p =>
+              p.instanceId === targetInstanceId
+                ? applyEffect(p, 'bleeding', { bleeding: true, rate: 1, round: combatActive.currentRound })
+                : p
+            );
+
+            logEntries.push(createEffectLogEntry({
+              round: combatActive.currentRound,
+              turn: combatActive.currentTurnIndex,
+              targetInstanceId,
+              targetName: target?.name,
+              effectType: 'bleeding',
+              effectData: { rate: 1 },
+              text: `${target?.name}: Bleeding (1 HP/turn)`
+            }));
+          }
+
+          // Apply crippling
+          if (effect.type === 'crippling' && effect.autoApplied) {
+            updatedParticipants = updatedParticipants.map(p =>
+              p.instanceId === targetInstanceId
+                ? applyEffect(p, 'crippling', { locationKey: effect.locationKey })
+                : p
+            );
+
+            logEntries.push(createEffectLogEntry({
+              round: combatActive.currentRound,
+              turn: combatActive.currentTurnIndex,
+              targetInstanceId,
+              targetName: target?.name,
+              effectType: 'crippling',
+              effectData: { locationKey: effect.locationKey, locationLabel: effect.locationLabel },
+              text: `${target?.name}: ${effect.locationLabel} crippled!`
+            }));
+          }
+        });
+      }
+
+      // Update state
+      const newCombat = {
+        ...combatActive,
+        participants: updatedParticipants,
+        log: [...combatActive.log, ...logEntries]
+      };
+
+      saveCombatActive(newCombat);
+
+      // Record resource change action
+      if (target) {
+        const resourceAction = createSetResourceAction(
+          targetInstanceId,
+          'HP',
+          target.currentHP,
+          newHP
+        );
+        recordAction(resourceAction);
+      }
+
+      // Record log actions
+      logEntries.forEach(entry => {
+        recordAction(createAddLogEntryAction(entry));
+      });
+
+      return;
+    }
+
+    // Create action log entry (for non-injury actions)
     const logEntry = createActionLogEntry({
       round: combatActive.currentRound,
       turn: combatActive.currentTurnIndex,
@@ -320,7 +499,7 @@ export default function CombatTracker() {
       log: [...combatActive.log, logEntry]
     };
 
-    // If damage was applied, also update target HP
+    // If damage was applied, also update target HP (legacy Phase 3 support)
     if (kind === 'damage' && targetInstanceId && newHP !== undefined) {
       const updatedParticipants = combatActive.participants.map(p =>
         p.instanceId === targetInstanceId
@@ -572,6 +751,7 @@ export default function CombatTracker() {
         currentActor={currentActor}
         participants={combatActive.participants}
         onActionComplete={handleActionComplete}
+        combatRulesPreset={combatRulesPreset}
         expanded={showActionPanel}
         onToggleExpanded={() => setShowActionPanel(!showActionPanel)}
       />
@@ -821,6 +1001,27 @@ function ParticipantCard({ participant, isCurrent, onUpdateResource }) {
           </div>
         )}
       </div>
+
+      {/* Phase 4: Status Effects */}
+      {(() => {
+        const effects = getActiveEffects(participant);
+        if (effects.length === 0) return null;
+        return (
+          <div className="mt-2 pt-2 border-t border-gray-700">
+            <div className="text-xs text-gray-400 mb-1">Effects:</div>
+            <div className="flex flex-wrap gap-1">
+              {effects.map((effect, index) => (
+                <span
+                  key={index}
+                  className="text-xs px-2 py-0.5 bg-red-900/50 text-red-300 rounded"
+                >
+                  {effect}
+                </span>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

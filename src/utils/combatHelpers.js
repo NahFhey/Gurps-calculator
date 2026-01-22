@@ -392,7 +392,14 @@ export function createNumberedEnemies(baseName, quantity, template) {
       name: quantity > 1 ? `${baseName} #${i}` : baseName,
       currentHP: template.hp,
       currentFP: template.fp || 0,
-      currentMP: template.mp || 0
+      currentMP: template.mp || 0,
+      // Phase 4 fields
+      shockPenalty: 0,
+      isStunned: false,
+      isUnconscious: false,
+      isDead: false,
+      bleeding: null,
+      crippled: []
     });
   }
 
