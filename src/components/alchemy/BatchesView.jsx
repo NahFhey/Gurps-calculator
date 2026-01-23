@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { Plus } from 'lucide-react';
 import { applyWorkBlockResult, calculateFormulaStats } from '../../utils/alchemy';
@@ -6,7 +6,12 @@ import { DiceRoller } from '../DiceRoller';
 import { VECTORS } from '../../constants';
 import { toNumberOr } from '../../utils/helpers';
 
-export function BatchesView({ batches, workers, formulas, reagents, labs, saveBatches, saveFormulas, saveReagents }) {
+/**
+ * BatchesView Component
+ * Displays alchemy batches with brewing phase management
+ * Memoized to prevent unnecessary re-renders when other alchemy tabs change
+ */
+function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatches, saveFormulas, saveReagents }) {
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [workerName, setWorkerName] = useState('');
   const [skill, setSkill] = useState('');
@@ -26,8 +31,9 @@ export function BatchesView({ batches, workers, formulas, reagents, labs, saveBa
   const [_selectedTier, _setSelectedTier] = useState(1); // Tier is auto-calculated, not user-selected
   const [selectedLabId, setSelectedLabId] = useState(labs?.[0]?.id || 'default');
 
-  const activeBatches = batches.filter(b => b.phase === 'brewing');
-  const completedBatches = batches.filter(b => b.phase !== 'brewing');
+  // Memoize batch filtering to prevent unnecessary recalculations
+  const activeBatches = useMemo(() => batches.filter(b => b.phase === 'brewing'), [batches]);
+  const completedBatches = useMemo(() => batches.filter(b => b.phase !== 'brewing'), [batches]);
 
   function performForecast() {
     if (!selectedBatch || selectedBatch.forecast) {
@@ -873,6 +879,8 @@ export function BatchesView({ batches, workers, formulas, reagents, labs, saveBa
     </div>
   );
 }
+
+export const BatchesView = memo(BatchesViewBase);
 
 BatchesView.propTypes = {
   batches: PropTypes.array.isRequired,

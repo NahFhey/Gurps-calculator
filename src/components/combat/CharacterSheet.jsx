@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { Edit2, Trash2, Copy, ChevronDown, ChevronUp } from 'lucide-react';
 import { calculateHPStatus } from '../../utils/combatHelpers';
 
 /**
  * Character Sheet Display Component
  * Shows character info in library with expand/collapse and action buttons
+ * Memoized to prevent re-renders when sibling list items change
  */
-export default function CharacterSheet({ character, onEdit, onDelete, onDuplicate }) {
+function CharacterSheet({ character, onEdit, onDelete, onDuplicate }) {
   const [expanded, setExpanded] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -165,3 +166,31 @@ export default function CharacterSheet({ character, onEdit, onDelete, onDuplicat
     </div>
   );
 }
+
+/**
+ * Custom comparison function for memoization
+ * Prevents re-renders when:
+ * - Character ID and basic properties haven't changed
+ * - Callback functions are the same reference (passed from parent)
+ */
+const arePropsEqual = (prevProps, nextProps) => {
+  return (
+    prevProps.character?.id === nextProps.character?.id &&
+    prevProps.character?.name === nextProps.character?.name &&
+    prevProps.character?.hp === nextProps.character?.hp &&
+    prevProps.character?.currentHP === nextProps.character?.currentHP &&
+    prevProps.character?.category === nextProps.character?.category &&
+    prevProps.character?.basicSpeed === nextProps.character?.basicSpeed &&
+    prevProps.character?.st === nextProps.character?.st &&
+    prevProps.character?.dx === nextProps.character?.dx &&
+    prevProps.character?.iq === nextProps.character?.iq &&
+    prevProps.character?.ht === nextProps.character?.ht &&
+    prevProps.character?.fp === nextProps.character?.fp &&
+    prevProps.character?.mp === nextProps.character?.mp &&
+    prevProps.onEdit === nextProps.onEdit &&
+    prevProps.onDelete === nextProps.onDelete &&
+    prevProps.onDuplicate === nextProps.onDuplicate
+  );
+};
+
+export default memo(CharacterSheet, arePropsEqual);

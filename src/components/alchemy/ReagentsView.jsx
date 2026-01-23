@@ -1,56 +1,75 @@
-import React, { useState } from 'react';
+import React, { useState, memo, useMemo } from 'react';
 import PropTypes from 'prop-types';
 
-export function ReagentsView({ reagents, alchemySettings }) {
+/**
+ * ReagentsView Component
+ * Displays alchemy reagent inventory with identification levels
+ * Memoized to prevent unnecessary re-renders when other alchemy tabs change
+ */
+function ReagentsViewBase({ reagents, alchemySettings }) {
   const [expanded, setExpanded] = useState({});
 
   const levelNames = ['Unidentified', 'Partial', 'Basic', 'Complete', 'Full'];
   const showObviousRoles = alchemySettings?.showObviousRoles !== false;
   const physicalRoles = ['Solvent', 'Binder', 'Tool'];
 
+  /**
+   * Memoize reagent visibility calculations
+   * This processes identification levels and determines what info to show
+   * Expensive since it runs for every reagent on every render
+   */
+  const reagentInfoMap = useMemo(() => {
+    const infoMap = new Map();
+    for (const reagent of reagents) {
+      const level = reagent.identificationLevel || 0;
+      const profile = reagent.falseProfile || reagent;
+
+      const visible = {
+        name: reagent.name,
+        quantity: reagent.quantity,
+        identificationLevel: level,
+        hasFalseProfile: !!reagent.falseProfile
+      };
+
+      // Show physical roles if setting enabled
+      if (showObviousRoles && reagent.roles) {
+        visible.physicalRoles = reagent.roles.filter(r => physicalRoles.includes(r));
+      }
+
+      // Level 1+: Primary Aspect
+      if (level >= 1) {
+        visible.primaryAspect = profile.aspects?.primary;
+      }
+
+      // Level 2+: Secondary Aspect
+      if (level >= 2) {
+        visible.secondaryAspect = profile.aspects?.secondary;
+      }
+
+      // Level 3+: Tertiary Aspect
+      if (level >= 3) {
+        visible.tertiaryAspect = profile.aspects?.tertiary;
+      }
+
+      // Level 4: Full Profile
+      if (level >= 4) {
+        visible.basePotency = profile.basePotency;
+        visible.concentrationSteps = profile.concentrationSteps || 0;
+        visible.refinement = profile.refinement;
+        visible.roles = profile.roles;
+        visible.primaryRole = profile.primaryRole;
+        visible.hazards = profile.hazards || [];
+        visible.processingNotes = profile.processingNotes;
+      }
+
+      infoMap.set(reagent.id, visible);
+    }
+    return infoMap;
+  }, [reagents, showObviousRoles]);
+
+  // Helper function for potency calculation (kept simple, not memoized)
   function getVisibleInfo(reagent) {
-    const level = reagent.identificationLevel || 0;
-    const profile = reagent.falseProfile || reagent;
-
-    const visible = {
-      name: reagent.name,
-      quantity: reagent.quantity,
-      identificationLevel: level,
-      hasFalseProfile: !!reagent.falseProfile
-    };
-
-    // Show physical roles if setting enabled
-    if (showObviousRoles && reagent.roles) {
-      visible.physicalRoles = reagent.roles.filter(r => physicalRoles.includes(r));
-    }
-
-    // Level 1+: Primary Aspect
-    if (level >= 1) {
-      visible.primaryAspect = profile.aspects?.primary;
-    }
-
-    // Level 2+: Secondary Aspect
-    if (level >= 2) {
-      visible.secondaryAspect = profile.aspects?.secondary;
-    }
-
-    // Level 3+: Tertiary Aspect
-    if (level >= 3) {
-      visible.tertiaryAspect = profile.aspects?.tertiary;
-    }
-
-    // Level 4: Full Profile
-    if (level >= 4) {
-      visible.basePotency = profile.basePotency;
-      visible.concentrationSteps = profile.concentrationSteps || 0;
-      visible.refinement = profile.refinement;
-      visible.roles = profile.roles;
-      visible.primaryRole = profile.primaryRole;
-      visible.hazards = profile.hazards || [];
-      visible.processingNotes = profile.processingNotes;
-    }
-
-    return visible;
+    return reagentInfoMap.get(reagent.id) || {};
   }
 
   function getFinalPotency(basePotency, concentrationSteps) {
@@ -341,6 +360,8 @@ export function ReagentsView({ reagents, alchemySettings }) {
     </div>
   );
 }
+
+export const ReagentsView = memo(ReagentsViewBase);
 
 ReagentsView.propTypes = {
   reagents: PropTypes.array.isRequired,

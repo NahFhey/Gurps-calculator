@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, memo } from 'react';
 import PropTypes from 'prop-types';
 import { Plus, Save, X, Trash2, ChevronDown, ChevronRight, Edit2 } from 'lucide-react';
 import {
@@ -29,6 +29,7 @@ function getRollMethodRange(rollMethod) {
 
 /**
  * GatheringManager Component - Manages gathering system configuration
+ * Memoized to prevent re-renders from unrelated tab changes
  *
  * This component provides management interfaces for:
  * - Species (fish and other gatherable creatures)
@@ -40,7 +41,7 @@ function getRollMethodRange(rollMethod) {
  *
  * @param {Object} props - Component props
  */
-export function GatheringManager({
+function GatheringManagerBase({
   species,
   tools,
   tables,
@@ -1723,6 +1724,8 @@ export function GatheringManager({
     </div>
   );
 }
+
+export const GatheringManager = memo(GatheringManagerBase);
 
 GatheringManager.propTypes = {
   species: PropTypes.array.isRequired,

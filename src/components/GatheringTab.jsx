@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, memo } from 'react';
 import { Fish, Users, Target, Package, CheckCircle, XCircle } from 'lucide-react';
 import { DiceRoller } from './DiceRoller';
 import {
@@ -30,6 +30,7 @@ import {
 
 /**
  * GatheringTab Component - Manages gathering activities like Fishing
+ * Memoized to prevent re-renders from unrelated tab changes
  *
  * This component implements the general gathering system with Fishing as the first mode.
  * Key features:
@@ -44,7 +45,7 @@ import {
  *
  * @param {Object} props - Component props
  */
-export function GatheringTab({
+function GatheringTabBase({
   species,
   tools,
   tables,
@@ -1650,3 +1651,5 @@ export function GatheringTab({
     </div>
   );
 }
+
+export const GatheringTab = memo(GatheringTabBase);

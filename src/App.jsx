@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Edit2, ChefHat, Hammer, Package, Beaker, FileText, BookOpen, Fish, Swords } from 'lucide-react';
 import { safeParse } from './utils/helpers';
 import { logger } from './utils/logger';
-import { useKeyedDebouncedStorageSave } from './hooks/useStorage';
+import { useBatchedStorageSave } from './hooks/useBatchedStorageSave';
 import { InventoryTab } from './components/InventoryTab';
 import { CookingTab } from './components/CookingTab';
 import { CraftingTab } from './components/CraftingTab';
@@ -93,8 +93,8 @@ export default function GURPSPartyTool() {
   const [combatReveal, setCombatReveal] = useState(null); // Phase 5 reveal state for active combat
   const [combatItems, setCombatItems] = useState([]); // Phase 6 combat items inventory
 
-  // Keyed debounced storage writer - maintains separate timers per key
-  const debouncedStorageSave = useKeyedDebouncedStorageSave(500);
+  // Batched storage writer - consolidates 42+ individual timers into single batch
+  const debouncedStorageSave = useBatchedStorageSave();
 
   /**
    * Factory function to create save functions

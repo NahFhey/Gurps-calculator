@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { ChevronLeft, ChevronRight, X, Download, Plus, Undo, Redo, Save, Upload, Dices } from 'lucide-react';
 import { useCombat } from '../../contexts/CombatContext';
 import { calculateHPStatus, exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, createActionLogEntry, createInjuryLogEntry, createEffectLogEntry, createConditionLogEntry, exportActiveCombat, parseImportedCombat, exportCombatPlayerView, exportCombatGMLocked, importCombatWithGMLock } from '../../utils/combatHelpers';
@@ -1278,8 +1278,9 @@ export default function CombatTracker() {
  * Participant Card Component - Phase 5 compatible
  * Shows participant status with editable resources
  * Handles both truth state (GM View) and filtered state (Player View)
+ * Memoized to prevent re-renders when sibling participants change
  */
-function ParticipantCard({ participant, isCurrent, onUpdateResource, viewMode }) {
+function ParticipantCardBase({ participant, isCurrent, onUpdateResource, viewMode }) {
   const [editing, setEditing] = useState(null); // 'HP', 'FP', or 'MP'
   const [editValue, setEditValue] = useState('');
 
@@ -1529,6 +1530,33 @@ function ParticipantCard({ participant, isCurrent, onUpdateResource, viewMode })
 }
 
 /**
+ * Custom comparison for ParticipantCard memoization
+ * Prevents re-renders when participant data hasn't meaningfully changed
+ */
+const areParticipantPropsEqual = (prevProps, nextProps) => {
+  const prev = prevProps.participant;
+  const next = nextProps.participant;
+  
+  return (
+    prev.instanceId === next.instanceId &&
+    prev.name === next.name &&
+    prev.category === next.category &&
+    prev.currentHP === next.currentHP &&
+    prev.hp === next.hp &&
+    (typeof prev.hp === 'object' && typeof next.hp === 'object' 
+      ? prev.hp.current === next.hp.current && prev.hp.max === next.hp.max
+      : true) &&
+    prev.currentFP === next.currentFP &&
+    prev.currentMP === next.currentMP &&
+    prevProps.isCurrent === nextProps.isCurrent &&
+    prevProps.viewMode === nextProps.viewMode &&
+    prevProps.onUpdateResource === nextProps.onUpdateResource
+  );
+};
+
+const ParticipantCard = memo(ParticipantCardBase, areParticipantPropsEqual);
+
+/**
  * Format log entry for display
  * Renders special components for roll entries with colored dice and action entries
  */
@@ -1557,8 +1585,9 @@ function formatLogEntry(entry) {
 /**
  * Roll Log Entry Component
  * Displays roll with colored individual dice
+ * Memoized to prevent re-renders when other log entries change
  */
-function RollLogEntry({ timestamp, entry }) {
+function RollLogEntryBase({ timestamp, entry }) {
   const { roll } = entry;
   const actorName = entry.text.split(' rolled ')[0]; // Extract actor name from text
 
@@ -1607,11 +1636,14 @@ function RollLogEntry({ timestamp, entry }) {
   );
 }
 
+const RollLogEntry = memo(RollLogEntryBase);
+
 /**
  * Action Log Entry Component (Phase 3)
  * Displays combat actions with detailed breakdown
+ * Memoized to prevent re-renders when other log entries change
  */
-function ActionLogEntry({ timestamp, entry }) {
+function ActionLogEntryBase({ timestamp, entry }) {
   const { action, maneuver } = entry;
 
   return (
@@ -1645,3 +1677,5 @@ function ActionLogEntry({ timestamp, entry }) {
     </div>
   );
 }
+
+const ActionLogEntry = memo(ActionLogEntryBase);

@@ -14,6 +14,7 @@
     "format:check": "prettier --check \"src/**/*.{js,jsx,css}\""
   },
   "dependencies": {
+    "immer": "^11.1.3",
     "lucide-react": "^0.294.0",
     "prop-types": "^15.8.1",
     "react": "^18.2.0",
