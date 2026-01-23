@@ -15,9 +15,18 @@
  */
 
 import { encryptJSON, decryptJSON, validateGMLock } from './cryptoLock';
+import {
+  CURRENT_SCHEMA_VERSION,
+  compareVersions,
+  getMigrationPath,
+  SCHEMA_METADATA
+} from './schemaVersioning';
+import { migrateData, validateDataForVersion } from './dataMigrations';
+import { logger } from './logger';
 
-/** Current schema version - increment when making breaking changes */
-export const SCHEMA_VERSION = 1;
+/** Current schema version - synchronized with schemaVersioning.js */
+export const SCHEMA_VERSION = CURRENT_SCHEMA_VERSION;
+
 
 /**
  * Splits application state into public (player-safe) and GM-only portions.
@@ -306,24 +315,23 @@ export function validateImport(data) {
     return { valid: false, error: 'Invalid import data: not an object' };
   }
 
-  // Check schema version
+  // Check schema version - now supports string format (e.g., "1.3.0")
   if (!('schemaVersion' in data)) {
     return { valid: false, error: 'Missing schemaVersion field' };
   }
 
-  if (typeof data.schemaVersion !== 'number') {
-    return { valid: false, error: 'Invalid schemaVersion: must be a number' };
-  }
+  const importedVersion = String(data.schemaVersion);
 
-  if (data.schemaVersion > SCHEMA_VERSION) {
+  // Check if version is compatible
+  if (compareVersions(importedVersion, SCHEMA_VERSION) > 0) {
     return {
       valid: false,
-      error: `Incompatible schema version ${data.schemaVersion} (current: ${SCHEMA_VERSION}). Please update the application.`
+      error: `Incompatible schema version ${importedVersion} (current: ${SCHEMA_VERSION}). Please update the application.`
     };
   }
 
-  if (data.schemaVersion < SCHEMA_VERSION) {
-    warnings.push(`Old schema version ${data.schemaVersion} (current: ${SCHEMA_VERSION}). Migration will be attempted.`);
+  if (compareVersions(importedVersion, SCHEMA_VERSION) < 0) {
+    warnings.push(`Old schema version ${importedVersion} (current: ${SCHEMA_VERSION}). Migration will be attempted.`);
   }
 
   // Check export type
@@ -357,28 +365,68 @@ export function validateImport(data) {
 
 /**
  * Migrates imported data from old schema versions to current version.
- * Currently a stub - implement actual migrations when schema changes.
+ * Handles version normalization and applies necessary migrations.
  *
- * @param {Object} data - Imported data (will be mutated)
- * @returns {Object} Migrated data (same object, mutated in place)
+ * @param {Object} data - Imported data with schemaVersion field
+ * @returns {Object} Migrated data with schemaVersion updated to current
+ * @throws {Error} If migration fails
  */
 export function migrateImport(data) {
-  if (data.schemaVersion === SCHEMA_VERSION) {
+  const importedVersion = String(data.schemaVersion);
+
+  if (importedVersion === SCHEMA_VERSION) {
     return data; // No migration needed
   }
 
-  // TODO: Implement migrations when schema changes
-  // Example:
-  // if (data.schemaVersion === 1) {
-  //   // Migrate v1 → v2
-  //   data.public.newField = defaultValue;
-  //   data.schemaVersion = 2;
-  // }
+  try {
+    logger.log(
+      `Starting migration of imported data from v${importedVersion} to v${SCHEMA_VERSION}`
+    );
 
-  console.warn(`Migration from schema ${data.schemaVersion} to ${SCHEMA_VERSION} not implemented. Data loaded as-is.`);
-  data.schemaVersion = SCHEMA_VERSION;
-  return data;
+    // Reconstruct full state from public + gm/gmLock sections
+    const fullState = {
+      ...data.public,
+      ...(data.gm || {}),
+      schemaVersion: importedVersion
+    };
+
+    // Apply migrations
+    const migratedState = migrateData(
+      fullState,
+      importedVersion,
+      SCHEMA_VERSION
+    );
+
+    // Validate migrated data
+    const validation = validateDataForVersion(migratedState, SCHEMA_VERSION);
+
+    if (!validation.valid) {
+      logger.warn('Migrated data has validation issues:', validation.issues);
+    }
+
+    // Reconstruct export data with migrated state
+    const migrationPath = getMigrationPath(importedVersion, SCHEMA_VERSION);
+
+    return {
+      ...data,
+      public: migratedState,
+      gm: migratedState,
+      schemaVersion: SCHEMA_VERSION,
+      migrationInfo: {
+        sourceVersion: importedVersion,
+        targetVersion: SCHEMA_VERSION,
+        path: migrationPath,
+        timestamp: new Date().toISOString()
+      }
+    };
+  } catch (error) {
+    logger.error(`Migration failed: ${error.message}`);
+    throw new Error(
+      `Failed to migrate data from v${importedVersion} to v${SCHEMA_VERSION}: ${error.message}`
+    );
+  }
 }
+
 
 /**
  * Imports data from JSON file/string.

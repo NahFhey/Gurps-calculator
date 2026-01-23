@@ -1,4 +1,5 @@
 import React, { useState, useMemo, memo } from 'react';
+import PropTypes from 'prop-types';
 import { Fish, Users, Target, Package, CheckCircle, XCircle } from 'lucide-react';
 import { DiceRoller } from './DiceRoller';
 import {
@@ -1653,3 +1654,32 @@ function GatheringTabBase({
 }
 
 export const GatheringTab = memo(GatheringTabBase);
+
+GatheringTab.propTypes = {
+  species: PropTypes.arrayOf(PropTypes.object).isRequired,
+  tools: PropTypes.arrayOf(PropTypes.object).isRequired,
+  tables: PropTypes.arrayOf(PropTypes.object).isRequired,
+  environments: PropTypes.arrayOf(PropTypes.object).isRequired,
+  sessions: PropTypes.arrayOf(PropTypes.object).isRequired,
+  dailyEvents: PropTypes.object.isRequired,
+  bait: PropTypes.arrayOf(PropTypes.object).isRequired,
+  categories: PropTypes.arrayOf(PropTypes.object).isRequired,
+  items: PropTypes.arrayOf(PropTypes.object).isRequired,
+  workers: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    skills: PropTypes.object
+  })).isRequired,
+  foods: PropTypes.arrayOf(PropTypes.object).isRequired,
+  materials: PropTypes.arrayOf(PropTypes.object).isRequired,
+  foodTypes: PropTypes.arrayOf(PropTypes.shape({
+    name: PropTypes.string,
+    color: PropTypes.string
+  })).isRequired,
+  materialTypes: PropTypes.arrayOf(PropTypes.object).isRequired,
+  currentDay: PropTypes.number.isRequired,
+  saveSessions: PropTypes.func.isRequired,
+  saveDailyEvents: PropTypes.func.isRequired,
+  saveFoods: PropTypes.func.isRequired,
+  saveMaterials: PropTypes.func.isRequired
+};

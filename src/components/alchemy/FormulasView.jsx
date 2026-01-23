@@ -107,9 +107,34 @@ function FormulasViewBase({ reagents, formulas, batches, saveReagents, saveBatch
 export const FormulasView = memo(FormulasViewBase);
 
 FormulasView.propTypes = {
-  reagents: PropTypes.array.isRequired,
-  formulas: PropTypes.array.isRequired,
-  batches: PropTypes.array.isRequired,
+  reagents: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    quantity: PropTypes.number.isRequired
+  })).isRequired,
+  formulas: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    tier: PropTypes.number,
+    traitBudget: PropTypes.number,
+    vector: PropTypes.string,
+    dominantAspect: PropTypes.string,
+    secondaryAspect: PropTypes.string,
+    finalPotency: PropTypes.string,
+    potency: PropTypes.string,
+    baseWR: PropTypes.number,
+    baseDM: PropTypes.number,
+    ingredients: PropTypes.arrayOf(PropTypes.shape({
+      reagentName: PropTypes.string,
+      role: PropTypes.string,
+      unitsUsed: PropTypes.number
+    })),
+    traits: PropTypes.arrayOf(PropTypes.shape({
+      name: PropTypes.string,
+      cost: PropTypes.number
+    }))
+  })).isRequired,
+  batches: PropTypes.arrayOf(PropTypes.object).isRequired,
   saveReagents: PropTypes.func.isRequired,
   saveBatches: PropTypes.func.isRequired
 };

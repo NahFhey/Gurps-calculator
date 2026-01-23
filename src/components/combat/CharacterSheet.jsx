@@ -1,4 +1,5 @@
 import React, { useState, memo } from 'react';
+import PropTypes from 'prop-types';
 import { Edit2, Trash2, Copy, ChevronDown, ChevronUp } from 'lucide-react';
 import { calculateHPStatus } from '../../utils/combatHelpers';
 
@@ -194,3 +195,29 @@ const arePropsEqual = (prevProps, nextProps) => {
 };
 
 export default memo(CharacterSheet, arePropsEqual);
+
+CharacterSheet.propTypes = {
+  character: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    category: PropTypes.oneOf(['player', 'ally', 'enemy', 'object']).isRequired,
+    st: PropTypes.number.isRequired,
+    dx: PropTypes.number.isRequired,
+    iq: PropTypes.number.isRequired,
+    ht: PropTypes.number.isRequired,
+    hp: PropTypes.number.isRequired,
+    currentHP: PropTypes.number,
+    fp: PropTypes.number,
+    mp: PropTypes.number,
+    basicSpeed: PropTypes.number.isRequired,
+    basicMove: PropTypes.number,
+    dodge: PropTypes.number,
+    parry: PropTypes.number,
+    block: PropTypes.number,
+    dr: PropTypes.number,
+    notes: PropTypes.string
+  }).isRequired,
+  onEdit: PropTypes.func.isRequired,
+  onDelete: PropTypes.func.isRequired,
+  onDuplicate: PropTypes.func.isRequired
+};

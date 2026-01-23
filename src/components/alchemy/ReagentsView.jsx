@@ -364,6 +364,28 @@ function ReagentsViewBase({ reagents, alchemySettings }) {
 export const ReagentsView = memo(ReagentsViewBase);
 
 ReagentsView.propTypes = {
-  reagents: PropTypes.array.isRequired,
-  alchemySettings: PropTypes.object
+  reagents: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    quantity: PropTypes.number.isRequired,
+    identificationLevel: PropTypes.number,
+    falseProfile: PropTypes.object,
+    aspects: PropTypes.shape({
+      primary: PropTypes.string,
+      secondary: PropTypes.string,
+      tertiary: PropTypes.string
+    }),
+    roles: PropTypes.arrayOf(PropTypes.string),
+    basePotency: PropTypes.string,
+    concentrationSteps: PropTypes.number,
+    refinement: PropTypes.string,
+    primaryRole: PropTypes.string,
+    hazards: PropTypes.arrayOf(PropTypes.object),
+    processingNotes: PropTypes.string
+  })).isRequired,
+  alchemySettings: PropTypes.shape({
+    showObviousRoles: PropTypes.bool,
+    defaultLabRating: PropTypes.number,
+    workBlockMinutes: PropTypes.number
+  })
 };

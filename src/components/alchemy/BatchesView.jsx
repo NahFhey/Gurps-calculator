@@ -883,11 +883,30 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
 export const BatchesView = memo(BatchesViewBase);
 
 BatchesView.propTypes = {
-  batches: PropTypes.array.isRequired,
-  workers: PropTypes.array.isRequired,
-  formulas: PropTypes.array.isRequired,
-  reagents: PropTypes.array.isRequired,
-  labs: PropTypes.array.isRequired,
+  batches: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    phase: PropTypes.oneOf(['brewing', 'completed', 'failed']),
+    CP: PropTypes.number,
+    DM: PropTypes.number,
+    dominantAspect: PropTypes.string,
+    secondaryAspect: PropTypes.string,
+    forecast: PropTypes.object,
+    microAssay: PropTypes.object
+  })).isRequired,
+  workers: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    skills: PropTypes.object,
+    st: PropTypes.number
+  })).isRequired,
+  formulas: PropTypes.arrayOf(PropTypes.object).isRequired,
+  reagents: PropTypes.arrayOf(PropTypes.object).isRequired,
+  labs: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    rating: PropTypes.number
+  })).isRequired,
   saveBatches: PropTypes.func.isRequired,
   saveFormulas: PropTypes.func.isRequired,
   saveReagents: PropTypes.func.isRequired
