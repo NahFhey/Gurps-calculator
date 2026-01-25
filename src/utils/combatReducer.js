@@ -58,8 +58,7 @@ export function applyAction(state, action) {
       return applyUseItem(state, action.payload);
 
     default:
-      console.warn('Unknown action type:', action.type);
-      return state;
+      throw new Error(`Unknown action type: ${action.type}`);
   }
 }
 
@@ -78,42 +77,47 @@ export function applyInverse(state, action) {
 
   switch (action.type) {
     case ACTION_TYPES.TURN_ADVANCE:
-      return applyTurnAdvance(state, action.inverse);
+      return applyTurnAdvance(state, action.inverse, action);
 
     case ACTION_TYPES.SET_RESOURCE:
-      return applySetResource(state, action.inverse);
+      if (action.inverse) {
+        return applySetResource(state, action.inverse, action);
+      }
+      return applySetResource(state, {
+        ...action.payload,
+        value: action.payload?.previousValue
+      }, action);
 
     case ACTION_TYPES.ADD_LOG_ENTRY:
-      return applyRemoveLogEntry(state, action.inverse);
+      return applyRemoveLogEntry(state, action.inverse, action);
 
     case ACTION_TYPES.REMOVE_LOG_ENTRY:
-      return applyAddLogEntry(state, action.inverse);
+      return applyAddLogEntry(state, action.inverse, action);
 
     case ACTION_TYPES.UPDATE_LOG_ENTRY:
-      return applyUpdateLogEntry(state, action.inverse);
+      return applyUpdateLogEntry(state, action.inverse, action);
 
     case ACTION_TYPES.REORDER_TURN_ORDER:
-      return applyReorderTurnOrder(state, action.inverse);
+      return applyReorderTurnOrder(state, action.inverse, action);
 
     case ACTION_TYPES.LOAD_COMBAT_STATE:
-      return applyLoadCombatState(state, action.inverse);
+      return applyLoadCombatState(state, action.inverse, action);
 
     // Phase 6 inverses
     case ACTION_TYPES.ADD_CONDITION:
-      return applyRemoveCondition(state, action.inverse);
+      return applyRemoveCondition(state, action.inverse, action);
 
     case ACTION_TYPES.REMOVE_CONDITION:
-      return applyAddCondition(state, action.inverse);
+      return applyAddCondition(state, action.inverse, action);
 
     case ACTION_TYPES.UPDATE_CONDITION:
-      return applyUpdateCondition(state, action.inverse);
+      return applyUpdateCondition(state, action.inverse, action);
 
     case ACTION_TYPES.USE_ITEM:
-      return applyUseItemInverse(state, action.inverse);
+      return applyUseItemInverse(state, action.inverse, action);
 
     default:
-      console.warn('Unknown action type for inverse:', action.type);
-      return state;
+      throw new Error(`Unknown action type for inverse: ${action.type}`);
   }
 }
 
@@ -124,13 +128,28 @@ export function applyInverse(state, action) {
 /**
  * Apply TURN_ADVANCE
  */
-function applyTurnAdvance(state, payload) {
+function applyTurnAdvance(state, payload = {}) {
   const { toRound, toTurnIndex } = payload;
+  if (typeof toRound === 'number' && typeof toTurnIndex === 'number') {
+    return {
+      ...state,
+      currentRound: toRound,
+      currentTurnIndex: toTurnIndex
+    };
+  }
+
+  const totalTurns = state.turnOrder?.length ?? 0;
+  if (totalTurns === 0) {
+    return state;
+  }
+
+  const nextTurnIndex = (state.currentTurnIndex + 1) % totalTurns;
+  const roundIncrement = nextTurnIndex === 0 ? 1 : 0;
 
   return {
     ...state,
-    currentRound: toRound,
-    currentTurnIndex: toTurnIndex
+    currentRound: state.currentRound + roundIncrement,
+    currentTurnIndex: nextTurnIndex
   };
 }
 
@@ -138,13 +157,37 @@ function applyTurnAdvance(state, payload) {
  * Apply SET_RESOURCE
  * Optimized with immer: O(1) lookup instead of O(n) array map
  */
-function applySetResource(state, payload) {
-  const { instanceId, resource, to } = payload;
+function applySetResource(state, payload, action) {
+  const resolvedPayload = payload || action?.payload;
+  const { instanceId, resource, mode, to, value, previousValue } = resolvedPayload || {};
 
   return produce(state, draft => {
     const participant = draft.participants.find(p => p.instanceId === instanceId);
-    if (participant) {
-      participant[`current${resource}`] = to;
+    if (!participant) {
+      throw new Error(`Participant ${instanceId} not found`);
+    }
+
+    if (participant[resource] && mode) {
+      participant[resource][mode] = to ?? value;
+      return;
+    }
+
+    if (mode && participant[resource] && typeof participant[resource] === 'object') {
+      participant[resource][mode] = to ?? value;
+      return;
+    }
+
+    if (resource && mode) {
+      if (!participant[resource]) {
+        participant[resource] = {};
+      }
+      participant[resource][mode] = to ?? value;
+      return;
+    }
+
+    const resolvedValue = to ?? value ?? previousValue;
+    if (resource) {
+      participant[`current${resource}`] = resolvedValue;
     }
   });
 }
@@ -153,8 +196,9 @@ function applySetResource(state, payload) {
  * Apply ADD_LOG_ENTRY
  * Optimized with immer: no array spread needed
  */
-function applyAddLogEntry(state, payload) {
-  const { entry } = payload;
+function applyAddLogEntry(state, payload, action) {
+  const resolvedPayload = payload || action?.payload;
+  const entry = resolvedPayload?.entry ?? resolvedPayload;
 
   return produce(state, draft => {
     draft.log.push(entry);
@@ -165,11 +209,25 @@ function applyAddLogEntry(state, payload) {
  * Apply REMOVE_LOG_ENTRY
  * Optimized with immer: efficient filtering
  */
-function applyRemoveLogEntry(state, payload) {
-  const { entryId } = payload;
+function applyRemoveLogEntry(state, payload, action) {
+  const resolvedPayload = payload || action?.payload;
+  const entryId = resolvedPayload?.entryId;
+  const indexOverride = resolvedPayload?.index;
+  const entry = resolvedPayload?.entry ?? resolvedPayload;
 
   return produce(state, draft => {
-    const index = draft.log.findIndex(entry => entry.id === entryId);
+    let index = -1;
+    if (typeof indexOverride === 'number') {
+      index = indexOverride;
+    } else if (entryId) {
+      index = draft.log.findIndex(entryItem => entryItem.id === entryId);
+    } else if (entry) {
+      index = draft.log.findIndex(entryItem =>
+        entryItem === entry ||
+        (entryItem.timestamp === entry.timestamp && entryItem.text === entry.text)
+      );
+    }
+
     if (index !== -1) {
       draft.log.splice(index, 1);
     }
@@ -180,13 +238,27 @@ function applyRemoveLogEntry(state, payload) {
  * Apply UPDATE_LOG_ENTRY
  * Optimized with immer: direct property mutation
  */
-function applyUpdateLogEntry(state, payload) {
-  const { entryId, toText } = payload;
+function applyUpdateLogEntry(state, payload, action) {
+  const resolvedPayload = payload || action?.payload;
+  const entryId = resolvedPayload?.entryId;
+  const indexOverride = resolvedPayload?.index;
+  const updates = resolvedPayload?.updates;
+  const toText = resolvedPayload?.toText;
 
   return produce(state, draft => {
-    const entry = draft.log.find(e => e.id === entryId);
+    let entry = null;
+    if (typeof indexOverride === 'number') {
+      entry = draft.log[indexOverride];
+    } else if (entryId) {
+      entry = draft.log.find(e => e.id === entryId);
+    }
+
     if (entry) {
-      entry.text = toText;
+      if (updates) {
+        Object.assign(entry, updates);
+      } else if (toText !== undefined) {
+        entry.text = toText;
+      }
     }
   });
 }

@@ -84,31 +84,26 @@ class BatchedStorageManager {
       return;
     }
 
-    // Create batch object to track all writes together
-    const batchData = {};
-    const writePromises = [];
-
     try {
       // Write all pending data to storage
-      for (const [key, value] of this.pendingData.entries()) {
-        batchData[key] = value;
-        const jsonValue = JSON.stringify(value);
-        writePromises.push(
-          (async () => {
-            try {
-              await window.storage.set(key, jsonValue, true);
-            } catch (error) {
-              console.error(`Error writing ${key} to storage:`, error);
-            }
-          })()
-        );
+      const writeResults = await Promise.all(
+        Array.from(this.pendingData.entries()).map(async ([key, value]) => {
+          const jsonValue = JSON.stringify(value);
+          try {
+            await window.storage.set(key, jsonValue, true);
+            return { key, success: true };
+          } catch (error) {
+            console.error(`Error writing ${key} to storage:`, error);
+            return { key, success: false };
+          }
+        })
+      );
+
+      for (const result of writeResults) {
+        if (result.success) {
+          this.pendingData.delete(result.key);
+        }
       }
-
-      // Wait for all writes to complete
-      await Promise.all(writePromises);
-
-      // Clear pending data after successful flush
-      this.pendingData.clear();
     } catch (error) {
       console.error('Error flushing batch storage:', error);
     } finally {

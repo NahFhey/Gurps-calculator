@@ -206,14 +206,14 @@ export default function GURPSPartyTool() {
         window.storage.get('combatReveal', true).catch(() => null),
         window.storage.get('combatItems', true).catch(() => null)
       ]);
-      if (matsR?.value) setMaterials(JSON.parse(matsR.value));
-      if (foodsR?.value) setFoods(JSON.parse(foodsR.value));
-      if (recipesR?.value) setRecipes(JSON.parse(recipesR.value));
-      if (craftsR?.value) setCrafts(JSON.parse(craftsR.value));
+      setMaterials(safeParse(matsR?.value, []));
+      setFoods(safeParse(foodsR?.value, []));
+      setRecipes(safeParse(recipesR?.value, []));
+      setCrafts(safeParse(craftsR?.value, []));
 
       // Load workers with backward compatibility (convert string array to object array)
       if (workersR?.value) {
-        const loadedWorkers = JSON.parse(workersR.value);
+        const loadedWorkers = safeParse(workersR.value, []);
         if (Array.isArray(loadedWorkers) && loadedWorkers.length > 0) {
           if (typeof loadedWorkers[0] === 'string') {
             // Old format - convert to new format
@@ -247,7 +247,7 @@ export default function GURPSPartyTool() {
 
       // Load food types with backward compatibility (convert string array to object array)
       if (typesR?.value) {
-        const loadedTypes = JSON.parse(typesR.value);
+        const loadedTypes = safeParse(typesR.value, []);
         if (Array.isArray(loadedTypes) && loadedTypes.length > 0) {
           if (typeof loadedTypes[0] === 'string') {
             // Old format - convert to new format
@@ -289,7 +289,7 @@ export default function GURPSPartyTool() {
 
       // Load and ensure material types have all required properties
       if (matTypesR?.value) {
-        const loadedMatTypes = JSON.parse(matTypesR.value);
+        const loadedMatTypes = safeParse(matTypesR.value, []);
         const updatedMatTypes = loadedMatTypes.map(mt => ({
           ...mt,
           weightMod: mt.weightMod !== undefined ? mt.weightMod : 0,
@@ -299,7 +299,7 @@ export default function GURPSPartyTool() {
       }
 
       // Merge built-in templates with custom templates
-      let templates = templatesR?.value ? JSON.parse(templatesR.value) : { weapons: {}, armor: {}, ranged: {}, explosives: {} };
+      let templates = safeParse(templatesR?.value, { weapons: {}, armor: {}, ranged: {}, explosives: {} });
       let needsSave = false;
 
       ['weapons', 'armor', 'ranged', 'explosives'].forEach(type => {

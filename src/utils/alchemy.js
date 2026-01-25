@@ -233,6 +233,45 @@ export function getFinalPotency(basePotency, concentrationSteps) {
 }
 
 /**
+ * Applies concentration refinement steps to a reagent or formula.
+ * Increases concentration while ensuring potency does not exceed maximum.
+ *
+ * @param {Object} reagent - Reagent data with potency info
+ * @param {string} reagent.basePotency - Base potency (e.g., 'P1')
+ * @param {number} reagent.concentrationSteps - Current concentration steps
+ * @param {Array<Object>} [reagent.refinementHistory] - Historical refinement steps
+ * @param {number} steps - Steps to apply
+ * @returns {Object} Updated reagent with new concentration and history
+ */
+export function calculateConcentrationRefinement(reagent, steps = 1) {
+  const basePotency = reagent.basePotency || reagent.potency || 'P0';
+  const baseIndex = POTENCY_LEVELS.indexOf(basePotency);
+  if (baseIndex === -1) {
+    return { ...reagent };
+  }
+
+  const currentSteps = reagent.concentrationSteps || 0;
+  const maxSteps = POTENCY_LEVELS.length - 1 - baseIndex;
+  const newSteps = Math.min(currentSteps + steps, maxSteps);
+
+  const refinementHistory = [
+    ...(reagent.refinementHistory || []),
+    {
+      type: 'concentration',
+      from: currentSteps,
+      to: newSteps,
+      steps
+    }
+  ];
+
+  return {
+    ...reagent,
+    concentrationSteps: newSteps,
+    refinementHistory
+  };
+}
+
+/**
  * Calculates potency load from active ingredients for automatic tier determination.
  * Potency load = sum of (potency_index + concentration_steps) * units_used for each active ingredient.
  *
@@ -251,13 +290,14 @@ export function calculatePotencyLoad(activeIngredients, reagentsMap) {
   let totalLoad = 0;
 
   activeIngredients.forEach(ing => {
-    const reagent = reagentsMap.get(ing.reagentId);
-    if (!reagent) return;
-
-    // Get base potency index (P0=0, P1=1, P2=2, P3=3, P4=4)
-    const basePotency = reagent.basePotency || reagent.potency || 'P1';
+    const reagent = reagentsMap.get?.(ing.reagentId);
+    const basePotency = reagent?.basePotency
+      || reagent?.potency
+      || ing.basePotency
+      || ing.potency
+      || 'P1';
     const potencyIndex = POTENCY_LEVELS.indexOf(basePotency);
-    const concentrationSteps = reagent.concentrationSteps || 0;
+    const concentrationSteps = reagent?.concentrationSteps || ing.concentrationSteps || 0;
 
     // Potency load contribution = (base potency index + concentration steps) * units used
     const contribution = (potencyIndex + concentrationSteps) * (ing.unitsUsed || 1);
@@ -384,12 +424,12 @@ export function validateBatchConstraints(ingredients) {
  * @returns {Array<string>} returns.hazards - Array of hazard names
  * @returns {Array<Object>} returns.details - Detailed hazard information with effects and triggers
  */
-export function evaluateHazards(ingredients, reagentsMap) {
+export function evaluateHazards(ingredients, reagentsMap = new Map()) {
   const hazardsPresent = new Set();
   const hazardDetails = [];
 
   ingredients.forEach(ing => {
-    const reagent = reagentsMap.get(ing.reagentId);
+    const reagent = reagentsMap.get?.(ing.reagentId);
     if (!reagent || !reagent.hazards) return;
 
     reagent.hazards.forEach(hazard => {
@@ -474,32 +514,39 @@ export function getEffectFamilyKey(aspect1, aspect2) {
  * @returns {Object} Complete formula statistics including validation results
  */
 export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion', options = {}) {
+  const resolvedReagentsMap = reagentsMap instanceof Map ? reagentsMap : new Map();
+  const resolvedVectorName = typeof vectorName === 'string'
+    ? (formula.vector || vectorName)
+    : (formula.vector || 'Potion');
+  const resolvedOptions = typeof vectorName === 'object' && vectorName !== null ? vectorName : options;
+
   const actives = formula.ingredients.filter(ing => ing.role === 'active' || ing.role === 'Active');
   const stabilizers = formula.ingredients.filter(ing => ing.role === 'stabilizer' || ing.role === 'Stabilizer');
   const catalysts = formula.ingredients.filter(ing => ing.role === 'catalyst' || ing.role === 'Catalyst');
 
   // Calculate aspect tally for dominant/secondary
-  const tally = tallyAspects(actives, reagentsMap);
+  const tally = tallyAspects(actives, resolvedReagentsMap);
   const { dominant, dominantValue, secondary, secondaryValue } = computeDominantSecondary(tally);
 
   // TIER CALCULATION: Auto-calculate from potency load, but allow override for backward compat
-  const potencyLoad = calculatePotencyLoad(actives, reagentsMap);
+  const potencyLoad = calculatePotencyLoad(actives, resolvedReagentsMap);
   const calculatedTier = calculateTierFromPotencyLoad(potencyLoad);
-  const tier = options.overrideTier ? (options.tier || formula.tier || 1) : calculatedTier;
+  const tier = resolvedOptions.overrideTier ? (resolvedOptions.tier || formula.tier || 1) : calculatedTier;
   const tierData = TIER_DATA[tier];
-  const isLegacyTier = options.overrideTier || (formula.tier && formula.tier !== calculatedTier);
+  const isLegacyTier = resolvedOptions.overrideTier || (formula.tier && formula.tier !== calculatedTier);
 
   // ROLE COVERAGE VALIDATION
-  const roleCoverage = validateRoleCoverage(formula.ingredients, vectorName);
+  const roleCoverage = validateRoleCoverage(formula.ingredients, resolvedVectorName);
 
   // BATCH CONSTRAINTS VALIDATION
   const batchValidation = validateBatchConstraints(formula.ingredients);
 
   // HAZARD EVALUATION
-  const hazardEvaluation = evaluateHazards(formula.ingredients, reagentsMap);
+  const hazardEvaluation = evaluateHazards(formula.ingredients, resolvedReagentsMap);
 
   // Get vector modifiers
-  const vector = VECTORS.find(v => v.name === vectorName) || VECTORS[0];
+  const vector = VECTORS.find(v => v.name === resolvedVectorName)
+    || { name: resolvedVectorName, wrMod: 0, dmMod: 0, tbEfficiency: 1.0 };
 
   // Start with base WR and DM from tier and vector
   let WR = tierData.baseWR + vector.wrMod;
@@ -561,12 +608,10 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
   // 5. Concentration (max concentration steps from actives)
   let maxConcentrationSteps = 0;
   actives.forEach(ing => {
-    const r = reagentsMap.get(ing.reagentId);
-    if (r) {
-      const concentrationSteps = r.concentrationSteps || 0;
-      if (concentrationSteps > maxConcentrationSteps) {
-        maxConcentrationSteps = concentrationSteps;
-      }
+    const r = resolvedReagentsMap.get?.(ing.reagentId);
+    const concentrationSteps = r?.concentrationSteps || ing.concentrationSteps || 0;
+    if (concentrationSteps > maxConcentrationSteps) {
+      maxConcentrationSteps = concentrationSteps;
     }
   });
   if (maxConcentrationSteps > 0) {
@@ -588,7 +633,7 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
   // 7. Catalyst matching bonus
   let catalystBonus = 0;
   catalysts.forEach(cat => {
-    const reagent = reagentsMap.get(cat.reagentId);
+    const reagent = resolvedReagentsMap.get?.(cat.reagentId);
     if (!reagent) return;
     const points = getReagentAspectPoints({ ...reagent, refinement: cat.refinement });
 
@@ -608,7 +653,7 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
   }
 
   // 8. Lab Rating reduction (0-4 reduces WR)
-  const labRating = normalizeLabRating(options.labRating ?? 0);
+  const labRating = normalizeLabRating(resolvedOptions.labRating ?? 0);
   WR -= labRating;
 
   // Ensure minimum WR of 1
@@ -616,7 +661,7 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
 
   // Check for matching stabilizer (flag only, NOT a DM modifier)
   const hasMatchingStabilizer = stabilizers.some(stab => {
-    const reagent = reagentsMap.get(stab.reagentId);
+    const reagent = resolvedReagentsMap.get?.(stab.reagentId);
     if (!reagent) return false;
     const points = getReagentAspectPoints({ ...reagent, refinement: stab.refinement });
     return points[dominant] > 0;
@@ -625,9 +670,9 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
   // Get highest base potency from actives
   let highestBasePotency = 'P0';
   actives.forEach(ing => {
-    const r = reagentsMap.get(ing.reagentId);
-    if (r) {
-      const basePotency = r.basePotency || r.potency || 'P1';
+    const r = resolvedReagentsMap.get?.(ing.reagentId);
+    const basePotency = r?.basePotency || r?.potency || ing.basePotency || ing.potency || 'P1';
+    if (basePotency) {
       const currentIndex = POTENCY_LEVELS.indexOf(basePotency);
       const highestIndex = POTENCY_LEVELS.indexOf(highestBasePotency);
       if (currentIndex > highestIndex) {
@@ -641,8 +686,8 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
 
   // Calculate total concentration steps (for display/tracking)
   const totalConcentrationSteps = formula.ingredients.reduce((sum, ing) => {
-    const r = reagentsMap.get(ing.reagentId);
-    return sum + ((r?.concentrationSteps || 0) * ing.unitsUsed);
+    const r = resolvedReagentsMap.get?.(ing.reagentId);
+    return sum + ((r?.concentrationSteps || ing.concentrationSteps || 0) * ing.unitsUsed);
   }, 0);
 
   return {
@@ -658,7 +703,7 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
     concentrationSteps: maxConcentrationSteps,
     finalPotency: finalPotency,
     totalConcentrationSteps: totalConcentrationSteps,
-    vector: vectorName,
+    vector: vector.name,
     traitBudget: tierData.traitBudget,
     hasMatchingStabilizer,
     coherent,
@@ -705,7 +750,34 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
  * @returns {Object} Updated batch object with new PP, CP, shifts, hazard events, and possibly completed status
  */
 export function applyWorkBlockResult(batch, skill, roll, worker, date) {
-  const effectiveSkill = skill + batch.DM + (batch.labRating || 0);
+  if (typeof skill === 'object' && skill !== null && typeof roll === 'string') {
+    const rollInfo = skill;
+    const normalizedSkill = Number.isFinite(batch.skill) ? batch.skill : 12;
+    const normalizedRoll = rollInfo.total ?? 0;
+    const result = applyWorkBlockResult(
+      {
+        ...batch,
+        PP: Number.isFinite(batch.PP) ? batch.PP : 0,
+        WR: Number.isFinite(batch.WR) ? batch.WR : 0,
+        shifts: Array.isArray(batch.shifts) ? batch.shifts : []
+      },
+      normalizedSkill,
+      normalizedRoll,
+      roll,
+      date ?? new Date().toISOString()
+    );
+    if (normalizedRoll <= 4) {
+      return {
+        ...result,
+        phase: 'failed'
+      };
+    }
+    return result;
+  }
+
+  const safeSkill = Number.isFinite(skill) ? skill : 0;
+  const safeDM = Number.isFinite(batch.DM) ? batch.DM : 0;
+  const effectiveSkill = safeSkill + safeDM + (batch.labRating || 0);
 
   // PHASE 1: Classify roll outcome
   const isCritSuccess =
@@ -814,25 +886,29 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
   };
 
   // PHASE 5: Handle destruction (skip progress if destroyed)
+  const safeShifts = Array.isArray(batch.shifts) ? batch.shifts : [];
+  const safePP = Number.isFinite(batch.PP) ? batch.PP : 0;
+  const safeWR = Number.isFinite(batch.WR) ? batch.WR : 0;
+
   if (destroyed) {
     return {
       ...batch,
       phase: 'failed',
       quality: 'Destroyed (Volatile Explosion)',
       completedDate: new Date().toISOString(),
-      shifts: [...batch.shifts, newShift]
+      shifts: [...safeShifts, newShift]
     };
   }
 
   // PHASE 6: Apply deltas with clamps
-  const newPP = clamp(batch.PP + progressDelta, 0, batch.WR);
-  const newCP = Math.max(0, batch.CP + cpDelta);
+  const newPP = clamp(safePP + progressDelta, 0, safeWR);
+  const newCP = Math.max(0, (batch.CP || 0) + cpDelta);
 
   const updated = {
     ...batch,
     PP: newPP,
     CP: newCP,
-    shifts: [...batch.shifts, newShift]
+    shifts: [...safeShifts, newShift]
   };
 
   // PHASE 7: Check completion
