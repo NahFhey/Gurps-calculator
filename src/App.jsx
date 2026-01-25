@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit2, ChefHat, Hammer, Package, Beaker, FileText, BookOpen, Fish, Swords } from 'lucide-react';
+import { Edit2, ChefHat, Hammer, Package, Beaker, FileText, BookOpen, Fish, Swords, LayoutGrid } from 'lucide-react';
 import { safeParse } from './utils/helpers';
 import { logger } from './utils/logger';
 import { useBatchedStorageSave } from './hooks/useBatchedStorageSave';
@@ -12,6 +12,7 @@ import { ChangelogTab } from './components/ChangelogTab';
 import { RulesTab } from './components/RulesTab';
 import { DayPlannerTab } from './components/DayPlannerTab';
 import { CombatTab } from './components/CombatTab';
+import { PartyToolApp } from './components/party-tool/PartyToolApp';
 import { VERSION } from './version';
 import { TEMPLATES } from './constants';
 import InventoryContext from './contexts/InventoryContext';
@@ -524,6 +525,9 @@ export default function GURPSPartyTool() {
           <button onClick={() => setActiveTab('combat')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'combat' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
             <Swords size={20} />Combat
           </button>
+          <button onClick={() => setActiveTab('party-tool')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'party-tool' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+            <LayoutGrid size={20} />Party Tool
+          </button>
           <button onClick={() => setActiveTab('rules')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'rules' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
             <BookOpen size={20} />Rules
           </button>
@@ -567,6 +571,7 @@ export default function GURPSPartyTool() {
           saveMaterials={saveMaterials}
         />}
         {activeTab === 'combat' && <CombatTab />}
+        {activeTab === 'party-tool' && <PartyToolApp />}
         {activeTab === 'rules' && <RulesTab />}
         {activeTab === 'changelog' && <ChangelogTab />}
                 </div>
