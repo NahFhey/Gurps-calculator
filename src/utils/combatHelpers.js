@@ -486,6 +486,65 @@ export function createEffectLogEntry({
   };
 }
 
+/**
+ * Phase 7: Create a maneuver selection log entry
+ */
+export function createManeuverLogEntry({
+  round,
+  turn,
+  actorInstanceId,
+  actorName,
+  maneuverId,
+  maneuverLabel,
+  aim = null,
+  wait = null,
+  constraints = null
+}) {
+  return {
+    id: generateId(),
+    timestamp: new Date().toISOString(),
+    round,
+    turn,
+    entryType: 'maneuver',
+    actorInstanceId,
+    text: `${actorName}: Turn Maneuver: ${maneuverLabel}`,
+    maneuverId,
+    maneuverLabel,
+    aim,
+    wait,
+    constraints
+  };
+}
+
+/**
+ * Phase 8: Create a reinforcement log entry
+ */
+export function createReinforcementLogEntry({
+  round,
+  turn,
+  category,
+  displayName,
+  quantity,
+  insertionMode
+}) {
+  const countLabel = quantity > 1 ? `x${quantity}` : 'x1';
+  const modeLabel = insertionMode.replace(/_/g, ' ');
+  return {
+    id: generateId(),
+    timestamp: new Date().toISOString(),
+    round,
+    turn,
+    entryType: 'reinforcement',
+    text: `Reinforcements: ${displayName} ${countLabel} (${modeLabel})`,
+    reinforcement: {
+      category,
+      displayName,
+      quantity,
+      insertionMode
+    }
+  };
+}
+
 // ============================================================================
 // Phase 6: Items and Conditions Log Entries
 // ============================================================================

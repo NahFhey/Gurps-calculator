@@ -263,6 +263,9 @@ export function rebuildState(baseState, historyState, targetCursor, baseRevealSt
       break;
     }
     state = applyAction(state, actions[i]);
+    if (revealState && actions[i]?.revealUpdate) {
+      revealState = applyRevealUpdate(revealState, actions[i].revealUpdate);
+    }
   }
 
   // Phase 5: Return with reveal state if available
@@ -271,6 +274,29 @@ export function rebuildState(baseState, historyState, targetCursor, baseRevealSt
   }
 
   return state;
+}
+
+function applyRevealUpdate(revealState, revealUpdate) {
+  if (!revealState || !revealUpdate) return revealState;
+
+  const updated = JSON.parse(JSON.stringify(revealState));
+  if (!updated.byInstanceId) {
+    updated.byInstanceId = {};
+  }
+
+  if (revealUpdate.add) {
+    for (const [instanceId, reveal] of Object.entries(revealUpdate.add)) {
+      updated.byInstanceId[instanceId] = reveal;
+    }
+  }
+
+  if (Array.isArray(revealUpdate.remove)) {
+    for (const instanceId of revealUpdate.remove) {
+      delete updated.byInstanceId[instanceId];
+    }
+  }
+
+  return updated;
 }
 
 /**

@@ -82,6 +82,12 @@ function filterLogEntry(entry, revealState, combatState) {
     case 'condition': // Phase 6
       return filterConditionEntry(entry, targetReveal, target);
 
+    case 'maneuver': // Phase 7
+      return filterManeuverEntry(entry, actorReveal, actor);
+
+    case 'reinforcement': // Phase 8
+      return filterReinforcementEntry(entry, combatState, revealState);
+
     default:
       // Unknown entry type - show generic text
       return {
@@ -358,6 +364,69 @@ function filterEffectEntry(entry, actorReveal, actor) {
   return {
     ...entry,
     text: redactName(entry.text, actorReveal, actor)
+  };
+}
+
+/**
+ * Phase 7: Filter maneuver selection entries
+ *
+ * Show maneuvers if:
+ * - Actor is player/ally (always show)
+ * - Actor is enemy and name is fully revealed
+ * Otherwise, show generic action
+ */
+function filterManeuverEntry(entry, actorReveal, actor) {
+  const actorSide = getParticipantSide(actor);
+
+  if (actorSide === 'player' || actorSide === 'ally' || actorReveal?.name === RevealMode.NAME_FULL) {
+    return {
+      ...entry,
+      text: redactName(entry.text, actorReveal, actor)
+    };
+  }
+
+  const actorName = getDisplayName(actor, actorReveal);
+  return {
+    ...entry,
+    text: `${actorName} acted`,
+    maneuverId: undefined,
+    maneuverLabel: undefined,
+    aim: undefined,
+    wait: undefined,
+    constraints: undefined
+  };
+}
+
+/**
+ * Phase 8: Filter reinforcement entries
+ *
+ * Hide enemy names unless fully revealed.
+ */
+function filterReinforcementEntry(entry, combatState, revealState) {
+  const reinforcement = entry.reinforcement;
+  if (!reinforcement) {
+    return entry;
+  }
+
+  if (reinforcement.category !== 'enemy') {
+    return entry;
+  }
+
+  const shouldShowNames = Object.values(revealState?.byInstanceId || {}).some(
+    reveal => reveal.name === RevealMode.NAME_FULL
+  );
+
+  if (shouldShowNames) {
+    return entry;
+  }
+
+  return {
+    ...entry,
+    text: 'Enemy reinforcements arrived',
+    reinforcement: {
+      ...reinforcement,
+      displayName: 'Unknown Enemy'
+    }
   };
 }
 

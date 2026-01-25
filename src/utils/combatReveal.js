@@ -214,6 +214,41 @@ export function addCombatantToReveal(revealState, instanceId, side) {
 }
 
 /**
+ * Ensure reveal state entries match current participants
+ *
+ * @param {object} revealState - Current reveal state
+ * @param {array} participants - Active combat participants
+ * @returns {object} Updated reveal state
+ */
+export function syncRevealStateForParticipants(revealState, participants) {
+  if (!revealState) return revealState;
+
+  const updated = JSON.parse(JSON.stringify(revealState));
+  const participantIds = new Set(participants.map(p => p.instanceId));
+
+  // Remove entries for missing participants
+  for (const instanceId of Object.keys(updated.byInstanceId || {})) {
+    if (!participantIds.has(instanceId)) {
+      delete updated.byInstanceId[instanceId];
+    }
+  }
+
+  // Add defaults for new participants
+  for (const participant of participants) {
+    if (!updated.byInstanceId[participant.instanceId]) {
+      const side = participant.category || participant.side || 'enemy';
+      updated.byInstanceId[participant.instanceId] = createDefaultRevealForInstance(
+        participant.instanceId,
+        side,
+        participant
+      );
+    }
+  }
+
+  return updated;
+}
+
+/**
  * Remove combatant from reveal state (when removed from combat)
  *
  * @param {object} revealState - Current reveal state
