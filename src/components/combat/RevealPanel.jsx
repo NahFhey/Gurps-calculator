@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
-import { RevealMode, updateReveal } from '../../utils/combatReveal';
+import { RevealMode, updateReveal, getRevealForInstance } from '../../utils/combatReveal';
 
 /**
  * Reveal Panel (Phase 5)
@@ -59,7 +59,11 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
 
       <div className="space-y-2">
         {controllableCombatants.map(participant => {
-          const reveal = combatReveal.byInstanceId[participant.instanceId];
+          const reveal = getRevealForInstance(
+            combatReveal,
+            participant.instanceId,
+            participant.category || participant.side || 'enemy'
+          );
           const isExpanded = expandedCombatants[participant.instanceId];
 
           return (
@@ -273,6 +277,9 @@ function RevealControl({ label, value, options, onChange, compact = false }) {
  * Get summary text for reveal state
  */
 function getRevealSummary(reveal) {
+  if (!reveal) {
+    return 'Fully Hidden';
+  }
   const parts = [];
 
   if (reveal.name === RevealMode.NAME_FULL) parts.push('Name');
