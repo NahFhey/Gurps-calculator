@@ -44,6 +44,12 @@ export function applyAction(state, action) {
     case ACTION_TYPES.LOAD_COMBAT_STATE:
       return applyLoadCombatState(state, action.payload);
 
+    case ACTION_TYPES.SET_TURN_DECISION:
+      return applySetTurnDecision(state, action.payload);
+
+    case ACTION_TYPES.ADD_REINFORCEMENTS:
+      return applyAddReinforcements(state, action.payload);
+
     // Phase 6 actions
     case ACTION_TYPES.ADD_CONDITION:
       return applyAddCondition(state, action.payload);
@@ -102,6 +108,12 @@ export function applyInverse(state, action) {
 
     case ACTION_TYPES.LOAD_COMBAT_STATE:
       return applyLoadCombatState(state, action.inverse, action);
+
+    case ACTION_TYPES.SET_TURN_DECISION:
+      return applySetTurnDecision(state, action.inverse, action);
+
+    case ACTION_TYPES.ADD_REINFORCEMENTS:
+      return applyRemoveReinforcements(state, action.inverse, action);
 
     // Phase 6 inverses
     case ACTION_TYPES.ADD_CONDITION:
@@ -202,6 +214,98 @@ function applyAddLogEntry(state, payload, action) {
 
   return produce(state, draft => {
     draft.log.push(entry);
+  });
+}
+
+/**
+ * Apply SET_TURN_DECISION
+ */
+function applySetTurnDecision(state, payload, action) {
+  const resolvedPayload = payload || action?.payload;
+  const { decisionKey, decision } = resolvedPayload || {};
+
+  return produce(state, draft => {
+    if (!draft.turnDecisions) {
+      draft.turnDecisions = {};
+    }
+
+    if (!decisionKey) {
+      return;
+    }
+
+    if (decision === null || decision === undefined) {
+      delete draft.turnDecisions[decisionKey];
+      return;
+    }
+
+    draft.turnDecisions[decisionKey] = decision;
+  });
+}
+
+/**
+ * Apply ADD_REINFORCEMENTS
+ */
+function applyAddReinforcements(state, payload, action) {
+  const resolvedPayload = payload || action?.payload;
+  const { addedCombatants, addedInstanceIds, turnOrderAfter, logEntry } = resolvedPayload || {};
+
+  return produce(state, draft => {
+    if (Array.isArray(addedCombatants)) {
+      draft.participants.push(...addedCombatants);
+    }
+
+    if (Array.isArray(turnOrderAfter)) {
+      draft.turnOrder = turnOrderAfter;
+    }
+
+    if (logEntry) {
+      draft.log.push(logEntry);
+    }
+
+    if (Array.isArray(addedInstanceIds) && draft.turnDecisions) {
+      for (const decisionKey of Object.keys(draft.turnDecisions)) {
+        const matches = addedInstanceIds.some(id => decisionKey.includes(`_${id}`));
+        if (matches) {
+          delete draft.turnDecisions[decisionKey];
+        }
+      }
+    }
+  });
+}
+
+/**
+ * Apply ADD_REINFORCEMENTS inverse
+ */
+function applyRemoveReinforcements(state, payload, action) {
+  const resolvedPayload = payload || action?.payload;
+  const { removedInstanceIds, turnOrderBefore, logEntryId } = resolvedPayload || {};
+
+  return produce(state, draft => {
+    if (Array.isArray(removedInstanceIds)) {
+      draft.participants = draft.participants.filter(
+        participant => !removedInstanceIds.includes(participant.instanceId)
+      );
+    }
+
+    if (Array.isArray(turnOrderBefore)) {
+      draft.turnOrder = turnOrderBefore;
+    }
+
+    if (logEntryId) {
+      const index = draft.log.findIndex(entry => entry.id === logEntryId);
+      if (index !== -1) {
+        draft.log.splice(index, 1);
+      }
+    }
+
+    if (Array.isArray(removedInstanceIds) && draft.turnDecisions) {
+      for (const decisionKey of Object.keys(draft.turnDecisions)) {
+        const matches = removedInstanceIds.some(id => decisionKey.includes(`_${id}`));
+        if (matches) {
+          delete draft.turnDecisions[decisionKey];
+        }
+      }
+    }
   });
 }
 

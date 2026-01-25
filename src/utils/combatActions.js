@@ -16,6 +16,8 @@ export const ACTION_TYPES = {
   UPDATE_LOG_ENTRY: 'UPDATE_LOG_ENTRY',
   REORDER_TURN_ORDER: 'REORDER_TURN_ORDER',
   LOAD_COMBAT_STATE: 'LOAD_COMBAT_STATE',
+  SET_TURN_DECISION: 'SET_TURN_DECISION',
+  ADD_REINFORCEMENTS: 'ADD_REINFORCEMENTS',
   // Phase 6 actions
   ADD_CONDITION: 'ADD_CONDITION',
   REMOVE_CONDITION: 'REMOVE_CONDITION',
@@ -209,6 +211,67 @@ export function createLoadCombatStateAction(fromSnapshot, toSnapshot) {
       fromSnapshot: toSnapshot,
       toSnapshot: fromSnapshot
     }
+  };
+}
+
+/**
+ * Phase 7: Create a SET_TURN_DECISION action
+ * Records maneuver selection/notes for the current turn
+ *
+ * @param {string} decisionKey - Round/turn/actor key
+ * @param {object|null} previousDecision - Previous decision state
+ * @param {object|null} nextDecision - Next decision state
+ * @returns {object} Action object
+ */
+export function createSetTurnDecisionAction(decisionKey, previousDecision, nextDecision) {
+  return {
+    id: generateId(),
+    ts: new Date().toISOString(),
+    type: ACTION_TYPES.SET_TURN_DECISION,
+    label: 'Turn maneuver decision',
+    payload: {
+      decisionKey,
+      decision: nextDecision
+    },
+    inverse: {
+      decisionKey,
+      decision: previousDecision
+    }
+  };
+}
+
+/**
+ * Phase 8: Create an ADD_REINFORCEMENTS action
+ * Records adding new combatants and updating turn order in one atomic action
+ *
+ * @param {object} params - Reinforcement action parameters
+ * @returns {object} Action object
+ */
+export function createAddReinforcementsAction({
+  addedCombatants,
+  addedInstanceIds,
+  turnOrderBefore,
+  turnOrderAfter,
+  logEntry,
+  revealUpdate
+}) {
+  return {
+    id: generateId(),
+    ts: new Date().toISOString(),
+    type: ACTION_TYPES.ADD_REINFORCEMENTS,
+    label: 'Add reinforcements',
+    payload: {
+      addedCombatants,
+      addedInstanceIds,
+      turnOrderAfter,
+      logEntry
+    },
+    inverse: {
+      removedInstanceIds: addedInstanceIds,
+      turnOrderBefore,
+      logEntryId: logEntry?.id || null
+    },
+    revealUpdate
   };
 }
 

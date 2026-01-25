@@ -1,21 +1,26 @@
 import React, { useState, useEffect, memo } from 'react';
 import { ChevronLeft, ChevronRight, X, Download, Plus, Undo, Redo, Save, Upload, Dices } from 'lucide-react';
 import { useCombat } from '../../contexts/CombatContext';
-import { calculateHPStatus, exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, createActionLogEntry, createInjuryLogEntry, createEffectLogEntry, createConditionLogEntry, exportActiveCombat, parseImportedCombat, exportCombatPlayerView, exportCombatGMLocked, importCombatWithGMLock } from '../../utils/combatHelpers';
+import { calculateHPStatus, exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, createActionLogEntry, createInjuryLogEntry, createEffectLogEntry, createConditionLogEntry, createManeuverLogEntry, createReinforcementLogEntry, generateId, exportActiveCombat, parseImportedCombat, exportCombatPlayerView, exportCombatGMLocked, importCombatWithGMLock } from '../../utils/combatHelpers';
 import { MAX_COMBAT_HISTORY } from '../../constants';
 import { roll, rollVsTarget, formatRoll } from '../../utils/dice';
-import { createTurnAdvanceAction, createSetResourceAction, createAddLogEntryAction, createAddConditionAction, createRemoveConditionAction, createUpdateConditionAction } from '../../utils/combatActions';
+import { createTurnAdvanceAction, createSetResourceAction, createAddLogEntryAction, createAddConditionAction, createRemoveConditionAction, createUpdateConditionAction, createSetTurnDecisionAction, createAddReinforcementsAction } from '../../utils/combatActions';
 import { addAction, canUndo, canRedo, getUndoCount, getRedoCount, undo, redo, createHistoryState, createSnapshot } from '../../utils/combatHistory';
 import { validateCombatState, validateCombatExport, validateCombatImport } from '../../utils/combatValidation';
 import { clearShock, applyEffect, getActiveEffects } from '../../utils/effectsEngine';
 import { getCombatView, ViewMode } from '../../utils/combatViewFilter';
-import { createInitialRevealState } from '../../utils/combatReveal';
+import { createDefaultRevealForInstance, createInitialRevealState, syncRevealStateForParticipants } from '../../utils/combatReveal';
 import { filterLogForPlayerView } from '../../utils/combatLogFilter';
 import { tickConditionsTurn, tickConditionsRound, getActiveConditions } from '../../utils/conditionsEngine';
+import { ManeuverCatalog } from '../../constants/maneuvers';
+import { deriveTurnContext } from '../../utils/turnContext';
+import { filterManeuvers } from '../../utils/maneuverFilter';
 import ActionPanel from './ActionPanel';
 import ViewModeToggle from './ViewModeToggle';
 import RevealPanel from './RevealPanel';
 import ConditionBadge from './ConditionBadge';
+import ManeuverSelector from './ManeuverSelector';
+import ReinforcementsModal from './ReinforcementsModal';
 
 /**
  * Combat Tracker Component - Phase 3
@@ -23,6 +28,7 @@ import ConditionBadge from './ConditionBadge';
  */
 export default function CombatTracker() {
   const {
+    combatCharacters,
     combatActive,
     saveCombatActive,
     combatActiveHistory,
@@ -41,6 +47,7 @@ export default function CombatTracker() {
   const [rollTarget, setRollTarget] = useState('');
   const [showDicePanel, setShowDicePanel] = useState(false);
   const [showActionPanel, setShowActionPanel] = useState(true);
+  const [showReinforcementsModal, setShowReinforcementsModal] = useState(false);
 
   // Phase 5: View mode (session-only, defaults to Player View)
   const [viewMode, setViewMode] = useState(ViewMode.PLAYER);
@@ -105,6 +112,21 @@ export default function CombatTracker() {
   // Phase 5: Also get base reveal state
   const baseState = createSnapshot(combatActive); // For now, treat current as base (simplified)
 
+  const turnDecisionKey = currentActorInstanceId
+    ? `${combatActive.currentRound}_${combatActive.currentTurnIndex}_${currentActorInstanceId}`
+    : null;
+  const turnDecisions = combatActive.turnDecisions || {};
+  const currentTurnDecision = turnDecisionKey ? (turnDecisions[turnDecisionKey] || {}) : {};
+  const turnContext = deriveTurnContext(currentActorTruth);
+  const availableManeuvers = filterManeuvers(ManeuverCatalog, turnContext, combatRulesPreset || 'standard');
+  const selectedManeuverId = currentTurnDecision?.maneuverId || null;
+  const selectedManeuver = ManeuverCatalog.find(m => m.id === selectedManeuverId) || null;
+  const maneuverSelection = selectedManeuver
+    ? { selectedId: selectedManeuverId, prompts: selectedManeuver.prompts }
+    : { selectedId: null, prompts: {} };
+
+  const isEnemyInPlayerView = viewMode === ViewMode.PLAYER && currentActor?.category === 'enemy';
+
   // ============================================================================
   // Action Helpers
   // ============================================================================
@@ -116,6 +138,61 @@ export default function CombatTracker() {
   const recordAction = (action) => {
     const newHistory = addAction(history, action, combatActive, combatReveal);
     saveCombatActiveHistory(newHistory);
+  };
+
+  const buildAutoTurnOrder = (participants) => {
+    const activeCombatants = participants.filter(p => p.category !== 'object');
+    const sorted = [...activeCombatants].sort((a, b) => {
+      if (b.basicSpeed !== a.basicSpeed) return b.basicSpeed - a.basicSpeed;
+      if (b.dx !== a.dx) return b.dx - a.dx;
+      return a.name.localeCompare(b.name);
+    });
+    return sorted.map(p => p.instanceId);
+  };
+
+  const insertAfterIndex = (order, index, newIds) => {
+    const nextIndex = Math.min(order.length, index + 1);
+    return [...order.slice(0, nextIndex), ...newIds, ...order.slice(nextIndex)];
+  };
+
+  const normalizeTurnDecision = (decision) => {
+    if (!decision) return null;
+
+    const hasManeuver = Boolean(decision.maneuverId);
+    const hasNotes = Boolean(decision.notes && decision.notes.trim());
+    const hasAim = Boolean(decision.aim?.targetInstanceId || decision.aim?.turnsAimed);
+    const hasWait = Boolean(decision.wait?.triggerText && decision.wait.triggerText.trim());
+
+    if (!hasManeuver && !hasNotes && !hasAim && !hasWait) {
+      return null;
+    }
+
+    return {
+      ...decision,
+      notes: decision.notes || undefined,
+      aim: decision.aim || undefined,
+      wait: decision.wait || undefined
+    };
+  };
+
+  const updateTurnDecisionState = (previousDecision, nextDecision) => {
+    if (!turnDecisionKey) return;
+
+    const normalizedDecision = normalizeTurnDecision(nextDecision);
+    const updatedTurnDecisions = { ...turnDecisions };
+
+    if (normalizedDecision) {
+      updatedTurnDecisions[turnDecisionKey] = normalizedDecision;
+    } else {
+      delete updatedTurnDecisions[turnDecisionKey];
+    }
+
+    saveCombatActive({
+      ...combatActive,
+      turnDecisions: updatedTurnDecisions
+    });
+
+    recordAction(createSetTurnDecisionAction(turnDecisionKey, previousDecision || null, normalizedDecision));
   };
 
   // ============================================================================
@@ -130,7 +207,8 @@ export default function CombatTracker() {
     saveCombatActive(result.newCombatState);
     saveCombatActiveHistory(result.newHistory);
     if (result.newRevealState) {
-      saveCombatReveal(result.newRevealState);
+      const syncedReveal = syncRevealStateForParticipants(result.newRevealState, result.newCombatState.participants);
+      saveCombatReveal(syncedReveal);
     }
   };
 
@@ -142,7 +220,8 @@ export default function CombatTracker() {
     saveCombatActive(result.newCombatState);
     saveCombatActiveHistory(result.newHistory);
     if (result.newRevealState) {
-      saveCombatReveal(result.newRevealState);
+      const syncedReveal = syncRevealStateForParticipants(result.newRevealState, result.newCombatState.participants);
+      saveCombatReveal(syncedReveal);
     }
   };
 
@@ -470,6 +549,192 @@ export default function CombatTracker() {
 
     saveCombatActive(newCombat);
     recordAction(conditionAction);
+  };
+
+  // ============================================================================
+  // Phase 7: Maneuver Selection
+  // ============================================================================
+
+  const handleSelectManeuver = (maneuverId) => {
+    if (!currentActorTruth || !turnDecisionKey) return;
+
+    const previousDecision = turnDecisions[turnDecisionKey] || null;
+    const nextDecision = {
+      ...(previousDecision || {}),
+      maneuverId: maneuverId || null
+    };
+
+    updateTurnDecisionState(previousDecision, nextDecision);
+
+    if (!maneuverId) return;
+
+    const maneuverLabel = ManeuverCatalog.find(m => m.id === maneuverId)?.label || maneuverId;
+    const logEntry = createManeuverLogEntry({
+      round: combatActive.currentRound,
+      turn: combatActive.currentTurnIndex,
+      actorInstanceId: currentActorTruth.instanceId,
+      actorName: currentActorTruth.name,
+      maneuverId,
+      maneuverLabel,
+      aim: nextDecision.aim || null,
+      wait: nextDecision.wait || null,
+      constraints: {
+        isStunned: turnContext.isStunned,
+        isProne: turnContext.isProne,
+        isGrappled: turnContext.isGrappled,
+        isUnconscious: turnContext.isUnconscious,
+        shockPenalty: turnContext.shockPenalty
+      }
+    });
+
+    saveCombatActive(prev => ({
+      ...prev,
+      log: [...prev.log, logEntry]
+    }));
+
+    recordAction(createAddLogEntryAction(logEntry));
+  };
+
+  const handleManeuverWorkflowUpdate = (update) => {
+    if (!currentActorTruth || !turnDecisionKey) return;
+
+    const previousDecision = turnDecisions[turnDecisionKey] || null;
+    const nextDecision = {
+      ...(previousDecision || {})
+    };
+
+    if (update.type === 'aim') {
+      nextDecision.aim = {
+        ...(nextDecision.aim || {}),
+        ...(update.targetInstanceId !== undefined ? { targetInstanceId: update.targetInstanceId } : {}),
+        ...(update.turnsAimed !== undefined ? { turnsAimed: update.turnsAimed } : {})
+      };
+    }
+
+    if (update.type === 'wait') {
+      nextDecision.wait = {
+        ...(nextDecision.wait || {}),
+        ...(update.triggerText !== undefined ? { triggerText: update.triggerText } : {})
+      };
+    }
+
+    updateTurnDecisionState(previousDecision, nextDecision);
+  };
+
+  // ============================================================================
+  // Phase 8: Reinforcements
+  // ============================================================================
+
+  const handleAddReinforcements = (data) => {
+    const character = combatCharacters.find(c => c.id === data.characterId);
+    if (!character) return;
+
+    const nameList = data.previewNames || [];
+    const newCombatants = nameList.map((name) => {
+      const instanceId = generateId();
+      return {
+        ...character,
+        id: instanceId,
+        instanceId,
+        libraryId: character.id,
+        name,
+        category: data.category,
+        currentHP: character.hp,
+        currentFP: character.fp || 0,
+        currentMP: character.mp || 0,
+        shockPenalty: 0,
+        isStunned: false,
+        isUnconscious: false,
+        isDead: false,
+        bleeding: null,
+        crippled: [],
+        conditions: []
+      };
+    });
+
+    if (newCombatants.length === 0) {
+      return;
+    }
+
+    const newIds = newCombatants.map(c => c.instanceId);
+    const turnOrderBefore = combatActive.turnOrder;
+    let turnOrderAfter = turnOrderBefore;
+
+    if (data.category !== 'object') {
+      switch (data.insertionMode) {
+        case 'next_turn':
+          turnOrderAfter = insertAfterIndex(turnOrderBefore, combatActive.currentTurnIndex, newIds);
+          break;
+        case 'end_of_round':
+          turnOrderAfter = [...turnOrderBefore, ...newIds];
+          break;
+        case 'auto':
+          turnOrderAfter = buildAutoTurnOrder([...combatActive.participants, ...newCombatants]);
+          break;
+        case 'manual':
+          if (Array.isArray(data.manualOrder)) {
+            turnOrderAfter = data.manualOrder.map((entry) => {
+              if (entry.startsWith('new-')) {
+                const index = Number(entry.replace('new-', ''));
+                return newIds[index];
+              }
+              return entry;
+            });
+          }
+          break;
+        default:
+          break;
+      }
+    }
+
+    const logEntry = createReinforcementLogEntry({
+      round: combatActive.currentRound,
+      turn: combatActive.currentTurnIndex,
+      category: data.category,
+      displayName: nameList[0] || character.name,
+      quantity: newCombatants.length,
+      insertionMode: data.insertionMode
+    });
+
+    const revealAdd = {};
+    newCombatants.forEach((combatant) => {
+      revealAdd[combatant.instanceId] = createDefaultRevealForInstance(
+        combatant.instanceId,
+        combatant.category,
+        combatant
+      );
+    });
+
+    const newCombat = {
+      ...combatActive,
+      participants: [...combatActive.participants, ...newCombatants],
+      turnOrder: turnOrderAfter,
+      log: [...combatActive.log, logEntry]
+    };
+
+    const newReveal = combatReveal
+      ? syncRevealStateForParticipants(
+        { ...combatReveal, byInstanceId: { ...combatReveal.byInstanceId, ...revealAdd } },
+        newCombat.participants
+      )
+      : combatReveal;
+
+    saveCombatActive(newCombat);
+    if (newReveal) {
+      saveCombatReveal(newReveal);
+    }
+
+    const action = createAddReinforcementsAction({
+      addedCombatants: newCombatants,
+      addedInstanceIds: newIds,
+      turnOrderBefore,
+      turnOrderAfter,
+      logEntry,
+      revealUpdate: { add: revealAdd }
+    });
+
+    recordAction(action);
+    setShowReinforcementsModal(false);
   };
 
   // ============================================================================
@@ -1034,6 +1299,16 @@ export default function CombatTracker() {
             Redo ({getRedoCount(history)})
           </button>
 
+          {viewMode === ViewMode.GM && gmMode && (
+            <button
+              onClick={() => setShowReinforcementsModal(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded"
+            >
+              <Plus size={16} />
+              Reinforcements
+            </button>
+          )}
+
           {/* Phase 5: Export Menu */}
           <div className="relative">
             <button
@@ -1134,6 +1409,19 @@ export default function CombatTracker() {
         </div>
       </div>
 
+      {!isEnemyInPlayerView ? (
+        <ManeuverSelector
+          maneuvers={availableManeuvers}
+          selectedId={selectedManeuverId}
+          onSelect={handleSelectManeuver}
+          disabledReason={turnContext.isUnconscious ? 'Unconscious' : null}
+        />
+      ) : (
+        <div className="bg-gray-800 rounded-lg p-4 text-sm text-gray-400">
+          Enemy maneuver selection hidden in Player View.
+        </div>
+      )}
+
       {/* Action Panel (Phase 3, 4, 6) */}
       <ActionPanel
         currentActor={currentActor}
@@ -1142,12 +1430,26 @@ export default function CombatTracker() {
         combatRulesPreset={combatRulesPreset || 'standard'}
         expanded={showActionPanel}
         onToggleExpanded={() => setShowActionPanel(!showActionPanel)}
+        maneuverSelection={isEnemyInPlayerView ? { selectedId: null, prompts: {} } : maneuverSelection}
+        onManeuverWorkflow={handleManeuverWorkflowUpdate}
+        turnDecision={isEnemyInPlayerView ? null : currentTurnDecision}
         currentRound={combatActive.currentRound}
         currentTurn={combatActive.currentTurnIndex}
         onAddCondition={handleAddCondition}
         onRemoveCondition={handleRemoveCondition}
         onUpdateCondition={handleUpdateCondition}
       />
+
+      {showReinforcementsModal && (
+        <ReinforcementsModal
+          onClose={() => setShowReinforcementsModal(false)}
+          onConfirm={handleAddReinforcements}
+          combatCharacters={combatCharacters}
+          participants={combatActive.participants}
+          turnOrder={combatActive.turnOrder}
+          currentActorInstanceId={currentActorInstanceId}
+        />
+      )}
 
       {/* Phase 5: Reveal Panel (GM View only) */}
       {viewMode === ViewMode.GM && (

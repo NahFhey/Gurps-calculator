@@ -17,6 +17,9 @@ export default function ActionPanel({
   combatRulesPreset = 'standard',
   expanded = true,
   onToggleExpanded,
+  maneuverSelection = null,
+  onManeuverWorkflow,
+  turnDecision = null,
   // Phase 6: Condition management handlers
   currentRound = 0,
   currentTurn = 0,
@@ -24,25 +27,11 @@ export default function ActionPanel({
   onRemoveCondition,
   onUpdateCondition
 }) {
-  const [selectedManeuver, setSelectedManeuver] = useState(null);
   const [activeWorkflow, setActiveWorkflow] = useState(null); // 'attack', 'defense', 'damage', 'note', 'conditions', 'items', or null
   const [noteText, setNoteText] = useState('');
   const [selectedTargetId, setSelectedTargetId] = useState(null);
-
-  // Common maneuvers
-  const MANEUVERS = [
-    'Attack',
-    'All-Out Attack',
-    'All-Out Defense',
-    'Move',
-    'Aim',
-    'Feint',
-    'Evaluate',
-    'Ready',
-    'Concentrate',
-    'Do Nothing',
-    'Custom'
-  ];
+  const selectedManeuver = maneuverSelection?.selectedId || null;
+  const maneuverPrompts = maneuverSelection?.prompts || {};
 
   // Get potential targets (exclude current actor)
   const targets = participants.filter(p => p.instanceId !== currentActor.instanceId);
@@ -69,7 +58,6 @@ export default function ActionPanel({
 
     // Reset
     setActiveWorkflow(null);
-    setSelectedManeuver(null);
   };
 
   const handleDefenseComplete = (defenseData) => {
@@ -81,7 +69,6 @@ export default function ActionPanel({
 
     // Reset
     setActiveWorkflow(null);
-    setSelectedManeuver(null);
   };
 
   const handleDamageComplete = (injuryData) => {
@@ -95,7 +82,6 @@ export default function ActionPanel({
 
     // Reset
     setActiveWorkflow(null);
-    setSelectedManeuver(null);
   };
 
   const handleAddNote = () => {
@@ -110,7 +96,6 @@ export default function ActionPanel({
     // Reset
     setNoteText('');
     setActiveWorkflow(null);
-    setSelectedManeuver(null);
   };
 
   if (!expanded) {
@@ -139,36 +124,72 @@ export default function ActionPanel({
         )}
       </div>
 
-      {/* Maneuver Selection (if not in active workflow) */}
-      {!activeWorkflow && (
-        <div>
-          <label className="block text-sm font-semibold mb-2">1. Choose Maneuver (optional)</label>
-          <select
-            value={selectedManeuver || ''}
-            onChange={(e) => setSelectedManeuver(e.target.value || null)}
-            className="w-full px-3 py-2 bg-gray-700 rounded"
-          >
-            <option value="">No maneuver selected</option>
-            {MANEUVERS.map((maneuver) => (
-              <option key={maneuver} value={maneuver}>
-                {maneuver}
-              </option>
-            ))}
-          </select>
-          <div className="text-xs text-gray-400 mt-1">
-            Phase 3 does not enforce maneuver legality; this is for logging only
-          </div>
+      {/* Maneuver-specific Widgets (if not in active workflow) */}
+      {!activeWorkflow && (maneuverPrompts?.allowsAimPanel || maneuverPrompts?.allowsWaitPanel) && (
+        <div className="space-y-4">
+          {maneuverPrompts?.allowsAimPanel && (
+            <div className="space-y-2">
+              <h5 className="text-sm font-semibold">Aim Tracking</h5>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Target</label>
+                <select
+                  value={turnDecision?.aim?.targetInstanceId || ''}
+                  onChange={(e) => onManeuverWorkflow?.({
+                    type: 'aim',
+                    targetInstanceId: e.target.value || null
+                  })}
+                  className="w-full px-3 py-2 bg-gray-700 rounded"
+                >
+                  <option value="">No target</option>
+                  {targets.map((target) => (
+                    <option key={target.instanceId} value={target.instanceId}>
+                      {target.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Turns Aimed</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={turnDecision?.aim?.turnsAimed ?? 0}
+                  onChange={(e) => onManeuverWorkflow?.({
+                    type: 'aim',
+                    turnsAimed: parseInt(e.target.value, 10) || 0
+                  })}
+                  className="w-full px-3 py-2 bg-gray-700 rounded"
+                />
+              </div>
+            </div>
+          )}
+          {maneuverPrompts?.allowsWaitPanel && (
+            <div className="space-y-2">
+              <h5 className="text-sm font-semibold">Wait Trigger</h5>
+              <input
+                type="text"
+                value={turnDecision?.wait?.triggerText || ''}
+                onChange={(e) => onManeuverWorkflow?.({
+                  type: 'wait',
+                  triggerText: e.target.value
+                })}
+                placeholder="Describe the trigger condition"
+                className="w-full px-3 py-2 bg-gray-700 rounded"
+              />
+            </div>
+          )}
         </div>
       )}
 
       {/* Action Type Selection (if not in active workflow) */}
       {!activeWorkflow && (
         <div>
-          <label className="block text-sm font-semibold mb-2">2. Choose Action</label>
+          <label className="block text-sm font-semibold mb-2">Choose Action</label>
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => handleStartWorkflow('attack')}
               className="flex items-center justify-center gap-2 p-3 bg-red-600 hover:bg-red-700 rounded"
+              disabled={!maneuverPrompts?.allowsAttackPanel}
             >
               <Swords size={20} />
               Attack
@@ -176,6 +197,7 @@ export default function ActionPanel({
             <button
               onClick={() => handleStartWorkflow('defense')}
               className="flex items-center justify-center gap-2 p-3 bg-blue-600 hover:bg-blue-700 rounded"
+              disabled={!maneuverPrompts?.allowsDefensePanel}
             >
               <Shield size={20} />
               Defense
@@ -209,6 +231,16 @@ export default function ActionPanel({
               Conditions
             </button>
           </div>
+          {selectedManeuver && !maneuverPrompts?.allowsAttackPanel && !maneuverPrompts?.allowsDefensePanel && (
+            <div className="text-xs text-gray-400 mt-2">
+              This maneuver doesn&apos;t open attack or defense workflows. Use notes or other panels as needed.
+            </div>
+          )}
+          {!selectedManeuver && (
+            <div className="text-xs text-gray-400 mt-2">
+              Select a maneuver above to enable relevant workflows.
+            </div>
+          )}
         </div>
       )}
 
