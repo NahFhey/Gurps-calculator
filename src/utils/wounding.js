@@ -56,6 +56,15 @@ const BASE_WOUNDING_MULTIPLIERS = {
 };
 
 /**
+ * Get base wounding multiplier for damage type
+ * @param {string} damageType
+ * @returns {number}
+ */
+export function getBaseWoundingMultiplier(damageType) {
+  return BASE_WOUNDING_MULTIPLIERS[damageType] || 1;
+}
+
+/**
  * Get wounding multiplier for damage type and location
  * @param {string} damageType - Damage type (e.g., 'cr', 'cut', 'imp')
  * @param {Object} location - Location object with flags (isVital, isExtremity, etc.)

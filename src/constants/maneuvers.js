@@ -29,7 +29,12 @@ export const ManeuverCatalog = [
     requires: { notUnconscious: true },
     forbids: { stunned: true },
     prompts: { needsTarget: true, allowsAttackPanel: true },
-    notes: 'One attack; normal defense allowed.'
+    notes: 'One attack; normal defense allowed.',
+    workflow: {
+      attack: { modifiers: [] },
+      damage: { modifiers: [] },
+      restrictions: {}
+    }
   },
   {
     id: 'all_out_attack_determined',
@@ -38,7 +43,12 @@ export const ManeuverCatalog = [
     requires: { notUnconscious: true },
     forbids: { stunned: true },
     prompts: { needsTarget: true, allowsAttackPanel: true },
-    notes: 'One attack at +4; no active defenses.'
+    notes: 'One attack at +4; no active defenses.',
+    workflow: {
+      attack: { modifiers: [{ label: 'All-Out (Determined)', value: 4 }] },
+      damage: { modifiers: [] },
+      restrictions: { attackerActiveDefensesDisabled: true }
+    }
   },
   {
     id: 'all_out_attack_strong',
@@ -47,7 +57,12 @@ export const ManeuverCatalog = [
     requires: { notUnconscious: true },
     forbids: { stunned: true },
     prompts: { needsTarget: true, allowsAttackPanel: true },
-    notes: 'One attack at +2 damage; no active defenses.'
+    notes: 'One attack at +2 damage; no active defenses.',
+    workflow: {
+      attack: { modifiers: [] },
+      damage: { modifiers: [{ label: 'All-Out (Strong)', value: 2 }] },
+      restrictions: { attackerActiveDefensesDisabled: true }
+    }
   },
   {
     id: 'all_out_defense_increased',
@@ -56,7 +71,11 @@ export const ManeuverCatalog = [
     requires: { notUnconscious: true },
     forbids: {},
     prompts: { allowsDefensePanel: true },
-    notes: '+2 to one active defense; no attack.'
+    notes: '+2 to one active defense; no attack.',
+    workflow: {
+      defense: { modifiers: [{ label: 'All-Out Defense (Increased)', value: 2 }] },
+      restrictions: { attackerActiveDefensesDisabled: false }
+    }
   },
   {
     id: 'all_out_defense_dodge',

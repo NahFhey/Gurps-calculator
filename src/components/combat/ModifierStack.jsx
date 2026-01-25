@@ -11,6 +11,7 @@ export default function ModifierStack({
   baseValue,
   baseLabel = 'Base',
   modifiers = [],
+  lockedModifiers = [],
   onModifiersChange,
   presets = null,
   allowCustom = true
@@ -20,7 +21,7 @@ export default function ModifierStack({
   const [customValue, setCustomValue] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
 
-  const total = sumModifiers(modifiers);
+  const total = sumModifiers([...lockedModifiers, ...modifiers]);
   const effective = baseValue + total;
 
   // Add a modifier to the stack
@@ -79,7 +80,7 @@ export default function ModifierStack({
           <span className="font-semibold">{baseValue}</span>
         </div>
 
-        {modifiers.length > 0 && (
+        {(modifiers.length > 0 || lockedModifiers.length > 0) && (
           <div className="mt-1 flex justify-between text-sm">
             <span className="text-gray-400">Modifiers:</span>
             <span className={total >= 0 ? 'text-green-400' : 'text-red-400'}>
@@ -95,8 +96,20 @@ export default function ModifierStack({
       </div>
 
       {/* Modifier List */}
-      {modifiers.length > 0 && (
+      {(modifiers.length > 0 || lockedModifiers.length > 0) && (
         <div className="space-y-1">
+          {lockedModifiers.map((mod, index) => (
+            <div
+              key={`locked-${index}`}
+              className="flex justify-between items-center bg-gray-900/60 rounded px-3 py-2 text-sm border border-gray-700"
+            >
+              <span className="flex-1">{mod.label}</span>
+              <span className={`font-semibold ${mod.value >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {mod.value >= 0 ? '+' : ''}{mod.value}
+              </span>
+              <span className="ml-2 text-xs text-gray-400 uppercase tracking-wide">Injected</span>
+            </div>
+          ))}
           {modifiers.map((mod, index) => (
             <div
               key={index}

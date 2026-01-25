@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dices, Zap } from 'lucide-react';
 import HitLocationPicker from './HitLocationPicker';
 import EffectsPanel from './EffectsPanel';
 import ModifierStack from './ModifierStack';
-import { DAMAGE_MODIFIERS } from '../../utils/modifiers';
+import { DAMAGE_MODIFIERS, sumModifiers } from '../../utils/modifiers';
 import { rollDamage, resolveDamageExpression } from '../../utils/damage';
 import { resolveInjury, createInjuryBreakdown, createHitLocationLog, applyInjuryToHP } from '../../utils/injuryEngine';
 import { generateEffectsPrompts } from '../../utils/effectsEngine';
@@ -17,15 +17,18 @@ export default function InjuryResolutionPanel({
   attacker = null,
   target,
   damageExpression = '',
+  injectedDamageModifiers = [],
+  initialLocation = null,
+  initialLocationRoll = null,
   combatRulesPreset = 'standard',
   onComplete,
   onCancel
 }) {
-  const [step, setStep] = useState('location'); // 'location', 'damage', 'effects'
+  const [step, setStep] = useState(initialLocation ? 'damage' : 'location'); // 'location', 'damage', 'effects'
 
   // Hit location state
-  const [selectedLocation, setSelectedLocation] = useState(null);
-  const [locationRoll, setLocationRoll] = useState(null);
+  const [selectedLocation, setSelectedLocation] = useState(initialLocation);
+  const [locationRoll, setLocationRoll] = useState(initialLocationRoll);
 
   // Damage state
   const [expression, setExpression] = useState(damageExpression || '');
@@ -43,6 +46,22 @@ export default function InjuryResolutionPanel({
   const [resolvedEffects, setResolvedEffects] = useState([]);
 
   const profileId = target.hitLocationProfileId || 'humanoid';
+
+  useEffect(() => {
+    if (initialLocation) {
+      setSelectedLocation(initialLocation);
+      setLocationRoll(initialLocationRoll);
+      setStep('damage');
+    }
+  }, [initialLocation, initialLocationRoll]);
+
+  useEffect(() => {
+    if (damageExpression) {
+      setExpression(damageExpression);
+      setUseManual(false);
+      setRollResult(null);
+    }
+  }, [damageExpression]);
 
   // Step 1: Hit Location Selection
   const handleLocationSelected = (location, roll) => {
@@ -88,11 +107,15 @@ export default function InjuryResolutionPanel({
       rawDamage = parseInt(manualDamage) || 0;
     } else if (rollResult) {
       // Apply damage modifiers to roll result
-      const modifierTotal = modifiers.reduce((sum, mod) => sum + mod.value, 0);
+      const modifierTotal = sumModifiers([...injectedDamageModifiers, ...modifiers]);
       rawDamage = rollResult.total + modifierTotal;
     } else {
       alert('Please roll damage or enter manual damage first');
       return;
+    }
+
+    if (useManual && injectedDamageModifiers.length > 0) {
+      rawDamage += sumModifiers(injectedDamageModifiers);
     }
 
     // Resolve injury through the pipeline
@@ -150,7 +173,8 @@ export default function InjuryResolutionPanel({
       targetInstanceId: target.instanceId,
       damageType,
       expression: useManual ? 'manual' : expression,
-      modifiers: useManual ? [] : [...modifiers]
+      modifiers: useManual ? [] : [...modifiers],
+      injectedModifiers: [...injectedDamageModifiers]
     };
 
     onComplete(injuryData);
@@ -206,6 +230,13 @@ export default function InjuryResolutionPanel({
             <div className="text-lg font-semibold text-yellow-400">
               {selectedLocation.label}
             </div>
+            <button
+              onClick={() => setStep('location')}
+              className="mt-2 text-xs text-blue-300 hover:text-blue-200"
+              type="button"
+            >
+              Change Hit Location
+            </button>
           </div>
 
           {/* Damage Type */}
@@ -299,6 +330,7 @@ export default function InjuryResolutionPanel({
                 baseValue={rollResult.total}
                 baseLabel="Base Damage"
                 modifiers={modifiers}
+                lockedModifiers={injectedDamageModifiers}
                 onModifiersChange={setModifiers}
                 presets={DAMAGE_MODIFIERS}
               />

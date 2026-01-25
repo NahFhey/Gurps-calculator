@@ -11,6 +11,7 @@ import { rollVsTarget } from '../../utils/dice';
  */
 export default function DefenseAssist({
   defender,
+  injectedModifiers = [],
   onComplete,
   onCancel
 }) {
@@ -52,7 +53,7 @@ export default function DefenseAssist({
   };
 
   const baseDefense = getBaseDefense();
-  const effectiveDefense = calculateEffective(baseDefense, modifiers);
+  const effectiveDefense = calculateEffective(baseDefense, [...injectedModifiers, ...modifiers]);
 
   const handleRoll = () => {
     const result = rollVsTarget('3d6', effectiveDefense);
@@ -64,6 +65,7 @@ export default function DefenseAssist({
       type: defenseType === 'custom' ? customBaseDefense : defenseType,
       baseDefense,
       modifiers: [...modifiers],
+      injectedModifiers: [...injectedModifiers],
       effectiveDefense,
       rollTotal: rollResult ? rollResult.total : null,
       margin: rollResult ? rollResult.margin : null,
@@ -176,6 +178,7 @@ export default function DefenseAssist({
             baseValue={baseDefense}
             baseLabel={`Base ${defenseType === 'custom' ? 'Defense' : defenseType.charAt(0).toUpperCase() + defenseType.slice(1)}`}
             modifiers={modifiers}
+            lockedModifiers={injectedModifiers}
             onModifiersChange={setModifiers}
             presets={DEFENSE_MODIFIERS}
           />

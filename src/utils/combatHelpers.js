@@ -4,6 +4,7 @@
  */
 
 import { HP_STATUS } from '../constants';
+import { DAMAGE_TYPE_LABELS } from './wounding';
 import { getCombatView } from './combatViewFilter';
 import { filterLogForPlayerView } from './combatLogFilter';
 import { encryptJSON, decryptJSON } from './cryptoLock';
@@ -425,7 +426,9 @@ export function createInjuryLogEntry({
   targetName,
   hitLocation,
   damageBreakdown,
-  effects = null
+  effects = null,
+  currentHP = null,
+  newHP = null
 }) {
   let text = `${targetName} takes ${damageBreakdown.injuryApplied} injury`;
 
@@ -433,12 +436,35 @@ export function createInjuryLogEntry({
     text += ` to ${hitLocation.locationLabel}`;
   }
 
-  if (damageBreakdown.raw && damageBreakdown.dr !== undefined) {
-    text += ` (${damageBreakdown.raw} - ${damageBreakdown.dr} DR = ${damageBreakdown.penetrating}`;
-    if (damageBreakdown.woundingMultiplier && damageBreakdown.woundingMultiplier !== 1) {
-      text += ` × ${damageBreakdown.woundingMultiplier}`;
+  if (damageBreakdown.raw !== undefined && damageBreakdown.dr !== undefined) {
+    if (damageBreakdown.penetrating <= 0) {
+      text += ` (${damageBreakdown.raw} raw - ${damageBreakdown.dr} DR = 0 pen; no penetration)`;
+    } else {
+      const baseMultiplier = damageBreakdown.baseWoundingMultiplier ?? 1;
+      const locationMultiplier = damageBreakdown.locationWoundingMultiplier ?? 1;
+      const totalMultiplier = damageBreakdown.woundingMultiplier ?? 1;
+      const parts = [`${damageBreakdown.raw} raw - ${damageBreakdown.dr} DR = ${damageBreakdown.penetrating} pen`];
+      const damageTypeLabel = DAMAGE_TYPE_LABELS[damageBreakdown.damageType] || damageBreakdown.damageType || 'damage';
+
+      if (baseMultiplier !== 1) {
+        const afterBase = Math.floor(damageBreakdown.penetrating * baseMultiplier);
+        parts.push(`×${baseMultiplier} ${damageTypeLabel} = ${afterBase}`);
+      }
+
+      if (locationMultiplier !== 1 && damageBreakdown.locationLabel) {
+        const afterLocation = Math.floor(damageBreakdown.penetrating * totalMultiplier);
+        parts.push(`×${locationMultiplier} (${damageBreakdown.locationLabel}) = ${afterLocation}`);
+      } else if (totalMultiplier !== 1 && baseMultiplier === 1) {
+        const afterTotal = Math.floor(damageBreakdown.penetrating * totalMultiplier);
+        parts.push(`×${totalMultiplier} ${damageTypeLabel} = ${afterTotal}`);
+      }
+
+      text += ` (${parts.join('; ')})`;
     }
-    text += `)`;
+  }
+
+  if (currentHP !== null && newHP !== null) {
+    text += ` → HP ${currentHP}→${newHP}`;
   }
 
   return {

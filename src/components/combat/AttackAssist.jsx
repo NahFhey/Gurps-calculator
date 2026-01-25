@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Swords, Dices } from 'lucide-react';
 import ModifierStack from './ModifierStack';
-import { ATTACK_MODIFIERS, calculateEffective } from '../../utils/modifiers';
+import HitLocationPicker from './HitLocationPicker';
+import { ATTACK_MODIFIERS, calculateEffective, sumModifiers } from '../../utils/modifiers';
 import { rollVsTarget } from '../../utils/dice';
+import { getProfileLocations } from '../../utils/hitLocations';
 
 /**
  * AttackAssist Component
@@ -12,6 +14,7 @@ import { rollVsTarget } from '../../utils/dice';
 export default function AttackAssist({
   actor,
   targets = [],
+  injectedModifiers = [],
   onComplete,
   onCancel
 }) {
@@ -21,9 +24,31 @@ export default function AttackAssist({
   const [modifiers, setModifiers] = useState([]);
   const [selectedTargetId, setSelectedTargetId] = useState(targets.length === 1 ? targets[0].instanceId : null);
   const [rollResult, setRollResult] = useState(null);
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [locationRoll, setLocationRoll] = useState(null);
 
   // Get attacks from actor (if they have any)
   const attacks = actor.attacks || [];
+  const selectedTarget = targets.find(target => target.instanceId === selectedTargetId) || null;
+  const profileId = selectedTarget?.hitLocationProfileId || 'humanoid';
+
+  useEffect(() => {
+    const locations = getProfileLocations(profileId);
+    if (!locations.length) return;
+    const defaultLocation = locations.find(location => location.key === 'torso') || locations[0];
+    const selectedIsValid = selectedLocation && locations.some(location => location.key === selectedLocation.key);
+    if (!selectedIsValid) {
+      setSelectedLocation(defaultLocation);
+      setLocationRoll(null);
+    }
+  }, [profileId, selectedLocation]);
+
+  const locationModifierValue = selectedLocation?.toHitPenalty || 0;
+  const locationModifiers = locationModifierValue !== 0
+    ? [{ label: `Hit Location (${selectedLocation.label})`, value: locationModifierValue }]
+    : [];
+  const lockedModifiers = [...injectedModifiers, ...locationModifiers];
+  const injectedTotal = sumModifiers(lockedModifiers);
 
   const handleSelectAttack = (attack) => {
     setSelectedAttack(attack);
@@ -42,7 +67,7 @@ export default function AttackAssist({
       ? selectedAttack.skill
       : parseInt(customAttack.skill) || 0;
 
-    const effectiveSkill = calculateEffective(baseSkill, modifiers);
+    const effectiveSkill = calculateEffective(baseSkill, [...injectedModifiers, ...locationModifiers, ...modifiers]);
 
     const result = rollVsTarget('3d6', effectiveSkill);
     setRollResult(result);
@@ -57,18 +82,21 @@ export default function AttackAssist({
     };
 
     const baseSkill = selectedAttack ? selectedAttack.skill : parseInt(customAttack.skill) || 0;
-    const effectiveSkill = calculateEffective(baseSkill, modifiers);
+    const effectiveSkill = calculateEffective(baseSkill, [...injectedModifiers, ...locationModifiers, ...modifiers]);
 
     const attackData = {
       name: attack.name,
       baseSkill,
       modifiers: [...modifiers],
+      injectedModifiers: [...injectedModifiers, ...locationModifiers],
       effectiveSkill,
       rollTotal: rollResult ? rollResult.total : null,
       margin: rollResult ? rollResult.margin : null,
       success: rollResult ? rollResult.success : null,
       damage: attack.damage,
-      notes: attack.notes
+      notes: attack.notes,
+      hitLocation: selectedLocation,
+      hitLocationRoll: locationRoll
     };
 
     onComplete({
@@ -179,21 +207,46 @@ export default function AttackAssist({
       </div>
 
       {/* Target Selection */}
-      {targets.length > 0 && (
-        <div>
-          <h4 className="font-semibold mb-2">Target</h4>
-          <select
-            value={selectedTargetId || ''}
-            onChange={(e) => setSelectedTargetId(e.target.value || null)}
-            className="w-full px-3 py-2 bg-gray-700 rounded"
-          >
-            <option value="">No target selected</option>
-            {targets.map((target) => (
-              <option key={target.instanceId} value={target.instanceId}>
-                {target.name}
-              </option>
-            ))}
-          </select>
+      {(targets.length > 0 || !selectedTargetId) && (
+        <div className="space-y-3">
+          <div>
+            <h4 className="font-semibold mb-2">Target</h4>
+            {targets.length > 0 ? (
+              <select
+                value={selectedTargetId || ''}
+                onChange={(e) => setSelectedTargetId(e.target.value || null)}
+                className="w-full px-3 py-2 bg-gray-700 rounded"
+              >
+                <option value="">No target selected</option>
+                {targets.map((target) => (
+                  <option key={target.instanceId} value={target.instanceId}>
+                    {target.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="text-sm text-gray-400">No valid targets available</div>
+            )}
+          </div>
+
+          <div>
+            <HitLocationPicker
+              profileId={profileId}
+              selectedLocation={selectedLocation}
+              onLocationSelected={(location, roll) => {
+                setSelectedLocation(location);
+                setLocationRoll(roll);
+              }}
+            />
+            {selectedLocation && (
+              <div className="text-xs text-gray-400 mt-2">
+                Called-shot modifier:{' '}
+                <span className={locationModifierValue >= 0 ? 'text-green-400' : 'text-red-400'}>
+                  {locationModifierValue >= 0 ? '+' : ''}{locationModifierValue}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -201,10 +254,31 @@ export default function AttackAssist({
       {isValid() && (
         <div>
           <h4 className="font-semibold mb-2">Attack Modifiers</h4>
+          {lockedModifiers.length > 0 && (
+            <div className="mb-3">
+              <div className="text-xs uppercase tracking-wide text-gray-400 mb-2">Injected Modifiers</div>
+              <div className="flex flex-wrap gap-2">
+                {lockedModifiers.map((modifier, index) => (
+                  <span
+                    key={`${modifier.label}-${index}`}
+                    className="px-2 py-1 bg-gray-900/80 border border-gray-700 rounded text-xs"
+                  >
+                    {modifier.label} {modifier.value >= 0 ? '+' : ''}{modifier.value}
+                  </span>
+                ))}
+              </div>
+              {injectedTotal !== 0 && (
+                <div className="text-xs text-gray-400 mt-1">
+                  Injected total: {injectedTotal >= 0 ? '+' : ''}{injectedTotal}
+                </div>
+              )}
+            </div>
+          )}
           <ModifierStack
             baseValue={selectedAttack ? selectedAttack.skill : parseInt(customAttack.skill) || 0}
             baseLabel="Base Skill"
             modifiers={modifiers}
+            lockedModifiers={lockedModifiers}
             onModifiersChange={setModifiers}
             presets={ATTACK_MODIFIERS}
           />
