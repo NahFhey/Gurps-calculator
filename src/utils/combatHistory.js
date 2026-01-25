@@ -290,6 +290,12 @@ function applyRevealUpdate(revealState, revealUpdate) {
     }
   }
 
+  if (revealUpdate.set) {
+    for (const [instanceId, reveal] of Object.entries(revealUpdate.set)) {
+      updated.byInstanceId[instanceId] = reveal;
+    }
+  }
+
   if (Array.isArray(revealUpdate.remove)) {
     for (const instanceId of revealUpdate.remove) {
       delete updated.byInstanceId[instanceId];

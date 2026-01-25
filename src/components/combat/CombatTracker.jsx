@@ -9,7 +9,14 @@ import { addAction, canUndo, canRedo, getUndoCount, getRedoCount, undo, redo, cr
 import { validateCombatState, validateCombatExport, validateCombatImport } from '../../utils/combatValidation';
 import { clearShock, applyEffect, getActiveEffects } from '../../utils/effectsEngine';
 import { getCombatView, ViewMode } from '../../utils/combatViewFilter';
-import { createDefaultRevealForInstance, createInitialRevealState, syncRevealStateForParticipants } from '../../utils/combatReveal';
+import {
+  createDefaultRevealForInstance,
+  createInitialRevealState,
+  revealDefenseForInstance,
+  revealHPAtZero,
+  revealNameForInstance,
+  syncRevealStateForParticipants
+} from '../../utils/combatReveal';
 import { filterLogForPlayerView } from '../../utils/combatLogFilter';
 import { tickConditionsTurn, tickConditionsRound, getActiveConditions } from '../../utils/conditionsEngine';
 import { ManeuverCatalog } from '../../constants/maneuvers';
@@ -138,6 +145,16 @@ export default function CombatTracker() {
   const recordAction = (action) => {
     const newHistory = addAction(history, action, combatActive, combatReveal);
     saveCombatActiveHistory(newHistory);
+  };
+
+  const buildRevealUpdate = (previousReveal, nextReveal, instanceId) => {
+    if (!previousReveal || !nextReveal || !instanceId) return null;
+    const previousEntry = previousReveal.byInstanceId?.[instanceId];
+    const nextEntry = nextReveal.byInstanceId?.[instanceId];
+    if (JSON.stringify(previousEntry) === JSON.stringify(nextEntry)) {
+      return null;
+    }
+    return { set: { [instanceId]: nextEntry } };
   };
 
   const buildAutoTurnOrder = (participants) => {
@@ -812,6 +829,11 @@ export default function CombatTracker() {
   // Phase 3: Action Panel Handlers
   // ============================================================================
 
+  // Repro steps (Player View reveal flow):
+  // 1) Start combat with an enemy that has Dodge/Parry/Block set.
+  // 2) Switch to Player View and resolve an attack into Defense Workflow.
+  // 3) Verify defense rolls use real base values (not 0), reveal base after a successful defense.
+  // 4) Apply injury to reveal name; reveal HP when it reaches 0 or below.
   const handleActionComplete = (actionData) => {
     const { maneuver, kind, attack, defense, damage, injury, note, targetInstanceId, newHP } = actionData;
 
@@ -973,6 +995,18 @@ export default function CombatTracker() {
 
       saveCombatActive(newCombat);
 
+      let updatedRevealState = combatReveal;
+      if (combatReveal) {
+        updatedRevealState = revealNameForInstance(updatedRevealState, targetInstanceId);
+        if (newHP <= 0) {
+          updatedRevealState = revealHPAtZero(updatedRevealState, targetInstanceId);
+        }
+      }
+      const revealUpdate = buildRevealUpdate(combatReveal, updatedRevealState, targetInstanceId);
+      if (revealUpdate) {
+        saveCombatReveal(updatedRevealState);
+      }
+
       // Record resource change action
       if (target) {
         const resourceAction = createSetResourceAction(
@@ -981,6 +1015,9 @@ export default function CombatTracker() {
           target.currentHP,
           newHP
         );
+        if (revealUpdate) {
+          resourceAction.revealUpdate = revealUpdate;
+        }
         recordAction(resourceAction);
       }
 
@@ -1054,9 +1091,34 @@ export default function CombatTracker() {
       return;
     }
 
+    let updatedRevealState = combatReveal;
+    let revealUpdate = null;
+
+    if (kind === 'defense' && defense?.success && targetInstanceId) {
+      const defenseType = defense.type;
+      if (defenseType === 'dodge' || defenseType === 'parry' || defenseType === 'block') {
+        updatedRevealState = revealDefenseForInstance(updatedRevealState, targetInstanceId, defenseType);
+      }
+    }
+
+    if (kind === 'damage' && targetInstanceId && newHP !== undefined) {
+      updatedRevealState = revealNameForInstance(updatedRevealState, targetInstanceId);
+      if (newHP <= 0) {
+        updatedRevealState = revealHPAtZero(updatedRevealState, targetInstanceId);
+      }
+    }
+
+    revealUpdate = buildRevealUpdate(combatReveal, updatedRevealState, targetInstanceId);
+    if (revealUpdate) {
+      saveCombatReveal(updatedRevealState);
+    }
+
     // Save state and record action
     saveCombatActive(newCombat);
     const logAction = createAddLogEntryAction(logEntry);
+    if (revealUpdate) {
+      logAction.revealUpdate = revealUpdate;
+    }
     recordAction(logAction);
   };
 
@@ -1428,6 +1490,9 @@ export default function CombatTracker() {
       <ActionPanel
         currentActor={currentActor}
         participants={combatView.participants}
+        combatState={combatActive}
+        revealState={combatReveal}
+        viewMode={viewMode}
         onActionComplete={handleActionComplete}
         combatRulesPreset={combatRulesPreset || 'standard'}
         expanded={showActionPanel}

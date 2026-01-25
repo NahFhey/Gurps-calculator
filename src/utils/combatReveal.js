@@ -200,6 +200,59 @@ export function updateReveal(revealState, instanceId, field, value) {
 }
 
 /**
+ * Replace reveal data for a specific instance.
+ *
+ * @param {object} revealState - Current reveal state
+ * @param {string} instanceId - The instance to update
+ * @param {object} nextReveal - Full reveal data to set
+ * @returns {object} Updated reveal state
+ */
+export function setRevealForInstance(revealState, instanceId, nextReveal) {
+  const newState = JSON.parse(JSON.stringify(revealState));
+  if (!newState.byInstanceId) {
+    newState.byInstanceId = {};
+  }
+  newState.byInstanceId[instanceId] = nextReveal;
+  return newState;
+}
+
+/**
+ * Reveal a defense base value after a successful defense.
+ */
+export function revealDefenseForInstance(revealState, instanceId, defenseType) {
+  if (!revealState || !instanceId || !defenseType) return revealState;
+  const current = getRevealForInstance(revealState, instanceId, 'enemy');
+  if (current?.defenses?.[defenseType] === RevealMode.DEFENSE_EXACT) {
+    return revealState;
+  }
+  return updateReveal(revealState, instanceId, `defenses.${defenseType}`, RevealMode.DEFENSE_EXACT);
+}
+
+/**
+ * Reveal a combatant name after they take damage.
+ */
+export function revealNameForInstance(revealState, instanceId) {
+  if (!revealState || !instanceId) return revealState;
+  const current = getRevealForInstance(revealState, instanceId, 'enemy');
+  if (current?.name === RevealMode.NAME_FULL) {
+    return revealState;
+  }
+  return updateReveal(revealState, instanceId, 'name', RevealMode.NAME_FULL);
+}
+
+/**
+ * Reveal HP exact values once HP reaches 0 or below.
+ */
+export function revealHPAtZero(revealState, instanceId) {
+  if (!revealState || !instanceId) return revealState;
+  const current = getRevealForInstance(revealState, instanceId, 'enemy');
+  if (current?.hp?.mode === RevealMode.NUMERIC_EXACT) {
+    return revealState;
+  }
+  return updateReveal(revealState, instanceId, 'hp.mode', RevealMode.NUMERIC_EXACT);
+}
+
+/**
  * Add new combatant to reveal state (when added mid-combat)
  *
  * @param {object} revealState - Current reveal state

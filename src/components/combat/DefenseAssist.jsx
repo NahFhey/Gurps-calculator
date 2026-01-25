@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Shield, Dices } from 'lucide-react';
 import ModifierStack from './ModifierStack';
 import { DEFENSE_MODIFIERS, calculateEffective } from '../../utils/modifiers';
 import { rollVsTarget } from '../../utils/dice';
+import { getDefenderDefenseBase, getPublicDefenseLabel } from '../../utils/combatViewSelectors';
+import { ViewMode } from '../../utils/combatViewFilter';
 
 /**
  * DefenseAssist Component
@@ -11,6 +13,10 @@ import { rollVsTarget } from '../../utils/dice';
  */
 export default function DefenseAssist({
   defender,
+  defenderId,
+  combatState,
+  revealState,
+  viewMode = ViewMode.GM,
   injectedModifiers = [],
   onComplete,
   onCancel
@@ -20,21 +26,33 @@ export default function DefenseAssist({
   const [modifiers, setModifiers] = useState([]);
   const [rollResult, setRollResult] = useState(null);
 
-  // Phase 5: Extract defense value from filtered structure
-  const extractDefenseValue = (defenseField) => {
+  const resolvedDefenderId = defenderId || defender?.instanceId || null;
+  const coerceDefenseValue = (defenseField) => {
     if (!defenseField) return null;
-
-    // Phase 5 filtered structure
     if (typeof defenseField === 'object' && defenseField.mode) {
       if (defenseField.mode === 'exact' || defenseField.mode === 'approx') {
         return defenseField.value;
       }
-      return null; // Unknown
+      return null;
     }
-
-    // Legacy: simple number
     return defenseField;
   };
+
+  const baseDefenses = useMemo(() => {
+    if (!combatState || !resolvedDefenderId) {
+      return {
+        dodge: coerceDefenseValue(defender?.defenses?.dodge ?? defender?.dodge ?? null),
+        parry: coerceDefenseValue(defender?.defenses?.parry ?? defender?.parry ?? null),
+        block: coerceDefenseValue(defender?.defenses?.block ?? defender?.block ?? null)
+      };
+    }
+
+    return {
+      dodge: getDefenderDefenseBase(combatState, resolvedDefenderId, 'dodge'),
+      parry: getDefenderDefenseBase(combatState, resolvedDefenderId, 'parry'),
+      block: getDefenderDefenseBase(combatState, resolvedDefenderId, 'block')
+    };
+  }, [combatState, defender, resolvedDefenderId]);
 
   // Get base defense value
   const getBaseDefense = () => {
@@ -42,14 +60,7 @@ export default function DefenseAssist({
       return parseInt(customBaseDefense) || 0;
     }
 
-    // Phase 5: Extract values from filtered structure
-    const defenseValues = {
-      dodge: extractDefenseValue(defender.defenses?.dodge ?? defender.dodge),
-      parry: extractDefenseValue(defender.defenses?.parry ?? defender.parry),
-      block: extractDefenseValue(defender.defenses?.block ?? defender.block)
-    };
-
-    return defenseValues[defenseType] || 0;
+    return baseDefenses[defenseType] ?? 0;
   };
 
   const baseDefense = getBaseDefense();
@@ -85,9 +96,47 @@ export default function DefenseAssist({
   };
 
   // Phase 5: Get display values for defense buttons
-  const dodgeValue = extractDefenseValue(defender.defenses?.dodge ?? defender.dodge);
-  const parryValue = extractDefenseValue(defender.defenses?.parry ?? defender.parry);
-  const blockValue = extractDefenseValue(defender.defenses?.block ?? defender.block);
+  const dodgeLabel = useMemo(() => {
+    if (!resolvedDefenderId || !combatState) {
+      return baseDefenses.dodge !== null && baseDefenses.dodge !== undefined
+        ? `Base: ${baseDefenses.dodge}`
+        : 'Not set';
+    }
+    if (viewMode === ViewMode.GM) {
+      return baseDefenses.dodge !== null && baseDefenses.dodge !== undefined
+        ? `Base: ${baseDefenses.dodge}`
+        : 'Not set';
+    }
+    return getPublicDefenseLabel(combatState, revealState, resolvedDefenderId, 'dodge');
+  }, [baseDefenses.dodge, combatState, revealState, resolvedDefenderId, viewMode]);
+
+  const parryLabel = useMemo(() => {
+    if (!resolvedDefenderId || !combatState) {
+      return baseDefenses.parry !== null && baseDefenses.parry !== undefined
+        ? `Base: ${baseDefenses.parry}`
+        : 'Not set';
+    }
+    if (viewMode === ViewMode.GM) {
+      return baseDefenses.parry !== null && baseDefenses.parry !== undefined
+        ? `Base: ${baseDefenses.parry}`
+        : 'Not set';
+    }
+    return getPublicDefenseLabel(combatState, revealState, resolvedDefenderId, 'parry');
+  }, [baseDefenses.parry, combatState, revealState, resolvedDefenderId, viewMode]);
+
+  const blockLabel = useMemo(() => {
+    if (!resolvedDefenderId || !combatState) {
+      return baseDefenses.block !== null && baseDefenses.block !== undefined
+        ? `Base: ${baseDefenses.block}`
+        : 'Not set';
+    }
+    if (viewMode === ViewMode.GM) {
+      return baseDefenses.block !== null && baseDefenses.block !== undefined
+        ? `Base: ${baseDefenses.block}`
+        : 'Not set';
+    }
+    return getPublicDefenseLabel(combatState, revealState, resolvedDefenderId, 'block');
+  }, [baseDefenses.block, combatState, revealState, resolvedDefenderId, viewMode]);
 
   return (
     <div className="space-y-4">
@@ -105,9 +154,7 @@ export default function DefenseAssist({
           >
             <div className="font-semibold">Dodge</div>
             <div className="text-sm text-gray-400">
-              {dodgeValue !== null && dodgeValue !== undefined
-                ? `Base: ${dodgeValue}`
-                : 'Not set'}
+              {dodgeLabel}
             </div>
           </button>
 
@@ -121,9 +168,7 @@ export default function DefenseAssist({
           >
             <div className="font-semibold">Parry</div>
             <div className="text-sm text-gray-400">
-              {parryValue !== null && parryValue !== undefined
-                ? `Base: ${parryValue}`
-                : 'Not set'}
+              {parryLabel}
             </div>
           </button>
 
@@ -137,9 +182,7 @@ export default function DefenseAssist({
           >
             <div className="font-semibold">Block</div>
             <div className="text-sm text-gray-400">
-              {blockValue !== null && blockValue !== undefined
-                ? `Base: ${blockValue}`
-                : 'Not set'}
+              {blockLabel}
             </div>
           </button>
 
