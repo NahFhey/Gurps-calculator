@@ -119,6 +119,7 @@ export default function EncounterSetup() {
       turnOrder: turnOrder, // Already uses instanceIds
       currentTurnIndex: 0,
       currentRound: 1,
+      turnDecisions: {},
       log: [
         createLogEntry({
           entryType: 'note',
