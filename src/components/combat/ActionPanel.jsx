@@ -4,6 +4,8 @@ import AttackAssist from './AttackAssist';
 import DefenseAssist from './DefenseAssist';
 import InjuryResolutionPanel from './InjuryResolutionPanel';
 import ConditionsPanel from './ConditionsPanel';
+import { getPublicDefenderLabel } from '../../utils/combatViewSelectors';
+import { ViewMode } from '../../utils/combatViewFilter';
 
 /**
  * ActionPanel Component - Phase 3, 4 & 6
@@ -13,6 +15,9 @@ import ConditionsPanel from './ConditionsPanel';
 export default function ActionPanel({
   currentActor,
   participants,
+  combatState,
+  revealState,
+  viewMode = ViewMode.GM,
   onActionComplete,
   combatRulesPreset = 'standard',
   expanded = true,
@@ -42,6 +47,10 @@ export default function ActionPanel({
   // Get potential targets (exclude current actor)
   const targets = participants.filter(p => p.instanceId !== currentActor.instanceId);
   const boundTarget = targets.find(target => target.instanceId === boundTargetId) || null;
+  const truthParticipants = combatState?.participants || participants;
+  const getTruthParticipant = (instanceId) => truthParticipants.find(p => p.instanceId === instanceId);
+  const boundTargetTruth = boundTargetId ? getTruthParticipant(boundTargetId) : null;
+  const truthTargets = targets.map(target => getTruthParticipant(target.instanceId)).filter(Boolean);
 
   const handleStartWorkflow = (workflow) => {
     setActiveWorkflow(workflow);
@@ -55,13 +64,15 @@ export default function ActionPanel({
     setActiveWorkflow(null);
   };
 
-  const canTargetDefend = (target) => {
-    if (!target) return false;
-    if (target.isDead || target.isUnconscious || target.isStunned) return false;
+  const canTargetDefend = (targetId) => {
+    if (!targetId) return false;
+    const truthTarget = getTruthParticipant(targetId);
+    if (!truthTarget) return false;
+    if (truthTarget.isDead || truthTarget.isUnconscious || truthTarget.isStunned) return false;
     const defenseValues = [
-      target.defenses?.dodge ?? target.dodge,
-      target.defenses?.parry ?? target.parry,
-      target.defenses?.block ?? target.block
+      truthTarget.defenses?.dodge ?? truthTarget.dodge,
+      truthTarget.defenses?.parry ?? truthTarget.parry,
+      truthTarget.defenses?.block ?? truthTarget.block
     ];
     return defenseValues.some(value => value !== null && value !== undefined);
   };
@@ -84,10 +95,8 @@ export default function ActionPanel({
     });
 
     const attackHit = attackData.attack?.success === true;
-    const defenseTarget = attackData.targetInstanceId
-      ? targets.find(target => target.instanceId === attackData.targetInstanceId)
-      : null;
-    const canDefend = defenseTarget && canTargetDefend(defenseTarget);
+    const defenseTargetId = attackData.targetInstanceId || null;
+    const canDefend = defenseTargetId && canTargetDefend(defenseTargetId);
 
     if (attackHit && canDefend) {
       setActiveWorkflow('defense');
@@ -106,7 +115,8 @@ export default function ActionPanel({
     onActionComplete({
       maneuver: selectedManeuver,
       kind: 'defense',
-      defense: defenseData.defense
+      defense: defenseData.defense,
+      targetInstanceId: boundTarget?.instanceId || null
     });
 
     if (defenseData.defense?.success === false) {
@@ -332,13 +342,22 @@ export default function ActionPanel({
       {activeWorkflow === 'defense' && (
         <div className="border-t border-gray-700 pt-4">
           <h4 className="text-lg font-semibold mb-3">Defense Workflow</h4>
-          {boundTarget && (
-            <div className="mb-3 text-sm text-gray-300">
-              Defender: <span className="font-semibold">{boundTarget.name}</span>
-            </div>
-          )}
+          <div className="mb-3 text-sm text-gray-300">
+            Defender:{' '}
+            <span className="font-semibold">
+              {getPublicDefenderLabel(
+                combatState,
+                revealState,
+                boundTarget?.instanceId || currentActor.instanceId
+              )}
+            </span>
+          </div>
           <DefenseAssist
             defender={boundTarget || currentActor}
+            defenderId={boundTarget?.instanceId || currentActor.instanceId}
+            combatState={combatState}
+            revealState={revealState}
+            viewMode={viewMode}
             injectedModifiers={maneuverWorkflow?.defense?.modifiers || []}
             onComplete={handleDefenseComplete}
             onCancel={handleCancelWorkflow}
@@ -352,7 +371,9 @@ export default function ActionPanel({
           {(boundTarget && !forceTargetSelection) && (
             <div className="mb-3 bg-gray-700/40 rounded p-3">
               <div className="text-xs text-gray-400 mb-1">Target (from attack)</div>
-              <div className="text-sm font-semibold">{boundTarget.name}</div>
+              <div className="text-sm font-semibold">
+                {getPublicDefenderLabel(combatState, revealState, boundTarget.instanceId)}
+              </div>
               <button
                 onClick={() => setForceTargetSelection(true)}
                 className="mt-2 text-xs text-blue-300 hover:text-blue-200"
@@ -381,7 +402,7 @@ export default function ActionPanel({
           {targets.length > 0 && (
             <InjuryResolutionPanel
               attacker={currentActor}
-              target={boundTarget || targets.find(t => t.instanceId === selectedTargetId) || targets[0]}
+              target={boundTargetTruth || getTruthParticipant(selectedTargetId) || truthTargets[0]}
               combatRulesPreset={combatRulesPreset}
               damageExpression={boundDamageExpression || ''}
               injectedDamageModifiers={maneuverWorkflow?.damage?.modifiers || []}
