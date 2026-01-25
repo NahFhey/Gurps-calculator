@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Swords, Shield, Zap, MessageSquare, ChevronDown, ChevronUp, Droplet, Activity } from 'lucide-react';
 import AttackAssist from './AttackAssist';
 import DefenseAssist from './DefenseAssist';
@@ -30,17 +30,24 @@ export default function ActionPanel({
   const [activeWorkflow, setActiveWorkflow] = useState(null); // 'attack', 'defense', 'damage', 'note', 'conditions', 'items', or null
   const [noteText, setNoteText] = useState('');
   const [selectedTargetId, setSelectedTargetId] = useState(null);
+  const [boundTargetId, setBoundTargetId] = useState(null);
+  const [boundHitLocation, setBoundHitLocation] = useState(null);
+  const [boundHitLocationRoll, setBoundHitLocationRoll] = useState(null);
+  const [boundDamageExpression, setBoundDamageExpression] = useState(null);
+  const [forceTargetSelection, setForceTargetSelection] = useState(false);
   const selectedManeuver = maneuverSelection?.selectedId || null;
   const maneuverPrompts = maneuverSelection?.prompts || {};
+  const maneuverWorkflow = maneuverSelection?.workflow || {};
 
   // Get potential targets (exclude current actor)
   const targets = participants.filter(p => p.instanceId !== currentActor.instanceId);
+  const boundTarget = targets.find(target => target.instanceId === boundTargetId) || null;
 
   const handleStartWorkflow = (workflow) => {
     setActiveWorkflow(workflow);
     // Initialize target selection for damage workflow
     if (workflow === 'damage' && targets.length > 0) {
-      setSelectedTargetId(targets[0].instanceId);
+      setSelectedTargetId(boundTargetId || targets[0].instanceId);
     }
   };
 
@@ -48,7 +55,27 @@ export default function ActionPanel({
     setActiveWorkflow(null);
   };
 
+  const canTargetDefend = (target) => {
+    if (!target) return false;
+    if (target.isDead || target.isUnconscious || target.isStunned) return false;
+    const defenseValues = [
+      target.defenses?.dodge ?? target.dodge,
+      target.defenses?.parry ?? target.parry,
+      target.defenses?.block ?? target.block
+    ];
+    return defenseValues.some(value => value !== null && value !== undefined);
+  };
+
   const handleAttackComplete = (attackData) => {
+    setBoundTargetId(attackData.targetInstanceId || null);
+    setBoundHitLocation(attackData.attack?.hitLocation || null);
+    setBoundHitLocationRoll(attackData.attack?.hitLocationRoll || null);
+    setBoundDamageExpression(attackData.attack?.damage || null);
+    setForceTargetSelection(false);
+    if (attackData.targetInstanceId) {
+      setSelectedTargetId(attackData.targetInstanceId);
+    }
+
     onActionComplete({
       maneuver: selectedManeuver,
       kind: 'attack',
@@ -56,7 +83,22 @@ export default function ActionPanel({
       targetInstanceId: attackData.targetInstanceId
     });
 
-    // Reset
+    const attackHit = attackData.attack?.success === true;
+    const defenseTarget = attackData.targetInstanceId
+      ? targets.find(target => target.instanceId === attackData.targetInstanceId)
+      : null;
+    const canDefend = defenseTarget && canTargetDefend(defenseTarget);
+
+    if (attackHit && canDefend) {
+      setActiveWorkflow('defense');
+      return;
+    }
+
+    if (attackHit) {
+      setActiveWorkflow('damage');
+      return;
+    }
+
     setActiveWorkflow(null);
   };
 
@@ -67,7 +109,11 @@ export default function ActionPanel({
       defense: defenseData.defense
     });
 
-    // Reset
+    if (defenseData.defense?.success === false) {
+      setActiveWorkflow('damage');
+      return;
+    }
+
     setActiveWorkflow(null);
   };
 
@@ -76,7 +122,7 @@ export default function ActionPanel({
       maneuver: selectedManeuver,
       kind: 'injury',
       injury: injuryData,
-      targetInstanceId: injuryData.targetInstanceId || targets[0]?.instanceId,
+      targetInstanceId: injuryData.targetInstanceId || boundTargetId || targets[0]?.instanceId,
       newHP: injuryData.newHP
     });
 
@@ -97,6 +143,31 @@ export default function ActionPanel({
     setNoteText('');
     setActiveWorkflow(null);
   };
+
+  useEffect(() => {
+    setBoundTargetId(null);
+    setBoundHitLocation(null);
+    setBoundHitLocationRoll(null);
+    setBoundDamageExpression(null);
+    setForceTargetSelection(false);
+
+    if (!selectedManeuver) {
+      setActiveWorkflow(null);
+      return;
+    }
+
+    if (maneuverPrompts?.allowsAttackPanel) {
+      setActiveWorkflow('attack');
+      return;
+    }
+
+    if (maneuverPrompts?.allowsDefensePanel) {
+      setActiveWorkflow('defense');
+      return;
+    }
+
+    setActiveWorkflow(null);
+  }, [selectedManeuver, maneuverPrompts]);
 
   if (!expanded) {
     return (
@@ -251,6 +322,7 @@ export default function ActionPanel({
           <AttackAssist
             actor={currentActor}
             targets={targets}
+            injectedModifiers={maneuverWorkflow?.attack?.modifiers || []}
             onComplete={handleAttackComplete}
             onCancel={handleCancelWorkflow}
           />
@@ -260,8 +332,14 @@ export default function ActionPanel({
       {activeWorkflow === 'defense' && (
         <div className="border-t border-gray-700 pt-4">
           <h4 className="text-lg font-semibold mb-3">Defense Workflow</h4>
+          {boundTarget && (
+            <div className="mb-3 text-sm text-gray-300">
+              Defender: <span className="font-semibold">{boundTarget.name}</span>
+            </div>
+          )}
           <DefenseAssist
-            defender={currentActor}
+            defender={boundTarget || currentActor}
+            injectedModifiers={maneuverWorkflow?.defense?.modifiers || []}
             onComplete={handleDefenseComplete}
             onCancel={handleCancelWorkflow}
           />
@@ -271,25 +349,44 @@ export default function ActionPanel({
       {activeWorkflow === 'damage' && (
         <div className="border-t border-gray-700 pt-4">
           <h4 className="text-lg font-semibold mb-3">Injury Workflow (Phase 4)</h4>
-          <div className="mb-3">
-            <label className="block text-sm font-semibold mb-2">Target</label>
-            <select
-              className="w-full px-3 py-2 bg-gray-700 rounded"
-              value={selectedTargetId || targets[0]?.instanceId || ''}
-              onChange={(e) => setSelectedTargetId(e.target.value)}
-            >
-              {targets.map((target) => (
-                <option key={target.instanceId} value={target.instanceId}>
-                  {target.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {(boundTarget && !forceTargetSelection) && (
+            <div className="mb-3 bg-gray-700/40 rounded p-3">
+              <div className="text-xs text-gray-400 mb-1">Target (from attack)</div>
+              <div className="text-sm font-semibold">{boundTarget.name}</div>
+              <button
+                onClick={() => setForceTargetSelection(true)}
+                className="mt-2 text-xs text-blue-300 hover:text-blue-200"
+                type="button"
+              >
+                Change Target
+              </button>
+            </div>
+          )}
+          {(!boundTarget || forceTargetSelection) && (
+            <div className="mb-3">
+              <label className="block text-sm font-semibold mb-2">Target</label>
+              <select
+                className="w-full px-3 py-2 bg-gray-700 rounded"
+                value={selectedTargetId || targets[0]?.instanceId || ''}
+                onChange={(e) => setSelectedTargetId(e.target.value)}
+              >
+                {targets.map((target) => (
+                  <option key={target.instanceId} value={target.instanceId}>
+                    {target.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           {targets.length > 0 && (
             <InjuryResolutionPanel
               attacker={currentActor}
-              target={targets.find(t => t.instanceId === selectedTargetId) || targets[0]}
+              target={boundTarget || targets.find(t => t.instanceId === selectedTargetId) || targets[0]}
               combatRulesPreset={combatRulesPreset}
+              damageExpression={boundDamageExpression || ''}
+              injectedDamageModifiers={maneuverWorkflow?.damage?.modifiers || []}
+              initialLocation={boundHitLocation}
+              initialLocationRoll={boundHitLocationRoll}
               onComplete={handleDamageComplete}
               onCancel={handleCancelWorkflow}
             />

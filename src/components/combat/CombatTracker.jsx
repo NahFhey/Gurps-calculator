@@ -122,8 +122,8 @@ export default function CombatTracker() {
   const selectedManeuverId = currentTurnDecision?.maneuverId || null;
   const selectedManeuver = ManeuverCatalog.find(m => m.id === selectedManeuverId) || null;
   const maneuverSelection = selectedManeuver
-    ? { selectedId: selectedManeuverId, prompts: selectedManeuver.prompts }
-    : { selectedId: null, prompts: {} };
+    ? { selectedId: selectedManeuverId, prompts: selectedManeuver.prompts, workflow: selectedManeuver.workflow || {} }
+    : { selectedId: null, prompts: {}, workflow: {} };
 
   const isEnemyInPlayerView = viewMode === ViewMode.PLAYER && currentActor?.category === 'enemy';
 
@@ -830,7 +830,9 @@ export default function CombatTracker() {
         targetName: target?.name,
         hitLocation: injury.hitLocation,
         damageBreakdown: injury.damageBreakdown,
-        effects: null // Will add effect logs separately
+        effects: null, // Will add effect logs separately
+        currentHP: target?.currentHP ?? null,
+        newHP
       });
 
       let updatedParticipants = [...combatActive.participants];
@@ -1430,7 +1432,7 @@ export default function CombatTracker() {
         combatRulesPreset={combatRulesPreset || 'standard'}
         expanded={showActionPanel}
         onToggleExpanded={() => setShowActionPanel(!showActionPanel)}
-        maneuverSelection={isEnemyInPlayerView ? { selectedId: null, prompts: {} } : maneuverSelection}
+        maneuverSelection={isEnemyInPlayerView ? { selectedId: null, prompts: {}, workflow: {} } : maneuverSelection}
         onManeuverWorkflow={handleManeuverWorkflowUpdate}
         turnDecision={isEnemyInPlayerView ? null : currentTurnDecision}
         currentRound={combatActive.currentRound}

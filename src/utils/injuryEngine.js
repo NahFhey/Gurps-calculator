@@ -4,7 +4,7 @@
  */
 
 import { getLocationDR } from './hitLocations';
-import { calculateInjury, getWoundingMultiplier } from './wounding';
+import { calculateInjury, getWoundingMultiplier, getBaseWoundingMultiplier } from './wounding';
 
 /**
  * Apply damage resolution pipeline
@@ -26,13 +26,18 @@ export function resolveInjury({
 
   // Step 3: Get wounding multiplier (only if not 'lite' preset)
   let woundingMultiplier = 1;
+  let baseWoundingMultiplier = getBaseWoundingMultiplier(damageType);
+  let locationWoundingMultiplier = 1;
   let injury = penetrating;
 
   if (combatRulesPreset !== 'lite') {
     woundingMultiplier = getWoundingMultiplier(damageType, location);
+    locationWoundingMultiplier = baseWoundingMultiplier ? woundingMultiplier / baseWoundingMultiplier : woundingMultiplier;
     injury = calculateInjury(penetrating, damageType, location);
   } else {
     // Lite mode: no wounding multipliers
+    baseWoundingMultiplier = 1;
+    locationWoundingMultiplier = 1;
     injury = penetrating;
   }
 
@@ -43,6 +48,8 @@ export function resolveInjury({
     locationDR,
     penetrating,
     woundingMultiplier,
+    baseWoundingMultiplier,
+    locationWoundingMultiplier,
     injury,
     location: location ? {
       key: location.key,
@@ -66,6 +73,9 @@ export function createInjuryBreakdown(injuryResult) {
     penetrating: injuryResult.penetrating,
     damageType: injuryResult.damageType,
     woundingMultiplier: injuryResult.woundingMultiplier,
+    baseWoundingMultiplier: injuryResult.baseWoundingMultiplier,
+    locationWoundingMultiplier: injuryResult.locationWoundingMultiplier,
+    locationLabel: injuryResult.location?.label || null,
     injuryApplied: injuryResult.injury
   };
 }
