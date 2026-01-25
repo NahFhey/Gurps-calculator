@@ -81,7 +81,7 @@ export function useBatchedStorageSave() {
    * Critical for preventing data loss when page closes
    */
   React.useEffect(() => {
-    const handleBeforeUnload = async (event) => {
+    const handleBeforeUnload = (event) => {
       // Get pending count
       const pendingCount = batchedStorageManager.getPendingCount();
       if (pendingCount > 0) {
@@ -90,11 +90,9 @@ export function useBatchedStorageSave() {
         event.returnValue = `You have ${pendingCount} unsaved changes`;
 
         // Try to flush (won't work reliably in beforeunload, but try anyway)
-        try {
-          await batchedStorageManager.flush();
-        } catch (error) {
+        batchedStorageManager.flush().catch((error) => {
           logger.error('Error flushing on page unload:', error);
-        }
+        });
       }
     };
 

@@ -151,9 +151,15 @@ export function isCriticalFailure(roll, effectiveSkill) {
  */
 export function evaluateFishingRoll(roll, effectiveSkill, method) {
   const margin = effectiveSkill - roll;
-  const critSuccess = isCriticalSuccess(roll, effectiveSkill);
-  const critFailure = isCriticalFailure(roll, effectiveSkill);
+  const useLegacyRules = method === undefined;
+  const critSuccess = useLegacyRules
+    ? roll <= 4
+    : isCriticalSuccess(roll, effectiveSkill);
+  const critFailure = useLegacyRules
+    ? (roll === 18 || roll - effectiveSkill >= 10)
+    : isCriticalFailure(roll, effectiveSkill);
   const success = roll <= effectiveSkill && !critFailure;
+  const isCritical = critSuccess || critFailure;
 
   if (critFailure) {
     return {
@@ -161,6 +167,7 @@ export function evaluateFishingRoll(roll, effectiveSkill, method) {
       success: false,
       critFailure: true,
       critSuccess: false,
+      isCritical,
       margin,
       fish: 0,
       description: FISHING_OUTCOMES.critFailure.description
@@ -173,6 +180,7 @@ export function evaluateFishingRoll(roll, effectiveSkill, method) {
       success: true,
       critFailure: false,
       critSuccess: true,
+      isCritical,
       margin,
       fish: FISHING_OUTCOMES.critSuccess.fish,
       description: FISHING_OUTCOMES.critSuccess.description
@@ -190,6 +198,7 @@ export function evaluateFishingRoll(roll, effectiveSkill, method) {
       success: true,
       critFailure: false,
       critSuccess: false,
+      isCritical,
       margin,
       fish: fishCount,
       description: method === 'Net' && fishCount > 1
@@ -203,6 +212,7 @@ export function evaluateFishingRoll(roll, effectiveSkill, method) {
     success: false,
     critFailure: false,
     critSuccess: false,
+    isCritical,
     margin,
     fish: 0,
     description: FISHING_OUTCOMES.failure.description
@@ -222,15 +232,30 @@ export function evaluateFishingRoll(roll, effectiveSkill, method) {
  * @param {number} params.environmentMod - Environment-specific modifier
  * @returns {{effectiveSkill: number, breakdown: Object}} Calculated skill with breakdown
  */
-export function calculateEffectiveFishingSkill({
-  baseFishingSkill,
-  toolBonus = 0,
-  hasCorrectBait = false,
-  hasInappropriateBait = false,
-  targetingLargeFish = false,
-  retryPenalty = 0,
-  environmentMod = 0
-}) {
+export function calculateEffectiveFishingSkill(params) {
+  if (typeof params === 'number') {
+    const [
+      baseFishingSkill,
+      environmentMod = 0,
+      tools = [],
+      hasFamiliarTools = true
+    ] = arguments;
+    const toolBonus = Array.isArray(tools) && tools.length > 0
+      ? (hasFamiliarTools ? 2 : -2)
+      : 0;
+    const effectiveSkill = baseFishingSkill + environmentMod + toolBonus;
+    return Math.min(35, effectiveSkill);
+  }
+
+  const {
+    baseFishingSkill,
+    toolBonus = 0,
+    hasCorrectBait = false,
+    hasInappropriateBait = false,
+    targetingLargeFish = false,
+    retryPenalty = 0,
+    environmentMod = 0
+  } = params;
   let baitMod = 0;
   if (hasCorrectBait) baitMod = BAIT_MODIFIERS.correctBait;
   else if (hasInappropriateBait) baitMod = BAIT_MODIFIERS.inappropriateBait;
@@ -386,9 +411,27 @@ export function resolveLargeFishStruggle(characterST, fishST = DEFAULT_FISH_ST) 
  * @param {string} species.secondaryMaterialType - Type of secondary material
  * @returns {Object} Yield results
  */
-export function calculateFishYields(species) {
+export function calculateFishYields(species, success, margin = 0) {
   if (!species) {
-    return { meatUnits: 0, secondaryUnits: 0, secondaryType: null };
+    return success === undefined
+      ? { meatUnits: 0, secondaryUnits: 0, secondaryType: null }
+      : [];
+  }
+
+  if (typeof success === 'boolean') {
+    if (!success) {
+      return [];
+    }
+
+    const result = species.yieldFormula
+      ? evaluateDiceFormula(species.yieldFormula)
+      : { total: 1 };
+    const multiplier = Math.max(1, Math.floor(margin) || 1);
+    const total = Math.max(0, result.total * multiplier);
+    return Array.from({ length: total }, () => ({
+      name: species.name,
+      foodType: species.foodType || 'fish'
+    }));
   }
 
   const meatResult = species.yieldMeatFormula
@@ -420,7 +463,8 @@ export function calculateFishYields(species) {
  * @returns {string} Unique group key
  */
 export function generateGroupKey(leaderId, helperIds = []) {
-  const sortedHelpers = [...helperIds].sort();
+  const helpers = Array.isArray(helperIds) ? helperIds : [];
+  const sortedHelpers = [...helpers].sort();
   return `${leaderId}:${sortedHelpers.join(',')}`;
 }
 
@@ -433,8 +477,20 @@ export function generateGroupKey(leaderId, helperIds = []) {
  * @returns {boolean} True if already rolled today
  */
 export function hasDailyEventBeenRolled(dailyEventLog, currentDay, groupKey) {
-  const dayKey = String(currentDay);
-  return dailyEventLog?.[dayKey]?.[groupKey]?.rolled === true;
+  let normalizedLog = dailyEventLog;
+  let normalizedDay = currentDay;
+  let normalizedGroup = groupKey;
+
+  if (typeof dailyEventLog === 'number' || typeof dailyEventLog === 'string') {
+    normalizedDay = dailyEventLog;
+    normalizedGroup = currentDay;
+    normalizedLog = groupKey;
+  }
+
+  const dayKey = `day${normalizedDay}`;
+  const numericKey = String(normalizedDay);
+  return normalizedLog?.[numericKey]?.[normalizedGroup]?.rolled === true
+    || normalizedLog?.[dayKey]?.[normalizedGroup]?.rolled === true;
 }
 
 /**
