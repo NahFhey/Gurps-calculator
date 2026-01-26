@@ -37,12 +37,12 @@ export function CombatProvider({ children }) {
 
   const value = useMemo(() => {
     // Convert normalized objects back to arrays for legacy API
-    const characters = denormalizeObject(state.entities.combatCharacters);
+    const combatCharacters = denormalizeObject(state.entities.combatCharacters);
     const combatItems = denormalizeObject(state.entities.combatItems);
 
     return {
       // Characters
-      characters,
+      combatCharacters,
       saveCombatCharacters: (charactersArray) => {
         actions.setCombatCharacters(normalizeArray(charactersArray));
       },
