@@ -2,6 +2,46 @@ import { enableMapSet, produce } from 'immer';
 import { createPartyToolState, PARTY_TOOL_SKILLS } from '../components/partyToolSeed';
 import { advanceTimeSlot, type TimeLogEntry } from '../utils/timeSystem';
 import { SLOT_NAMES, SLOTS_PER_DAY } from '../constants';
+import type {
+  Id,
+  Character,
+  Material,
+  Food,
+  FoodType,
+  MaterialType,
+  Recipe,
+  Craft,
+  CraftDesign,
+  CustomTemplates,
+  AlchemyReagent,
+  AlchemyFormula,
+  AlchemyBatch,
+  AlchemyLab,
+  AlchemySettings,
+  GatheringSpecies,
+  GatheringTool,
+  GatheringTable,
+  GatheringEnvironment,
+  GatheringSession,
+  GatheringBait,
+  GatheringCategory,
+  GatheringItem,
+  GatheringDailyEvents,
+  TimeSlot,
+  TaskAssignment,
+  DayLedger,
+  CombatCharacter,
+  CombatSession,
+  CombatItem,
+  Kitchen,
+  CookingSkill,
+  EffectFamilyMap,
+  ToolTemplate,
+  ToolInstance,
+  Facility,
+  Inventory,
+  CurrencyLog
+} from '../types/campaign';
 
 export const CAMPAIGN_META = {
   rulesVersion: '1.0.0',
@@ -32,19 +72,59 @@ export type CampaignState = {
     schemaVersion: string;
   };
   entities: {
-    characters: Record<
-      string,
-      {
-        id: string;
-        name: string;
-        work?: {
-          skills?: Record<string, number>;
-        };
-      }
-    >;
-    tools: {
-      reservations: Record<string, string[]>;
-    };
+    // Shared characters (merged workers + party characters)
+    characters: Record<Id, Character>;
+
+    // Inventory system
+    materials: Record<Id, Material>;
+    foods: Record<Id, Food>;
+    recipes: Record<Id, Recipe>;
+    foodTypes: FoodType[];
+    materialTypes: MaterialType[];
+
+    // Crafting system
+    crafts: Record<Id, Craft>;
+    craftDesigns: Record<Id, CraftDesign>;
+    customTemplates: CustomTemplates;
+
+    // Alchemy system
+    alchemyReagents: Record<Id, AlchemyReagent>;
+    alchemyFormulas: Record<Id, AlchemyFormula>;
+    alchemyBatches: Record<Id, AlchemyBatch>;
+    alchemyLabs: Record<Id, AlchemyLab>;
+    alchemySettings: AlchemySettings;
+
+    // Gathering system
+    gatheringSpecies: Record<Id, GatheringSpecies>;
+    gatheringTools: Record<Id, GatheringTool>;
+    gatheringTables: Record<Id, GatheringTable>;
+    gatheringEnvironments: Record<Id, GatheringEnvironment>;
+    gatheringSessions: Record<Id, GatheringSession>;
+    gatheringDailyEvents: GatheringDailyEvents;
+    gatheringBait: Record<Id, GatheringBait>;
+    gatheringCategories: Record<Id, GatheringCategory>;
+    gatheringItems: Record<Id, GatheringItem>;
+
+    // Combat system
+    combatCharacters: Record<Id, CombatCharacter>;
+    combatItems: Record<Id, CombatItem>;
+    combatHistory: CombatSession[];
+    combatTombstones: CombatCharacter[];
+
+    // Config/Facilities
+    kitchens: Record<Id, Kitchen>;
+    cookingSkills: CookingSkill[];
+    effectFamilyMap: EffectFamilyMap;
+
+    // Tools & Facilities (unified)
+    toolTemplates: Record<Id, ToolTemplate>;
+    toolInstances: Record<Id, ToolInstance>;
+    facilities: Record<Id, Facility>;
+    toolReservations: Record<Id, string[]>;
+
+    // Inventories (unified for all systems)
+    inventories: Record<Id, Inventory>;
+    currencyLogs: CurrencyLog[];
   };
   legacy: {
     appState: LegacyAppState;
@@ -55,6 +135,28 @@ export type CampaignState = {
     slotsPerDay: number;
     slotLabels: string[];
     history: Array<TimeLogEntry & { day: number }>;
+  };
+  inventory: {
+    // UI state for inventory tab
+    activeTab?: string;
+  };
+  crafting: {
+    // UI state for crafting tab
+    currentProject?: string | null;
+  };
+  alchemy: {
+    // UI state for alchemy tab
+    activeBatch?: string | null;
+  };
+  gathering: {
+    // UI state for gathering tab
+    activeSession?: string | null;
+  };
+  dayPlanner: {
+    timeSlots: TimeSlot[];
+    taskAssignments: TaskAssignment[];
+    pendingDayLedger: DayLedger | null;
+    currentSlot: number;
   };
   activities: {
     pausedSessionIds: string[];
@@ -81,7 +183,8 @@ export type CampaignState = {
   combat: {
     active: boolean;
     encounterId: string | null;
-    state: Record<string, unknown> | null;
+    activeSession: CombatSession | null;
+    rulesPreset: string;
     reveal: {
       revealedTargets: Set<string>;
       revealedHP: Set<string>;
@@ -168,10 +271,75 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
     schemaVersion: CAMPAIGN_META.schemaVersion
   },
   entities: {
+    // Characters (from Party Tool initially)
     characters: initialPartyToolState.characters,
-    tools: {
-      reservations: {}
-    }
+
+    // Inventory system (empty initially)
+    materials: {},
+    foods: {},
+    recipes: {},
+    foodTypes: [
+      { name: 'fish', color: '#60A5FA' },
+      { name: 'poultry', color: '#F59E0B' },
+      { name: 'meat', color: '#EF4444' },
+      { name: 'fruit', color: '#EC4899' },
+      { name: 'vegetable', color: '#10B981' }
+    ],
+    materialTypes: [
+      { name: 'wood', difficulty: -2, effects: '', ht: 10, drShift: 0, weightMod: -10, hpMod: 0 },
+      { name: 'metal', difficulty: 0, effects: '', ht: 12, drShift: 0, weightMod: 0, hpMod: 0 },
+      { name: 'leather', difficulty: -1, effects: '', ht: 8, drShift: 0, weightMod: -20, hpMod: -10 },
+      { name: 'cloth', difficulty: -1, effects: '', ht: 6, drShift: 0, weightMod: -30, hpMod: -20 },
+      { name: 'stone', difficulty: 1, effects: '', ht: 14, drShift: 0, weightMod: 50, hpMod: 10 }
+    ],
+
+    // Crafting system
+    crafts: {},
+    craftDesigns: {},
+    customTemplates: { weapons: {}, armor: {}, ranged: {}, explosives: {} },
+
+    // Alchemy system
+    alchemyReagents: {},
+    alchemyFormulas: {},
+    alchemyBatches: {},
+    alchemyLabs: {
+      'default': { id: 'default', name: 'Basic Lab', rating: 0, description: 'Standard workspace' }
+    },
+    alchemySettings: { defaultLabRating: 0, workBlockMinutes: 120 },
+
+    // Gathering system
+    gatheringSpecies: {},
+    gatheringTools: {},
+    gatheringTables: {},
+    gatheringEnvironments: {},
+    gatheringSessions: {},
+    gatheringDailyEvents: {},
+    gatheringBait: {},
+    gatheringCategories: {},
+    gatheringItems: {},
+
+    // Combat system
+    combatCharacters: {},
+    combatItems: {},
+    combatHistory: [],
+    combatTombstones: [],
+
+    // Config/Facilities
+    kitchens: {
+      'default': { id: 'default', name: 'Basic Kitchen', rating: 0, description: 'Standard cooking area' }
+    },
+    cookingSkills: [],
+    effectFamilyMap: {},
+
+    // Tools & Facilities (from Party Tool initially)
+    toolTemplates: initialPartyToolState.toolTemplates,
+    toolInstances: initialPartyToolState.toolInstances,
+    facilities: initialPartyToolState.facilities,
+    toolReservations: {},
+
+    // Inventories (from Party Tool initially)
+    inventories: initialPartyToolState.inventories,
+    currencyLogs: initialPartyToolState.currencyLogs
   },
   legacy: {
     appState: legacyAppState
@@ -182,6 +350,24 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
     slotsPerDay: SLOTS_PER_DAY,
     slotLabels: SLOT_NAMES,
     history: []
+  },
+  inventory: {
+    activeTab: 'materials'
+  },
+  crafting: {
+    currentProject: null
+  },
+  alchemy: {
+    activeBatch: null
+  },
+  gathering: {
+    activeSession: null
+  },
+  dayPlanner: {
+    timeSlots: [],
+    taskAssignments: [],
+    pendingDayLedger: null,
+    currentSlot: 0
   },
   activities: {
     pausedSessionIds: [],
@@ -208,7 +394,8 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
   combat: {
     active: false,
     encounterId: null,
-    state: null,
+    activeSession: null,
+    rulesPreset: 'standard',
     reveal: {
       revealedTargets: new Set(),
       revealedHP: new Set(),
@@ -239,7 +426,127 @@ export type CampaignAction =
   | { type: 'startCombat'; payload?: { encounterId?: string } }
   | { type: 'registerCombatDamage'; payload: { targetId: string; remainingHp: number } }
   | { type: 'registerCombatDefenseSuccess'; payload: { targetId: string; defense: { dodge?: number } } }
-  | { type: 'applyDebugState'; payload: CampaignState };
+  | { type: 'applyDebugState'; payload: CampaignState }
+  // Character actions
+  | { type: 'addCharacter'; payload: Character }
+  | { type: 'updateCharacter'; payload: { id: Id; changes: Partial<Character> } }
+  | { type: 'removeCharacter'; payload: Id }
+  | { type: 'setCharacters'; payload: Record<Id, Character> }
+  // Material actions
+  | { type: 'addMaterial'; payload: Material }
+  | { type: 'updateMaterial'; payload: { id: Id; changes: Partial<Material> } }
+  | { type: 'removeMaterial'; payload: Id }
+  | { type: 'consumeMaterials'; payload: Array<{ id: Id; amount: number }> }
+  | { type: 'setMaterials'; payload: Record<Id, Material> }
+  // Food actions
+  | { type: 'addFood'; payload: Food }
+  | { type: 'updateFood'; payload: { id: Id; changes: Partial<Food> } }
+  | { type: 'removeFood'; payload: Id }
+  | { type: 'consumeFoods'; payload: Array<{ id: Id; amount: number }> }
+  | { type: 'setFoods'; payload: Record<Id, Food> }
+  // Recipe actions
+  | { type: 'addRecipe'; payload: Recipe }
+  | { type: 'updateRecipe'; payload: { id: Id; changes: Partial<Recipe> } }
+  | { type: 'removeRecipe'; payload: Id }
+  | { type: 'setRecipes'; payload: Record<Id, Recipe> }
+  // FoodType actions
+  | { type: 'setFoodTypes'; payload: FoodType[] }
+  | { type: 'addFoodType'; payload: FoodType }
+  // MaterialType actions
+  | { type: 'setMaterialTypes'; payload: MaterialType[] }
+  | { type: 'addMaterialType'; payload: MaterialType }
+  // Craft actions
+  | { type: 'addCraft'; payload: Craft }
+  | { type: 'updateCraft'; payload: { id: Id; changes: Partial<Craft> } }
+  | { type: 'removeCraft'; payload: Id }
+  | { type: 'completeCraft'; payload: { id: Id; finalStats: Craft['finalStats'] } }
+  | { type: 'setCrafts'; payload: Record<Id, Craft> }
+  // CraftDesign actions
+  | { type: 'addCraftDesign'; payload: CraftDesign }
+  | { type: 'updateCraftDesign'; payload: { id: Id; changes: Partial<CraftDesign> } }
+  | { type: 'removeCraftDesign'; payload: Id }
+  | { type: 'setCraftDesigns'; payload: Record<Id, CraftDesign> }
+  // CustomTemplates actions
+  | { type: 'setCustomTemplates'; payload: CustomTemplates }
+  | { type: 'addCustomTemplate'; payload: { category: keyof CustomTemplates; templateName: string; template: any } }
+  // Alchemy Reagent actions
+  | { type: 'addAlchemyReagent'; payload: AlchemyReagent }
+  | { type: 'updateAlchemyReagent'; payload: { id: Id; changes: Partial<AlchemyReagent> } }
+  | { type: 'removeAlchemyReagent'; payload: Id }
+  | { type: 'setAlchemyReagents'; payload: Record<Id, AlchemyReagent> }
+  // Alchemy Formula actions
+  | { type: 'addAlchemyFormula'; payload: AlchemyFormula }
+  | { type: 'updateAlchemyFormula'; payload: { id: Id; changes: Partial<AlchemyFormula> } }
+  | { type: 'removeAlchemyFormula'; payload: Id }
+  | { type: 'setAlchemyFormulas'; payload: Record<Id, AlchemyFormula> }
+  // Alchemy Batch actions
+  | { type: 'addAlchemyBatch'; payload: AlchemyBatch }
+  | { type: 'updateAlchemyBatch'; payload: { id: Id; changes: Partial<AlchemyBatch> } }
+  | { type: 'removeAlchemyBatch'; payload: Id }
+  | { type: 'setAlchemyBatches'; payload: Record<Id, AlchemyBatch> }
+  // Alchemy Lab actions
+  | { type: 'setAlchemyLabs'; payload: Record<Id, AlchemyLab> }
+  | { type: 'addAlchemyLab'; payload: AlchemyLab }
+  // Alchemy Settings actions
+  | { type: 'updateAlchemySettings'; payload: Partial<AlchemySettings> }
+  // Gathering Species actions
+  | { type: 'setGatheringSpecies'; payload: Record<Id, GatheringSpecies> }
+  | { type: 'addGatheringSpecies'; payload: GatheringSpecies }
+  // Gathering Tool actions
+  | { type: 'setGatheringTools'; payload: Record<Id, GatheringTool> }
+  | { type: 'addGatheringTool'; payload: GatheringTool }
+  // Gathering Table actions
+  | { type: 'setGatheringTables'; payload: Record<Id, GatheringTable> }
+  | { type: 'addGatheringTable'; payload: GatheringTable }
+  // Gathering Environment actions
+  | { type: 'setGatheringEnvironments'; payload: Record<Id, GatheringEnvironment> }
+  | { type: 'addGatheringEnvironment'; payload: GatheringEnvironment }
+  // Gathering Session actions
+  | { type: 'addGatheringSession'; payload: GatheringSession }
+  | { type: 'updateGatheringSession'; payload: { id: Id; changes: Partial<GatheringSession> } }
+  | { type: 'setGatheringSessions'; payload: Record<Id, GatheringSession> }
+  // Gathering Daily Events actions
+  | { type: 'setGatheringDailyEvents'; payload: GatheringDailyEvents }
+  // Gathering Bait actions
+  | { type: 'setGatheringBait'; payload: Record<Id, GatheringBait> }
+  | { type: 'addGatheringBait'; payload: GatheringBait }
+  // Gathering Category actions
+  | { type: 'setGatheringCategories'; payload: Record<Id, GatheringCategory> }
+  | { type: 'addGatheringCategory'; payload: GatheringCategory }
+  // Gathering Item actions
+  | { type: 'setGatheringItems'; payload: Record<Id, GatheringItem> }
+  | { type: 'addGatheringItem'; payload: GatheringItem }
+  // Day Planner actions
+  | { type: 'setTimeSlots'; payload: TimeSlot[] }
+  | { type: 'addTaskAssignment'; payload: TaskAssignment }
+  | { type: 'updateTaskAssignment'; payload: { id: Id; changes: Partial<TaskAssignment> } }
+  | { type: 'setTaskAssignments'; payload: TaskAssignment[] }
+  | { type: 'setPendingDayLedger'; payload: DayLedger | null }
+  // Combat Character actions
+  | { type: 'addCombatCharacter'; payload: CombatCharacter }
+  | { type: 'updateCombatCharacter'; payload: { id: Id; changes: Partial<CombatCharacter> } }
+  | { type: 'removeCombatCharacter'; payload: Id }
+  | { type: 'setCombatCharacters'; payload: Record<Id, CombatCharacter> }
+  // Combat Session actions
+  | { type: 'setCombatActive'; payload: CombatSession | null }
+  | { type: 'updateCombatActive'; payload: Partial<CombatSession> }
+  | { type: 'setCombatHistory'; payload: CombatSession[] }
+  | { type: 'setCombatTombstones'; payload: CombatCharacter[] }
+  | { type: 'setCombatRulesPreset'; payload: string }
+  // Combat Item actions
+  | { type: 'setCombatItems'; payload: Record<Id, CombatItem> }
+  | { type: 'addCombatItem'; payload: CombatItem }
+  // Kitchen actions
+  | { type: 'setKitchens'; payload: Record<Id, Kitchen> }
+  | { type: 'addKitchen'; payload: Kitchen }
+  // Cooking Skill actions
+  | { type: 'setCookingSkills'; payload: CookingSkill[] }
+  // Effect Family Map actions
+  | { type: 'setEffectFamilyMap'; payload: EffectFamilyMap }
+  // Inventory actions
+  | { type: 'addInventory'; payload: Inventory }
+  | { type: 'updateInventory'; payload: { id: Id; changes: Partial<Inventory> } }
+  | { type: 'setInventories'; payload: Record<Id, Inventory> };
 
 export function campaignReducer(state: CampaignState, action: CampaignAction) {
   return produce(state, (draft) => {
@@ -308,6 +615,11 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.entities = nextState.entities;
         draft.legacy = nextState.legacy;
         draft.time = nextState.time;
+        draft.inventory = nextState.inventory || { activeTab: 'materials' };
+        draft.crafting = nextState.crafting || { currentProject: null };
+        draft.alchemy = nextState.alchemy || { activeBatch: null };
+        draft.gathering = nextState.gathering || { activeSession: null };
+        draft.dayPlanner = nextState.dayPlanner || { timeSlots: [], taskAssignments: [], pendingDayLedger: null, currentSlot: 0 };
         draft.activities = nextState.activities;
         draft.logs = nextState.logs;
         draft.combat = normalizeCombatReveal(nextState.combat);
@@ -348,6 +660,11 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.entities = nextState.entities;
         draft.legacy = nextState.legacy;
         draft.time = nextState.time;
+        draft.inventory = nextState.inventory;
+        draft.crafting = nextState.crafting;
+        draft.alchemy = nextState.alchemy;
+        draft.gathering = nextState.gathering;
+        draft.dayPlanner = nextState.dayPlanner;
         draft.activities = nextState.activities;
         draft.logs = nextState.logs;
         draft.checkpoints = nextState.checkpoints;
@@ -368,10 +685,16 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.entities = restoredSnapshot.entities;
         draft.legacy = restoredSnapshot.legacy;
         draft.time = restoredSnapshot.time;
+        draft.inventory = restoredSnapshot.inventory;
+        draft.crafting = restoredSnapshot.crafting;
+        draft.alchemy = restoredSnapshot.alchemy;
+        draft.gathering = restoredSnapshot.gathering;
+        draft.dayPlanner = restoredSnapshot.dayPlanner;
         draft.activities = restoredSnapshot.activities;
         draft.logs = {
           entries: [rollbackEntry, ...restoredSnapshot.logs.entries]
         };
+        draft.combat = restoredSnapshot.combat;
         return;
       }
       case 'advanceTime': {
@@ -413,6 +736,422 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.ui.blockingError = null;
         return;
       }
+
+      // ========================================================================
+      // CHARACTER ACTIONS
+      // ========================================================================
+      case 'addCharacter':
+        draft.entities.characters[action.payload.id] = action.payload;
+        return;
+      case 'updateCharacter':
+        if (draft.entities.characters[action.payload.id]) {
+          draft.entities.characters[action.payload.id] = {
+            ...draft.entities.characters[action.payload.id],
+            ...action.payload.changes
+          };
+        }
+        return;
+      case 'removeCharacter':
+        delete draft.entities.characters[action.payload];
+        return;
+      case 'setCharacters':
+        draft.entities.characters = action.payload;
+        return;
+
+      // ========================================================================
+      // MATERIAL ACTIONS
+      // ========================================================================
+      case 'addMaterial':
+        draft.entities.materials[action.payload.id] = action.payload;
+        return;
+      case 'updateMaterial':
+        if (draft.entities.materials[action.payload.id]) {
+          draft.entities.materials[action.payload.id] = {
+            ...draft.entities.materials[action.payload.id],
+            ...action.payload.changes
+          };
+        }
+        return;
+      case 'removeMaterial':
+        delete draft.entities.materials[action.payload];
+        return;
+      case 'consumeMaterials':
+        action.payload.forEach(({ id, amount }) => {
+          if (draft.entities.materials[id]) {
+            draft.entities.materials[id].quantity -= amount;
+            if (draft.entities.materials[id].quantity <= 0) {
+              delete draft.entities.materials[id];
+            }
+          }
+        });
+        return;
+      case 'setMaterials':
+        draft.entities.materials = action.payload;
+        return;
+
+      // ========================================================================
+      // FOOD ACTIONS
+      // ========================================================================
+      case 'addFood':
+        draft.entities.foods[action.payload.id] = action.payload;
+        return;
+      case 'updateFood':
+        if (draft.entities.foods[action.payload.id]) {
+          draft.entities.foods[action.payload.id] = {
+            ...draft.entities.foods[action.payload.id],
+            ...action.payload.changes
+          };
+        }
+        return;
+      case 'removeFood':
+        delete draft.entities.foods[action.payload];
+        return;
+      case 'consumeFoods':
+        action.payload.forEach(({ id, amount }) => {
+          if (draft.entities.foods[id]) {
+            draft.entities.foods[id].quantity -= amount;
+            if (draft.entities.foods[id].quantity <= 0) {
+              delete draft.entities.foods[id];
+            }
+          }
+        });
+        return;
+      case 'setFoods':
+        draft.entities.foods = action.payload;
+        return;
+
+      // ========================================================================
+      // RECIPE ACTIONS
+      // ========================================================================
+      case 'addRecipe':
+        draft.entities.recipes[action.payload.id] = action.payload;
+        return;
+      case 'updateRecipe':
+        if (draft.entities.recipes[action.payload.id]) {
+          draft.entities.recipes[action.payload.id] = {
+            ...draft.entities.recipes[action.payload.id],
+            ...action.payload.changes
+          };
+        }
+        return;
+      case 'removeRecipe':
+        delete draft.entities.recipes[action.payload];
+        return;
+      case 'setRecipes':
+        draft.entities.recipes = action.payload;
+        return;
+
+      // ========================================================================
+      // FOOD TYPE & MATERIAL TYPE ACTIONS
+      // ========================================================================
+      case 'setFoodTypes':
+        draft.entities.foodTypes = action.payload;
+        return;
+      case 'addFoodType':
+        draft.entities.foodTypes.push(action.payload);
+        return;
+      case 'setMaterialTypes':
+        draft.entities.materialTypes = action.payload;
+        return;
+      case 'addMaterialType':
+        draft.entities.materialTypes.push(action.payload);
+        return;
+
+      // ========================================================================
+      // CRAFT ACTIONS
+      // ========================================================================
+      case 'addCraft':
+        draft.entities.crafts[action.payload.id] = action.payload;
+        return;
+      case 'updateCraft':
+        if (draft.entities.crafts[action.payload.id]) {
+          draft.entities.crafts[action.payload.id] = {
+            ...draft.entities.crafts[action.payload.id],
+            ...action.payload.changes
+          };
+        }
+        return;
+      case 'removeCraft':
+        delete draft.entities.crafts[action.payload];
+        return;
+      case 'completeCraft':
+        if (draft.entities.crafts[action.payload.id]) {
+          draft.entities.crafts[action.payload.id].phase = 'complete';
+          draft.entities.crafts[action.payload.id].finalStats = action.payload.finalStats;
+        }
+        return;
+      case 'setCrafts':
+        draft.entities.crafts = action.payload;
+        return;
+
+      // ========================================================================
+      // CRAFT DESIGN ACTIONS
+      // ========================================================================
+      case 'addCraftDesign':
+        draft.entities.craftDesigns[action.payload.id] = action.payload;
+        return;
+      case 'updateCraftDesign':
+        if (draft.entities.craftDesigns[action.payload.id]) {
+          draft.entities.craftDesigns[action.payload.id] = {
+            ...draft.entities.craftDesigns[action.payload.id],
+            ...action.payload.changes
+          };
+        }
+        return;
+      case 'removeCraftDesign':
+        delete draft.entities.craftDesigns[action.payload];
+        return;
+      case 'setCraftDesigns':
+        draft.entities.craftDesigns = action.payload;
+        return;
+
+      // ========================================================================
+      // CUSTOM TEMPLATES ACTIONS
+      // ========================================================================
+      case 'setCustomTemplates':
+        draft.entities.customTemplates = action.payload;
+        return;
+      case 'addCustomTemplate':
+        draft.entities.customTemplates[action.payload.category][action.payload.templateName] = action.payload.template;
+        return;
+
+      // ========================================================================
+      // ALCHEMY ACTIONS
+      // ========================================================================
+      case 'addAlchemyReagent':
+        draft.entities.alchemyReagents[action.payload.id] = action.payload;
+        return;
+      case 'updateAlchemyReagent':
+        if (draft.entities.alchemyReagents[action.payload.id]) {
+          draft.entities.alchemyReagents[action.payload.id] = {
+            ...draft.entities.alchemyReagents[action.payload.id],
+            ...action.payload.changes
+          };
+        }
+        return;
+      case 'removeAlchemyReagent':
+        delete draft.entities.alchemyReagents[action.payload];
+        return;
+      case 'setAlchemyReagents':
+        draft.entities.alchemyReagents = action.payload;
+        return;
+      case 'addAlchemyFormula':
+        draft.entities.alchemyFormulas[action.payload.id] = action.payload;
+        return;
+      case 'updateAlchemyFormula':
+        if (draft.entities.alchemyFormulas[action.payload.id]) {
+          draft.entities.alchemyFormulas[action.payload.id] = {
+            ...draft.entities.alchemyFormulas[action.payload.id],
+            ...action.payload.changes
+          };
+        }
+        return;
+      case 'removeAlchemyFormula':
+        delete draft.entities.alchemyFormulas[action.payload];
+        return;
+      case 'setAlchemyFormulas':
+        draft.entities.alchemyFormulas = action.payload;
+        return;
+      case 'addAlchemyBatch':
+        draft.entities.alchemyBatches[action.payload.id] = action.payload;
+        return;
+      case 'updateAlchemyBatch':
+        if (draft.entities.alchemyBatches[action.payload.id]) {
+          draft.entities.alchemyBatches[action.payload.id] = {
+            ...draft.entities.alchemyBatches[action.payload.id],
+            ...action.payload.changes
+          };
+        }
+        return;
+      case 'removeAlchemyBatch':
+        delete draft.entities.alchemyBatches[action.payload];
+        return;
+      case 'setAlchemyBatches':
+        draft.entities.alchemyBatches = action.payload;
+        return;
+      case 'setAlchemyLabs':
+        draft.entities.alchemyLabs = action.payload;
+        return;
+      case 'addAlchemyLab':
+        draft.entities.alchemyLabs[action.payload.id] = action.payload;
+        return;
+      case 'updateAlchemySettings':
+        draft.entities.alchemySettings = {
+          ...draft.entities.alchemySettings,
+          ...action.payload
+        };
+        return;
+
+      // ========================================================================
+      // GATHERING ACTIONS
+      // ========================================================================
+      case 'setGatheringSpecies':
+        draft.entities.gatheringSpecies = action.payload;
+        return;
+      case 'addGatheringSpecies':
+        draft.entities.gatheringSpecies[action.payload.id] = action.payload;
+        return;
+      case 'setGatheringTools':
+        draft.entities.gatheringTools = action.payload;
+        return;
+      case 'addGatheringTool':
+        draft.entities.gatheringTools[action.payload.id] = action.payload;
+        return;
+      case 'setGatheringTables':
+        draft.entities.gatheringTables = action.payload;
+        return;
+      case 'addGatheringTable':
+        draft.entities.gatheringTables[action.payload.id] = action.payload;
+        return;
+      case 'setGatheringEnvironments':
+        draft.entities.gatheringEnvironments = action.payload;
+        return;
+      case 'addGatheringEnvironment':
+        draft.entities.gatheringEnvironments[action.payload.id] = action.payload;
+        return;
+      case 'addGatheringSession':
+        draft.entities.gatheringSessions[action.payload.id] = action.payload;
+        return;
+      case 'updateGatheringSession':
+        if (draft.entities.gatheringSessions[action.payload.id]) {
+          draft.entities.gatheringSessions[action.payload.id] = {
+            ...draft.entities.gatheringSessions[action.payload.id],
+            ...action.payload.changes
+          };
+        }
+        return;
+      case 'setGatheringSessions':
+        draft.entities.gatheringSessions = action.payload;
+        return;
+      case 'setGatheringDailyEvents':
+        draft.entities.gatheringDailyEvents = action.payload;
+        return;
+      case 'setGatheringBait':
+        draft.entities.gatheringBait = action.payload;
+        return;
+      case 'addGatheringBait':
+        draft.entities.gatheringBait[action.payload.id] = action.payload;
+        return;
+      case 'setGatheringCategories':
+        draft.entities.gatheringCategories = action.payload;
+        return;
+      case 'addGatheringCategory':
+        draft.entities.gatheringCategories[action.payload.id] = action.payload;
+        return;
+      case 'setGatheringItems':
+        draft.entities.gatheringItems = action.payload;
+        return;
+      case 'addGatheringItem':
+        draft.entities.gatheringItems[action.payload.id] = action.payload;
+        return;
+
+      // ========================================================================
+      // DAY PLANNER ACTIONS
+      // ========================================================================
+      case 'setTimeSlots':
+        draft.dayPlanner.timeSlots = action.payload;
+        return;
+      case 'addTaskAssignment':
+        draft.dayPlanner.taskAssignments.push(action.payload);
+        return;
+      case 'updateTaskAssignment': {
+        const taskIndex = draft.dayPlanner.taskAssignments.findIndex(t => t.id === action.payload.id);
+        if (taskIndex !== -1) {
+          draft.dayPlanner.taskAssignments[taskIndex] = {
+            ...draft.dayPlanner.taskAssignments[taskIndex],
+            ...action.payload.changes
+          };
+        }
+        return;
+      }
+      case 'setTaskAssignments':
+        draft.dayPlanner.taskAssignments = action.payload;
+        return;
+      case 'setPendingDayLedger':
+        draft.dayPlanner.pendingDayLedger = action.payload;
+        return;
+
+      // ========================================================================
+      // COMBAT ACTIONS
+      // ========================================================================
+      case 'addCombatCharacter':
+        draft.entities.combatCharacters[action.payload.id] = action.payload;
+        return;
+      case 'updateCombatCharacter':
+        if (draft.entities.combatCharacters[action.payload.id]) {
+          draft.entities.combatCharacters[action.payload.id] = {
+            ...draft.entities.combatCharacters[action.payload.id],
+            ...action.payload.changes
+          };
+        }
+        return;
+      case 'removeCombatCharacter':
+        delete draft.entities.combatCharacters[action.payload];
+        return;
+      case 'setCombatCharacters':
+        draft.entities.combatCharacters = action.payload;
+        return;
+      case 'setCombatActive':
+        draft.combat.activeSession = action.payload;
+        return;
+      case 'updateCombatActive':
+        if (draft.combat.activeSession) {
+          draft.combat.activeSession = {
+            ...draft.combat.activeSession,
+            ...action.payload
+          };
+        }
+        return;
+      case 'setCombatHistory':
+        draft.entities.combatHistory = action.payload;
+        return;
+      case 'setCombatTombstones':
+        draft.entities.combatTombstones = action.payload;
+        return;
+      case 'setCombatRulesPreset':
+        draft.combat.rulesPreset = action.payload;
+        return;
+      case 'setCombatItems':
+        draft.entities.combatItems = action.payload;
+        return;
+      case 'addCombatItem':
+        draft.entities.combatItems[action.payload.id] = action.payload;
+        return;
+
+      // ========================================================================
+      // CONFIG ACTIONS (Kitchens, Cooking Skills, Effect Family Map)
+      // ========================================================================
+      case 'setKitchens':
+        draft.entities.kitchens = action.payload;
+        return;
+      case 'addKitchen':
+        draft.entities.kitchens[action.payload.id] = action.payload;
+        return;
+      case 'setCookingSkills':
+        draft.entities.cookingSkills = action.payload;
+        return;
+      case 'setEffectFamilyMap':
+        draft.entities.effectFamilyMap = action.payload;
+        return;
+
+      // ========================================================================
+      // INVENTORY ACTIONS
+      // ========================================================================
+      case 'addInventory':
+        draft.entities.inventories[action.payload.id] = action.payload;
+        return;
+      case 'updateInventory':
+        if (draft.entities.inventories[action.payload.id]) {
+          draft.entities.inventories[action.payload.id] = {
+            ...draft.entities.inventories[action.payload.id],
+            ...action.payload.changes
+          };
+        }
+        return;
+      case 'setInventories':
+        draft.entities.inventories = action.payload;
+        return;
+
       default:
         return;
     }
