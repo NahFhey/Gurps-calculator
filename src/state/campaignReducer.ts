@@ -585,7 +585,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.activities.partyToolState = action.payload;
         return;
       case 'setToolReservations':
-        draft.entities.tools.reservations = action.payload;
+        draft.entities.toolReservations = action.payload;
         return;
       case 'addLogEntry':
         draft.logs.entries.unshift(action.payload);
