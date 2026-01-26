@@ -5,7 +5,7 @@ import { useCampaignStore } from '../../state/campaignStore';
 export function PartyToolContainer() {
   const { state, actions } = useCampaignStore();
   const activities = state.activities;
-  const reservations = state.entities.tools.reservations;
+  const reservations = state.entities.toolReservations;
 
   const updateActivitiesField = useMemo(
     () => (field) => (valueOrUpdater) => {
