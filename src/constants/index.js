@@ -14,7 +14,7 @@
  * Feature flags
  * @type {boolean}
  */
-export const UNIFIED_UI_ENABLED = false;
+export const UNIFIED_UI_ENABLED = true;
 
 /**
  * Template data for crafting items
