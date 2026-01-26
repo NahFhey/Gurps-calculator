@@ -27,6 +27,33 @@ import { logger } from './logger';
 /** Current schema version - synchronized with schemaVersioning.js */
 export const SCHEMA_VERSION = CURRENT_SCHEMA_VERSION;
 
+const isCampaignState = (state) =>
+  Boolean(state && state.ui && state.meta && state.entities && state.time);
+
+const toSerializableCampaignState = (state) => {
+  if (!state?.combat?.reveal) {
+    return state;
+  }
+  return {
+    ...state,
+    combat: {
+      ...state.combat,
+      reveal: {
+        ...state.combat.reveal,
+        revealedTargets: Array.from(state.combat.reveal.revealedTargets || []),
+        revealedHP: Array.from(state.combat.reveal.revealedHP || [])
+      }
+    }
+  };
+};
+
+const stripSchemaVersion = (state) => {
+  if (!state || typeof state !== 'object') {
+    return state;
+  }
+  const { schemaVersion, ...rest } = state;
+  return rest;
+};
 
 /**
  * Splits application state into public (player-safe) and GM-only portions.
@@ -37,6 +64,20 @@ export const SCHEMA_VERSION = CURRENT_SCHEMA_VERSION;
  * @returns {Object} Split state with public and gm properties
  */
 export function splitState(state) {
+  if (isCampaignState(state)) {
+    const serializedState = toSerializableCampaignState(state);
+    return {
+      public: {
+        ...serializedState,
+        ui: {
+          ...serializedState.ui,
+          gmModeEnabled: false,
+          gmSessionUnlocked: false
+        }
+      },
+      gm: serializedState
+    };
+  }
   const {
     materials,
     foods,
@@ -193,6 +234,9 @@ export function splitState(state) {
  * @returns {Object} Merged full state
  */
 export function mergeGM(publicState, gmPayload) {
+  if (isCampaignState(publicState)) {
+    return gmPayload || publicState;
+  }
   const merged = { ...publicState };
 
   // Merge reagent secrets
@@ -383,10 +427,9 @@ export function migrateImport(data) {
       `Starting migration of imported data from v${importedVersion} to v${SCHEMA_VERSION}`
     );
 
-    // Reconstruct full state from public + gm/gmLock sections
+    // Reconstruct full state from public + gm sections
     const fullState = {
-      ...data.public,
-      ...(data.gm || {}),
+      ...(data.exportType === 'locked' ? data.public : data.gm || data.public),
       schemaVersion: importedVersion
     };
 
@@ -404,13 +447,15 @@ export function migrateImport(data) {
       logger.warn('Migrated data has validation issues:', validation.issues);
     }
 
+    const { public: migratedPublic, gm: migratedGm } = splitState(migratedState);
+
     // Reconstruct export data with migrated state
     const migrationPath = getMigrationPath(importedVersion, SCHEMA_VERSION);
 
     return {
       ...data,
-      public: migratedState,
-      gm: migratedState,
+      public: migratedPublic,
+      ...(data.exportType === 'unlocked' ? { gm: migratedGm } : {}),
       schemaVersion: SCHEMA_VERSION,
       migrationInfo: {
         sourceVersion: importedVersion,
@@ -454,10 +499,16 @@ export async function importFile(jsonInput) {
     // Migrate if needed
     const migrated = migrateImport(data);
 
+    const sanitized = {
+      ...migrated,
+      public: stripSchemaVersion(migrated.public),
+      ...(migrated.gm ? { gm: stripSchemaVersion(migrated.gm) } : {})
+    };
+
     // Return result with metadata
     return {
       ok: true,
-      data: migrated,
+      data: sanitized,
       warnings: validation.warnings || [],
       isLocked: migrated.exportType === 'locked'
     };

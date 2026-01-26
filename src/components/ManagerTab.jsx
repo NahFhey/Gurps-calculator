@@ -8,7 +8,9 @@ import { TBBuilderPanel } from './alchemy/TBBuilderPanel';
 import { ImportExportPanel } from './ImportExportPanel';
 import { GMLockModal } from './GMLockModal';
 import { GatheringManager } from './GatheringManager';
+import { DebugPanel } from './DebugPanel';
 import { unlockGMData, mergeGM } from '../utils/exportImport';
+import { useCampaignStore } from '../state/campaignStore';
 
 export function ManagerTab({
   foodTypes, materialTypes, workers, crafts, craftDesigns, customTemplates, materials,
@@ -81,6 +83,7 @@ export function ManagerTab({
   // GM/Player mode state
   const [showGMLockModal, setShowGMLockModal] = useState(false);
   const [gmLockError, setGmLockError] = useState(null);
+  const { state: campaignState, actions: campaignActions } = useCampaignStore();
 
   // Handle GM mode toggle
   const handleGMModeToggle = () => {
@@ -139,22 +142,7 @@ export function ManagerTab({
 
   // Handle import from ImportExportPanel
   const handleImport = (importedState) => {
-    // Apply all imported data to state
-    if (importedState.materials) saveMaterials(importedState.materials);
-    if (importedState.foods) saveFoods(importedState.foods);
-    if (importedState.recipes) saveRecipes(importedState.recipes);
-    if (importedState.foodTypes) saveFoodTypes(importedState.foodTypes);
-    if (importedState.materialTypes) saveMaterialTypes(importedState.materialTypes);
-    if (importedState.workers) saveWorkers(importedState.workers);
-    if (importedState.customTemplates) saveCustomTemplates(importedState.customTemplates);
-    if (importedState.craftDesigns) saveCraftDesigns(importedState.craftDesigns);
-    if (importedState.crafts) saveCrafts(importedState.crafts);
-    if (importedState.alchemyReagents) saveAlchemyReagents(importedState.alchemyReagents);
-    if (importedState.alchemyFormulas) saveAlchemyFormulas(importedState.alchemyFormulas);
-    if (importedState.alchemyBatches) saveAlchemyBatches(importedState.alchemyBatches);
-    if (importedState.alchemyLabs) saveAlchemyLabs(importedState.alchemyLabs);
-    if (importedState.effectFamilyMap) saveEffectFamilyMap(importedState.effectFamilyMap);
-    if (importedState.alchemySettings) saveAlchemySettings(importedState.alchemySettings);
+    campaignActions.importCampaignState(importedState, 'Before import');
   };
 
   function addType() {
@@ -383,6 +371,48 @@ export function ManagerTab({
         </button>
       </div>
 
+      {gmMode && (
+        <div className="mb-6 rounded-lg border border-gray-700 bg-gray-700/40 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-100">Checkpoints</h3>
+              <p className="text-sm text-gray-400">
+                Snapshots are created before major changes. Restore to roll back campaign state.
+              </p>
+            </div>
+            <span className="text-xs text-gray-400">
+              {campaignState.checkpoints.entries.length}/{campaignState.checkpoints.maxSize}
+            </span>
+          </div>
+          {campaignState.checkpoints.entries.length === 0 ? (
+            <div className="mt-3 text-sm text-gray-500">No checkpoints yet.</div>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {campaignState.checkpoints.entries.map((checkpoint) => (
+                <div
+                  key={checkpoint.id}
+                  className="flex items-center justify-between rounded-lg bg-gray-800 px-3 py-2"
+                >
+                  <div>
+                    <div className="text-sm font-semibold text-gray-100">{checkpoint.label}</div>
+                    <div className="text-xs text-gray-500">
+                      {new Date(checkpoint.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => campaignActions.restoreCheckpoint(checkpoint.id)}
+                    className="rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-500"
+                  >
+                    Restore
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-800 p-6 rounded-lg max-w-md border-2 border-gray-600">
@@ -437,16 +467,19 @@ export function ManagerTab({
         <button onClick={() => setView('effectFamilyMap')} className={`px-4 py-2 ${view === 'effectFamilyMap' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Effect Map</button>
         <button onClick={() => setView('alchemySettings')} className={`px-4 py-2 ${view === 'alchemySettings' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>Alchemy Settings</button>
         <button onClick={() => setView('gathering')} className={`px-4 py-2 ${view === 'gathering' ? 'border-b-2 border-cyan-500 text-cyan-400' : 'text-gray-400'}`}>Gathering</button>
+        {gmMode && (
+          <button
+            onClick={() => setView('debug')}
+            className={`px-4 py-2 ${view === 'debug' ? 'border-b-2 border-amber-500 text-amber-400' : 'text-gray-400'}`}
+          >
+            Debug
+          </button>
+        )}
       </div>
 
       {view === 'importExport' && (
         <ImportExportPanel
-          state={{
-            materials, foods, recipes, foodTypes, materialTypes, workers,
-            customTemplates, craftDesigns, crafts,
-            alchemyReagents, alchemyFormulas, alchemyBatches, alchemyLabs,
-            effectFamilyMap, alchemySettings, kitchens, cookingSkills
-          }}
+          state={campaignState}
           gmMode={gmMode}
           gmLockData={gmLockData}
           setGmMode={setGmMode}
@@ -455,6 +488,8 @@ export function ManagerTab({
           onShowGMLockModal={() => setShowGMLockModal(true)}
         />
       )}
+
+      {view === 'debug' && gmMode && <DebugPanel />}
 
       {view === 'foodTypes' && (
         <div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   AlertTriangle,
   ClipboardList,
@@ -44,20 +44,35 @@ const getInventoryLabel = (inventory, characters) => {
   return 'Unknown Inventory';
 };
 
-export function PartyToolApp() {
-  const [activeTab, setActiveTab] = useState('activity');
-  const [state, setState] = useState(createPartyToolState);
-  const [reservationMap, setReservationMap] = useState({});
-  const [activityLogs, setActivityLogs] = useState([]);
-  const [timeLogs, setTimeLogs] = useState([]);
-  const [currentSlot, setCurrentSlot] = useState(0);
-  const [selectedSkill, setSelectedSkill] = useState(PARTY_TOOL_SKILLS[0]);
-  const [primaryWorkerId, setPrimaryWorkerId] = useState('');
-  const [helperIds, setHelperIds] = useState([]);
-  const [toolSelections, setToolSelections] = useState({});
-  const [selectedFacilityId, setSelectedFacilityId] = useState('implicit');
-  const [gmOverride, setGmOverride] = useState(false);
-  const [transferState, setTransferState] = useState(null);
+export function PartyToolApp({
+  activeTab,
+  setActiveTab,
+  partyToolState,
+  setPartyToolState,
+  reservationMap,
+  setReservationMap,
+  activityLogs,
+  setActivityLogs,
+  timeLogs,
+  setTimeLogs,
+  currentSlot,
+  setCurrentSlot,
+  selectedSkill,
+  setSelectedSkill,
+  primaryWorkerId,
+  setPrimaryWorkerId,
+  helperIds,
+  setHelperIds,
+  toolSelections,
+  setToolSelections,
+  selectedFacilityId,
+  setSelectedFacilityId,
+  gmOverride,
+  setGmOverride,
+  transferState,
+  setTransferState
+}) {
+  const state = partyToolState ?? createPartyToolState();
   const sessionId = 'active-activity-session';
 
   const reservationEngine = useMemo(
@@ -362,7 +377,7 @@ export function PartyToolApp() {
         transferState.itemId
       );
     }
-    setState((prev) => ({
+    setPartyToolState((prev) => ({
       ...prev,
       inventories: { ...prev.inventories },
       currencyLogs: [...prev.currencyLogs],

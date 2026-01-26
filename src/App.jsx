@@ -12,18 +12,22 @@ import { ChangelogTab } from './components/ChangelogTab';
 import { RulesTab } from './components/RulesTab';
 import { DayPlannerTab } from './components/DayPlannerTab';
 import { CombatTab } from './components/CombatTab';
-import { PartyToolApp } from './components/party-tool/PartyToolApp';
+import { PartyToolContainer } from './components/party-tool/PartyToolContainer';
 import { VERSION } from './version';
-import { TEMPLATES } from './constants';
+import { TEMPLATES, UNIFIED_UI_ENABLED } from './constants';
 import InventoryContext from './contexts/InventoryContext';
 import CraftingContext from './contexts/CraftingContext';
 import AlchemyContext from './contexts/AlchemyContext';
 import GatheringContext from './contexts/GatheringContext';
 import ConfigContext from './contexts/ConfigContext';
 import CombatContext from './contexts/CombatContext';
+import { UnifiedShell } from './unified/UnifiedShell';
+import { CampaignStoreProvider } from './state/campaignStore';
+import { loadCampaignState } from './persistence/campaignStorage';
 
 export default function GURPSPartyTool() {
   logger.log('GURPSPartyTool rendering');
+  const [initialCampaignState, setInitialCampaignState] = useState(null);
   const [activeTab, setActiveTab] = useState('inventory');
   const [materials, setMaterials] = useState([]);
   const [foods, setFoods] = useState([]);
@@ -150,6 +154,20 @@ export default function GURPSPartyTool() {
   const saveCombatItems = createSaveFunction(setCombatItems, 'combatItems');
 
   useEffect(() => { loadData(); }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function hydrateCampaign() {
+      const loadedState = await loadCampaignState();
+      if (!cancelled) {
+        setInitialCampaignState(loadedState);
+      }
+    }
+    hydrateCampaign();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function loadData() {
     // Guard against missing storage
@@ -491,96 +509,258 @@ export default function GURPSPartyTool() {
     setGmMode
   };
 
-  return (
-    <InventoryContext.Provider value={inventoryValue}>
-      <CraftingContext.Provider value={craftingValue}>
-        <AlchemyContext.Provider value={alchemyValue}>
-          <GatheringContext.Provider value={gatheringValue}>
-            <ConfigContext.Provider value={configValue}>
-              <CombatContext.Provider value={combatValue}>
-                <div className="min-h-screen bg-gray-900 text-gray-100">
-      <div className="max-w-7xl mx-auto p-6">
-        <h1 className="text-3xl font-bold mb-6 text-center">
-          GURPS Party Management <span className="text-xl text-gray-400">v{VERSION}</span>
-        </h1>
-        <div className="flex gap-2 mb-6 border-b border-gray-700">
-          <button onClick={() => setActiveTab('inventory')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'inventory' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
-            <Package size={20} />Inventory
-          </button>
-          <button onClick={() => setActiveTab('cooking')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'cooking' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
-            <ChefHat size={20} />Cooking
-          </button>
-          <button onClick={() => setActiveTab('crafting')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'crafting' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
-            <Hammer size={20} />Crafting
-          </button>
-          <button onClick={() => setActiveTab('manager')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'manager' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
-            <Edit2 size={20} />Manager
-          </button>
-          <button onClick={() => setActiveTab('alchemy')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'alchemy' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
-            <Beaker size={20} />Alchemy
-          </button>
-          <button onClick={() => setActiveTab('gathering')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'gathering' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
-            <Fish size={20} />Gathering
-          </button>
-          <button onClick={() => setActiveTab('combat')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'combat' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
-            <Swords size={20} />Combat
-          </button>
-          <button onClick={() => setActiveTab('party-tool')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'party-tool' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
-            <LayoutGrid size={20} />Party Tool
-          </button>
-          <button onClick={() => setActiveTab('rules')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'rules' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
-            <BookOpen size={20} />Rules
-          </button>
-          <button onClick={() => setActiveTab('changelog')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'changelog' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
-            <FileText size={20} />Changelog
-          </button>
-        </div>
+  const managerTabProps = {
+    foodTypes,
+    materialTypes,
+    workers,
+    crafts,
+    craftDesigns,
+    customTemplates,
+    materials,
+    effectFamilyMap,
+    alchemySettings,
+    alchemyReagents,
+    alchemyFormulas,
+    alchemyBatches,
+    alchemyLabs,
+    kitchens,
+    cookingSkills,
+    foods,
+    recipes,
+    gmMode,
+    gmLockData,
+    setGmMode,
+    setGmLockData,
+    saveMaterials,
+    saveFoods,
+    saveRecipes,
+    saveFoodTypes,
+    saveMaterialTypes,
+    saveWorkers,
+    saveCrafts,
+    saveCraftDesigns,
+    saveCustomTemplates,
+    saveEffectFamilyMap,
+    saveAlchemySettings,
+    saveAlchemyReagents,
+    saveAlchemyFormulas,
+    saveAlchemyBatches,
+    saveAlchemyLabs,
+    saveKitchens,
+    saveCookingSkills,
+    renameMaterialType,
+    gatheringSpecies,
+    gatheringTools,
+    gatheringTables,
+    gatheringEnvironments,
+    gatheringBait,
+    gatheringCategories,
+    gatheringItems,
+    currentDay,
+    saveGatheringSpecies,
+    saveGatheringTools,
+    saveGatheringTables,
+    saveGatheringEnvironments,
+    saveGatheringBait,
+    saveGatheringCategories,
+    saveGatheringItems,
+    saveCurrentDay
+  };
 
-        {activeTab === 'inventory' && <InventoryTab />}
-        {activeTab === 'cooking' && <CookingTab />}
-        {activeTab === 'crafting' && <CraftingTab />}
-        {activeTab === 'manager' && <ManagerTab foodTypes={foodTypes} materialTypes={materialTypes} workers={workers} crafts={crafts} craftDesigns={craftDesigns} customTemplates={customTemplates} materials={materials} effectFamilyMap={effectFamilyMap} alchemySettings={alchemySettings} alchemyReagents={alchemyReagents} alchemyFormulas={alchemyFormulas} alchemyBatches={alchemyBatches} alchemyLabs={alchemyLabs} kitchens={kitchens} cookingSkills={cookingSkills} foods={foods} recipes={recipes} gmMode={gmMode} gmLockData={gmLockData} setGmMode={setGmMode} setGmLockData={setGmLockData} saveMaterials={saveMaterials} saveFoods={saveFoods} saveRecipes={saveRecipes} saveFoodTypes={saveFoodTypes} saveMaterialTypes={saveMaterialTypes} saveWorkers={saveWorkers} saveCrafts={saveCrafts} saveCraftDesigns={saveCraftDesigns} saveCustomTemplates={saveCustomTemplates} saveEffectFamilyMap={saveEffectFamilyMap} saveAlchemySettings={saveAlchemySettings} saveAlchemyReagents={saveAlchemyReagents} saveAlchemyFormulas={saveAlchemyFormulas} saveAlchemyBatches={saveAlchemyBatches} saveAlchemyLabs={saveAlchemyLabs} saveKitchens={saveKitchens} saveCookingSkills={saveCookingSkills} renameMaterialType={renameMaterialType}
-          gatheringSpecies={gatheringSpecies} gatheringTools={gatheringTools} gatheringTables={gatheringTables} gatheringEnvironments={gatheringEnvironments} gatheringBait={gatheringBait} gatheringCategories={gatheringCategories} gatheringItems={gatheringItems} currentDay={currentDay}
-          saveGatheringSpecies={saveGatheringSpecies} saveGatheringTools={saveGatheringTools} saveGatheringTables={saveGatheringTables} saveGatheringEnvironments={saveGatheringEnvironments} saveGatheringBait={saveGatheringBait} saveGatheringCategories={saveGatheringCategories} saveGatheringItems={saveGatheringItems} saveCurrentDay={saveCurrentDay}
-        />}
-        {activeTab === 'alchemy' && <AlchemyTab />}
-        {activeTab === 'gathering' && <DayPlannerTab
-          species={gatheringSpecies}
-          tools={gatheringTools}
-          tables={gatheringTables}
-          environments={gatheringEnvironments}
-          bait={gatheringBait}
-          categories={gatheringCategories}
-          items={gatheringItems}
-          workers={workers}
-          foods={foods}
-          materials={materials}
-          foodTypes={foodTypes}
-          materialTypes={materialTypes}
-          timeSlots={timeSlots}
-          taskAssignments={taskAssignments}
-          pendingDayLedger={pendingDayLedger}
-          currentDay={currentDay}
-          currentSlot={currentSlot}
-          saveTimeSlots={saveTimeSlots}
-          saveTaskAssignments={saveTaskAssignments}
-          savePendingDayLedger={savePendingDayLedger}
-          saveCurrentDay={saveCurrentDay}
-          saveCurrentSlot={saveCurrentSlot}
-          saveFoods={saveFoods}
-          saveMaterials={saveMaterials}
-        />}
-        {activeTab === 'combat' && <CombatTab />}
-        {activeTab === 'party-tool' && <PartyToolApp />}
-        {activeTab === 'rules' && <RulesTab />}
-        {activeTab === 'changelog' && <ChangelogTab />}
+  const dayPlannerTabProps = {
+    species: gatheringSpecies,
+    tools: gatheringTools,
+    tables: gatheringTables,
+    environments: gatheringEnvironments,
+    bait: gatheringBait,
+    categories: gatheringCategories,
+    items: gatheringItems,
+    workers,
+    foods,
+    materials,
+    foodTypes,
+    materialTypes,
+    timeSlots,
+    taskAssignments,
+    pendingDayLedger,
+    currentDay,
+    currentSlot,
+    saveTimeSlots,
+    saveTaskAssignments,
+    savePendingDayLedger,
+    saveCurrentDay,
+    saveCurrentSlot,
+    saveFoods,
+    saveMaterials
+  };
+
+  const legacyAppState = {
+    activeTab,
+    setActiveTab,
+    materials,
+    foods,
+    recipes,
+    crafts,
+    foodTypes,
+    craftDesigns,
+    materialTypes,
+    workers,
+    customTemplates,
+    alchemyReagents,
+    alchemyFormulas,
+    alchemyBatches,
+    alchemyLabs,
+    kitchens,
+    cookingSkills,
+    effectFamilyMap,
+    alchemySettings,
+    loading,
+    gmMode,
+    gmLockData,
+    gatheringSpecies,
+    gatheringTools,
+    gatheringTables,
+    gatheringEnvironments,
+    gatheringSessions,
+    gatheringDailyEvents,
+    gatheringBait,
+    gatheringCategories,
+    gatheringItems,
+    currentDay,
+    timeSlots,
+    taskAssignments,
+    pendingDayLedger,
+    currentSlot,
+    combatCharacters,
+    combatActive,
+    combatActiveHistory,
+    combatHistory,
+    combatTombstones,
+    combatRulesPreset,
+    combatReveal,
+    combatItems,
+    saveMaterials,
+    saveFoods,
+    saveRecipes,
+    saveCrafts,
+    saveFoodTypes,
+    saveMaterialTypes,
+    saveWorkers,
+    saveCustomTemplates,
+    saveAlchemyReagents,
+    saveAlchemyFormulas,
+    saveAlchemyBatches,
+    saveAlchemyLabs,
+    saveKitchens,
+    saveCookingSkills,
+    saveEffectFamilyMap,
+    saveAlchemySettings,
+    saveCraftDesigns,
+    saveGatheringSpecies,
+    saveGatheringTools,
+    saveGatheringTables,
+    saveGatheringEnvironments,
+    saveGatheringSessions,
+    saveGatheringDailyEvents,
+    saveGatheringBait,
+    saveGatheringCategories,
+    saveGatheringItems,
+    saveCurrentDay,
+    saveTimeSlots,
+    saveTaskAssignments,
+    savePendingDayLedger,
+    saveCurrentSlot,
+    saveCombatCharacters,
+    saveCombatActive,
+    saveCombatActiveHistory,
+    saveCombatHistory,
+    saveCombatTombstones,
+    saveCombatRulesPreset,
+    saveCombatReveal,
+    saveCombatItems,
+    setGmMode,
+    setGmLockData,
+    renameMaterialType,
+    managerTabProps,
+    dayPlannerTabProps
+  };
+
+  if (!initialCampaignState) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-gray-100 flex items-center justify-center">
+        Loading...
+      </div>
+    );
+  }
+
+  return (
+    <CampaignStoreProvider initialLegacyAppState={legacyAppState} initialCampaignState={initialCampaignState}>
+      <InventoryContext.Provider value={inventoryValue}>
+        <CraftingContext.Provider value={craftingValue}>
+          <AlchemyContext.Provider value={alchemyValue}>
+            <GatheringContext.Provider value={gatheringValue}>
+              <ConfigContext.Provider value={configValue}>
+                <CombatContext.Provider value={combatValue}>
+                  {UNIFIED_UI_ENABLED ? (
+                    <UnifiedShell />
+                  ) : (
+                    <div className="min-h-screen bg-gray-900 text-gray-100">
+        <div className="max-w-7xl mx-auto p-6">
+          <h1 className="text-3xl font-bold mb-6 text-center">
+            GURPS Party Management <span className="text-xl text-gray-400">v{VERSION}</span>
+          </h1>
+          <div className="flex gap-2 mb-6 border-b border-gray-700">
+            <button onClick={() => setActiveTab('inventory')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'inventory' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+              <Package size={20} />Inventory
+            </button>
+            <button onClick={() => setActiveTab('cooking')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'cooking' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+              <ChefHat size={20} />Cooking
+            </button>
+            <button onClick={() => setActiveTab('crafting')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'crafting' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+              <Hammer size={20} />Crafting
+            </button>
+            <button onClick={() => setActiveTab('manager')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'manager' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+              <Edit2 size={20} />Manager
+            </button>
+            <button onClick={() => setActiveTab('alchemy')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'alchemy' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+              <Beaker size={20} />Alchemy
+            </button>
+            <button onClick={() => setActiveTab('gathering')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'gathering' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+              <Fish size={20} />Gathering
+            </button>
+            <button onClick={() => setActiveTab('combat')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'combat' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+              <Swords size={20} />Combat
+            </button>
+            <button onClick={() => setActiveTab('party-tool')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'party-tool' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+              <LayoutGrid size={20} />Party Tool
+            </button>
+            <button onClick={() => setActiveTab('rules')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'rules' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+              <BookOpen size={20} />Rules
+            </button>
+            <button onClick={() => setActiveTab('changelog')} className={`flex items-center gap-2 px-4 py-2 ${activeTab === 'changelog' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+              <FileText size={20} />Changelog
+            </button>
+          </div>
+
+          {activeTab === 'inventory' && <InventoryTab />}
+          {activeTab === 'cooking' && <CookingTab />}
+          {activeTab === 'crafting' && <CraftingTab />}
+          {activeTab === 'manager' && <ManagerTab {...managerTabProps} />}
+          {activeTab === 'alchemy' && <AlchemyTab />}
+          {activeTab === 'gathering' && <DayPlannerTab {...dayPlannerTabProps} />}
+          {activeTab === 'combat' && <CombatTab />}
+        {activeTab === 'party-tool' && <PartyToolContainer />}
+          {activeTab === 'rules' && <RulesTab />}
+          {activeTab === 'changelog' && <ChangelogTab />}
+                  </div>
                 </div>
-              </div>
-              </CombatContext.Provider>
-            </ConfigContext.Provider>
-          </GatheringContext.Provider>
-        </AlchemyContext.Provider>
-      </CraftingContext.Provider>
-    </InventoryContext.Provider>
+                  )}
+                </CombatContext.Provider>
+              </ConfigContext.Provider>
+            </GatheringContext.Provider>
+          </AlchemyContext.Provider>
+        </CraftingContext.Provider>
+      </InventoryContext.Provider>
+    </CampaignStoreProvider>
   );
 }
