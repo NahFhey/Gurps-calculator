@@ -19,22 +19,24 @@
 
 ---
 
-## Phase 1: Hit Location Profile
+## Phase 1: Hit Location Profile ✅ COMPLETE
 
-- [ ] Add hit location profile types
-  - [ ] Create `HitLocationProfile` type in `src/types/characterSheet.ts`
-  - [ ] Add `hitLocationProfileId?: string` to `Character` type in `src/types/campaign.ts`
-  - [ ] Default value: `'humanoid'`
+- [x] Add hit location profile types
+  - [x] Create `HitLocationProfile` type in `src/types/characterSheet.ts`
+  - [x] Add `hitLocationProfileId?: string` to `Character` type in `src/types/campaign.ts`
+  - [x] Default value: `'humanoid'`
 
-- [ ] Add profile selector to Character Sheet
-  - [ ] Modify `src/components/character-sheet/PointPoolsSection.tsx`
-  - [ ] Add dropdown below HP/FP pools, above Traits section
-  - [ ] Load available profiles from `src/constants/hitLocations.js`
-  - [ ] Save selection to character entity
+- [x] Add profile selector to Character Sheet
+  - [x] Modify `src/components/character-sheet/PointPoolsSection.tsx`
+  - [x] Add dropdown below HP/FP pools, above Traits section
+  - [x] Load available profiles from `src/utils/hitLocations.js`
+  - [x] Save selection to character entity
 
-- [ ] Wire up to campaign store
-  - [ ] Add action to update character's hit location profile
-  - [ ] Ensure profile persists on save/load
+- [x] Wire up to campaign store
+  - [x] Uses existing `updateCharacter` action with `hitLocationProfileId` field
+  - [x] Profile persists on save/load
+
+**Commit:** `d77a28d` Feat: Add Hit Location Profile to party character sheets (Phase 1)
 
 ---
 
