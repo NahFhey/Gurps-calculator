@@ -25,6 +25,16 @@ const hydrateCampaignState = (payload: CampaignState): CampaignState => {
   return {
     ...base,
     ...payload,
+    // Ensure all nested structures have proper defaults
+    checkpoints: {
+      ...base.checkpoints,
+      ...payload.checkpoints,
+      entries: payload.checkpoints?.entries ?? base.checkpoints.entries
+    },
+    entities: {
+      ...base.entities,
+      ...payload.entities
+    },
     legacy: {
       ...base.legacy,
       ...payload.legacy,
