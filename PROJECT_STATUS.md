@@ -1,8 +1,8 @@
 # GURPS Calculator - Project Status & Roadmap
 
-**Last Updated:** 2025-01-27
-**Branch:** `claude/review-legacy-migration-jsTP8`
-**Status:** Phase 5 Complete - Ready for Phase 6
+**Last Updated:** 2026-01-27
+**Branch:** `claude/review-project-status-tBbZ7`
+**Status:** Phase 7 In Progress - View Components Converted
 
 ---
 
@@ -29,19 +29,19 @@
 
 **Achievement: 2,622 → 528 lines (80% reduction)**
 
-**All 12 Views Extracted:**
-1. FoodTypesView (155 lines)
-2. SkillsView (120 lines)
-3. ProjectsView (95 lines)
-4. AlchemySettingsView (145 lines)
-5. WorkersView (240 lines)
-6. LabsView (185 lines)
-7. KitchensView (185 lines)
-8. MaterialTypesView (290 lines)
-9. EffectFamilyMapView (200 lines)
-10. TemplatesView (440 lines)
-11. ReagentsView (520 lines)
-12. FormulasView (450 lines)
+**All 12 Views Extracted (Now TypeScript .tsx):**
+1. FoodTypesView.tsx (155 lines)
+2. SkillsView.tsx (120 lines)
+3. ProjectsView.tsx (95 lines)
+4. AlchemySettingsView.tsx (145 lines)
+5. WorkersView.tsx (240 lines)
+6. LabsView.tsx (185 lines)
+7. KitchensView.tsx (185 lines)
+8. MaterialTypesView.tsx (290 lines)
+9. EffectFamilyMapView.tsx (200 lines)
+10. TemplatesView.tsx (440 lines)
+11. ReagentsView.tsx (520 lines)
+12. FormulasView.tsx (450 lines)
 
 **Benefits Achieved:**
 - ✅ Each view is AI-readable (95-520 lines)
@@ -107,38 +107,39 @@ These are INTENTIONALLY kept for backward compatibility:
 
 ## 🎯 Roadmap
 
-### Phase 7: TypeScript Conversion (Recommended Next)
+### Phase 7: TypeScript Conversion 🔄 IN PROGRESS
 **Priority:** High
-**Estimated Time:** 2-3 days
 **Impact:** Type safety, better DX, fewer runtime errors
 
-**Steps:**
-1. Create interface definitions for all data types
-2. Convert view components: `.jsx` → `.tsx`
-3. Add prop type interfaces
-4. Convert ManagerTab.jsx → ManagerTab.tsx
-5. Enable strict type checking
-6. Fix any type errors
+**✅ Completed:**
+1. Created `src/types/views.ts` with prop interfaces for all 12 views
+2. Converted all 12 view components: `.jsx` → `.tsx`
+   - SkillsView, FoodTypesView, ProjectsView, AlchemySettingsView
+   - WorkersView, LabsView, KitchensView, MaterialTypesView
+   - EffectFamilyMapView, TemplatesView, ReagentsView, FormulasView
+3. Added explicit type annotations for props, state, and callbacks
+4. Build passes with no view component errors
 
-**Benefits:**
+**📝 Remaining Steps:**
+1. Convert ManagerTab.jsx → ManagerTab.tsx
+2. Convert remaining UI components gradually
+3. Add stricter TypeScript rules to tsconfig.json
+
+**Benefits Already Achieved:**
 - Catch bugs at compile time
 - Better IDE autocomplete
 - Self-documenting code
 - Easier refactoring
 
-**Files to Convert (Priority Order):**
+**Files Still to Convert:**
 ```bash
-# 1. Start with view components (easiest)
-src/components/manager/views/*.jsx → *.tsx
-
-# 2. Convert ManagerTab router
+# ManagerTab router (next priority)
 src/components/ManagerTab.jsx → ManagerTab.tsx
 
-# 3. Convert state types
-src/state/campaignStore.js → campaignStore.ts
-src/state/campaignReducer.ts (already TS)
-
-# 4. Convert other components gradually
+# Other components (lower priority)
+src/components/App.jsx
+src/components/alchemy/TBBuilderPanel.jsx
+# ... etc
 ```
 
 ---
