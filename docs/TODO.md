@@ -77,7 +77,7 @@
   - [x] Added logging to campaignReducer (combat started/combatant defeated)
 - [x] Add Party Stash tab to Inventory module - Done in Phase 3
 
-**Commit:** `pending`
+**Commit:** `2e68582 Feat: Implement Phase 4 - Populate Changelog with Logging`
 
 ---
 
