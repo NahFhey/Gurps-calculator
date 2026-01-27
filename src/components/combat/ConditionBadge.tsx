@@ -1,31 +1,38 @@
-import React from 'react';
+import { MouseEvent } from 'react';
 import { formatConditionDuration, formatConditionTooltip } from '../../utils/conditionsEngine';
 import { getConditionIcon } from '../../constants/conditions';
+
+interface Condition {
+  conditionId: string;
+  label: string;
+  expiresAt?: number | null;
+  severity?: number | null;
+}
+
+interface ConditionBadgeProps {
+  condition: Condition;
+  currentRound?: number;
+  showDuration?: boolean;
+  onClick?: ((condition: Condition) => void) | null;
+}
 
 /**
  * Phase 6: Condition Badge Component
  *
  * Displays a condition icon/badge with tooltip.
  * Used in combatant cards to show active conditions.
- *
- * @param {object} props
- * @param {object} props.condition - Condition instance
- * @param {number} props.currentRound - Current combat round
- * @param {boolean} props.showDuration - Show duration text (default true)
- * @param {function} props.onClick - Click handler (optional)
- * @returns {JSX.Element}
  */
 export default function ConditionBadge({
   condition,
   currentRound = 0,
   showDuration = true,
   onClick = null
-}) {
+}: ConditionBadgeProps) {
   const icon = getConditionIcon(condition.conditionId);
   const tooltip = formatConditionTooltip(condition, currentRound);
   const duration = formatConditionDuration(condition, currentRound);
 
-  const handleClick = (e) => {
+  const handleClick = (e: MouseEvent<HTMLDivElement>) => {
     if (onClick) {
       e.stopPropagation();
       onClick(condition);

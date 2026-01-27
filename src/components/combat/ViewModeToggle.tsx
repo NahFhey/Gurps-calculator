@@ -1,6 +1,14 @@
-import React from 'react';
 import { Eye, EyeOff, Lock, Shield } from 'lucide-react';
 import { ViewMode } from '../../utils/combatViewFilter';
+
+type ViewModeType = typeof ViewMode[keyof typeof ViewMode];
+
+interface ViewModeToggleProps {
+  viewMode: ViewModeType;
+  setViewMode: (mode: ViewModeType) => void;
+  gmMode: boolean;
+  setGmMode: (mode: boolean) => void;
+}
 
 /**
  * View Mode Toggle (Phase 5)
@@ -9,7 +17,12 @@ import { ViewMode } from '../../utils/combatViewFilter';
  * GM View requires GM Mode to be unlocked.
  * Forces Player View when GM Mode locks.
  */
-export default function ViewModeToggle({ viewMode, setViewMode, gmMode, setGmMode }) {
+export default function ViewModeToggle({
+  viewMode,
+  setViewMode,
+  gmMode,
+  setGmMode
+}: ViewModeToggleProps) {
   const isGMView = viewMode === ViewMode.GM;
   const isPlayerView = viewMode === ViewMode.PLAYER;
 

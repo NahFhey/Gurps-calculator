@@ -1,13 +1,28 @@
-import React from 'react';
 import { Settings } from 'lucide-react';
 import { COMBAT_RULES_PRESETS } from '../../utils/effectsEngine';
+
+type CombatRulesPreset = typeof COMBAT_RULES_PRESETS[keyof typeof COMBAT_RULES_PRESETS];
+
+interface PresetInfo {
+  label: string;
+  description: string;
+  features: string[];
+}
+
+interface CombatRulesSettingsProps {
+  preset?: CombatRulesPreset;
+  onPresetChange: (preset: CombatRulesPreset) => void;
+}
 
 /**
  * CombatRulesSettings Component
  * Allows selection of combat rules preset (lite, standard, crunchy)
  */
-export default function CombatRulesSettings({ preset = 'standard', onPresetChange }) {
-  const presetDescriptions = {
+export default function CombatRulesSettings({
+  preset = 'standard',
+  onPresetChange
+}: CombatRulesSettingsProps) {
+  const presetDescriptions: Record<CombatRulesPreset, PresetInfo> = {
     [COMBAT_RULES_PRESETS.LITE]: {
       label: 'Lite',
       description: 'Hit location DR + penetrating damage only. No wounding multipliers or effects tracking.',

@@ -1,6 +1,28 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Dices } from 'lucide-react';
 import { getProfileLocations, rollHitLocation } from '../../utils/hitLocations';
+
+interface HitLocation {
+  key: string;
+  label: string;
+  toHitPenalty: number;
+}
+
+interface RollResult {
+  valid: boolean;
+  error?: string;
+  location: HitLocation;
+  roll: {
+    dice: number[];
+    total: number;
+  };
+}
+
+interface HitLocationPickerProps {
+  profileId?: string;
+  onLocationSelected: (location: HitLocation, roll: RollResult['roll'] | null) => void;
+  selectedLocation?: HitLocation | null;
+}
 
 /**
  * HitLocationPicker Component
@@ -10,13 +32,13 @@ export default function HitLocationPicker({
   profileId = 'humanoid',
   onLocationSelected,
   selectedLocation = null
-}) {
-  const [rollResult, setRollResult] = useState(null);
+}: HitLocationPickerProps) {
+  const [rollResult, setRollResult] = useState<RollResult | null>(null);
 
-  const locations = getProfileLocations(profileId);
+  const locations = getProfileLocations(profileId) as HitLocation[];
 
   const handleRollLocation = () => {
-    const result = rollHitLocation(profileId);
+    const result = rollHitLocation(profileId) as RollResult;
 
     if (!result.valid) {
       alert(`Roll error: ${result.error}`);
@@ -27,7 +49,7 @@ export default function HitLocationPicker({
     onLocationSelected(result.location, result.roll);
   };
 
-  const handleManualSelect = (location) => {
+  const handleManualSelect = (location: HitLocation) => {
     setRollResult(null);
     onLocationSelected(location, null);
   };

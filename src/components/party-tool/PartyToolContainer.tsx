@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { PartyToolApp } from './PartyToolApp';
 import { useCampaignStore } from '../../state/campaignStore';
 
@@ -8,20 +8,22 @@ export function PartyToolContainer() {
   const reservations = state.entities.toolReservations;
 
   const updateActivitiesField = useMemo(
-    () => (field) => (valueOrUpdater) => {
-      const currentValue = activities[field];
+    () => <T,>(field: string) => (valueOrUpdater: T | ((prev: T) => T)) => {
+      const currentValue = (activities as Record<string, unknown>)[field] as T;
       const nextValue =
-        typeof valueOrUpdater === 'function' ? valueOrUpdater(currentValue) : valueOrUpdater;
+        typeof valueOrUpdater === 'function'
+          ? (valueOrUpdater as (prev: T) => T)(currentValue)
+          : valueOrUpdater;
       actions.setActivitiesState({ [field]: nextValue });
     },
     [actions, activities]
   );
 
   const setPartyToolState = useMemo(
-    () => (valueOrUpdater) => {
+    () => <T,>(valueOrUpdater: T | ((prev: T) => T)) => {
       const nextValue =
         typeof valueOrUpdater === 'function'
-          ? valueOrUpdater(activities.partyToolState)
+          ? (valueOrUpdater as (prev: T) => T)(activities.partyToolState as T)
           : valueOrUpdater;
       actions.setPartyToolState(nextValue);
     },

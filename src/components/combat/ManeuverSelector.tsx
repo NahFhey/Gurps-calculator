@@ -1,11 +1,27 @@
-import React from 'react';
+import { ChangeEvent } from 'react';
+
+interface Maneuver {
+  id: string;
+  label: string;
+  disabled?: boolean;
+  notes?: string;
+  warning?: string;
+  reason?: string;
+}
+
+interface ManeuverSelectorProps {
+  maneuvers: Maneuver[];
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+  disabledReason?: string;
+}
 
 export default function ManeuverSelector({
   maneuvers,
   selectedId,
   onSelect,
   disabledReason
-}) {
+}: ManeuverSelectorProps) {
   return (
     <div className="bg-gray-800 rounded-lg p-4 space-y-3">
       <div className="flex items-center justify-between">
@@ -16,7 +32,7 @@ export default function ManeuverSelector({
       </div>
       <select
         value={selectedId || ''}
-        onChange={(e) => onSelect(e.target.value || null)}
+        onChange={(e: ChangeEvent<HTMLSelectElement>) => onSelect(e.target.value || null)}
         className="w-full px-3 py-2 bg-gray-700 rounded"
       >
         <option value="">Select a maneuver</option>
