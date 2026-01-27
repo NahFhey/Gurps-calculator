@@ -128,13 +128,20 @@ export default function CombatTracker() {
     return <div className="text-center text-gray-400 py-8">No active combat</div>;
   }
 
+  // Ensure combat has required properties
+  if (!combat.participants || !combat.turnOrder) {
+    return <div className="text-center text-gray-400 py-8">Invalid combat state - missing participants or turn order</div>;
+  }
+  // Use defensive fallback for log
+  const combatLog = combat.log || [];
+
   // Phase 5: Compute view model (filters based on reveal state + view mode)
   const combatView = getCombatView(combat, reveal, viewMode) as { participants: Participant[] };
 
   // Phase 5: Filter log for Player View
   const displayLog = viewMode === ViewMode.PLAYER && reveal
-    ? filterLogForPlayerView(combat.log, reveal, combat) as LogEntry[]
-    : combat.log;
+    ? filterLogForPlayerView(combatLog, reveal, combat) as LogEntry[]
+    : combatLog;
 
   const currentActorInstanceId = combat.turnOrder[combat.currentTurnIndex];
   // Use combatView for display (respects reveal state)
