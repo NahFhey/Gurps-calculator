@@ -77,19 +77,21 @@ CampaignStore (Redux-style with Immer)
 
 ### Component Structure
 ```
-src/components/
-├── App.jsx (96 lines - clean entry point)
-├── UnifiedShell.jsx (main UI shell)
-├── ManagerTab.tsx (typed thin router)
-├── manager/
-│   └── views/
-│       └── [12 TypeScript view components]
-├── AlchemyTab.jsx (uses bridge context)
-├── CombatTab.jsx (uses bridge context)
-├── CookingTab.jsx (uses bridge context)
-├── CraftingTab.jsx (uses bridge context)
-├── InventoryTab.jsx (uses bridge context)
-└── ... (other components)
+src/
+├── App.tsx (typed entry point)
+├── unified/
+│   └── UnifiedShell.tsx (typed UI shell)
+├── components/
+│   ├── ManagerTab.tsx (typed thin router)
+│   ├── manager/
+│   │   └── views/
+│   │       └── [12 TypeScript view components]
+│   ├── AlchemyTab.jsx (uses bridge context)
+│   ├── CombatTab.jsx (uses bridge context)
+│   ├── CookingTab.jsx (uses bridge context)
+│   ├── CraftingTab.jsx (uses bridge context)
+│   ├── InventoryTab.jsx (uses bridge context)
+│   └── ... (other components)
 ```
 
 ### Bridge Contexts (Legacy - Still in Use)
@@ -124,9 +126,15 @@ These are INTENTIONALLY kept for backward compatibility:
    - Added GMLockData, ManagerView, DeleteConfirmState types
    - Removed PropTypes dependency
    - Build verified (623KB bundle)
+6. **Converted App.jsx → App.tsx**
+   - Added typed state for CampaignState and MigrationStatus
+   - Imported types from campaignReducer
+7. **Converted UnifiedShell.jsx → UnifiedShell.tsx**
+   - Added ModuleDefinition and UnifiedShellProps interfaces
+   - Typed event handlers (KeyboardEvent, MouseEvent)
 
 **📝 Remaining Steps:**
-1. Convert remaining UI components gradually
+1. Convert remaining UI components gradually (lower priority)
 2. Add stricter TypeScript rules to tsconfig.json
 
 **Benefits Already Achieved:**
@@ -137,11 +145,20 @@ These are INTENTIONALLY kept for backward compatibility:
 
 **Files Still to Convert (Lower Priority):**
 ```bash
+# Large god components (also candidates for decomposition)
+src/components/GatheringManager.jsx (1,754 lines)
+src/components/DayPlannerTab.jsx (1,364 lines)
+
+# Legacy tabs (bridge context dependent)
+src/components/AlchemyTab.jsx
+src/components/CombatTab.jsx
+src/components/CookingTab.jsx
+src/components/CraftingTab.jsx
+src/components/InventoryTab.jsx
+
 # Other components
-src/components/App.jsx
-src/components/UnifiedShell.jsx
 src/components/alchemy/TBBuilderPanel.jsx
-src/components/GatheringManager.jsx
+src/index.jsx
 # ... etc
 ```
 
@@ -354,7 +371,7 @@ mv src/components/manager/views/FoodTypesView.jsx src/components/manager/views/F
 - **Architecture Simplifier** - Removed bridge pattern from App.jsx ✅
 - **Bundle Optimizer** - Reduced bundle by 22% ✅
 - **Documentation Master** - Created comprehensive guides ✅
-- **Type Safety Pioneer** - Converted 13 components to TypeScript ✅
+- **Type Safety Pioneer** - Converted 15 components to TypeScript ✅
 
 ---
 
