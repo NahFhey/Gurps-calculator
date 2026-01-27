@@ -1,20 +1,63 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, ChangeEvent } from 'react';
 import { X, ChevronUp, ChevronDown } from 'lucide-react';
 
-const INSERTION_MODES = [
+type InsertionModeValue = 'next_turn' | 'end_of_round' | 'auto' | 'manual';
+type CategoryValue = 'enemy' | 'ally' | 'object';
+
+interface InsertionModeOption {
+  value: InsertionModeValue;
+  label: string;
+}
+
+interface CategoryOption {
+  value: CategoryValue;
+  label: string;
+}
+
+const INSERTION_MODES: InsertionModeOption[] = [
   { value: 'next_turn', label: 'Next Turn' },
   { value: 'end_of_round', label: 'End of Round' },
   { value: 'auto', label: 'Auto (by Basic Speed)' },
   { value: 'manual', label: 'Manual' }
 ];
 
-const CATEGORY_OPTIONS = [
+const CATEGORY_OPTIONS: CategoryOption[] = [
   { value: 'enemy', label: 'Enemy' },
   { value: 'ally', label: 'Ally' },
   { value: 'object', label: 'Object' }
 ];
 
-function buildNumberedNames(baseName, quantity, existingNames) {
+interface CombatCharacter {
+  id: string;
+  name: string;
+  category: string;
+}
+
+interface Participant {
+  instanceId: string;
+  name: string;
+}
+
+interface ReinforcementData {
+  category: CategoryValue;
+  characterId: string;
+  quantity: number;
+  prefix: string;
+  insertionMode: InsertionModeValue;
+  manualOrder: string[] | null;
+  previewNames: string[];
+}
+
+interface ReinforcementsModalProps {
+  onClose: () => void;
+  onConfirm: (data: ReinforcementData) => void;
+  combatCharacters: CombatCharacter[];
+  participants: Participant[];
+  turnOrder: string[];
+  currentActorInstanceId: string | null;
+}
+
+function buildNumberedNames(baseName: string, quantity: number, existingNames: string[]): string[] {
   const normalizedBase = baseName.trim();
   if (!normalizedBase) return [];
 
@@ -46,13 +89,13 @@ export default function ReinforcementsModal({
   participants,
   turnOrder,
   currentActorInstanceId
-}) {
-  const [category, setCategory] = useState('enemy');
+}: ReinforcementsModalProps) {
+  const [category, setCategory] = useState<CategoryValue>('enemy');
   const [characterId, setCharacterId] = useState('');
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState<number | string>(1);
   const [prefix, setPrefix] = useState('');
-  const [insertionMode, setInsertionMode] = useState('next_turn');
-  const [manualOrder, setManualOrder] = useState([]);
+  const [insertionMode, setInsertionMode] = useState<InsertionModeValue>('next_turn');
+  const [manualOrder, setManualOrder] = useState<string[]>([]);
 
   const filteredCharacters = useMemo(
     () => combatCharacters.filter(char => char.category === category),
@@ -95,7 +138,7 @@ export default function ReinforcementsModal({
     setManualOrder([...turnOrder, ...placeholders]);
   }, [insertionMode, previewNames, turnOrder, canInsertTurns]);
 
-  const handleMove = (index, direction) => {
+  const handleMove = (index: number, direction: number) => {
     const targetIndex = index + direction;
     if (targetIndex < 0 || targetIndex >= manualOrder.length) return;
 
@@ -154,7 +197,7 @@ export default function ReinforcementsModal({
             ) : (
               <select
                 value={characterId}
-                onChange={(e) => setCharacterId(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) => setCharacterId(e.target.value)}
                 className="w-full px-3 py-2 bg-gray-700 rounded"
               >
                 {filteredCharacters.map(character => (
@@ -173,7 +216,7 @@ export default function ReinforcementsModal({
                 type="number"
                 min={1}
                 value={resolvedQuantity}
-                onChange={(e) => setQuantity(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setQuantity(e.target.value)}
                 className="w-full px-3 py-2 bg-gray-700 rounded"
               />
             </div>
@@ -182,7 +225,7 @@ export default function ReinforcementsModal({
               <input
                 type="text"
                 value={prefix}
-                onChange={(e) => setPrefix(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setPrefix(e.target.value)}
                 placeholder="e.g. Goblin Archer"
                 className="w-full px-3 py-2 bg-gray-700 rounded"
               />
@@ -228,7 +271,7 @@ export default function ReinforcementsModal({
                   const isNew = entryId.startsWith('new-');
                   const nameIndex = isNew ? Number(entryId.replace('new-', '')) : null;
                   const displayName = isNew
-                    ? previewNames[nameIndex] || 'New Reinforcement'
+                    ? previewNames[nameIndex ?? 0] || 'New Reinforcement'
                     : participants.find(p => p.instanceId === entryId)?.name || 'Unknown';
                   const isCurrent = entryId === currentActorInstanceId;
 

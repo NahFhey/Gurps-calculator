@@ -1,10 +1,83 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent } from 'react';
 import { Swords, Dices } from 'lucide-react';
 import ModifierStack from './ModifierStack';
 import HitLocationPicker from './HitLocationPicker';
 import { ATTACK_MODIFIERS, calculateEffective, sumModifiers } from '../../utils/modifiers';
 import { rollVsTarget } from '../../utils/dice';
 import { getProfileLocations } from '../../utils/hitLocations';
+
+interface Modifier {
+  label: string;
+  value: number;
+}
+
+interface Attack {
+  name: string;
+  skill: number;
+  damage?: string;
+  notes?: string;
+  _hidden?: boolean;
+}
+
+interface HitLocation {
+  key: string;
+  label: string;
+  toHitPenalty: number;
+}
+
+interface LocationRoll {
+  dice: number[];
+  total: number;
+}
+
+interface RollResult {
+  total: number;
+  target: number;
+  margin: number;
+  success: boolean;
+}
+
+interface Target {
+  instanceId: string;
+  name: string;
+  hitLocationProfileId?: string;
+}
+
+interface Actor {
+  id?: string;
+  name?: string;
+  attacks?: Attack[];
+}
+
+interface AttackData {
+  name: string;
+  baseSkill: number;
+  modifiers: Modifier[];
+  injectedModifiers: Modifier[];
+  effectiveSkill: number;
+  rollTotal: number | null;
+  margin: number | null;
+  success: boolean | null;
+  damage?: string;
+  notes?: string;
+  hitLocation: HitLocation | null;
+  hitLocationRoll: LocationRoll | null;
+}
+
+interface AttackAssistProps {
+  actor: Actor;
+  targets?: Target[];
+  injectedModifiers?: Modifier[];
+  onComplete: (data: { targetInstanceId: string | null; attack: AttackData }) => void;
+  onCancel: () => void;
+}
+
+interface CustomAttack {
+  name: string;
+  skill: string;
+  damage: string;
+  notes: string;
+}
 
 /**
  * AttackAssist Component
@@ -17,15 +90,15 @@ export default function AttackAssist({
   injectedModifiers = [],
   onComplete,
   onCancel
-}) {
-  const [selectedAttack, setSelectedAttack] = useState(null);
-  const [customAttack, setCustomAttack] = useState({ name: '', skill: '', damage: '', notes: '' });
+}: AttackAssistProps) {
+  const [selectedAttack, setSelectedAttack] = useState<Attack | null>(null);
+  const [customAttack, setCustomAttack] = useState<CustomAttack>({ name: '', skill: '', damage: '', notes: '' });
   const [showCustomAttack, setShowCustomAttack] = useState(false);
-  const [modifiers, setModifiers] = useState([]);
-  const [selectedTargetId, setSelectedTargetId] = useState(targets.length === 1 ? targets[0].instanceId : null);
-  const [rollResult, setRollResult] = useState(null);
-  const [selectedLocation, setSelectedLocation] = useState(null);
-  const [locationRoll, setLocationRoll] = useState(null);
+  const [modifiers, setModifiers] = useState<Modifier[]>([]);
+  const [selectedTargetId, setSelectedTargetId] = useState<string | null>(targets.length === 1 ? targets[0].instanceId : null);
+  const [rollResult, setRollResult] = useState<RollResult | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<HitLocation | null>(null);
+  const [locationRoll, setLocationRoll] = useState<LocationRoll | null>(null);
 
   // Get attacks from actor (if they have any)
   const attacks = actor.attacks || [];
@@ -33,7 +106,7 @@ export default function AttackAssist({
   const profileId = selectedTarget?.hitLocationProfileId || 'humanoid';
 
   useEffect(() => {
-    const locations = getProfileLocations(profileId);
+    const locations = getProfileLocations(profileId) as HitLocation[];
     if (!locations.length) return;
     const defaultLocation = locations.find(location => location.key === 'torso') || locations[0];
     const selectedIsValid = selectedLocation && locations.some(location => location.key === selectedLocation.key);
@@ -44,13 +117,13 @@ export default function AttackAssist({
   }, [profileId, selectedLocation]);
 
   const locationModifierValue = selectedLocation?.toHitPenalty || 0;
-  const locationModifiers = locationModifierValue !== 0
-    ? [{ label: `Hit Location (${selectedLocation.label})`, value: locationModifierValue }]
+  const locationModifiers: Modifier[] = locationModifierValue !== 0
+    ? [{ label: `Hit Location (${selectedLocation?.label})`, value: locationModifierValue }]
     : [];
   const lockedModifiers = [...injectedModifiers, ...locationModifiers];
   const injectedTotal = sumModifiers(lockedModifiers);
 
-  const handleSelectAttack = (attack) => {
+  const handleSelectAttack = (attack: Attack) => {
     setSelectedAttack(attack);
     setShowCustomAttack(false);
     setRollResult(null);
@@ -69,7 +142,7 @@ export default function AttackAssist({
 
     const effectiveSkill = calculateEffective(baseSkill, [...injectedModifiers, ...locationModifiers, ...modifiers]);
 
-    const result = rollVsTarget('3d6', effectiveSkill);
+    const result = rollVsTarget('3d6', effectiveSkill) as RollResult;
     setRollResult(result);
   };
 
@@ -84,7 +157,7 @@ export default function AttackAssist({
     const baseSkill = selectedAttack ? selectedAttack.skill : parseInt(customAttack.skill) || 0;
     const effectiveSkill = calculateEffective(baseSkill, [...injectedModifiers, ...locationModifiers, ...modifiers]);
 
-    const attackData = {
+    const attackData: AttackData = {
       name: attack.name,
       baseSkill,
       modifiers: [...modifiers],
@@ -105,7 +178,7 @@ export default function AttackAssist({
     });
   };
 
-  const isValid = () => {
+  const isValid = (): boolean => {
     if (selectedAttack) return true;
     if (showCustomAttack && customAttack.name && customAttack.skill) return true;
     return false;
@@ -177,28 +250,28 @@ export default function AttackAssist({
             <input
               type="text"
               value={customAttack.name}
-              onChange={(e) => setCustomAttack({ ...customAttack, name: e.target.value })}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomAttack({ ...customAttack, name: e.target.value })}
               placeholder="Attack name"
               className="w-full px-3 py-2 bg-gray-700 rounded"
             />
             <input
               type="number"
               value={customAttack.skill}
-              onChange={(e) => setCustomAttack({ ...customAttack, skill: e.target.value })}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomAttack({ ...customAttack, skill: e.target.value })}
               placeholder="Base skill"
               className="w-full px-3 py-2 bg-gray-700 rounded"
             />
             <input
               type="text"
               value={customAttack.damage}
-              onChange={(e) => setCustomAttack({ ...customAttack, damage: e.target.value })}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomAttack({ ...customAttack, damage: e.target.value })}
               placeholder="Damage (e.g., 2d+1)"
               className="w-full px-3 py-2 bg-gray-700 rounded"
             />
             <input
               type="text"
               value={customAttack.notes}
-              onChange={(e) => setCustomAttack({ ...customAttack, notes: e.target.value })}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomAttack({ ...customAttack, notes: e.target.value })}
               placeholder="Notes (optional)"
               className="w-full px-3 py-2 bg-gray-700 rounded"
             />
@@ -214,7 +287,7 @@ export default function AttackAssist({
             {targets.length > 0 ? (
               <select
                 value={selectedTargetId || ''}
-                onChange={(e) => setSelectedTargetId(e.target.value || null)}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedTargetId(e.target.value || null)}
                 className="w-full px-3 py-2 bg-gray-700 rounded"
               >
                 <option value="">No target selected</option>

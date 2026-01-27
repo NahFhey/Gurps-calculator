@@ -1,8 +1,67 @@
-import React, { useState } from 'react';
+import { useState, ChangeEvent } from 'react';
 import { Zap, Dices } from 'lucide-react';
 import ModifierStack from './ModifierStack';
-import { DAMAGE_MODIFIERS, calculateEffective } from '../../utils/modifiers';
+import { DAMAGE_MODIFIERS } from '../../utils/modifiers';
 import { rollDamage, applyDR, resolveDamageExpression } from '../../utils/damage';
+
+interface Modifier {
+  label: string;
+  value: number;
+}
+
+interface DRGeneral {
+  mode: string;
+  value?: number;
+  min?: number;
+}
+
+interface TargetDR {
+  general?: DRGeneral;
+}
+
+interface Target {
+  instanceId: string;
+  name?: string;
+  currentHP: number;
+  dr?: number | TargetDR;
+}
+
+interface Attacker {
+  id?: string;
+  name?: string;
+  st: number;
+}
+
+interface RollResult {
+  valid: boolean;
+  error?: string;
+  dice: number[];
+  modifier: number;
+  total: number;
+}
+
+interface DamageResult {
+  raw: number;
+  dr: number;
+  penetrating: number;
+}
+
+interface DamageData {
+  expression: string;
+  rolledDamage: number;
+  generalDRUsed: number;
+  penetrating: number;
+  hpDelta: number;
+  modifiers: Modifier[];
+}
+
+interface DamageAssistProps {
+  attacker?: Attacker | null;
+  target: Target;
+  damageExpression?: string;
+  onComplete: (data: { damage: DamageData; targetInstanceId: string; newHP: number }) => void;
+  onCancel: () => void;
+}
 
 /**
  * DamageAssist Component
@@ -15,9 +74,9 @@ export default function DamageAssist({
   damageExpression = '',
   onComplete,
   onCancel
-}) {
+}: DamageAssistProps) {
   // Phase 5: Extract DR value from filtered structure
-  const getInitialDR = () => {
+  const getInitialDR = (): string => {
     if (!target.dr) return '0';
 
     // Phase 5 filtered structure
@@ -38,10 +97,10 @@ export default function DamageAssist({
   const [expression, setExpression] = useState(damageExpression || '');
   const [manualDamage, setManualDamage] = useState('');
   const [useManual, setUseManual] = useState(false);
-  const [modifiers, setModifiers] = useState([]);
-  const [rollResult, setRollResult] = useState(null);
+  const [modifiers, setModifiers] = useState<Modifier[]>([]);
+  const [rollResult, setRollResult] = useState<RollResult | null>(null);
   const [drValue, setDrValue] = useState(getInitialDR());
-  const [damageResult, setDamageResult] = useState(null);
+  const [damageResult, setDamageResult] = useState<DamageResult | null>(null);
 
   const handleRollDamage = () => {
     let finalExpression = expression;
@@ -54,7 +113,7 @@ export default function DamageAssist({
       }
     }
 
-    const result = rollDamage(finalExpression);
+    const result = rollDamage(finalExpression) as RollResult;
 
     if (!result.valid) {
       alert(`Invalid damage expression: ${result.error}`);
@@ -66,7 +125,7 @@ export default function DamageAssist({
   };
 
   const handleApplyDamage = () => {
-    let rawDamage;
+    let rawDamage: number;
 
     if (useManual) {
       rawDamage = parseInt(manualDamage) || 0;
@@ -80,7 +139,7 @@ export default function DamageAssist({
     }
 
     const dr = parseInt(drValue) || 0;
-    const result = applyDR(rawDamage, dr);
+    const result = applyDR(rawDamage, dr) as DamageResult;
 
     setDamageResult(result);
   };
@@ -91,7 +150,7 @@ export default function DamageAssist({
       return;
     }
 
-    const damageData = {
+    const damageData: DamageData = {
       expression: useManual ? 'manual' : expression,
       rolledDamage: damageResult.raw,
       generalDRUsed: damageResult.dr,
@@ -121,7 +180,7 @@ export default function DamageAssist({
               <input
                 type="text"
                 value={expression}
-                onChange={(e) => {
+                onChange={(e: ChangeEvent<HTMLInputElement>) => {
                   setExpression(e.target.value);
                   setUseManual(false);
                 }}
@@ -151,7 +210,7 @@ export default function DamageAssist({
             <input
               type="number"
               value={manualDamage}
-              onChange={(e) => {
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
                 setManualDamage(e.target.value);
                 setUseManual(true);
                 setRollResult(null);
@@ -196,7 +255,7 @@ export default function DamageAssist({
         <input
           type="number"
           value={drValue}
-          onChange={(e) => setDrValue(e.target.value)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setDrValue(e.target.value)}
           placeholder="Damage Resistance"
           className="w-full px-3 py-2 bg-gray-700 rounded"
         />
