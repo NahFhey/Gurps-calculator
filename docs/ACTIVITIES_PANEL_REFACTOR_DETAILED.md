@@ -965,116 +965,494 @@ const [activeTab, setActiveTab] = useState<'materials' | 'foods' | 'stash'>('mat
 
 ---
 
-### Phase 5: Weather System
+### Phase 5: Location & Weather System
 
-**Why Weather:**
-- Adds environmental context to activities
-- Gathering/hunting affected by weather (GURPS rules)
-- Travel impacted by conditions
-- Adds immersion and tactical decisions
+**Core Concept:** Weather is tied to **Locations**. Each location has its own weather table, climate, and environmental characteristics. The party has a "current location" that determines what weather they experience.
 
-#### 5.1 Weather Types
+**Why This Design:**
+- Different regions have different climates (desert vs. forest vs. mountains)
+- Weather patterns make sense per-location (it doesn't snow in the desert)
+- Enables travel mechanics between locations
+- Sets foundation for future animated backgrounds per location
+- More realistic and immersive campaign management
+
+#### 5.1 Location System
+
+**Locations are GM-created areas that define:**
+- Climate/biome type (affects weather table)
+- Available resources (affects gathering)
+- Terrain modifiers (affects travel)
+- Custom weather probability table
+
+```typescript
+interface Location {
+  id: Id;
+  name: string;                    // "Thornwood Forest", "Sandspire Desert"
+  description?: string;            // Flavor text for the location
+  climate: ClimateType;            // Determines base weather probabilities
+  terrain: TerrainType;            // Affects travel and activities
+
+  // Custom weather table (overrides climate defaults)
+  weatherTable?: WeatherTableEntry[];
+
+  // Location-specific modifiers
+  modifiers: {
+    gathering: number;             // Bonus/penalty to gathering here
+    hunting: number;               // Bonus/penalty to hunting
+    foraging: number;              // Bonus/penalty to foraging
+    travel: number;                // Difficulty of travel within
+  };
+
+  // Connections to other locations
+  connections: LocationConnection[];
+
+  // Visual theming (for future animated backgrounds)
+  theme?: {
+    biome: 'forest' | 'desert' | 'mountain' | 'coastal' | 'plains' | 'swamp' | 'tundra' | 'urban';
+    palette?: string;              // Color scheme identifier
+  };
+
+  // Current state
+  currentWeather: ActiveWeather;
+}
+
+type ClimateType =
+  | 'temperate'      // Balanced, all weather types possible
+  | 'tropical'       // Hot, rainy, no snow
+  | 'arid'           // Hot, dry, minimal rain
+  | 'arctic'         // Cold, snow common
+  | 'mediterranean'  // Mild, dry summers, wet winters
+  | 'continental'    // Extreme seasons
+  | 'oceanic';       // Mild, frequent rain
+
+type TerrainType =
+  | 'forest'
+  | 'plains'
+  | 'mountains'
+  | 'desert'
+  | 'swamp'
+  | 'coastal'
+  | 'urban'
+  | 'underground';
+
+interface LocationConnection {
+  targetLocationId: Id;
+  travelTime: number;              // In time slots
+  travelDifficulty: number;        // Modifier to travel rolls
+  description?: string;            // "A winding mountain path"
+  requirements?: string[];         // "Requires climbing gear"
+}
+```
+
+#### 5.2 Weather Types & Duration
+
+**Weather can persist for varying durations:**
 
 ```typescript
 type WeatherType =
-  | 'clear'      // Sunny, no clouds
-  | 'cloudy'     // Overcast but dry
-  | 'rain'       // Wet conditions
-  | 'storm'      // Heavy rain, wind, lightning
-  | 'snow'       // Cold, snowy
-  | 'fog'        // Low visibility
-  | 'wind';      // Strong winds
+  | 'clear'        // Sunny, no clouds
+  | 'partlyCloudy' // Some clouds, pleasant
+  | 'overcast'     // Cloudy but dry
+  | 'lightRain'    // Drizzle, light showers
+  | 'rain'         // Steady rain
+  | 'heavyRain'    // Downpour
+  | 'thunderstorm' // Rain + lightning + wind
+  | 'fog'          // Low visibility
+  | 'mist'         // Light fog
+  | 'snow'         // Snowfall
+  | 'blizzard'     // Heavy snow + wind
+  | 'hail'         // Hailstorm
+  | 'sandstorm'    // Desert-specific
+  | 'wind'         // Strong winds, no precipitation
+  | 'heatwave'     // Extreme heat
+  | 'coldSnap';    // Extreme cold
 
-type Intensity = 'light' | 'moderate' | 'heavy';
+type WeatherDuration =
+  | { type: 'slots'; count: number }    // Lasts N time slots
+  | { type: 'days'; count: number }     // Lasts N days
+  | { type: 'untilChange' };            // Until weather changes naturally
 
-type Temperature = 'freezing' | 'cold' | 'cool' | 'mild' | 'warm' | 'hot';
+interface ActiveWeather {
+  weather: Weather;
+  startedAt: { day: number; slot: number };
+  duration: WeatherDuration;
+  expiresAt?: { day: number; slot: number };  // Calculated from duration
+}
 
 interface Weather {
   type: WeatherType;
-  intensity: Intensity;
+  intensity: 'light' | 'moderate' | 'heavy';
   temperature: Temperature;
-  description: string;  // "Light rain, cool"
+  description: string;             // "Heavy rain with thunder"
+  effects: WeatherEffects;
 }
+
+type Temperature =
+  | 'extreme_cold'  // Below 0°F (-18°C) - FP loss risk
+  | 'freezing'      // 0-32°F (-18 to 0°C)
+  | 'cold'          // 32-50°F (0-10°C)
+  | 'cool'          // 50-65°F (10-18°C)
+  | 'mild'          // 65-75°F (18-24°C)
+  | 'warm'          // 75-85°F (24-29°C)
+  | 'hot'           // 85-100°F (29-38°C)
+  | 'extreme_heat'; // Above 100°F (38°C) - FP loss risk
 ```
 
-#### 5.2 Weather Effects
+#### 5.3 Weather Effects
 
 ```typescript
 interface WeatherEffects {
-  // Skill modifiers
-  gatheringMod: number;     // Foraging, fishing, hunting
-  travelMod: number;        // Hiking, navigation
-  outdoorCraftingMod: number;
+  // Activity modifiers
+  gatheringMod: number;           // Foraging, fishing
+  huntingMod: number;             // Tracking, hunting
+  travelMod: number;              // Hiking, navigation
+  outdoorCraftingMod: number;     // Smithing, building outdoors
+  combatMod: number;              // Ranged attacks, footing
 
-  // Vision/hearing
-  visionPenalty: number;    // For Perception rolls
-  hearingPenalty: number;   // For hearing-based rolls
+  // Perception modifiers
+  visionPenalty: number;          // Spotting, searching
+  hearingPenalty: number;         // Listening, detecting
 
-  // Special conditions
-  slipperyGround: boolean;  // DX penalty for movement
-  reducedVisibility: boolean; // Range penalties
-  coldExposure: boolean;    // FP loss risk
-  heatExposure: boolean;    // FP loss risk
+  // Physical conditions
+  slipperyGround: boolean;        // DX penalty for movement
+  reducedVisibility: boolean;     // Range penalties for attacks
+  difficultTerrain: boolean;      // Reduced movement rate
+
+  // Health risks
+  coldExposure: boolean;          // Risk of FP loss from cold
+  heatExposure: boolean;          // Risk of FP loss from heat
+
+  // Special
+  fireRisk: number;               // Modifier to fire-starting (+dry, -wet)
+  trackingMod: number;            // Easier/harder to follow tracks
 }
 
-const WEATHER_EFFECTS: Record<WeatherType, Record<Intensity, WeatherEffects>> = {
+// Example weather definitions
+const WEATHER_DEFINITIONS: Record<WeatherType, Partial<WeatherEffects>> = {
   clear: {
-    light: { gatheringMod: +1, travelMod: 0, ... },
-    moderate: { gatheringMod: +1, travelMod: 0, ... },
-    heavy: { gatheringMod: 0, travelMod: 0, ... }  // Harsh sun
+    gatheringMod: +1,
+    huntingMod: 0,
+    travelMod: 0,
+    visionPenalty: 0,
+    fireRisk: +1
   },
-  rain: {
-    light: { gatheringMod: 0, travelMod: -1, visionPenalty: -1, ... },
-    moderate: { gatheringMod: -1, travelMod: -2, visionPenalty: -2, ... },
-    heavy: { gatheringMod: -2, travelMod: -4, visionPenalty: -4, slipperyGround: true, ... }
+  heavyRain: {
+    gatheringMod: -2,
+    huntingMod: -2,
+    travelMod: -2,
+    visionPenalty: -3,
+    hearingPenalty: -2,
+    slipperyGround: true,
+    reducedVisibility: true,
+    fireRisk: -4,
+    trackingMod: -3  // Rain washes away tracks
   },
-  // ... etc
+  thunderstorm: {
+    gatheringMod: -4,
+    huntingMod: -4,
+    travelMod: -4,
+    combatMod: -2,
+    visionPenalty: -4,
+    hearingPenalty: -4,
+    slipperyGround: true,
+    reducedVisibility: true,
+    difficultTerrain: true,
+    fireRisk: -6
+  },
+  blizzard: {
+    gatheringMod: -6,
+    huntingMod: -4,
+    travelMod: -6,
+    combatMod: -3,
+    visionPenalty: -6,
+    hearingPenalty: -2,
+    slipperyGround: true,
+    reducedVisibility: true,
+    difficultTerrain: true,
+    coldExposure: true,
+    fireRisk: -2,
+    trackingMod: -4  // Snow covers tracks
+  },
+  sandstorm: {
+    gatheringMod: -4,
+    huntingMod: -4,
+    travelMod: -4,
+    combatMod: -2,
+    visionPenalty: -6,
+    hearingPenalty: -3,
+    reducedVisibility: true,
+    difficultTerrain: true
+  }
+  // ... etc for all weather types
 };
 ```
 
-#### 5.3 Weather Generation
+#### 5.4 Weather Tables per Location
 
-**Daily Weather Roll:**
+**Each location can have a custom weather probability table:**
+
 ```typescript
-function generateDailyWeather(previousWeather: Weather, season: Season): Weather {
-  // Weather tends to persist with gradual changes
-  // Based on GURPS Weather rules or simplified version
+interface WeatherTableEntry {
+  weather: WeatherType;
+  probability: number;            // Weight (not percentage)
+  temperatureRange: [Temperature, Temperature];  // Min, max
+  durationRange: {
+    min: WeatherDuration;
+    max: WeatherDuration;
+  };
+  seasonModifier?: Record<Season, number>;  // Adjust probability by season
+}
 
-  const persistence = 0.6; // 60% chance weather stays similar
+type Season = 'spring' | 'summer' | 'autumn' | 'winter';
 
-  if (Math.random() < persistence) {
-    return varyWeather(previousWeather); // Small changes
-  } else {
-    return generateNewWeather(season); // New weather pattern
+// Example: Temperate Forest weather table
+const TEMPERATE_FOREST_WEATHER: WeatherTableEntry[] = [
+  {
+    weather: 'clear',
+    probability: 25,
+    temperatureRange: ['cool', 'warm'],
+    durationRange: {
+      min: { type: 'slots', count: 2 },
+      max: { type: 'days', count: 3 }
+    },
+    seasonModifier: { spring: 0.8, summer: 1.5, autumn: 1.0, winter: 0.5 }
+  },
+  {
+    weather: 'rain',
+    probability: 20,
+    temperatureRange: ['cool', 'mild'],
+    durationRange: {
+      min: { type: 'slots', count: 1 },
+      max: { type: 'days', count: 2 }
+    },
+    seasonModifier: { spring: 1.5, summer: 0.8, autumn: 1.2, winter: 0.6 }
+  },
+  {
+    weather: 'snow',
+    probability: 10,
+    temperatureRange: ['extreme_cold', 'freezing'],
+    durationRange: {
+      min: { type: 'slots', count: 2 },
+      max: { type: 'days', count: 4 }
+    },
+    seasonModifier: { spring: 0.2, summer: 0, autumn: 0.3, winter: 2.0 }
+  }
+  // ... more entries
+];
+
+// Example: Desert weather table (very different!)
+const ARID_DESERT_WEATHER: WeatherTableEntry[] = [
+  {
+    weather: 'clear',
+    probability: 60,  // Much more common in desert
+    temperatureRange: ['hot', 'extreme_heat'],
+    durationRange: {
+      min: { type: 'days', count: 1 },
+      max: { type: 'days', count: 7 }
+    }
+  },
+  {
+    weather: 'sandstorm',
+    probability: 15,
+    temperatureRange: ['warm', 'hot'],
+    durationRange: {
+      min: { type: 'slots', count: 1 },
+      max: { type: 'slots', count: 4 }
+    }
+  }
+  // No snow entries - it doesn't snow in the desert!
+];
+```
+
+#### 5.5 Weather Generation & Advancement
+
+```typescript
+// Generate weather for a location based on its table
+function generateWeather(location: Location, currentSeason: Season): ActiveWeather {
+  const table = location.weatherTable || getDefaultTable(location.climate);
+
+  // Apply season modifiers and calculate probabilities
+  const adjustedTable = table.map(entry => ({
+    ...entry,
+    adjustedProbability: entry.probability * (entry.seasonModifier?.[currentSeason] || 1)
+  }));
+
+  // Weighted random selection
+  const selected = weightedRandom(adjustedTable);
+
+  // Determine duration within range
+  const duration = randomDuration(selected.durationRange);
+
+  // Determine temperature within range
+  const temperature = randomTemperature(selected.temperatureRange);
+
+  return {
+    weather: {
+      type: selected.weather,
+      intensity: determineIntensity(),
+      temperature,
+      description: generateDescription(selected.weather, temperature),
+      effects: calculateEffects(selected.weather, temperature)
+    },
+    startedAt: getCurrentTime(),
+    duration,
+    expiresAt: calculateExpiration(duration)
+  };
+}
+
+// Check if weather should change when time advances
+function checkWeatherExpiration(location: Location, currentTime: GameTime): void {
+  const weather = location.currentWeather;
+
+  if (weather.expiresAt && isTimeReached(currentTime, weather.expiresAt)) {
+    // Weather duration ended, generate new weather
+    const newWeather = generateWeather(location, getCurrentSeason());
+    actions.setLocationWeather(location.id, newWeather);
+
+    actions.addLogEntry({
+      type: 'weather',
+      visibility: 'public',
+      content: `Weather in ${location.name} changed to: ${newWeather.weather.description}`
+    });
   }
 }
 ```
 
-**GM Override:**
+#### 5.6 Travel System (Basic)
+
+**Travel connects locations and triggers location changes:**
+
 ```typescript
-function setWeather(weather: Weather): void {
-  actions.setWeather(weather);
+interface TravelAction {
+  type: 'travel';
+  fromLocationId: Id;
+  toLocationId: Id;
+  travelers: Id[];                 // Character IDs
+  startTime: { day: number; slot: number };
+  estimatedArrival: { day: number; slot: number };
+  status: 'planning' | 'inProgress' | 'completed' | 'interrupted';
+}
+
+// Travel within current location (e.g., exploring, foraging trip)
+interface LocalTravel {
+  type: 'localTravel';
+  locationId: Id;
+  activity: 'explore' | 'forage' | 'hunt' | 'patrol' | 'other';
+  duration: number;                // Time slots
+  travelers: Id[];
+}
+
+// Basic travel resolution
+function beginTravel(
+  fromLocation: Location,
+  toLocation: Location,
+  travelers: Character[]
+): TravelAction {
+  const connection = fromLocation.connections.find(c => c.targetLocationId === toLocation.id);
+
+  if (!connection) {
+    throw new Error('No route between these locations');
+  }
+
+  // Calculate travel time based on weather, terrain, party
+  const baseTime = connection.travelTime;
+  const weatherMod = fromLocation.currentWeather.weather.effects.travelMod;
+  const actualTime = Math.max(1, baseTime + weatherMod);
+
+  return {
+    type: 'travel',
+    fromLocationId: fromLocation.id,
+    toLocationId: toLocation.id,
+    travelers: travelers.map(t => t.id),
+    startTime: getCurrentTime(),
+    estimatedArrival: addTimeSlots(getCurrentTime(), actualTime),
+    status: 'inProgress'
+  };
+}
+
+// When travel completes
+function completeTravel(travel: TravelAction): void {
+  actions.setPartyLocation(travel.toLocationId);
+
   actions.addLogEntry({
-    type: 'weather',
-    visibility: 'gm_only',
-    content: `GM set weather to: ${weather.description}`
+    type: 'travel',
+    visibility: 'public',
+    content: `Party arrived at ${getLocation(travel.toLocationId).name}`
   });
 }
 ```
 
-#### 5.4 Weather Widget UI
+#### 5.7 Weather Widget UI (Updated)
 
 ```
-┌────────────────────────────────────┐
-│  ☀️  Clear, Mild                    │
-│     Temperature: 72°F              │
-│     ───────────────────            │
-│     Gathering: +1                  │
-│     Travel: Normal                 │
-│     No penalties                   │
-│                      [🎲 Reroll]   │
-│                      [✏️ Set]      │
-└────────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│  📍 Thornwood Forest                    [Change ▼]  │
+├─────────────────────────────────────────────────────┤
+│  🌧️  Moderate Rain, Cool                            │
+│     Temperature: 58°F (14°C)                        │
+│     Duration: ~2 more slots                         │
+│     ─────────────────────────────────               │
+│     Effects:                                        │
+│     • Gathering: -1                                 │
+│     • Travel: -2                                    │
+│     • Vision: -2                                    │
+│     • Ground is slippery                           │
+│     • Fire-starting: -4                            │
+├─────────────────────────────────────────────────────┤
+│  [🎲 Roll New Weather]  [✏️ Set Weather]  [🗺️ Travel] │
+└─────────────────────────────────────────────────────┘
+```
+
+#### 5.8 Location Manager (GM Tool)
+
+**GM can create and manage locations:**
+
+```
+┌─────────────────────────────────────────────────────┐
+│  LOCATION MANAGER                        [+ New]    │
+├─────────────────────────────────────────────────────┤
+│  📍 Thornwood Forest (Current)                      │
+│     Climate: Temperate | Terrain: Forest            │
+│     Weather: Moderate Rain                          │
+│     [Edit] [Set Weather] [Delete]                   │
+├─────────────────────────────────────────────────────┤
+│  📍 Sandspire Desert                                │
+│     Climate: Arid | Terrain: Desert                 │
+│     Weather: Clear, Extreme Heat                    │
+│     [Edit] [Set Weather] [Travel Here]              │
+├─────────────────────────────────────────────────────┤
+│  📍 Frostpeak Mountains                             │
+│     Climate: Arctic | Terrain: Mountains            │
+│     Weather: Light Snow                             │
+│     [Edit] [Set Weather] [Travel Here]              │
+└─────────────────────────────────────────────────────┘
+```
+
+#### 5.9 Future: Animated Backgrounds (Out of Scope)
+
+**Design placeholder for future implementation:**
+
+```typescript
+// Future: Background animation system
+interface LocationBackground {
+  locationId: Id;
+  biome: BiomeType;
+
+  // Layers for parallax scrolling
+  layers: BackgroundLayer[];
+
+  // Weather overlays
+  weatherOverlays: Record<WeatherType, AnimationOverlay>;
+
+  // Time-of-day variations
+  timeVariations: Record<TimeSlot, ColorPalette>;
+}
+
+// This will be implemented in a future phase
+// - Pixel art backgrounds per biome type
+// - Weather particle effects (rain, snow, leaves)
+// - Day/night cycle coloring
+// - Smooth transitions between weather states
 ```
 
 ---
@@ -1383,37 +1761,147 @@ interface Equipment {
 }
 ```
 
-### Weather Types
+### Location & Weather Types
 
 ```typescript
+// ===== LOCATION SYSTEM =====
+
+interface Location {
+  id: Id;
+  name: string;
+  description?: string;
+  climate: ClimateType;
+  terrain: TerrainType;
+
+  // Weather configuration
+  weatherTable?: WeatherTableEntry[];
+  currentWeather: ActiveWeather;
+
+  // Location modifiers
+  modifiers: LocationModifiers;
+
+  // Travel connections
+  connections: LocationConnection[];
+
+  // Visual theming (future animated backgrounds)
+  theme?: LocationTheme;
+}
+
+type ClimateType =
+  | 'temperate' | 'tropical' | 'arid' | 'arctic'
+  | 'mediterranean' | 'continental' | 'oceanic';
+
+type TerrainType =
+  | 'forest' | 'plains' | 'mountains' | 'desert'
+  | 'swamp' | 'coastal' | 'urban' | 'underground';
+
+interface LocationModifiers {
+  gathering: number;
+  hunting: number;
+  foraging: number;
+  travel: number;
+}
+
+interface LocationConnection {
+  targetLocationId: Id;
+  travelTime: number;              // In time slots
+  travelDifficulty: number;
+  description?: string;
+  requirements?: string[];
+}
+
+interface LocationTheme {
+  biome: 'forest' | 'desert' | 'mountain' | 'coastal' | 'plains' | 'swamp' | 'tundra' | 'urban';
+  palette?: string;
+}
+
+// ===== WEATHER SYSTEM =====
+
+type WeatherType =
+  | 'clear' | 'partlyCloudy' | 'overcast'
+  | 'lightRain' | 'rain' | 'heavyRain' | 'thunderstorm'
+  | 'fog' | 'mist'
+  | 'snow' | 'blizzard' | 'hail'
+  | 'sandstorm' | 'wind' | 'heatwave' | 'coldSnap';
+
+type WeatherDuration =
+  | { type: 'slots'; count: number }
+  | { type: 'days'; count: number }
+  | { type: 'untilChange' };
+
+interface ActiveWeather {
+  weather: Weather;
+  startedAt: { day: number; slot: number };
+  duration: WeatherDuration;
+  expiresAt?: { day: number; slot: number };
+}
+
 interface Weather {
   type: WeatherType;
-  intensity: Intensity;
+  intensity: 'light' | 'moderate' | 'heavy';
   temperature: Temperature;
-  windSpeed?: number;  // mph
-  precipitation?: number;  // inches
   description: string;
+  effects: WeatherEffects;
 }
+
+type Temperature =
+  | 'extreme_cold' | 'freezing' | 'cold' | 'cool'
+  | 'mild' | 'warm' | 'hot' | 'extreme_heat';
 
 interface WeatherEffects {
+  // Activity modifiers
   gatheringMod: number;
   huntingMod: number;
-  fishingMod: number;
   travelMod: number;
   outdoorCraftingMod: number;
+  combatMod: number;
+
+  // Perception modifiers
   visionPenalty: number;
   hearingPenalty: number;
+
+  // Physical conditions
   slipperyGround: boolean;
   reducedVisibility: boolean;
+  difficultTerrain: boolean;
+
+  // Health risks
   coldExposure: boolean;
   heatExposure: boolean;
+
+  // Special
+  fireRisk: number;
+  trackingMod: number;
 }
 
-interface WeatherLogEntry {
-  day: number;
-  slot: TimeSlot;
-  weather: Weather;
-  effects: WeatherEffects;
+interface WeatherTableEntry {
+  weather: WeatherType;
+  probability: number;
+  temperatureRange: [Temperature, Temperature];
+  durationRange: { min: WeatherDuration; max: WeatherDuration };
+  seasonModifier?: Record<Season, number>;
+}
+
+type Season = 'spring' | 'summer' | 'autumn' | 'winter';
+
+// ===== TRAVEL SYSTEM =====
+
+interface TravelAction {
+  type: 'travel';
+  fromLocationId: Id;
+  toLocationId: Id;
+  travelers: Id[];
+  startTime: { day: number; slot: number };
+  estimatedArrival: { day: number; slot: number };
+  status: 'planning' | 'inProgress' | 'completed' | 'interrupted';
+}
+
+interface LocalTravel {
+  type: 'localTravel';
+  locationId: Id;
+  activity: 'explore' | 'forage' | 'hunt' | 'patrol' | 'other';
+  duration: number;
+  travelers: Id[];
 }
 ```
 
@@ -1703,9 +2191,13 @@ src/
 │   │   ├── ActivitiesPanel.tsx
 │   │   └── ActivityTile.tsx
 │   │
-│   ├── weather/                   # NEW - Phase 5
-│   │   ├── WeatherWidget.tsx
-│   │   └── WeatherEffectsDisplay.tsx
+│   ├── location/                  # NEW - Phase 5
+│   │   ├── LocationManager.tsx    # GM tool for managing locations
+│   │   ├── LocationCard.tsx       # Display card for a location
+│   │   ├── WeatherWidget.tsx      # Current location weather display
+│   │   ├── WeatherEffectsDisplay.tsx
+│   │   ├── TravelPanel.tsx        # Travel between locations
+│   │   └── LocationEditor.tsx     # Create/edit location form
 │   │
 │   ├── combat/
 │   │   ├── CombatTile.tsx         # NEW - Phase 2
@@ -1719,12 +2211,14 @@ src/
 ├── types/
 │   ├── characterSheet.ts          # NEW - Phase 1
 │   ├── activities.ts              # NEW - Phase 3
-│   ├── weather.ts                 # NEW - Phase 5
+│   ├── location.ts                # NEW - Phase 5 (Location, Weather, Travel)
 │   └── ... (existing)
 │
 ├── utils/
 │   ├── gcsParser.ts               # NEW - Phase 1
-│   ├── weatherSystem.ts           # NEW - Phase 5
+│   ├── locationSystem.ts          # NEW - Phase 5 (location management)
+│   ├── weatherSystem.ts           # NEW - Phase 5 (weather generation)
+│   ├── travelSystem.ts            # NEW - Phase 5 (travel calculations)
 │   └── ... (existing)
 │
 └── contexts/
