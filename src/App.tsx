@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { logger } from './utils/logger';
 import { UnifiedShell } from './unified/UnifiedShell';
 import { CampaignStoreProvider } from './state/campaignStore';
 import { loadCampaignState } from './persistence/campaignStorage';
 import { checkMigrationNeeded, migrateToV2 } from './persistence/dataMigration';
+import type { CampaignState } from './state/campaignReducer';
+
+type MigrationStatus = 'checking' | 'migrating' | 'ready';
 
 /**
  * Main App Component
@@ -11,8 +14,8 @@ import { checkMigrationNeeded, migrateToV2 } from './persistence/dataMigration';
  */
 export default function GURPSPartyTool() {
   logger.log('GURPSPartyTool rendering');
-  const [initialCampaignState, setInitialCampaignState] = useState(null);
-  const [migrationStatus, setMigrationStatus] = useState('checking'); // 'checking' | 'migrating' | 'ready'
+  const [initialCampaignState, setInitialCampaignState] = useState<CampaignState | null>(null);
+  const [migrationStatus, setMigrationStatus] = useState<MigrationStatus>('checking');
 
   // Check for migration on startup and load campaign state
   useEffect(() => {
