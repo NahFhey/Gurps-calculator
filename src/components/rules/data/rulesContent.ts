@@ -1,48 +1,21 @@
-import React, { useState } from 'react';
-import PropTypes from 'prop-types';
-import { ChevronDown, ChevronRight, BookOpen } from 'lucide-react';
-
 /**
- * RulesTab Component - Comprehensive rules reference for all game systems
+ * Rules Content Data
  *
- * Displays expandable/collapsible documentation for each major system:
- * - Inventory: Materials, food, types, GM mode restrictions
- * - Cooking: Recipe creation, remaking, substitutions, kitchens
- * - Crafting: Project phases, work shifts, quality, templates
- * - Alchemy: Reagents, analysis, formulas, batches, concentration
- * - Manager: GM mode, workers, facilities, import/export
- *
- * Each section contains multiple subsections with detailed mechanics.
- *
- * @param {Object} props - Component props
- * @param {string|null} [props.initialSection=null] - Section to expand initially
- * @returns {JSX.Element} The full rules reference interface
+ * Contains all the documentation content for the game systems.
+ * Each section represents a major game system with subsections for specific mechanics.
  */
-export function RulesTab({ initialSection = null }) {
-  const [expandedSections, setExpandedSections] = useState(
-    initialSection ? { [initialSection]: true } : {}
-  );
 
-  /**
-   * Toggles the expanded/collapsed state of a section
-   * @param {string} section - Section ID to toggle
-   */
-  function toggleSection(section) {
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
-  }
+import type { RuleSection } from '../../../types/rules';
 
-  const sections = [
-    {
-      id: 'inventory',
-      title: 'Inventory System',
-      icon: '📦',
-      subsections: [
-        {
-          title: 'Raw Materials',
-          content: `Raw materials are the foundation of crafting and alchemy. Each material has a type that determines its properties.
+export const RULES_SECTIONS: RuleSection[] = [
+  {
+    id: 'inventory',
+    title: 'Inventory System',
+    icon: '📦',
+    subsections: [
+      {
+        title: 'Raw Materials',
+        content: `Raw materials are the foundation of crafting and alchemy. Each material has a type that determines its properties.
 
 **Adding Materials:**
 - Name: Unique identifier for the material
@@ -55,10 +28,10 @@ export function RulesTab({ initialSection = null }) {
 - Material types can only be edited in GM mode
 - Prevents players from changing material properties after creation
 - Types determine crafting outcomes (HT, weight, HP modifiers)`
-        },
-        {
-          title: 'Food Items',
-          content: `Food items are used in cooking recipes and provide various benefits.
+      },
+      {
+        title: 'Food Items',
+        content: `Food items are used in cooking recipes and provide various benefits.
 
 **Adding Food:**
 - Name: Unique identifier for the food
@@ -77,17 +50,17 @@ export function RulesTab({ initialSection = null }) {
 **GM Mode Restrictions:**
 - Food types can only be edited in GM mode
 - Prevents exploitation of the type system`
-        }
-      ]
-    },
-    {
-      id: 'cooking',
-      title: 'Cooking System',
-      icon: '🍳',
-      subsections: [
-        {
-          title: 'Recipe Creation',
-          content: `Create recipes that grant skill bonuses to characters who consume them.
+      }
+    ]
+  },
+  {
+    id: 'cooking',
+    title: 'Cooking System',
+    icon: '🍳',
+    subsections: [
+      {
+        title: 'Recipe Creation',
+        content: `Create recipes that grant skill bonuses to characters who consume them.
 
 **Requirements:**
 - Ingredients: Select unique food items
@@ -115,10 +88,10 @@ export function RulesTab({ initialSection = null }) {
 
 **Critical Failure (roll 18, or 17 at skill 15-, or 16 at skill 6-):**
 - Recipe fails completely`
-        },
-        {
-          title: 'Recipe Library & Remaking',
-          content: `Store and remake recipes with ingredient substitution.
+      },
+      {
+        title: 'Recipe Library & Remaking',
+        content: `Store and remake recipes with ingredient substitution.
 
 **Recipe Library:**
 - Collapsible recipe cards
@@ -148,10 +121,10 @@ export function RulesTab({ initialSection = null }) {
 - Roll result and MoS
 - Substitutions logged (original → replacement)
 - Color-coded results (green=crit success, blue=success, gray=failure, red=crit fail)`
-        },
-        {
-          title: 'Kitchens & Skills',
-          content: `Manage cooking facilities and available skills.
+      },
+      {
+        title: 'Kitchens & Skills',
+        content: `Manage cooking facilities and available skills.
 
 **Kitchens (Manager Tab):**
 - Name and description
@@ -167,17 +140,17 @@ export function RulesTab({ initialSection = null }) {
 - Equal probability selection from all skills in table
 - Manual override always available
 - GM mode required to add/remove skills`
-        }
-      ]
-    },
-    {
-      id: 'crafting',
-      title: 'Crafting System',
-      icon: '⚒️',
-      subsections: [
-        {
-          title: 'Project Workflow',
-          content: `Create weapons, armor, and equipment through a multi-phase process.
+      }
+    ]
+  },
+  {
+    id: 'crafting',
+    title: 'Crafting System',
+    icon: '⚒️',
+    subsections: [
+      {
+        title: 'Project Workflow',
+        content: `Create weapons, armor, and equipment through a multi-phase process.
 
 **Three Phases:**
 
@@ -217,10 +190,10 @@ export function RulesTab({ initialSection = null }) {
 - Work on multiple projects simultaneously
 - Resume any project from list
 - Progress bars show completion`
-        },
-        {
-          title: 'Materials & Quality',
-          content: `Materials and quality determine final item properties.
+      },
+      {
+        title: 'Materials & Quality',
+        content: `Materials and quality determine final item properties.
 
 **Material Properties:**
 - HT (Heat Tolerance): Average of selected materials
@@ -246,10 +219,10 @@ export function RulesTab({ initialSection = null }) {
 - Start directly at craft phase
 - Reuse successful designs
 - Materials consumed immediately on craft start`
-        },
-        {
-          title: 'Templates & Customization',
-          content: `Create and manage item templates.
+      },
+      {
+        title: 'Templates & Customization',
+        content: `Create and manage item templates.
 
 **Built-in Templates:**
 - Weapons: damage, reach, parry, ST, cost
@@ -267,17 +240,17 @@ export function RulesTab({ initialSection = null }) {
 - Each template specifies required material types
 - Amounts determine how much of each type needed
 - Must have sufficient materials to start project`
-        }
-      ]
-    },
-    {
-      id: 'alchemy',
-      title: 'Alchemy System',
-      icon: '⚗️',
-      subsections: [
-        {
-          title: 'Reagents & Analysis',
-          content: `Identify and work with alchemical reagents.
+      }
+    ]
+  },
+  {
+    id: 'alchemy',
+    title: 'Alchemy System',
+    icon: '⚗️',
+    subsections: [
+      {
+        title: 'Reagents & Analysis',
+        content: `Identify and work with alchemical reagents.
 
 **Reagent Properties:**
 - Aspects: Primary, Secondary, Tertiary (18 types)
@@ -312,10 +285,10 @@ export function RulesTab({ initialSection = null }) {
 - Analysis of one updates all sisters
 - Identification level syncs across all variants
 - Quantities remain separate`
-        },
-        {
-          title: 'Formulas & Batches',
-          content: `Create alchemical formulas and brew batches.
+      },
+      {
+        title: 'Formulas & Batches',
+        content: `Create alchemical formulas and brew batches.
 
 **Formula Creation:**
 - Select 2-5 reagent ingredients
@@ -349,10 +322,10 @@ export function RulesTab({ initialSection = null }) {
 - Visual indicator of PP/WR ratio
 - Shows completion percentage
 - Blue bar fills as work progresses`
-        },
-        {
-          title: 'Concentration & Refinement',
-          content: `Advanced reagent processing for enhanced potency.
+      },
+      {
+        title: 'Concentration & Refinement',
+        content: `Advanced reagent processing for enhanced potency.
 
 **Concentration:**
 - 2 units → 1 unit of higher potency
@@ -381,17 +354,17 @@ export function RulesTab({ initialSection = null }) {
 - Color-coded progress indicators
 - Abort batch functionality
 - Real-time risk calculation`
-        }
-      ]
-    },
-    {
-      id: 'manager',
-      title: 'Manager Tab',
-      icon: '⚙️',
-      subsections: [
-        {
-          title: 'GM Mode & Security',
-          content: `Secure management of game data and rules.
+      }
+    ]
+  },
+  {
+    id: 'manager',
+    title: 'Manager Tab',
+    icon: '⚙️',
+    subsections: [
+      {
+        title: 'GM Mode & Security',
+        content: `Secure management of game data and rules.
 
 **GM Mode:**
 - Password protected
@@ -411,10 +384,10 @@ export function RulesTab({ initialSection = null }) {
 - Skills table editing
 - Certain template modifications
 - Critical game balance data`
-        },
-        {
-          title: 'Workers, Labs & Kitchens',
-          content: `Manage workers and facilities.
+      },
+      {
+        title: 'Workers, Labs & Kitchens',
+        content: `Manage workers and facilities.
 
 **Workers:**
 - Name and four skill levels
@@ -442,10 +415,10 @@ export function RulesTab({ initialSection = null }) {
 - Used for random skill selection
 - Any skill can be added
 - Used in recipe granted skills system`
-        },
-        {
-          title: 'Types & Templates',
-          content: `Define material/food types and item templates.
+      },
+      {
+        title: 'Types & Templates',
+        content: `Define material/food types and item templates.
 
 **Material Types:**
 - Name and color
@@ -473,17 +446,17 @@ export function RulesTab({ initialSection = null }) {
 - Import saved data
 - GM Lock support for sensitive data
 - Includes all systems: inventory, recipes, projects, batches, workers, etc.`
-        }
-      ]
-    },
-    {
-      id: 'gathering',
-      title: 'Gathering System',
-      icon: '🎣',
-      subsections: [
-        {
-          title: 'Overview',
-          content: `The General Gathering System allows characters to gather resources from the environment.
+      }
+    ]
+  },
+  {
+    id: 'gathering',
+    title: 'Gathering System',
+    icon: '🎣',
+    subsections: [
+      {
+        title: 'Overview',
+        content: `The General Gathering System allows characters to gather resources from the environment.
 
 **Available Modes:**
 - Fishing: Catch fish using Line, Net, or Spear methods
@@ -507,10 +480,10 @@ export function RulesTab({ initialSection = null }) {
 - Manual dice rolling with colored 3d6 display
 - Event rolls are separate from skill rolls
 - Results are committed at end of day`
-        },
-        {
-          title: 'Fishing Methods',
-          content: `Three methods are available for fishing:
+      },
+      {
+        title: 'Fishing Methods',
+        content: `Three methods are available for fishing:
 
 **Line Fishing:**
 - Can target specific species or use random catch
@@ -530,10 +503,10 @@ export function RulesTab({ initialSection = null }) {
 - Stealth bonus applies
 - Best for targeting specific large fish
 - Large fish still require struggle`
-        },
-        {
-          title: 'Skill Resolution',
-          content: `Fishing uses standard GURPS skill resolution:
+      },
+      {
+        title: 'Skill Resolution',
+        content: `Fishing uses standard GURPS skill resolution:
 
 **Effective Skill Calculation:**
 - Base: Worker's Fishing/Spear skill
@@ -554,10 +527,10 @@ export function RulesTab({ initialSection = null }) {
 - Line: 1 fish on success, 2 on critical
 - Net: 1d fish on success, 1d+1 on critical
 - Spear: 1 fish on success, 2 on critical`
-        },
-        {
-          title: 'Daily Events',
-          content: `Once per day per group, a dynamic event may occur:
+      },
+      {
+        title: 'Daily Events',
+        content: `Once per day per group, a dynamic event may occur:
 
 **Event Roll (3d6):**
 - 3-6: Rare Event (dangerous/valuable)
@@ -576,10 +549,10 @@ export function RulesTab({ initialSection = null }) {
   - Mild Event Table
 - Events are rolled on environment-specific tables
 - Handle events before proceeding to fishing`
-        },
-        {
-          title: 'Large Fish Struggle',
-          content: `When catching large fish via Line or Spear, a struggle ensues:
+      },
+      {
+        title: 'Large Fish Struggle',
+        content: `When catching large fish via Line or Spear, a struggle ensues:
 
 **Quick Contest:**
 - Character rolls 3d6 vs their ST
@@ -596,10 +569,10 @@ export function RulesTab({ initialSection = null }) {
 - Character wins: Fish is landed, proceed to yields
 - Fish wins: Fish escapes, no yield
 - Net fishing skips struggle (rerolls large fish instead)`
-        },
-        {
-          title: 'Yields & Inventory',
-          content: `Successful catches produce yields:
+      },
+      {
+        title: 'Yields & Inventory',
+        content: `Successful catches produce yields:
 
 **Yield Calculation:**
 - Meat: Roll species' meat yield formula (e.g., 2d6+1)
@@ -619,10 +592,10 @@ export function RulesTab({ initialSection = null }) {
 - Optional per species
 - Examples: scales, bones, shells, oil, roe
 - Stored in Materials inventory`
-        },
-        {
-          title: 'Foraging System',
-          content: `Search for plants, fungi, and other forageable resources:
+      },
+      {
+        title: 'Foraging System',
+        content: `Search for plants, fungi, and other forageable resources:
 
 **Foraging Skills:**
 - Survival: General wilderness foraging
@@ -649,10 +622,10 @@ export function RulesTab({ initialSection = null }) {
 - Poison Ivy, Bee Sting, Twisted Ankle
 - Thorn Scrape, Mild Allergic Reaction
 - Encountered Predator, Lost Item`
-        },
-        {
-          title: 'Foraging Items & Yields',
-          content: `Forageable items are defined with direct properties:
+      },
+      {
+        title: 'Foraging Items & Yields',
+        content: `Forageable items are defined with direct properties:
 
 **Item Properties:**
 - Name: Unique identifier (e.g., "Tamrya Berries")
@@ -681,10 +654,10 @@ export function RulesTab({ initialSection = null }) {
 - Berry Basket: +0d (doesn't apply to fruit)
 - Multiplier: 1.0x (success)
 - Final: 11 units`
-        },
-        {
-          title: 'Manager: Forageable Items',
-          content: `Define forageable items in the Items section:
+      },
+      {
+        title: 'Manager: Forageable Items',
+        content: `Define forageable items in the Items section:
 
 **Item Creation:**
 - Name: What the item is called
@@ -705,10 +678,10 @@ export function RulesTab({ initialSection = null }) {
 - No category layer needed
 - Select "Item" as result type in tables
 - Choose specific item from dropdown`
-        },
-        {
-          title: 'Manager: Species',
-          content: `Define gatherable species (fish, shellfish, etc.):
+      },
+      {
+        title: 'Manager: Species',
+        content: `Define gatherable species (fish, shellfish, etc.):
 
 **Properties:**
 - Name: Unique identifier
@@ -730,10 +703,10 @@ export function RulesTab({ initialSection = null }) {
 - Secondary: scales
 - Secondary Formula: 1d
 - ST: 16`
-        },
-        {
-          title: 'Manager: Tools, Tables & Environments',
-          content: `Configure gathering equipment and locations:
+      },
+      {
+        title: 'Manager: Tools, Tables & Environments',
+        content: `Configure gathering equipment and locations:
 
 **Tools:**
 - Name, Type (fishing_rod, net, spear, etc.)
@@ -759,62 +732,7 @@ export function RulesTab({ initialSection = null }) {
 - Roll Bonus: Added to catch table roll (Line only)
 - Tags for special properties
 - Quantity tracking for consumption`
-        }
-      ]
-    }
-  ];
-
-  return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <BookOpen size={32} className="text-blue-400" />
-        <h1 className="text-2xl font-bold">Game Rules & Systems</h1>
-      </div>
-
-      <div className="space-y-3">
-        {sections.map(section => (
-          <div key={section.id} className="bg-gray-700 rounded-lg">
-            <button
-              onClick={() => toggleSection(section.id)}
-              className="w-full flex items-center gap-3 p-4 text-left hover:bg-gray-600 rounded-lg transition-colors"
-            >
-              <span className="text-2xl">{section.icon}</span>
-              <span className="flex-1 text-xl font-semibold">{section.title}</span>
-              <span className="text-gray-400">
-                {expandedSections[section.id] ? <ChevronDown size={24} /> : <ChevronRight size={24} />}
-              </span>
-            </button>
-
-            {expandedSections[section.id] && (
-              <div className="px-4 pb-4 space-y-4">
-                {section.subsections.map((subsection, idx) => (
-                  <div key={idx} className="bg-gray-800 rounded p-4">
-                    <h3 className="text-lg font-semibold text-blue-400 mb-3">{subsection.title}</h3>
-                    <div className="text-sm text-gray-300 space-y-2 whitespace-pre-line">
-                      {subsection.content}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-6 p-4 bg-blue-900 bg-opacity-30 border border-blue-600 rounded">
-        <h3 className="font-semibold text-blue-400 mb-2">Quick Navigation</h3>
-        <div className="text-sm text-gray-300">
-          Click any section above to expand and view detailed rules. Each section contains multiple subsections covering specific mechanics and workflows.
-        </div>
-      </div>
-    </div>
-  );
-}
-
-RulesTab.propTypes = {
-  initialSection: PropTypes.string
-};
-
-RulesTab.defaultProps = {
-  initialSection: null
-};
+      }
+    ]
+  }
+];
