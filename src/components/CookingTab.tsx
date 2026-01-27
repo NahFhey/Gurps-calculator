@@ -1,9 +1,101 @@
-import React, { useState } from 'react';
+import { useState, useMemo, useCallback, ChangeEvent } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { toNumberOr } from '../utils/helpers';
 import { DiceRoller } from './DiceRoller';
-import { useInventory } from '../contexts/InventoryContext';
-import { useConfig } from '../contexts/ConfigContext';
+import { useCampaignStore } from '../state/campaignStore';
+import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface Worker {
+  id: string;
+  name: string;
+  skills: Record<string, number>;
+  st?: number;
+}
+
+interface Food {
+  id: string;
+  name: string;
+  types: string[];
+  quantity: number;
+  [key: string]: unknown;
+}
+
+interface Kitchen {
+  id: string;
+  name: string;
+  rating: number;
+  [key: string]: unknown;
+}
+
+interface CookingSkill {
+  id: string;
+  name: string;
+  [key: string]: unknown;
+}
+
+interface RecipeIngredient {
+  foodId: string;
+  foodName: string;
+  foodTypes: string[];
+  amount: number;
+}
+
+interface CreationLog {
+  id: string;
+  date: string;
+  worker: string;
+  kitchen: string;
+  cookingSkill: number;
+  kitchenBonus: number;
+  effectiveSkill: number;
+  roll: number;
+  mos: number;
+  result: string;
+  substitutes: Array<{ original: string; replacement: string; amount: number }>;
+}
+
+interface Recipe {
+  id: string;
+  name: string;
+  ingredients: RecipeIngredient[];
+  difficulty: number;
+  skills: string[];
+  criticalSuccess: boolean;
+  creationHistory: CreationLog[];
+}
+
+interface SelectedIngredient {
+  id: string;
+  foodId: string;
+  amount: number;
+}
+
+interface DiceRoll {
+  dice: number[];
+  total: number;
+}
+
+interface Substitute {
+  foodId: string | null;
+  amount: number;
+}
+
+interface RemakeIngredient {
+  original: RecipeIngredient;
+  useOriginal: boolean;
+  substitutes: Substitute[];
+  penalty: number;
+}
+
+type CookingView = 'create' | 'library' | 'remake';
+
+// ============================================================================
+// CookingTab Component
+// ============================================================================
 
 /**
  * CookingTab Component - Manages recipe creation and cooking in GURPS
@@ -19,68 +111,89 @@ import { useConfig } from '../contexts/ConfigContext';
  * - Critical success/failure thresholds per GURPS rules
  * - Substitution penalties: -1 (same type), -3 (similar), -5 (unrelated)
  *
- * @returns {JSX.Element} The cooking tab interface
+ * MIGRATED: Now uses useCampaignStore directly instead of bridge contexts.
  */
 export function CookingTab() {
-  // Get data from contexts
-  const { foods, saveFoods } = useInventory();
-  const { recipes, saveRecipes, workers, kitchens, cookingSkills } = useConfig();
-  const [view, setView] = useState('create');
-  const [selected, setSelected] = useState([]);
+  const { state, actions } = useCampaignStore();
+
+  // Derive data from normalized state
+  const foods = useMemo(() =>
+    denormalizeObject(state.entities.foods) as Food[],
+    [state.entities.foods]
+  );
+
+  const recipes = useMemo(() =>
+    denormalizeObject(state.entities.recipes) as Recipe[],
+    [state.entities.recipes]
+  );
+
+  const kitchens = useMemo(() =>
+    denormalizeObject(state.entities.kitchens) as Kitchen[],
+    [state.entities.kitchens]
+  );
+
+  const cookingSkills = state.entities.cookingSkills as CookingSkill[];
+
+  // Derive workers from characters
+  const workers = useMemo(() =>
+    Object.values(state.entities.characters).map((character: Record<string, unknown>) => ({
+      id: character.id as string,
+      name: character.name as string,
+      skills: (character.work as Record<string, unknown>)?.skills as Record<string, number> || {},
+      st: character.st as number | undefined
+    })) as Worker[],
+    [state.entities.characters]
+  );
+
+  // Save callbacks
+  const saveFoods = useCallback((foodsArray: Food[]) => {
+    actions.setFoods(normalizeArray(foodsArray));
+  }, [actions]);
+
+  const saveRecipes = useCallback((recipesArray: Recipe[]) => {
+    actions.setRecipes(normalizeArray(recipesArray));
+  }, [actions]);
+
+  // Local state
+  const [view, setView] = useState<CookingView>('create');
+  const [selected, setSelected] = useState<SelectedIngredient[]>([]);
   const [numPeople, setNumPeople] = useState(10);
   const [name, setName] = useState('');
   const [crit, setCrit] = useState(false);
-  const [skills, setSkills] = useState([]);
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [skills, setSkills] = useState<string[]>([]);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const [selectedWorker, setSelectedWorker] = useState('');
   const [selectedKitchenId, setSelectedKitchenId] = useState(kitchens?.[0]?.id || 'default');
   const [cookingSkillValue, setCookingSkillValue] = useState('');
-  const [roll, setRoll] = useState({ dice: [], total: 0 });
-  const [expandedRecipes, setExpandedRecipes] = useState({});
+  const [roll, setRoll] = useState<DiceRoll>({ dice: [], total: 0 });
+  const [expandedRecipes, setExpandedRecipes] = useState<Record<string, boolean>>({});
 
   // Remake recipe state
-  const [selectedRecipe, setSelectedRecipe] = useState(null);
-  const [remakeIngredients, setRemakeIngredients] = useState([]);
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [remakeIngredients, setRemakeIngredients] = useState<RemakeIngredient[]>([]);
   const [remakeWorker, setRemakeWorker] = useState('');
   const [remakeKitchenId, setRemakeKitchenId] = useState(kitchens?.[0]?.id || 'default');
   const [remakeSkill, setRemakeSkill] = useState('');
-  const [remakeRoll, setRemakeRoll] = useState({ dice: [], total: 0 });
+  const [remakeRoll, setRemakeRoll] = useState<DiceRoll>({ dice: [], total: 0 });
 
   /**
    * Computed recipe statistics based on selected ingredients
-   * Calculates difficulty modifier and required skill rolls per GURPS cooking rules
-   *
-   * @type {{unique: number, total: number, diff: number, rolls: number}}
-   * - unique: Count of distinct ingredients
-   * - total: Sum of all ingredient amounts (must match numPeople)
-   * - diff: Difficulty modifier = -(unique - 1), more ingredients = harder
-   * - rolls: Number of skill rolls = floor(unique/2) + extra types + critical bonus
    */
   const stats = (() => {
     const unique = selected.length;
     const total = selected.reduce((s, i) => s + i.amount, 0);
-    // Difficulty penalty increases with ingredient complexity
     const diff = -(unique - 1);
-    // Base rolls: 1 per 2 unique ingredients
     let rolls = Math.floor(unique / 2);
-    // Additional rolls for multi-type ingredients (e.g., "meat/dairy" adds 1 roll)
     selected.forEach(i => {
       const f = foods.find(x => x.id === i.foodId);
       if (f) rolls += f.types.length - 1;
     });
-    // Critical success grants one extra skill roll
     if (crit) rolls += 1;
     return { unique, total, diff, rolls };
   })();
 
   /**
    * Creates a new recipe from selected ingredients
-   * Validates requirements, calculates skill check results, and persists the recipe
-   *
-   * GURPS Critical Success: roll <= 4, or 5 with skill >= 15, or 6 with skill >= 16
-   * GURPS Critical Failure: roll = 18, or 17 with skill <= 15, or 16 with skill <= 6
-   *
-   * @returns {void} - Alerts user with result and updates state
    */
   function create() {
     if (stats.total !== numPeople || !name.trim() || skills.length !== stats.rolls) {
@@ -99,15 +212,11 @@ export function CookingTab() {
       return;
     }
 
-    // Get kitchen and apply kitchen rating bonus
     const selectedKitchen = kitchens?.find(k => k.id === selectedKitchenId) || { id: 'default', name: 'Basic Kitchen', rating: 0 };
     const kitchenBonus = selectedKitchen.rating || 0;
     const effectiveSkill = skillValue + kitchenBonus;
-
-    // Calculate margin of success with kitchen bonus
     const mos = effectiveSkill - rollValue;
 
-    // Determine if critical success or critical failure
     const isCritSuccess = rollValue <= 4 || (rollValue === 5 && effectiveSkill >= 15) || (rollValue === 6 && effectiveSkill >= 16);
     const isCritFail = rollValue === 18 || (rollValue === 17 && effectiveSkill <= 15) || (rollValue === 16 && effectiveSkill <= 6);
 
@@ -120,8 +229,7 @@ export function CookingTab() {
       result = 'Success';
     }
 
-    // Record creation log
-    const creationLog = {
+    const creationLog: CreationLog = {
       id: crypto.randomUUID(),
       date: new Date().toISOString(),
       worker: selectedWorker,
@@ -132,10 +240,10 @@ export function CookingTab() {
       roll: rollValue,
       mos: mos,
       result: result,
-      substitutes: [] // No substitutes on initial creation
+      substitutes: []
     };
 
-    const recipe = {
+    const recipe: Recipe = {
       id: crypto.randomUUID(),
       name,
       ingredients: selected.map(i => {
@@ -152,7 +260,9 @@ export function CookingTab() {
       criticalSuccess: crit,
       creationHistory: [creationLog]
     };
+
     saveRecipes([...recipes, recipe]);
+
     const newFoods = foods.map(f => {
       const ingredient = selected.find(i => i.foodId === f.id || String(i.foodId) === f.id || i.foodId === String(f.id));
       if (ingredient) {
@@ -162,20 +272,21 @@ export function CookingTab() {
       return f;
     });
     saveFoods(newFoods);
-    setSelected([]); setName(''); setCrit(false); setSkills([]); setSelectedWorker(''); setCookingSkillValue(''); setRoll('');
+
+    setSelected([]);
+    setName('');
+    setCrit(false);
+    setSkills([]);
+    setSelectedWorker('');
+    setCookingSkillValue('');
+    setRoll({ dice: [], total: 0 });
     alert(`Recipe created! Result: ${result} (MoS: ${mos})`);
   }
 
   /**
    * Initiates the remake workflow for an existing recipe
-   * Checks ingredient availability and sets up substitution options
-   *
-   * @param {Object} recipe - The recipe to remake
-   * @param {string} recipe.id - Unique recipe identifier
-   * @param {string} recipe.name - Recipe name
-   * @param {Array<Object>} recipe.ingredients - Required ingredients with foodId, amount
    */
-  function startRemake(recipe) {
+  function startRemake(recipe: Recipe) {
     setSelectedRecipe(recipe);
     const ingredients = recipe.ingredients.map(ing => {
       const available = foods.find(f =>
@@ -197,11 +308,8 @@ export function CookingTab() {
 
   /**
    * Toggles between using original ingredient or substitutes
-   * Initializes substitute array when switching to substitution mode
-   *
-   * @param {number} index - Index of ingredient in remakeIngredients array
    */
-  function toggleSubstitute(index) {
+  function toggleSubstitute(index: number) {
     const updated = [...remakeIngredients];
     updated[index].useOriginal = !updated[index].useOriginal;
     if (!updated[index].useOriginal && updated[index].substitutes.length === 0) {
@@ -212,10 +320,8 @@ export function CookingTab() {
 
   /**
    * Adds a new empty substitute slot for an ingredient
-   *
-   * @param {number} ingredientIndex - Index of ingredient to add substitute to
    */
-  function addSubstitute(ingredientIndex) {
+  function addSubstitute(ingredientIndex: number) {
     const updated = [...remakeIngredients];
     updated[ingredientIndex].substitutes.push({ foodId: null, amount: 1 });
     setRemakeIngredients(updated);
@@ -223,20 +329,14 @@ export function CookingTab() {
 
   /**
    * Updates a substitute ingredient's field and auto-calculates penalty
-   *
-   * Penalty calculation based on food type matching:
-   * - Same type (e.g., meat -> meat): -1
-   * - Similar type (fruit <-> vegetable): -3
-   * - Unrelated type: -5
-   *
-   * @param {number} ingredientIndex - Index of ingredient in remakeIngredients
-   * @param {number} subIndex - Index of substitute within ingredient's substitutes array
-   * @param {string} field - Field to update ('foodId' or 'amount')
-   * @param {*} value - New value for the field
    */
-  function updateSubstitute(ingredientIndex, subIndex, field, value) {
+  function updateSubstitute(ingredientIndex: number, subIndex: number, field: 'foodId' | 'amount', value: string | number) {
     const updated = [...remakeIngredients];
-    updated[ingredientIndex].substitutes[subIndex][field] = value;
+    if (field === 'foodId') {
+      updated[ingredientIndex].substitutes[subIndex].foodId = value as string;
+    } else {
+      updated[ingredientIndex].substitutes[subIndex].amount = value as number;
+    }
 
     if (field === 'foodId' && value) {
       const originalTypes = updated[ingredientIndex].original.foodTypes || [];
@@ -265,11 +365,8 @@ export function CookingTab() {
 
   /**
    * Manually overrides the substitution penalty for an ingredient
-   *
-   * @param {number} ingredientIndex - Index of ingredient
-   * @param {number} penalty - Penalty value (-1, -3, or -5)
    */
-  function updateSubstitutePenalty(ingredientIndex, penalty) {
+  function updateSubstitutePenalty(ingredientIndex: number, penalty: number) {
     const updated = [...remakeIngredients];
     updated[ingredientIndex].penalty = penalty;
     setRemakeIngredients(updated);
@@ -277,11 +374,8 @@ export function CookingTab() {
 
   /**
    * Removes a substitute from an ingredient's substitute list
-   *
-   * @param {number} ingredientIndex - Index of ingredient
-   * @param {number} subIndex - Index of substitute to remove
    */
-  function removeSubstitute(ingredientIndex, subIndex) {
+  function removeSubstitute(ingredientIndex: number, subIndex: number) {
     const updated = [...remakeIngredients];
     updated[ingredientIndex].substitutes.splice(subIndex, 1);
     setRemakeIngredients(updated);
@@ -289,11 +383,8 @@ export function CookingTab() {
 
   /**
    * Calculates total difficulty modifier for remaking recipe
-   * Combines base recipe difficulty with all substitution penalties
-   *
-   * @returns {number} Total difficulty modifier (negative value)
    */
-  function calculateRemakeDifficulty() {
+  function calculateRemakeDifficulty(): number {
     if (!selectedRecipe) return 0;
     let totalPenalty = selectedRecipe.difficulty;
     remakeIngredients.forEach(ing => {
@@ -306,24 +397,11 @@ export function CookingTab() {
 
   /**
    * Executes the remake of an existing recipe
-   *
-   * This function:
-   * 1. Validates all substitutes are selected
-   * 2. Calculates effective skill with kitchen bonus
-   * 3. Determines success/failure using GURPS critical rules
-   * 4. Consumes ingredients (original or substitutes) from inventory
-   * 5. Records the creation log with full roll details
-   *
-   * Material consumption logic:
-   * - If using original: deduct from original food's quantity
-   * - If using substitutes: deduct from each substitute food's quantity
-   *
-   * @returns {void} - Alerts user with result and updates state
    */
   function executeRemake() {
-    for (let ing of remakeIngredients) {
+    for (const ing of remakeIngredients) {
       if (!ing.useOriginal) {
-        for (let sub of ing.substitutes) {
+        for (const sub of ing.substitutes) {
           if (!sub.foodId) {
             alert('Please select all substitute ingredients');
             return;
@@ -345,15 +423,11 @@ export function CookingTab() {
       return;
     }
 
-    // Get kitchen and apply kitchen rating bonus
     const selectedKitchen = kitchens?.find(k => k.id === remakeKitchenId) || { id: 'default', name: 'Basic Kitchen', rating: 0 };
     const kitchenBonus = selectedKitchen.rating || 0;
     const effectiveSkill = skillValue + kitchenBonus;
-
-    // Calculate margin of success with kitchen bonus
     const mos = effectiveSkill - rollValue;
 
-    // Determine if critical success or critical failure
     const isCritSuccess = rollValue <= 4 || (rollValue === 5 && effectiveSkill >= 15) || (rollValue === 6 && effectiveSkill >= 16);
     const isCritFail = rollValue === 18 || (rollValue === 17 && effectiveSkill <= 15) || (rollValue === 16 && effectiveSkill <= 6);
 
@@ -366,8 +440,7 @@ export function CookingTab() {
       result = 'Success';
     }
 
-    // Build substitutes list
-    const substitutes = [];
+    const substitutes: Array<{ original: string; replacement: string; amount: number }> = [];
     remakeIngredients.forEach(ing => {
       if (!ing.useOriginal && ing.substitutes.length > 0) {
         ing.substitutes.forEach(sub => {
@@ -381,8 +454,7 @@ export function CookingTab() {
       }
     });
 
-    // Record remake log
-    const remakeLog = {
+    const remakeLog: CreationLog = {
       id: crypto.randomUUID(),
       date: new Date().toISOString(),
       worker: remakeWorker,
@@ -424,9 +496,8 @@ export function CookingTab() {
     });
     saveFoods(newFoods);
 
-    // Update recipe with new log
     const updatedRecipes = recipes.map(r => {
-      if (r.id === selectedRecipe.id) {
+      if (r.id === selectedRecipe?.id) {
         return {
           ...r,
           creationHistory: [...(r.creationHistory || []), remakeLog]
@@ -436,11 +507,13 @@ export function CookingTab() {
     });
     saveRecipes(updatedRecipes);
 
-    alert(`Recipe "${selectedRecipe.name}" remade! Result: ${result} (MoS: ${mos}, Difficulty: ${calculateRemakeDifficulty()})`);
+    alert(`Recipe "${selectedRecipe?.name}" remade! Result: ${result} (MoS: ${mos}, Difficulty: ${calculateRemakeDifficulty()})`);
     setView('library');
     setSelectedRecipe(null);
     setRemakeIngredients([]);
-    setRemakeWorker(''); setRemakeSkill(''); setRemakeRoll('');
+    setRemakeWorker('');
+    setRemakeSkill('');
+    setRemakeRoll({ dice: [], total: 0 });
   }
 
   return (
@@ -529,7 +602,7 @@ export function CookingTab() {
                 <label className="block text-xs mb-1">Kitchen</label>
                 <select
                   value={selectedKitchenId}
-                  onChange={(e) => setSelectedKitchenId(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedKitchenId(e.target.value)}
                   className="w-full bg-gray-600 px-3 py-2 rounded"
                 >
                   {(kitchens || [{ id: 'default', name: 'Basic Kitchen', rating: 0 }]).map(kitchen => (
@@ -564,7 +637,7 @@ export function CookingTab() {
                   <DiceRoller
                     dice={roll.dice}
                     total={roll.total}
-                    onRoll={(dice, total) => setRoll({ dice, total })}
+                    onRoll={(dice: number[], total: number) => setRoll({ dice, total })}
                   />
                 </div>
                 {cookingSkillValue && (
@@ -608,7 +681,7 @@ export function CookingTab() {
                   className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded text-sm whitespace-nowrap"
                   title="Randomly select from skills table"
                 >
-                  🎲 Random
+                  Random
                 </button>
               </div>
             ))}
@@ -648,19 +721,19 @@ export function CookingTab() {
                 <div className="px-4 pb-4 space-y-3 border-t border-gray-600 pt-3">
                   <div className="text-sm space-y-1">
                     <div><strong>Ingredients:</strong></div>
-                    {r.ingredients.map((i, idx) => {
-                      const food = foods.find(f => f.id === i.foodId || f.id === String(i.foodId));
-                      const displayName = food?.name || i.foodName || 'Unknown Food';
-                      const displayTypes = food?.types || i.foodTypes || [];
+                    {r.ingredients.map((ing, idx) => {
+                      const food = foods.find(f => f.id === ing.foodId || f.id === String(ing.foodId));
+                      const displayName = food?.name || ing.foodName || 'Unknown Food';
+                      const displayTypes = food?.types || ing.foodTypes || [];
                       return (
                         <div key={idx} className="ml-4">
-                          • {i.amount} lbs {displayName} {displayTypes.length > 0 && <span className="text-blue-400">({displayTypes.join('/')})</span>}
+                          • {ing.amount} lbs {displayName} {displayTypes.length > 0 && <span className="text-blue-400">({displayTypes.join('/')})</span>}
                         </div>
                       );
                     })}
                     <div><strong>Difficulty:</strong> {r.difficulty}</div>
                     <div><strong>Skills Granted:</strong> {r.skills.join(', ')}</div>
-                    {r.criticalSuccess && <div className="text-yellow-400">⭐ Critical Success!</div>}
+                    {r.criticalSuccess && <div className="text-yellow-400">Critical Success!</div>}
                   </div>
 
                   {r.creationHistory && r.creationHistory.length > 0 && (
@@ -800,7 +873,7 @@ export function CookingTab() {
                           className="w-full bg-gray-700 px-3 py-2 rounded"
                         >
                           <option value="-1">Same Type (-1)</option>
-                          <option value="-3">Similar Type (fruit ↔ vegetable) (-3)</option>
+                          <option value="-3">Similar Type (fruit - vegetable) (-3)</option>
                           <option value="-5">Unrelated Type (-5)</option>
                         </select>
                         <div className="text-xs text-gray-400 mt-1">
@@ -842,7 +915,7 @@ export function CookingTab() {
                 <label className="block text-xs mb-1">Kitchen</label>
                 <select
                   value={remakeKitchenId}
-                  onChange={(e) => setRemakeKitchenId(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLSelectElement>) => setRemakeKitchenId(e.target.value)}
                   className="w-full bg-gray-600 px-3 py-2 rounded"
                 >
                   {(kitchens || [{ id: 'default', name: 'Basic Kitchen', rating: 0 }]).map(kitchen => (
@@ -877,7 +950,7 @@ export function CookingTab() {
                   <DiceRoller
                     dice={remakeRoll.dice}
                     total={remakeRoll.total}
-                    onRoll={(dice, total) => setRemakeRoll({ dice, total })}
+                    onRoll={(dice: number[], total: number) => setRemakeRoll({ dice, total })}
                   />
                 </div>
                 {remakeSkill && (

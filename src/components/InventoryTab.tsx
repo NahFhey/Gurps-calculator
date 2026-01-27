@@ -1,30 +1,89 @@
-import React, { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Plus, Save, X, Trash2 } from 'lucide-react';
 import { toNumberOr } from '../utils/helpers';
-import { useInventory } from '../contexts/InventoryContext';
-import { useConfig } from '../contexts/ConfigContext';
+import { useCampaignStore } from '../state/campaignStore';
+import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface Material {
+  id: string;
+  name: string;
+  type: string;
+  quantity: number;
+  [key: string]: unknown;
+}
+
+interface Food {
+  id: string;
+  name: string;
+  types: string[];
+  quantity: number;
+  [key: string]: unknown;
+}
+
+interface MaterialType {
+  name: string;
+  difficulty: number;
+  ht: number;
+  weightMod?: number;
+  hpMod?: number;
+  [key: string]: unknown;
+}
+
+interface FoodType {
+  name: string;
+  color: string;
+}
+
+interface DeleteConfirm {
+  type: 'mat' | 'food';
+  id: string;
+  name: string;
+}
+
+type InventoryView = 'materials' | 'foods';
+
+// ============================================================================
+// InventoryTab Component
+// ============================================================================
 
 /**
  * InventoryTab Component - Manages raw materials and food supplies inventory
  *
- * This component provides two inventory views:
- * 1. Raw Materials - Crafting materials with types (wood, metal, etc.)
- * 2. Food Supplies - Food items with type categories (meat, grain, etc.)
- *
- * Key features:
- * - Add new items or add quantity to existing items
- * - Automatic merging of duplicate entries (same name + type)
- * - Expandable item details for editing
- * - GM-mode required for editing item types (prevents player manipulation)
- * - Delete confirmation modal
- *
- * @returns {JSX.Element} The inventory management interface
+ * MIGRATED: Now uses useCampaignStore directly instead of bridge contexts.
  */
 export function InventoryTab() {
-  // Get data from contexts
-  const { materials, foods, foodTypes, materialTypes, saveMaterials, saveFoods } = useInventory();
-  const { gmMode } = useConfig();
-  const [view, setView] = useState('materials');
+  const { state, actions } = useCampaignStore();
+
+  // Derive data from normalized state
+  const materials = useMemo(() =>
+    denormalizeObject(state.entities.materials) as Material[],
+    [state.entities.materials]
+  );
+
+  const foods = useMemo(() =>
+    denormalizeObject(state.entities.foods) as Food[],
+    [state.entities.foods]
+  );
+
+  const foodTypes = state.entities.foodTypes as (string | FoodType)[];
+  const materialTypes = state.entities.materialTypes as MaterialType[];
+  const gmMode = state.ui.gmModeEnabled;
+
+  // Save callbacks
+  const saveMaterials = useCallback((materialsArray: Material[]) => {
+    actions.setMaterials(normalizeArray(materialsArray));
+  }, [actions]);
+
+  const saveFoods = useCallback((foodsArray: Food[]) => {
+    actions.setFoods(normalizeArray(foodsArray));
+  }, [actions]);
+
+  // Local state
+  const [view, setView] = useState<InventoryView>('materials');
   const [showAddMat, setShowAddMat] = useState(false);
   const [showAddFood, setShowAddFood] = useState(false);
   const [useExistingMat, setUseExistingMat] = useState(false);
@@ -36,18 +95,15 @@ export function InventoryTab() {
   const [newMatType, setNewMatType] = useState('');
   const [newFoodName, setNewFoodName] = useState('');
   const [newFoodQty, setNewFoodQty] = useState('');
-  const [newFoodTypes, setNewFoodTypes] = useState([]);
-  const [expanded, setExpanded] = useState({});
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [newFoodTypes, setNewFoodTypes] = useState<string[]>([]);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null);
 
   /**
    * Adds a new material or quantity to existing material
-   * Handles both "add to existing" and "create new" workflows
-   * Automatically merges duplicates (same name + type)
    */
   function addMat() {
     if (useExistingMat) {
-      // Add to existing material
       if (!selectedExistingMatId || !newMatQty) {
         alert('Select existing material and enter quantity');
         return;
@@ -64,23 +120,19 @@ export function InventoryTab() {
       return;
     }
 
-    // Create new material
     if (!newMatName.trim() || !newMatQty || !newMatType) {
       alert('Fill all fields including material type');
       return;
     }
 
-    // Check for duplicate (name + type match)
     const existing = materials.find(m => m.name === newMatName.trim() && m.type === newMatType);
     if (existing) {
-      // Merge with existing
       saveMaterials(materials.map(m =>
         m.id === existing.id
           ? { ...m, quantity: m.quantity + Math.max(0, toNumberOr(newMatQty, 0)) }
           : m
       ));
     } else {
-      // Create new entry
       saveMaterials([...materials, {
         id: crypto.randomUUID(),
         name: newMatName.trim(),
@@ -97,12 +149,9 @@ export function InventoryTab() {
 
   /**
    * Adds a new food item or quantity to existing food
-   * Handles both "add to existing" and "create new" workflows
-   * Automatically merges duplicates (same name + types)
    */
   function addFood() {
     if (useExistingFood) {
-      // Add to existing food
       if (!selectedExistingFoodId || !newFoodQty) {
         alert('Select existing food and enter quantity');
         return;
@@ -119,13 +168,11 @@ export function InventoryTab() {
       return;
     }
 
-    // Create new food
     if (!newFoodName.trim() || !newFoodQty || newFoodTypes.length === 0) {
       alert('Fill all fields and add at least one type');
       return;
     }
 
-    // Check for duplicate (name + types match)
     const sortedNewTypes = [...newFoodTypes].sort().join(',');
     const existing = foods.find(f => {
       const sortedExistingTypes = [...(f.types || [])].sort().join(',');
@@ -133,14 +180,12 @@ export function InventoryTab() {
     });
 
     if (existing) {
-      // Merge with existing
       saveFoods(foods.map(f =>
         f.id === existing.id
           ? { ...f, quantity: f.quantity + Math.max(0, toNumberOr(newFoodQty, 0)) }
           : f
       ));
     } else {
-      // Create new entry
       saveFoods([...foods, {
         id: crypto.randomUUID(),
         name: newFoodName.trim(),
@@ -155,7 +200,7 @@ export function InventoryTab() {
     setShowAddFood(false);
   }
 
-  const grouped = foods.reduce((g, f) => {
+  const grouped = foods.reduce((g: Record<string, Food[]>, f) => {
     const k = f.types?.length > 0 ? [...f.types].sort().join('/') : 'no-type';
     if (!g[k]) g[k] = [];
     g[k].push(f);
@@ -382,7 +427,7 @@ export function InventoryTab() {
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-sm">Types (required):</span>
                       {newFoodTypes.length < 4 && <button onClick={() => {
-                        const firstType = typeof foodTypes[0] === 'string' ? foodTypes[0] : foodTypes[0].name;
+                        const firstType = typeof foodTypes[0] === 'string' ? foodTypes[0] : (foodTypes[0] as FoodType).name;
                         setNewFoodTypes([...newFoodTypes, firstType]);
                       }} className="bg-blue-600 px-3 py-1 rounded text-sm"><Plus size={14} className="inline" /> Add</button>}
                     </div>
@@ -430,12 +475,11 @@ export function InventoryTab() {
           )}
           <div className="space-y-4">
             {Object.keys(grouped).sort().map(k => {
-              // Get color for this type grouping
               const firstItemTypes = grouped[k][0]?.types || [];
               const typeColor = firstItemTypes.length > 0 ? (() => {
                 const firstTypeName = firstItemTypes[0];
                 const typeObj = foodTypes.find(ft => (typeof ft === 'string' ? ft : ft.name) === firstTypeName);
-                return typeof typeObj === 'object' ? typeObj.color : '#60A5FA';
+                return typeof typeObj === 'object' ? (typeObj as FoodType).color : '#60A5FA';
               })() : '#60A5FA';
 
               return (<div key={k}>
@@ -448,7 +492,7 @@ export function InventoryTab() {
                         <span className="flex gap-1">
                           {f.types?.map((typeName, idx) => {
                             const typeObj = foodTypes.find(ft => (typeof ft === 'string' ? ft : ft.name) === typeName);
-                            const color = typeof typeObj === 'object' ? typeObj.color : '#60A5FA';
+                            const color = typeof typeObj === 'object' ? (typeObj as FoodType).color : '#60A5FA';
                             return <span key={idx} className="w-3 h-3 rounded-full" style={{backgroundColor: color}} title={typeName}></span>;
                           })}
                         </span>
@@ -468,13 +512,13 @@ export function InventoryTab() {
                           <div className="flex gap-2 mb-2">
                             <span className="text-sm">Types: {!gmMode && <span className="text-yellow-400">(GM mode required to edit)</span>}</span>
                             {gmMode && (f.types || []).length < 4 && <button onClick={() => {
-                              const firstType = typeof foodTypes[0] === 'string' ? foodTypes[0] : foodTypes[0].name;
+                              const firstType = typeof foodTypes[0] === 'string' ? foodTypes[0] : (foodTypes[0] as FoodType).name;
                               saveFoods(foods.map(x => x.id === f.id ? {...x, types: [...(x.types || []), firstType]} : x));
                             }} className="bg-blue-600 px-3 py-1 text-sm rounded"><Plus size={14} className="inline" /> Add</button>}
                           </div>
                           {(f.types || []).map((t, i) => {
                             const selectedType = foodTypes.find(ft => (typeof ft === 'string' ? ft : ft.name) === t);
-                            const selectedColor = typeof selectedType === 'object' ? selectedType.color : '#60A5FA';
+                            const selectedColor = typeof selectedType === 'object' ? (selectedType as FoodType).color : '#60A5FA';
 
                             return (<div key={i} className="flex gap-2 mb-2 items-center">
                               <span className="w-4 h-4 rounded-full flex-shrink-0" style={{backgroundColor: selectedColor}} title={t}></span>

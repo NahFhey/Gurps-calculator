@@ -1,53 +1,209 @@
-import React, { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { QUALITIES } from '../constants';
 import { toNumberOr, upsertCraft, removeCraft, refundMaterialsFromProject } from '../utils/helpers';
 import { DiceRoller } from './DiceRoller';
-import { useInventory } from '../contexts/InventoryContext';
-import { useCrafting } from '../contexts/CraftingContext';
-import { useConfig } from '../contexts/ConfigContext';
+import { useCampaignStore } from '../state/campaignStore';
+import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface Worker {
+  id: string;
+  name: string;
+  skills: Record<string, number>;
+  st?: number;
+}
+
+interface Material {
+  id: string;
+  name: string;
+  type: string;
+  quantity: number;
+  [key: string]: unknown;
+}
+
+interface MaterialType {
+  name: string;
+  difficulty: number;
+  ht: number;
+  weightMod?: number;
+  hpMod?: number;
+  [key: string]: unknown;
+}
+
+interface SelectedMaterial {
+  requirementIndex: number;
+  requiredType: string;
+  requiredAmount: number;
+  selectedMaterialId: string | null;
+}
+
+interface ConsumedMaterial {
+  materialId: string;
+  amount: number;
+  name: string;
+  type: string;
+}
+
+interface Shift {
+  id: string;
+  date: string;
+  day: number;
+  worker: string;
+  skill: number;
+  roll: number;
+  effectiveSkill: number;
+  result: string;
+  hoursAdded: number;
+  qualityChange: number;
+  phase: string;
+}
+
+interface Craft {
+  id: string;
+  phase: 'setup' | 'design' | 'craft';
+  templateType: string;
+  template: string;
+  quality: string;
+  currentQuality: string;
+  mods: Array<{ difficulty?: number; [key: string]: unknown }>;
+  shifts: Shift[];
+  designShifts?: Shift[];
+  selectedMaterials: SelectedMaterial[];
+  consumedMaterials?: ConsumedMaterial[];
+  startDate: string;
+  startDay: number;
+  completed?: boolean;
+  completedDate?: string;
+  completedDay?: number;
+  name?: string;
+}
+
+interface CraftDesign {
+  id: string;
+  name: string;
+  templateType: string;
+  template: string;
+  quality: string;
+  mods: Array<{ difficulty?: number; [key: string]: unknown }>;
+  selectedMaterials: SelectedMaterial[];
+  consumedMaterials?: ConsumedMaterial[];
+  designShifts?: Shift[];
+  savedDate: string;
+}
+
+interface Template {
+  weight: number;
+  hp: number;
+  materials?: Array<{ type: string; amount: number }>;
+  damage?: string;
+  reach?: string;
+  parry?: string;
+  cost?: number;
+  ST?: number;
+  notes?: string;
+  Acc?: number;
+  range?: string;
+  RoF?: string;
+  shots?: string;
+  bulk?: number;
+  RCl?: number;
+  LC?: number;
+  location?: string;
+  DR?: number;
+  fuse?: string;
+}
+
+interface CustomTemplates {
+  weapons: Record<string, Template>;
+  armor: Record<string, Template>;
+  ranged: Record<string, Template>;
+  explosives: Record<string, Template>;
+  [key: string]: Record<string, Template>;
+}
+
+interface DiceRoll {
+  dice: number[];
+  total: number;
+}
+
+type CraftingView = 'list' | 'craft' | 'designs';
+
+// ============================================================================
+// CraftingTab Component
+// ============================================================================
 
 /**
  * CraftingTab Component - Manages GURPS crafting projects with design and craft phases
  *
- * This component implements the GURPS crafting system with three phases:
- * 1. Setup Phase - Select template, quality, materials, and project dates
- * 2. Design Phase - Make skill rolls to accumulate design hours (2 * HP target)
- * 3. Craft Phase - Make skill rolls to accumulate craft hours (HP target)
- *
- * Key GURPS mechanics implemented:
- * - Effective skill = base skill + total difficulty modifier
- * - Design phase: crit success gives skill hours, success gives 8h, failures give 0-6h
- * - Craft phase: crit success/success gives 8h, failures give 4h with quality penalties
- * - Critical failure in craft phase destroys project and refunds materials
- * - Quality levels: cheap, good, fine, very fine, legendary
- * - Material properties affect final stats (HT, weight, HP modifiers)
- *
- * @returns {JSX.Element} The crafting tab interface
+ * MIGRATED: Now uses useCampaignStore directly instead of bridge contexts.
  */
 export function CraftingTab() {
-  // Get data from contexts
-  const { materials, materialTypes, saveMaterials } = useInventory();
-  const { crafts, craftDesigns, customTemplates, saveCrafts, saveCraftDesigns } = useCrafting();
-  const { workers } = useConfig();
-  const [view, setView] = useState('list');
-  const [current, setCurrent] = useState(null);
+  const { state, actions } = useCampaignStore();
+
+  // Derive data from normalized state
+  const materials = useMemo(() =>
+    denormalizeObject(state.entities.materials) as Material[],
+    [state.entities.materials]
+  );
+
+  const materialTypes = state.entities.materialTypes as MaterialType[];
+
+  const crafts = useMemo(() =>
+    denormalizeObject(state.entities.crafts) as Craft[],
+    [state.entities.crafts]
+  );
+
+  const craftDesigns = useMemo(() =>
+    denormalizeObject(state.entities.craftDesigns) as CraftDesign[],
+    [state.entities.craftDesigns]
+  );
+
+  const customTemplates = state.entities.customTemplates as CustomTemplates;
+
+  // Derive workers from characters
+  const workers = useMemo(() =>
+    Object.values(state.entities.characters).map((character: Record<string, unknown>) => ({
+      id: character.id as string,
+      name: character.name as string,
+      skills: (character.work as Record<string, unknown>)?.skills as Record<string, number> || {},
+      st: character.st as number | undefined
+    })) as Worker[],
+    [state.entities.characters]
+  );
+
+  // Save callbacks
+  const saveMaterials = useCallback((materialsArray: Material[]) => {
+    actions.setMaterials(normalizeArray(materialsArray));
+  }, [actions]);
+
+  const saveCrafts = useCallback((craftsArray: Craft[]) => {
+    actions.setCrafts(normalizeArray(craftsArray));
+  }, [actions]);
+
+  const saveCraftDesigns = useCallback((designsArray: CraftDesign[]) => {
+    actions.setCraftDesigns(normalizeArray(designsArray));
+  }, [actions]);
+
+  // Local state
+  const [view, setView] = useState<CraftingView>('list');
+  const [current, setCurrent] = useState<Craft | null>(null);
   const [skill, setSkill] = useState('');
-  const [roll, setRoll] = useState({ dice: [], total: 0 });
+  const [roll, setRoll] = useState<DiceRoll>({ dice: [], total: 0 });
   const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0]);
   const [currentDay, setCurrentDay] = useState(1);
   const [selectedWorker, setSelectedWorker] = useState('');
-  const [expandedCrafts, setExpandedCrafts] = useState({});
+  const [expandedCrafts, setExpandedCrafts] = useState<Record<string, boolean>>({});
   const [abandonConfirm, setAbandonConfirm] = useState(false);
-  const [saveDesignPrompt, setSaveDesignPrompt] = useState(null);
+  const [saveDesignPrompt, setSaveDesignPrompt] = useState<Craft | null>(null);
   const [designName, setDesignName] = useState('');
 
   const allTemplates = customTemplates;
 
   /**
    * Initializes a new crafting project in setup phase
-   * Creates project with first available weapon template and default settings
-   *
-   * @returns {void} - Sets current project state and switches to craft view
    */
   function startNew() {
     const weaponKeys = Object.keys(allTemplates.weapons || {});
@@ -59,7 +215,7 @@ export function CraftingTab() {
 
     const firstTemplate = weaponKeys[0];
     const templateData = allTemplates.weapons[firstTemplate];
-    const selectedMats = (templateData.materials || []).map((req, idx) => ({
+    const selectedMats: SelectedMaterial[] = (templateData.materials || []).map((req, idx) => ({
       requirementIndex: idx,
       requiredType: req.type,
       requiredAmount: req.amount,
@@ -87,39 +243,18 @@ export function CraftingTab() {
 
   /**
    * Calculates derived statistics for the current crafting project
-   *
-   * This function computes:
-   * - Final weight: base weight * (1 + material weight modifier %)
-   * - Final HP: base HP * (1 + material HP modifier %)
-   * - Final HT: averaged material HT + quality HT bonus
-   * - Total difficulty: averaged material difficulty + quality difficulty + mod penalties
-   * - Design time: 2 * final HP (hours needed in design phase)
-   * - Craft time: final HP (hours needed in craft phase)
-   *
-   * Material modifiers are averaged across all selected materials to support
-   * multi-material projects (e.g., sword with wood handle and steel blade).
-   *
-   * @returns {Object} Calculated stats object
-   * @property {number} finalWeight - Final item weight in lbs
-   * @property {number} finalHP - Final item hit points
-   * @property {number} finalHT - Final item health threshold
-   * @property {number} totalDifficulty - Net skill modifier (usually negative)
-   * @property {number} designTime - Hours required for design phase
-   * @property {number} craftTime - Hours required for craft phase
    */
   function calcStats() {
-    if (!current) return {};
+    if (!current) return { finalWeight: 0, finalHP: 0, finalHT: 10, totalDifficulty: 0, designTime: 0, craftTime: 0 };
     const t = allTemplates[current.templateType]?.[current.template];
     if (!t) return { finalWeight: 0, finalHP: 0, finalHT: 10, totalDifficulty: 0, designTime: 0, craftTime: 0 };
-    const q = QUALITIES[current.quality];
+    const q = QUALITIES[current.quality as keyof typeof QUALITIES];
 
-    // Initialize material modifiers with defaults
-    let matDiff = 0;    // Material difficulty modifier
-    let matHT = 10;     // Material health threshold
-    let matWeightMod = 0; // Material weight modifier (percentage)
-    let matHPMod = 0;     // Material HP modifier (percentage)
+    let matDiff = 0;
+    let matHT = 10;
+    let matWeightMod = 0;
+    let matHPMod = 0;
 
-    // Average modifiers across all selected materials
     if (current.selectedMaterials && current.selectedMaterials.length > 0) {
       const selectedMatTypes = current.selectedMaterials
         .map(sm => {
@@ -127,10 +262,9 @@ export function CraftingTab() {
           if (!mat || !mat.type) return null;
           return materialTypes.find(mt => mt.name === mat.type);
         })
-        .filter(mt => mt !== null);
+        .filter((mt): mt is MaterialType => mt !== null);
 
       if (selectedMatTypes.length > 0) {
-        // Average all material properties for composite items
         matDiff = Math.round(selectedMatTypes.reduce((sum, mt) => sum + mt.difficulty, 0) / selectedMatTypes.length);
         matHT = Math.round(selectedMatTypes.reduce((sum, mt) => sum + mt.ht, 0) / selectedMatTypes.length);
         matWeightMod = selectedMatTypes.reduce((sum, mt) => sum + (mt.weightMod || 0), 0) / selectedMatTypes.length;
@@ -138,11 +272,9 @@ export function CraftingTab() {
       }
     }
 
-    // Calculate final stats with material modifiers applied
     const w = Math.round(t.weight * (1 + matWeightMod / 100) * 10) / 10;
     const hp = Math.round(t.hp * (1 + matHPMod / 100));
     const ht = matHT + q.htBonus;
-    // Total difficulty = material + quality + mods (extra mods add -1 each after first)
     let diff = matDiff + q.difficulty;
     current.mods.forEach((mod, i) => { diff += mod.difficulty || 0; if (i > 0) diff -= 1; });
     return { finalWeight: w, finalHP: hp, finalHT: ht, totalDifficulty: diff, designTime: 2 * hp, craftTime: hp };
@@ -185,7 +317,7 @@ export function CraftingTab() {
               <button
                 onClick={() => {
                   const name = designName.trim() || `${saveDesignPrompt.currentQuality} ${saveDesignPrompt.template}`;
-                  const design = {
+                  const design: CraftDesign = {
                     id: crypto.randomUUID(),
                     name,
                     templateType: saveDesignPrompt.templateType,
@@ -232,7 +364,7 @@ export function CraftingTab() {
                   try {
                     const refunded = refundMaterialsFromProject(current, materials);
                     saveMaterials(refunded);
-                    saveCrafts(removeCraft(crafts, current.id));
+                    saveCrafts(removeCraft(crafts, current?.id || ''));
                   } catch (error) {
                     console.error('Error during project cancellation:', error);
                   } finally {
@@ -265,7 +397,6 @@ export function CraftingTab() {
       </div>
 
       {view === 'craft' && current && (() => {
-        // Phase-specific colors
         const phaseColors = {
           setup: { bg: 'bg-gray-800', border: 'border-blue-500', text: 'text-blue-400' },
           design: { bg: 'bg-gray-800', border: 'border-purple-500', text: 'text-purple-400' },
@@ -283,7 +414,7 @@ export function CraftingTab() {
                   const newType = e.target.value;
                   const firstTemplate = Object.keys(allTemplates[newType])[0];
                   const templateData = allTemplates[newType][firstTemplate];
-                  const selectedMats = (templateData.materials || []).map((req, idx) => ({
+                  const selectedMats: SelectedMaterial[] = (templateData.materials || []).map((req, idx) => ({
                     requirementIndex: idx,
                     requiredType: req.type,
                     requiredAmount: req.amount,
@@ -302,7 +433,7 @@ export function CraftingTab() {
                 <select value={current.template} onChange={(e) => {
                   const newTemplate = e.target.value;
                   const templateData = allTemplates[current.templateType][newTemplate];
-                  const selectedMats = (templateData.materials || []).map((req, idx) => ({
+                  const selectedMats: SelectedMaterial[] = (templateData.materials || []).map((req, idx) => ({
                     requirementIndex: idx,
                     requiredType: req.type,
                     requiredAmount: req.amount,
@@ -381,10 +512,10 @@ export function CraftingTab() {
                     }
                   }
 
-                  const consumedMaterials = current.selectedMaterials.map(req => {
+                  const consumedMaterials: ConsumedMaterial[] = current.selectedMaterials.map(req => {
                     const mat = materials.find(m => m.id === req.selectedMaterialId || String(m.id) === req.selectedMaterialId);
                     return {
-                      materialId: req.selectedMaterialId,
+                      materialId: req.selectedMaterialId!,
                       amount: req.requiredAmount,
                       name: mat?.name || 'unknown',
                       type: mat?.type || req.requiredType
@@ -398,10 +529,9 @@ export function CraftingTab() {
                   });
                   saveMaterials(newMaterials);
 
-                  const newCur = {...current, phase: 'design', consumedMaterials};
+                  const newCur: Craft = {...current, phase: 'design', consumedMaterials};
                   setCurrent(newCur);
                   saveCrafts(upsertCraft(crafts, newCur));
-                  // Set default worker for design phase
                   if (workers && workers.length > 0 && !selectedWorker) {
                     const defaultWorker = workers[0];
                     setSelectedWorker(defaultWorker.name);
@@ -410,10 +540,9 @@ export function CraftingTab() {
                     }
                   }
                 } else {
-                  const newCur = {...current, phase: 'design'};
+                  const newCur: Craft = {...current, phase: 'design'};
                   setCurrent(newCur);
                   saveCrafts(upsertCraft(crafts, newCur));
-                  // Set default worker for design phase
                   if (workers && workers.length > 0 && !selectedWorker) {
                     const defaultWorker = workers[0];
                     setSelectedWorker(defaultWorker.name);
@@ -444,7 +573,7 @@ export function CraftingTab() {
                 <div><label className="block mb-2 text-sm">Day (In-Universe)</label><input type="number" min="1" value={currentDay} onChange={(e) => setCurrentDay(Math.max(1, toNumberOr(e.target.value, 1)))} className="w-full bg-gray-600 px-3 py-2 rounded" /></div>
                 <div><label className="block mb-2 text-sm">Worker</label><select value={selectedWorker} onChange={(e) => { const worker = workers.find(w => w.name === e.target.value); setSelectedWorker(e.target.value); if (worker?.skills) setSkill(String(current.phase === 'design' ? worker.skills.designing : worker.skills.crafting)); }} className="w-full bg-gray-600 px-3 py-2 rounded">{workers.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}</select></div>
                 <div><label className="block mb-2 text-sm">Skill</label><input type="number" value={skill} onChange={(e) => setSkill(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded" /></div>
-                <div className="col-span-2"><label className="block mb-2 text-sm">Roll (3d6)</label><div className="flex gap-2"><input type="number" value={roll.total || ''} onChange={(e) => setRoll({ dice: [], total: parseInt(e.target.value) || 0 })} className="flex-1 bg-gray-600 px-3 py-2 rounded" /><DiceRoller dice={roll.dice} total={roll.total} onRoll={(dice, total) => setRoll({ dice, total })} /></div></div>
+                <div className="col-span-2"><label className="block mb-2 text-sm">Roll (3d6)</label><div className="flex gap-2"><input type="number" value={roll.total || ''} onChange={(e) => setRoll({ dice: [], total: parseInt(e.target.value) || 0 })} className="flex-1 bg-gray-600 px-3 py-2 rounded" /><DiceRoller dice={roll.dice} total={roll.total} onRoll={(dice: number[], total: number) => setRoll({ dice, total })} /></div></div>
               </div>
               <button onClick={() => {
                 const s = parseInt(skill), r = roll.total;
@@ -472,18 +601,18 @@ export function CraftingTab() {
                     return;
                   }
                 }
-                const newShifts = [...current.shifts, {id: crypto.randomUUID(), date: currentDate, day: currentDay, worker: selectedWorker, skill: s, roll: r, effectiveSkill: eff, result: res, hoursAdded: hrs, qualityChange: qc, phase: current.phase}];
+                const newShift: Shift = {id: crypto.randomUUID(), date: currentDate, day: currentDay, worker: selectedWorker, skill: s, roll: r, effectiveSkill: eff, result: res, hoursAdded: hrs, qualityChange: qc, phase: current.phase};
+                const newShifts = [...current.shifts, newShift];
                 const newProg = newShifts.reduce((sum, x) => sum + x.hoursAdded, 0);
                 const ql = ['cheap','good','fine','very fine','legendary'];
                 let qi = ql.indexOf(current.currentQuality);
                 qi = Math.max(0, Math.min(4, qi + qc));
-                const newCur = {...current, shifts: newShifts, currentQuality: ql[qi]};
+                const newCur: Craft = {...current, shifts: newShifts, currentQuality: ql[qi]};
                 if (current.phase === 'design' && newProg >= stats.designTime) {
                   newCur.phase = 'craft';
                   newCur.designShifts = newShifts;
                   newCur.shifts = [];
                   saveCrafts(upsertCraft(crafts, newCur));
-                  // Reset worker selection for craft phase
                   if (workers && workers.length > 0) {
                     const defaultWorker = workers[0];
                     setSelectedWorker(defaultWorker.name);
@@ -491,8 +620,7 @@ export function CraftingTab() {
                       setSkill(String(defaultWorker.skills.crafting || 10));
                     }
                   }
-                  setRoll('');
-                  // Show save design prompt
+                  setRoll({ dice: [], total: 0 });
                   setSaveDesignPrompt(newCur);
                   return;
                 }
@@ -508,7 +636,7 @@ export function CraftingTab() {
                 } else {
                   saveCrafts(upsertCraft(crafts, newCur));
                 }
-                setCurrent(newCur); setSkill(''); setRoll('');
+                setCurrent(newCur); setSkill(''); setRoll({ dice: [], total: 0 });
               }} className="w-full bg-green-600 py-3 rounded">Add Shift</button>
             </div>
           )}
@@ -521,13 +649,12 @@ export function CraftingTab() {
             <h2 className="text-xl font-bold mb-4 text-yellow-400">In-Progress Projects</h2>
             <div className="space-y-4">
               {crafts.filter(c => !c.completed).map(c => {
-                // Defensive checks for legacy data
                 if (!c.templateType || !c.template) {
-                  return null; // Skip crafts with missing template data
+                  return null;
                 }
 
                 const t = allTemplates[c.templateType]?.[c.template] || {weight: 0, hp: 0};
-                const q = QUALITIES[c.currentQuality || 'typical'] || QUALITIES['typical'] || {htBonus: 0};
+                const q = QUALITIES[c.currentQuality as keyof typeof QUALITIES] || QUALITIES['good'] || {htBonus: 0};
 
                 let avgHT = 10, avgWeightMod = 0, avgHPMod = 0;
                 if (c.selectedMaterials && Array.isArray(c.selectedMaterials) && c.selectedMaterials.length > 0) {
@@ -536,7 +663,7 @@ export function CraftingTab() {
                     const mat = materials.find(m => m.id === sm.selectedMaterialId || String(m.id) === sm.selectedMaterialId);
                     if (!mat || !mat.type) return null;
                     return materialTypes.find(mt => mt && mt.name === mat.type);
-                  }).filter(mt => mt !== null && mt !== undefined);
+                  }).filter((mt): mt is MaterialType => mt !== null && mt !== undefined);
                   if (matTypes.length > 0) {
                     avgHT = Math.round(matTypes.reduce((sum, mt) => sum + (mt.ht || 10), 0) / matTypes.length);
                     avgWeightMod = matTypes.reduce((sum, mt) => sum + (mt.weightMod || 0), 0) / matTypes.length;
@@ -556,7 +683,6 @@ export function CraftingTab() {
                   }).join(', ') : null)
                   || 'no materials';
 
-                // Phase-specific colors
                 const phaseStyles = {
                   setup: { bg: 'bg-blue-900 bg-opacity-30', border: 'border-blue-600', text: 'text-blue-400' },
                   design: { bg: 'bg-purple-900 bg-opacity-30', border: 'border-purple-600', text: 'text-purple-400' },
@@ -564,19 +690,18 @@ export function CraftingTab() {
                 };
                 const phaseStyle = phaseStyles[c.phase] || phaseStyles.setup;
 
-                // Calculate progress
                 const designTime = 2 * finalHP;
                 const craftTime = finalHP;
-                const progress = (c.shifts || []).reduce((sum, s) => sum + (s.hoursAdded || 0), 0);
+                const prog = (c.shifts || []).reduce((sum, s) => sum + (s.hoursAdded || 0), 0);
 
                 let targetHours = 0;
                 let currentProgress = 0;
                 if (c.phase === 'design') {
                   targetHours = designTime;
-                  currentProgress = progress;
+                  currentProgress = prog;
                 } else if (c.phase === 'craft') {
                   targetHours = craftTime;
-                  currentProgress = progress;
+                  currentProgress = prog;
                 } else {
                   targetHours = 1;
                   currentProgress = 0;
@@ -599,10 +724,10 @@ export function CraftingTab() {
                           setCurrentDate(new Date().toISOString().split('T')[0]);
                           if (c.shifts && c.shifts.length > 0) {
                             const lastShift = c.shifts[c.shifts.length - 1];
-                            setSelectedWorker(lastShift.worker || workers[0] || '');
+                            setSelectedWorker(lastShift.worker || workers[0]?.name || '');
                             setCurrentDay(lastShift.day || c.startDay || 1);
                           } else {
-                            setSelectedWorker(workers[0] || '');
+                            setSelectedWorker(workers[0]?.name || '');
                             setCurrentDay(c.startDay || 1);
                           }
                           setView('craft');
@@ -643,13 +768,12 @@ export function CraftingTab() {
             <h2 className="text-xl font-bold mb-4 text-green-400">Completed Projects</h2>
             <div className="space-y-4">
               {crafts.filter(c => c.completed).map(c => {
-                // Defensive checks for legacy data
                 if (!c.templateType || !c.template) {
-                  return null; // Skip crafts with missing template data
+                  return null;
                 }
 
                 const t = allTemplates[c.templateType]?.[c.template] || {weight: 0, hp: 0};
-                const q = QUALITIES[c.currentQuality || 'typical'] || QUALITIES['typical'] || {htBonus: 0};
+                const q = QUALITIES[c.currentQuality as keyof typeof QUALITIES] || QUALITIES['good'] || {htBonus: 0};
 
                 let avgHT = 10, avgWeightMod = 0, avgHPMod = 0;
                 if (c.selectedMaterials && Array.isArray(c.selectedMaterials) && c.selectedMaterials.length > 0) {
@@ -658,7 +782,7 @@ export function CraftingTab() {
                     const mat = materials.find(m => m.id === sm.selectedMaterialId || String(m.id) === sm.selectedMaterialId);
                     if (!mat || !mat.type) return null;
                     return materialTypes.find(mt => mt && mt.name === mat.type);
-                  }).filter(mt => mt !== null && mt !== undefined);
+                  }).filter((mt): mt is MaterialType => mt !== null && mt !== undefined);
                   if (matTypes.length > 0) {
                     avgHT = Math.round(matTypes.reduce((sum, mt) => sum + (mt.ht || 10), 0) / matTypes.length);
                     avgWeightMod = matTypes.reduce((sum, mt) => sum + (mt.weightMod || 0), 0) / matTypes.length;
@@ -740,7 +864,6 @@ export function CraftingTab() {
                             <div>Base HP: <span className="text-gray-300">{t.hp}</span> → Final: <span className="text-blue-300">{finalHP}</span></div>
                             <div>Final HT: <span className="text-gray-300">{avgHT + q.htBonus}</span></div>
 
-                            {/* Weapon stats */}
                             {c.templateType === 'weapons' && (
                               <>
                                 {t.damage && <div>Damage: <span className="text-gray-300">{t.damage}</span></div>}
@@ -752,7 +875,6 @@ export function CraftingTab() {
                               </>
                             )}
 
-                            {/* Ranged weapon stats */}
                             {c.templateType === 'ranged' && (
                               <>
                                 {t.damage && <div>Damage: <span className="text-gray-300">{t.damage}</span></div>}
@@ -769,7 +891,6 @@ export function CraftingTab() {
                               </>
                             )}
 
-                            {/* Armor stats */}
                             {c.templateType === 'armor' && (
                               <>
                                 {t.location && <div>Location: <span className="text-gray-300">{t.location}</span></div>}
@@ -780,7 +901,6 @@ export function CraftingTab() {
                               </>
                             )}
 
-                            {/* Explosive stats */}
                             {c.templateType === 'explosives' && (
                               <>
                                 {t.damage && <div>Damage: <span className="text-gray-300">{t.damage}</span></div>}
@@ -793,7 +913,7 @@ export function CraftingTab() {
                           </div>
                         </div>
 
-                        {(c.designShifts?.length > 0 || c.shifts?.length > 0) && (
+                        {((c.designShifts && c.designShifts.length > 0) || (c.shifts && c.shifts.length > 0)) && (
                           <div className="bg-gray-600 p-3 rounded">
                             <div className="text-sm font-semibold mb-2">Project History</div>
                             <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -823,7 +943,6 @@ export function CraftingTab() {
                           </div>
                         )}
 
-                        {/* Delete Button */}
                         <div className="pt-3 border-t border-gray-600">
                           <button
                             onClick={() => {
@@ -858,7 +977,7 @@ export function CraftingTab() {
           <div className="space-y-4">
             {(craftDesigns || []).map(design => {
               const t = allTemplates[design.templateType]?.[design.template] || {weight: 0, hp: 0};
-              const q = QUALITIES[design.quality] || {htBonus: 0};
+              const q = QUALITIES[design.quality as keyof typeof QUALITIES] || {htBonus: 0};
 
               let avgHT = 10, avgWeightMod = 0, avgHPMod = 0;
               if (design.selectedMaterials && design.selectedMaterials.length > 0) {
@@ -866,7 +985,7 @@ export function CraftingTab() {
                   const mat = materials.find(m => m.id === sm.selectedMaterialId || String(m.id) === sm.selectedMaterialId);
                   if (!mat || !mat.type) return null;
                   return materialTypes.find(mt => mt.name === mat.type);
-                }).filter(mt => mt !== null);
+                }).filter((mt): mt is MaterialType => mt !== null);
                 if (matTypes.length > 0) {
                   avgHT = Math.round(matTypes.reduce((sum, mt) => sum + mt.ht, 0) / matTypes.length);
                   avgWeightMod = matTypes.reduce((sum, mt) => sum + (mt.weightMod || 0), 0) / matTypes.length;
@@ -903,7 +1022,6 @@ export function CraftingTab() {
                             return;
                           }
 
-                          // Consume materials
                           const newMaterials = materials.map(m => {
                             const used = requiredMaterials.find(req => req.selectedMaterialId === m.id || req.selectedMaterialId === String(m.id));
                             if (used) {
@@ -913,9 +1031,8 @@ export function CraftingTab() {
                           });
                           saveMaterials(newMaterials);
 
-                          // Create new craft at craft phase
                           const today = new Date().toISOString().split('T')[0];
-                          const newCraft = {
+                          const newCraft: Craft = {
                             id: crypto.randomUUID(),
                             phase: 'craft',
                             templateType: design.templateType,
@@ -927,7 +1044,7 @@ export function CraftingTab() {
                             consumedMaterials: (design.consumedMaterials || []).length > 0 ? design.consumedMaterials : design.selectedMaterials.map(sm => {
                               const mat = materials.find(m => m.id === sm.selectedMaterialId || String(m.id) === sm.selectedMaterialId);
                               return {
-                                materialId: sm.selectedMaterialId,
+                                materialId: sm.selectedMaterialId!,
                                 amount: sm.requiredAmount,
                                 name: mat?.name || 'unknown',
                                 type: mat?.type || sm.requiredType
@@ -943,7 +1060,6 @@ export function CraftingTab() {
                           setCurrent(newCraft);
                           setCurrentDate(today);
                           setCurrentDay(1);
-                          // Set default worker and skill for craft phase
                           if (workers && workers.length > 0) {
                             const defaultWorker = workers[0];
                             setSelectedWorker(defaultWorker.name);

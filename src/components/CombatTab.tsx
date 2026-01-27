@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Users, Swords, History, ScrollText, Settings } from 'lucide-react';
-import { useCombat } from '../contexts/CombatContext';
 import { useCampaignStore } from '../state/campaignStore';
 import CharacterLibrary from './combat/CharacterLibrary';
 import EncounterSetup from './combat/EncounterSetup';
@@ -8,14 +7,34 @@ import CombatTracker from './combat/CombatTracker';
 import CombatHistory from './combat/CombatHistory';
 import CombatRulesSettings from './combat/CombatRulesSettings';
 
+// ============================================================================
+// Types
+// ============================================================================
+
+type CombatView = 'library' | 'setup' | 'tracker' | 'history' | 'settings';
+
+// ============================================================================
+// CombatTab Component
+// ============================================================================
+
 /**
  * Main Combat Runner tab component
  * Manages character library, encounter setup, and active combat
+ *
+ * MIGRATED: Now uses useCampaignStore directly instead of bridge contexts.
  */
 export function CombatTab() {
-  const [view, setView] = useState('library'); // 'library', 'setup', 'tracker', 'history', 'settings'
-  const { combatActive, combatRulesPreset, saveCombatRulesPreset } = useCombat();
-  const { state: campaignState, actions: campaignActions } = useCampaignStore();
+  const { state, actions } = useCampaignStore();
+  const [view, setView] = useState<CombatView>('library');
+
+  // Derive combat state from campaign store
+  const combatActive = state.combat.activeSession;
+  const combatRulesPreset = state.combat.rulesPreset;
+
+  // Save callback for rules preset
+  const saveCombatRulesPreset = useCallback((preset: string) => {
+    actions.setCombatRulesPreset(preset);
+  }, [actions]);
 
   // If there's an active combat, automatically show tracker
   const currentView = combatActive ? 'tracker' : view;
@@ -26,15 +45,15 @@ export function CombatTab() {
         <div>
           <h3 className="text-sm font-semibold text-gray-100">Unified Combat Session</h3>
           <p className="text-xs text-gray-400">
-            {campaignState.combat.active ? 'Combat active in unified state.' : 'No active unified combat session.'}
+            {state.combat.active ? 'Combat active in unified state.' : 'No active unified combat session.'}
           </p>
         </div>
         <button
           type="button"
-          onClick={() => campaignActions.startCombat()}
-          disabled={campaignState.combat.active}
+          onClick={() => actions.startCombat()}
+          disabled={state.combat.active}
           className={`rounded px-3 py-2 text-xs font-semibold ${
-            campaignState.combat.active
+            state.combat.active
               ? 'cursor-not-allowed bg-gray-700 text-gray-400'
               : 'bg-red-600 text-white hover:bg-red-500'
           }`}
