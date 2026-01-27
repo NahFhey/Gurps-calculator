@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-01-27
 **Branch:** `claude/review-project-status-BbPCp`
-**Status:** Phase 8b Complete - DayPlannerTab Decomposed to TypeScript
+**Status:** Phase 8c Complete - RulesTab Decomposed to TypeScript
 
 ---
 
@@ -96,6 +96,11 @@ src/
 │   ├── dayplanner/
 │   │   └── views/
 │   │       └── [5 TypeScript view components]
+│   ├── rules/
+│   │   ├── data/
+│   │   │   └── rulesContent.ts (730 lines of content)
+│   │   └── views/
+│   │       └── [2 TypeScript view components]
 │   ├── AlchemyTab.jsx (uses bridge context)
 │   ├── CombatTab.jsx (uses bridge context)
 │   ├── CookingTab.jsx (uses bridge context)
@@ -215,11 +220,34 @@ These are INTENTIONALLY kept for backward compatibility:
 - ✅ TaskDetailPanel broken into logical sub-components
 - ✅ Build passes (622KB bundle)
 
+#### Phase 8c: RulesTab Decomposition ✅ COMPLETE
+**Commit:** 3cabe66
+
+**Achievement: 820 → 50 lines (94% reduction)**
+
+**Created `src/types/rules.ts` with TypeScript interfaces for:**
+- RuleSection, RuleSubsection, ExpandedSections
+- RuleSectionViewProps, QuickNavigationProps, RulesTabProps
+
+**Decomposition Strategy:**
+- Extracted 730 lines of static content to `rules/data/rulesContent.ts`
+- Created 2 view components in `rules/views/`
+
+**All Components Created (TypeScript .tsx):**
+1. rulesContent.ts (730 lines) - All 6 sections of documentation content
+2. RuleSectionView.tsx (48 lines) - Expandable section display
+3. QuickNavigationView.tsx (19 lines) - Footer navigation hint
+
+**RulesTab.tsx converted to thin router (50 lines)**
+
+**Benefits Achieved:**
+- ✅ Content separated from presentation logic
+- ✅ Full TypeScript type safety
+- ✅ Clean, readable thin router
+- ✅ Build passes (622KB bundle)
+
 **Files Still to Convert (Lower Priority):**
 ```bash
-# Large god components (candidates for decomposition first)
-src/components/RulesTab.jsx (820 lines)
-
 # Legacy tabs (bridge context dependent)
 src/components/AlchemyTab.jsx
 src/components/CombatTab.jsx
@@ -259,13 +287,14 @@ Apply the same decomposition pattern used for ManagerTab to remaining god compon
 - Thin router converted to TypeScript
 - 80% code reduction achieved
 
-#### 8c. RulesTab.jsx (820 lines) 🎯 RECOMMENDED NEXT
-**Suggested Views:**
-- RulesCategoryView
-- RulesSearchView
-- RulesDisplayView
+#### 8c. RulesTab.jsx (820 lines) ✅ COMPLETE
+**See Phase 8c completion above for details.**
+- Content extracted to `rules/data/rulesContent.ts`
+- 2 views extracted to `rules/views/`
+- Thin router converted to TypeScript
+- 94% code reduction achieved
 
-#### 8d. CombatTracker.tsx (2,051 lines) - Already TypeScript
+#### 8d. CombatTracker.tsx (2,051 lines) 🎯 RECOMMENDED NEXT - Already TypeScript
 **Note:** Already converted to TypeScript but still a large file.
 **Consider decomposing into:**
 - ParticipantListView
@@ -385,29 +414,30 @@ describe('FoodTypesView', () => {
 
 ### For Immediate Next Session:
 1. ✅ **Review this document** - Understand current state
-2. 🎯 **Continue Phase 8** - Decompose RulesTab.jsx next
+2. 🎯 **Continue Phase 8** - Decompose CombatTracker.tsx next (Phase 8d)
 3. 📋 **Create todo list** - Break chosen component into tasks
 4. 🚀 **Start incremental work** - Small commits, test often
 
-### Recommended: Start with RulesTab.jsx (Phase 8c)
+### Recommended: Continue with CombatTracker.tsx (Phase 8d)
 ```bash
-# Step 1: Read and analyze RulesTab.jsx (820 lines)
-# Identify logical view boundaries (Categories, Search, Display)
+# Step 1: Read and analyze CombatTracker.tsx (2,051 lines)
+# Identify logical view boundaries (ParticipantList, CombatLog, TurnControls)
 # Document state and props needed for each view
 
 # Step 2: Create first view (simplest one)
-# Extract to src/components/rules/views/
+# Extract to src/components/combat/views/
 # Test thoroughly with npm run build
 
 # Step 3: Repeat for all identified views
 # Step 4: Convert parent to thin router
-# Step 5: Convert to TypeScript (.tsx)
+# Note: Already TypeScript, just needs decomposition
 ```
 
-### Alternative: CombatTracker.tsx (Phase 8d)
+### Alternative: Legacy Tab Migration (Phase 9)
 ```bash
-# Same pattern as above
-# Already TypeScript, just needs decomposition (2,051 lines)
+# Lower priority - current tabs work fine
+# Start with AlchemyTab.jsx or InventoryTab.jsx
+# Migrate from bridge context to useCampaignStore()
 ```
 
 ---
@@ -418,17 +448,18 @@ describe('FoodTypesView', () => {
 - **ManagerTab Size:** 2,622 → 528 lines (80% reduction) ✅
 - **GatheringManager Size:** 1,754 → 184 lines (90% reduction) ✅
 - **DayPlannerTab Size:** 1,365 → 270 lines (80% reduction) ✅
+- **RulesTab Size:** 820 → 50 lines (94% reduction) ✅
 - **App.jsx Size:** 260 → 96 lines (63% reduction) ✅
 - **Bundle Size:** 800KB → 622KB (22% reduction) ✅
-- **View Component Size:** 53-815 lines (AI-readable) ✅
+- **View Component Size:** 19-815 lines (AI-readable) ✅
 - **Test Coverage:** 0% (needs Phase 10) ⚠️
 
 ### Architecture Health
 - ✅ Single source of truth (CampaignStore)
 - ✅ Normalized state pattern
-- ✅ Component decomposition well underway (3 god components done)
-- ✅ TypeScript for manager views + ManagerTab + gathering views + dayplanner views + all combat components
-- ✅ 50 components converted to TypeScript (38 + 7 gathering + 5 dayplanner views)
+- ✅ Component decomposition well underway (4 god components done)
+- ✅ TypeScript for manager views + ManagerTab + gathering views + dayplanner views + rules views + all combat components
+- ✅ 53 components converted to TypeScript (38 + 7 gathering + 5 dayplanner + 3 rules)
 - ⚠️ Bridge contexts still present (intentional)
 - ⚠️ Some legacy tabs still JSX (lower priority)
 
@@ -437,7 +468,7 @@ describe('FoodTypesView', () => {
 - ✅ Clear separation of concerns
 - ✅ Incremental git history
 - ✅ Good documentation
-- ✅ Type safety for manager, gathering, and dayplanner components
+- ✅ Type safety for manager, gathering, dayplanner, and rules components
 
 ---
 
@@ -446,10 +477,11 @@ describe('FoodTypesView', () => {
 - **God Component Slayer** - Decomposed 2,622-line ManagerTab ✅
 - **Gathering Master** - Decomposed 1,754-line GatheringManager (90% reduction) ✅
 - **Day Planner Architect** - Decomposed 1,365-line DayPlannerTab (80% reduction) ✅
+- **Rules Reformer** - Decomposed 820-line RulesTab (94% reduction) ✅
 - **Architecture Simplifier** - Removed bridge pattern from App.jsx ✅
 - **Bundle Optimizer** - Reduced bundle by 22% ✅
 - **Documentation Master** - Created comprehensive guides ✅
-- **Type Safety Pioneer** - Converted 50 components to TypeScript ✅
+- **Type Safety Pioneer** - Converted 53 components to TypeScript ✅
 - **Combat System Master** - Full TypeScript coverage for combat (17 files) ✅
 
 ---
@@ -483,6 +515,6 @@ describe('FoodTypesView', () => {
 
 **Current Branch:** `claude/review-project-status-BbPCp`
 **Build Status:** ✅ Passing (622KB bundle)
-**Ready for:** Phase 8c - RulesTab Decomposition
+**Ready for:** Phase 8d - CombatTracker Decomposition
 
-🎊 Phase 8b Complete! DayPlannerTab decomposed - 50 components now TypeScript! 🎊
+🎊 Phase 8c Complete! RulesTab decomposed - 53 components now TypeScript! 🎊
