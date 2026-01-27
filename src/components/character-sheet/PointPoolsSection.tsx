@@ -1,11 +1,15 @@
-import { Heart, Zap } from 'lucide-react';
+import { Heart, Zap, Target } from 'lucide-react';
 import type { PointPools, PrimaryAttributes } from '../../types/characterSheet';
+import { DEFAULT_HIT_LOCATION_PROFILE } from '../../types/characterSheet';
+import { getAllProfiles } from '../../utils/hitLocations';
 
 interface PointPoolsSectionProps {
   pools: PointPools;
   attributes: PrimaryAttributes;
   editMode: boolean;
   onChange: (pools: PointPools) => void;
+  hitLocationProfileId?: string;
+  onHitLocationProfileChange?: (profileId: string) => void;
 }
 
 export function PointPoolsSection({
@@ -13,7 +17,14 @@ export function PointPoolsSection({
   attributes,
   editMode,
   onChange,
+  hitLocationProfileId,
+  onHitLocationProfileChange,
 }: PointPoolsSectionProps) {
+  // Get available hit location profiles
+  const profiles = getAllProfiles();
+  const profileOptions = Object.values(profiles);
+  const currentProfileId = hitLocationProfileId || DEFAULT_HIT_LOCATION_PROFILE;
+  const currentProfile = profiles[currentProfileId];
   const hpBase = attributes.ST;
   const fpBase = attributes.HT;
 
@@ -138,6 +149,36 @@ export function PointPoolsSection({
             />
           </div>
           <div className="text-xs text-gray-500 mt-1">Base: {fpBase} (HT) | Cost: 3 pts/level</div>
+        </div>
+      </div>
+
+      {/* Hit Location Profile */}
+      <div className="mt-4 bg-gray-700 rounded p-3">
+        <div className="flex items-center gap-2 mb-2">
+          <Target size={18} className="text-blue-400" />
+          <span className="font-semibold text-gray-200">Hit Location Profile</span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {editMode && onHitLocationProfileChange ? (
+            <select
+              value={currentProfileId}
+              onChange={(e) => onHitLocationProfileChange(e.target.value)}
+              className="flex-1 bg-gray-600 border border-gray-500 rounded px-3 py-2 text-gray-100"
+            >
+              {profileOptions.map((profile) => (
+                <option key={profile.id} value={profile.id}>
+                  {profile.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-gray-100">{currentProfile?.name || 'Humanoid'}</span>
+          )}
+        </div>
+
+        <div className="text-xs text-gray-500 mt-2">
+          Determines hit location table used in combat ({currentProfile?.locations?.length || 0} locations)
         </div>
       </div>
     </div>

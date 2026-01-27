@@ -425,6 +425,7 @@ export type CampaignAction =
   | { type: 'setActiveModule'; payload: string }
   | { type: 'selectCharacter'; payload: string | null }
   | { type: 'toggleGmMode' }
+  | { type: 'setGmMode'; payload: boolean }
   | { type: 'setGmUnlocked'; payload: boolean }
   | { type: 'toggleDebug' }
   | { type: 'setActivitiesSubview'; payload: string | null }
@@ -589,6 +590,9 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         return;
       case 'toggleGmMode':
         draft.ui.gmModeEnabled = !draft.ui.gmModeEnabled;
+        return;
+      case 'setGmMode':
+        draft.ui.gmModeEnabled = action.payload;
         return;
       case 'setGmUnlocked':
         draft.ui.gmSessionUnlocked = action.payload;

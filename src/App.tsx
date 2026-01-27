@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { logger } from './utils/logger';
 import { UnifiedShell } from './unified/UnifiedShell';
 import { CampaignStoreProvider } from './state/campaignStore';
+import { CombatProvider } from './contexts/CombatContext';
 import { loadCampaignState } from './persistence/campaignStorage';
 import { checkMigrationNeeded, migrateToV2 } from './persistence/dataMigration';
 import type { CampaignState } from './state/campaignReducer';
@@ -93,7 +94,9 @@ export default function GURPSPartyTool() {
 
   return (
     <CampaignStoreProvider initialCampaignState={initialCampaignState}>
-      <UnifiedShell />
+      <CombatProvider>
+        <UnifiedShell />
+      </CombatProvider>
     </CampaignStoreProvider>
   );
 }

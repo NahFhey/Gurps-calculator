@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo } from 'react';
+import { createContext, useContext, useMemo, useRef, useEffect } from 'react';
 import { useCampaignStore } from '../state/campaignStore';
 import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
 
@@ -10,6 +10,7 @@ import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
  *
  * @typedef {Object} CombatContextValue
  * @property {Array} characters - Combat character library
+ * @property {Array} partyCharacters - Party characters (from entities.characters)
  * @property {Object} combatActive - Active combat session
  * @property {Object} combatActiveHistory - Undo/redo history for active combat
  * @property {Array} combatHistory - Past combat sessions
@@ -35,10 +36,19 @@ const CombatContext = createContext(null);
 export function CombatProvider({ children }) {
   const { state, actions } = useCampaignStore();
 
+  // Use a ref to always have access to the current session for functional updates
+  const sessionRef = useRef(state.combat.activeSession);
+  useEffect(() => {
+    sessionRef.current = state.combat.activeSession;
+  }, [state.combat.activeSession]);
+
   const value = useMemo(() => {
     // Convert normalized objects back to arrays for legacy API
     const combatCharacters = denormalizeObject(state.entities.combatCharacters);
     const combatItems = denormalizeObject(state.entities.combatItems);
+
+    // Get party characters (from entities.characters) for combat integration
+    const partyCharacters = denormalizeObject(state.entities.characters);
 
     return {
       // Characters
@@ -47,10 +57,25 @@ export function CombatProvider({ children }) {
         actions.setCombatCharacters(normalizeArray(charactersArray));
       },
 
+      // Party Characters (read-only, for combat integration)
+      partyCharacters,
+
       // Active Combat
       combatActive: state.combat.activeSession,
-      saveCombatActive: (session) => {
-        actions.setCombatActive(session);
+      saveCombatActive: (sessionOrUpdater) => {
+        // Support both direct values and functional updates
+        if (typeof sessionOrUpdater === 'function') {
+          // Use ref to get the latest session value (avoids stale closure issues)
+          const currentSession = sessionRef.current;
+          const newSession = sessionOrUpdater(currentSession);
+          actions.setCombatActive(newSession);
+          // Update ref immediately so subsequent calls in same tick get fresh value
+          sessionRef.current = newSession;
+        } else {
+          actions.setCombatActive(sessionOrUpdater);
+          // Update ref immediately for functional updates that follow
+          sessionRef.current = sessionOrUpdater;
+        }
       },
 
       // Combat History (legacy - stored in entities now)
@@ -90,6 +115,7 @@ export function CombatProvider({ children }) {
     };
   }, [
     state.entities.combatCharacters,
+    state.entities.characters,
     state.combat.activeSession,
     state.entities.combatHistory,
     state.entities.combatTombstones,

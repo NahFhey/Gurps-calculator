@@ -381,14 +381,14 @@ export function ManagerTab() {
               </p>
             </div>
             <span className="text-xs text-gray-400">
-              {campaignState.checkpoints.entries.length}/{campaignState.checkpoints.maxSize}
+              {(campaignState.checkpoints?.entries?.length ?? 0)}/{campaignState.checkpoints?.maxSize ?? 10}
             </span>
           </div>
-          {campaignState.checkpoints.entries.length === 0 ? (
+          {(campaignState.checkpoints?.entries?.length ?? 0) === 0 ? (
             <div className="mt-3 text-sm text-gray-500">No checkpoints yet.</div>
           ) : (
             <div className="mt-3 space-y-2">
-              {campaignState.checkpoints.entries.map((checkpoint) => (
+              {(campaignState.checkpoints?.entries ?? []).map((checkpoint) => (
                 <div
                   key={checkpoint.id}
                   className="flex items-center justify-between rounded-lg bg-gray-800 px-3 py-2"
@@ -665,6 +665,7 @@ export function ManagerTab() {
           items={gatheringItems || []}
           currentDay={currentDay || 1}
           foodTypes={foodTypes || []}
+          materialTypes={materialTypes || []}
           saveSpecies={saveGatheringSpecies}
           saveTools={saveGatheringTools}
           saveTables={saveGatheringTables}

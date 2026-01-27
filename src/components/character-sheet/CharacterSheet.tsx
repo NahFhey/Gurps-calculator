@@ -3,7 +3,7 @@ import { Edit2, Save, X } from 'lucide-react';
 import { useCampaignStore } from '../../state/campaignStore';
 import type { Character } from '../../types/campaign';
 import type { GCSCharacterData } from '../../types/characterSheet';
-import { createDefaultGCSData, syncWorkSkillsFromGCS } from '../../types/characterSheet';
+import { createDefaultGCSData, syncWorkSkillsFromGCS, DEFAULT_HIT_LOCATION_PROFILE } from '../../types/characterSheet';
 import { IdentitySection } from './IdentitySection';
 import { AttributesSection } from './AttributesSection';
 import { SecondaryAttributesSection } from './SecondaryAttributesSection';
@@ -28,12 +28,16 @@ export function CharacterSheet({ character }: CharacterSheetProps) {
   const [draftGcsData, setDraftGcsData] = useState<GCSCharacterData>(
     character.gcsData || createDefaultGCSData()
   );
+  const [draftHitLocationProfileId, setDraftHitLocationProfileId] = useState(
+    character.hitLocationProfileId || DEFAULT_HIT_LOCATION_PROFILE
+  );
 
   // Reset draft when character changes
   React.useEffect(() => {
     setDraftName(character.name);
     setDraftGcsData(character.gcsData || createDefaultGCSData());
-  }, [character.id, character.name, character.gcsData]);
+    setDraftHitLocationProfileId(character.hitLocationProfileId || DEFAULT_HIT_LOCATION_PROFILE);
+  }, [character.id, character.name, character.gcsData, character.hitLocationProfileId]);
 
   const handleSave = useCallback(() => {
     // Sync work.skills from the updated GCS data
@@ -43,19 +47,21 @@ export function CharacterSheet({ character }: CharacterSheetProps) {
       name: draftName,
       gcsData: draftGcsData,
       st: draftGcsData.attributes.ST,
+      hitLocationProfileId: draftHitLocationProfileId,
       work: {
         ...character.work,
         skills: workSkills,
       },
     });
     setEditMode(false);
-  }, [actions, character.id, character.work, draftName, draftGcsData]);
+  }, [actions, character.id, character.work, draftName, draftGcsData, draftHitLocationProfileId]);
 
   const handleCancel = useCallback(() => {
     setDraftName(character.name);
     setDraftGcsData(character.gcsData || createDefaultGCSData());
+    setDraftHitLocationProfileId(character.hitLocationProfileId || DEFAULT_HIT_LOCATION_PROFILE);
     setEditMode(false);
-  }, [character.name, character.gcsData]);
+  }, [character.name, character.gcsData, character.hitLocationProfileId]);
 
   // GCS data to display (draft when editing, actual when viewing)
   const displayData = editMode ? draftGcsData : (character.gcsData || createDefaultGCSData());
@@ -182,7 +188,7 @@ export function CharacterSheet({ character }: CharacterSheetProps) {
           }}
         />
 
-        {/* Point Pools (HP/FP) */}
+        {/* Point Pools (HP/FP) & Hit Location Profile */}
         <PointPoolsSection
           pools={displayData.pools}
           attributes={displayData.attributes}
@@ -190,6 +196,8 @@ export function CharacterSheet({ character }: CharacterSheetProps) {
           onChange={(pools) => {
             setDraftGcsData((prev) => ({ ...prev, pools }));
           }}
+          hitLocationProfileId={editMode ? draftHitLocationProfileId : (character.hitLocationProfileId || DEFAULT_HIT_LOCATION_PROFILE)}
+          onHitLocationProfileChange={setDraftHitLocationProfileId}
         />
 
         {/* Reactions & Conditional Modifiers */}

@@ -9,9 +9,38 @@
  * - Spells with full casting information
  * - Equipment with weight and cost
  * - Reactions and conditional modifiers
+ * - Hit Location Profiles
  */
 
 import type { Id } from './campaign';
+
+// ============================================================================
+// HIT LOCATION TYPES
+// ============================================================================
+
+export interface HitLocation {
+  key: string;
+  label: string;
+  rollRange: number[];
+  drKey: string;
+  isVital: boolean;
+  isLimb: boolean;
+  isExtremity: boolean;
+  toHitPenalty: number;
+}
+
+export interface HitLocationProfile {
+  id: string;
+  name: string;
+  locations: HitLocation[];
+}
+
+// Available profile IDs
+export const HIT_LOCATION_PROFILE_IDS = ['humanoid'] as const;
+export type HitLocationProfileId = typeof HIT_LOCATION_PROFILE_IDS[number];
+
+// Default profile for new characters
+export const DEFAULT_HIT_LOCATION_PROFILE: HitLocationProfileId = 'humanoid';
 
 // ============================================================================
 // ATTRIBUTE TYPES

@@ -58,6 +58,7 @@ type CampaignStoreValue = {
     setActiveModule: (moduleId: string) => void;
     selectCharacter: (id: string | null) => void;
     toggleGmMode: () => void;
+    setGmMode: (enabled: boolean) => void;
     setGmUnlocked: (value: boolean) => void;
     toggleDebug: () => void;
     setActivitiesSubview: (view: string | null) => void;
@@ -248,6 +249,7 @@ export function CampaignStoreProvider({
       setActiveModule: (moduleId: string) => dispatch({ type: 'setActiveModule', payload: moduleId }),
       selectCharacter: (id: string | null) => dispatch({ type: 'selectCharacter', payload: id }),
       toggleGmMode: () => dispatch({ type: 'toggleGmMode' }),
+      setGmMode: (enabled: boolean) => dispatch({ type: 'setGmMode', payload: enabled }),
       setGmUnlocked: (value: boolean) => dispatch({ type: 'setGmUnlocked', payload: value }),
       toggleDebug: () => dispatch({ type: 'toggleDebug' }),
       setActivitiesSubview: (view: string | null) => dispatch({ type: 'setActivitiesSubview', payload: view }),
