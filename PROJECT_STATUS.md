@@ -83,6 +83,8 @@ src/
 │   └── UnifiedShell.tsx (typed UI shell)
 ├── components/
 │   ├── ManagerTab.tsx (typed thin router)
+│   ├── ChangelogTab.tsx, DebugPanel.tsx, ErrorBoundary.tsx
+│   ├── GMLockModal.tsx, DiceRoller.tsx, ImportExportPanel.tsx
 │   ├── manager/
 │   │   └── views/
 │   │       └── [12 TypeScript view components]
@@ -132,6 +134,15 @@ These are INTENTIONALLY kept for backward compatibility:
 7. **Converted UnifiedShell.jsx → UnifiedShell.tsx**
    - Added ModuleDefinition and UnifiedShellProps interfaces
    - Typed event handlers (KeyboardEvent, MouseEvent)
+8. **Converted 6 more utility components:**
+   - ChangelogTab.tsx (added LogEntry interface)
+   - DebugPanel.tsx (typed state, imported CampaignState)
+   - ErrorBoundary.tsx (typed class component with props/state)
+   - GMLockModal.tsx (added GMLockModalProps)
+   - DiceRoller.tsx (added DiceRollerProps)
+   - ImportExportPanel.tsx (added ImportExportPanelProps, ImportStatus)
+
+**Total: 21 components converted to TypeScript**
 
 **📝 Remaining Steps:**
 1. Convert remaining UI components gradually (lower priority)
@@ -145,9 +156,10 @@ These are INTENTIONALLY kept for backward compatibility:
 
 **Files Still to Convert (Lower Priority):**
 ```bash
-# Large god components (also candidates for decomposition)
+# Large god components (candidates for decomposition first)
 src/components/GatheringManager.jsx (1,754 lines)
 src/components/DayPlannerTab.jsx (1,364 lines)
+src/components/RulesTab.jsx (820 lines)
 
 # Legacy tabs (bridge context dependent)
 src/components/AlchemyTab.jsx
@@ -156,10 +168,12 @@ src/components/CookingTab.jsx
 src/components/CraftingTab.jsx
 src/components/InventoryTab.jsx
 
-# Other components
+# Combat subcomponents
+src/components/combat/*.jsx
+
+# Other
 src/components/alchemy/TBBuilderPanel.jsx
 src/index.jsx
-# ... etc
 ```
 
 ---
@@ -371,7 +385,7 @@ mv src/components/manager/views/FoodTypesView.jsx src/components/manager/views/F
 - **Architecture Simplifier** - Removed bridge pattern from App.jsx ✅
 - **Bundle Optimizer** - Reduced bundle by 22% ✅
 - **Documentation Master** - Created comprehensive guides ✅
-- **Type Safety Pioneer** - Converted 15 components to TypeScript ✅
+- **Type Safety Pioneer** - Converted 21 components to TypeScript ✅
 
 ---
 
