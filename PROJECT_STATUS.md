@@ -371,22 +371,31 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 **Priority:** Medium
 **Impact:** Code quality, maintainability
 
-#### Unit Tests - Started
-**Commit:** 2684c70
+#### Unit Tests - Good Progress
+**Commits:** 2684c70, 5402389
 
 **View Component Tests Added:**
+
+**Manager Views:**
 1. FoodTypesView.test.tsx - 13 tests (render, add, edit, delete, validation)
 2. SkillsView.test.tsx - 16 tests (GM mode, add, delete, validation)
 3. ProjectsView.test.tsx - 13 tests (in-progress, completed, delete)
-4. CampaignDayView.test.tsx - 10 tests (increment, decrement, input)
+4. LabsView.test.tsx - 12 tests (alchemy lab management)
+5. KitchensView.test.tsx - 13 tests (kitchen facility management)
+6. WorkersView.test.tsx - 13 tests (worker NPC skills)
+
+**Gathering Views:**
+7. CampaignDayView.test.tsx - 10 tests (increment, decrement, input)
+8. SpeciesView.test.tsx - 19 tests (fish species, tags, ST, secondary materials)
+9. ItemsView.test.tsx - 22 tests (forageable items, rarity, inventory types)
 
 **Test Summary:**
-- Total tests: 221 (up from 169)
-- New tests added: 52
+- Total tests: 300 (up from 169)
+- New tests added: 131
 - All tests passing
 
 **Test Coverage Goals:**
-- View components: Started (4/~30 views tested)
+- View components: Good progress (9/~30 views tested)
 - State reducers: Good (14 tests)
 - Utility functions: Good (100+ tests)
 
@@ -488,7 +497,7 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 - **App.jsx Size:** 260 → 96 lines (63% reduction) ✅
 - **Bundle Size:** 800KB → 624KB (22% reduction) ✅
 - **View Component Size:** 19-815 lines (AI-readable) ✅
-- **Test Coverage:** 221 tests passing (Phase 10 started) ✅
+- **Test Coverage:** 300 tests passing (Phase 10 in progress) ✅
 
 ### Architecture Health
 - ✅ Single source of truth (CampaignStore)
