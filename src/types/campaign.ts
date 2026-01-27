@@ -3,6 +3,8 @@
  * This file defines all types needed for the unified CampaignStore
  */
 
+import type { GCSCharacterData } from './characterSheet';
+
 export type Id = string;
 
 // ============================================================================
@@ -17,8 +19,14 @@ export interface Character {
     enabled?: boolean;
     skills: Record<string, number>;
   };
-  st?: number;  // Strength attribute
+  st?: number;  // Strength attribute (legacy, use gcsData.attributes.ST)
+
+  // Full GCS character sheet data (optional for backward compatibility)
+  gcsData?: GCSCharacterData;
 }
+
+// Re-export GCS types for convenience
+export type { GCSCharacterData } from './characterSheet';
 
 // ============================================================================
 // INVENTORY SYSTEM

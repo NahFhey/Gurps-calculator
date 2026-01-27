@@ -1,10 +1,12 @@
-import { useMemo, ReactNode, KeyboardEvent, MouseEvent } from 'react';
+import { useMemo, useRef, useCallback, ReactNode, KeyboardEvent, MouseEvent, ChangeEvent } from 'react';
 import { InventoryTab } from '../components/InventoryTab';
 import { ManagerTab } from '../components/ManagerTab';
 import { RulesTab } from '../components/RulesTab';
 import { ChangelogTab } from '../components/ChangelogTab';
 import { CombatTab } from '../components/CombatTab';
 import { PartyToolContainer } from '../components/party-tool/PartyToolContainer';
+import { CharacterSheet } from '../components/character-sheet';
+import { parseCharacterText } from '../utils/characterImport';
 import {
   useCampaignCharacters,
   useCampaignStore,
@@ -53,9 +55,40 @@ export function UnifiedShell({ modules }: UnifiedShellProps) {
     () => [...characters].sort((a, b) => a.name.localeCompare(b.name)),
     [characters]
   );
-  const selectedSkills: [string, number][] = selectedCharacter?.work?.skills
-    ? Object.entries(selectedCharacter.work.skills)
-    : [];
+
+  // File import handling
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        if (text) {
+          try {
+            const character = parseCharacterText(text);
+            actions.addCharacter(character);
+            actions.selectCharacter(character.id);
+          } catch (error) {
+            console.error('Failed to parse character file:', error);
+            alert('Failed to parse character file. Please check the format.');
+          }
+        }
+      };
+      reader.readAsText(file);
+
+      // Reset the input so the same file can be imported again
+      event.target.value = '';
+    },
+    [actions]
+  );
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
@@ -181,31 +214,16 @@ export function UnifiedShell({ modules }: UnifiedShellProps) {
           </div>
         </section>
 
-        <section className="rounded border border-gray-700 bg-gray-800/60 p-4">
-          <h2 className="text-sm uppercase tracking-wide text-gray-400">Character Pane</h2>
-          <div className="mt-2 text-gray-200" data-testid="character-pane">
+        <section className="rounded border border-gray-700 bg-gray-800/60 overflow-hidden">
+          <div className="h-full" data-testid="character-pane">
             {selectedCharacter ? (
-              <div data-testid="character-summary">
-                <div className="text-base font-semibold text-gray-100" data-testid="character-name">
-                  {selectedCharacter.name}
-                </div>
-                <div className="mt-2 text-sm text-gray-300" data-testid="character-skills">
-                  <div className="text-xs uppercase tracking-wide text-gray-400">Skills</div>
-                  <ul className="mt-2 space-y-1">
-                    {selectedSkills.map(([skillName, skillValue]) => (
-                      <li key={skillName} className="flex justify-between text-sm">
-                        <span className="text-gray-200">{skillName}</span>
-                        <span className="text-gray-400">{skillValue}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
+              <CharacterSheet character={selectedCharacter} />
             ) : (
-              <div data-testid="party-summary">
-                <div className="text-base font-semibold text-gray-100">Party Summary</div>
-                <div className="mt-2 text-sm text-gray-300">Day: —</div>
-                <div className="text-sm text-gray-300">Slot: —</div>
+              <div className="p-4" data-testid="party-summary">
+                <h2 className="text-sm uppercase tracking-wide text-gray-400">Character Sheet</h2>
+                <div className="mt-4 text-center text-gray-500">
+                  <p>Select a character from the Party Column to view their sheet.</p>
+                </div>
               </div>
             )}
           </div>
@@ -243,11 +261,21 @@ export function UnifiedShell({ modules }: UnifiedShellProps) {
 
       <div className="grid grid-cols-[220px_minmax(0,1fr)_minmax(0,1fr)_160px] gap-4 px-6 pb-6">
         <div className="col-start-2 col-span-2 flex justify-center">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".txt,.gcs"
+            onChange={handleFileChange}
+            className="hidden"
+            data-testid="character-import-input"
+          />
           <button
             type="button"
+            onClick={handleImportClick}
             className="rounded border border-gray-500 bg-gray-800 px-6 py-2 text-sm font-semibold text-gray-100 hover:border-gray-300"
+            data-testid="character-import-button"
           >
-            Import
+            Import Character
           </button>
         </div>
         <div className="col-start-4 rounded border border-gray-700 bg-gray-800/60 p-4 text-gray-200">
