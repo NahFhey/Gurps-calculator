@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, Trash2, Eye, EyeOff } from 'lucide-react';
 import { ASPECTS } from '../../../constants';
+import type { EffectFamilyMapViewProps, EffectPairData, EffectDefinition } from '../../../types/views';
 
 /**
  * EffectFamilyMapView - Manages aspect pairing effects for alchemy
@@ -11,11 +12,11 @@ import { ASPECTS } from '../../../constants';
  * - Player-facing notes
  * - Hidden GM notes
  */
-export function EffectFamilyMapView({ effectFamilyMap, saveEffectFamilyMap }) {
-  const [expanded, setExpanded] = useState({});
+export function EffectFamilyMapView({ effectFamilyMap, saveEffectFamilyMap }: EffectFamilyMapViewProps) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-  function addEffect(pairKey, pairData) {
-    const newEffect = {
+  function addEffect(pairKey: string, pairData: EffectPairData) {
+    const newEffect: EffectDefinition = {
       id: crypto.randomUUID(),
       name: '',
       keywords: '',
@@ -33,8 +34,8 @@ export function EffectFamilyMapView({ effectFamilyMap, saveEffectFamilyMap }) {
     });
   }
 
-  function updateEffect(pairKey, pairData, idx, updates) {
-    const updatedEffects = [...pairData.effects];
+  function updateEffect(pairKey: string, pairData: EffectPairData, idx: number, updates: Partial<EffectDefinition>) {
+    const updatedEffects = [...(pairData.effects || [])];
     updatedEffects[idx] = {...updatedEffects[idx], ...updates};
     saveEffectFamilyMap({
       ...effectFamilyMap,
@@ -42,8 +43,8 @@ export function EffectFamilyMapView({ effectFamilyMap, saveEffectFamilyMap }) {
     });
   }
 
-  function deleteEffect(pairKey, pairData, idx) {
-    const updatedEffects = pairData.effects.filter((_, i) => i !== idx);
+  function deleteEffect(pairKey: string, pairData: EffectPairData, idx: number) {
+    const updatedEffects = (pairData.effects || []).filter((_, i) => i !== idx);
     saveEffectFamilyMap({
       ...effectFamilyMap,
       [pairKey]: {...pairData, effects: updatedEffects}
@@ -61,7 +62,7 @@ export function EffectFamilyMapView({ effectFamilyMap, saveEffectFamilyMap }) {
         {ASPECTS.map(dominant =>
           ASPECTS.map(secondary => {
             const pairKey = `${dominant}/${secondary}`;
-            const pairData = effectFamilyMap[pairKey] || { summary: '', effects: [] };
+            const pairData: EffectPairData = effectFamilyMap[pairKey] || { summary: '', effects: [] };
             const isExpanded = expanded[pairKey];
 
             return (
@@ -98,7 +99,7 @@ export function EffectFamilyMapView({ effectFamilyMap, saveEffectFamilyMap }) {
                         }}
                         placeholder="Brief summary of possible effects for this pairing..."
                         className="w-full bg-gray-600 px-3 py-2 rounded text-sm"
-                        rows="2"
+                        rows={2}
                       />
                     </div>
 
@@ -158,7 +159,7 @@ export function EffectFamilyMapView({ effectFamilyMap, saveEffectFamilyMap }) {
                               onChange={(e) => updateEffect(pairKey, pairData, idx, { notes: e.target.value })}
                               placeholder="Player-facing notes, trait packages, etc."
                               className="w-full bg-gray-600 px-3 py-1 rounded text-sm"
-                              rows="2"
+                              rows={2}
                             />
                           </div>
 
@@ -181,7 +182,7 @@ export function EffectFamilyMapView({ effectFamilyMap, saveEffectFamilyMap }) {
                               onChange={(e) => updateEffect(pairKey, pairData, idx, { gmNotes: e.target.value })}
                               placeholder="Hidden GM notes..."
                               className="w-full bg-gray-600 px-3 py-1 rounded text-sm"
-                              rows="2"
+                              rows={2}
                             />
                           </div>
                         </div>

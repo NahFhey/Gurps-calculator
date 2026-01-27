@@ -1,7 +1,30 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, Save, X, Trash2 } from 'lucide-react';
 import { toNumberOr } from '../../../utils/helpers';
 import { ASPECTS, POTENCY_LEVELS, INGREDIENT_ROLES, HAZARD_TAGS } from '../../../constants';
+import type { ReagentsViewProps, AlchemyReagent } from '../../../types/views';
+
+interface NewReagentFormState {
+  newPrimary: string;
+  newSecondary: string;
+  newTertiary: string;
+  newPotency: string;
+  newRefinement: string;
+  newRoles: string[];
+  newHazards: string[];
+  newQuantity: string;
+}
+
+const defaultFormState: NewReagentFormState = {
+  newPrimary: 'Water',
+  newSecondary: 'Air',
+  newTertiary: 'Fire',
+  newPotency: 'P1',
+  newRefinement: 'crude',
+  newRoles: [],
+  newHazards: [],
+  newQuantity: '10'
+};
 
 /**
  * ReagentsView - Manages alchemy reagent inventory with full properties
@@ -15,10 +38,11 @@ import { ASPECTS, POTENCY_LEVELS, INGREDIENT_ROLES, HAZARD_TAGS } from '../../..
  * - Identification: 0-4 levels (affects player visibility)
  * - False Profiles: For critical failures on identification
  */
-export function ReagentsView({ alchemyReagents, saveAlchemyReagents, onDelete }) {
+export function ReagentsView({ alchemyReagents, saveAlchemyReagents, onDelete }: ReagentsViewProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [newType, setNewType] = useState('');
-  const [expanded, setExpanded] = useState({});
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [formState, setFormState] = useState<NewReagentFormState>(defaultFormState);
 
   function handleSaveReagent() {
     if (!newType.trim()) {
@@ -26,22 +50,22 @@ export function ReagentsView({ alchemyReagents, saveAlchemyReagents, onDelete })
       return;
     }
 
-    const newReagent = {
+    const newReagent: AlchemyReagent = {
       id: crypto.randomUUID(),
       name: newType.trim(),
       aspects: {
-        primary: expanded.newPrimary || 'Water',
-        secondary: expanded.newSecondary || 'Air',
-        tertiary: expanded.newTertiary || 'Fire'
+        primary: formState.newPrimary,
+        secondary: formState.newSecondary,
+        tertiary: formState.newTertiary
       },
-      refinement: expanded.newRefinement || 'crude',
-      basePotency: expanded.newPotency || 'P1',
+      refinement: formState.newRefinement as 'crude' | 'prepared' | 'refined',
+      basePotency: formState.newPotency,
       concentrationSteps: 0,
-      roles: expanded.newRoles || ['Active'],
-      primaryRole: (expanded.newRoles || ['Active'])[0],
-      hazards: expanded.newHazards || [],
+      roles: formState.newRoles.length > 0 ? formState.newRoles : ['Active'],
+      primaryRole: (formState.newRoles.length > 0 ? formState.newRoles : ['Active'])[0],
+      hazards: formState.newHazards,
       processingNotes: '',
-      quantity: toNumberOr(expanded.newQuantity, 10),
+      quantity: toNumberOr(formState.newQuantity, 10),
       identificationLevel: 4, // New reagents start fully identified for GM
       analysisHistory: [],
       falseProfile: null
@@ -49,7 +73,7 @@ export function ReagentsView({ alchemyReagents, saveAlchemyReagents, onDelete })
 
     saveAlchemyReagents([...(alchemyReagents || []), newReagent]);
     setNewType('');
-    setExpanded({});
+    setFormState(defaultFormState);
     setShowAdd(false);
   }
 
@@ -86,8 +110,8 @@ export function ReagentsView({ alchemyReagents, saveAlchemyReagents, onDelete })
             <div>
               <label className="block text-sm mb-1">Primary Aspect (3pts)</label>
               <select
-                value={expanded.newPrimary || 'Water'}
-                onChange={(e) => setExpanded({...expanded, newPrimary: e.target.value})}
+                value={formState.newPrimary}
+                onChange={(e) => setFormState({...formState, newPrimary: e.target.value})}
                 className="w-full bg-gray-600 px-3 py-2 rounded"
               >
                 {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
@@ -96,8 +120,8 @@ export function ReagentsView({ alchemyReagents, saveAlchemyReagents, onDelete })
             <div>
               <label className="block text-sm mb-1">Secondary Aspect (2pts)</label>
               <select
-                value={expanded.newSecondary || 'Air'}
-                onChange={(e) => setExpanded({...expanded, newSecondary: e.target.value})}
+                value={formState.newSecondary}
+                onChange={(e) => setFormState({...formState, newSecondary: e.target.value})}
                 className="w-full bg-gray-600 px-3 py-2 rounded"
               >
                 {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
@@ -106,8 +130,8 @@ export function ReagentsView({ alchemyReagents, saveAlchemyReagents, onDelete })
             <div>
               <label className="block text-sm mb-1">Tertiary Aspect (1pt)</label>
               <select
-                value={expanded.newTertiary || 'Fire'}
-                onChange={(e) => setExpanded({...expanded, newTertiary: e.target.value})}
+                value={formState.newTertiary}
+                onChange={(e) => setFormState({...formState, newTertiary: e.target.value})}
                 className="w-full bg-gray-600 px-3 py-2 rounded"
               >
                 {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
@@ -119,8 +143,8 @@ export function ReagentsView({ alchemyReagents, saveAlchemyReagents, onDelete })
             <div>
               <label className="block text-sm mb-1">Base Potency</label>
               <select
-                value={expanded.newPotency || 'P1'}
-                onChange={(e) => setExpanded({...expanded, newPotency: e.target.value})}
+                value={formState.newPotency}
+                onChange={(e) => setFormState({...formState, newPotency: e.target.value})}
                 className="w-full bg-gray-600 px-3 py-2 rounded"
               >
                 {POTENCY_LEVELS.map(p => <option key={p} value={p}>{p}</option>)}
@@ -129,8 +153,8 @@ export function ReagentsView({ alchemyReagents, saveAlchemyReagents, onDelete })
             <div>
               <label className="block text-sm mb-1">Refinement</label>
               <select
-                value={expanded.newRefinement || 'crude'}
-                onChange={(e) => setExpanded({...expanded, newRefinement: e.target.value})}
+                value={formState.newRefinement}
+                onChange={(e) => setFormState({...formState, newRefinement: e.target.value})}
                 className="w-full bg-gray-600 px-3 py-2 rounded"
               >
                 <option value="crude">Crude</option>
@@ -142,8 +166,8 @@ export function ReagentsView({ alchemyReagents, saveAlchemyReagents, onDelete })
               <label className="block text-sm mb-1">Quantity (Units)</label>
               <input
                 type="number"
-                value={expanded.newQuantity || '10'}
-                onChange={(e) => setExpanded({...expanded, newQuantity: e.target.value})}
+                value={formState.newQuantity}
+                onChange={(e) => setFormState({...formState, newQuantity: e.target.value})}
                 className="w-full bg-gray-600 px-3 py-2 rounded"
                 min="0"
               />
@@ -157,14 +181,13 @@ export function ReagentsView({ alchemyReagents, saveAlchemyReagents, onDelete })
                 <label key={role} className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
-                    checked={(expanded.newRoles || []).includes(role)}
+                    checked={formState.newRoles.includes(role)}
                     onChange={(e) => {
-                      const roles = expanded.newRoles || [];
-                      setExpanded({
-                        ...expanded,
+                      setFormState({
+                        ...formState,
                         newRoles: e.target.checked
-                          ? [...roles, role]
-                          : roles.filter(r => r !== role)
+                          ? [...formState.newRoles, role]
+                          : formState.newRoles.filter(r => r !== role)
                       });
                     }}
                     className="w-4 h-4"
@@ -182,14 +205,13 @@ export function ReagentsView({ alchemyReagents, saveAlchemyReagents, onDelete })
                 <label key={hazard} className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
-                    checked={(expanded.newHazards || []).includes(hazard)}
+                    checked={formState.newHazards.includes(hazard)}
                     onChange={(e) => {
-                      const hazards = expanded.newHazards || [];
-                      setExpanded({
-                        ...expanded,
+                      setFormState({
+                        ...formState,
                         newHazards: e.target.checked
-                          ? [...hazards, hazard]
-                          : hazards.filter(h => h !== hazard)
+                          ? [...formState.newHazards, hazard]
+                          : formState.newHazards.filter(h => h !== hazard)
                       });
                     }}
                     className="w-4 h-4"
@@ -211,7 +233,7 @@ export function ReagentsView({ alchemyReagents, saveAlchemyReagents, onDelete })
               onClick={() => {
                 setShowAdd(false);
                 setNewType('');
-                setExpanded({});
+                setFormState(defaultFormState);
               }}
               className="bg-red-600 px-4 py-2 rounded"
             >
@@ -234,7 +256,7 @@ export function ReagentsView({ alchemyReagents, saveAlchemyReagents, onDelete })
               </span>
               <span className="text-sm text-gray-400">{r.quantity}U</span>
               <span className="text-sm text-purple-400">{r.basePotency || 'P1'}</span>
-              {r.identificationLevel < 4 && (
+              {(r.identificationLevel ?? 4) < 4 && (
                 <span className="text-xs px-2 py-1 bg-yellow-600 rounded">
                   ID: {r.identificationLevel}/4
                 </span>
@@ -318,7 +340,7 @@ export function ReagentsView({ alchemyReagents, saveAlchemyReagents, onDelete })
                     <label className="block text-xs text-gray-400 mb-1">Refinement</label>
                     <select
                       value={r.refinement || 'crude'}
-                      onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, refinement: e.target.value} : x))}
+                      onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, refinement: e.target.value as 'crude' | 'prepared' | 'refined'} : x))}
                       className="w-full bg-gray-600 px-3 py-1 rounded"
                     >
                       <option value="crude">Crude</option>
@@ -393,7 +415,7 @@ export function ReagentsView({ alchemyReagents, saveAlchemyReagents, onDelete })
                     value={r.processingNotes || ''}
                     onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, processingNotes: e.target.value} : x))}
                     className="w-full bg-gray-600 px-3 py-2 rounded text-sm"
-                    rows="2"
+                    rows={2}
                     placeholder="e.g., must be ground, requires heating"
                   />
                 </div>

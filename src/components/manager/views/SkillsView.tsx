@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, Save, X, Trash2 } from 'lucide-react';
+import type { SkillsViewProps } from '../../../types/views';
 
 /**
  * SkillsView - Manages cooking skills table
@@ -7,7 +8,7 @@ import { Plus, Save, X, Trash2 } from 'lucide-react';
  * GM-only view for managing the list of cooking skills available
  * to workers. Non-GM users can view but not edit.
  */
-export function SkillsView({ cookingSkills, saveCookingSkills, gmMode, onDelete }) {
+export function SkillsView({ cookingSkills, saveCookingSkills, gmMode, onDelete }: SkillsViewProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [newSkillName, setNewSkillName] = useState('');
 

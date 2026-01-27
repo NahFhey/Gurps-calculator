@@ -1,6 +1,14 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, X, Trash2 } from 'lucide-react';
 import { toNumberOr } from '../../../utils/helpers';
+import type { TemplatesViewProps } from '../../../types/views';
+
+type TemplateType = 'weapons' | 'armor' | 'ranged' | 'explosives';
+
+interface MaterialRequirement {
+  type: string;
+  amount: number;
+}
 
 /**
  * TemplatesView - Manages custom item templates for crafting
@@ -9,9 +17,9 @@ import { toNumberOr } from '../../../utils/helpers';
  * Supports 4 template types: weapons, armor, ranged, and explosives.
  * Each template can specify required materials and type-specific properties.
  */
-export function TemplatesView({ customTemplates, materialTypes, saveCustomTemplates, onDelete }) {
-  const [templateType, setTemplateType] = useState('weapons');
-  const [expanded, setExpanded] = useState({});
+export function TemplatesView({ customTemplates, materialTypes, saveCustomTemplates, onDelete }: TemplatesViewProps) {
+  const [templateType, setTemplateType] = useState<TemplateType>('weapons');
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   // Template form state
   const [newTName, setNewTName] = useState('');
@@ -46,10 +54,10 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
       return;
     }
 
-    const baseTemplate = {
+    const baseTemplate: Record<string, unknown> = {
       weight: toNumberOr(newTWeight, 0),
       hp: Math.trunc(toNumberOr(newTHP, 0)),
-      materials: []
+      materials: [] as MaterialRequirement[]
     };
 
     if (templateType === 'weapons') {
@@ -91,7 +99,7 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
         ...customTemplates[templateType],
         [templateName]: baseTemplate
       }
-    });
+    } as typeof customTemplates);
 
     // Reset all form fields
     setNewTName('');
@@ -115,13 +123,15 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
     setNewTFuse('');
   }
 
+  const currentTemplates = customTemplates[templateType] || {};
+
   return (
     <div>
       <h2 className="text-xl font-bold mb-4">Templates</h2>
 
       <select
         value={templateType}
-        onChange={(e) => setTemplateType(e.target.value)}
+        onChange={(e) => setTemplateType(e.target.value as TemplateType)}
         className="w-full bg-gray-700 px-3 py-2 rounded mb-4"
       >
         <option value="weapons">Weapons</option>
@@ -200,7 +210,7 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
               onChange={(e) => setNewTNotes(e.target.value)}
               placeholder="Notes"
               className="w-full bg-gray-600 px-3 py-2 rounded"
-              rows="2"
+              rows={2}
             />
           </>
         )}
@@ -286,7 +296,7 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
                 onChange={(e) => setNewTNotes(e.target.value)}
                 placeholder="Notes"
                 className="bg-gray-600 px-3 py-2 rounded"
-                rows="1"
+                rows={1}
               />
             </div>
           </>
@@ -330,7 +340,7 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
               onChange={(e) => setNewTNotes(e.target.value)}
               placeholder="Notes"
               className="w-full bg-gray-600 px-3 py-2 rounded"
-              rows="2"
+              rows={2}
             />
           </>
         )}
@@ -372,7 +382,7 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
               onChange={(e) => setNewTNotes(e.target.value)}
               placeholder="Notes"
               className="w-full bg-gray-600 px-3 py-2 rounded"
-              rows="2"
+              rows={2}
             />
           </>
         )}
@@ -383,120 +393,121 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
       </div>
 
       <div className="space-y-2">
-        {Object.keys(customTemplates[templateType] || {}).map(n => (
-          <div key={n} className="bg-gray-700 rounded">
-            <div
-              className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-600"
-              onClick={() => setExpanded(p => ({...p, [n]: !p[n]}))}
-            >
-              <span className="flex-1 capitalize">{n}</span>
-              <span className="text-gray-400 text-sm">W: {customTemplates[templateType][n].weight}</span>
-              <span className="text-gray-400 text-sm">HP: {customTemplates[templateType][n].hp}</span>
-              <span className="text-gray-400 text-sm">
-                {customTemplates[templateType][n].materials?.length || 0} materials
-              </span>
-              <span className="text-gray-400">{expanded[n] ? '▼' : '▶'}</span>
-            </div>
+        {Object.keys(currentTemplates).map(n => {
+          const template = currentTemplates[n] as unknown as Record<string, unknown>;
+          const materials = (template.materials as MaterialRequirement[]) || [];
 
-            {expanded[n] && (
-              <div className="px-3 pb-3 space-y-3 border-t border-gray-600 pt-3">
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-semibold">Required Materials</label>
-                    <button
-                      onClick={() => {
-                        const old = customTemplates[templateType][n];
-                        const mats = old.materials ? [...old.materials] : [];
-                        mats.push({type: materialTypes[0]?.name || '', amount: 0});
+          return (
+            <div key={n} className="bg-gray-700 rounded">
+              <div
+                className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-600"
+                onClick={() => setExpanded(p => ({...p, [n]: !p[n]}))}
+              >
+                <span className="flex-1 capitalize">{n}</span>
+                <span className="text-gray-400 text-sm">W: {template.weight as number}</span>
+                <span className="text-gray-400 text-sm">HP: {template.hp as number}</span>
+                <span className="text-gray-400 text-sm">
+                  {materials.length} materials
+                </span>
+                <span className="text-gray-400">{expanded[n] ? '▼' : '▶'}</span>
+              </div>
 
-                        saveCustomTemplates({
-                          ...customTemplates,
-                          [templateType]: {
-                            ...customTemplates[templateType],
-                            [n]: { ...old, materials: mats }
-                          }
-                        });
-                      }}
-                      className="bg-blue-600 px-3 py-1 rounded text-sm"
-                    >
-                      <Plus size={14} className="inline" /> Add Material
-                    </button>
-                  </div>
-                  {(customTemplates[templateType][n].materials || []).length === 0 && (
-                    <div className="text-gray-500 text-sm italic">No materials required</div>
-                  )}
-                  {(customTemplates[templateType][n].materials || []).map((mat, idx) => (
-                    <div key={idx} className="flex gap-2 mb-2">
-                      <select
-                        value={mat.type || ''}
-                        onChange={(e) => {
-                          const old = customTemplates[templateType][n];
-                          const mats = [...old.materials];
-                          mats[idx] = {...mats[idx], type: e.target.value};
-
-                          saveCustomTemplates({
-                            ...customTemplates,
-                            [templateType]: {
-                              ...customTemplates[templateType],
-                              [n]: { ...old, materials: mats }
-                            }
-                          });
-                        }}
-                        className="flex-1 bg-gray-600 px-3 py-1 rounded"
-                      >
-                        <option value="">Select Type</option>
-                        {materialTypes.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
-                      </select>
-                      <input
-                        type="number"
-                        value={mat.amount}
-                        onChange={(e) => {
-                          const old = customTemplates[templateType][n];
-                          const mats = [...old.materials];
-                          mats[idx] = {...mats[idx], amount: Math.max(0, toNumberOr(e.target.value, 0))};
-
-                          saveCustomTemplates({
-                            ...customTemplates,
-                            [templateType]: {
-                              ...customTemplates[templateType],
-                              [n]: { ...old, materials: mats }
-                            }
-                          });
-                        }}
-                        placeholder="Amount (lbs)"
-                        className="w-32 bg-gray-600 px-3 py-1 rounded"
-                      />
+              {expanded[n] && (
+                <div className="px-3 pb-3 space-y-3 border-t border-gray-600 pt-3">
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="text-sm font-semibold">Required Materials</label>
                       <button
                         onClick={() => {
-                          const old = customTemplates[templateType][n];
-                          const mats = old.materials.filter((_, i) => i !== idx);
+                          const mats = [...materials];
+                          mats.push({type: materialTypes[0]?.name || '', amount: 0});
 
                           saveCustomTemplates({
                             ...customTemplates,
                             [templateType]: {
                               ...customTemplates[templateType],
-                              [n]: { ...old, materials: mats }
+                              [n]: { ...template, materials: mats }
                             }
-                          });
+                          } as typeof customTemplates);
                         }}
-                        className="text-red-400"
+                        className="bg-blue-600 px-3 py-1 rounded text-sm"
                       >
-                        <X size={18} />
+                        <Plus size={14} className="inline" /> Add Material
                       </button>
                     </div>
-                  ))}
-                </div>
+                    {materials.length === 0 && (
+                      <div className="text-gray-500 text-sm italic">No materials required</div>
+                    )}
+                    {materials.map((mat, idx) => (
+                      <div key={idx} className="flex gap-2 mb-2">
+                        <select
+                          value={mat.type || ''}
+                          onChange={(e) => {
+                            const mats = [...materials];
+                            mats[idx] = {...mats[idx], type: e.target.value};
 
-                <button
-                  onClick={() => onDelete('template', n, { templateType })}
-                  className="w-full bg-red-600 py-2 rounded text-sm"
-                >
-                  <Trash2 size={16} className="inline" /> Delete Template
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
+                            saveCustomTemplates({
+                              ...customTemplates,
+                              [templateType]: {
+                                ...customTemplates[templateType],
+                                [n]: { ...template, materials: mats }
+                              }
+                            } as typeof customTemplates);
+                          }}
+                          className="flex-1 bg-gray-600 px-3 py-1 rounded"
+                        >
+                          <option value="">Select Type</option>
+                          {materialTypes.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
+                        </select>
+                        <input
+                          type="number"
+                          value={mat.amount}
+                          onChange={(e) => {
+                            const mats = [...materials];
+                            mats[idx] = {...mats[idx], amount: Math.max(0, toNumberOr(e.target.value, 0))};
+
+                            saveCustomTemplates({
+                              ...customTemplates,
+                              [templateType]: {
+                                ...customTemplates[templateType],
+                                [n]: { ...template, materials: mats }
+                              }
+                            } as typeof customTemplates);
+                          }}
+                          placeholder="Amount (lbs)"
+                          className="w-32 bg-gray-600 px-3 py-1 rounded"
+                        />
+                        <button
+                          onClick={() => {
+                            const mats = materials.filter((_, i) => i !== idx);
+
+                            saveCustomTemplates({
+                              ...customTemplates,
+                              [templateType]: {
+                                ...customTemplates[templateType],
+                                [n]: { ...template, materials: mats }
+                              }
+                            } as typeof customTemplates);
+                          }}
+                          className="text-red-400"
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => onDelete('template', n, { templateType })}
+                    className="w-full bg-red-600 py-2 rounded text-sm"
+                  >
+                    <Trash2 size={16} className="inline" /> Delete Template
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

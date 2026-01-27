@@ -1,5 +1,5 @@
-import React from 'react';
 import { toNumberOr } from '../../../utils/helpers';
+import type { AlchemySettingsViewProps } from '../../../types/views';
 
 /**
  * AlchemySettingsView - Configure alchemy system defaults
@@ -10,7 +10,7 @@ import { toNumberOr } from '../../../utils/helpers';
  * - Auto-save recipes toggle
  * - Show obvious physical roles toggle
  */
-export function AlchemySettingsView({ alchemySettings, saveAlchemySettings }) {
+export function AlchemySettingsView({ alchemySettings, saveAlchemySettings }: AlchemySettingsViewProps) {
   return (
     <div>
       <h2 className="text-xl font-bold mb-4">Alchemy Settings</h2>

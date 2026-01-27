@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, Save, X, Trash2 } from 'lucide-react';
+import type { FoodTypesViewProps } from '../../../types/views';
+import type { FoodType } from '../../../types/campaign';
 
 /**
  * FoodTypesView - Manages food type definitions with colors
@@ -7,7 +9,7 @@ import { Plus, Save, X, Trash2 } from 'lucide-react';
  * Allows creating, editing, and deleting food types that are used
  * to categorize food items throughout the application.
  */
-export function FoodTypesView({ foodTypes, saveFoodTypes, onDelete }) {
+export function FoodTypesView({ foodTypes, saveFoodTypes, onDelete }: FoodTypesViewProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [newType, setNewType] = useState('');
   const [newTypeColor, setNewTypeColor] = useState('#60A5FA');
@@ -83,7 +85,7 @@ export function FoodTypesView({ foodTypes, saveFoodTypes, onDelete }) {
       <div className="space-y-2">
         {foodTypes.map(t => {
           const tName = typeof t === 'string' ? t : t.name;
-          const tColor = typeof t === 'object' ? t.color : '#60A5FA';
+          const tColor = typeof t === 'object' ? (t as FoodType).color : '#60A5FA';
 
           return (
             <div key={tName} className="flex items-center gap-4 bg-gray-700 p-3 rounded">

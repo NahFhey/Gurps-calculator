@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, Save, X, Trash2 } from 'lucide-react';
 import { toNumberOr } from '../../../utils/helpers';
+import type { KitchensViewProps } from '../../../types/views';
+import type { Kitchen } from '../../../types/campaign';
 
 /**
  * KitchensView - Manages kitchen facilities
@@ -8,12 +10,12 @@ import { toNumberOr } from '../../../utils/helpers';
  * Kitchens provide skill bonuses to cooking based on their rating.
  * Higher-rated kitchens improve cooking rolls and meal quality.
  */
-export function KitchensView({ kitchens, saveKitchens, onDelete }) {
+export function KitchensView({ kitchens, saveKitchens, onDelete }: KitchensViewProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [newKitchenName, setNewKitchenName] = useState('');
   const [newKitchenRating, setNewKitchenRating] = useState('0');
   const [newKitchenDescription, setNewKitchenDescription] = useState('');
-  const [expanded, setExpanded] = useState({});
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   function addKitchen() {
     if (!newKitchenName.trim()) {
@@ -27,7 +29,7 @@ export function KitchensView({ kitchens, saveKitchens, onDelete }) {
     }
 
     const rating = Math.max(0, Math.min(4, toNumberOr(newKitchenRating, 0)));
-    const newKitchen = {
+    const newKitchen: Kitchen = {
       id: crypto.randomUUID(),
       name: newKitchenName.trim(),
       rating: rating,
@@ -83,7 +85,7 @@ export function KitchensView({ kitchens, saveKitchens, onDelete }) {
               onChange={(e) => setNewKitchenDescription(e.target.value)}
               placeholder="Kitchen description or notes..."
               className="w-full bg-gray-600 px-3 py-2 rounded"
-              rows="2"
+              rows={2}
             />
           </div>
           <div className="flex gap-2">
@@ -161,7 +163,7 @@ export function KitchensView({ kitchens, saveKitchens, onDelete }) {
                       saveKitchens(kitchens.map(x => x.id === kitchen.id ? {...x, description: e.target.value} : x));
                     }}
                     className="w-full bg-gray-600 px-3 py-2 rounded"
-                    rows="2"
+                    rows={2}
                   />
                 </div>
                 <button

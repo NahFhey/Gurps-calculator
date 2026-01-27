@@ -1,9 +1,56 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { toNumberOr } from '../../../utils/helpers';
 import { INGREDIENT_ROLES, VECTORS } from '../../../constants';
 import { calculateFormulaStats } from '../../../utils/alchemy';
 import { TBBuilderPanel } from '../../alchemy/TBBuilderPanel';
+import type { FormulasViewProps, AlchemyFormula, FormulaIngredient, FormulaTrait } from '../../../types/views';
+
+interface LocalIngredient {
+  id: string;
+  reagentId: string;
+  role: string;
+  unitsUsed: number;
+  refinement: 'crude' | 'prepared' | 'refined';
+}
+
+interface FormulaStats {
+  tier: number;
+  calculatedTier?: number;
+  potencyLoad: number;
+  vector: string;
+  baseWR: number;
+  baseDM: number;
+  dominantAspect: string | null;
+  secondaryAspect: string | null;
+  basePotency: string;
+  finalPotency: string;
+  concentrationSteps: number;
+  totalConcentrationSteps?: number;
+  traitBudget: number;
+  hasMatchingStabilizer?: boolean;
+  roleCoverage: {
+    valid: boolean;
+    wrDelta: number;
+    messages: string[];
+  };
+  batchValidation: {
+    valid: boolean;
+    errors: string[];
+    warnings: string[];
+  };
+  hazardEvaluation: {
+    count: number;
+    hazards: string[];
+    details: Array<{
+      hazard: string;
+      source: string;
+      effect: string;
+      wrMod: number;
+      dmMod: number;
+    }>;
+  };
+}
 
 /**
  * FormulasView - Formula designer and management
@@ -15,13 +62,13 @@ import { TBBuilderPanel } from '../../alchemy/TBBuilderPanel';
  * - Trait budget system for customizing effects
  * - Validation system preventing invalid formulas
  */
-export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyFormulas, onDelete }) {
+export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyFormulas, onDelete }: FormulasViewProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [formulaName, setFormulaName] = useState('');
-  const [ingredients, setIngredients] = useState([]);
+  const [ingredients, setIngredients] = useState<LocalIngredient[]>([]);
   const [selectedVector, setSelectedVector] = useState('Potion');
-  const [formulaTraits, setFormulaTraits] = useState([]);
-  const [expandedFormula, setExpandedFormula] = useState(null);
+  const [formulaTraits, setFormulaTraits] = useState<FormulaTrait[]>([]);
+  const [expandedFormula, setExpandedFormula] = useState<string | null>(null);
 
   function addIngredient() {
     if (alchemyReagents.length === 0) {
@@ -37,11 +84,11 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
     }]);
   }
 
-  function removeIngredient(id) {
+  function removeIngredient(id: string) {
     setIngredients(ingredients.filter(i => i.id !== id));
   }
 
-  function updateIngredient(id, field, value) {
+  function updateIngredient(id: string, field: keyof LocalIngredient, value: string | number) {
     setIngredients(ingredients.map(i => i.id === id ? {...i, [field]: value} : i));
   }
 
@@ -57,7 +104,7 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
 
     const reagentsMap = new Map(alchemyReagents.map(r => [r.id, r]));
 
-    const ingredientsSnapshot = ingredients.map(ing => {
+    const ingredientsSnapshot: FormulaIngredient[] = ingredients.map(ing => {
       const r = reagentsMap.get(ing.reagentId);
       return {
         reagentId: ing.reagentId,
@@ -70,7 +117,7 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
     });
 
     const tempFormula = { ingredients: ingredientsSnapshot };
-    const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector);
+    const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector) as FormulaStats;
 
     // Check for critical validation failures
     if (!stats.batchValidation.valid) {
@@ -87,18 +134,18 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
       return;
     }
 
-    const newFormula = {
+    const newFormula: AlchemyFormula = {
       id: crypto.randomUUID(),
       name: formulaName,
       ingredients: ingredientsSnapshot,
-      tier: stats.tier, // Auto-calculated
+      tier: stats.tier,
       calculatedTier: stats.calculatedTier,
       potencyLoad: stats.potencyLoad,
       vector: stats.vector,
       baseWR: stats.baseWR,
       baseDM: stats.baseDM,
-      dominantAspect: stats.dominantAspect,
-      secondaryAspect: stats.secondaryAspect,
+      dominantAspect: stats.dominantAspect || undefined,
+      secondaryAspect: stats.secondaryAspect || undefined,
       basePotency: stats.basePotency,
       finalPotency: stats.finalPotency,
       concentrationSteps: stats.concentrationSteps,
@@ -106,7 +153,6 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
       traitBudget: stats.traitBudget,
       hasMatchingStabilizer: stats.hasMatchingStabilizer,
       traits: [...formulaTraits],
-      // Store validation results for future reference
       roleCoverage: stats.roleCoverage,
       hazards: stats.hazardEvaluation.hazards
     };
@@ -249,7 +295,7 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
             });
 
             const tempFormula = { ingredients: ingredientsSnapshot };
-            const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector);
+            const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector) as FormulaStats;
 
             return (
               <div className="space-y-3">
@@ -323,9 +369,10 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
                   </div>
                 </div>
 
+{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 <TBBuilderPanel
                   traitBudget={stats.traitBudget}
-                  initialTraits={formulaTraits}
+                  initialTraits={formulaTraits as any}
                   onUpdate={setFormulaTraits}
                 />
               </div>
@@ -368,7 +415,7 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
               <div>
                 <span className="text-gray-400">Potency:</span> <span className="text-green-400">{f.finalPotency || f.potency || 'P1'}</span> |
                 <span className="text-gray-400 ml-2">WR:</span> <span className="text-orange-400">{f.baseWR}</span> |
-                <span className="text-gray-400 ml-2">DM:</span> <span className="text-orange-400">{f.baseDM >= 0 ? '+' : ''}{f.baseDM}</span>
+                <span className="text-gray-400 ml-2">DM:</span> <span className="text-orange-400">{(f.baseDM ?? 0) >= 0 ? '+' : ''}{f.baseDM}</span>
               </div>
               <div className="text-xs text-gray-400 mt-2">
                 {f.ingredients.map(i => `${i.reagentName} (${i.role}, ${i.unitsUsed}U)`).join(', ')}
@@ -383,10 +430,11 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
 
             {expandedFormula === f.id && f.traits && (
               <div className="mt-3">
+{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 <TBBuilderPanel
                   traitBudget={f.traitBudget || 10}
-                  initialTraits={f.traits || []}
-                  onUpdate={(newTraits) => {
+                  initialTraits={(f.traits || []) as any}
+                  onUpdate={(newTraits: FormulaTrait[]) => {
                     const updatedFormulas = alchemyFormulas.map(formula =>
                       formula.id === f.id ? {...formula, traits: newTraits} : formula
                     );

@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, Save, X, Trash2 } from 'lucide-react';
 import { toNumberOr } from '../../../utils/helpers';
+import type { LabsViewProps } from '../../../types/views';
+import type { AlchemyLab } from '../../../types/campaign';
 
 /**
  * LabsView - Manages alchemy laboratory facilities
@@ -8,12 +10,12 @@ import { toNumberOr } from '../../../utils/helpers';
  * Labs provide skill bonuses to alchemy processing based on their rating.
  * Higher-rated labs reduce difficulty and improve success rates.
  */
-export function LabsView({ alchemyLabs, saveAlchemyLabs, onDelete }) {
+export function LabsView({ alchemyLabs, saveAlchemyLabs, onDelete }: LabsViewProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [newLabName, setNewLabName] = useState('');
   const [newLabRating, setNewLabRating] = useState('0');
   const [newLabDescription, setNewLabDescription] = useState('');
-  const [expanded, setExpanded] = useState({});
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   function addLab() {
     if (!newLabName.trim()) {
@@ -27,7 +29,7 @@ export function LabsView({ alchemyLabs, saveAlchemyLabs, onDelete }) {
     }
 
     const rating = Math.max(0, Math.min(4, toNumberOr(newLabRating, 0)));
-    const newLab = {
+    const newLab: AlchemyLab = {
       id: crypto.randomUUID(),
       name: newLabName.trim(),
       rating: rating,
@@ -83,7 +85,7 @@ export function LabsView({ alchemyLabs, saveAlchemyLabs, onDelete }) {
               onChange={(e) => setNewLabDescription(e.target.value)}
               placeholder="Lab description or notes..."
               className="w-full bg-gray-600 px-3 py-2 rounded"
-              rows="2"
+              rows={2}
             />
           </div>
           <div className="flex gap-2">
@@ -161,7 +163,7 @@ export function LabsView({ alchemyLabs, saveAlchemyLabs, onDelete }) {
                       saveAlchemyLabs(alchemyLabs.map(x => x.id === lab.id ? {...x, description: e.target.value} : x));
                     }}
                     className="w-full bg-gray-600 px-3 py-2 rounded"
-                    rows="2"
+                    rows={2}
                   />
                 </div>
                 <button

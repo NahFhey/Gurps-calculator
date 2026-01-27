@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, Save, X, Trash2 } from 'lucide-react';
 import { toNumberOr } from '../../../utils/helpers';
+import type { WorkersViewProps, Worker } from '../../../types/views';
 
 /**
  * WorkersView - Manages worker NPCs with skills
@@ -8,10 +9,16 @@ import { toNumberOr } from '../../../utils/helpers';
  * Workers can perform activities like cooking, crafting, alchemy, and gathering.
  * Each worker has multiple skill levels that affect success rates.
  */
-export function WorkersView({ workers, saveWorkers, onDelete }) {
+export function WorkersView({ workers, saveWorkers, onDelete }: WorkersViewProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [newType, setNewType] = useState('');
-  const [expanded, setExpanded] = useState({});
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  // Form state for new worker skills
+  const [newCooking, setNewCooking] = useState('10');
+  const [newDesigning, setNewDesigning] = useState('10');
+  const [newCrafting, setNewCrafting] = useState('10');
+  const [newAlchemy, setNewAlchemy] = useState('10');
 
   function addWorker() {
     if (!newType.trim()) {
@@ -24,23 +31,27 @@ export function WorkersView({ workers, saveWorkers, onDelete }) {
       return;
     }
 
-    const newWorker = {
+    const newWorker: Worker = {
       id: crypto.randomUUID(),
       name: newType.trim(),
       skills: {
-        cooking: toNumberOr(document.getElementById('newWorkerCooking').value, 10),
-        designing: toNumberOr(document.getElementById('newWorkerDesigning').value, 10),
-        crafting: toNumberOr(document.getElementById('newWorkerCrafting').value, 10),
-        alchemy: toNumberOr(document.getElementById('newWorkerAlchemy').value, 10)
+        cooking: toNumberOr(newCooking, 10),
+        designing: toNumberOr(newDesigning, 10),
+        crafting: toNumberOr(newCrafting, 10),
+        alchemy: toNumberOr(newAlchemy, 10)
       }
     };
 
     saveWorkers([...workers, newWorker]);
     setNewType('');
+    setNewCooking('10');
+    setNewDesigning('10');
+    setNewCrafting('10');
+    setNewAlchemy('10');
     setShowAdd(false);
   }
 
-  function updateSkill(workerId, skillName, value) {
+  function updateSkill(workerId: string, skillName: keyof NonNullable<Worker['skills']>, value: string) {
     saveWorkers(workers.map(w =>
       w.id === workerId
         ? {...w, skills: {...(w.skills || {}), [skillName]: toNumberOr(value, 10)}}
@@ -73,8 +84,8 @@ export function WorkersView({ workers, saveWorkers, onDelete }) {
               <label className="block text-xs text-gray-400 mb-1">Cooking</label>
               <input
                 type="number"
-                defaultValue="10"
-                id="newWorkerCooking"
+                value={newCooking}
+                onChange={(e) => setNewCooking(e.target.value)}
                 className="w-full bg-gray-600 px-3 py-2 rounded"
               />
             </div>
@@ -82,8 +93,8 @@ export function WorkersView({ workers, saveWorkers, onDelete }) {
               <label className="block text-xs text-gray-400 mb-1">Designing</label>
               <input
                 type="number"
-                defaultValue="10"
-                id="newWorkerDesigning"
+                value={newDesigning}
+                onChange={(e) => setNewDesigning(e.target.value)}
                 className="w-full bg-gray-600 px-3 py-2 rounded"
               />
             </div>
@@ -91,8 +102,8 @@ export function WorkersView({ workers, saveWorkers, onDelete }) {
               <label className="block text-xs text-gray-400 mb-1">Crafting</label>
               <input
                 type="number"
-                defaultValue="10"
-                id="newWorkerCrafting"
+                value={newCrafting}
+                onChange={(e) => setNewCrafting(e.target.value)}
                 className="w-full bg-gray-600 px-3 py-2 rounded"
               />
             </div>
@@ -100,8 +111,8 @@ export function WorkersView({ workers, saveWorkers, onDelete }) {
               <label className="block text-xs text-gray-400 mb-1">Alchemy</label>
               <input
                 type="number"
-                defaultValue="10"
-                id="newWorkerAlchemy"
+                value={newAlchemy}
+                onChange={(e) => setNewAlchemy(e.target.value)}
                 className="w-full bg-gray-600 px-3 py-2 rounded"
               />
             </div>

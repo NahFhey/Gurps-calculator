@@ -1,5 +1,5 @@
-import React from 'react';
 import { Trash2 } from 'lucide-react';
+import type { ProjectsViewProps } from '../../../types/views';
 
 /**
  * ProjectsView - Read-only view of crafting projects
@@ -7,11 +7,11 @@ import { Trash2 } from 'lucide-react';
  * Displays in-progress and completed crafting projects.
  * Allows deletion with material refund for incomplete projects.
  */
-export function ProjectsView({ crafts, onDelete }) {
+export function ProjectsView({ crafts, onDelete }: ProjectsViewProps) {
   const inProgress = crafts.filter(c => !c.completed);
   const completed = crafts.filter(c => c.completed);
 
-  function handleDelete(project) {
+  function handleDelete(project: typeof crafts[0]) {
     const projectName = project.name || `${project.currentQuality} ${project.template}`;
     onDelete('project', projectName, { id: project.id });
   }

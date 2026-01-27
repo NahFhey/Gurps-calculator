@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, Save, X, Trash2 } from 'lucide-react';
 import { toNumberOr } from '../../../utils/helpers';
+import type { MaterialTypesViewProps } from '../../../types/views';
 
 /**
  * MaterialTypesView - Manages crafting material types
@@ -12,7 +13,7 @@ import { toNumberOr } from '../../../utils/helpers';
  * - Weight/HP modifiers (percentage adjustments)
  * - Special effects
  */
-export function MaterialTypesView({ materialTypes, saveMaterialTypes, renameMaterialType, onDelete }) {
+export function MaterialTypesView({ materialTypes, saveMaterialTypes, renameMaterialType, onDelete }: MaterialTypesViewProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [newMatType, setNewMatType] = useState('');
   const [newMatDiff, setNewMatDiff] = useState('0');
@@ -21,8 +22,8 @@ export function MaterialTypesView({ materialTypes, saveMaterialTypes, renameMate
   const [newMatWeightMod, setNewMatWeightMod] = useState('0');
   const [newMatHPMod, setNewMatHPMod] = useState('0');
   const [newMatEffects, setNewMatEffects] = useState('');
-  const [expanded, setExpanded] = useState({});
-  const [draftMatTypeName, setDraftMatTypeName] = useState({});
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [draftMatTypeName, setDraftMatTypeName] = useState<Record<string, string | undefined>>({});
 
   function addMaterialType() {
     if (!newMatType.trim()) {
@@ -55,7 +56,7 @@ export function MaterialTypesView({ materialTypes, saveMaterialTypes, renameMate
     setShowAdd(false);
   }
 
-  function handleRename(oldName, newName) {
+  function handleRename(oldName: string, newName: string) {
     const trimmedName = newName.toLowerCase().trim();
 
     if (trimmedName === oldName) {
@@ -159,7 +160,7 @@ export function MaterialTypesView({ materialTypes, saveMaterialTypes, renameMate
               onChange={(e) => setNewMatEffects(e.target.value)}
               placeholder="Special effects or notes"
               className="w-full bg-gray-600 px-3 py-2 rounded"
-              rows="2"
+              rows={2}
             />
           </div>
           <div className="flex gap-2">
@@ -281,7 +282,7 @@ export function MaterialTypesView({ materialTypes, saveMaterialTypes, renameMate
                     ))}
                     placeholder="Special effects or notes"
                     className="w-full bg-gray-600 px-3 py-2 rounded"
-                    rows="2"
+                    rows={2}
                   />
                 </div>
                 <button
