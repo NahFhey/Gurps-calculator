@@ -1,5 +1,5 @@
-import { useMemo, useRef, useCallback, ReactNode, KeyboardEvent, MouseEvent, ChangeEvent } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useMemo, useRef, useCallback, useState, ReactNode, KeyboardEvent, MouseEvent, ChangeEvent } from 'react';
+import { ChevronLeft, ChevronRight, Plus, MoreVertical } from 'lucide-react';
 import { InventoryTab } from '../components/InventoryTab';
 import { ManagerTab } from '../components/ManagerTab';
 import { RulesTab } from '../components/RulesTab';
@@ -7,6 +7,12 @@ import { ChangelogTab } from '../components/ChangelogTab';
 import { CombatTab } from '../components/CombatTab';
 import { ActivitiesPanel } from '../components/activities';
 import { CharacterSheet } from '../components/character-sheet';
+import {
+  CharacterCreationModal,
+  CharacterContextMenu,
+  type CharacterContextMenuAction,
+} from '../components/character-management';
+import { duplicateCharacter, downloadCharacterJSON } from '../utils/characterManagement';
 import { parseCharacterText } from '../utils/characterImport';
 import { WeatherWidget, TimeDisplay, TimeControls } from '../components/header';
 import { CombatTile } from '../components/combat/CombatTile';
@@ -63,6 +69,22 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
     [characters]
   );
 
+  // Character creation modal state
+  const [showCreationModal, setShowCreationModal] = useState(false);
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    characterId: string;
+    characterName: string;
+    position: { x: number; y: number };
+  } | null>(null);
+
+  // Delete confirmation state
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    characterId: string;
+    characterName: string;
+  } | null>(null);
+
   // File import handling
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -96,6 +118,75 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
     },
     [actions]
   );
+
+  // Handle character creation
+  const handleCharacterCreated = useCallback(
+    (character: Character) => {
+      actions.addCharacter(character);
+      actions.selectCharacter(character.id);
+    },
+    [actions]
+  );
+
+  // Handle context menu open
+  const handleContextMenu = useCallback(
+    (event: MouseEvent<HTMLButtonElement>, character: Character) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setContextMenu({
+        characterId: character.id,
+        characterName: character.name,
+        position: { x: event.clientX, y: event.clientY },
+      });
+    },
+    []
+  );
+
+  // Handle context menu actions
+  const handleContextMenuAction = useCallback(
+    (action: CharacterContextMenuAction) => {
+      const character = characters.find((c) => c.id === action.characterId);
+      if (!character) return;
+
+      switch (action.type) {
+        case 'view':
+          actions.selectCharacter(action.characterId);
+          break;
+        case 'edit':
+          actions.selectCharacter(action.characterId);
+          // TODO: In future, could open edit mode on character sheet
+          break;
+        case 'duplicate': {
+          const duplicated = duplicateCharacter(character);
+          actions.addCharacter(duplicated);
+          actions.selectCharacter(duplicated.id);
+          break;
+        }
+        case 'export':
+          downloadCharacterJSON(character);
+          break;
+        case 'delete':
+          setDeleteConfirm({
+            characterId: action.characterId,
+            characterName: character.name,
+          });
+          break;
+      }
+    },
+    [actions, characters]
+  );
+
+  // Handle delete confirmation
+  const handleDeleteConfirm = useCallback(() => {
+    if (deleteConfirm) {
+      // If deleting the selected character, clear selection
+      if (selectedCharacterId === deleteConfirm.characterId) {
+        actions.selectCharacter(null);
+      }
+      actions.removeCharacter(deleteConfirm.characterId);
+      setDeleteConfirm(null);
+    }
+  }, [actions, deleteConfirm, selectedCharacterId]);
 
   // Compute grid columns based on panel states
   const isPartyCollapsed = layoutState.partyColumn === 'collapsed';
@@ -188,6 +279,13 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
             <div className="space-y-2">
               {sortedCharacters.map((character: Character) => {
                 const isSelected = character.id === selectedCharacterId;
+                // Get HP/FP from gcsData if available
+                const hpDisplay = character.gcsData
+                  ? `${character.gcsData.pools.HP.current}/${character.gcsData.pools.HP.max}`
+                  : '—';
+                const fpDisplay = character.gcsData
+                  ? `${character.gcsData.pools.FP.current}/${character.gcsData.pools.FP.max}`
+                  : '—';
                 return (
                   <div
                     key={character.id}
@@ -208,10 +306,21 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <div className="text-sm font-semibold text-gray-100">{character.name}</div>
-                        <div className="text-xs text-gray-400">HP/FP —</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold text-gray-100 truncate">{character.name}</div>
+                        <div className="text-xs text-gray-400">
+                          HP {hpDisplay} / FP {fpDisplay}
+                        </div>
                       </div>
+                      <button
+                        type="button"
+                        onClick={(e) => handleContextMenu(e, character)}
+                        className="p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-gray-200 flex-shrink-0"
+                        title="Character options"
+                        data-testid={`character-menu-${character.id}`}
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2">
                       <button
@@ -254,12 +363,21 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                 );
               })}
 
-              {/* Import Character Button in Party Column */}
-              <div className="mt-4 pt-4 border-t border-gray-700">
+              {/* Add Character and Import Buttons */}
+              <div className="mt-4 pt-4 border-t border-gray-700 space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreationModal(true)}
+                  className="w-full flex items-center justify-center gap-2 rounded border border-blue-500 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-200 hover:bg-blue-500/20"
+                  data-testid="add-character-button"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Character
+                </button>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".txt,.gcs"
+                  accept=".txt,.gcs,.json"
                   onChange={handleFileChange}
                   className="hidden"
                   data-testid="character-import-input"
@@ -270,7 +388,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                   className="w-full rounded border border-gray-500 bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-100 hover:border-gray-300"
                   data-testid="character-import-button"
                 >
-                  Import Character
+                  Quick Import
                 </button>
               </div>
             </div>
@@ -388,6 +506,56 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
             )}
             <div className="p-6">
               {layoutState.modalContent}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Character Creation Modal */}
+      {showCreationModal && (
+        <CharacterCreationModal
+          onClose={() => setShowCreationModal(false)}
+          onCharacterCreated={handleCharacterCreated}
+        />
+      )}
+
+      {/* Character Context Menu */}
+      {contextMenu && (
+        <CharacterContextMenu
+          characterId={contextMenu.characterId}
+          characterName={contextMenu.characterName}
+          position={contextMenu.position}
+          onAction={handleContextMenuAction}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div
+            className="bg-gray-800 rounded-lg border border-gray-600 w-full max-w-md m-4 p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold text-gray-100 mb-4">Delete Character</h2>
+            <p className="text-gray-300 mb-6">
+              Are you sure you want to delete <strong>{deleteConfirm.characterName}</strong>? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(null)}
+                className="px-4 py-2 rounded border border-gray-600 text-gray-300 hover:border-gray-500 hover:bg-gray-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-500 font-semibold"
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>

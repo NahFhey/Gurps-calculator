@@ -102,14 +102,19 @@
 
 ---
 
-## Phase 6: Character Management 🔲 PENDING
+## Phase 6: Character Management ✅ COMPLETE
 
-- [ ] Add Character button in Party Column
-- [ ] Character creation options:
-  - [ ] Blank character
-  - [ ] From template
-  - [ ] Import from GCS
-- [ ] Character context menu (View, Edit, Duplicate, Export, Delete)
+- [x] Add Character button in Party Column
+- [x] Character creation options:
+  - [x] Blank character (create with default attributes)
+  - [x] From template (infrastructure with 6 template types: Fighter, Wizard, Rogue, Cleric, Ranger, Bard)
+  - [x] Import from file (GCS text format or JSON)
+- [x] Character context menu (View, Edit, Duplicate, Export JSON, Delete)
+- [x] Character utility functions (`src/utils/characterManagement.ts`)
+- [x] Delete confirmation dialog
+- [x] HP/FP display in party character cards
+
+**Commit:** `bc0da2a Feat: Implement Phase 6 - Character Management`
 
 ---
 
@@ -145,6 +150,15 @@
 - `src/components/location/LocationManager.tsx` - GM tool for managing locations
 - `src/components/location/TravelPanel.tsx` - Travel between locations component
 - `src/components/location/index.ts` - Location component exports
+
+### Phase 6 Files (Complete)
+- `src/utils/characterManagement.ts` - Character creation, duplication, and export utilities
+- `src/components/character-management/CharacterCreationModal.tsx` - Modal for creating new characters
+- `src/components/character-management/CharacterContextMenu.tsx` - Right-click context menu for characters
+- `src/components/character-management/index.ts` - Component exports
+
+### Files Modified in Phase 6
+- `src/unified/UnifiedShell.tsx` - Added character management UI (Add button, context menu, delete confirmation, HP/FP display)
 
 ### Files Modified in Phase 2
 - `src/unified/UnifiedShell.tsx` - Layout restructure with new header, collapsible party, CombatTile
