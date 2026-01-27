@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, X, Edit2 } from 'lucide-react';
+import { useState, ChangeEvent } from 'react';
+import { Plus, X } from 'lucide-react';
 import ConditionBadge from './ConditionBadge';
 import {
   getAllConditions,
@@ -11,19 +11,35 @@ import {
   createConditionInstance
 } from '../../utils/conditionsEngine';
 
+interface ConditionInstance {
+  instanceId: string;
+  conditionId: string;
+  label: string;
+  expiresAt?: number | null;
+  severity?: number | null;
+  source?: string | null;
+  notes?: string | null;
+}
+
+interface Participant {
+  id: string;
+  name: string;
+  conditions?: ConditionInstance[];
+}
+
+interface ConditionsPanelProps {
+  participant: Participant;
+  currentRound: number;
+  currentTurn: number;
+  onAddCondition: (conditionInstance: ConditionInstance) => void;
+  onRemoveCondition: (conditionInstanceId: string) => void;
+  onUpdateCondition?: (conditionInstanceId: string, newDuration: number) => void;
+}
+
 /**
  * Phase 6: Conditions Panel Component
  *
  * Allows GM to add, remove, and edit conditions on the current actor.
- *
- * @param {object} props
- * @param {object} props.participant - Current combatant
- * @param {number} props.currentRound - Current round
- * @param {number} props.currentTurn - Current turn index
- * @param {function} props.onAddCondition - (conditionInstance) => void
- * @param {function} props.onRemoveCondition - (conditionInstanceId) => void
- * @param {function} props.onUpdateCondition - (conditionInstanceId, newDuration) => void
- * @returns {JSX.Element}
  */
 export default function ConditionsPanel({
   participant,
@@ -32,16 +48,16 @@ export default function ConditionsPanel({
   onAddCondition,
   onRemoveCondition,
   onUpdateCondition
-}) {
+}: ConditionsPanelProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedConditionId, setSelectedConditionId] = useState('');
   const [severity, setSeverity] = useState('');
-  const [durationType, setDurationType] = useState(DurationType.PERMANENT);
+  const [durationType, setDurationType] = useState<string>(DurationType.PERMANENT);
   const [durationValue, setDurationValue] = useState('1');
   const [source, setSource] = useState('');
   const [notes, setNotes] = useState('');
 
-  const activeConditions = getActiveConditions(participant);
+  const activeConditions = getActiveConditions(participant) as ConditionInstance[];
   const availableConditions = getAllConditions();
 
   const handleAddCondition = () => {
@@ -57,7 +73,7 @@ export default function ConditionsPanel({
     }
 
     // Build duration
-    let duration = null;
+    let duration: { type: string; value: number | null } | null = null;
     if (durationType !== DurationType.PERMANENT && durationType !== DurationType.UNTIL_END_OF_COMBAT) {
       const value = parseInt(durationValue, 10);
       if (isNaN(value) || value <= 0) {
@@ -97,7 +113,7 @@ export default function ConditionsPanel({
     setShowAddForm(false);
   };
 
-  const handleRemoveCondition = (conditionInstanceId) => {
+  const handleRemoveCondition = (conditionInstanceId: string) => {
     if (confirm('Remove this condition?')) {
       onRemoveCondition(conditionInstanceId);
     }
@@ -149,7 +165,7 @@ export default function ConditionsPanel({
             </label>
             <select
               value={selectedConditionId}
-              onChange={(e) => setSelectedConditionId(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedConditionId(e.target.value)}
               className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white"
             >
               <option value="">-- Select Condition --</option>
@@ -173,7 +189,7 @@ export default function ConditionsPanel({
               </label>
               <select
                 value={durationType}
-                onChange={(e) => setDurationType(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) => setDurationType(e.target.value)}
                 className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white"
               >
                 <option value={DurationType.PERMANENT}>Permanent</option>
@@ -191,7 +207,7 @@ export default function ConditionsPanel({
                 <input
                   type="number"
                   value={durationValue}
-                  onChange={(e) => setDurationValue(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setDurationValue(e.target.value)}
                   min="1"
                   className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white"
                   placeholder="1"
@@ -208,7 +224,7 @@ export default function ConditionsPanel({
               <input
                 type="number"
                 value={severity}
-                onChange={(e) => setSeverity(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setSeverity(e.target.value)}
                 min="1"
                 className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white"
                 placeholder="Leave blank for none"
@@ -222,7 +238,7 @@ export default function ConditionsPanel({
               <input
                 type="text"
                 value={source}
-                onChange={(e) => setSource(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setSource(e.target.value)}
                 className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white"
                 placeholder="e.g., Fireball, Goblin #1"
               />
@@ -236,7 +252,7 @@ export default function ConditionsPanel({
             <input
               type="text"
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setNotes(e.target.value)}
               className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white"
               placeholder="Additional notes"
             />

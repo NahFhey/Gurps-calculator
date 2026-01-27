@@ -1,12 +1,41 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { History, Download, Trash2, Eye, EyeOff } from 'lucide-react';
 import { useCombat } from '../../contexts/CombatContext';
 import { exportCombatLog } from '../../utils/combatHelpers';
 
+interface LogEntry {
+  type: string;
+  timestamp: number;
+  round?: number;
+  actorName?: string;
+  oldValue?: number;
+  newValue?: number;
+  note?: string;
+  message?: string;
+}
+
+interface Participant {
+  id: string;
+  name: string;
+  category: string;
+  currentHP: number;
+  hp: number;
+}
+
+interface CombatHistoryEntry {
+  id: string;
+  name: string;
+  startTime: number;
+  endTime: number;
+  currentRound: number;
+  participants: Participant[];
+  log: LogEntry[];
+}
+
 /**
  * Format log entry for display
  */
-function formatLogEntry(entry) {
+function formatLogEntry(entry: LogEntry): string {
   const time = new Date(entry.timestamp).toLocaleTimeString();
 
   switch (entry.type) {
@@ -37,13 +66,13 @@ function formatLogEntry(entry) {
  */
 export default function CombatHistory() {
   const { combatHistory, saveCombatHistory } = useCombat();
-  const [expandedId, setExpandedId] = useState(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const toggleExpand = (id) => {
+  const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
   };
 
-  const handleExport = (combat) => {
+  const handleExport = (combat: CombatHistoryEntry) => {
     const text = exportCombatLog(combat.log, {
       name: combat.name,
       date: combat.startTime
@@ -58,12 +87,12 @@ export default function CombatHistory() {
     URL.revokeObjectURL(url);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = (id: string) => {
     if (!confirm('Delete this combat history entry?')) return;
-    saveCombatHistory(combatHistory.filter(c => c.id !== id));
+    saveCombatHistory(combatHistory.filter((c: CombatHistoryEntry) => c.id !== id));
   };
 
-  const formatDuration = (startTime, endTime) => {
+  const formatDuration = (startTime: number, endTime: number): string => {
     const duration = endTime - startTime;
     const minutes = Math.floor(duration / 60000);
     const seconds = Math.floor((duration % 60000) / 1000);
@@ -88,7 +117,7 @@ export default function CombatHistory() {
       </div>
 
       <div className="space-y-2">
-        {combatHistory.map((combat) => (
+        {combatHistory.map((combat: CombatHistoryEntry) => (
           <div key={combat.id} className="bg-gray-800 rounded-lg overflow-hidden">
             {/* Header */}
             <div

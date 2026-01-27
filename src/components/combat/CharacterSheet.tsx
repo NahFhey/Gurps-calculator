@@ -1,21 +1,50 @@
-import React, { useState, memo } from 'react';
-import PropTypes from 'prop-types';
+import { useState, memo } from 'react';
 import { Edit2, Trash2, Copy, ChevronDown, ChevronUp } from 'lucide-react';
 import { calculateHPStatus } from '../../utils/combatHelpers';
+
+type CharacterCategory = 'player' | 'ally' | 'enemy' | 'object';
+
+interface Character {
+  id: string;
+  name: string;
+  category: CharacterCategory;
+  st: number;
+  dx: number;
+  iq: number;
+  ht: number;
+  hp: number;
+  currentHP?: number;
+  fp?: number;
+  mp?: number;
+  basicSpeed: number;
+  basicMove?: number;
+  dodge?: number;
+  parry?: number;
+  block?: number;
+  dr?: number;
+  notes?: string;
+}
+
+interface CharacterSheetProps {
+  character: Character;
+  onEdit: () => void;
+  onDelete: () => void;
+  onDuplicate: () => void;
+}
 
 /**
  * Character Sheet Display Component
  * Shows character info in library with expand/collapse and action buttons
  * Memoized to prevent re-renders when sibling list items change
  */
-function CharacterSheet({ character, onEdit, onDelete, onDuplicate }) {
+function CharacterSheet({ character, onEdit, onDelete, onDuplicate }: CharacterSheetProps) {
   const [expanded, setExpanded] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const hpStatus = calculateHPStatus(character.currentHP || character.hp, character.hp);
 
   // Category color coding
-  const getCategoryColor = (category) => {
+  const getCategoryColor = (category: CharacterCategory): string => {
     switch (category) {
       case 'player': return 'text-blue-400';
       case 'ally': return 'text-green-400';
@@ -174,7 +203,7 @@ function CharacterSheet({ character, onEdit, onDelete, onDuplicate }) {
  * - Character ID and basic properties haven't changed
  * - Callback functions are the same reference (passed from parent)
  */
-const arePropsEqual = (prevProps, nextProps) => {
+const arePropsEqual = (prevProps: CharacterSheetProps, nextProps: CharacterSheetProps): boolean => {
   return (
     prevProps.character?.id === nextProps.character?.id &&
     prevProps.character?.name === nextProps.character?.name &&
@@ -195,29 +224,3 @@ const arePropsEqual = (prevProps, nextProps) => {
 };
 
 export default memo(CharacterSheet, arePropsEqual);
-
-CharacterSheet.propTypes = {
-  character: PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    name: PropTypes.string.isRequired,
-    category: PropTypes.oneOf(['player', 'ally', 'enemy', 'object']).isRequired,
-    st: PropTypes.number.isRequired,
-    dx: PropTypes.number.isRequired,
-    iq: PropTypes.number.isRequired,
-    ht: PropTypes.number.isRequired,
-    hp: PropTypes.number.isRequired,
-    currentHP: PropTypes.number,
-    fp: PropTypes.number,
-    mp: PropTypes.number,
-    basicSpeed: PropTypes.number.isRequired,
-    basicMove: PropTypes.number,
-    dodge: PropTypes.number,
-    parry: PropTypes.number,
-    block: PropTypes.number,
-    dr: PropTypes.number,
-    notes: PropTypes.string
-  }).isRequired,
-  onEdit: PropTypes.func.isRequired,
-  onDelete: PropTypes.func.isRequired,
-  onDuplicate: PropTypes.func.isRequired
-};

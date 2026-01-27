@@ -1,6 +1,29 @@
-import React, { useState } from 'react';
+import { useState, ChangeEvent } from 'react';
 import { Plus, X } from 'lucide-react';
-import { sumModifiers, getPresetModifier } from '../../utils/modifiers';
+import { sumModifiers } from '../../utils/modifiers';
+
+interface Modifier {
+  label: string;
+  value: number;
+}
+
+interface PresetModifier {
+  label: string;
+  value?: number;
+  requireInput?: boolean;
+  placeholder?: string;
+  note?: string;
+}
+
+interface ModifierStackProps {
+  baseValue: number;
+  baseLabel?: string;
+  modifiers?: Modifier[];
+  lockedModifiers?: Modifier[];
+  onModifiersChange: (modifiers: Modifier[]) => void;
+  presets?: Record<string, PresetModifier> | null;
+  allowCustom?: boolean;
+}
 
 /**
  * ModifierStack Component
@@ -15,7 +38,7 @@ export default function ModifierStack({
   onModifiersChange,
   presets = null,
   allowCustom = true
-}) {
+}: ModifierStackProps) {
   const [showPresets, setShowPresets] = useState(false);
   const [customLabel, setCustomLabel] = useState('');
   const [customValue, setCustomValue] = useState('');
@@ -25,19 +48,19 @@ export default function ModifierStack({
   const effective = baseValue + total;
 
   // Add a modifier to the stack
-  const addModifier = (label, value) => {
+  const addModifier = (label: string, value: number) => {
     const newModifiers = [...modifiers, { label, value }];
     onModifiersChange(newModifiers);
   };
 
   // Remove a modifier from the stack
-  const removeModifier = (index) => {
+  const removeModifier = (index: number) => {
     const newModifiers = modifiers.filter((_, i) => i !== index);
     onModifiersChange(newModifiers);
   };
 
   // Handle preset selection
-  const handlePresetSelect = (presetKey, presetData) => {
+  const handlePresetSelect = (presetKey: string, presetData: PresetModifier) => {
     if (presetData.requireInput) {
       // Show input prompt for value
       const value = prompt(`${presetData.label}\n${presetData.placeholder}:`);
@@ -49,7 +72,7 @@ export default function ModifierStack({
       }
     } else {
       // Direct add
-      addModifier(presetData.label, presetData.value);
+      addModifier(presetData.label, presetData.value ?? 0);
     }
     setShowPresets(false);
   };
@@ -153,8 +176,8 @@ export default function ModifierStack({
                     <div className="flex justify-between items-center">
                       <span>{preset.label}</span>
                       {!preset.requireInput && (
-                        <span className={`font-semibold ${preset.value >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {preset.value >= 0 ? '+' : ''}{preset.value}
+                        <span className={`font-semibold ${(preset.value ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {(preset.value ?? 0) >= 0 ? '+' : ''}{preset.value}
                         </span>
                       )}
                       {preset.requireInput && (
@@ -188,7 +211,7 @@ export default function ModifierStack({
           <input
             type="text"
             value={customLabel}
-            onChange={(e) => setCustomLabel(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomLabel(e.target.value)}
             placeholder="Modifier name"
             className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
           />
@@ -196,7 +219,7 @@ export default function ModifierStack({
             <input
               type="number"
               value={customValue}
-              onChange={(e) => setCustomValue(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomValue(e.target.value)}
               placeholder="Value"
               className="flex-1 px-3 py-2 bg-gray-700 rounded text-sm"
             />
