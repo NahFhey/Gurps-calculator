@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-01-27
 **Branch:** `claude/review-project-status-BbPCp`
-**Status:** Phase 8d Complete - CombatTracker Decomposed to TypeScript
+**Status:** Phase 9 Complete - All Legacy Tabs Migrated to TypeScript with Direct Store Access
 
 ---
 
@@ -106,24 +106,24 @@ src/
 │   │   ├── views/
 │   │   │   └── [5 TypeScript view components]
 │   │   └── [other combat components]
-│   ├── AlchemyTab.jsx (uses bridge context)
-│   ├── CombatTab.jsx (uses bridge context)
-│   ├── CookingTab.jsx (uses bridge context)
-│   ├── CraftingTab.jsx (uses bridge context)
-│   ├── InventoryTab.jsx (uses bridge context)
+│   ├── AlchemyTab.tsx (170 lines - direct store)
+│   ├── CombatTab.tsx (130 lines - direct store)
+│   ├── CookingTab.tsx (880 lines - direct store)
+│   ├── CraftingTab.tsx (980 lines - direct store)
+│   ├── InventoryTab.tsx (460 lines - direct store)
 │   └── ... (other components)
 ```
 
-### Bridge Contexts (Legacy - Still in Use)
-These are INTENTIONALLY kept for backward compatibility:
-- `src/contexts/AlchemyContext.jsx` - Used by AlchemyTab
-- `src/contexts/CombatContext.jsx` - Used by CombatTab, CharacterLibrary, etc.
-- `src/contexts/ConfigContext.jsx` - Used by multiple legacy tabs
-- `src/contexts/CraftingContext.jsx` - Used by CraftingTab
+### Bridge Contexts (Legacy - Now Candidates for Removal)
+These bridge contexts are no longer used by main tabs:
+- `src/contexts/AlchemyContext.jsx` - Previously used by AlchemyTab *(now direct store)*
+- `src/contexts/CombatContext.jsx` - Still used by CharacterLibrary, EncounterSetup
+- `src/contexts/ConfigContext.jsx` - Previously used by legacy tabs *(now direct store)*
+- `src/contexts/CraftingContext.jsx` - Previously used by CraftingTab *(now direct store)*
 - `src/contexts/GatheringContext.jsx` - Not used (candidate for removal)
-- `src/contexts/InventoryContext.jsx` - Used by CookingTab, CraftingTab, InventoryTab
+- `src/contexts/InventoryContext.jsx` - Previously used by legacy tabs *(now direct store)*
 
-**Note:** Do NOT remove these until legacy tabs are migrated to UnifiedShell pattern.
+**Note:** Most tabs now use useCampaignStore() directly. Contexts kept for combat sub-components.
 
 ---
 
@@ -253,17 +253,10 @@ These are INTENTIONALLY kept for backward compatibility:
 
 **Files Still to Convert (Lower Priority):**
 ```bash
-# Legacy tabs (bridge context dependent)
-src/components/AlchemyTab.jsx
-src/components/CombatTab.jsx
-src/components/CookingTab.jsx
-src/components/CraftingTab.jsx
-src/components/InventoryTab.jsx
-
 # Alchemy subcomponents
 src/components/alchemy/*.jsx (6 files)
 
-# Contexts (legacy)
+# Contexts (legacy - candidates for removal)
 src/contexts/*.jsx (6 files)
 
 # Other
@@ -273,12 +266,11 @@ src/index.jsx
 
 ---
 
-### Phase 8: God Component Decomposition 🚧 IN PROGRESS
+### Phase 8: God Component Decomposition ✅ COMPLETE
 **Priority:** High
-**Estimated Time:** 1-2 weeks
 **Impact:** Maintainability, testability, AI-readability
 
-Apply the same decomposition pattern used for ManagerTab to remaining god components:
+Applied the decomposition pattern used for ManagerTab to all major god components:
 
 #### 8a. GatheringManager.jsx (1,754 lines) ✅ COMPLETE
 **See Phase 8a completion above for details.**
@@ -344,27 +336,34 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 
 ---
 
-### Phase 9: Legacy Tab Migration (Major Refactor)
-**Priority:** Low (current tabs work fine)
-**Estimated Time:** 2-3 weeks
-**Impact:** Removes bridge contexts, simplifies architecture
+### Phase 9: Legacy Tab Migration ✅ COMPLETE
+**Commits:** 31b1564, cb0630b
 
-**Goal:** Migrate remaining tabs to UnifiedShell pattern
+**Achievement: All 5 legacy tabs migrated to TypeScript with direct store access**
 
-**Tabs to Migrate:**
-1. AlchemyTab.jsx → Use useCampaignStore() directly
-2. CombatTab.jsx → Use useCampaignStore() directly
-3. CookingTab.jsx → Use useCampaignStore() directly
-4. CraftingTab.jsx → Use useCampaignStore() directly
-5. InventoryTab.jsx → Use useCampaignStore() directly
+**All Tabs Migrated:**
+1. AlchemyTab.jsx → AlchemyTab.tsx (93 → 170 lines, direct useCampaignStore)
+2. CombatTab.jsx → CombatTab.tsx (127 → 130 lines, direct useCampaignStore)
+3. CookingTab.jsx → CookingTab.tsx (910 → 880 lines, direct useCampaignStore)
+4. CraftingTab.jsx → CraftingTab.tsx (1003 → 980 lines, direct useCampaignStore)
+5. InventoryTab.jsx → InventoryTab.tsx (508 → 460 lines, direct useCampaignStore)
 
-**After Migration:**
-- Remove bridge context files (`src/contexts/*.jsx`)
-- Remove bridge context providers from App.jsx (already removed)
-- Simplify state access patterns
-- Reduce bundle size further
+**Migration Pattern Applied:**
+- Replace bridge context imports with useCampaignStore
+- Use denormalizeObject/normalizeArray for state conversion
+- Derive workers from characters entity
+- Add TypeScript interfaces for all data types
+- Use useCallback for save functions
 
-**Note:** This is low priority because current dual architecture works fine.
+**Benefits Achieved:**
+- ✅ Direct store access (no bridge overhead)
+- ✅ Full TypeScript type safety
+- ✅ Consistent state patterns
+- ✅ Bridge contexts now candidates for removal
+- ✅ Build passes (624KB bundle)
+
+**Remaining Bridge Context Usage:**
+- CombatContext still used by CharacterLibrary, EncounterSetup (combat sub-components)
 
 ---
 
@@ -445,22 +444,27 @@ describe('FoodTypesView', () => {
 
 ### For Immediate Next Session:
 1. ✅ **Review this document** - Understand current state
-2. 🎯 **Phase 8 Complete** - All major god components decomposed
-3. 📋 **Choose next phase** - Legacy tab migration or testing
+2. 🎯 **Phase 9 Complete** - All legacy tabs use direct store access
+3. 📋 **Choose next phase** - Context cleanup or testing
 4. 🚀 **Start incremental work** - Small commits, test often
 
-### Option A: Continue Decomposition (Phase 8e)
+### Option A: Context Cleanup
+```bash
+# Remove unused bridge contexts:
+# - GatheringContext.jsx (unused)
+# - AlchemyContext.jsx (no longer used by tabs)
+# - ConfigContext.jsx (no longer used by tabs)
+# - CraftingContext.jsx (no longer used by tabs)
+# - InventoryContext.jsx (no longer used by tabs)
+
+# Keep CombatContext.jsx - still used by combat sub-components
+```
+
+### Option B: Continue Decomposition (Phase 8e)
 ```bash
 # ActionPanel.tsx - combat action workflow
 # Complex component with multiple sub-workflows
 # Could extract AttackWorkflow, DefenseWorkflow, DamageWorkflow views
-```
-
-### Option B: Legacy Tab Migration (Phase 9)
-```bash
-# Lower priority - current tabs work fine
-# Start with AlchemyTab.jsx or InventoryTab.jsx
-# Migrate from bridge context to useCampaignStore()
 ```
 
 ### Option C: Testing & Documentation (Phase 10)
@@ -488,11 +492,12 @@ describe('FoodTypesView', () => {
 ### Architecture Health
 - ✅ Single source of truth (CampaignStore)
 - ✅ Normalized state pattern
-- ✅ Component decomposition well underway (5 god components done)
-- ✅ TypeScript for manager views + ManagerTab + gathering views + dayplanner views + rules views + combat views
-- ✅ 58 components converted to TypeScript (38 + 7 gathering + 5 dayplanner + 3 rules + 5 combat views)
-- ⚠️ Bridge contexts still present (intentional)
-- ⚠️ Some legacy tabs still JSX (lower priority)
+- ✅ Component decomposition complete (5 god components done)
+- ✅ TypeScript for all major components
+- ✅ 63 components converted to TypeScript (58 + 5 legacy tabs)
+- ✅ All main tabs use direct store access
+- ⚠️ Bridge contexts still present (candidates for removal)
+- ⚠️ Combat sub-components still use bridge contexts
 
 ### Developer Experience
 - ✅ AI-readable component sizes
@@ -513,8 +518,9 @@ describe('FoodTypesView', () => {
 - **Architecture Simplifier** - Removed bridge pattern from App.jsx ✅
 - **Bundle Optimizer** - Reduced bundle by 22% ✅
 - **Documentation Master** - Created comprehensive guides ✅
-- **Type Safety Pioneer** - Converted 58 components to TypeScript ✅
+- **Type Safety Pioneer** - Converted 63 components to TypeScript ✅
 - **Combat System Master** - Full TypeScript coverage for combat (22 files) ✅
+- **Legacy Liberator** - Migrated all 5 legacy tabs to direct store access ✅
 
 ---
 
@@ -547,6 +553,6 @@ describe('FoodTypesView', () => {
 
 **Current Branch:** `claude/review-project-status-BbPCp`
 **Build Status:** ✅ Passing (624KB bundle)
-**Ready for:** Phase 9 (Legacy Tab Migration) or Phase 10 (Testing)
+**Ready for:** Phase 10 (Testing) or Context Cleanup
 
-🎊 Phase 8 Complete! All major god components decomposed - 58 components now TypeScript! 🎊
+🎊 Phase 9 Complete! All legacy tabs migrated - 63 components now TypeScript! 🎊
