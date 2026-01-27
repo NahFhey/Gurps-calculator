@@ -61,7 +61,7 @@
 - [x] Delete PartyToolApp.jsx and PartyToolContainer.tsx
 - [x] Fix ManagerTab to use useCampaignStore() directly
 
-**Commit:** TBD
+**Commit:** `2865827 Feat: Implement Phase 3 - Activities Panel Simplification`
 
 ---
 
