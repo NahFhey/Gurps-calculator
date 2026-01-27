@@ -1,8 +1,8 @@
 # GURPS Calculator - Project Status & Roadmap
 
 **Last Updated:** 2026-01-27
-**Branch:** `claude/review-project-status-tBbZ7`
-**Status:** Phase 7 Complete - Combat Directory Fully TypeScript
+**Branch:** `claude/review-project-status-BbPCp`
+**Status:** Phase 8a Complete - GatheringManager Decomposed to TypeScript
 
 ---
 
@@ -83,11 +83,15 @@ src/
 │   └── UnifiedShell.tsx (typed UI shell)
 ├── components/
 │   ├── ManagerTab.tsx (typed thin router)
+│   ├── GatheringManager.tsx (typed thin router - 184 lines)
 │   ├── ChangelogTab.tsx, DebugPanel.tsx, ErrorBoundary.tsx
 │   ├── GMLockModal.tsx, DiceRoller.tsx, ImportExportPanel.tsx
 │   ├── manager/
 │   │   └── views/
 │   │       └── [12 TypeScript view components]
+│   ├── gathering/
+│   │   └── views/
+│   │       └── [7 TypeScript view components]
 │   ├── AlchemyTab.jsx (uses bridge context)
 │   ├── CombatTab.jsx (uses bridge context)
 │   ├── CookingTab.jsx (uses bridge context)
@@ -155,10 +159,37 @@ These are INTENTIONALLY kept for backward compatibility:
 - Easier refactoring
 - Combat system fully type-safe
 
+#### Phase 8a: GatheringManager Decomposition ✅ COMPLETE
+**Commit:** 207ae08
+
+**Achievement: 1,754 → 184 lines (90% reduction)**
+
+**Created `src/types/gathering.ts` with TypeScript interfaces for:**
+- GatheringSpeciesExtended, GatheringToolExtended, GatheringTableExtended
+- GatheringEnvironmentExtended, GatheringBaitExtended, GatheringItemExtended
+- All view props interfaces and utility types
+
+**All 7 Views Extracted (TypeScript .tsx):**
+1. CampaignDayView.tsx (44 lines)
+2. SpeciesView.tsx (274 lines)
+3. ItemsView.tsx (224 lines)
+4. ToolsView.tsx (295 lines)
+5. TablesView.tsx (310 lines)
+6. EnvironmentsView.tsx (264 lines)
+7. BaitView.tsx (195 lines)
+
+**GatheringManager.tsx converted to thin router (184 lines)**
+
+**Benefits Achieved:**
+- ✅ Each view is AI-readable (44-310 lines)
+- ✅ Full TypeScript type safety
+- ✅ Clear separation of concerns
+- ✅ Self-contained components
+- ✅ Build passes (622KB bundle)
+
 **Files Still to Convert (Lower Priority):**
 ```bash
 # Large god components (candidates for decomposition first)
-src/components/GatheringManager.jsx (1,754 lines)
 src/components/DayPlannerTab.jsx (1,364 lines)
 src/components/RulesTab.jsx (820 lines)
 
@@ -182,22 +213,20 @@ src/index.jsx
 
 ---
 
-### Phase 8: God Component Decomposition 🎯 NEXT UP
+### Phase 8: God Component Decomposition 🚧 IN PROGRESS
 **Priority:** High
 **Estimated Time:** 1-2 weeks
 **Impact:** Maintainability, testability, AI-readability
 
 Apply the same decomposition pattern used for ManagerTab to remaining god components:
 
-#### 8a. GatheringManager.jsx (1,754 lines) - RECOMMENDED FIRST
-**Suggested Views:**
-- SpeciesManagementView
-- ToolManagementView
-- EnvironmentSetupView
-- GatheringTablesView
-- ItemCatalogView
+#### 8a. GatheringManager.jsx (1,754 lines) ✅ COMPLETE
+**See Phase 8a completion above for details.**
+- 7 views extracted to `src/components/gathering/views/`
+- Thin router converted to TypeScript
+- 90% code reduction achieved
 
-#### 8b. DayPlannerTab.jsx (1,364 lines)
+#### 8b. DayPlannerTab.jsx (1,364 lines) 🎯 RECOMMENDED NEXT
 **Suggested Views:**
 - TimelineView
 - ActivitySchedulerView
@@ -330,18 +359,18 @@ describe('FoodTypesView', () => {
 
 ### For Immediate Next Session:
 1. ✅ **Review this document** - Understand current state
-2. 🎯 **Start Phase 8** - God component decomposition
+2. 🎯 **Continue Phase 8** - Decompose DayPlannerTab.jsx next
 3. 📋 **Create todo list** - Break chosen component into tasks
 4. 🚀 **Start incremental work** - Small commits, test often
 
-### Recommended: Start with GatheringManager.jsx (Phase 8a)
+### Recommended: Start with DayPlannerTab.jsx (Phase 8b)
 ```bash
-# Step 1: Read and analyze GatheringManager.jsx (1,754 lines)
-# Identify logical view boundaries
+# Step 1: Read and analyze DayPlannerTab.jsx (1,364 lines)
+# Identify logical view boundaries (Timeline, Scheduler, etc.)
 # Document state and props needed for each view
 
 # Step 2: Create first view (simplest one)
-# Extract to src/components/gathering/views/
+# Extract to src/components/dayplanner/views/
 # Test thoroughly with npm run build
 
 # Step 3: Repeat for all identified views
@@ -349,10 +378,10 @@ describe('FoodTypesView', () => {
 # Step 5: Convert to TypeScript (.tsx)
 ```
 
-### Alternative: DayPlannerTab.jsx (Phase 8b)
+### Alternative: RulesTab.jsx (Phase 8c)
 ```bash
 # Same pattern as above
-# Good candidate if GatheringManager feels complex
+# Smaller component (820 lines) - good if DayPlanner feels complex
 ```
 
 ---
@@ -361,17 +390,18 @@ describe('FoodTypesView', () => {
 
 ### Code Quality Metrics
 - **ManagerTab Size:** 2,622 → 528 lines (80% reduction) ✅
+- **GatheringManager Size:** 1,754 → 184 lines (90% reduction) ✅
 - **App.jsx Size:** 260 → 96 lines (63% reduction) ✅
-- **Bundle Size:** 800KB → 625KB (22% reduction) ✅
-- **View Component Size:** 95-520 lines (AI-readable) ✅
+- **Bundle Size:** 800KB → 622KB (22% reduction) ✅
+- **View Component Size:** 44-520 lines (AI-readable) ✅
 - **Test Coverage:** 0% (needs Phase 10) ⚠️
 
 ### Architecture Health
 - ✅ Single source of truth (CampaignStore)
 - ✅ Normalized state pattern
-- ✅ Component decomposition started
-- ✅ TypeScript for manager views + ManagerTab + all combat components
-- ✅ 38 components converted to TypeScript
+- ✅ Component decomposition well underway (2 god components done)
+- ✅ TypeScript for manager views + ManagerTab + gathering views + all combat components
+- ✅ 45 components converted to TypeScript (38 + 7 gathering views)
 - ⚠️ Bridge contexts still present (intentional)
 - ⚠️ Some legacy tabs still JSX (lower priority)
 
@@ -380,17 +410,18 @@ describe('FoodTypesView', () => {
 - ✅ Clear separation of concerns
 - ✅ Incremental git history
 - ✅ Good documentation
-- ✅ Type safety for manager components
+- ✅ Type safety for manager and gathering components
 
 ---
 
 ## 🏆 Achievements Unlocked
 
 - **God Component Slayer** - Decomposed 2,622-line ManagerTab ✅
+- **Gathering Master** - Decomposed 1,754-line GatheringManager (90% reduction) ✅
 - **Architecture Simplifier** - Removed bridge pattern from App.jsx ✅
 - **Bundle Optimizer** - Reduced bundle by 22% ✅
 - **Documentation Master** - Created comprehensive guides ✅
-- **Type Safety Pioneer** - Converted 38 components to TypeScript ✅
+- **Type Safety Pioneer** - Converted 45 components to TypeScript ✅
 - **Combat System Master** - Full TypeScript coverage for combat (17 files) ✅
 
 ---
@@ -422,8 +453,8 @@ describe('FoodTypesView', () => {
 
 ---
 
-**Current Branch:** `claude/review-project-status-tBbZ7`
+**Current Branch:** `claude/review-project-status-BbPCp`
 **Build Status:** ✅ Passing (622KB bundle)
-**Ready for:** Phase 8 - God Component Decomposition (GatheringManager recommended)
+**Ready for:** Phase 8b - DayPlannerTab Decomposition
 
-🎊 Phase 7 Complete! 38 components now TypeScript - Combat system fully typed! 🎊
+🎊 Phase 8a Complete! GatheringManager decomposed - 45 components now TypeScript! 🎊
