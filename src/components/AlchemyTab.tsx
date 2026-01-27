@@ -8,6 +8,7 @@ import { ConcentrationRefinementView } from './alchemy/ConcentrationRefinementVi
 import { useCampaignStore } from '../state/campaignStore';
 import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
 import { alchemyLog } from '../utils/activityLogger';
+import { useWeatherModifiers } from '../hooks/useWeatherModifiers';
 
 // ============================================================================
 // Types
@@ -68,6 +69,9 @@ interface AlchemySettings {
 export function AlchemyTab() {
   const { state, actions } = useCampaignStore();
   const [view, setView] = useState<AlchemyView>('reagents');
+
+  // Get weather modifiers for alchemy
+  const { modifiers: weatherModifiers, hasEffect, effectDescription, locationName } = useWeatherModifiers('alchemy');
 
   // Derive data from normalized state
   const reagents = useMemo(() =>
@@ -151,6 +155,17 @@ export function AlchemyTab() {
 
   return (
     <div>
+      {/* Weather Effects Banner */}
+      {hasEffect && (
+        <div className="mb-4 px-3 py-2 rounded bg-blue-900/30 border border-blue-700/50">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-blue-400">Weather Effect:</span>
+            <span className="text-gray-300">{effectDescription}</span>
+            {locationName && <span className="text-gray-500 text-xs">at {locationName}</span>}
+          </div>
+        </div>
+      )}
+
       <div className="flex gap-2 mb-6 border-b border-gray-700">
         <button
           onClick={() => setView('reagents')}

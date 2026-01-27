@@ -5,6 +5,7 @@ import { DiceRoller } from './DiceRoller';
 import { useCampaignStore } from '../state/campaignStore';
 import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
 import { craftingLog } from '../utils/activityLogger';
+import { useWeatherModifiers } from '../hooks/useWeatherModifiers';
 
 // ============================================================================
 // Types
@@ -143,6 +144,9 @@ type CraftingView = 'list' | 'craft' | 'designs';
  */
 export function CraftingTab() {
   const { state, actions } = useCampaignStore();
+
+  // Get weather modifiers for crafting
+  const { modifiers: weatherModifiers, hasEffect, effectDescription, locationName, skillBonus: weatherSkillBonus } = useWeatherModifiers('crafting');
 
   // Derive data from normalized state
   const materials = useMemo(() =>
@@ -379,6 +383,17 @@ export function CraftingTab() {
                 Abandon Project
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Weather Effects Banner */}
+      {hasEffect && (
+        <div className="mb-4 px-3 py-2 rounded bg-blue-900/30 border border-blue-700/50">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-blue-400">Weather Effect:</span>
+            <span className="text-gray-300">{effectDescription}</span>
+            {locationName && <span className="text-gray-500 text-xs">at {locationName}</span>}
           </div>
         </div>
       )}

@@ -1,14 +1,17 @@
+import { useMemo } from 'react';
 import { useCampaignStore } from '../../state/campaignStore';
 import { ActivityTile } from './ActivityTile';
 import { AlchemyTab } from '../AlchemyTab';
 import { CookingTab } from '../CookingTab';
 import { CraftingTab } from '../CraftingTab';
 import { GatheringManager } from '../GatheringManager';
+import { useAllWeatherModifiers } from '../../hooks/useWeatherModifiers';
 
 /**
  * ActivitiesPanel - Simple 4-tile grid for launching activity systems
  *
  * Part of Phase 3: Activities Panel Simplification
+ * Updated in Phase 5: Location & Weather System
  *
  * Replaces the complex PartyToolApp.jsx (1,065 lines) with a simple
  * tile-based launcher (~100 lines) that connects to existing systems.
@@ -27,8 +30,32 @@ export function ActivitiesPanel({ showTimeWeather = true }: ActivitiesPanelProps
   const { day, slot, slotLabels } = state.time;
   const slotLabel = slotLabels[slot] || `Slot ${slot + 1}`;
 
-  // Placeholder weather effects - will be replaced in Phase 5
-  const weatherEffects = 'Gathering +1';
+  // Get weather effects from the location system (Phase 5)
+  const { effects, hasAnyEffect } = useAllWeatherModifiers();
+
+  // Format weather effects for display
+  const weatherEffects = useMemo(() => {
+    if (!hasAnyEffect) return 'No weather modifiers';
+
+    const effectStrings: string[] = [];
+    if (effects.gathering !== 0) {
+      effectStrings.push(`Gathering ${effects.gathering > 0 ? '+' : ''}${effects.gathering}`);
+    }
+    if (effects.hunting !== 0) {
+      effectStrings.push(`Hunting ${effects.hunting > 0 ? '+' : ''}${effects.hunting}`);
+    }
+    if (effects.crafting !== 0) {
+      effectStrings.push(`Crafting ${effects.crafting > 0 ? '+' : ''}${effects.crafting}`);
+    }
+    if (effects.cooking !== 0) {
+      effectStrings.push(`Cooking ${effects.cooking > 0 ? '+' : ''}${effects.cooking}`);
+    }
+    if (effects.alchemy !== 0) {
+      effectStrings.push(`Alchemy ${effects.alchemy > 0 ? '+' : ''}${effects.alchemy}`);
+    }
+
+    return effectStrings.length > 0 ? effectStrings.join(', ') : 'No modifiers';
+  }, [effects, hasAnyEffect]);
 
   return (
     <div className="flex flex-col h-full bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">

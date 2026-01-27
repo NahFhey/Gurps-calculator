@@ -5,6 +5,7 @@ import { DiceRoller } from './DiceRoller';
 import { useCampaignStore } from '../state/campaignStore';
 import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
 import { cookingLog } from '../utils/activityLogger';
+import { useWeatherModifiers } from '../hooks/useWeatherModifiers';
 
 // ============================================================================
 // Types
@@ -116,6 +117,9 @@ type CookingView = 'create' | 'library' | 'remake';
  */
 export function CookingTab() {
   const { state, actions } = useCampaignStore();
+
+  // Get weather modifiers for cooking
+  const { modifiers: weatherModifiers, hasEffect, effectDescription, locationName, skillBonus: weatherSkillBonus } = useWeatherModifiers('cooking');
 
   // Derive data from normalized state
   const foods = useMemo(() =>
@@ -530,6 +534,17 @@ export function CookingTab() {
               <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 bg-gray-600 rounded">Cancel</button>
               <button onClick={() => { saveRecipes(recipes.filter(r => r.id !== deleteConfirm.id)); setDeleteConfirm(null); }} className="px-4 py-2 bg-red-600 rounded">Delete</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Weather Effects Banner */}
+      {hasEffect && (
+        <div className="mb-4 px-3 py-2 rounded bg-blue-900/30 border border-blue-700/50">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-blue-400">Weather Effect:</span>
+            <span className="text-gray-300">{effectDescription}</span>
+            {locationName && <span className="text-gray-500 text-xs">at {locationName}</span>}
           </div>
         </div>
       )}

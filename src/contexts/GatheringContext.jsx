@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo } from 'react';
 import { useCampaignStore } from '../state/campaignStore';
 import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
 import { gatheringLog } from '../utils/activityLogger';
+import { getCurrentWeather, getCurrentLocation } from '../utils/weatherSystem';
 
 /**
  * Context for gathering system (fishing, foraging, and day planner)
@@ -146,7 +147,21 @@ export function GatheringProvider({ children }) {
 
       // Logging support
       addLogEntry: actions.addLogEntry,
-      gatheringLog
+      gatheringLog,
+
+      // Weather modifiers for gathering activities (Phase 5)
+      weatherModifiers: (() => {
+        const weather = getCurrentWeather(state.locations);
+        const location = getCurrentLocation(state.locations);
+        if (!weather || !location) return null;
+        return {
+          gathering: weather.effects.gathering + (location.modifiers?.gathering ?? 0),
+          hunting: weather.effects.hunting + (location.modifiers?.hunting ?? 0),
+          foraging: weather.effects.gathering + (location.modifiers?.foraging ?? 0),
+          description: weather.description,
+          locationName: location.name
+        };
+      })()
     };
   }, [
     state.entities.gatheringSpecies,
@@ -163,6 +178,7 @@ export function GatheringProvider({ children }) {
     state.dayPlanner.taskAssignments,
     state.dayPlanner.pendingDayLedger,
     state.dayPlanner.currentSlot,
+    state.locations,
     actions
   ]);
 

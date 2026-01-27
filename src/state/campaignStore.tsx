@@ -43,6 +43,13 @@ import type {
   EffectFamilyMap,
   Inventory
 } from '../types/campaign';
+import type {
+  Location,
+  LocationState,
+  WeatherTable,
+  TravelAction,
+  ActiveWeather
+} from '../types/location';
 
 type CampaignStoreValue = {
   state: CampaignState;
@@ -191,6 +198,22 @@ type CampaignStoreValue = {
     addInventory: (inventory: Inventory) => void;
     updateInventory: (id: Id, changes: Partial<Inventory>) => void;
     setInventories: (inventories: Record<Id, Inventory>) => void;
+
+    // Location & Weather Actions
+    setLocationsState: (payload: Partial<LocationState>) => void;
+    addLocation: (location: Location) => void;
+    updateLocation: (id: Id, changes: Partial<Location>) => void;
+    removeLocation: (id: Id) => void;
+    setCurrentLocation: (id: Id) => void;
+    setLocationWeather: (locationId: Id, weather: ActiveWeather) => void;
+    rollNewWeather: (locationId: Id) => void;
+    addWeatherTable: (table: WeatherTable) => void;
+    updateWeatherTable: (id: Id, changes: Partial<WeatherTable>) => void;
+    removeWeatherTable: (id: Id) => void;
+    addTravel: (travel: TravelAction) => void;
+    updateTravel: (id: Id, changes: Partial<TravelAction>) => void;
+    completeTravel: (id: Id) => void;
+    cancelTravel: (id: Id) => void;
   };
 };
 
@@ -411,7 +434,28 @@ export function CampaignStoreProvider({
       updateInventory: (id: Id, changes: Partial<Inventory>) =>
         dispatch({ type: 'updateInventory', payload: { id, changes } }),
       setInventories: (inventories: Record<Id, Inventory>) =>
-        dispatch({ type: 'setInventories', payload: inventories })
+        dispatch({ type: 'setInventories', payload: inventories }),
+
+      // Location & Weather Actions
+      setLocationsState: (payload: Partial<LocationState>) =>
+        dispatch({ type: 'setLocationsState', payload }),
+      addLocation: (location: Location) => dispatch({ type: 'addLocation', payload: location }),
+      updateLocation: (id: Id, changes: Partial<Location>) =>
+        dispatch({ type: 'updateLocation', payload: { id, changes } }),
+      removeLocation: (id: Id) => dispatch({ type: 'removeLocation', payload: id }),
+      setCurrentLocation: (id: Id) => dispatch({ type: 'setCurrentLocation', payload: id }),
+      setLocationWeather: (locationId: Id, weather: ActiveWeather) =>
+        dispatch({ type: 'setLocationWeather', payload: { locationId, weather } }),
+      rollNewWeather: (locationId: Id) => dispatch({ type: 'rollNewWeather', payload: { locationId } }),
+      addWeatherTable: (table: WeatherTable) => dispatch({ type: 'addWeatherTable', payload: table }),
+      updateWeatherTable: (id: Id, changes: Partial<WeatherTable>) =>
+        dispatch({ type: 'updateWeatherTable', payload: { id, changes } }),
+      removeWeatherTable: (id: Id) => dispatch({ type: 'removeWeatherTable', payload: id }),
+      addTravel: (travel: TravelAction) => dispatch({ type: 'addTravel', payload: travel }),
+      updateTravel: (id: Id, changes: Partial<TravelAction>) =>
+        dispatch({ type: 'updateTravel', payload: { id, changes } }),
+      completeTravel: (id: Id) => dispatch({ type: 'completeTravel', payload: id }),
+      cancelTravel: (id: Id) => dispatch({ type: 'cancelTravel', payload: id })
     }),
     []
   );

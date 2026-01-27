@@ -42,6 +42,19 @@ import type {
   Inventory,
   CurrencyLog
 } from '../types/campaign';
+import type {
+  Location,
+  LocationState,
+  WeatherTable,
+  TravelAction,
+  ActiveWeather
+} from '../types/location';
+import {
+  createInitialLocationState,
+  generateWeather,
+  isWeatherExpired,
+  getCurrentLocation
+} from '../utils/weatherSystem';
 
 export const CAMPAIGN_META = {
   rulesVersion: '1.0.0',
@@ -191,6 +204,7 @@ export type CampaignState = {
       revealedDefenseValues: Record<string, { dodge?: number }>;
     };
   };
+  locations: LocationState;
 };
 
 export const initialLegacyAppState: LegacyAppState = {};
@@ -401,7 +415,8 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
       revealedHP: new Set(),
       revealedDefenseValues: {}
     }
-  }
+  },
+  locations: createInitialLocationState({ day: 1, slot: 0 })
 });
 
 export const initialCampaignState: CampaignState = createCampaignState();
@@ -546,7 +561,22 @@ export type CampaignAction =
   // Inventory actions
   | { type: 'addInventory'; payload: Inventory }
   | { type: 'updateInventory'; payload: { id: Id; changes: Partial<Inventory> } }
-  | { type: 'setInventories'; payload: Record<Id, Inventory> };
+  | { type: 'setInventories'; payload: Record<Id, Inventory> }
+  // Location & Weather actions
+  | { type: 'setLocationsState'; payload: Partial<LocationState> }
+  | { type: 'addLocation'; payload: Location }
+  | { type: 'updateLocation'; payload: { id: Id; changes: Partial<Location> } }
+  | { type: 'removeLocation'; payload: Id }
+  | { type: 'setCurrentLocation'; payload: Id }
+  | { type: 'setLocationWeather'; payload: { locationId: Id; weather: ActiveWeather } }
+  | { type: 'rollNewWeather'; payload: { locationId: Id } }
+  | { type: 'addWeatherTable'; payload: WeatherTable }
+  | { type: 'updateWeatherTable'; payload: { id: Id; changes: Partial<WeatherTable> } }
+  | { type: 'removeWeatherTable'; payload: Id }
+  | { type: 'addTravel'; payload: TravelAction }
+  | { type: 'updateTravel'; payload: { id: Id; changes: Partial<TravelAction> } }
+  | { type: 'completeTravel'; payload: Id }
+  | { type: 'cancelTravel'; payload: Id };
 
 export function campaignReducer(state: CampaignState, action: CampaignAction) {
   return produce(state, (draft) => {
@@ -623,6 +653,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.activities = nextState.activities;
         draft.logs = nextState.logs;
         draft.combat = normalizeCombatReveal(nextState.combat);
+        draft.locations = nextState.locations || createInitialLocationState(nextState.time || { day: 1, slot: 0 });
         draft.checkpoints = preservedCheckpoints;
         return;
       }
@@ -685,6 +716,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.logs = nextState.logs;
         draft.checkpoints = nextState.checkpoints;
         draft.combat = normalizeCombatReveal(nextState.combat);
+        draft.locations = nextState.locations || createInitialLocationState(nextState.time || { day: 1, slot: 0 });
         return;
       }
       case 'restoreCheckpoint': {
@@ -711,6 +743,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
           entries: [rollbackEntry, ...restoredSnapshot.logs.entries]
         };
         draft.combat = restoredSnapshot.combat;
+        draft.locations = (restoredSnapshot as CampaignState).locations || createInitialLocationState(restoredSnapshot.time || { day: 1, slot: 0 });
         return;
       }
       case 'advanceTime': {
@@ -750,6 +783,32 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
           })
         );
         draft.ui.blockingError = null;
+
+        // Check weather expiration for all locations and generate new weather if needed
+        const newTime = { day: nextDay, slot: nextSlot };
+        for (const location of Object.values(draft.locations.locations)) {
+          if (location.currentWeather && isWeatherExpired(location.currentWeather, newTime)) {
+            const weatherTable = location.weatherTableId
+              ? draft.locations.weatherTables[location.weatherTableId]
+              : undefined;
+            const result = generateWeather({
+              location: location as Location,
+              weatherTable,
+              currentTime: newTime
+            });
+            location.currentWeather = result.weather;
+            location.modifiedAt = Date.now();
+
+            // Only log if this is the current location
+            if (location.id === draft.locations.currentLocationId) {
+              draft.logs.entries.unshift(
+                logEvent('weather.changed', 'player', {
+                  message: result.logMessage
+                })
+              );
+            }
+          }
+        }
         return;
       }
 
@@ -1167,6 +1226,165 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
       case 'setInventories':
         draft.entities.inventories = action.payload;
         return;
+
+      // ========================================================================
+      // LOCATION & WEATHER ACTIONS
+      // ========================================================================
+      case 'setLocationsState':
+        draft.locations = {
+          ...draft.locations,
+          ...action.payload
+        };
+        return;
+
+      case 'addLocation':
+        draft.locations.locations[action.payload.id] = action.payload;
+        // If this is the first location, set it as current
+        if (!draft.locations.currentLocationId) {
+          draft.locations.currentLocationId = action.payload.id;
+        }
+        return;
+
+      case 'updateLocation':
+        if (draft.locations.locations[action.payload.id]) {
+          draft.locations.locations[action.payload.id] = {
+            ...draft.locations.locations[action.payload.id],
+            ...action.payload.changes,
+            modifiedAt: Date.now()
+          };
+        }
+        return;
+
+      case 'removeLocation': {
+        const locationId = action.payload;
+        delete draft.locations.locations[locationId];
+        // If we removed the current location, select another one
+        if (draft.locations.currentLocationId === locationId) {
+          const remainingIds = Object.keys(draft.locations.locations);
+          draft.locations.currentLocationId = remainingIds.length > 0 ? remainingIds[0] : null;
+        }
+        // Remove any weather tables associated with this location
+        for (const tableId of Object.keys(draft.locations.weatherTables)) {
+          const table = draft.locations.weatherTables[tableId];
+          // Note: weather tables don't have locationId, they're referenced by location.weatherTableId
+        }
+        return;
+      }
+
+      case 'setCurrentLocation':
+        if (draft.locations.locations[action.payload]) {
+          draft.locations.currentLocationId = action.payload;
+          draft.logs.entries.unshift(
+            logEvent('location.changed', 'player', {
+              message: `Party moved to ${draft.locations.locations[action.payload].name}`
+            })
+          );
+        }
+        return;
+
+      case 'setLocationWeather': {
+        const { locationId, weather } = action.payload;
+        if (draft.locations.locations[locationId]) {
+          draft.locations.locations[locationId].currentWeather = weather;
+          draft.locations.locations[locationId].modifiedAt = Date.now();
+        }
+        return;
+      }
+
+      case 'rollNewWeather': {
+        const { locationId } = action.payload;
+        const location = draft.locations.locations[locationId];
+        if (location) {
+          const weatherTable = location.weatherTableId
+            ? draft.locations.weatherTables[location.weatherTableId]
+            : undefined;
+          const currentTime = { day: draft.time.day, slot: draft.time.slot };
+          const result = generateWeather({
+            location: location as Location,
+            weatherTable,
+            currentTime
+          });
+          location.currentWeather = result.weather;
+          location.modifiedAt = Date.now();
+          draft.logs.entries.unshift(
+            logEvent('weather.changed', 'player', {
+              message: result.logMessage
+            })
+          );
+        }
+        return;
+      }
+
+      case 'addWeatherTable':
+        draft.locations.weatherTables[action.payload.id] = action.payload;
+        return;
+
+      case 'updateWeatherTable':
+        if (draft.locations.weatherTables[action.payload.id]) {
+          draft.locations.weatherTables[action.payload.id] = {
+            ...draft.locations.weatherTables[action.payload.id],
+            ...action.payload.changes
+          };
+        }
+        return;
+
+      case 'removeWeatherTable':
+        delete draft.locations.weatherTables[action.payload];
+        // Clear references from locations
+        for (const loc of Object.values(draft.locations.locations)) {
+          if (loc.weatherTableId === action.payload) {
+            loc.weatherTableId = undefined;
+          }
+        }
+        return;
+
+      case 'addTravel':
+        draft.locations.activeTravels.push(action.payload);
+        return;
+
+      case 'updateTravel': {
+        const travelIndex = draft.locations.activeTravels.findIndex(t => t.id === action.payload.id);
+        if (travelIndex !== -1) {
+          draft.locations.activeTravels[travelIndex] = {
+            ...draft.locations.activeTravels[travelIndex],
+            ...action.payload.changes
+          };
+        }
+        return;
+      }
+
+      case 'completeTravel': {
+        const travel = draft.locations.activeTravels.find(t => t.id === action.payload);
+        if (travel) {
+          travel.status = 'completed';
+          travel.actualArrival = { day: draft.time.day, slot: draft.time.slot };
+          // Set current location to destination
+          if (draft.locations.locations[travel.toLocationId]) {
+            draft.locations.currentLocationId = travel.toLocationId;
+            draft.logs.entries.unshift(
+              logEvent('travel.completed', 'player', {
+                message: `Party arrived at ${draft.locations.locations[travel.toLocationId].name}`
+              })
+            );
+          }
+          // Remove completed travel
+          draft.locations.activeTravels = draft.locations.activeTravels.filter(t => t.id !== action.payload);
+        }
+        return;
+      }
+
+      case 'cancelTravel': {
+        const travelToCancel = draft.locations.activeTravels.find(t => t.id === action.payload);
+        if (travelToCancel) {
+          draft.locations.activeTravels = draft.locations.activeTravels.filter(t => t.id !== action.payload);
+          draft.logs.entries.unshift(
+            logEvent('travel.cancelled', 'player', {
+              message: 'Travel was cancelled'
+            })
+          );
+        }
+        return;
+      }
 
       default:
         return;

@@ -81,15 +81,24 @@
 
 ---
 
-## Phase 5: Location & Weather System 🔲 PENDING
+## Phase 5: Location & Weather System ✅ COMPLETE
 
-- [ ] Create Location types and interfaces
-- [ ] Create Weather types and effects
-- [ ] Build LocationManager (GM tool)
-- [ ] Build WeatherWidget component
-- [ ] Implement weather generation per location
-- [ ] Basic travel system between locations
-- [ ] Weather effects on activities
+- [x] Create Location types and interfaces (`src/types/location.ts`)
+- [x] Create Weather types and effects (weather types, effects, tables)
+- [x] Build LocationManager (GM tool) - create/edit/delete locations
+- [x] Build WeatherWidget component - displays current location and weather
+- [x] Implement weather generation per location (climate-based weather tables)
+- [x] Basic travel system between locations (TravelPanel component)
+- [x] Weather effects on activities:
+  - [x] Activity calculator updated with `weatherModifiers` parameter
+  - [x] `useWeatherModifiers` hook for activity tabs
+  - [x] Weather banners in AlchemyTab, CookingTab, CraftingTab
+  - [x] GatheringContext updated with weather modifiers
+  - [x] ActivitiesPanel shows current weather effects
+- [x] Weather auto-advances when time advances (in campaignReducer)
+- [x] Default "Camp" location created on initialization
+
+**Commit:** `307c7b8 Feat: Implement Phase 5 - Location & Weather System`
 
 ---
 
@@ -129,10 +138,13 @@
 ### Phase 4 Files (Complete)
 - `src/utils/activityLogger.ts` - Logging utility with helpers for all activity types
 
-### Planned New Files
-- `src/components/location/LocationManager.tsx` - Phase 5
-- `src/components/location/TravelPanel.tsx` - Phase 5
-- `src/types/location.ts` - Phase 5
+### Phase 5 Files (Complete)
+- `src/types/location.ts` - Location, Weather, Travel types and constants
+- `src/utils/weatherSystem.ts` - Weather generation and effects utilities
+- `src/hooks/useWeatherModifiers.ts` - Hook for getting weather effects in activity tabs
+- `src/components/location/LocationManager.tsx` - GM tool for managing locations
+- `src/components/location/TravelPanel.tsx` - Travel between locations component
+- `src/components/location/index.ts` - Location component exports
 
 ### Files Modified in Phase 2
 - `src/unified/UnifiedShell.tsx` - Layout restructure with new header, collapsible party, CombatTile
@@ -149,6 +161,17 @@
 - `src/components/InventoryTab.tsx` - Added logging for transfers
 - `src/contexts/GatheringContext.jsx` - Added logging support
 - `src/state/campaignReducer.ts` - Added logging for combat events
+
+### Files Modified in Phase 5
+- `src/state/campaignReducer.ts` - Added locations state, location/weather actions, weather auto-advance
+- `src/state/campaignStore.tsx` - Added location/weather action exports
+- `src/components/header/WeatherWidget.tsx` - Replaced placeholder with real weather state
+- `src/components/AlchemyTab.tsx` - Added weather effects banner
+- `src/components/CookingTab.tsx` - Added weather effects banner
+- `src/components/CraftingTab.tsx` - Added weather effects banner
+- `src/contexts/GatheringContext.jsx` - Added weather modifiers
+- `src/components/activities/ActivitiesPanel.tsx` - Added real weather effects display
+- `src/utils/activityCalculator.ts` - Added weatherModifiers parameter
 
 ### Files Deleted in Phase 3
 - `src/components/party-tool/PartyToolApp.jsx` - Replaced by ActivitiesPanel
