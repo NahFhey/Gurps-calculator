@@ -1,12 +1,55 @@
-import React, { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { ReagentsView } from './alchemy/ReagentsView';
 import { FormulasView } from './alchemy/FormulasView';
 import { BatchesView } from './alchemy/BatchesView';
 import { TallyWorksheetView } from './alchemy/TallyWorksheetView';
 import { AnalysisView } from './alchemy/AnalysisView';
 import { ConcentrationRefinementView } from './alchemy/ConcentrationRefinementView';
-import { useAlchemy } from '../contexts/AlchemyContext';
-import { useConfig } from '../contexts/ConfigContext';
+import { useCampaignStore } from '../state/campaignStore';
+import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+type AlchemyView = 'reagents' | 'analysis' | 'processing' | 'formulas' | 'batches' | 'tally';
+
+interface Worker {
+  id: string;
+  name: string;
+  skills: Record<string, number>;
+  st?: number;
+}
+
+interface AlchemyReagent {
+  id: string;
+  [key: string]: unknown;
+}
+
+interface AlchemyFormula {
+  id: string;
+  [key: string]: unknown;
+}
+
+interface AlchemyBatch {
+  id: string;
+  phase: string;
+  [key: string]: unknown;
+}
+
+interface AlchemyLab {
+  id: string;
+  [key: string]: unknown;
+}
+
+interface AlchemySettings {
+  defaultLabRating: number;
+  workBlockMinutes: number;
+}
+
+// ============================================================================
+// AlchemyTab Component
+// ============================================================================
 
 /**
  * AlchemyTab Component - Main container for GURPS alchemy system
@@ -19,23 +62,58 @@ import { useConfig } from '../contexts/ConfigContext';
  * - Batches: Track active brewing projects
  * - Tally Worksheet: Summarize reagent aspects for brewing calculations
  *
- * @returns {JSX.Element} The alchemy tab interface with sub-navigation
+ * MIGRATED: Now uses useCampaignStore directly instead of bridge contexts.
  */
 export function AlchemyTab() {
-  // Get data from contexts
-  const {
-    alchemyReagents: reagents,
-    alchemyFormulas: formulas,
-    alchemyBatches: batches,
-    alchemyLabs: labs,
-    alchemySettings,
-    saveAlchemyReagents: saveReagents,
-    saveAlchemyFormulas: saveFormulas,
-    saveAlchemyBatches: saveBatches
-    // saveAlchemyLabs: Labs managed in ManagerTab
-  } = useAlchemy();
-  const { workers } = useConfig();
-  const [view, setView] = useState('reagents');
+  const { state, actions } = useCampaignStore();
+  const [view, setView] = useState<AlchemyView>('reagents');
+
+  // Derive data from normalized state
+  const reagents = useMemo(() =>
+    denormalizeObject(state.entities.alchemyReagents) as AlchemyReagent[],
+    [state.entities.alchemyReagents]
+  );
+
+  const formulas = useMemo(() =>
+    denormalizeObject(state.entities.alchemyFormulas) as AlchemyFormula[],
+    [state.entities.alchemyFormulas]
+  );
+
+  const batches = useMemo(() =>
+    denormalizeObject(state.entities.alchemyBatches) as AlchemyBatch[],
+    [state.entities.alchemyBatches]
+  );
+
+  const labs = useMemo(() =>
+    denormalizeObject(state.entities.alchemyLabs) as AlchemyLab[],
+    [state.entities.alchemyLabs]
+  );
+
+  const alchemySettings = state.entities.alchemySettings as AlchemySettings;
+
+  // Derive workers from characters (same pattern as ConfigContext)
+  const workers = useMemo(() =>
+    Object.values(state.entities.characters).map((character: any) => ({
+      id: character.id,
+      name: character.name,
+      skills: character.work?.skills || {},
+      st: character.st
+    })) as Worker[],
+    [state.entities.characters]
+  );
+
+  // Save callbacks that normalize arrays back to records
+  const saveReagents = useCallback((reagentsArray: AlchemyReagent[]) => {
+    actions.setAlchemyReagents(normalizeArray(reagentsArray));
+  }, [actions]);
+
+  const saveFormulas = useCallback((formulasArray: AlchemyFormula[]) => {
+    actions.setAlchemyFormulas(normalizeArray(formulasArray));
+  }, [actions]);
+
+  const saveBatches = useCallback((batchesArray: AlchemyBatch[]) => {
+    actions.setAlchemyBatches(normalizeArray(batchesArray));
+  }, [actions]);
 
   // Count batches currently in brewing phase for badge display
   const activeCount = batches.filter(b => b.phase === 'brewing').length;
