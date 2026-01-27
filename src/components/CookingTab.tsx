@@ -4,6 +4,7 @@ import { toNumberOr } from '../utils/helpers';
 import { DiceRoller } from './DiceRoller';
 import { useCampaignStore } from '../state/campaignStore';
 import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
+import { cookingLog } from '../utils/activityLogger';
 
 // ============================================================================
 // Types
@@ -262,6 +263,7 @@ export function CookingTab() {
     };
 
     saveRecipes([...recipes, recipe]);
+    actions.addLogEntry(cookingLog.mealPrepared(name, result, selectedWorker));
 
     const newFoods = foods.map(f => {
       const ingredient = selected.find(i => i.foodId === f.id || String(i.foodId) === f.id || i.foodId === String(f.id));
@@ -506,6 +508,7 @@ export function CookingTab() {
       return r;
     });
     saveRecipes(updatedRecipes);
+    actions.addLogEntry(cookingLog.mealPrepared(selectedRecipe?.name || 'Unknown', result, remakeWorker));
 
     alert(`Recipe "${selectedRecipe?.name}" remade! Result: ${result} (MoS: ${mos}, Difficulty: ${calculateRemakeDifficulty()})`);
     setView('library');

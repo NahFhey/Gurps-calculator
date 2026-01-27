@@ -4,6 +4,7 @@ import { toNumberOr } from '../utils/helpers';
 import { useCampaignStore } from '../state/campaignStore';
 import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
 import type { Inventory, ToolTemplate, Character } from '../types/campaign';
+import { inventoryLog } from '../utils/activityLogger';
 
 // ============================================================================
 // Types
@@ -694,8 +695,37 @@ function PartyStashView({
       currency: updatedTarget.currency,
     });
 
+    // Log the transfer
+    const sourceLabel = getInventoryLabel(sourceInv, characters);
+    const targetLabel = getInventoryLabel(targetInv, characters);
+    if (transferState.type === 'item' && transferState.itemId) {
+      const item = sourceInv.items.find(i => i.id === transferState.itemId);
+      actions.addLogEntry(inventoryLog.itemTransferred(
+        item?.name || 'Unknown',
+        sourceLabel,
+        targetLabel,
+        item?.quantity
+      ));
+    } else if (transferState.type === 'tool' && transferState.toolId) {
+      const tool = sourceInv.tools.find(t => t.toolId === transferState.toolId);
+      const template = toolTemplates[tool?.templateId || ''];
+      actions.addLogEntry(inventoryLog.itemTransferred(
+        template?.name || 'Unknown Tool',
+        sourceLabel,
+        targetLabel
+      ));
+    } else if (transferState.type === 'currency' && transferState.currencyKey) {
+      const amount = parseInt(transferState.amount || '0', 10);
+      actions.addLogEntry(inventoryLog.currencyTransferred(
+        amount,
+        transferState.currencyKey,
+        sourceLabel,
+        targetLabel
+      ));
+    }
+
     setTransferState(null);
-  }, [transferState, inventories, actions, setTransferState]);
+  }, [transferState, inventories, actions, setTransferState, characters, toolTemplates]);
 
   return (
     <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">

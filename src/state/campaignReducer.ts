@@ -635,6 +635,13 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.combat.active = true;
         draft.combat.encounterId =
           action.payload?.encounterId ?? `enc-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+        // Log combat start
+        draft.logs.entries.unshift(
+          logEvent('combat.started', 'player', {
+            message: 'Combat started'
+          })
+        );
         return;
       }
       case 'registerCombatDamage': {
@@ -642,6 +649,15 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.combat.reveal.revealedTargets.add(targetId);
         if (remainingHp <= 0) {
           draft.combat.reveal.revealedHP.add(targetId);
+          // Log when a combatant is defeated
+          const character = draft.entities.combatCharacters[targetId];
+          const characterName = character?.name ?? targetId;
+          draft.logs.entries.unshift(
+            logEvent('combat.defeated', 'mixed', {
+              message: `${characterName} was defeated`,
+              maskedMessage: 'A combatant was defeated'
+            })
+          );
         }
         return;
       }

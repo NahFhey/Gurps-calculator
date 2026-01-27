@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { ReagentsView } from './alchemy/ReagentsView';
 import { FormulasView } from './alchemy/FormulasView';
 import { BatchesView } from './alchemy/BatchesView';
@@ -7,6 +7,7 @@ import { AnalysisView } from './alchemy/AnalysisView';
 import { ConcentrationRefinementView } from './alchemy/ConcentrationRefinementView';
 import { useCampaignStore } from '../state/campaignStore';
 import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
+import { alchemyLog } from '../utils/activityLogger';
 
 // ============================================================================
 // Types
@@ -102,6 +103,9 @@ export function AlchemyTab() {
     [state.entities.characters]
   );
 
+  // Track previous batches for change detection
+  const prevBatchesRef = useRef<AlchemyBatch[]>(batches);
+
   // Save callbacks that normalize arrays back to records
   const saveReagents = useCallback((reagentsArray: AlchemyReagent[]) => {
     actions.setAlchemyReagents(normalizeArray(reagentsArray));
@@ -112,6 +116,33 @@ export function AlchemyTab() {
   }, [actions]);
 
   const saveBatches = useCallback((batchesArray: AlchemyBatch[]) => {
+    const prevBatches = prevBatchesRef.current;
+    const prevBatchIds = new Set(prevBatches.map(b => b.id));
+    const prevBatchMap = new Map(prevBatches.map(b => [b.id, b]));
+
+    // Detect new batches (started)
+    for (const batch of batchesArray) {
+      if (!prevBatchIds.has(batch.id) && batch.phase === 'brewing') {
+        actions.addLogEntry(alchemyLog.batchStarted(batch.formulaName || 'Unknown'));
+      }
+    }
+
+    // Detect completed or failed batches
+    for (const batch of batchesArray) {
+      const prevBatch = prevBatchMap.get(batch.id);
+      if (prevBatch && prevBatch.phase === 'brewing') {
+        if (batch.phase === 'completed') {
+          actions.addLogEntry(alchemyLog.batchCompleted(
+            batch.formulaName || 'Unknown',
+            (batch as any).quality || 'Unknown'
+          ));
+        } else if (batch.phase === 'failed') {
+          actions.addLogEntry(alchemyLog.batchFailed(batch.formulaName || 'Unknown'));
+        }
+      }
+    }
+
+    prevBatchesRef.current = batchesArray;
     actions.setAlchemyBatches(normalizeArray(batchesArray));
   }, [actions]);
 

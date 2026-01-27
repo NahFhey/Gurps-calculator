@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo } from 'react';
 import { useCampaignStore } from '../state/campaignStore';
 import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
+import { gatheringLog } from '../utils/activityLogger';
 
 /**
  * Context for gathering system (fishing, foraging, and day planner)
@@ -141,7 +142,11 @@ export function GatheringProvider({ children }) {
       saveCurrentSlot: (slot) => {
         // Update through dayPlanner state
         console.warn('saveCurrentSlot deprecated - use dayPlanner.currentSlot from CampaignStore');
-      }
+      },
+
+      // Logging support
+      addLogEntry: actions.addLogEntry,
+      gatheringLog
     };
   }, [
     state.entities.gatheringSpecies,

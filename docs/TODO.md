@@ -65,11 +65,19 @@
 
 ---
 
-## Phase 4: Quick Fixes 🔲 PENDING
+## Phase 4: Quick Fixes ✅ COMPLETE
 
 - [x] Fix Manager module (migrate to `useCampaignStore()`) - Done in Phase 3
-- [ ] Populate Changelog (add logging calls throughout codebase)
+- [x] Populate Changelog (add logging calls throughout codebase)
+  - [x] Created `src/utils/activityLogger.ts` - Logging utility with helpers for all activity types
+  - [x] Added logging to AlchemyTab (batch started/completed/failed)
+  - [x] Added logging to CookingTab (meal prepared)
+  - [x] Added logging to CraftingTab (project started/completed)
+  - [x] Added logging to InventoryTab (item/tool/currency transfers)
+  - [x] Added logging to campaignReducer (combat started/combatant defeated)
 - [x] Add Party Stash tab to Inventory module - Done in Phase 3
+
+**Commit:** `pending`
 
 ---
 
@@ -118,6 +126,9 @@
 - `src/components/manager/views/ToolTemplatesView.tsx` - Tool templates view
 - `src/components/manager/views/FacilitiesView.tsx` - Facilities view
 
+### Phase 4 Files (Complete)
+- `src/utils/activityLogger.ts` - Logging utility with helpers for all activity types
+
 ### Planned New Files
 - `src/components/location/LocationManager.tsx` - Phase 5
 - `src/components/location/TravelPanel.tsx` - Phase 5
@@ -131,8 +142,13 @@
 - `src/components/ManagerTab.tsx` - Refactored to use useCampaignStore() directly
 - `src/components/InventoryTab.tsx` - Added Party Stash view
 
-### Files to Modify (Remaining)
-- `src/components/ChangelogTab.tsx` - Add logging (Phase 4)
+### Files Modified in Phase 4
+- `src/components/AlchemyTab.tsx` - Added logging for batch events
+- `src/components/CookingTab.tsx` - Added logging for meal preparation
+- `src/components/CraftingTab.tsx` - Added logging for crafting projects
+- `src/components/InventoryTab.tsx` - Added logging for transfers
+- `src/contexts/GatheringContext.jsx` - Added logging support
+- `src/state/campaignReducer.ts` - Added logging for combat events
 
 ### Files Deleted in Phase 3
 - `src/components/party-tool/PartyToolApp.jsx` - Replaced by ActivitiesPanel

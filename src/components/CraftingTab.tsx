@@ -1,9 +1,10 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { QUALITIES } from '../constants';
 import { toNumberOr, upsertCraft, removeCraft, refundMaterialsFromProject } from '../utils/helpers';
 import { DiceRoller } from './DiceRoller';
 import { useCampaignStore } from '../state/campaignStore';
 import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
+import { craftingLog } from '../utils/activityLogger';
 
 // ============================================================================
 // Types
@@ -532,6 +533,7 @@ export function CraftingTab() {
                   const newCur: Craft = {...current, phase: 'design', consumedMaterials};
                   setCurrent(newCur);
                   saveCrafts(upsertCraft(crafts, newCur));
+                  actions.addLogEntry(craftingLog.projectStarted(current.template || 'Unknown'));
                   if (workers && workers.length > 0 && !selectedWorker) {
                     const defaultWorker = workers[0];
                     setSelectedWorker(defaultWorker.name);
@@ -543,6 +545,7 @@ export function CraftingTab() {
                   const newCur: Craft = {...current, phase: 'design'};
                   setCurrent(newCur);
                   saveCrafts(upsertCraft(crafts, newCur));
+                  actions.addLogEntry(craftingLog.projectStarted(current.template || 'Unknown'));
                   if (workers && workers.length > 0 && !selectedWorker) {
                     const defaultWorker = workers[0];
                     setSelectedWorker(defaultWorker.name);
@@ -630,6 +633,11 @@ export function CraftingTab() {
                   newCur.completedDate = currentDate;
                   newCur.completedDay = currentDay;
                   saveCrafts(upsertCraft(crafts, newCur));
+                  actions.addLogEntry(craftingLog.projectCompleted(
+                    newCur.name || newCur.template || 'Unknown',
+                    newCur.currentQuality || 'Standard',
+                    selectedWorker
+                  ));
                   setCurrent(null);
                   setView('list');
                   return;
@@ -1057,6 +1065,7 @@ export function CraftingTab() {
                           };
 
                           saveCrafts([...crafts, newCraft]);
+                          actions.addLogEntry(craftingLog.projectStarted(design.name || design.template || 'Unknown'));
                           setCurrent(newCraft);
                           setCurrentDate(today);
                           setCurrentDay(1);
