@@ -5,7 +5,7 @@ import { ManagerTab } from '../components/ManagerTab';
 import { RulesTab } from '../components/RulesTab';
 import { ChangelogTab } from '../components/ChangelogTab';
 import { CombatTab } from '../components/CombatTab';
-import { PartyToolContainer } from '../components/party-tool/PartyToolContainer';
+import { ActivitiesPanel } from '../components/activities';
 import { CharacterSheet } from '../components/character-sheet';
 import { parseCharacterText } from '../utils/characterImport';
 import { WeatherWidget, TimeDisplay, TimeControls } from '../components/header';
@@ -14,7 +14,6 @@ import { PanelLayoutProvider, usePanelLayout } from '../contexts/PanelLayoutCont
 import {
   useCampaignCharacters,
   useCampaignStore,
-  useLegacyAppState,
   useSelectedCharacter,
   useSelectedCharacterId
 } from '../state/campaignStore';
@@ -34,7 +33,6 @@ interface UnifiedShellProps {
  * Inner component that uses PanelLayoutContext
  */
 function UnifiedShellInner({ modules }: UnifiedShellProps) {
-  const legacyAppState = useLegacyAppState();
   const characters = useCampaignCharacters();
   const { state: layoutState, actions: layoutActions } = usePanelLayout();
 
@@ -44,17 +42,17 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
     }
     return [
       { id: 'inventory', label: 'Inventory', content: <InventoryTab /> },
-      { id: 'activities', label: 'Activities', content: <PartyToolContainer /> },
+      { id: 'activities', label: 'Activities', content: <ActivitiesPanel /> },
       {
         id: 'manager',
         label: 'Manager',
-        content: <ManagerTab {...((legacyAppState as { managerTabProps?: Record<string, unknown> }).managerTabProps || {})} />
+        content: <ManagerTab />
       },
       { id: 'rules', label: 'Rules', content: <RulesTab /> },
       { id: 'changelog', label: 'Changelog', content: <ChangelogTab /> },
       { id: 'combat', label: 'Combat', content: <CombatTab /> }
     ];
-  }, [legacyAppState, modules]);
+  }, [modules]);
   const { state, actions } = useCampaignStore();
   const activeModuleId = state.ui.activeModule || availableModules[0]?.id;
   const activeModule = availableModules.find((moduleItem) => moduleItem.id === activeModuleId);

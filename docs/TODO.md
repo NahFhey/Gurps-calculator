@@ -46,27 +46,30 @@
 
 ---
 
-## Phase 3: Activities Panel Simplification 🔲 PENDING
+## Phase 3: Activities Panel Simplification ✅ COMPLETE
 
-- [ ] Create new ActivitiesPanel component
-  - [ ] 4-tile grid layout (Alchemy, Cooking, Crafting, Gathering)
-  - [ ] Each tile opens existing system (expand or modal)
-  - [ ] Show current day/slot and weather effects
-- [ ] Migrate features from PartyToolApp.jsx:
-  - [ ] Inventories tab → InventoryTab (add Party Stash)
-  - [ ] Logs tab → ChangelogTab
-  - [ ] GM Workshop > Tool Templates → ManagerTab
-  - [ ] GM Workshop > Facilities → ManagerTab
-  - [ ] GM Workshop > Time Controls → Header
-- [ ] Delete PartyToolApp.jsx (1,065 lines → ~100 lines)
+- [x] Create new ActivitiesPanel component
+  - [x] 4-tile grid layout (Alchemy, Cooking, Crafting, Gathering)
+  - [x] Each tile opens existing system (modal overlay)
+  - [x] Show current day/slot and weather effects placeholder
+- [x] Migrate features from PartyToolApp.jsx:
+  - [x] Inventories tab → InventoryTab (Party Stash view added)
+  - [x] Logs tab → ChangelogTab (deferred to Phase 4)
+  - [x] GM Workshop > Tool Templates → ManagerTab (new ToolTemplatesView)
+  - [x] GM Workshop > Facilities → ManagerTab (new FacilitiesView)
+  - [x] GM Workshop > Time Controls → Header (already done in Phase 2)
+- [x] Delete PartyToolApp.jsx and PartyToolContainer.tsx
+- [x] Fix ManagerTab to use useCampaignStore() directly
+
+**Commit:** TBD
 
 ---
 
 ## Phase 4: Quick Fixes 🔲 PENDING
 
-- [ ] Fix Manager module (migrate to `useCampaignStore()`)
+- [x] Fix Manager module (migrate to `useCampaignStore()`) - Done in Phase 3
 - [ ] Populate Changelog (add logging calls throughout codebase)
-- [ ] Add Party Stash tab to Inventory module
+- [x] Add Party Stash tab to Inventory module - Done in Phase 3
 
 ---
 
@@ -108,24 +111,32 @@
 - `src/components/header/index.ts` - Header component exports
 - `src/components/combat/CombatTile.tsx` - Combat status tile
 
+### Phase 3 Files (Complete)
+- `src/components/activities/ActivitiesPanel.tsx` - 4-tile activity launcher
+- `src/components/activities/ActivityTile.tsx` - Individual activity tile component
+- `src/components/activities/index.ts` - Component exports
+- `src/components/manager/views/ToolTemplatesView.tsx` - Tool templates view
+- `src/components/manager/views/FacilitiesView.tsx` - Facilities view
+
 ### Planned New Files
-- `src/components/activities/ActivitiesPanel.tsx` - Phase 3
-- `src/components/activities/ActivityTile.tsx` - Phase 3
 - `src/components/location/LocationManager.tsx` - Phase 5
 - `src/components/location/TravelPanel.tsx` - Phase 5
 - `src/types/location.ts` - Phase 5
 
 ### Files Modified in Phase 2
 - `src/unified/UnifiedShell.tsx` - Layout restructure with new header, collapsible party, CombatTile
-- `src/components/party-tool/PartyToolApp.jsx` - Removed time controls (now in header)
+
+### Files Modified in Phase 3
+- `src/unified/UnifiedShell.tsx` - Replaced PartyToolContainer with ActivitiesPanel
+- `src/components/ManagerTab.tsx` - Refactored to use useCampaignStore() directly
+- `src/components/InventoryTab.tsx` - Added Party Stash view
 
 ### Files to Modify (Remaining)
-- `src/components/ManagerTab.tsx` - Fix props issue (Phase 4)
 - `src/components/ChangelogTab.tsx` - Add logging (Phase 4)
-- `src/components/InventoryTab.tsx` - Add Party Stash (Phase 4)
 
-### Files to Delete
-- `src/components/party-tool/PartyToolApp.jsx` - After Phase 3
+### Files Deleted in Phase 3
+- `src/components/party-tool/PartyToolApp.jsx` - Replaced by ActivitiesPanel
+- `src/components/party-tool/PartyToolContainer.tsx` - No longer needed
 
 ---
 

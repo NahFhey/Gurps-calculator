@@ -1,8 +1,9 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Plus, Save, X, Trash2 } from 'lucide-react';
+import { Plus, Save, X, Trash2, ArrowRight } from 'lucide-react';
 import { toNumberOr } from '../utils/helpers';
 import { useCampaignStore } from '../state/campaignStore';
 import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
+import type { Inventory, ToolTemplate, Character } from '../types/campaign';
 
 // ============================================================================
 // Types
@@ -44,7 +45,17 @@ interface DeleteConfirm {
   name: string;
 }
 
-type InventoryView = 'materials' | 'foods';
+interface TransferState {
+  type: 'item' | 'tool' | 'currency';
+  itemId?: string;
+  toolId?: string;
+  currencyKey?: string;
+  amount?: string;
+  sourceInventoryId: string;
+  targetInventoryId: string;
+}
+
+type InventoryView = 'materials' | 'foods' | 'stash';
 
 // ============================================================================
 // InventoryTab Component
@@ -73,6 +84,14 @@ export function InventoryTab() {
   const materialTypes = state.entities.materialTypes as MaterialType[];
   const gmMode = state.ui.gmModeEnabled;
 
+  // Party Stash data
+  const inventories = useMemo(() =>
+    Object.values(state.entities.inventories) as Inventory[],
+    [state.entities.inventories]
+  );
+  const characters = state.entities.characters as Record<string, Character>;
+  const toolTemplates = state.entities.toolTemplates as Record<string, ToolTemplate>;
+
   // Save callbacks
   const saveMaterials = useCallback((materialsArray: Material[]) => {
     actions.setMaterials(normalizeArray(materialsArray));
@@ -98,6 +117,7 @@ export function InventoryTab() {
   const [newFoodTypes, setNewFoodTypes] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null);
+  const [transferState, setTransferState] = useState<TransferState | null>(null);
 
   /**
    * Adds a new material or quantity to existing material
@@ -229,6 +249,7 @@ export function InventoryTab() {
       <div className="flex gap-2 mb-4">
         <button onClick={() => setView('materials')} className={`px-4 py-2 rounded ${view === 'materials' ? 'bg-blue-600' : 'bg-gray-700'}`}>Raw Materials</button>
         <button onClick={() => setView('foods')} className={`px-4 py-2 rounded ${view === 'foods' ? 'bg-blue-600' : 'bg-gray-700'}`}>Food Supplies</button>
+        <button onClick={() => setView('stash')} className={`px-4 py-2 rounded ${view === 'stash' ? 'bg-blue-600' : 'bg-gray-700'}`}>Party Stash</button>
       </div>
 
       {view === 'materials' && (
@@ -547,6 +568,342 @@ export function InventoryTab() {
           </div>
         </div>
       )}
+
+      {view === 'stash' && (
+        <PartyStashView
+          inventories={inventories}
+          characters={characters}
+          toolTemplates={toolTemplates}
+          transferState={transferState}
+          setTransferState={setTransferState}
+          actions={actions}
+        />
+      )}
     </div>
+  );
+}
+
+// ============================================================================
+// PartyStashView Component
+// ============================================================================
+
+/**
+ * Helper function to get inventory label
+ */
+function getInventoryLabel(inventory: Inventory, characters: Record<string, Character>): string {
+  if (inventory.ownerType === 'party') {
+    return 'Party Stash';
+  }
+  if (inventory.ownerId && characters[inventory.ownerId]?.name) {
+    return `${characters[inventory.ownerId].name}'s Pack`;
+  }
+  return 'Unknown Inventory';
+}
+
+interface PartyStashViewProps {
+  inventories: Inventory[];
+  characters: Record<string, Character>;
+  toolTemplates: Record<string, ToolTemplate>;
+  transferState: TransferState | null;
+  setTransferState: (state: TransferState | null) => void;
+  actions: ReturnType<typeof useCampaignStore>['actions'];
+}
+
+/**
+ * PartyStashView - Displays all inventories (party stash + character packs)
+ * with items, tools, and currency. Allows transfers between inventories.
+ *
+ * Part of Phase 3: Activities Panel Simplification
+ * Migrated from PartyToolApp.jsx Inventories tab
+ */
+function PartyStashView({
+  inventories,
+  characters,
+  toolTemplates,
+  transferState,
+  setTransferState,
+  actions,
+}: PartyStashViewProps) {
+  /**
+   * Handle transfer between inventories
+   */
+  const handleTransfer = useCallback(() => {
+    if (!transferState || !transferState.targetInventoryId) {
+      alert('Select a destination inventory');
+      return;
+    }
+
+    const sourceInv = inventories.find(inv => inv.id === transferState.sourceInventoryId);
+    const targetInv = inventories.find(inv => inv.id === transferState.targetInventoryId);
+
+    if (!sourceInv || !targetInv) {
+      alert('Invalid source or target inventory');
+      return;
+    }
+
+    // Create updated inventories
+    let updatedSource = { ...sourceInv };
+    let updatedTarget = { ...targetInv };
+
+    if (transferState.type === 'item' && transferState.itemId) {
+      const itemIndex = updatedSource.items.findIndex(item => item.id === transferState.itemId);
+      if (itemIndex === -1) {
+        alert('Item not found in source inventory');
+        return;
+      }
+      const [item] = updatedSource.items.splice(itemIndex, 1);
+      updatedTarget.items = [...updatedTarget.items, item];
+    } else if (transferState.type === 'tool' && transferState.toolId) {
+      const toolIndex = updatedSource.tools.findIndex(tool => tool.toolId === transferState.toolId);
+      if (toolIndex === -1) {
+        alert('Tool not found in source inventory');
+        return;
+      }
+      const [tool] = updatedSource.tools.splice(toolIndex, 1);
+      updatedTarget.tools = [...updatedTarget.tools, tool];
+    } else if (transferState.type === 'currency' && transferState.currencyKey) {
+      const amount = parseInt(transferState.amount || '0', 10);
+      if (amount <= 0) {
+        alert('Enter a valid amount');
+        return;
+      }
+      const available = updatedSource.currency[transferState.currencyKey] || 0;
+      if (amount > available) {
+        alert(`Not enough ${transferState.currencyKey}. Available: ${available}`);
+        return;
+      }
+      updatedSource.currency = {
+        ...updatedSource.currency,
+        [transferState.currencyKey]: available - amount,
+      };
+      updatedTarget.currency = {
+        ...updatedTarget.currency,
+        [transferState.currencyKey]: (updatedTarget.currency[transferState.currencyKey] || 0) + amount,
+      };
+    }
+
+    // Update state through actions
+    actions.updateInventory(updatedSource.id, {
+      items: updatedSource.items,
+      tools: updatedSource.tools,
+      currency: updatedSource.currency,
+    });
+    actions.updateInventory(updatedTarget.id, {
+      items: updatedTarget.items,
+      tools: updatedTarget.tools,
+      currency: updatedTarget.currency,
+    });
+
+    setTransferState(null);
+  }, [transferState, inventories, actions, setTransferState]);
+
+  return (
+    <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+      {/* Inventories List */}
+      <div className="space-y-6">
+        {inventories.map((inventory) => (
+          <div
+            key={inventory.id}
+            className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white">
+                {getInventoryLabel(inventory, characters)}
+              </h3>
+              <span className="text-xs text-slate-400">{inventory.id}</span>
+            </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-3">
+              {/* Items Column */}
+              <div>
+                <h4 className="text-sm font-semibold text-slate-300">Items</h4>
+                <ul className="mt-2 space-y-2 text-sm text-slate-200">
+                  {inventory.items.map((item) => (
+                    <li
+                      key={item.id}
+                      className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2"
+                    >
+                      <span>
+                        {item.name} <span className="text-slate-400">x{item.quantity}</span>
+                      </span>
+                      <button
+                        onClick={() =>
+                          setTransferState({
+                            type: 'item',
+                            itemId: item.id,
+                            sourceInventoryId: inventory.id,
+                            targetInventoryId: '',
+                          })
+                        }
+                        className="rounded-full bg-indigo-500/20 px-3 py-1 text-xs text-indigo-200 hover:bg-indigo-500/30"
+                      >
+                        Transfer
+                      </button>
+                    </li>
+                  ))}
+                  {inventory.items.length === 0 && (
+                    <li className="text-xs text-slate-500">No items.</li>
+                  )}
+                </ul>
+              </div>
+
+              {/* Tools Column */}
+              <div>
+                <h4 className="text-sm font-semibold text-slate-300">Tools</h4>
+                <ul className="mt-2 space-y-2 text-sm text-slate-200">
+                  {inventory.tools.map((tool) => {
+                    const template = toolTemplates[tool.templateId];
+                    return (
+                      <li
+                        key={tool.toolId}
+                        className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2"
+                      >
+                        <span>
+                          {template?.name ?? 'Unknown Tool'}
+                          <span className="text-slate-400"> ({tool.conditionId})</span>
+                        </span>
+                        <button
+                          onClick={() =>
+                            setTransferState({
+                              type: 'tool',
+                              toolId: tool.toolId,
+                              sourceInventoryId: inventory.id,
+                              targetInventoryId: '',
+                            })
+                          }
+                          className="rounded-full bg-indigo-500/20 px-3 py-1 text-xs text-indigo-200 hover:bg-indigo-500/30"
+                        >
+                          Transfer
+                        </button>
+                      </li>
+                    );
+                  })}
+                  {inventory.tools.length === 0 && (
+                    <li className="text-xs text-slate-500">No tools.</li>
+                  )}
+                </ul>
+              </div>
+
+              {/* Currency Column */}
+              <div>
+                <h4 className="text-sm font-semibold text-slate-300">Currency</h4>
+                <ul className="mt-2 space-y-2 text-sm text-slate-200">
+                  {Object.entries(inventory.currency).map(([currencyKey, amount]) => (
+                    <li
+                      key={currencyKey}
+                      className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2"
+                    >
+                      <span>
+                        {currencyKey}: <span className="text-slate-400">{amount}</span>
+                      </span>
+                      <button
+                        onClick={() =>
+                          setTransferState({
+                            type: 'currency',
+                            currencyKey,
+                            amount: '',
+                            sourceInventoryId: inventory.id,
+                            targetInventoryId: '',
+                          })
+                        }
+                        className="rounded-full bg-indigo-500/20 px-3 py-1 text-xs text-indigo-200 hover:bg-indigo-500/30"
+                      >
+                        Transfer
+                      </button>
+                    </li>
+                  ))}
+                  {Object.keys(inventory.currency).length === 0 && (
+                    <li className="text-xs text-slate-500">No currency.</li>
+                  )}
+                </ul>
+              </div>
+            </div>
+          </div>
+        ))}
+        {inventories.length === 0 && (
+          <div className="text-center text-slate-400 py-8">
+            No inventories found. Create a party or add characters to see inventories.
+          </div>
+        )}
+      </div>
+
+      {/* Transfer Console */}
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 h-fit">
+        <h3 className="text-lg font-semibold text-white">Transfer Console</h3>
+        {!transferState && (
+          <p className="mt-3 text-sm text-slate-400">
+            Select an item, tool, or currency to initiate a transfer between inventories.
+          </p>
+        )}
+        {transferState && (
+          <div className="mt-4 space-y-4 text-sm text-slate-200">
+            <div className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2">
+              <p className="text-xs uppercase text-slate-400">Source</p>
+              <p>{getInventoryLabel(
+                inventories.find(inv => inv.id === transferState.sourceInventoryId) || {} as Inventory,
+                characters
+              )}</p>
+            </div>
+            <div className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2">
+              <p className="text-xs uppercase text-slate-400">Transferring</p>
+              <p className="flex items-center gap-2">
+                {transferState.type === 'item' && 'Item'}
+                {transferState.type === 'tool' && 'Tool'}
+                {transferState.type === 'currency' && `Currency: ${transferState.currencyKey}`}
+                <ArrowRight size={14} className="text-slate-400" />
+              </p>
+            </div>
+            <label className="flex flex-col gap-2">
+              Target Inventory
+              <select
+                value={transferState.targetInventoryId}
+                onChange={(event) =>
+                  setTransferState({
+                    ...transferState,
+                    targetInventoryId: event.target.value,
+                  })
+                }
+                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+              >
+                <option value="">Select destination</option>
+                {inventories
+                  .filter((inv) => inv.id !== transferState.sourceInventoryId)
+                  .map((inv) => (
+                    <option key={inv.id} value={inv.id}>
+                      {getInventoryLabel(inv, characters)}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            {transferState.type === 'currency' && (
+              <label className="flex flex-col gap-2">
+                Amount
+                <input
+                  type="number"
+                  value={transferState.amount || ''}
+                  onChange={(event) =>
+                    setTransferState({ ...transferState, amount: event.target.value })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+                />
+              </label>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={handleTransfer}
+                className="flex-1 rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400"
+              >
+                Confirm Transfer
+              </button>
+              <button
+                onClick={() => setTransferState(null)}
+                className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
