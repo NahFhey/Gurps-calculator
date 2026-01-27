@@ -665,6 +665,7 @@ export function ManagerTab() {
           items={gatheringItems || []}
           currentDay={currentDay || 1}
           foodTypes={foodTypes || []}
+          materialTypes={materialTypes || []}
           saveSpecies={saveGatheringSpecies}
           saveTools={saveGatheringTools}
           saveTables={saveGatheringTables}
