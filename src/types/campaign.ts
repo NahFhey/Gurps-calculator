@@ -21,6 +21,9 @@ export interface Character {
   };
   st?: number;  // Strength attribute (legacy, use gcsData.attributes.ST)
 
+  // Hit location profile for combat (defaults to 'humanoid')
+  hitLocationProfileId?: string;
+
   // Full GCS character sheet data (optional for backward compatibility)
   gcsData?: GCSCharacterData;
 }
