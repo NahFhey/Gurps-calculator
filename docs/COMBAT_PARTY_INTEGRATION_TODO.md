@@ -63,22 +63,23 @@
 
 ---
 
-## Phase 3: Player Category Lock
+## Phase 3: Player Category Lock ✅ COMPLETE
 
-- [ ] Lock category for party characters
-  - [ ] Modify `src/components/combat/EncounterSetup.tsx`
-  - [ ] Disable category dropdown for party-sourced participants
-  - [ ] Show lock icon or "Party Member" indicator
+- [x] Lock category for party characters
+  - [x] Modify `src/components/combat/EncounterSetup.tsx`
+  - [x] Add category dropdown to participants in encounter list
+  - [x] Disable category dropdown for party-sourced participants
+  - [x] Show lock icon with "Party" badge indicator
 
-- [ ] GM Mode override
-  - [ ] Check `state.ui.gmModeEnabled` for override
-  - [ ] If GM Mode: allow category change with warning
-  - [ ] If Player Mode: category locked, no dropdown
+- [x] GM Mode override
+  - [x] Access `state.ui.gmModeEnabled` from `useCampaignStore()`
+  - [x] If GM Mode: allow category change with yellow warning styling
+  - [x] If Player Mode: category locked, shows "Player" with lock icon
 
-- [ ] Update Character Library
-  - [ ] Modify `src/components/combat/CharacterLibrary.tsx`
-  - [ ] Hide party characters from library (they're in Party section)
-  - [ ] Or show them with "In Party" badge, non-editable
+- [x] Update Character Library
+  - [x] Modify `src/components/combat/CharacterLibrary.tsx`
+  - [x] Party characters are separate (in `entities.characters` vs `combatCharacters`)
+  - [x] Added info banner showing party character count with note about Party tab
 
 ---
 

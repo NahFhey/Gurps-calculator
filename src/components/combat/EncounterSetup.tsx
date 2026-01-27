@@ -1,10 +1,12 @@
 import { useState, ChangeEvent } from 'react';
-import { Plus, Play, ChevronUp, ChevronDown, X, Users } from 'lucide-react';
+import { Plus, Play, ChevronUp, ChevronDown, X, Users, Lock, AlertTriangle } from 'lucide-react';
 import { useCombat } from '../../contexts/CombatContext';
+import { useCampaignStore } from '../../state/campaignStore';
 import { generateTurnOrder, createNumberedEnemies, generateId, createLogEntry, createTurnLogEntry } from '../../utils/combatHelpers';
 import { createHistoryState } from '../../utils/combatHistory';
 import type { Character as PartyCharacter } from '../../types/campaign';
 import { DEFAULT_HIT_LOCATION_PROFILE } from '../../types/characterSheet';
+import { COMBAT_CATEGORIES } from '../../constants';
 
 interface Attack {
   name: string;
@@ -116,6 +118,10 @@ export default function EncounterSetup() {
     saveCombatHistory
   } = useCombat();
 
+  // Access GM mode from campaign store
+  const { state } = useCampaignStore();
+  const gmModeEnabled = state.ui.gmModeEnabled;
+
   const [encounterName, setEncounterName] = useState('');
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [turnOrder, setTurnOrder] = useState<string[]>([]);
@@ -134,6 +140,13 @@ export default function EncounterSetup() {
   // Check if a party character is already in the encounter
   const isPartyCharInEncounter = (partyCharId: string) => {
     return participants.some(p => p.partyCharacterId === partyCharId);
+  };
+
+  // Update participant category (for GM override)
+  const updateParticipantCategory = (id: string, newCategory: string) => {
+    setParticipants(participants.map(p =>
+      p.id === id ? { ...p, category: newCategory } : p
+    ));
   };
 
   // Add character to encounter
@@ -426,29 +439,69 @@ export default function EncounterSetup() {
             </div>
           ) : (
             <div className="space-y-2">
-              {participants.map(p => (
-                <div key={p.id} className={`flex justify-between items-center rounded p-3 ${
-                  p.isFromParty ? 'bg-gray-800 border border-purple-600/50' : 'bg-gray-800'
-                }`}>
-                  <div>
-                    <div className="font-semibold flex items-center gap-2">
-                      {p.name}
-                      {p.isFromParty && (
-                        <span className="text-xs px-1.5 py-0.5 bg-purple-600/30 text-purple-300 rounded">Party</span>
-                      )}
+              {participants.map(p => {
+                const isPartyChar = p.isFromParty === true;
+                const categoryLocked = isPartyChar && !gmModeEnabled;
+
+                return (
+                  <div key={p.id} className={`flex justify-between items-center rounded p-3 ${
+                    isPartyChar ? 'bg-gray-800 border border-purple-600/50' : 'bg-gray-800'
+                  }`}>
+                    <div className="flex-1">
+                      <div className="font-semibold flex items-center gap-2">
+                        {p.name}
+                        {isPartyChar && (
+                          <span className="text-xs px-1.5 py-0.5 bg-purple-600/30 text-purple-300 rounded flex items-center gap-1">
+                            <Lock size={10} />
+                            Party
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        Speed: {p.basicSpeed} | HP: {p.hp}
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-400">
-                      Speed: {p.basicSpeed} | HP: {p.hp}
+
+                    {/* Category Selector */}
+                    <div className="flex items-center gap-2">
+                      {categoryLocked ? (
+                        <div className="flex items-center gap-1 px-2 py-1 bg-gray-700 text-gray-300 rounded text-sm">
+                          <Lock size={12} className="text-purple-400" />
+                          Player
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          {isPartyChar && gmModeEnabled && (
+                            <AlertTriangle size={14} className="text-yellow-500" title="GM Override: Changing party character category" />
+                          )}
+                          <select
+                            value={p.category}
+                            onChange={(e: ChangeEvent<HTMLSelectElement>) => updateParticipantCategory(p.id, e.target.value)}
+                            className={`px-2 py-1 rounded text-sm ${
+                              isPartyChar && gmModeEnabled
+                                ? 'bg-yellow-900/30 border border-yellow-600/50 text-yellow-200'
+                                : 'bg-gray-700 text-gray-100'
+                            }`}
+                          >
+                            {COMBAT_CATEGORIES.map(cat => (
+                              <option key={cat} value={cat}>
+                                {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      <button
+                        onClick={() => removeCharacter(p.id)}
+                        className="p-2 bg-red-600 hover:bg-red-700 rounded"
+                      >
+                        <X size={16} />
+                      </button>
                     </div>
                   </div>
-                  <button
-                    onClick={() => removeCharacter(p.id)}
-                    className="p-2 bg-red-600 hover:bg-red-700 rounded"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

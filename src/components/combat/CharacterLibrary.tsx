@@ -1,11 +1,12 @@
 import { useState, useMemo, ChangeEvent } from 'react';
-import { Plus, Search, Download, Upload, FileText } from 'lucide-react';
+import { Plus, Search, Download, Upload, FileText, Users, Info } from 'lucide-react';
 import { useCombat } from '../../contexts/CombatContext';
 import { COMBAT_CATEGORIES } from '../../constants';
 import { generateId } from '../../utils/combatHelpers';
 import CharacterSheet from './CharacterSheet';
 import CharacterForm from './CharacterForm';
 import GCSImportModal from './GCSImportModal';
+import type { Character as PartyCharacter } from '../../types/campaign';
 
 interface Attack {
   name: string;
@@ -52,7 +53,10 @@ type SortByValue = 'name' | 'category' | 'basicSpeed';
  * Handles create, read, update, delete, duplicate, search, filter, sort, import/export
  */
 export default function CharacterLibrary() {
-  const { combatCharacters, saveCombatCharacters, combatTombstones, saveCombatTombstones, combatHistory } = useCombat();
+  const { combatCharacters, saveCombatCharacters, combatTombstones, saveCombatTombstones, combatHistory, partyCharacters } = useCombat();
+
+  // Count party characters for informational display
+  const partyCharacterCount = (partyCharacters as PartyCharacter[] || []).length;
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
@@ -264,6 +268,20 @@ export default function CharacterLibrary() {
           <option value="basicSpeed">Sort by Speed</option>
         </select>
       </div>
+
+      {/* Party Characters Info Banner */}
+      {partyCharacterCount > 0 && (
+        <div className="flex items-center gap-3 bg-purple-900/30 border border-purple-600/50 rounded p-3">
+          <Users size={20} className="text-purple-400" />
+          <div className="flex-1">
+            <span className="text-purple-200 font-medium">{partyCharacterCount} Party Character{partyCharacterCount !== 1 ? 's' : ''}</span>
+            <span className="text-gray-400 ml-2 text-sm">
+              Party characters are managed in the Party tab and can be added to encounters from Encounter Setup.
+            </span>
+          </div>
+          <Info size={16} className="text-gray-500" />
+        </div>
+      )}
 
       {/* Character List */}
       <div className="space-y-2">
