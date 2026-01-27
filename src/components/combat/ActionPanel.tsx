@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent } from 'react';
 import { Swords, Shield, Zap, MessageSquare, ChevronDown, ChevronUp, Droplet, Activity } from 'lucide-react';
 import AttackAssist from './AttackAssist';
 import DefenseAssist from './DefenseAssist';
@@ -6,6 +6,135 @@ import InjuryResolutionPanel from './InjuryResolutionPanel';
 import ConditionsPanel from './ConditionsPanel';
 import { getPublicDefenderLabel } from '../../utils/combatViewSelectors';
 import { ViewMode } from '../../utils/combatViewFilter';
+
+interface Modifier {
+  label: string;
+  value: number;
+}
+
+interface HitLocation {
+  key: string;
+  label: string;
+}
+
+interface LocationRoll {
+  dice: number[];
+  total: number;
+}
+
+interface Attack {
+  name: string;
+  skill: number;
+  damage?: string;
+  hitLocation?: HitLocation | null;
+  hitLocationRoll?: LocationRoll | null;
+  success?: boolean;
+}
+
+interface Defense {
+  type: string;
+  baseDefense: number;
+  effectiveDefense: number;
+  success?: boolean | null;
+}
+
+interface Participant {
+  instanceId: string;
+  name: string;
+  category: string;
+  currentHP?: number;
+  hp?: number;
+  isDead?: boolean;
+  isUnconscious?: boolean;
+  isStunned?: boolean;
+  defenses?: {
+    dodge?: number | { mode: string; value?: number };
+    parry?: number | { mode: string; value?: number };
+    block?: number | { mode: string; value?: number };
+  };
+  dodge?: number | { mode: string; value?: number };
+  parry?: number | { mode: string; value?: number };
+  block?: number | { mode: string; value?: number };
+}
+
+interface ConditionInstance {
+  instanceId: string;
+  conditionId: string;
+  label: string;
+  duration?: { type: string; value?: number };
+  source?: string;
+}
+
+interface ManeuverPrompts {
+  allowsAttackPanel?: boolean;
+  allowsDefensePanel?: boolean;
+  allowsAimPanel?: boolean;
+  allowsWaitPanel?: boolean;
+}
+
+interface ManeuverWorkflow {
+  attack?: { modifiers: Modifier[] };
+  defense?: { modifiers: Modifier[] };
+  damage?: { modifiers: Modifier[] };
+}
+
+interface ManeuverSelection {
+  selectedId: string | null;
+  prompts: ManeuverPrompts;
+  workflow: ManeuverWorkflow;
+}
+
+interface TurnDecision {
+  aim?: { targetInstanceId?: string; turnsAimed?: number };
+  wait?: { triggerText?: string };
+}
+
+interface AttackData {
+  targetInstanceId?: string | null;
+  attack?: Attack;
+}
+
+interface DefenseData {
+  defense?: Defense;
+}
+
+interface InjuryData {
+  targetInstanceId?: string;
+  newHP?: number;
+}
+
+interface ActionData {
+  maneuver: string | null;
+  kind: 'attack' | 'defense' | 'injury' | 'note';
+  attack?: Attack;
+  defense?: Defense;
+  injury?: InjuryData;
+  note?: string;
+  targetInstanceId?: string | null;
+  newHP?: number;
+}
+
+type WorkflowType = 'attack' | 'defense' | 'damage' | 'note' | 'conditions' | 'items' | null;
+
+interface ActionPanelProps {
+  currentActor: Participant;
+  participants: Participant[];
+  combatState?: unknown;
+  revealState?: unknown;
+  viewMode?: string;
+  onActionComplete: (data: ActionData) => void;
+  combatRulesPreset?: string;
+  expanded?: boolean;
+  onToggleExpanded?: () => void;
+  maneuverSelection?: ManeuverSelection | null;
+  onManeuverWorkflow?: (update: { type: string; targetInstanceId?: string; turnsAimed?: number; triggerText?: string }) => void;
+  turnDecision?: TurnDecision | null;
+  currentRound?: number;
+  currentTurn?: number;
+  onAddCondition?: (condition: ConditionInstance) => void;
+  onRemoveCondition?: (conditionInstanceId: string) => void;
+  onUpdateCondition?: (conditionInstanceId: string, newDuration: { type: string; value?: number }) => void;
+}
 
 /**
  * ActionPanel Component - Phase 3, 4 & 6
@@ -31,14 +160,14 @@ export default function ActionPanel({
   onAddCondition,
   onRemoveCondition,
   onUpdateCondition
-}) {
-  const [activeWorkflow, setActiveWorkflow] = useState(null); // 'attack', 'defense', 'damage', 'note', 'conditions', 'items', or null
+}: ActionPanelProps) {
+  const [activeWorkflow, setActiveWorkflow] = useState<WorkflowType>(null);
   const [noteText, setNoteText] = useState('');
-  const [selectedTargetId, setSelectedTargetId] = useState(null);
-  const [boundTargetId, setBoundTargetId] = useState(null);
-  const [boundHitLocation, setBoundHitLocation] = useState(null);
-  const [boundHitLocationRoll, setBoundHitLocationRoll] = useState(null);
-  const [boundDamageExpression, setBoundDamageExpression] = useState(null);
+  const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
+  const [boundTargetId, setBoundTargetId] = useState<string | null>(null);
+  const [boundHitLocation, setBoundHitLocation] = useState<HitLocation | null>(null);
+  const [boundHitLocationRoll, setBoundHitLocationRoll] = useState<LocationRoll | null>(null);
+  const [boundDamageExpression, setBoundDamageExpression] = useState<string | null>(null);
   const [forceTargetSelection, setForceTargetSelection] = useState(false);
   const selectedManeuver = maneuverSelection?.selectedId || null;
   const maneuverPrompts = maneuverSelection?.prompts || {};
@@ -47,12 +176,12 @@ export default function ActionPanel({
   // Get potential targets (exclude current actor)
   const targets = participants.filter(p => p.instanceId !== currentActor.instanceId);
   const boundTarget = targets.find(target => target.instanceId === boundTargetId) || null;
-  const truthParticipants = combatState?.participants || participants;
-  const getTruthParticipant = (instanceId) => truthParticipants.find(p => p.instanceId === instanceId);
+  const truthParticipants = (combatState as { participants?: Participant[] })?.participants || participants;
+  const getTruthParticipant = (instanceId: string) => truthParticipants.find(p => p.instanceId === instanceId);
   const boundTargetTruth = boundTargetId ? getTruthParticipant(boundTargetId) : null;
-  const truthTargets = targets.map(target => getTruthParticipant(target.instanceId)).filter(Boolean);
+  const truthTargets = targets.map(target => getTruthParticipant(target.instanceId)).filter(Boolean) as Participant[];
 
-  const handleStartWorkflow = (workflow) => {
+  const handleStartWorkflow = (workflow: WorkflowType) => {
     setActiveWorkflow(workflow);
     // Initialize target selection for damage workflow
     if (workflow === 'damage' && targets.length > 0) {
@@ -64,7 +193,7 @@ export default function ActionPanel({
     setActiveWorkflow(null);
   };
 
-  const canTargetDefend = (targetId) => {
+  const canTargetDefend = (targetId: string | null): boolean => {
     if (!targetId) return false;
     const truthTarget = getTruthParticipant(targetId);
     if (!truthTarget) return false;
@@ -77,7 +206,7 @@ export default function ActionPanel({
     return defenseValues.some(value => value !== null && value !== undefined);
   };
 
-  const handleAttackComplete = (attackData) => {
+  const handleAttackComplete = (attackData: AttackData) => {
     setBoundTargetId(attackData.targetInstanceId || null);
     setBoundHitLocation(attackData.attack?.hitLocation || null);
     setBoundHitLocationRoll(attackData.attack?.hitLocationRoll || null);
@@ -111,7 +240,7 @@ export default function ActionPanel({
     setActiveWorkflow(null);
   };
 
-  const handleDefenseComplete = (defenseData) => {
+  const handleDefenseComplete = (defenseData: DefenseData) => {
     onActionComplete({
       maneuver: selectedManeuver,
       kind: 'defense',
@@ -127,7 +256,7 @@ export default function ActionPanel({
     setActiveWorkflow(null);
   };
 
-  const handleDamageComplete = (injuryData) => {
+  const handleDamageComplete = (injuryData: InjuryData) => {
     onActionComplete({
       maneuver: selectedManeuver,
       kind: 'injury',
@@ -215,9 +344,9 @@ export default function ActionPanel({
                 <label className="block text-xs text-gray-400 mb-1">Target</label>
                 <select
                   value={turnDecision?.aim?.targetInstanceId || ''}
-                  onChange={(e) => onManeuverWorkflow?.({
+                  onChange={(e: ChangeEvent<HTMLSelectElement>) => onManeuverWorkflow?.({
                     type: 'aim',
-                    targetInstanceId: e.target.value || null
+                    targetInstanceId: e.target.value || undefined
                   })}
                   className="w-full px-3 py-2 bg-gray-700 rounded"
                 >
@@ -235,7 +364,7 @@ export default function ActionPanel({
                   type="number"
                   min={0}
                   value={turnDecision?.aim?.turnsAimed ?? 0}
-                  onChange={(e) => onManeuverWorkflow?.({
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => onManeuverWorkflow?.({
                     type: 'aim',
                     turnsAimed: parseInt(e.target.value, 10) || 0
                   })}
@@ -250,7 +379,7 @@ export default function ActionPanel({
               <input
                 type="text"
                 value={turnDecision?.wait?.triggerText || ''}
-                onChange={(e) => onManeuverWorkflow?.({
+                onChange={(e: ChangeEvent<HTMLInputElement>) => onManeuverWorkflow?.({
                   type: 'wait',
                   triggerText: e.target.value
                 })}
@@ -389,7 +518,7 @@ export default function ActionPanel({
               <select
                 className="w-full px-3 py-2 bg-gray-700 rounded"
                 value={selectedTargetId || targets[0]?.instanceId || ''}
-                onChange={(e) => setSelectedTargetId(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedTargetId(e.target.value)}
               >
                 {targets.map((target) => (
                   <option key={target.instanceId} value={target.instanceId}>
@@ -402,7 +531,7 @@ export default function ActionPanel({
           {targets.length > 0 && (
             <InjuryResolutionPanel
               attacker={currentActor}
-              target={boundTargetTruth || getTruthParticipant(selectedTargetId) || truthTargets[0]}
+              target={(boundTargetTruth || getTruthParticipant(selectedTargetId!) || truthTargets[0]) as any}
               combatRulesPreset={combatRulesPreset}
               damageExpression={boundDamageExpression || ''}
               injectedDamageModifiers={maneuverWorkflow?.damage?.modifiers || []}
@@ -424,7 +553,7 @@ export default function ActionPanel({
           <div className="space-y-3">
             <textarea
               value={noteText}
-              onChange={(e) => setNoteText(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setNoteText(e.target.value)}
               placeholder="Enter note or description..."
               className="w-full px-3 py-2 bg-gray-700 rounded h-24"
             />

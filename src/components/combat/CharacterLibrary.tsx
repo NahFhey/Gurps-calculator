@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo, ChangeEvent } from 'react';
 import { Plus, Search, Download, Upload, FileText } from 'lucide-react';
 import { useCombat } from '../../contexts/CombatContext';
 import { COMBAT_CATEGORIES } from '../../constants';
@@ -6,6 +6,46 @@ import { generateId } from '../../utils/combatHelpers';
 import CharacterSheet from './CharacterSheet';
 import CharacterForm from './CharacterForm';
 import GCSImportModal from './GCSImportModal';
+
+interface Attack {
+  name: string;
+  skill: number;
+  damage: string;
+  notes?: string;
+}
+
+interface CharacterData {
+  id?: string;
+  name: string;
+  category: string;
+  st: number;
+  dx: number;
+  iq: number;
+  ht: number;
+  hp: number;
+  fp: number;
+  mp: number;
+  basicSpeed: number;
+  basicMove: number;
+  dodge: number;
+  parry: number;
+  block: number;
+  dr: number;
+  hitLocationProfileId?: string;
+  drByLocation?: Record<string, number>;
+  attacks?: Attack[];
+  notes?: string;
+  currentHP?: number;
+  currentFP?: number;
+  currentMP?: number;
+}
+
+interface CombatHistoryEntry {
+  id: string;
+  participants?: Array<{ id: string }>;
+}
+
+type SortByValue = 'name' | 'category' | 'basicSpeed';
 
 /**
  * Character Library - CRUD for character sheets
@@ -16,14 +56,14 @@ export default function CharacterLibrary() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
-  const [sortBy, setSortBy] = useState('name'); // 'name', 'category', 'basicSpeed'
-  const [editingId, setEditingId] = useState(null);
+  const [sortBy, setSortBy] = useState<SortByValue>('name');
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [showGCSImport, setShowGCSImport] = useState(false);
 
   // Filtered and sorted characters
   const displayCharacters = useMemo(() => {
-    let filtered = combatCharacters.filter(char => {
+    let filtered = (combatCharacters as CharacterData[]).filter(char => {
       const matchesSearch = char.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = filterCategory === 'all' || char.category === filterCategory;
       return matchesSearch && matchesCategory;
@@ -47,22 +87,22 @@ export default function CharacterLibrary() {
   }, [combatCharacters, searchTerm, filterCategory, sortBy]);
 
   // Create new character
-  const handleCreate = (characterData) => {
-    const newChar = {
+  const handleCreate = (characterData: CharacterData) => {
+    const newChar: CharacterData = {
       ...characterData,
       id: generateId(),
       currentHP: characterData.hp,
       currentFP: characterData.fp || 0,
       currentMP: characterData.mp || 0
     };
-    saveCombatCharacters([...combatCharacters, newChar]);
+    saveCombatCharacters([...(combatCharacters as CharacterData[]), newChar]);
     setShowForm(false);
   };
 
   // Update existing character
-  const handleUpdate = (characterData) => {
+  const handleUpdate = (characterData: CharacterData) => {
     saveCombatCharacters(
-      combatCharacters.map(char =>
+      (combatCharacters as CharacterData[]).map(char =>
         char.id === editingId ? { ...characterData, id: editingId } : char
       )
     );
@@ -70,29 +110,29 @@ export default function CharacterLibrary() {
   };
 
   // Delete character
-  const handleDelete = (id) => {
-    const charToDelete = combatCharacters.find(c => c.id === id);
+  const handleDelete = (id: string) => {
+    const charToDelete = (combatCharacters as CharacterData[]).find(c => c.id === id);
 
     // Check if this character is referenced in combat history
-    const isReferenced = combatHistory.some(combat =>
+    const isReferenced = (combatHistory as CombatHistoryEntry[]).some(combat =>
       combat.participants?.some(p => p.id === id)
     );
 
-    if (isReferenced) {
+    if (isReferenced && charToDelete) {
       // Move to tombstones instead of deleting
-      saveCombatTombstones([...combatTombstones, charToDelete]);
+      saveCombatTombstones([...(combatTombstones as CharacterData[]), charToDelete]);
     }
 
     // Remove from active characters
-    saveCombatCharacters(combatCharacters.filter(c => c.id !== id));
+    saveCombatCharacters((combatCharacters as CharacterData[]).filter(c => c.id !== id));
   };
 
   // Duplicate character
-  const handleDuplicate = (id) => {
-    const original = combatCharacters.find(c => c.id === id);
+  const handleDuplicate = (id: string) => {
+    const original = (combatCharacters as CharacterData[]).find(c => c.id === id);
     if (!original) return;
 
-    const duplicate = {
+    const duplicate: CharacterData = {
       ...original,
       id: generateId(),
       name: `${original.name} (Copy)`,
@@ -101,7 +141,7 @@ export default function CharacterLibrary() {
       currentMP: original.mp || 0
     };
 
-    saveCombatCharacters([...combatCharacters, duplicate]);
+    saveCombatCharacters([...(combatCharacters as CharacterData[]), duplicate]);
   };
 
   // Export library as JSON
@@ -117,21 +157,21 @@ export default function CharacterLibrary() {
   };
 
   // Import library from JSON
-  const handleImport = (event) => {
+  const handleImport = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const imported = JSON.parse(e.target.result);
+        const imported = JSON.parse(e.target?.result as string);
         if (!Array.isArray(imported)) {
           alert('Invalid file format: expected an array of characters');
           return;
         }
 
         // Merge with existing, regenerating IDs to avoid conflicts
-        const newChars = imported.map(char => ({
+        const newChars = imported.map((char: CharacterData) => ({
           ...char,
           id: generateId(),
           currentHP: char.hp,
@@ -139,10 +179,10 @@ export default function CharacterLibrary() {
           currentMP: char.mp || 0
         }));
 
-        saveCombatCharacters([...combatCharacters, ...newChars]);
+        saveCombatCharacters([...(combatCharacters as CharacterData[]), ...newChars]);
         alert(`Imported ${newChars.length} characters`);
       } catch (error) {
-        alert('Error parsing JSON file: ' + error.message);
+        alert('Error parsing JSON file: ' + (error as Error).message);
       }
     };
     reader.readAsText(file);
@@ -172,7 +212,7 @@ export default function CharacterLibrary() {
           <button
             onClick={handleExport}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
-            disabled={combatCharacters.length === 0}
+            disabled={(combatCharacters as CharacterData[]).length === 0}
           >
             <Download size={16} />
             Export
@@ -198,13 +238,13 @@ export default function CharacterLibrary() {
             type="text"
             placeholder="Search characters..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-gray-700 rounded"
           />
         </div>
         <select
           value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value)}
+          onChange={(e: ChangeEvent<HTMLSelectElement>) => setFilterCategory(e.target.value)}
           className="px-4 py-2 bg-gray-700 rounded"
         >
           <option value="all">All Categories</option>
@@ -216,7 +256,7 @@ export default function CharacterLibrary() {
         </select>
         <select
           value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
+          onChange={(e: ChangeEvent<HTMLSelectElement>) => setSortBy(e.target.value as SortByValue)}
           className="px-4 py-2 bg-gray-700 rounded"
         >
           <option value="name">Sort by Name</option>
@@ -229,7 +269,7 @@ export default function CharacterLibrary() {
       <div className="space-y-2">
         {displayCharacters.length === 0 ? (
           <div className="text-center text-gray-400 py-8">
-            {combatCharacters.length === 0 ? (
+            {(combatCharacters as CharacterData[]).length === 0 ? (
               <p>No characters in library. Create one to get started!</p>
             ) : (
               <p>No characters match your search.</p>
@@ -240,9 +280,9 @@ export default function CharacterLibrary() {
             <CharacterSheet
               key={char.id}
               character={char}
-              onEdit={() => setEditingId(char.id)}
-              onDelete={() => handleDelete(char.id)}
-              onDuplicate={() => handleDuplicate(char.id)}
+              onEdit={() => setEditingId(char.id!)}
+              onDelete={() => handleDelete(char.id!)}
+              onDuplicate={() => handleDuplicate(char.id!)}
             />
           ))
         )}
@@ -251,7 +291,7 @@ export default function CharacterLibrary() {
       {/* Create/Edit Form Modal */}
       {(showForm || editingId) && (
         <CharacterForm
-          character={editingId ? combatCharacters.find(c => c.id === editingId) : null}
+          character={editingId ? (combatCharacters as CharacterData[]).find(c => c.id === editingId) : null}
           onSave={editingId ? handleUpdate : handleCreate}
           onCancel={() => {
             setShowForm(false);

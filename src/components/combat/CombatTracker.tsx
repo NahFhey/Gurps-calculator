@@ -1,9 +1,9 @@
-import React, { useState, useEffect, memo } from 'react';
-import { ChevronLeft, ChevronRight, X, Download, Plus, Undo, Redo, Save, Upload, Dices } from 'lucide-react';
+import { useState, useEffect, memo, ChangeEvent, KeyboardEvent, ReactNode } from 'react';
+import { ChevronLeft, ChevronRight, X, Download, Plus, Undo, Redo, Upload, Dices } from 'lucide-react';
 import { useCombat } from '../../contexts/CombatContext';
 import { calculateHPStatus, exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, createActionLogEntry, createInjuryLogEntry, createEffectLogEntry, createConditionLogEntry, createManeuverLogEntry, createReinforcementLogEntry, generateId, exportActiveCombat, parseImportedCombat, exportCombatPlayerView, exportCombatGMLocked, importCombatWithGMLock } from '../../utils/combatHelpers';
 import { MAX_COMBAT_HISTORY } from '../../constants';
-import { roll, rollVsTarget, formatRoll } from '../../utils/dice';
+import { roll, rollVsTarget } from '../../utils/dice';
 import { createTurnAdvanceAction, createSetResourceAction, createAddLogEntryAction, createAddConditionAction, createRemoveConditionAction, createUpdateConditionAction, createSetTurnDecisionAction, createAddReinforcementsAction } from '../../utils/combatActions';
 import { addAction, canUndo, canRedo, getUndoCount, getRedoCount, undo, redo, createHistoryState, createSnapshot } from '../../utils/combatHistory';
 import { validateCombatState, validateCombatExport, validateCombatImport } from '../../utils/combatValidation';
@@ -28,6 +28,262 @@ import RevealPanel from './RevealPanel';
 import ConditionBadge from './ConditionBadge';
 import ManeuverSelector from './ManeuverSelector';
 import ReinforcementsModal from './ReinforcementsModal';
+
+// ============================================================================
+// Type Definitions
+// ============================================================================
+
+interface Attack {
+  name: string;
+  skill: number;
+  damage?: string;
+}
+
+interface ConditionDuration {
+  type: string;
+  value?: number;
+}
+
+interface ConditionInstance {
+  instanceId: string;
+  conditionId: string;
+  label: string;
+  duration?: ConditionDuration;
+  source?: string;
+}
+
+interface Participant {
+  instanceId: string;
+  id?: string;
+  libraryId?: string;
+  name: string;
+  category: string;
+  st: number;
+  dx: number;
+  iq: number;
+  ht: number;
+  hp: number | HPValue;
+  fp: number | FPValue;
+  mp: number | MPValue;
+  maxHP?: number;
+  maxFP?: number;
+  maxMP?: number;
+  currentHP?: number;
+  currentFP?: number;
+  currentMP?: number;
+  currentRound?: number;
+  basicSpeed: number;
+  basicMove: number;
+  dodge?: number;
+  parry?: number;
+  block?: number;
+  dr?: number;
+  defenses?: {
+    dodge?: number;
+    parry?: number;
+    block?: number;
+  };
+  attacks?: Attack[];
+  shockPenalty?: number;
+  isStunned?: boolean;
+  isUnconscious?: boolean;
+  isDead?: boolean;
+  bleeding?: { rate: number; round: number } | null;
+  crippled?: string[];
+  conditions?: ConditionInstance[];
+}
+
+interface HPValue {
+  mode: 'exact' | 'band' | 'unknown';
+  current?: number;
+  max?: number;
+  band?: string;
+  bandText?: string;
+}
+
+interface FPValue {
+  mode: 'exact' | 'unknown';
+  current?: number;
+  max?: number;
+}
+
+interface MPValue {
+  mode: 'exact' | 'unknown';
+  current?: number;
+  max?: number;
+}
+
+interface LogEntry {
+  id?: string;
+  timestamp: number;
+  entryType?: string;
+  text?: string;
+  message?: string;
+  round?: number;
+  turn?: number;
+  roll?: RollData;
+  action?: ActionData;
+  maneuver?: string;
+}
+
+interface RollData {
+  expression: string;
+  dice: number[];
+  modifier: number;
+  total: number;
+  target: number | null;
+  margin: number;
+  success: boolean;
+  valid?: boolean;
+  error?: string;
+}
+
+interface ActionData {
+  kind: string;
+  attack?: AttackActionData;
+  defense?: DefenseActionData;
+  damage?: DamageActionData;
+}
+
+interface AttackActionData {
+  modifiers?: { label: string; value: number }[];
+}
+
+interface DefenseActionData {
+  type?: string;
+  success?: boolean;
+  modifiers?: { label: string; value: number }[];
+}
+
+interface DamageActionData {
+  expression?: string;
+  rolledDamage?: number;
+  generalDRUsed?: number;
+}
+
+interface CombatState {
+  version?: number;
+  id: string;
+  name: string;
+  startTime: number;
+  endTime?: number;
+  participants: Participant[];
+  turnOrder: string[];
+  currentTurnIndex: number;
+  currentRound: number;
+  turnDecisions: Record<string, TurnDecision>;
+  log: LogEntry[];
+}
+
+interface TurnDecision {
+  maneuverId?: string;
+  notes?: string;
+  aim?: { targetInstanceId?: string; turnsAimed?: number };
+  wait?: { triggerText?: string };
+}
+
+interface HistoryState {
+  actions: unknown[];
+  undoStack: unknown[];
+  redoStack: unknown[];
+}
+
+interface RevealState {
+  combatId: string;
+  byInstanceId: Record<string, RevealEntry>;
+}
+
+interface RevealEntry {
+  name?: { mode: string };
+  hp?: { mode: string };
+  defenses?: { dodge?: { mode: string }; parry?: { mode: string }; block?: { mode: string } };
+}
+
+interface Maneuver {
+  id: string;
+  label: string;
+  prompts?: ManeuverPrompts;
+  workflow?: ManeuverWorkflow;
+}
+
+interface ManeuverPrompts {
+  allowsAttackPanel?: boolean;
+  allowsDefensePanel?: boolean;
+}
+
+interface ManeuverWorkflow {
+  attack?: { modifiers: { label: string; value: number }[] };
+  defense?: { modifiers: { label: string; value: number }[] };
+  damage?: { modifiers: { label: string; value: number }[] };
+}
+
+interface TurnContext {
+  isStunned: boolean;
+  isProne: boolean;
+  isGrappled: boolean;
+  isUnconscious: boolean;
+  shockPenalty: number;
+}
+
+interface ReinforcementData {
+  characterId: string;
+  category: string;
+  previewNames: string[];
+  insertionMode: string;
+  manualOrder?: string[];
+}
+
+interface Character {
+  id: string;
+  name: string;
+  category: string;
+  hp: number;
+  fp: number;
+  mp: number;
+  basicSpeed: number;
+  dx: number;
+  st: number;
+  iq: number;
+  ht: number;
+  dodge: number;
+  parry: number;
+  block: number;
+  dr: number;
+}
+
+interface InjuryEffect {
+  type: string;
+  autoApplied?: boolean;
+  value?: number;
+  success?: boolean;
+  outcome?: string;
+  locationKey?: string;
+  locationLabel?: string;
+}
+
+interface InjuryData {
+  hitLocation?: unknown;
+  damageBreakdown?: unknown;
+  effects?: InjuryEffect[];
+  newHP?: number;
+  targetInstanceId?: string;
+}
+
+interface ActionCompleteData {
+  maneuver?: string | null;
+  kind: string;
+  attack?: unknown;
+  defense?: DefenseActionData;
+  damage?: unknown;
+  injury?: InjuryData;
+  note?: string;
+  targetInstanceId?: string | null;
+  newHP?: number;
+}
+
+// ============================================================================
+// CombatTracker Component
+// ============================================================================
 
 /**
  * Combat Tracker Component - Phase 3
@@ -60,11 +316,15 @@ export default function CombatTracker() {
   const [viewMode, setViewMode] = useState(ViewMode.PLAYER);
   const [showExportMenu, setShowExportMenu] = useState(false);
 
+  const combat = combatActive as CombatState | null;
+  const history = (combatActiveHistory || createHistoryState()) as HistoryState;
+  const reveal = combatReveal as RevealState | null;
+
   // Migrate Phase 1 combat on load if needed
   useEffect(() => {
-    if (combatActive && !combatActive.version) {
+    if (combat && !combat.version) {
       // Phase 1 detected, migrate
-      const migrated = validateCombatState(combatActive);
+      const migrated = validateCombatState(combat) as { valid: boolean; combat: CombatState };
       if (migrated.valid) {
         saveCombatActive(migrated.combat);
 
@@ -74,7 +334,7 @@ export default function CombatTracker() {
         }
       }
     }
-  }, [combatActive]);
+  }, [combat]);
 
   // Phase 5: Force Player View when GM Mode locks
   useEffect(() => {
@@ -85,51 +345,47 @@ export default function CombatTracker() {
 
   // Phase 5: Initialize reveal state if missing
   useEffect(() => {
-    if (combatActive && !combatReveal) {
+    if (combat && !reveal) {
       const initialReveal = createInitialRevealState(
-        combatActive.id,
-        combatActive.participants
+        combat.id,
+        combat.participants
       );
       saveCombatReveal(initialReveal);
     }
-  }, [combatActive, combatReveal]);
+  }, [combat, reveal]);
 
-  if (!combatActive) {
+  if (!combat) {
     return <div className="text-center text-gray-400 py-8">No active combat</div>;
   }
 
   // Phase 5: Compute view model (filters based on reveal state + view mode)
-  const combatView = getCombatView(combatActive, combatReveal, viewMode);
+  const combatView = getCombatView(combat, reveal, viewMode) as { participants: Participant[] };
 
   // Phase 5: Filter log for Player View
-  const displayLog = viewMode === ViewMode.PLAYER && combatReveal
-    ? filterLogForPlayerView(combatActive.log, combatReveal, combatActive)
-    : combatActive.log;
+  const displayLog = viewMode === ViewMode.PLAYER && reveal
+    ? filterLogForPlayerView(combat.log, reveal, combat) as LogEntry[]
+    : combat.log;
 
-  // Ensure history exists
-  const history = combatActiveHistory || createHistoryState();
-
-  const currentActorInstanceId = combatActive.turnOrder[combatActive.currentTurnIndex];
+  const currentActorInstanceId = combat.turnOrder[combat.currentTurnIndex];
   // Use combatView for display (respects reveal state)
   const currentActor = combatView.participants.find(p => p.instanceId === currentActorInstanceId);
-  // Use combatActive for truth state (for actions/modifications)
-  const currentActorTruth = combatActive.participants.find(p => p.instanceId === currentActorInstanceId);
+  // Use combat for truth state (for actions/modifications)
+  const currentActorTruth = combat.participants.find(p => p.instanceId === currentActorInstanceId);
 
   // Get base state (combat at start, before any actions)
-  // Phase 5: Also get base reveal state
-  const baseState = createSnapshot(combatActive); // For now, treat current as base (simplified)
+  const baseState = createSnapshot(combat);
 
   const turnDecisionKey = currentActorInstanceId
-    ? `${combatActive.currentRound}_${combatActive.currentTurnIndex}_${currentActorInstanceId}`
+    ? `${combat.currentRound}_${combat.currentTurnIndex}_${currentActorInstanceId}`
     : null;
-  const turnDecisions = combatActive.turnDecisions || {};
+  const turnDecisions = combat.turnDecisions || {};
   const currentTurnDecision = turnDecisionKey ? (turnDecisions[turnDecisionKey] || {}) : {};
-  const turnContext = deriveTurnContext(currentActorTruth);
-  const availableManeuvers = filterManeuvers(ManeuverCatalog, turnContext, combatRulesPreset || 'standard');
+  const turnContext = deriveTurnContext(currentActorTruth) as TurnContext;
+  const availableManeuvers = filterManeuvers(ManeuverCatalog as Maneuver[], turnContext, (combatRulesPreset as string) || 'standard') as Maneuver[];
   const selectedManeuverId = currentTurnDecision?.maneuverId || null;
-  const selectedManeuver = ManeuverCatalog.find(m => m.id === selectedManeuverId) || null;
+  const selectedManeuver = (ManeuverCatalog as Maneuver[]).find(m => m.id === selectedManeuverId) || null;
   const maneuverSelection = selectedManeuver
-    ? { selectedId: selectedManeuverId, prompts: selectedManeuver.prompts, workflow: selectedManeuver.workflow || {} }
+    ? { selectedId: selectedManeuverId, prompts: selectedManeuver.prompts || {}, workflow: selectedManeuver.workflow || {} }
     : { selectedId: null, prompts: {}, workflow: {} };
 
   const isEnemyInPlayerView = viewMode === ViewMode.PLAYER && currentActor?.category === 'enemy';
@@ -142,12 +398,12 @@ export default function CombatTracker() {
    * Record an action and update state
    * Phase 5: Also pass reveal state to create checkpoints with it
    */
-  const recordAction = (action) => {
-    const newHistory = addAction(history, action, combatActive, combatReveal);
+  const recordAction = (action: unknown) => {
+    const newHistory = addAction(history, action, combat, reveal);
     saveCombatActiveHistory(newHistory);
   };
 
-  const buildRevealUpdate = (previousReveal, nextReveal, instanceId) => {
+  const buildRevealUpdate = (previousReveal: RevealState | null, nextReveal: RevealState | null, instanceId: string | null) => {
     if (!previousReveal || !nextReveal || !instanceId) return null;
     const previousEntry = previousReveal.byInstanceId?.[instanceId];
     const nextEntry = nextReveal.byInstanceId?.[instanceId];
@@ -157,7 +413,7 @@ export default function CombatTracker() {
     return { set: { [instanceId]: nextEntry } };
   };
 
-  const buildAutoTurnOrder = (participants) => {
+  const buildAutoTurnOrder = (participants: Participant[]): string[] => {
     const activeCombatants = participants.filter(p => p.category !== 'object');
     const sorted = [...activeCombatants].sort((a, b) => {
       if (b.basicSpeed !== a.basicSpeed) return b.basicSpeed - a.basicSpeed;
@@ -167,12 +423,12 @@ export default function CombatTracker() {
     return sorted.map(p => p.instanceId);
   };
 
-  const insertAfterIndex = (order, index, newIds) => {
+  const insertAfterIndex = (order: string[], index: number, newIds: string[]): string[] => {
     const nextIndex = Math.min(order.length, index + 1);
     return [...order.slice(0, nextIndex), ...newIds, ...order.slice(nextIndex)];
   };
 
-  const normalizeTurnDecision = (decision) => {
+  const normalizeTurnDecision = (decision: TurnDecision | null): TurnDecision | null => {
     if (!decision) return null;
 
     const hasManeuver = Boolean(decision.maneuverId);
@@ -192,7 +448,7 @@ export default function CombatTracker() {
     };
   };
 
-  const updateTurnDecisionState = (previousDecision, nextDecision) => {
+  const updateTurnDecisionState = (previousDecision: TurnDecision | null, nextDecision: TurnDecision | null) => {
     if (!turnDecisionKey) return;
 
     const normalizedDecision = normalizeTurnDecision(nextDecision);
@@ -205,7 +461,7 @@ export default function CombatTracker() {
     }
 
     saveCombatActive({
-      ...combatActive,
+      ...combat,
       turnDecisions: updatedTurnDecisions
     });
 
@@ -220,7 +476,11 @@ export default function CombatTracker() {
     if (!canUndo(history)) return;
 
     // Phase 5: Pass and restore reveal state
-    const result = undo(baseState, history, combatActive, combatReveal);
+    const result = undo(baseState, history, combat, reveal) as {
+      newCombatState: CombatState;
+      newHistory: HistoryState;
+      newRevealState?: RevealState;
+    };
     saveCombatActive(result.newCombatState);
     saveCombatActiveHistory(result.newHistory);
     if (result.newRevealState) {
@@ -233,7 +493,11 @@ export default function CombatTracker() {
     if (!canRedo(history)) return;
 
     // Phase 5: Pass and restore reveal state
-    const result = redo(baseState, history, combatActive, combatReveal);
+    const result = redo(baseState, history, combat, reveal) as {
+      newCombatState: CombatState;
+      newHistory: HistoryState;
+      newRevealState?: RevealState;
+    };
     saveCombatActive(result.newCombatState);
     saveCombatActiveHistory(result.newHistory);
     if (result.newRevealState) {
@@ -247,34 +511,34 @@ export default function CombatTracker() {
   // ============================================================================
 
   const handleNextTurn = () => {
-    const fromRound = combatActive.currentRound;
-    const fromTurnIndex = combatActive.currentTurnIndex;
+    const fromRound = combat.currentRound;
+    const fromTurnIndex = combat.currentTurnIndex;
 
-    const nextIndex = combatActive.currentTurnIndex + 1;
-    const isNewRound = nextIndex >= combatActive.turnOrder.length;
+    const nextIndex = combat.currentTurnIndex + 1;
+    const isNewRound = nextIndex >= combat.turnOrder.length;
 
     const toTurnIndex = isNewRound ? 0 : nextIndex;
-    const toRound = isNewRound ? combatActive.currentRound + 1 : combatActive.currentRound;
+    const toRound = isNewRound ? combat.currentRound + 1 : combat.currentRound;
 
     // Create TURN_ADVANCE action
     const action = createTurnAdvanceAction(fromRound, fromTurnIndex, toRound, toTurnIndex);
 
     // Get next actor and clear shock penalty (Phase 4)
-    const nextActorInstanceId = combatActive.turnOrder[toTurnIndex];
-    const nextActor = combatActive.participants.find(p => p.instanceId === nextActorInstanceId);
+    const nextActorInstanceId = combat.turnOrder[toTurnIndex];
+    const nextActor = combat.participants.find(p => p.instanceId === nextActorInstanceId);
 
     // Clear shock penalty on turn start
-    let updatedParticipants = combatActive.participants.map(p =>
-      p.instanceId === nextActorInstanceId ? clearShock(p) : p
+    let updatedParticipants = combat.participants.map(p =>
+      p.instanceId === nextActorInstanceId ? clearShock(p) as Participant : p
     );
 
     // Phase 6: Tick conditions
-    const expiredConditions = [];
+    const expiredConditions: Array<{ participant: Participant; condition: ConditionInstance }> = [];
 
     // If new round, tick round-based conditions for ALL participants
     if (isNewRound) {
       updatedParticipants = updatedParticipants.map(p => {
-        const result = tickConditionsRound(p, toRound);
+        const result = tickConditionsRound(p, toRound) as { combatant: Participant; expired: ConditionInstance[] };
         if (result.expired.length > 0) {
           expiredConditions.push(...result.expired.map(c => ({ participant: p, condition: c })));
         }
@@ -285,7 +549,7 @@ export default function CombatTracker() {
     // Tick turn-based conditions for the next actor
     const nextActorUpdated = updatedParticipants.find(p => p.instanceId === nextActorInstanceId);
     if (nextActorUpdated) {
-      const result = tickConditionsTurn(nextActorUpdated, toRound);
+      const result = tickConditionsTurn(nextActorUpdated, toRound) as { combatant: Participant; expired: ConditionInstance[] };
       if (result.expired.length > 0) {
         expiredConditions.push(...result.expired.map(c => ({ participant: nextActorUpdated, condition: c })));
       }
@@ -297,8 +561,8 @@ export default function CombatTracker() {
     }
 
     // Apply to state immediately
-    const newCombat = {
-      ...combatActive,
+    const newCombat: CombatState = {
+      ...combat,
       currentRound: toRound,
       currentTurnIndex: toTurnIndex,
       participants: updatedParticipants
@@ -308,7 +572,7 @@ export default function CombatTracker() {
     recordAction(action);
 
     // Add log entries for new round and new turn
-    const logEntries = [];
+    const logEntries: LogEntry[] = [];
 
     if (isNewRound) {
       const roundLogEntry = createTurnLogEntry(toRound, toTurnIndex, null, `=== Round ${toRound} ===`);
@@ -339,28 +603,28 @@ export default function CombatTracker() {
     }
 
     // Update state with new logs
-    saveCombatActive(prev => ({
+    saveCombatActive((prev: CombatState) => ({
       ...prev,
       log: [...prev.log, ...logEntries]
     }));
   };
 
   const handlePrevTurn = () => {
-    const fromRound = combatActive.currentRound;
-    const fromTurnIndex = combatActive.currentTurnIndex;
+    const fromRound = combat.currentRound;
+    const fromTurnIndex = combat.currentTurnIndex;
 
-    const prevIndex = combatActive.currentTurnIndex - 1;
+    const prevIndex = combat.currentTurnIndex - 1;
     const isPrevRound = prevIndex < 0;
 
-    const toTurnIndex = isPrevRound ? combatActive.turnOrder.length - 1 : prevIndex;
-    const toRound = isPrevRound ? Math.max(1, combatActive.currentRound - 1) : combatActive.currentRound;
+    const toTurnIndex = isPrevRound ? combat.turnOrder.length - 1 : prevIndex;
+    const toRound = isPrevRound ? Math.max(1, combat.currentRound - 1) : combat.currentRound;
 
     // Create TURN_ADVANCE action
     const action = createTurnAdvanceAction(fromRound, fromTurnIndex, toRound, toTurnIndex);
 
     // Apply to state
-    const newCombat = {
-      ...combatActive,
+    const newCombat: CombatState = {
+      ...combat,
       currentRound: toRound,
       currentTurnIndex: toTurnIndex
     };
@@ -373,25 +637,26 @@ export default function CombatTracker() {
   // Resource Management
   // ============================================================================
 
-  const updateResource = (instanceId, resource, newValue) => {
-    const participant = combatActive.participants.find(p => p.instanceId === instanceId);
+  const updateResource = (instanceId: string, resource: string, newValue: number) => {
+    const participant = combat.participants.find(p => p.instanceId === instanceId);
     if (!participant) return;
 
-    const oldValue = participant[`current${resource}`];
+    const resourceKey = `current${resource}` as keyof Participant;
+    const oldValue = participant[resourceKey] as number | undefined;
     if (oldValue === newValue) return;
 
     // Create SET_RESOURCE action
     const resourceAction = createSetResourceAction(instanceId, resource, oldValue, newValue);
 
     // Apply to state
-    const updatedParticipants = combatActive.participants.map(p =>
+    const updatedParticipants = combat.participants.map(p =>
       p.instanceId === instanceId
-        ? { ...p, [`current${resource}`]: newValue }
+        ? { ...p, [resourceKey]: newValue }
         : p
     );
 
-    const newCombat = {
-      ...combatActive,
+    const newCombat: CombatState = {
+      ...combat,
       participants: updatedParticipants
     };
 
@@ -400,8 +665,8 @@ export default function CombatTracker() {
 
     // Create log entry
     const logEntry = createResourceLogEntry(
-      combatActive.currentRound,
-      combatActive.currentTurnIndex,
+      combat.currentRound,
+      combat.currentTurnIndex,
       instanceId,
       participant.name,
       resource,
@@ -412,7 +677,7 @@ export default function CombatTracker() {
     const logAction = createAddLogEntryAction(logEntry);
 
     // Update state with log
-    saveCombatActive(prev => ({
+    saveCombatActive((prev: CombatState) => ({
       ...prev,
       log: [...prev.log, logEntry]
     }));
@@ -424,14 +689,14 @@ export default function CombatTracker() {
   // Phase 6: Condition Management
   // ============================================================================
 
-  const handleAddCondition = (conditionInstance) => {
+  const handleAddCondition = (conditionInstance: ConditionInstance) => {
     if (!currentActorTruth) return;
 
     // Create ADD_CONDITION action
     const conditionAction = createAddConditionAction(currentActorTruth.instanceId, conditionInstance);
 
     // Apply to state
-    const updatedParticipants = combatActive.participants.map(p => {
+    const updatedParticipants = combat.participants.map(p => {
       if (p.instanceId === currentActorTruth.instanceId) {
         const conditions = p.conditions || [];
         return {
@@ -442,8 +707,8 @@ export default function CombatTracker() {
       return p;
     });
 
-    const newCombat = {
-      ...combatActive,
+    const newCombat: CombatState = {
+      ...combat,
       participants: updatedParticipants
     };
 
@@ -452,8 +717,8 @@ export default function CombatTracker() {
 
     // Create log entry
     const logEntry = createConditionLogEntry({
-      round: combatActive.currentRound,
-      turn: combatActive.currentTurnIndex,
+      round: combat.currentRound,
+      turn: combat.currentTurnIndex,
       targetInstanceId: currentActorTruth.instanceId,
       targetName: currentActorTruth.name,
       changeType: 'applied',
@@ -465,7 +730,7 @@ export default function CombatTracker() {
 
     const logAction = createAddLogEntryAction(logEntry);
 
-    saveCombatActive(prev => ({
+    saveCombatActive((prev: CombatState) => ({
       ...prev,
       log: [...prev.log, logEntry]
     }));
@@ -473,7 +738,7 @@ export default function CombatTracker() {
     recordAction(logAction);
   };
 
-  const handleRemoveCondition = (conditionInstanceId) => {
+  const handleRemoveCondition = (conditionInstanceId: string) => {
     if (!currentActorTruth) return;
 
     // Find the condition being removed
@@ -485,7 +750,7 @@ export default function CombatTracker() {
     const conditionAction = createRemoveConditionAction(currentActorTruth.instanceId, conditionToRemove);
 
     // Apply to state
-    const updatedParticipants = combatActive.participants.map(p => {
+    const updatedParticipants = combat.participants.map(p => {
       if (p.instanceId === currentActorTruth.instanceId) {
         return {
           ...p,
@@ -495,8 +760,8 @@ export default function CombatTracker() {
       return p;
     });
 
-    const newCombat = {
-      ...combatActive,
+    const newCombat: CombatState = {
+      ...combat,
       participants: updatedParticipants
     };
 
@@ -505,8 +770,8 @@ export default function CombatTracker() {
 
     // Create log entry
     const logEntry = createConditionLogEntry({
-      round: combatActive.currentRound,
-      turn: combatActive.currentTurnIndex,
+      round: combat.currentRound,
+      turn: combat.currentTurnIndex,
       targetInstanceId: currentActorTruth.instanceId,
       targetName: currentActorTruth.name,
       changeType: 'removed',
@@ -516,7 +781,7 @@ export default function CombatTracker() {
 
     const logAction = createAddLogEntryAction(logEntry);
 
-    saveCombatActive(prev => ({
+    saveCombatActive((prev: CombatState) => ({
       ...prev,
       log: [...prev.log, logEntry]
     }));
@@ -524,7 +789,7 @@ export default function CombatTracker() {
     recordAction(logAction);
   };
 
-  const handleUpdateCondition = (conditionInstanceId, newDuration) => {
+  const handleUpdateCondition = (conditionInstanceId: string, newDuration: ConditionDuration) => {
     if (!currentActorTruth) return;
 
     // Find the condition being updated
@@ -533,7 +798,7 @@ export default function CombatTracker() {
     if (!conditionToUpdate) return;
 
     // Create updated condition
-    const updatedCondition = {
+    const updatedCondition: ConditionInstance = {
       ...conditionToUpdate,
       duration: newDuration
     };
@@ -547,7 +812,7 @@ export default function CombatTracker() {
     );
 
     // Apply to state
-    const updatedParticipants = combatActive.participants.map(p => {
+    const updatedParticipants = combat.participants.map(p => {
       if (p.instanceId === currentActorTruth.instanceId) {
         return {
           ...p,
@@ -559,8 +824,8 @@ export default function CombatTracker() {
       return p;
     });
 
-    const newCombat = {
-      ...combatActive,
+    const newCombat: CombatState = {
+      ...combat,
       participants: updatedParticipants
     };
 
@@ -572,23 +837,23 @@ export default function CombatTracker() {
   // Phase 7: Maneuver Selection
   // ============================================================================
 
-  const handleSelectManeuver = (maneuverId) => {
+  const handleSelectManeuver = (maneuverId: string | null) => {
     if (!currentActorTruth || !turnDecisionKey) return;
 
     const previousDecision = turnDecisions[turnDecisionKey] || null;
-    const nextDecision = {
+    const nextDecision: TurnDecision = {
       ...(previousDecision || {}),
-      maneuverId: maneuverId || null
+      maneuverId: maneuverId || undefined
     };
 
     updateTurnDecisionState(previousDecision, nextDecision);
 
     if (!maneuverId) return;
 
-    const maneuverLabel = ManeuverCatalog.find(m => m.id === maneuverId)?.label || maneuverId;
+    const maneuverLabel = (ManeuverCatalog as Maneuver[]).find(m => m.id === maneuverId)?.label || maneuverId;
     const logEntry = createManeuverLogEntry({
-      round: combatActive.currentRound,
-      turn: combatActive.currentTurnIndex,
+      round: combat.currentRound,
+      turn: combat.currentTurnIndex,
       actorInstanceId: currentActorTruth.instanceId,
       actorName: currentActorTruth.name,
       maneuverId,
@@ -604,7 +869,7 @@ export default function CombatTracker() {
       }
     });
 
-    saveCombatActive(prev => ({
+    saveCombatActive((prev: CombatState) => ({
       ...prev,
       log: [...prev.log, logEntry]
     }));
@@ -612,11 +877,11 @@ export default function CombatTracker() {
     recordAction(createAddLogEntryAction(logEntry));
   };
 
-  const handleManeuverWorkflowUpdate = (update) => {
+  const handleManeuverWorkflowUpdate = (update: { type: string; targetInstanceId?: string; turnsAimed?: number; triggerText?: string }) => {
     if (!currentActorTruth || !turnDecisionKey) return;
 
     const previousDecision = turnDecisions[turnDecisionKey] || null;
-    const nextDecision = {
+    const nextDecision: TurnDecision = {
       ...(previousDecision || {})
     };
 
@@ -642,12 +907,12 @@ export default function CombatTracker() {
   // Phase 8: Reinforcements
   // ============================================================================
 
-  const handleAddReinforcements = (data) => {
-    const character = combatCharacters.find(c => c.id === data.characterId);
+  const handleAddReinforcements = (data: ReinforcementData) => {
+    const character = (combatCharacters as Character[]).find(c => c.id === data.characterId);
     if (!character) return;
 
     const nameList = data.previewNames || [];
-    const newCombatants = nameList.map((name) => {
+    const newCombatants: Participant[] = nameList.map((name) => {
       const instanceId = generateId();
       return {
         ...character,
@@ -674,19 +939,19 @@ export default function CombatTracker() {
     }
 
     const newIds = newCombatants.map(c => c.instanceId);
-    const turnOrderBefore = combatActive.turnOrder;
+    const turnOrderBefore = combat.turnOrder;
     let turnOrderAfter = turnOrderBefore;
 
     if (data.category !== 'object') {
       switch (data.insertionMode) {
         case 'next_turn':
-          turnOrderAfter = insertAfterIndex(turnOrderBefore, combatActive.currentTurnIndex, newIds);
+          turnOrderAfter = insertAfterIndex(turnOrderBefore, combat.currentTurnIndex, newIds);
           break;
         case 'end_of_round':
           turnOrderAfter = [...turnOrderBefore, ...newIds];
           break;
         case 'auto':
-          turnOrderAfter = buildAutoTurnOrder([...combatActive.participants, ...newCombatants]);
+          turnOrderAfter = buildAutoTurnOrder([...combat.participants, ...newCombatants]);
           break;
         case 'manual':
           if (Array.isArray(data.manualOrder)) {
@@ -705,36 +970,36 @@ export default function CombatTracker() {
     }
 
     const logEntry = createReinforcementLogEntry({
-      round: combatActive.currentRound,
-      turn: combatActive.currentTurnIndex,
+      round: combat.currentRound,
+      turn: combat.currentTurnIndex,
       category: data.category,
       displayName: nameList[0] || character.name,
       quantity: newCombatants.length,
       insertionMode: data.insertionMode
     });
 
-    const revealAdd = {};
+    const revealAdd: Record<string, RevealEntry> = {};
     newCombatants.forEach((combatant) => {
       revealAdd[combatant.instanceId] = createDefaultRevealForInstance(
         combatant.instanceId,
         combatant.category,
         combatant
-      );
+      ) as RevealEntry;
     });
 
-    const newCombat = {
-      ...combatActive,
-      participants: [...combatActive.participants, ...newCombatants],
+    const newCombat: CombatState = {
+      ...combat,
+      participants: [...combat.participants, ...newCombatants],
       turnOrder: turnOrderAfter,
-      log: [...combatActive.log, logEntry]
+      log: [...combat.log, logEntry]
     };
 
-    const newReveal = combatReveal
+    const newReveal = reveal
       ? syncRevealStateForParticipants(
-        { ...combatReveal, byInstanceId: { ...combatReveal.byInstanceId, ...revealAdd } },
+        { ...reveal, byInstanceId: { ...reveal.byInstanceId, ...revealAdd } },
         newCombat.participants
-      )
-      : combatReveal;
+      ) as RevealState
+      : reveal;
 
     saveCombatActive(newCombat);
     if (newReveal) {
@@ -761,16 +1026,16 @@ export default function CombatTracker() {
   const handleRoll = () => {
     if (!diceExpression.trim()) return;
 
-    let rollResult;
+    let rollResult: RollData;
     if (rollTarget && rollTarget.trim()) {
       const target = parseInt(rollTarget);
       if (isNaN(target)) {
         alert('Invalid target number');
         return;
       }
-      rollResult = rollVsTarget(diceExpression, target);
+      rollResult = rollVsTarget(diceExpression, target) as RollData;
     } else {
-      rollResult = roll(diceExpression);
+      rollResult = roll(diceExpression) as RollData;
     }
 
     if (!rollResult.valid) {
@@ -780,8 +1045,8 @@ export default function CombatTracker() {
 
     // Create roll log entry
     const logEntry = createRollLogEntry(
-      combatActive.currentRound,
-      combatActive.currentTurnIndex,
+      combat.currentRound,
+      combat.currentTurnIndex,
       currentActorInstanceId,
       currentActor?.name || 'Unknown',
       rollResult
@@ -790,7 +1055,7 @@ export default function CombatTracker() {
     const action = createAddLogEntryAction(logEntry);
 
     // Update state
-    saveCombatActive(prev => ({
+    saveCombatActive((prev: CombatState) => ({
       ...prev,
       log: [...prev.log, logEntry]
     }));
@@ -806,8 +1071,8 @@ export default function CombatTracker() {
     if (!noteText.trim()) return;
 
     const logEntry = createNoteLogEntry(
-      combatActive.currentRound,
-      combatActive.currentTurnIndex,
+      combat.currentRound,
+      combat.currentTurnIndex,
       currentActorInstanceId,
       currentActor?.name,
       noteText
@@ -816,7 +1081,7 @@ export default function CombatTracker() {
     const action = createAddLogEntryAction(logEntry);
 
     // Update state
-    saveCombatActive(prev => ({
+    saveCombatActive((prev: CombatState) => ({
       ...prev,
       log: [...prev.log, logEntry]
     }));
@@ -829,25 +1094,20 @@ export default function CombatTracker() {
   // Phase 3: Action Panel Handlers
   // ============================================================================
 
-  // Repro steps (Player View reveal flow):
-  // 1) Start combat with an enemy that has Dodge/Parry/Block set.
-  // 2) Switch to Player View and resolve an attack into Defense Workflow.
-  // 3) Verify defense rolls use real base values (not 0), reveal base after a successful defense.
-  // 4) Apply injury to reveal name; reveal HP when it reaches 0 or below.
-  const handleActionComplete = (actionData) => {
-    const { maneuver, kind, attack, defense, damage, injury, note, targetInstanceId, newHP } = actionData;
+  const handleActionComplete = (actionData: ActionCompleteData) => {
+    const { maneuver, kind, attack, defense, injury, note, targetInstanceId, newHP } = actionData;
 
     // Get target if applicable
     const target = targetInstanceId
-      ? combatActive.participants.find(p => p.instanceId === targetInstanceId)
+      ? combat.participants.find(p => p.instanceId === targetInstanceId)
       : null;
 
     // Handle Phase 4 injury workflow
     if (kind === 'injury' && injury && targetInstanceId) {
       // Create injury log entry
       const injuryLogEntry = createInjuryLogEntry({
-        round: combatActive.currentRound,
-        turn: combatActive.currentTurnIndex,
+        round: combat.currentRound,
+        turn: combat.currentTurnIndex,
         targetInstanceId,
         targetName: target?.name,
         hitLocation: injury.hitLocation,
@@ -857,8 +1117,8 @@ export default function CombatTracker() {
         newHP
       });
 
-      let updatedParticipants = [...combatActive.participants];
-      let logEntries = [injuryLogEntry];
+      let updatedParticipants = [...combat.participants];
+      const logEntries: LogEntry[] = [injuryLogEntry];
 
       // Apply HP change
       updatedParticipants = updatedParticipants.map(p =>
@@ -874,13 +1134,13 @@ export default function CombatTracker() {
           if (effect.type === 'shock' && effect.autoApplied) {
             updatedParticipants = updatedParticipants.map(p =>
               p.instanceId === targetInstanceId
-                ? applyEffect(p, 'shock', { value: effect.value })
+                ? applyEffect(p, 'shock', { value: effect.value }) as Participant
                 : p
             );
 
             logEntries.push(createEffectLogEntry({
-              round: combatActive.currentRound,
-              turn: combatActive.currentTurnIndex,
+              round: combat.currentRound,
+              turn: combat.currentTurnIndex,
               targetInstanceId,
               targetName: target?.name,
               effectType: 'shock',
@@ -893,13 +1153,13 @@ export default function CombatTracker() {
           if (effect.type === 'knockdownStun' && effect.success === false) {
             updatedParticipants = updatedParticipants.map(p =>
               p.instanceId === targetInstanceId
-                ? applyEffect(p, 'stunned', { stunned: true })
+                ? applyEffect(p, 'stunned', { stunned: true }) as Participant
                 : p
             );
 
             logEntries.push(createEffectLogEntry({
-              round: combatActive.currentRound,
-              turn: combatActive.currentTurnIndex,
+              round: combat.currentRound,
+              turn: combat.currentTurnIndex,
               targetInstanceId,
               targetName: target?.name,
               effectType: 'stunned',
@@ -912,13 +1172,13 @@ export default function CombatTracker() {
           if (effect.type === 'consciousnessCheck' && effect.success === false) {
             updatedParticipants = updatedParticipants.map(p =>
               p.instanceId === targetInstanceId
-                ? applyEffect(p, 'unconscious', { unconscious: true })
+                ? applyEffect(p, 'unconscious', { unconscious: true }) as Participant
                 : p
             );
 
             logEntries.push(createEffectLogEntry({
-              round: combatActive.currentRound,
-              turn: combatActive.currentTurnIndex,
+              round: combat.currentRound,
+              turn: combat.currentTurnIndex,
               targetInstanceId,
               targetName: target?.name,
               effectType: 'unconscious',
@@ -931,13 +1191,13 @@ export default function CombatTracker() {
           if ((effect.type === 'deathCheck' && effect.success === false) || effect.type === 'autoDeath') {
             updatedParticipants = updatedParticipants.map(p =>
               p.instanceId === targetInstanceId
-                ? applyEffect(p, 'dead', { dead: true })
+                ? applyEffect(p, 'dead', { dead: true }) as Participant
                 : p
             );
 
             logEntries.push(createEffectLogEntry({
-              round: combatActive.currentRound,
-              turn: combatActive.currentTurnIndex,
+              round: combat.currentRound,
+              turn: combat.currentTurnIndex,
               targetInstanceId,
               targetName: target?.name,
               effectType: 'dead',
@@ -950,13 +1210,13 @@ export default function CombatTracker() {
           if (effect.type === 'bleeding' && effect.outcome === 'yes') {
             updatedParticipants = updatedParticipants.map(p =>
               p.instanceId === targetInstanceId
-                ? applyEffect(p, 'bleeding', { bleeding: true, rate: 1, round: combatActive.currentRound })
+                ? applyEffect(p, 'bleeding', { bleeding: true, rate: 1, round: combat.currentRound }) as Participant
                 : p
             );
 
             logEntries.push(createEffectLogEntry({
-              round: combatActive.currentRound,
-              turn: combatActive.currentTurnIndex,
+              round: combat.currentRound,
+              turn: combat.currentTurnIndex,
               targetInstanceId,
               targetName: target?.name,
               effectType: 'bleeding',
@@ -969,13 +1229,13 @@ export default function CombatTracker() {
           if (effect.type === 'crippling' && effect.autoApplied) {
             updatedParticipants = updatedParticipants.map(p =>
               p.instanceId === targetInstanceId
-                ? applyEffect(p, 'crippling', { locationKey: effect.locationKey })
+                ? applyEffect(p, 'crippling', { locationKey: effect.locationKey }) as Participant
                 : p
             );
 
             logEntries.push(createEffectLogEntry({
-              round: combatActive.currentRound,
-              turn: combatActive.currentTurnIndex,
+              round: combat.currentRound,
+              turn: combat.currentTurnIndex,
               targetInstanceId,
               targetName: target?.name,
               effectType: 'crippling',
@@ -987,22 +1247,22 @@ export default function CombatTracker() {
       }
 
       // Update state
-      const newCombat = {
-        ...combatActive,
+      const newCombat: CombatState = {
+        ...combat,
         participants: updatedParticipants,
-        log: [...combatActive.log, ...logEntries]
+        log: [...combat.log, ...logEntries]
       };
 
       saveCombatActive(newCombat);
 
-      let updatedRevealState = combatReveal;
-      if (combatReveal) {
-        updatedRevealState = revealNameForInstance(updatedRevealState, targetInstanceId);
-        if (newHP <= 0) {
-          updatedRevealState = revealHPAtZero(updatedRevealState, targetInstanceId);
+      let updatedRevealState = reveal;
+      if (reveal) {
+        updatedRevealState = revealNameForInstance(updatedRevealState, targetInstanceId) as RevealState;
+        if (newHP !== undefined && newHP <= 0) {
+          updatedRevealState = revealHPAtZero(updatedRevealState, targetInstanceId) as RevealState;
         }
       }
-      const revealUpdate = buildRevealUpdate(combatReveal, updatedRevealState, targetInstanceId);
+      const revealUpdate = buildRevealUpdate(reveal, updatedRevealState, targetInstanceId);
       if (revealUpdate) {
         saveCombatReveal(updatedRevealState);
       }
@@ -1014,7 +1274,7 @@ export default function CombatTracker() {
           'HP',
           target.currentHP,
           newHP
-        );
+        ) as { type: string; revealUpdate?: unknown };
         if (revealUpdate) {
           resourceAction.revealUpdate = revealUpdate;
         }
@@ -1031,25 +1291,25 @@ export default function CombatTracker() {
 
     // Create action log entry (for non-injury actions)
     const logEntry = createActionLogEntry({
-      round: combatActive.currentRound,
-      turn: combatActive.currentTurnIndex,
+      round: combat.currentRound,
+      turn: combat.currentTurnIndex,
       actorInstanceId: currentActorInstanceId,
       actorName: currentActor?.name,
       targetInstanceId,
       targetName: target?.name,
       maneuver,
-      action: { kind, attack, defense, damage }
+      action: { kind, attack, defense }
     });
 
     // Update state with log
-    let newCombat = {
-      ...combatActive,
-      log: [...combatActive.log, logEntry]
+    let newCombat: CombatState = {
+      ...combat,
+      log: [...combat.log, logEntry]
     };
 
     // If damage was applied, also update target HP (legacy Phase 3 support)
-    if (kind === 'damage' && targetInstanceId && newHP !== undefined) {
-      const updatedParticipants = combatActive.participants.map(p =>
+    if (kind === 'damage' && targetInstanceId && newHP !== undefined && target) {
+      const updatedParticipants = combat.participants.map(p =>
         p.instanceId === targetInstanceId
           ? { ...p, currentHP: newHP }
           : p
@@ -1073,16 +1333,16 @@ export default function CombatTracker() {
     // If it's just a note action, create a simpler note entry instead
     if (kind === 'note' && note) {
       const noteEntry = createNoteLogEntry(
-        combatActive.currentRound,
-        combatActive.currentTurnIndex,
+        combat.currentRound,
+        combat.currentTurnIndex,
         currentActorInstanceId,
         currentActor?.name,
         maneuver ? `[${maneuver}] ${note}` : note
       );
 
       newCombat = {
-        ...combatActive,
-        log: [...combatActive.log, noteEntry]
+        ...combat,
+        log: [...combat.log, noteEntry]
       };
 
       const noteAction = createAddLogEntryAction(noteEntry);
@@ -1091,31 +1351,31 @@ export default function CombatTracker() {
       return;
     }
 
-    let updatedRevealState = combatReveal;
+    let updatedRevealState = reveal;
     let revealUpdate = null;
 
     if (kind === 'defense' && defense?.success && targetInstanceId) {
       const defenseType = defense.type;
       if (defenseType === 'dodge' || defenseType === 'parry' || defenseType === 'block') {
-        updatedRevealState = revealDefenseForInstance(updatedRevealState, targetInstanceId, defenseType);
+        updatedRevealState = revealDefenseForInstance(updatedRevealState, targetInstanceId, defenseType) as RevealState;
       }
     }
 
     if (kind === 'damage' && targetInstanceId && newHP !== undefined) {
-      updatedRevealState = revealNameForInstance(updatedRevealState, targetInstanceId);
+      updatedRevealState = revealNameForInstance(updatedRevealState, targetInstanceId) as RevealState;
       if (newHP <= 0) {
-        updatedRevealState = revealHPAtZero(updatedRevealState, targetInstanceId);
+        updatedRevealState = revealHPAtZero(updatedRevealState, targetInstanceId) as RevealState;
       }
     }
 
-    revealUpdate = buildRevealUpdate(combatReveal, updatedRevealState, targetInstanceId);
+    revealUpdate = buildRevealUpdate(reveal, updatedRevealState, targetInstanceId || null);
     if (revealUpdate) {
       saveCombatReveal(updatedRevealState);
     }
 
     // Save state and record action
     saveCombatActive(newCombat);
-    const logAction = createAddLogEntryAction(logEntry);
+    const logAction = createAddLogEntryAction(logEntry) as { type: string; revealUpdate?: unknown };
     if (revealUpdate) {
       logAction.revealUpdate = revealUpdate;
     }
@@ -1130,21 +1390,21 @@ export default function CombatTracker() {
     if (!confirm('End this combat session?')) return;
 
     const endLogEntry = createNoteLogEntry(
-      combatActive.currentRound,
-      combatActive.currentTurnIndex,
+      combat.currentRound,
+      combat.currentTurnIndex,
       null,
       null,
       'Combat ended'
     );
 
-    const endedCombat = {
-      ...combatActive,
+    const endedCombat: CombatState = {
+      ...combat,
       endTime: Date.now(),
-      log: [...combatActive.log, endLogEntry]
+      log: [...combat.log, endLogEntry]
     };
 
     // Add to history (cap at MAX_COMBAT_HISTORY)
-    const newHistory = [endedCombat, ...combatHistory].slice(0, MAX_COMBAT_HISTORY);
+    const newHistory = [endedCombat, ...(combatHistory as CombatState[])].slice(0, MAX_COMBAT_HISTORY);
     saveCombatHistory(newHistory);
 
     // Clear active combat
@@ -1159,40 +1419,40 @@ export default function CombatTracker() {
   const handleExportLog = () => {
     // Phase 5: Export filtered log if in Player View
     const text = exportCombatLog(displayLog, {
-      name: combatActive.name,
-      date: combatActive.startTime
+      name: combat.name,
+      date: combat.startTime
     });
 
     const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `combat-log-${combatActive.name}-${Date.now()}.txt`;
+    link.download = `combat-log-${combat.name}-${Date.now()}.txt`;
     link.click();
     URL.revokeObjectURL(url);
   };
 
   // Phase 5: Export Player View (unencrypted, filtered)
   const handleExportPlayerView = () => {
-    if (!combatReveal) {
+    if (!reveal) {
       alert('Reveal state not initialized. Cannot export player view.');
       return;
     }
 
-    const json = exportCombatPlayerView(combatActive, combatReveal, history);
+    const json = exportCombatPlayerView(combat, reveal, history);
 
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `combat-player-view-${combatActive.name}-${Date.now()}.json`;
+    link.download = `combat-player-view-${combat.name}-${Date.now()}.json`;
     link.click();
     URL.revokeObjectURL(url);
   };
 
   // Phase 5: Export GM Locked (encrypted)
   const handleExportGMLocked = async () => {
-    if (!combatReveal) {
+    if (!reveal) {
       alert('Reveal state not initialized. Cannot export GM locked combat.');
       return;
     }
@@ -1208,35 +1468,35 @@ export default function CombatTracker() {
     }
 
     try {
-      const json = await exportCombatGMLocked(combatActive, combatReveal, history, password);
+      const json = await exportCombatGMLocked(combat, reveal, history, password);
 
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `combat-gm-locked-${combatActive.name}-${Date.now()}.json`;
+      link.download = `combat-gm-locked-${combat.name}-${Date.now()}.json`;
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      alert(`Export failed: ${error.message}`);
+      alert(`Export failed: ${(error as Error).message}`);
     }
   };
 
   // Legacy: Export full combat (Phase 2 format, unencrypted)
   const handleSaveCombat = () => {
-    const validation = validateCombatExport(combatActive, history);
+    const validation = validateCombatExport(combat, history) as { valid: boolean; errors: string[] };
     if (!validation.valid) {
       alert(`Cannot export: ${validation.errors.join(', ')}`);
       return;
     }
 
-    const json = exportActiveCombat(combatActive, history);
+    const json = exportActiveCombat(combat, history);
 
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `combat-save-${combatActive.name}-${Date.now()}.json`;
+    link.download = `combat-save-${combat.name}-${Date.now()}.json`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -1246,22 +1506,32 @@ export default function CombatTracker() {
     input.type = 'file';
     input.accept = '.json';
     input.onchange = async (e) => {
-      const file = e.target.files[0];
+      const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
 
       const reader = new FileReader();
       reader.onload = async (event) => {
-        const jsonString = event.target.result;
+        const jsonString = event.target?.result as string;
 
         // Try Phase 5 import first
-        let parsed = await importCombatWithGMLock(jsonString);
+        let parsed = await importCombatWithGMLock(jsonString) as {
+          valid: boolean;
+          isLocked?: boolean;
+          error?: string;
+          data?: { combatState: CombatState; history?: HistoryState; revealState?: RevealState };
+        };
 
         // Fallback to legacy import if Phase 5 fails
         if (!parsed.valid && !parsed.isLocked) {
-          parsed = parseImportedCombat(jsonString);
-          if (parsed.valid) {
+          parsed = parseImportedCombat(jsonString) as typeof parsed;
+          if (parsed.valid && parsed.data) {
             // Legacy format
-            const validation = validateCombatImport(parsed.data);
+            const validation = validateCombatImport(parsed.data) as {
+              valid: boolean;
+              errors: string[];
+              combatState: CombatState;
+              historyState: HistoryState;
+            };
             if (!validation.valid) {
               alert(`Validation error: ${validation.errors.join(', ')}`);
               return;
@@ -1291,12 +1561,12 @@ export default function CombatTracker() {
 
           if (password) {
             // Try unlocking
-            const unlocked = await importCombatWithGMLock(jsonString, password);
+            const unlocked = await importCombatWithGMLock(jsonString, password) as typeof parsed;
 
             if (!unlocked.valid) {
               alert(`Failed to unlock: ${unlocked.error}\n\nLoading player view instead.`);
               // Fall through to load player view
-            } else {
+            } else if (unlocked.data) {
               // Successfully unlocked
               if (!confirm('Load unlocked GM combat? Current combat will be replaced.')) {
                 return;
@@ -1314,9 +1584,11 @@ export default function CombatTracker() {
             return;
           }
 
-          saveCombatActive(parsed.data.combatState);
-          saveCombatActiveHistory(null); // No history in player view
-          saveCombatReveal(parsed.data.revealState || null);
+          if (parsed.data) {
+            saveCombatActive(parsed.data.combatState);
+            saveCombatActiveHistory(null); // No history in player view
+            saveCombatReveal(parsed.data.revealState || null);
+          }
           return;
         }
 
@@ -1325,9 +1597,11 @@ export default function CombatTracker() {
           return;
         }
 
-        saveCombatActive(parsed.data.combatState);
-        saveCombatActiveHistory(parsed.data.history || null);
-        saveCombatReveal(parsed.data.revealState || null);
+        if (parsed.data) {
+          saveCombatActive(parsed.data.combatState);
+          saveCombatActiveHistory(parsed.data.history || null);
+          saveCombatReveal(parsed.data.revealState || null);
+        }
       };
       reader.readAsText(file);
     };
@@ -1339,8 +1613,8 @@ export default function CombatTracker() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold">{combatActive.name}</h2>
-          <p className="text-gray-400">Round {combatActive.currentRound}</p>
+          <h2 className="text-2xl font-bold">{combat.name}</h2>
+          <p className="text-gray-400">Round {combat.currentRound}</p>
         </div>
         <div className="flex gap-2">
           {/* Undo/Redo */}
@@ -1451,7 +1725,7 @@ export default function CombatTracker() {
             <p className="text-sm text-gray-400">Current Turn</p>
             <h3 className="text-2xl font-bold">{currentActor?.name}</h3>
             <p className="text-sm text-gray-400">
-              Speed: {currentActor?.basicSpeed} | Turn {combatActive.currentTurnIndex + 1} of {combatActive.turnOrder.length}
+              Speed: {currentActor?.basicSpeed} | Turn {combat.currentTurnIndex + 1} of {combat.turnOrder.length}
             </p>
           </div>
           <div className="flex gap-2">
@@ -1488,20 +1762,20 @@ export default function CombatTracker() {
 
       {/* Action Panel (Phase 3, 4, 6) */}
       <ActionPanel
-        currentActor={currentActor}
-        participants={combatView.participants}
-        combatState={combatActive}
-        revealState={combatReveal}
+        currentActor={currentActor as any}
+        participants={combatView.participants as any}
+        combatState={combat}
+        revealState={reveal}
         viewMode={viewMode}
-        onActionComplete={handleActionComplete}
-        combatRulesPreset={combatRulesPreset || 'standard'}
+        onActionComplete={handleActionComplete as any}
+        combatRulesPreset={(combatRulesPreset as string) || 'standard'}
         expanded={showActionPanel}
         onToggleExpanded={() => setShowActionPanel(!showActionPanel)}
-        maneuverSelection={isEnemyInPlayerView ? { selectedId: null, prompts: {}, workflow: {} } : maneuverSelection}
+        maneuverSelection={isEnemyInPlayerView ? { selectedId: null, prompts: {}, workflow: {} } : maneuverSelection as any}
         onManeuverWorkflow={handleManeuverWorkflowUpdate}
         turnDecision={isEnemyInPlayerView ? null : currentTurnDecision}
-        currentRound={combatActive.currentRound}
-        currentTurn={combatActive.currentTurnIndex}
+        currentRound={combat.currentRound}
+        currentTurn={combat.currentTurnIndex}
         onAddCondition={handleAddCondition}
         onRemoveCondition={handleRemoveCondition}
         onUpdateCondition={handleUpdateCondition}
@@ -1511,9 +1785,9 @@ export default function CombatTracker() {
         <ReinforcementsModal
           onClose={() => setShowReinforcementsModal(false)}
           onConfirm={handleAddReinforcements}
-          combatCharacters={combatCharacters}
-          participants={combatActive.participants}
-          turnOrder={combatActive.turnOrder}
+          combatCharacters={combatCharacters as Character[]}
+          participants={combat.participants as any}
+          turnOrder={combat.turnOrder}
           currentActorInstanceId={currentActorInstanceId}
         />
       )}
@@ -1521,8 +1795,8 @@ export default function CombatTracker() {
       {/* Phase 5: Reveal Panel (GM View only) */}
       {viewMode === ViewMode.GM && (
         <RevealPanel
-          combatActive={combatActive}
-          combatReveal={combatReveal}
+          combatActive={combat as any}
+          combatReveal={reveal as any}
           saveCombatReveal={saveCombatReveal}
           viewMode={viewMode}
         />
@@ -1549,7 +1823,7 @@ export default function CombatTracker() {
                 <input
                   type="text"
                   value={diceExpression}
-                  onChange={(e) => setDiceExpression(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setDiceExpression(e.target.value)}
                   placeholder="e.g. 3d6, 2d+1"
                   className="w-full px-3 py-2 bg-gray-700 rounded"
                 />
@@ -1559,7 +1833,7 @@ export default function CombatTracker() {
                 <input
                   type="number"
                   value={rollTarget}
-                  onChange={(e) => setRollTarget(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setRollTarget(e.target.value)}
                   placeholder="e.g. 12"
                   className="w-full px-3 py-2 bg-gray-700 rounded"
                 />
@@ -1625,8 +1899,8 @@ export default function CombatTracker() {
             <input
               type="text"
               value={noteText}
-              onChange={(e) => setNoteText(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleAddNote()}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setNoteText(e.target.value)}
+              onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleAddNote()}
               placeholder="Add a note..."
               className="flex-1 px-3 py-2 bg-gray-700 rounded"
             />
@@ -1643,63 +1917,74 @@ export default function CombatTracker() {
   );
 }
 
+// ============================================================================
+// ParticipantCard Component
+// ============================================================================
+
+interface ParticipantCardProps {
+  participant: Participant;
+  isCurrent: boolean;
+  onUpdateResource: (instanceId: string, resource: string, value: number) => void;
+  viewMode: string;
+}
+
 /**
  * Participant Card Component - Phase 5 compatible
  * Shows participant status with editable resources
  * Handles both truth state (GM View) and filtered state (Player View)
  * Memoized to prevent re-renders when sibling participants change
  */
-function ParticipantCardBase({ participant, isCurrent, onUpdateResource, viewMode }) {
-  const [editing, setEditing] = useState(null); // 'HP', 'FP', or 'MP'
+function ParticipantCardBase({ participant, isCurrent, onUpdateResource, viewMode }: ParticipantCardProps) {
+  const [editing, setEditing] = useState<string | null>(null); // 'HP', 'FP', or 'MP'
   const [editValue, setEditValue] = useState('');
 
   // Phase 5: Extract values based on data structure (truth vs filtered)
-  const getHPValues = () => {
+  const getHPValues = (): { mode: string; current?: number; max?: number; band?: string; bandText?: string } => {
     if (participant.hp && typeof participant.hp === 'object') {
       // Filtered state
       return {
-        mode: participant.hp.mode,
-        current: participant.hp.current,
-        max: participant.hp.max,
-        band: participant.hp.band,
-        bandText: participant.hp.bandText
+        mode: (participant.hp as HPValue).mode,
+        current: (participant.hp as HPValue).current,
+        max: (participant.hp as HPValue).max,
+        band: (participant.hp as HPValue).band,
+        bandText: (participant.hp as HPValue).bandText
       };
     }
     // Truth state (backward compat)
     return {
       mode: 'exact',
       current: participant.currentHP,
-      max: participant.hp || participant.maxHP
+      max: (participant.hp as number) || participant.maxHP
     };
   };
 
-  const getFPValues = () => {
+  const getFPValues = (): { mode: string; current?: number; max?: number } => {
     if (participant.fp && typeof participant.fp === 'object') {
       return {
-        mode: participant.fp.mode,
-        current: participant.fp.current,
-        max: participant.fp.max
+        mode: (participant.fp as FPValue).mode,
+        current: (participant.fp as FPValue).current,
+        max: (participant.fp as FPValue).max
       };
     }
     return {
       mode: 'exact',
       current: participant.currentFP,
-      max: participant.fp || participant.maxFP
+      max: (participant.fp as number) || participant.maxFP
     };
   };
 
-  const getMPValues = () => {
+  const getMPValues = (): { mode: string; current?: number; max?: number } => {
     if (participant.mp && typeof participant.mp === 'object') {
       return {
-        mode: participant.mp.mode,
-        current: participant.mp.current,
-        max: participant.mp.max
+        mode: (participant.mp as MPValue).mode,
+        current: (participant.mp as MPValue).current,
+        max: (participant.mp as MPValue).max
       };
     }
     return {
       mode: 'exact',
       current: participant.currentMP,
-      max: participant.mp || participant.maxMP
+      max: (participant.mp as number) || participant.maxMP
     };
   };
 
@@ -1711,7 +1996,7 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, viewMod
     ? calculateHPStatus(hp.current, hp.max)
     : (hp.band || 'unknown');
 
-  const getHPStatusColor = (status) => {
+  const getHPStatusColor = (status: string): string => {
     switch (status) {
       case 'healthy': return 'text-green-400';
       case 'injured': return 'text-yellow-400';
@@ -1721,9 +2006,9 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, viewMod
     }
   };
 
-  const startEdit = (resource) => {
+  const startEdit = (resource: string) => {
     // Only allow editing if we have exact values (not hidden/unknown)
-    let currentValue;
+    let currentValue: number | undefined;
     if (resource === 'HP' && hp.mode === 'exact') {
       currentValue = hp.current;
     } else if (resource === 'FP' && fp.mode === 'exact') {
@@ -1735,7 +2020,7 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, viewMod
     }
 
     setEditing(resource);
-    setEditValue(currentValue.toString());
+    setEditValue(currentValue?.toString() || '0');
   };
 
   const saveEdit = () => {
@@ -1775,9 +2060,9 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, viewMod
             <input
               type="number"
               value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setEditValue(e.target.value)}
               onBlur={saveEdit}
-              onKeyPress={(e) => {
+              onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => {
                 if (e.key === 'Enter') saveEdit();
                 if (e.key === 'Escape') cancelEdit();
               }}
@@ -1803,9 +2088,9 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, viewMod
             <input
               type="number"
               value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setEditValue(e.target.value)}
               onBlur={saveEdit}
-              onKeyPress={(e) => {
+              onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => {
                 if (e.key === 'Enter') saveEdit();
                 if (e.key === 'Escape') cancelEdit();
               }}
@@ -1823,7 +2108,7 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, viewMod
         </div>
 
         {/* MP */}
-        {mp.max > 0 && (
+        {(mp.max || 0) > 0 && (
           <div>
             <div className="text-xs text-gray-400">MP</div>
             {mp.mode === 'unknown' ? (
@@ -1832,9 +2117,9 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, viewMod
               <input
                 type="number"
                 value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditValue(e.target.value)}
                 onBlur={saveEdit}
-                onKeyPress={(e) => {
+                onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => {
                   if (e.key === 'Enter') saveEdit();
                   if (e.key === 'Escape') cancelEdit();
                 }}
@@ -1855,7 +2140,7 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, viewMod
 
       {/* Phase 4: Status Effects */}
       {(() => {
-        const effects = getActiveEffects(participant);
+        const effects = getActiveEffects(participant) as string[];
         if (effects.length === 0) return null;
         return (
           <div className="mt-2 pt-2 border-t border-gray-700">
@@ -1876,7 +2161,7 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, viewMod
 
       {/* Phase 6: Conditions */}
       {(() => {
-        const conditions = getActiveConditions(participant);
+        const conditions = getActiveConditions(participant) as ConditionInstance[];
         if (conditions.length === 0) return null;
         return (
           <div className="mt-2 pt-2 border-t border-gray-700">
@@ -1902,18 +2187,18 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, viewMod
  * Custom comparison for ParticipantCard memoization
  * Prevents re-renders when participant data hasn't meaningfully changed
  */
-const areParticipantPropsEqual = (prevProps, nextProps) => {
+const areParticipantPropsEqual = (prevProps: ParticipantCardProps, nextProps: ParticipantCardProps): boolean => {
   const prev = prevProps.participant;
   const next = nextProps.participant;
-  
+
   return (
     prev.instanceId === next.instanceId &&
     prev.name === next.name &&
     prev.category === next.category &&
     prev.currentHP === next.currentHP &&
     prev.hp === next.hp &&
-    (typeof prev.hp === 'object' && typeof next.hp === 'object' 
-      ? prev.hp.current === next.hp.current && prev.hp.max === next.hp.max
+    (typeof prev.hp === 'object' && typeof next.hp === 'object'
+      ? (prev.hp as HPValue).current === (next.hp as HPValue).current && (prev.hp as HPValue).max === (next.hp as HPValue).max
       : true) &&
     prev.currentFP === next.currentFP &&
     prev.currentMP === next.currentMP &&
@@ -1925,11 +2210,15 @@ const areParticipantPropsEqual = (prevProps, nextProps) => {
 
 const ParticipantCard = memo(ParticipantCardBase, areParticipantPropsEqual);
 
+// ============================================================================
+// Log Entry Components
+// ============================================================================
+
 /**
  * Format log entry for display
  * Renders special components for roll entries with colored dice and action entries
  */
-function formatLogEntry(entry) {
+function formatLogEntry(entry: LogEntry): ReactNode {
   const timestamp = new Date(entry.timestamp).toLocaleTimeString();
 
   // Phase 3 action entry with detailed breakdown
@@ -1951,14 +2240,21 @@ function formatLogEntry(entry) {
   return `[${timestamp}] ${entry.message || 'Unknown event'}`;
 }
 
+interface RollLogEntryProps {
+  timestamp: string;
+  entry: LogEntry;
+}
+
 /**
  * Roll Log Entry Component
  * Displays roll with colored individual dice
  * Memoized to prevent re-renders when other log entries change
  */
-function RollLogEntryBase({ timestamp, entry }) {
+function RollLogEntryBase({ timestamp, entry }: RollLogEntryProps): ReactNode {
   const { roll } = entry;
-  const actorName = entry.text.split(' rolled ')[0]; // Extract actor name from text
+  if (!roll) return null;
+
+  const actorName = entry.text?.split(' rolled ')[0] || 'Unknown'; // Extract actor name from text
 
   // Colors for dice (cycling through a palette)
   const diceColors = [
@@ -1972,7 +2268,7 @@ function RollLogEntryBase({ timestamp, entry }) {
     'text-orange-400'
   ];
 
-  const getDiceColor = (index) => diceColors[index % diceColors.length];
+  const getDiceColor = (index: number): string => diceColors[index % diceColors.length];
 
   // Format: [timestamp] Name rolled 3d6 [3][4][5]: 12
   return (
@@ -2007,13 +2303,19 @@ function RollLogEntryBase({ timestamp, entry }) {
 
 const RollLogEntry = memo(RollLogEntryBase);
 
+interface ActionLogEntryProps {
+  timestamp: string;
+  entry: LogEntry;
+}
+
 /**
  * Action Log Entry Component (Phase 3)
  * Displays combat actions with detailed breakdown
  * Memoized to prevent re-renders when other log entries change
  */
-function ActionLogEntryBase({ timestamp, entry }) {
-  const { action, maneuver } = entry;
+function ActionLogEntryBase({ timestamp, entry }: ActionLogEntryProps): ReactNode {
+  const { action } = entry;
+  if (!action) return null;
 
   return (
     <div className="bg-gray-900 rounded p-2 my-1">
@@ -2038,7 +2340,7 @@ function ActionLogEntryBase({ timestamp, entry }) {
           {action.damage.expression && action.damage.expression !== 'manual' && (
             <span>Damage: {action.damage.expression} → {action.damage.rolledDamage}</span>
           )}
-          {action.damage.generalDRUsed > 0 && (
+          {(action.damage.generalDRUsed || 0) > 0 && (
             <span> | DR: {action.damage.generalDRUsed}</span>
           )}
         </div>

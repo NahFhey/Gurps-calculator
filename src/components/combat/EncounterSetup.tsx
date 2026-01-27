@@ -1,9 +1,59 @@
-import React, { useState, useMemo } from 'react';
+import { useState, ChangeEvent } from 'react';
 import { Plus, Play, ChevronUp, ChevronDown, X } from 'lucide-react';
 import { useCombat } from '../../contexts/CombatContext';
 import { generateTurnOrder, createNumberedEnemies, generateId, createLogEntry, createTurnLogEntry } from '../../utils/combatHelpers';
-import { MAX_COMBAT_HISTORY } from '../../constants';
 import { createHistoryState } from '../../utils/combatHistory';
+
+interface Attack {
+  name: string;
+  skill: number;
+  damage: string;
+  notes?: string;
+}
+
+interface Character {
+  id: string;
+  name: string;
+  category: string;
+  st: number;
+  dx: number;
+  iq: number;
+  ht: number;
+  hp: number;
+  fp: number;
+  mp: number;
+  basicSpeed: number;
+  basicMove: number;
+  dodge: number;
+  parry: number;
+  block: number;
+  dr: number;
+  hitLocationProfileId?: string;
+  drByLocation?: Record<string, number>;
+  attacks?: Attack[];
+  notes?: string;
+}
+
+interface Participant extends Character {
+  libraryId: string;
+  currentHP: number;
+  currentFP: number;
+  currentMP: number;
+  instanceId?: string;
+  shockPenalty: number;
+  isStunned: boolean;
+  isUnconscious: boolean;
+  isDead: boolean;
+  bleeding: null;
+  crippled: string[];
+  conditions: unknown[];
+}
+
+interface CharacterSelectorProps {
+  character: Character;
+  onAdd: (character: Character, quantity: number) => void;
+  allowQuantity: boolean;
+}
 
 /**
  * Encounter Setup Component
@@ -19,25 +69,26 @@ export default function EncounterSetup() {
   } = useCombat();
 
   const [encounterName, setEncounterName] = useState('');
-  const [participants, setParticipants] = useState([]);
-  const [turnOrder, setTurnOrder] = useState([]);
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [turnOrder, setTurnOrder] = useState<string[]>([]);
   const [showTurnOrderPreview, setShowTurnOrderPreview] = useState(false);
 
   // Categorize characters
-  const players = combatCharacters.filter(c => c.category === 'player');
-  const allies = combatCharacters.filter(c => c.category === 'ally');
-  const enemies = combatCharacters.filter(c => c.category === 'enemy');
-  const objects = combatCharacters.filter(c => c.category === 'object');
+  const characters = combatCharacters as Character[];
+  const players = characters.filter(c => c.category === 'player');
+  const allies = characters.filter(c => c.category === 'ally');
+  const enemies = characters.filter(c => c.category === 'enemy');
+  const objects = characters.filter(c => c.category === 'object');
 
   // Add character to encounter
-  const addCharacter = (character, quantity = 1) => {
+  const addCharacter = (character: Character, quantity = 1) => {
     if (character.category === 'enemy' && quantity > 1) {
       // Create numbered enemies
-      const numbered = createNumberedEnemies(character.name, quantity, character);
+      const numbered = createNumberedEnemies(character.name, quantity, character) as Participant[];
       setParticipants([...participants, ...numbered]);
     } else {
       // Add single character
-      const participant = {
+      const participant: Participant = {
         ...character,
         id: generateId(),
         libraryId: character.id, // Track original library character
@@ -59,19 +110,19 @@ export default function EncounterSetup() {
   };
 
   // Remove character from encounter
-  const removeCharacter = (id) => {
+  const removeCharacter = (id: string) => {
     setParticipants(participants.filter(p => p.id !== id));
   };
 
   // Generate turn order preview
   const handleGenerateTurnOrder = () => {
-    const order = generateTurnOrder(participants);
+    const order = generateTurnOrder(participants) as string[];
     setTurnOrder(order);
     setShowTurnOrderPreview(true);
   };
 
   // Manual reorder: move character up
-  const moveUp = (index) => {
+  const moveUp = (index: number) => {
     if (index === 0) return;
     const newOrder = [...turnOrder];
     [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
@@ -79,7 +130,7 @@ export default function EncounterSetup() {
   };
 
   // Manual reorder: move character down
-  const moveDown = (index) => {
+  const moveDown = (index: number) => {
     if (index === turnOrder.length - 1) return;
     const newOrder = [...turnOrder];
     [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
@@ -113,7 +164,7 @@ export default function EncounterSetup() {
     const combat = {
       version: 2, // Phase 2
       id: generateId(),
-      name: encounterName || `Combat ${combatHistory.length + 1}`,
+      name: encounterName || `Combat ${(combatHistory as unknown[]).length + 1}`,
       startTime: Date.now(),
       participants: migratedParticipants,
       turnOrder: turnOrder, // Already uses instanceIds
@@ -174,7 +225,7 @@ export default function EncounterSetup() {
         <input
           type="text"
           value={encounterName}
-          onChange={(e) => setEncounterName(e.target.value)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setEncounterName(e.target.value)}
           className="w-full px-3 py-2 bg-gray-700 rounded"
           placeholder="e.g., Goblin Ambush"
         />
@@ -253,7 +304,7 @@ export default function EncounterSetup() {
             </div>
           )}
 
-          {combatCharacters.length === 0 && (
+          {characters.length === 0 && (
             <div className="text-center text-gray-400 py-8">
               No characters in library. Create some in the Character Library tab first.
             </div>
@@ -354,7 +405,7 @@ export default function EncounterSetup() {
  * Character Selector Component
  * Shows a character from library with add button and optional quantity input
  */
-function CharacterSelector({ character, onAdd, allowQuantity }) {
+function CharacterSelector({ character, onAdd, allowQuantity }: CharacterSelectorProps) {
   const [quantity, setQuantity] = useState(1);
 
   const handleAdd = () => {
@@ -374,7 +425,7 @@ function CharacterSelector({ character, onAdd, allowQuantity }) {
           min="1"
           max="20"
           value={quantity}
-          onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setQuantity(parseInt(e.target.value) || 1)}
           className="w-16 px-2 py-1 bg-gray-600 rounded text-sm"
         />
       )}

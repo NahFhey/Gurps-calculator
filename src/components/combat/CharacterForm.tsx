@@ -1,16 +1,60 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import { X, Plus, Trash2, Copy } from 'lucide-react';
 import { COMBAT_CATEGORIES } from '../../constants';
 import { HUMANOID_DR_FIELDS, HIT_LOCATION_PROFILES } from '../../constants/hitLocationConstants';
+
+interface Attack {
+  name: string;
+  skill: number;
+  damage: string;
+  notes: string;
+}
+
+interface CharacterData {
+  name: string;
+  category: string;
+  st: number;
+  dx: number;
+  iq: number;
+  ht: number;
+  hp: number;
+  fp: number;
+  mp: number;
+  basicSpeed: number;
+  basicMove: number;
+  dodge: number;
+  parry: number;
+  block: number;
+  dr: number;
+  hitLocationProfileId: string;
+  drByLocation: Record<string, number>;
+  attacks: Attack[];
+  notes: string;
+}
+
+interface Character extends CharacterData {
+  id?: string;
+}
+
+interface DRField {
+  key: string;
+  label: string;
+}
+
+interface CharacterFormProps {
+  character?: Character | null;
+  onSave: (data: CharacterData) => void;
+  onCancel: () => void;
+}
 
 /**
  * Character Form - Create/Edit character modal
  * Handles manual creation and editing of character sheets
  */
-export default function CharacterForm({ character, onSave, onCancel }) {
+export default function CharacterForm({ character, onSave, onCancel }: CharacterFormProps) {
   const isEditing = !!character;
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<CharacterData>({
     name: '',
     category: 'player',
     st: 10,
@@ -59,7 +103,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
     }
   }, [character]);
 
-  const handleChange = (field, value) => {
+  const handleChange = (field: keyof CharacterData, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -71,14 +115,14 @@ export default function CharacterForm({ character, onSave, onCancel }) {
     }));
   };
 
-  const removeAttack = (index) => {
+  const removeAttack = (index: number) => {
     setFormData(prev => ({
       ...prev,
       attacks: prev.attacks.filter((_, i) => i !== index)
     }));
   };
 
-  const updateAttack = (index, field, value) => {
+  const updateAttack = (index: number, field: keyof Attack, value: string | number) => {
     setFormData(prev => ({
       ...prev,
       attacks: prev.attacks.map((attack, i) =>
@@ -88,7 +132,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
   };
 
   // DR by location management
-  const setLocationDR = (key, valueStr) => {
+  const setLocationDR = (key: string, valueStr: string) => {
     setFormData(prev => {
       const next = { ...prev, drByLocation: { ...(prev.drByLocation || {}) } };
       if (valueStr === '' || valueStr == null) {
@@ -105,8 +149,8 @@ export default function CharacterForm({ character, onSave, onCancel }) {
 
   const copyGeneralDRToAll = () => {
     const generalDR = formData.dr || 0;
-    const newDrByLocation = {};
-    HUMANOID_DR_FIELDS.forEach(field => {
+    const newDrByLocation: Record<string, number> = {};
+    (HUMANOID_DR_FIELDS as DRField[]).forEach(field => {
       newDrByLocation[field.key] = generalDR;
     });
     setFormData(prev => ({
@@ -138,7 +182,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
     }));
   }, [formData.dx, formData.ht]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!formData.name.trim()) {
@@ -169,7 +213,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) => handleChange('name', e.target.value)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('name', e.target.value)}
                 className="w-full px-3 py-2 bg-gray-700 rounded"
                 required
               />
@@ -178,7 +222,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
               <label className="block text-sm mb-2">Category</label>
               <select
                 value={formData.category}
-                onChange={(e) => handleChange('category', e.target.value)}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) => handleChange('category', e.target.value)}
                 className="w-full px-3 py-2 bg-gray-700 rounded"
               >
                 {COMBAT_CATEGORIES.map(cat => (
@@ -199,7 +243,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                 <input
                   type="number"
                   value={formData.st}
-                  onChange={(e) => handleChange('st', parseInt(e.target.value) || 10)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('st', parseInt(e.target.value) || 10)}
                   className="w-full px-3 py-2 bg-gray-700 rounded"
                   min="1"
                   max="50"
@@ -210,7 +254,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                 <input
                   type="number"
                   value={formData.dx}
-                  onChange={(e) => handleChange('dx', parseInt(e.target.value) || 10)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('dx', parseInt(e.target.value) || 10)}
                   className="w-full px-3 py-2 bg-gray-700 rounded"
                   min="1"
                   max="50"
@@ -221,7 +265,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                 <input
                   type="number"
                   value={formData.iq}
-                  onChange={(e) => handleChange('iq', parseInt(e.target.value) || 10)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('iq', parseInt(e.target.value) || 10)}
                   className="w-full px-3 py-2 bg-gray-700 rounded"
                   min="1"
                   max="50"
@@ -232,7 +276,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                 <input
                   type="number"
                   value={formData.ht}
-                  onChange={(e) => handleChange('ht', parseInt(e.target.value) || 10)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('ht', parseInt(e.target.value) || 10)}
                   className="w-full px-3 py-2 bg-gray-700 rounded"
                   min="1"
                   max="50"
@@ -250,7 +294,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                 <input
                   type="number"
                   value={formData.hp}
-                  onChange={(e) => handleChange('hp', parseInt(e.target.value) || 10)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('hp', parseInt(e.target.value) || 10)}
                   className="w-full px-3 py-2 bg-gray-700 rounded"
                   min="1"
                 />
@@ -260,7 +304,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                 <input
                   type="number"
                   value={formData.fp}
-                  onChange={(e) => handleChange('fp', parseInt(e.target.value) || 10)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('fp', parseInt(e.target.value) || 10)}
                   className="w-full px-3 py-2 bg-gray-700 rounded"
                   min="0"
                 />
@@ -270,7 +314,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                 <input
                   type="number"
                   value={formData.mp}
-                  onChange={(e) => handleChange('mp', parseInt(e.target.value) || 0)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('mp', parseInt(e.target.value) || 0)}
                   className="w-full px-3 py-2 bg-gray-700 rounded"
                   min="0"
                 />
@@ -288,7 +332,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                   type="number"
                   step="0.25"
                   value={formData.basicSpeed}
-                  onChange={(e) => handleChange('basicSpeed', parseFloat(e.target.value) || 5.0)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('basicSpeed', parseFloat(e.target.value) || 5.0)}
                   className="w-full px-3 py-2 bg-gray-700 rounded"
                 />
               </div>
@@ -297,7 +341,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                 <input
                   type="number"
                   value={formData.basicMove}
-                  onChange={(e) => handleChange('basicMove', parseInt(e.target.value) || 5)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('basicMove', parseInt(e.target.value) || 5)}
                   className="w-full px-3 py-2 bg-gray-700 rounded"
                   min="0"
                 />
@@ -307,7 +351,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                 <input
                   type="number"
                   value={formData.dodge}
-                  onChange={(e) => handleChange('dodge', parseInt(e.target.value) || 8)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('dodge', parseInt(e.target.value) || 8)}
                   className="w-full px-3 py-2 bg-gray-700 rounded"
                   min="0"
                 />
@@ -324,7 +368,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                 <input
                   type="number"
                   value={formData.parry}
-                  onChange={(e) => handleChange('parry', parseInt(e.target.value) || 8)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('parry', parseInt(e.target.value) || 8)}
                   className="w-full px-3 py-2 bg-gray-700 rounded"
                   min="0"
                 />
@@ -334,7 +378,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                 <input
                   type="number"
                   value={formData.block}
-                  onChange={(e) => handleChange('block', parseInt(e.target.value) || 8)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('block', parseInt(e.target.value) || 8)}
                   className="w-full px-3 py-2 bg-gray-700 rounded"
                   min="0"
                 />
@@ -344,7 +388,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                 <input
                   type="number"
                   value={formData.dr}
-                  onChange={(e) => handleChange('dr', parseInt(e.target.value) || 0)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('dr', parseInt(e.target.value) || 0)}
                   className="w-full px-3 py-2 bg-gray-700 rounded"
                   min="0"
                 />
@@ -360,7 +404,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
               <label className="block text-sm mb-2">Profile</label>
               <select
                 value={formData.hitLocationProfileId}
-                onChange={(e) => handleChange('hitLocationProfileId', e.target.value)}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) => handleChange('hitLocationProfileId', e.target.value)}
                 className="w-full px-3 py-2 bg-gray-700 rounded"
               >
                 <option value={HIT_LOCATION_PROFILES.HUMANOID}>Humanoid</option>
@@ -394,7 +438,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {HUMANOID_DR_FIELDS.map(field => {
+                  {(HUMANOID_DR_FIELDS as DRField[]).map(field => {
                     const value = formData.drByLocation[field.key];
                     return (
                       <div key={field.key}>
@@ -402,7 +446,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                         <input
                           type="number"
                           value={value !== undefined ? value : ''}
-                          onChange={(e) => setLocationDR(field.key, e.target.value)}
+                          onChange={(e: ChangeEvent<HTMLInputElement>) => setLocationDR(field.key, e.target.value)}
                           placeholder={`(General DR: ${formData.dr})`}
                           className="w-full px-2 py-1 bg-gray-700 rounded text-sm"
                           min="0"
@@ -458,7 +502,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                         <input
                           type="text"
                           value={attack.name}
-                          onChange={(e) => updateAttack(index, 'name', e.target.value)}
+                          onChange={(e: ChangeEvent<HTMLInputElement>) => updateAttack(index, 'name', e.target.value)}
                           placeholder="e.g., Broadsword, Punch"
                           className="w-full px-2 py-1 bg-gray-700 rounded text-sm"
                         />
@@ -468,7 +512,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                         <input
                           type="number"
                           value={attack.skill}
-                          onChange={(e) => updateAttack(index, 'skill', parseInt(e.target.value) || 10)}
+                          onChange={(e: ChangeEvent<HTMLInputElement>) => updateAttack(index, 'skill', parseInt(e.target.value) || 10)}
                           className="w-full px-2 py-1 bg-gray-700 rounded text-sm"
                           min="0"
                         />
@@ -481,7 +525,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                         <input
                           type="text"
                           value={attack.damage}
-                          onChange={(e) => updateAttack(index, 'damage', e.target.value)}
+                          onChange={(e: ChangeEvent<HTMLInputElement>) => updateAttack(index, 'damage', e.target.value)}
                           placeholder="e.g., 2d+1, sw+2"
                           className="w-full px-2 py-1 bg-gray-700 rounded text-sm"
                         />
@@ -491,7 +535,7 @@ export default function CharacterForm({ character, onSave, onCancel }) {
                         <input
                           type="text"
                           value={attack.notes}
-                          onChange={(e) => updateAttack(index, 'notes', e.target.value)}
+                          onChange={(e: ChangeEvent<HTMLInputElement>) => updateAttack(index, 'notes', e.target.value)}
                           placeholder="Optional"
                           className="w-full px-2 py-1 bg-gray-700 rounded text-sm"
                         />
@@ -508,9 +552,9 @@ export default function CharacterForm({ character, onSave, onCancel }) {
             <label className="block text-sm mb-2">Notes</label>
             <textarea
               value={formData.notes}
-              onChange={(e) => handleChange('notes', e.target.value)}
+              onChange={(e: ChangeEvent<HTMLTextAreaElement>) => handleChange('notes', e.target.value)}
               className="w-full px-3 py-2 bg-gray-700 rounded"
-              rows="4"
+              rows={4}
               placeholder="Additional notes about this character..."
             />
           </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent } from 'react';
 import { Dices, Zap } from 'lucide-react';
 import HitLocationPicker from './HitLocationPicker';
 import EffectsPanel from './EffectsPanel';
@@ -8,6 +8,111 @@ import { rollDamage, resolveDamageExpression } from '../../utils/damage';
 import { resolveInjury, createInjuryBreakdown, createHitLocationLog, applyInjuryToHP } from '../../utils/injuryEngine';
 import { generateEffectsPrompts } from '../../utils/effectsEngine';
 import { getDamageTypeOptions, DAMAGE_TYPES } from '../../utils/wounding';
+
+interface Modifier {
+  label: string;
+  value: number;
+}
+
+interface HitLocation {
+  key: string;
+  label: string;
+  drKey?: string;
+}
+
+interface LocationRoll {
+  dice: number[];
+  total: number;
+}
+
+interface Target {
+  instanceId: string;
+  name: string;
+  hp: number;
+  currentHP: number;
+  hitLocationProfileId?: string;
+  st?: number;
+  drByLocation?: Record<string, number>;
+  dr?: number;
+}
+
+interface Attacker {
+  st: number;
+  name?: string;
+}
+
+interface RollResult {
+  valid: boolean;
+  total: number;
+  dice: number[];
+  modifier: number;
+  error?: string;
+}
+
+interface InjuryResult {
+  rawDamage: number;
+  locationDR: number;
+  penetrating: number;
+  woundingMultiplier: number;
+  injury: number;
+}
+
+interface ResolvedEffect {
+  type: string;
+  autoApplied?: boolean;
+  value?: number;
+  success?: boolean;
+  outcome?: string;
+  locationKey?: string;
+  locationLabel?: string;
+}
+
+interface EffectPrompt {
+  type: string;
+  label: string;
+  description?: string;
+}
+
+interface HitLocationLog {
+  profileId: string;
+  locationKey: string;
+  locationLabel: string;
+  roll?: LocationRoll;
+}
+
+interface DamageBreakdown {
+  rawDamage: number;
+  locationDR: number;
+  penetrating: number;
+  woundingMultiplier: number;
+  injury: number;
+}
+
+interface InjuryData {
+  hitLocation: HitLocationLog;
+  damageBreakdown: DamageBreakdown;
+  effects: ResolvedEffect[];
+  newHP: number;
+  targetInstanceId: string;
+  damageType: string;
+  expression: string;
+  modifiers: Modifier[];
+  injectedModifiers: Modifier[];
+}
+
+type StepValue = 'location' | 'damage' | 'effects';
+
+interface InjuryResolutionPanelProps {
+  attacker?: Attacker | null;
+  target: Target;
+  damageExpression?: string;
+  injectedDamageModifiers?: Modifier[];
+  initialLocation?: HitLocation | null;
+  initialLocationRoll?: LocationRoll | null;
+  combatRulesPreset?: string;
+  onComplete: (data: InjuryData) => void;
+  onCancel: () => void;
+}
 
 /**
  * InjuryResolutionPanel Component (Phase 4)
@@ -23,27 +128,27 @@ export default function InjuryResolutionPanel({
   combatRulesPreset = 'standard',
   onComplete,
   onCancel
-}) {
-  const [step, setStep] = useState(initialLocation ? 'damage' : 'location'); // 'location', 'damage', 'effects'
+}: InjuryResolutionPanelProps) {
+  const [step, setStep] = useState<StepValue>(initialLocation ? 'damage' : 'location');
 
   // Hit location state
-  const [selectedLocation, setSelectedLocation] = useState(initialLocation);
-  const [locationRoll, setLocationRoll] = useState(initialLocationRoll);
+  const [selectedLocation, setSelectedLocation] = useState<HitLocation | null>(initialLocation);
+  const [locationRoll, setLocationRoll] = useState<LocationRoll | null>(initialLocationRoll);
 
   // Damage state
   const [expression, setExpression] = useState(damageExpression || '');
   const [manualDamage, setManualDamage] = useState('');
   const [useManual, setUseManual] = useState(false);
   const [damageType, setDamageType] = useState(DAMAGE_TYPES.CR);
-  const [modifiers, setModifiers] = useState([]);
-  const [rollResult, setRollResult] = useState(null);
+  const [modifiers, setModifiers] = useState<Modifier[]>([]);
+  const [rollResult, setRollResult] = useState<RollResult | null>(null);
 
   // Injury state
-  const [injuryResult, setInjuryResult] = useState(null);
+  const [injuryResult, setInjuryResult] = useState<InjuryResult | null>(null);
 
   // Effects state
-  const [effectsPrompts, setEffectsPrompts] = useState([]);
-  const [resolvedEffects, setResolvedEffects] = useState([]);
+  const [effectsPrompts, setEffectsPrompts] = useState<EffectPrompt[]>([]);
+  const [resolvedEffects, setResolvedEffects] = useState<ResolvedEffect[]>([]);
 
   const profileId = target.hitLocationProfileId || 'humanoid';
 
@@ -64,7 +169,7 @@ export default function InjuryResolutionPanel({
   }, [damageExpression]);
 
   // Step 1: Hit Location Selection
-  const handleLocationSelected = (location, roll) => {
+  const handleLocationSelected = (location: HitLocation, roll: LocationRoll | null) => {
     setSelectedLocation(location);
     setLocationRoll(roll);
   };
@@ -83,13 +188,13 @@ export default function InjuryResolutionPanel({
 
     // Resolve sw/thr if needed
     if (attacker && (expression.includes('sw') || expression.includes('thr'))) {
-      const resolved = resolveDamageExpression(expression, attacker.st);
+      const resolved = resolveDamageExpression(expression, attacker.st) as { valid: boolean; resolved: string };
       if (resolved.valid) {
         finalExpression = resolved.resolved;
       }
     }
 
-    const result = rollDamage(finalExpression);
+    const result = rollDamage(finalExpression) as RollResult;
 
     if (!result.valid) {
       alert(`Invalid damage expression: ${result.error}`);
@@ -101,7 +206,7 @@ export default function InjuryResolutionPanel({
   };
 
   const handleCalculateInjury = () => {
-    let rawDamage;
+    let rawDamage: number;
 
     if (useManual) {
       rawDamage = parseInt(manualDamage) || 0;
@@ -125,7 +230,7 @@ export default function InjuryResolutionPanel({
       location: selectedLocation,
       target,
       combatRulesPreset
-    });
+    }) as InjuryResult;
 
     setInjuryResult(injury);
 
@@ -139,7 +244,7 @@ export default function InjuryResolutionPanel({
       maxHP: target.hp,
       combatRulesPreset,
       target
-    });
+    }) as EffectPrompt[];
 
     setEffectsPrompts(prompts);
 
@@ -152,12 +257,12 @@ export default function InjuryResolutionPanel({
   };
 
   // Step 3: Effects Resolution
-  const handleEffectResolved = (effect) => {
+  const handleEffectResolved = (effect: ResolvedEffect) => {
     setResolvedEffects(prev => [...prev, effect]);
   };
 
   const handleComplete = () => {
-    if (!injuryResult) {
+    if (!injuryResult || !selectedLocation) {
       alert('Please calculate injury first');
       return;
     }
@@ -165,9 +270,9 @@ export default function InjuryResolutionPanel({
     const newHP = applyInjuryToHP(target.currentHP, injuryResult.injury);
 
     // Build complete injury data
-    const injuryData = {
-      hitLocation: createHitLocationLog(profileId, selectedLocation, locationRoll),
-      damageBreakdown: createInjuryBreakdown(injuryResult),
+    const injuryData: InjuryData = {
+      hitLocation: createHitLocationLog(profileId, selectedLocation, locationRoll) as HitLocationLog,
+      damageBreakdown: createInjuryBreakdown(injuryResult) as DamageBreakdown,
       effects: resolvedEffects,
       newHP,
       targetInstanceId: target.instanceId,
@@ -222,7 +327,7 @@ export default function InjuryResolutionPanel({
       )}
 
       {/* Step 2: Damage & Injury */}
-      {step === 'damage' && (
+      {step === 'damage' && selectedLocation && (
         <>
           {/* Show selected location */}
           <div className="bg-gray-800 rounded p-3">
@@ -244,10 +349,10 @@ export default function InjuryResolutionPanel({
             <label className="block text-sm text-gray-400 mb-1">Damage Type</label>
             <select
               value={damageType}
-              onChange={(e) => setDamageType(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => setDamageType(e.target.value)}
               className="w-full px-3 py-2 bg-gray-700 rounded"
             >
-              {getDamageTypeOptions().map(option => (
+              {getDamageTypeOptions().map((option: { value: string; label: string }) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -267,7 +372,7 @@ export default function InjuryResolutionPanel({
                   <input
                     type="text"
                     value={expression}
-                    onChange={(e) => {
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
                       setExpression(e.target.value);
                       setUseManual(false);
                     }}
@@ -297,7 +402,7 @@ export default function InjuryResolutionPanel({
                 <input
                   type="number"
                   value={manualDamage}
-                  onChange={(e) => {
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
                     setManualDamage(e.target.value);
                     setUseManual(true);
                     setRollResult(null);
