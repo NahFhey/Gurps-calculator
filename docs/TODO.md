@@ -27,20 +27,22 @@
 
 ---
 
-## Phase 2: Layout Restructure 🔲 PENDING
+## Phase 2: Layout Restructure ✅ COMPLETE
 
-- [ ] Header Redesign
-  - [ ] Add WeatherWidget component
-  - [ ] Move TimeControls to header (Advance Day/Slot)
-  - [ ] Add TimeDisplay component
-- [ ] Flexible Panel System
-  - [ ] Create PanelLayoutContext
-  - [ ] Implement panel expand/collapse states
-  - [ ] Support modal overlays for activities
-- [ ] Combat Tile
-  - [ ] Create CombatTile component at bottom of layout
-  - [ ] Show combat status (inactive/active, round, participants)
-  - [ ] Click to expand to full Combat module
+- [x] Header Redesign
+  - [x] Add WeatherWidget component (placeholder for Phase 5)
+  - [x] Move TimeControls to header (Advance Day/Slot)
+  - [x] Add TimeDisplay component
+- [x] Flexible Panel System
+  - [x] Create PanelLayoutContext
+  - [x] Implement panel expand/collapse states (party column collapsible)
+  - [x] Support modal overlays for activities
+- [x] Combat Tile
+  - [x] Create CombatTile component at bottom of layout
+  - [x] Show combat status (inactive/active, round, participants)
+  - [x] Click to expand to full Combat module
+
+**Commit:** `12f1648 Feat: Implement Phase 2 - Layout Restructure`
 
 ---
 
@@ -98,18 +100,26 @@
 - `src/components/character-sheet/` - All character sheet components
 - `src/utils/characterImport.ts` - Text import parser
 
+### Phase 2 Files (Complete)
+- `src/contexts/PanelLayoutContext.tsx` - Panel expand/collapse context
+- `src/components/header/WeatherWidget.tsx` - Weather display (placeholder)
+- `src/components/header/TimeDisplay.tsx` - Day/slot display
+- `src/components/header/TimeControls.tsx` - Advance Day/Slot buttons
+- `src/components/header/index.ts` - Header component exports
+- `src/components/combat/CombatTile.tsx` - Combat status tile
+
 ### Planned New Files
 - `src/components/activities/ActivitiesPanel.tsx` - Phase 3
 - `src/components/activities/ActivityTile.tsx` - Phase 3
 - `src/components/location/LocationManager.tsx` - Phase 5
-- `src/components/location/WeatherWidget.tsx` - Phase 5
 - `src/components/location/TravelPanel.tsx` - Phase 5
-- `src/components/combat/CombatTile.tsx` - Phase 2
-- `src/contexts/PanelLayoutContext.tsx` - Phase 2
 - `src/types/location.ts` - Phase 5
 
-### Files to Modify
-- `src/unified/UnifiedShell.tsx` - Layout changes (Phase 2)
+### Files Modified in Phase 2
+- `src/unified/UnifiedShell.tsx` - Layout restructure with new header, collapsible party, CombatTile
+- `src/components/party-tool/PartyToolApp.jsx` - Removed time controls (now in header)
+
+### Files to Modify (Remaining)
 - `src/components/ManagerTab.tsx` - Fix props issue (Phase 4)
 - `src/components/ChangelogTab.tsx` - Add logging (Phase 4)
 - `src/components/InventoryTab.tsx` - Add Party Stash (Phase 4)

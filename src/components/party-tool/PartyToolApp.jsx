@@ -1034,17 +1034,11 @@ export function PartyToolApp({
             <div className="space-y-6">
               <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
-                  <Wrench className="h-4 w-4" /> Time Control
+                  <Wrench className="h-4 w-4" /> Time Log
                 </div>
                 <p className="mt-2 text-sm text-slate-300">
-                  Advance the session to clear reservations and reset activity selections.
+                  Time controls are now in the header. Use the "Adv. Slot" and "Adv. Day" buttons at the top of the screen.
                 </p>
-                <button
-                  onClick={handleAdvanceTime}
-                  className="mt-4 w-full rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400"
-                >
-                  Advance Time Slot
-                </button>
                 <div className="mt-4 space-y-2 text-xs text-slate-400">
                   {timeLogs.map((log, index) => (
                     <div key={`${log.timestamp}-${index}`} className="rounded-lg bg-slate-950/60 px-3 py-2">
