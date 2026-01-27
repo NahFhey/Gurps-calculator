@@ -1,6 +1,110 @@
-import React, { useState } from 'react';
-import { Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, ChangeEvent } from 'react';
+import { Eye, ChevronDown, ChevronUp } from 'lucide-react';
 import { RevealMode, updateReveal, getRevealForInstance } from '../../utils/combatReveal';
+
+interface RevealDefenses {
+  dodge: string;
+  parry: string;
+  block: string;
+}
+
+interface RevealDR {
+  general: string;
+}
+
+interface RevealHP {
+  mode: string;
+}
+
+interface RevealState {
+  name: string;
+  hp: RevealHP;
+  defenses: RevealDefenses;
+  dr: RevealDR;
+  attacks: string;
+  notes: string;
+  generalMin?: number;
+}
+
+interface Participant {
+  instanceId: string;
+  name: string;
+  category?: string;
+  side?: string;
+  dr?: number;
+}
+
+interface CombatActive {
+  participants: Participant[];
+}
+
+interface RevealUpdate {
+  field: string;
+  value: string | number;
+}
+
+interface RevealOption {
+  value: string;
+  label: string;
+}
+
+interface RevealControlProps {
+  label: string;
+  value: string;
+  options: RevealOption[];
+  onChange: (value: string) => void;
+  compact?: boolean;
+}
+
+interface RevealPanelProps {
+  combatActive: CombatActive | null;
+  combatReveal: Record<string, RevealState> | null;
+  saveCombatReveal: (reveal: Record<string, RevealState>) => void;
+  viewMode?: string;
+}
+
+/**
+ * Single reveal control (dropdown selector)
+ */
+function RevealControl({ label, value, options, onChange, compact = false }: RevealControlProps) {
+  return (
+    <div className={compact ? 'space-y-1' : 'space-y-2'}>
+      <label className={`text-${compact ? 'xs' : 'sm'} font-medium text-gray-300`}>
+        {label}
+      </label>
+      <select
+        value={value}
+        onChange={(e: ChangeEvent<HTMLSelectElement>) => onChange(e.target.value)}
+        className={`w-full px-2 py-${compact ? '1' : '1.5'} bg-gray-700 rounded text-${compact ? 'xs' : 'sm'} border border-gray-600 focus:border-blue-500 focus:outline-none`}
+      >
+        {options.map(opt => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/**
+ * Get summary text for reveal state
+ */
+function getRevealSummary(reveal: RevealState | null): string {
+  if (!reveal) {
+    return 'Fully Hidden';
+  }
+  const parts: string[] = [];
+
+  if (reveal.name === RevealMode.NAME_FULL) parts.push('Name');
+  if (reveal.hp.mode === RevealMode.NUMERIC_EXACT) parts.push('HP');
+  if (reveal.dr.general !== RevealMode.DR_UNKNOWN) parts.push('DR');
+  if (reveal.attacks !== RevealMode.ATTACKS_HIDDEN) parts.push('Attacks');
+
+  if (parts.length === 0) return 'Fully Hidden';
+  if (parts.length >= 4) return 'Mostly Revealed';
+  return `Revealed: ${parts.join(', ')}`;
+}
 
 /**
  * Reveal Panel (Phase 5)
@@ -8,8 +112,8 @@ import { RevealMode, updateReveal, getRevealForInstance } from '../../utils/comb
  * GM-only controls for revealing combat information to players.
  * Allows granular control over what enemies/objects reveal.
  */
-export default function RevealPanel({ combatActive, combatReveal, saveCombatReveal, viewMode }) {
-  const [expandedCombatants, setExpandedCombatants] = useState({});
+export default function RevealPanel({ combatActive, combatReveal, saveCombatReveal }: RevealPanelProps) {
+  const [expandedCombatants, setExpandedCombatants] = useState<Record<string, boolean>>({});
 
   if (!combatActive || !combatReveal) return null;
 
@@ -26,19 +130,19 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
     );
   }
 
-  const toggleExpanded = (instanceId) => {
+  const toggleExpanded = (instanceId: string) => {
     setExpandedCombatants(prev => ({
       ...prev,
       [instanceId]: !prev[instanceId]
     }));
   };
 
-  const handleRevealChange = (instanceId, field, value) => {
+  const handleRevealChange = (instanceId: string, field: string, value: string | number) => {
     const newReveal = updateReveal(combatReveal, instanceId, field, value);
     saveCombatReveal(newReveal);
   };
 
-  const handleBatchRevealChange = (instanceId, updates) => {
+  const handleBatchRevealChange = (instanceId: string, updates: RevealUpdate[]) => {
     // Apply all updates in sequence to avoid state conflicts
     let newReveal = combatReveal;
     for (const { field, value } of updates) {
@@ -63,7 +167,7 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
             combatReveal,
             participant.instanceId,
             participant.category || participant.side || 'enemy'
-          );
+          ) as RevealState;
           const isExpanded = expandedCombatants[participant.instanceId];
 
           return (
@@ -169,7 +273,7 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
                         <input
                           type="number"
                           value={reveal.generalMin || 0}
-                          onChange={(e) => handleRevealChange(participant.instanceId, 'generalMin', parseInt(e.target.value) || 0)}
+                          onChange={(e: ChangeEvent<HTMLInputElement>) => handleRevealChange(participant.instanceId, 'generalMin', parseInt(e.target.value) || 0)}
                           className="w-20 ml-2 px-2 py-1 bg-gray-700 rounded text-sm"
                           min="0"
                         />
@@ -247,47 +351,4 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
       </div>
     </div>
   );
-}
-
-/**
- * Single reveal control (dropdown selector)
- */
-function RevealControl({ label, value, options, onChange, compact = false }) {
-  return (
-    <div className={compact ? 'space-y-1' : 'space-y-2'}>
-      <label className={`text-${compact ? 'xs' : 'sm'} font-medium text-gray-300`}>
-        {label}
-      </label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`w-full px-2 py-${compact ? '1' : '1.5'} bg-gray-700 rounded text-${compact ? 'xs' : 'sm'} border border-gray-600 focus:border-blue-500 focus:outline-none`}
-      >
-        {options.map(opt => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-/**
- * Get summary text for reveal state
- */
-function getRevealSummary(reveal) {
-  if (!reveal) {
-    return 'Fully Hidden';
-  }
-  const parts = [];
-
-  if (reveal.name === RevealMode.NAME_FULL) parts.push('Name');
-  if (reveal.hp.mode === RevealMode.NUMERIC_EXACT) parts.push('HP');
-  if (reveal.dr.general !== RevealMode.DR_UNKNOWN) parts.push('DR');
-  if (reveal.attacks !== RevealMode.ATTACKS_HIDDEN) parts.push('Attacks');
-
-  if (parts.length === 0) return 'Fully Hidden';
-  if (parts.length >= 4) return 'Mostly Revealed';
-  return `Revealed: ${parts.join(', ')}`;
 }

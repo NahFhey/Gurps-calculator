@@ -1,10 +1,63 @@
-import React, { useMemo, useState } from 'react';
-import { Shield, Dices } from 'lucide-react';
+import { useMemo, useState, ChangeEvent } from 'react';
+import { Dices } from 'lucide-react';
 import ModifierStack from './ModifierStack';
 import { DEFENSE_MODIFIERS, calculateEffective } from '../../utils/modifiers';
 import { rollVsTarget } from '../../utils/dice';
 import { getDefenderDefenseBase, getPublicDefenseLabel } from '../../utils/combatViewSelectors';
 import { ViewMode } from '../../utils/combatViewFilter';
+
+interface Modifier {
+  label: string;
+  value: number;
+}
+
+interface DefenseValue {
+  mode?: string;
+  value?: number;
+}
+
+interface Defender {
+  instanceId?: string;
+  defenses?: {
+    dodge?: number | DefenseValue;
+    parry?: number | DefenseValue;
+    block?: number | DefenseValue;
+  };
+  dodge?: number | DefenseValue;
+  parry?: number | DefenseValue;
+  block?: number | DefenseValue;
+}
+
+interface RollResult {
+  total: number;
+  target: number;
+  margin: number;
+  success: boolean;
+}
+
+interface DefenseData {
+  type: string;
+  baseDefense: number;
+  modifiers: Modifier[];
+  injectedModifiers: Modifier[];
+  effectiveDefense: number;
+  rollTotal: number | null;
+  margin: number | null;
+  success: boolean | null;
+}
+
+interface DefenseAssistProps {
+  defender: Defender | null;
+  defenderId?: string | null;
+  combatState?: unknown;
+  revealState?: unknown;
+  viewMode?: string;
+  injectedModifiers?: Modifier[];
+  onComplete: (data: { defense: DefenseData }) => void;
+  onCancel: () => void;
+}
+
+type DefenseType = 'dodge' | 'parry' | 'block' | 'custom';
 
 /**
  * DefenseAssist Component
@@ -20,22 +73,23 @@ export default function DefenseAssist({
   injectedModifiers = [],
   onComplete,
   onCancel
-}) {
-  const [defenseType, setDefenseType] = useState('dodge');
+}: DefenseAssistProps) {
+  const [defenseType, setDefenseType] = useState<DefenseType>('dodge');
   const [customBaseDefense, setCustomBaseDefense] = useState('');
-  const [modifiers, setModifiers] = useState([]);
-  const [rollResult, setRollResult] = useState(null);
+  const [modifiers, setModifiers] = useState<Modifier[]>([]);
+  const [rollResult, setRollResult] = useState<RollResult | null>(null);
 
   const resolvedDefenderId = defenderId || defender?.instanceId || null;
-  const coerceDefenseValue = (defenseField) => {
+
+  const coerceDefenseValue = (defenseField: number | DefenseValue | undefined | null): number | null => {
     if (!defenseField) return null;
     if (typeof defenseField === 'object' && defenseField.mode) {
       if (defenseField.mode === 'exact' || defenseField.mode === 'approx') {
-        return defenseField.value;
+        return defenseField.value ?? null;
       }
       return null;
     }
-    return defenseField;
+    return defenseField as number;
   };
 
   const baseDefenses = useMemo(() => {
@@ -55,7 +109,7 @@ export default function DefenseAssist({
   }, [combatState, defender, resolvedDefenderId]);
 
   // Get base defense value
-  const getBaseDefense = () => {
+  const getBaseDefense = (): number => {
     if (defenseType === 'custom') {
       return parseInt(customBaseDefense) || 0;
     }
@@ -67,12 +121,12 @@ export default function DefenseAssist({
   const effectiveDefense = calculateEffective(baseDefense, [...injectedModifiers, ...modifiers]);
 
   const handleRoll = () => {
-    const result = rollVsTarget('3d6', effectiveDefense);
+    const result = rollVsTarget('3d6', effectiveDefense) as RollResult;
     setRollResult(result);
   };
 
   const handleComplete = () => {
-    const defenseData = {
+    const defenseData: DefenseData = {
       type: defenseType === 'custom' ? customBaseDefense : defenseType,
       baseDefense,
       modifiers: [...modifiers],
@@ -88,9 +142,9 @@ export default function DefenseAssist({
     });
   };
 
-  const isValid = () => {
+  const isValid = (): boolean => {
     if (defenseType === 'custom') {
-      return customBaseDefense && !isNaN(parseInt(customBaseDefense));
+      return !!customBaseDefense && !isNaN(parseInt(customBaseDefense));
     }
     return baseDefense !== null && baseDefense !== undefined;
   };
@@ -205,7 +259,7 @@ export default function DefenseAssist({
             <input
               type="number"
               value={customBaseDefense}
-              onChange={(e) => setCustomBaseDefense(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomBaseDefense(e.target.value)}
               placeholder="Enter base defense value"
               className="w-full px-3 py-2 bg-gray-700 rounded"
             />

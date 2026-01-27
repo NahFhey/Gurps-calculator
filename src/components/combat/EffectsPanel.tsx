@@ -1,6 +1,53 @@
-import React, { useState } from 'react';
+import { useState, ReactNode } from 'react';
 import { Dices, AlertCircle, Skull, Heart, Droplet, Cross } from 'lucide-react';
 import { performHTCheck } from '../../utils/effectsEngine';
+
+interface RollResult {
+  dice: number[];
+  total: number;
+  target: number;
+  success: boolean;
+  margin?: number;
+}
+
+interface EffectPrompt {
+  type: string;
+  description: string;
+  autoApply?: boolean;
+  value?: number;
+  locationKey?: string;
+  locationLabel?: string;
+  checkType?: string;
+  target?: number;
+  penalty?: number;
+  optional?: boolean;
+}
+
+interface ResolvedEffect {
+  type: string;
+  autoApplied?: boolean;
+  value?: number;
+  locationKey?: string;
+  locationLabel?: string;
+  rolled?: boolean;
+  rollResult?: RollResult;
+  success?: boolean;
+  skipped?: boolean;
+  manual?: boolean;
+  outcome?: string;
+}
+
+interface Target {
+  id: string;
+  name: string;
+}
+
+interface EffectsPanelProps {
+  prompts: EffectPrompt[];
+  target: Target;
+  onEffectResolved: (effect: ResolvedEffect) => void;
+  onComplete: () => void;
+}
 
 /**
  * EffectsPanel Component
@@ -11,12 +58,12 @@ export default function EffectsPanel({
   target,
   onEffectResolved,
   onComplete
-}) {
-  const [resolvedEffects, setResolvedEffects] = useState({});
-  const [rollResults, setRollResults] = useState({});
+}: EffectsPanelProps) {
+  const [resolvedEffects, setResolvedEffects] = useState<Record<number, ResolvedEffect>>({});
+  const [rollResults, setRollResults] = useState<Record<number, RollResult>>({});
 
-  const handleAutoApply = (prompt, index) => {
-    const effect = {
+  const handleAutoApply = (prompt: EffectPrompt, index: number) => {
+    const effect: ResolvedEffect = {
       type: prompt.type,
       autoApplied: true,
       value: prompt.value,
@@ -32,15 +79,15 @@ export default function EffectsPanel({
     onEffectResolved(effect);
   };
 
-  const handleRoll = (prompt, index) => {
-    const result = performHTCheck(prompt.target, prompt.penalty || 0);
+  const handleRoll = (prompt: EffectPrompt, index: number) => {
+    const result = performHTCheck(prompt.target ?? 10, prompt.penalty || 0) as RollResult;
 
     setRollResults(prev => ({
       ...prev,
       [index]: result
     }));
 
-    const effect = {
+    const effect: ResolvedEffect = {
       type: prompt.type,
       rolled: true,
       rollResult: result,
@@ -55,8 +102,8 @@ export default function EffectsPanel({
     onEffectResolved(effect);
   };
 
-  const handleSkip = (prompt, index) => {
-    const effect = {
+  const handleSkip = (prompt: EffectPrompt, index: number) => {
+    const effect: ResolvedEffect = {
       type: prompt.type,
       skipped: true
     };
@@ -69,8 +116,8 @@ export default function EffectsPanel({
     onEffectResolved(effect);
   };
 
-  const handleManualResolve = (prompt, index, outcome) => {
-    const effect = {
+  const handleManualResolve = (prompt: EffectPrompt, index: number, outcome: string) => {
+    const effect: ResolvedEffect = {
       type: prompt.type,
       manual: true,
       outcome
@@ -84,7 +131,7 @@ export default function EffectsPanel({
     onEffectResolved(effect);
   };
 
-  const getEffectIcon = (type) => {
+  const getEffectIcon = (type: string): ReactNode => {
     switch (type) {
       case 'shock':
         return <AlertCircle size={20} className="text-yellow-400" />;
@@ -144,7 +191,7 @@ export default function EffectsPanel({
                   <div className="mt-2 space-y-2">
                     <div className="text-sm text-gray-400">
                       Target: {prompt.checkType} {prompt.target}
-                      {prompt.penalty !== 0 && ` (${prompt.penalty >= 0 ? '+' : ''}${prompt.penalty})`}
+                      {prompt.penalty !== 0 && ` (${(prompt.penalty ?? 0) >= 0 ? '+' : ''}${prompt.penalty})`}
                     </div>
                     <div className="flex gap-2">
                       <button
