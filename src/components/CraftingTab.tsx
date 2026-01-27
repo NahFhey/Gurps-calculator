@@ -1,9 +1,11 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { QUALITIES } from '../constants';
 import { toNumberOr, upsertCraft, removeCraft, refundMaterialsFromProject } from '../utils/helpers';
 import { DiceRoller } from './DiceRoller';
 import { useCampaignStore } from '../state/campaignStore';
 import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
+import { craftingLog } from '../utils/activityLogger';
+import { useWeatherModifiers } from '../hooks/useWeatherModifiers';
 
 // ============================================================================
 // Types
@@ -142,6 +144,9 @@ type CraftingView = 'list' | 'craft' | 'designs';
  */
 export function CraftingTab() {
   const { state, actions } = useCampaignStore();
+
+  // Get weather modifiers for crafting
+  const { modifiers: weatherModifiers, hasEffect, effectDescription, locationName, skillBonus: weatherSkillBonus } = useWeatherModifiers('crafting');
 
   // Derive data from normalized state
   const materials = useMemo(() =>
@@ -382,6 +387,17 @@ export function CraftingTab() {
         </div>
       )}
 
+      {/* Weather Effects Banner */}
+      {hasEffect && (
+        <div className="mb-4 px-3 py-2 rounded bg-blue-900/30 border border-blue-700/50">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-blue-400">Weather Effect:</span>
+            <span className="text-gray-300">{effectDescription}</span>
+            {locationName && <span className="text-gray-500 text-xs">at {locationName}</span>}
+          </div>
+        </div>
+      )}
+
       <div className="flex gap-2 mb-4">
         <button onClick={() => setView('list')} className={`px-4 py-2 rounded ${view === 'list' ? 'bg-blue-600' : 'bg-gray-700'}`}>Projects ({crafts.length})</button>
         <button onClick={() => setView('designs')} className={`px-4 py-2 rounded ${view === 'designs' ? 'bg-blue-600' : 'bg-gray-700'}`}>Saved Designs ({(craftDesigns || []).length})</button>
@@ -532,6 +548,7 @@ export function CraftingTab() {
                   const newCur: Craft = {...current, phase: 'design', consumedMaterials};
                   setCurrent(newCur);
                   saveCrafts(upsertCraft(crafts, newCur));
+                  actions.addLogEntry(craftingLog.projectStarted(current.template || 'Unknown'));
                   if (workers && workers.length > 0 && !selectedWorker) {
                     const defaultWorker = workers[0];
                     setSelectedWorker(defaultWorker.name);
@@ -543,6 +560,7 @@ export function CraftingTab() {
                   const newCur: Craft = {...current, phase: 'design'};
                   setCurrent(newCur);
                   saveCrafts(upsertCraft(crafts, newCur));
+                  actions.addLogEntry(craftingLog.projectStarted(current.template || 'Unknown'));
                   if (workers && workers.length > 0 && !selectedWorker) {
                     const defaultWorker = workers[0];
                     setSelectedWorker(defaultWorker.name);
@@ -630,6 +648,11 @@ export function CraftingTab() {
                   newCur.completedDate = currentDate;
                   newCur.completedDay = currentDay;
                   saveCrafts(upsertCraft(crafts, newCur));
+                  actions.addLogEntry(craftingLog.projectCompleted(
+                    newCur.name || newCur.template || 'Unknown',
+                    newCur.currentQuality || 'Standard',
+                    selectedWorker
+                  ));
                   setCurrent(null);
                   setView('list');
                   return;
@@ -1057,6 +1080,7 @@ export function CraftingTab() {
                           };
 
                           saveCrafts([...crafts, newCraft]);
+                          actions.addLogEntry(craftingLog.projectStarted(design.name || design.template || 'Unknown'));
                           setCurrent(newCraft);
                           setCurrentDate(today);
                           setCurrentDay(1);

@@ -13,11 +13,23 @@ export interface ActivityFacilitySelection {
   conditionId?: Id;
 }
 
+/**
+ * Weather modifiers that affect activities
+ * These come from the current location's weather
+ */
+export interface WeatherModifiers {
+  skillBonus?: number;      // Applied to skill rolls
+  yieldFlat?: number;       // Flat addition to yield
+  yieldPercent?: number;    // Percentage multiplier
+  description?: string;     // Weather description for display
+}
+
 export interface ActivityCalculatorInput {
   primaryWorkerId: Id;
   helperWorkerIds: Id[];
   toolsUsed: ActivityToolSelection[];
   facility?: ActivityFacilitySelection | null;
+  weatherModifiers?: WeatherModifiers | null;  // Weather effects on the activity
 }
 
 export interface ActivityBonusTotals {
@@ -65,6 +77,7 @@ export const calculateActivityBonuses = ({
   helperWorkerIds,
   toolsUsed,
   facility,
+  weatherModifiers,
 }: ActivityCalculatorInput): ActivityBonusTotals => {
   const { hardStop, errorMessage } = checkBrokenStatus(toolsUsed, facility);
   if (hardStop) {
@@ -106,6 +119,13 @@ export const calculateActivityBonuses = ({
   toolsUsed.forEach(tool => mergeModifiers(totals, tool.modifiers));
   if (facility) {
     mergeModifiers(totals, facility.modifiers);
+  }
+
+  // Apply weather modifiers
+  if (weatherModifiers) {
+    totals.skillBonus += weatherModifiers.skillBonus ?? 0;
+    totals.yieldFlat += weatherModifiers.yieldFlat ?? 0;
+    totals.yieldPercent += weatherModifiers.yieldPercent ?? 0;
   }
 
   return totals;

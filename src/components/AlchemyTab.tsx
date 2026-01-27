@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { ReagentsView } from './alchemy/ReagentsView';
 import { FormulasView } from './alchemy/FormulasView';
 import { BatchesView } from './alchemy/BatchesView';
@@ -7,6 +7,8 @@ import { AnalysisView } from './alchemy/AnalysisView';
 import { ConcentrationRefinementView } from './alchemy/ConcentrationRefinementView';
 import { useCampaignStore } from '../state/campaignStore';
 import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
+import { alchemyLog } from '../utils/activityLogger';
+import { useWeatherModifiers } from '../hooks/useWeatherModifiers';
 
 // ============================================================================
 // Types
@@ -68,6 +70,9 @@ export function AlchemyTab() {
   const { state, actions } = useCampaignStore();
   const [view, setView] = useState<AlchemyView>('reagents');
 
+  // Get weather modifiers for alchemy
+  const { modifiers: weatherModifiers, hasEffect, effectDescription, locationName } = useWeatherModifiers('alchemy');
+
   // Derive data from normalized state
   const reagents = useMemo(() =>
     denormalizeObject(state.entities.alchemyReagents) as AlchemyReagent[],
@@ -102,6 +107,9 @@ export function AlchemyTab() {
     [state.entities.characters]
   );
 
+  // Track previous batches for change detection
+  const prevBatchesRef = useRef<AlchemyBatch[]>(batches);
+
   // Save callbacks that normalize arrays back to records
   const saveReagents = useCallback((reagentsArray: AlchemyReagent[]) => {
     actions.setAlchemyReagents(normalizeArray(reagentsArray));
@@ -112,6 +120,33 @@ export function AlchemyTab() {
   }, [actions]);
 
   const saveBatches = useCallback((batchesArray: AlchemyBatch[]) => {
+    const prevBatches = prevBatchesRef.current;
+    const prevBatchIds = new Set(prevBatches.map(b => b.id));
+    const prevBatchMap = new Map(prevBatches.map(b => [b.id, b]));
+
+    // Detect new batches (started)
+    for (const batch of batchesArray) {
+      if (!prevBatchIds.has(batch.id) && batch.phase === 'brewing') {
+        actions.addLogEntry(alchemyLog.batchStarted(batch.formulaName || 'Unknown'));
+      }
+    }
+
+    // Detect completed or failed batches
+    for (const batch of batchesArray) {
+      const prevBatch = prevBatchMap.get(batch.id);
+      if (prevBatch && prevBatch.phase === 'brewing') {
+        if (batch.phase === 'completed') {
+          actions.addLogEntry(alchemyLog.batchCompleted(
+            batch.formulaName || 'Unknown',
+            (batch as any).quality || 'Unknown'
+          ));
+        } else if (batch.phase === 'failed') {
+          actions.addLogEntry(alchemyLog.batchFailed(batch.formulaName || 'Unknown'));
+        }
+      }
+    }
+
+    prevBatchesRef.current = batchesArray;
     actions.setAlchemyBatches(normalizeArray(batchesArray));
   }, [actions]);
 
@@ -120,6 +155,17 @@ export function AlchemyTab() {
 
   return (
     <div>
+      {/* Weather Effects Banner */}
+      {hasEffect && (
+        <div className="mb-4 px-3 py-2 rounded bg-blue-900/30 border border-blue-700/50">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-blue-400">Weather Effect:</span>
+            <span className="text-gray-300">{effectDescription}</span>
+            {locationName && <span className="text-gray-500 text-xs">at {locationName}</span>}
+          </div>
+        </div>
+      )}
+
       <div className="flex gap-2 mb-6 border-b border-gray-700">
         <button
           onClick={() => setView('reagents')}

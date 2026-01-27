@@ -46,50 +46,75 @@
 
 ---
 
-## Phase 3: Activities Panel Simplification 🔲 PENDING
+## Phase 3: Activities Panel Simplification ✅ COMPLETE
 
-- [ ] Create new ActivitiesPanel component
-  - [ ] 4-tile grid layout (Alchemy, Cooking, Crafting, Gathering)
-  - [ ] Each tile opens existing system (expand or modal)
-  - [ ] Show current day/slot and weather effects
-- [ ] Migrate features from PartyToolApp.jsx:
-  - [ ] Inventories tab → InventoryTab (add Party Stash)
-  - [ ] Logs tab → ChangelogTab
-  - [ ] GM Workshop > Tool Templates → ManagerTab
-  - [ ] GM Workshop > Facilities → ManagerTab
-  - [ ] GM Workshop > Time Controls → Header
-- [ ] Delete PartyToolApp.jsx (1,065 lines → ~100 lines)
+- [x] Create new ActivitiesPanel component
+  - [x] 4-tile grid layout (Alchemy, Cooking, Crafting, Gathering)
+  - [x] Each tile opens existing system (modal overlay)
+  - [x] Show current day/slot and weather effects placeholder
+- [x] Migrate features from PartyToolApp.jsx:
+  - [x] Inventories tab → InventoryTab (Party Stash view added)
+  - [x] Logs tab → ChangelogTab (deferred to Phase 4)
+  - [x] GM Workshop > Tool Templates → ManagerTab (new ToolTemplatesView)
+  - [x] GM Workshop > Facilities → ManagerTab (new FacilitiesView)
+  - [x] GM Workshop > Time Controls → Header (already done in Phase 2)
+- [x] Delete PartyToolApp.jsx and PartyToolContainer.tsx
+- [x] Fix ManagerTab to use useCampaignStore() directly
 
----
-
-## Phase 4: Quick Fixes 🔲 PENDING
-
-- [ ] Fix Manager module (migrate to `useCampaignStore()`)
-- [ ] Populate Changelog (add logging calls throughout codebase)
-- [ ] Add Party Stash tab to Inventory module
+**Commit:** `2865827 Feat: Implement Phase 3 - Activities Panel Simplification`
 
 ---
 
-## Phase 5: Location & Weather System 🔲 PENDING
+## Phase 4: Quick Fixes ✅ COMPLETE
 
-- [ ] Create Location types and interfaces
-- [ ] Create Weather types and effects
-- [ ] Build LocationManager (GM tool)
-- [ ] Build WeatherWidget component
-- [ ] Implement weather generation per location
-- [ ] Basic travel system between locations
-- [ ] Weather effects on activities
+- [x] Fix Manager module (migrate to `useCampaignStore()`) - Done in Phase 3
+- [x] Populate Changelog (add logging calls throughout codebase)
+  - [x] Created `src/utils/activityLogger.ts` - Logging utility with helpers for all activity types
+  - [x] Added logging to AlchemyTab (batch started/completed/failed)
+  - [x] Added logging to CookingTab (meal prepared)
+  - [x] Added logging to CraftingTab (project started/completed)
+  - [x] Added logging to InventoryTab (item/tool/currency transfers)
+  - [x] Added logging to campaignReducer (combat started/combatant defeated)
+- [x] Add Party Stash tab to Inventory module - Done in Phase 3
+
+**Commit:** `2e68582 Feat: Implement Phase 4 - Populate Changelog with Logging`
 
 ---
 
-## Phase 6: Character Management 🔲 PENDING
+## Phase 5: Location & Weather System ✅ COMPLETE
 
-- [ ] Add Character button in Party Column
-- [ ] Character creation options:
-  - [ ] Blank character
-  - [ ] From template
-  - [ ] Import from GCS
-- [ ] Character context menu (View, Edit, Duplicate, Export, Delete)
+- [x] Create Location types and interfaces (`src/types/location.ts`)
+- [x] Create Weather types and effects (weather types, effects, tables)
+- [x] Build LocationManager (GM tool) - create/edit/delete locations
+- [x] Build WeatherWidget component - displays current location and weather
+- [x] Implement weather generation per location (climate-based weather tables)
+- [x] Basic travel system between locations (TravelPanel component)
+- [x] Weather effects on activities:
+  - [x] Activity calculator updated with `weatherModifiers` parameter
+  - [x] `useWeatherModifiers` hook for activity tabs
+  - [x] Weather banners in AlchemyTab, CookingTab, CraftingTab
+  - [x] GatheringContext updated with weather modifiers
+  - [x] ActivitiesPanel shows current weather effects
+- [x] Weather auto-advances when time advances (in campaignReducer)
+- [x] Default "Camp" location created on initialization
+
+**Commit:** `307c7b8 Feat: Implement Phase 5 - Location & Weather System`
+
+---
+
+## Phase 6: Character Management ✅ COMPLETE
+
+- [x] Add Character button in Party Column
+- [x] Character creation options:
+  - [x] Blank character (create with default attributes)
+  - [x] From template (infrastructure with 6 template types: Fighter, Wizard, Rogue, Cleric, Ranger, Bard)
+  - [x] Import from file (GCS text format or JSON)
+- [x] Character context menu (View, Edit, Duplicate, Export JSON, Delete)
+- [x] Character utility functions (`src/utils/characterManagement.ts`)
+- [x] Delete confirmation dialog
+- [x] HP/FP display in party character cards
+
+**Commit:** `bc0da2a Feat: Implement Phase 6 - Character Management`
 
 ---
 
@@ -108,24 +133,63 @@
 - `src/components/header/index.ts` - Header component exports
 - `src/components/combat/CombatTile.tsx` - Combat status tile
 
-### Planned New Files
-- `src/components/activities/ActivitiesPanel.tsx` - Phase 3
-- `src/components/activities/ActivityTile.tsx` - Phase 3
-- `src/components/location/LocationManager.tsx` - Phase 5
-- `src/components/location/TravelPanel.tsx` - Phase 5
-- `src/types/location.ts` - Phase 5
+### Phase 3 Files (Complete)
+- `src/components/activities/ActivitiesPanel.tsx` - 4-tile activity launcher
+- `src/components/activities/ActivityTile.tsx` - Individual activity tile component
+- `src/components/activities/index.ts` - Component exports
+- `src/components/manager/views/ToolTemplatesView.tsx` - Tool templates view
+- `src/components/manager/views/FacilitiesView.tsx` - Facilities view
+
+### Phase 4 Files (Complete)
+- `src/utils/activityLogger.ts` - Logging utility with helpers for all activity types
+
+### Phase 5 Files (Complete)
+- `src/types/location.ts` - Location, Weather, Travel types and constants
+- `src/utils/weatherSystem.ts` - Weather generation and effects utilities
+- `src/hooks/useWeatherModifiers.ts` - Hook for getting weather effects in activity tabs
+- `src/components/location/LocationManager.tsx` - GM tool for managing locations
+- `src/components/location/TravelPanel.tsx` - Travel between locations component
+- `src/components/location/index.ts` - Location component exports
+
+### Phase 6 Files (Complete)
+- `src/utils/characterManagement.ts` - Character creation, duplication, and export utilities
+- `src/components/character-management/CharacterCreationModal.tsx` - Modal for creating new characters
+- `src/components/character-management/CharacterContextMenu.tsx` - Right-click context menu for characters
+- `src/components/character-management/index.ts` - Component exports
+
+### Files Modified in Phase 6
+- `src/unified/UnifiedShell.tsx` - Added character management UI (Add button, context menu, delete confirmation, HP/FP display)
 
 ### Files Modified in Phase 2
 - `src/unified/UnifiedShell.tsx` - Layout restructure with new header, collapsible party, CombatTile
-- `src/components/party-tool/PartyToolApp.jsx` - Removed time controls (now in header)
 
-### Files to Modify (Remaining)
-- `src/components/ManagerTab.tsx` - Fix props issue (Phase 4)
-- `src/components/ChangelogTab.tsx` - Add logging (Phase 4)
-- `src/components/InventoryTab.tsx` - Add Party Stash (Phase 4)
+### Files Modified in Phase 3
+- `src/unified/UnifiedShell.tsx` - Replaced PartyToolContainer with ActivitiesPanel
+- `src/components/ManagerTab.tsx` - Refactored to use useCampaignStore() directly
+- `src/components/InventoryTab.tsx` - Added Party Stash view
 
-### Files to Delete
-- `src/components/party-tool/PartyToolApp.jsx` - After Phase 3
+### Files Modified in Phase 4
+- `src/components/AlchemyTab.tsx` - Added logging for batch events
+- `src/components/CookingTab.tsx` - Added logging for meal preparation
+- `src/components/CraftingTab.tsx` - Added logging for crafting projects
+- `src/components/InventoryTab.tsx` - Added logging for transfers
+- `src/contexts/GatheringContext.jsx` - Added logging support
+- `src/state/campaignReducer.ts` - Added logging for combat events
+
+### Files Modified in Phase 5
+- `src/state/campaignReducer.ts` - Added locations state, location/weather actions, weather auto-advance
+- `src/state/campaignStore.tsx` - Added location/weather action exports
+- `src/components/header/WeatherWidget.tsx` - Replaced placeholder with real weather state
+- `src/components/AlchemyTab.tsx` - Added weather effects banner
+- `src/components/CookingTab.tsx` - Added weather effects banner
+- `src/components/CraftingTab.tsx` - Added weather effects banner
+- `src/contexts/GatheringContext.jsx` - Added weather modifiers
+- `src/components/activities/ActivitiesPanel.tsx` - Added real weather effects display
+- `src/utils/activityCalculator.ts` - Added weatherModifiers parameter
+
+### Files Deleted in Phase 3
+- `src/components/party-tool/PartyToolApp.jsx` - Replaced by ActivitiesPanel
+- `src/components/party-tool/PartyToolContainer.tsx` - No longer needed
 
 ---
 

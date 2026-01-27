@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Shield, ShieldOff } from 'lucide-react';
 import { refundMaterialsFromProject } from '../utils/helpers';
 import { unlockGMData, mergeGM } from '../utils/exportImport';
 import { useCampaignStore } from '../state/campaignStore';
-import type { ManagerTabProps, GMLockData } from '../types/views';
-import type { Id } from '../types/campaign';
+import { denormalizeObject, normalizeArray } from '../state/campaignUtils';
+import type { GMLockData } from '../types/views';
+import type { Id, FoodType, MaterialType, AlchemyLab, Kitchen, CookingSkill, AlchemyReagent, AlchemyFormula, CustomTemplates, Craft, Character } from '../types/campaign';
 
 // View components
 import { FoodTypesView } from './manager/views/FoodTypesView';
@@ -19,6 +20,8 @@ import { EffectFamilyMapView } from './manager/views/EffectFamilyMapView';
 import { TemplatesView } from './manager/views/TemplatesView';
 import { ReagentsView } from './manager/views/ReagentsView';
 import { FormulasView } from './manager/views/FormulasView';
+import { ToolTemplatesView } from './manager/views/ToolTemplatesView';
+import { FacilitiesView } from './manager/views/FacilitiesView';
 
 // Shared components
 import { ImportExportPanel } from './ImportExportPanel';
@@ -42,6 +45,8 @@ type ManagerView =
   | 'effectFamilyMap'
   | 'alchemySettings'
   | 'gathering'
+  | 'toolTemplates'
+  | 'facilities'
   | 'debug';
 
 // Delete confirmation state type
@@ -53,23 +58,203 @@ interface DeleteConfirmState {
   templateType?: string;
 }
 
-export function ManagerTab({
-  foodTypes, materialTypes, workers, crafts, craftDesigns, customTemplates, materials,
-  effectFamilyMap, alchemySettings, alchemyReagents, alchemyFormulas, alchemyBatches, alchemyLabs, kitchens, cookingSkills,
-  foods, recipes, gmMode, gmLockData, setGmMode, setGmLockData,
-  saveMaterials, saveFoods, saveRecipes, saveFoodTypes, saveMaterialTypes, saveWorkers,
-  saveCrafts, saveCraftDesigns, saveCustomTemplates, saveEffectFamilyMap,
-  saveAlchemySettings, saveAlchemyReagents, saveAlchemyFormulas, saveAlchemyBatches, saveAlchemyLabs, saveKitchens, saveCookingSkills,
-  renameMaterialType,
-  // Gathering system props
-  gatheringSpecies, gatheringTools, gatheringTables, gatheringEnvironments, gatheringBait, gatheringCategories, gatheringItems, currentDay,
-  saveGatheringSpecies, saveGatheringTools, saveGatheringTables, saveGatheringEnvironments, saveGatheringBait, saveGatheringCategories, saveGatheringItems, saveCurrentDay
-}: ManagerTabProps) {
+/**
+ * ManagerTab - Campaign management interface
+ *
+ * REFACTORED in Phase 3: Now uses useCampaignStore directly instead of props.
+ * This fixes the broken state where legacyAppState.managerTabProps was empty.
+ */
+export function ManagerTab() {
   const [view, setView] = useState<ManagerView>('foodTypes');
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState | null>(null);
   const [showGMLockModal, setShowGMLockModal] = useState(false);
   const [gmLockError, setGmLockError] = useState<string | null>(null);
+  const [gmLockData, setGmLockData] = useState<GMLockData | null>(null);
   const { state: campaignState, actions: campaignActions } = useCampaignStore();
+
+  // Derive data from campaign store
+  const gmMode = campaignState.ui.gmModeEnabled;
+  const setGmMode = campaignActions.setGmMode;
+
+  // Food & Material types
+  const foodTypes = campaignState.entities.foodTypes as FoodType[];
+  const materialTypes = campaignState.entities.materialTypes as MaterialType[];
+
+  // Workers (characters that can work)
+  const workers = useMemo(() => {
+    const chars = denormalizeObject(campaignState.entities.characters) as Character[];
+    return chars.filter(c => c.work?.enabled);
+  }, [campaignState.entities.characters]);
+
+  // Crafting
+  const crafts = useMemo(() =>
+    denormalizeObject(campaignState.entities.crafts) as Craft[],
+    [campaignState.entities.crafts]
+  );
+  const craftDesigns = campaignState.entities.craftDesigns;
+  const customTemplates = campaignState.entities.customTemplates;
+  const materials = useMemo(() =>
+    denormalizeObject(campaignState.entities.materials),
+    [campaignState.entities.materials]
+  );
+
+  // Alchemy
+  const effectFamilyMap = campaignState.entities.effectFamilyMap;
+  const alchemySettings = campaignState.entities.alchemySettings;
+  const alchemyReagents = useMemo(() =>
+    denormalizeObject(campaignState.entities.alchemyReagents) as AlchemyReagent[],
+    [campaignState.entities.alchemyReagents]
+  );
+  const alchemyFormulas = useMemo(() =>
+    denormalizeObject(campaignState.entities.alchemyFormulas) as AlchemyFormula[],
+    [campaignState.entities.alchemyFormulas]
+  );
+  const alchemyLabs = useMemo(() =>
+    denormalizeObject(campaignState.entities.alchemyLabs) as AlchemyLab[],
+    [campaignState.entities.alchemyLabs]
+  );
+
+  // Cooking
+  const kitchens = useMemo(() =>
+    denormalizeObject(campaignState.entities.kitchens) as Kitchen[],
+    [campaignState.entities.kitchens]
+  );
+  const cookingSkills = campaignState.entities.cookingSkills as CookingSkill[];
+
+  // Gathering
+  const gatheringSpecies = useMemo(() =>
+    denormalizeObject(campaignState.entities.gatheringSpecies),
+    [campaignState.entities.gatheringSpecies]
+  );
+  const gatheringTools = useMemo(() =>
+    denormalizeObject(campaignState.entities.gatheringTools),
+    [campaignState.entities.gatheringTools]
+  );
+  const gatheringTables = useMemo(() =>
+    denormalizeObject(campaignState.entities.gatheringTables),
+    [campaignState.entities.gatheringTables]
+  );
+  const gatheringEnvironments = useMemo(() =>
+    denormalizeObject(campaignState.entities.gatheringEnvironments),
+    [campaignState.entities.gatheringEnvironments]
+  );
+  const gatheringBait = useMemo(() =>
+    denormalizeObject(campaignState.entities.gatheringBait),
+    [campaignState.entities.gatheringBait]
+  );
+  const gatheringCategories = useMemo(() =>
+    denormalizeObject(campaignState.entities.gatheringCategories),
+    [campaignState.entities.gatheringCategories]
+  );
+  const gatheringItems = useMemo(() =>
+    denormalizeObject(campaignState.entities.gatheringItems),
+    [campaignState.entities.gatheringItems]
+  );
+  const currentDay = campaignState.time.day;
+
+  // Save callbacks
+  const saveFoodTypes = useCallback((types: FoodType[]) => {
+    campaignActions.setFoodTypes(types);
+  }, [campaignActions]);
+
+  const saveMaterialTypes = useCallback((types: MaterialType[]) => {
+    campaignActions.setMaterialTypes(types);
+  }, [campaignActions]);
+
+  const saveWorkers = useCallback((workersList: Character[]) => {
+    // Workers are characters, so we need to update them individually
+    workersList.forEach(worker => {
+      campaignActions.updateCharacter(worker.id, worker);
+    });
+  }, [campaignActions]);
+
+  const saveMaterials = useCallback((mats: unknown[]) => {
+    campaignActions.setMaterials(normalizeArray(mats));
+  }, [campaignActions]);
+
+  const saveCrafts = useCallback((craftsList: Craft[]) => {
+    campaignActions.setCrafts(normalizeArray(craftsList));
+  }, [campaignActions]);
+
+  const saveCustomTemplates = useCallback((templates: CustomTemplates) => {
+    campaignActions.setCustomTemplates(templates);
+  }, [campaignActions]);
+
+  const saveEffectFamilyMap = useCallback((map: typeof effectFamilyMap) => {
+    campaignActions.setEffectFamilyMap(map);
+  }, [campaignActions]);
+
+  const saveAlchemySettings = useCallback((settings: typeof alchemySettings) => {
+    campaignActions.setAlchemySettings(settings);
+  }, [campaignActions]);
+
+  const saveAlchemyReagents = useCallback((reagents: AlchemyReagent[]) => {
+    campaignActions.setAlchemyReagents(normalizeArray(reagents));
+  }, [campaignActions]);
+
+  const saveAlchemyFormulas = useCallback((formulas: AlchemyFormula[]) => {
+    campaignActions.setAlchemyFormulas(normalizeArray(formulas));
+  }, [campaignActions]);
+
+  const saveAlchemyLabs = useCallback((labs: AlchemyLab[]) => {
+    campaignActions.setAlchemyLabs(normalizeArray(labs));
+  }, [campaignActions]);
+
+  const saveKitchens = useCallback((kitchensList: Kitchen[]) => {
+    campaignActions.setKitchens(normalizeArray(kitchensList));
+  }, [campaignActions]);
+
+  const saveCookingSkills = useCallback((skills: CookingSkill[]) => {
+    campaignActions.setCookingSkills(skills);
+  }, [campaignActions]);
+
+  const renameMaterialType = useCallback((oldName: string, newName: string) => {
+    // Update material type name in types list
+    const updatedTypes = materialTypes.map(t =>
+      t.name === oldName ? { ...t, name: newName } : t
+    );
+    saveMaterialTypes(updatedTypes);
+
+    // Update all materials that use this type
+    const updatedMaterials = Object.values(campaignState.entities.materials).map(m =>
+      (m as { type?: string }).type === oldName ? { ...m, type: newName } : m
+    );
+    saveMaterials(updatedMaterials);
+  }, [materialTypes, campaignState.entities.materials, saveMaterialTypes, saveMaterials]);
+
+  // Gathering save callbacks
+  const saveGatheringSpecies = useCallback((species: unknown[]) => {
+    campaignActions.setGatheringSpecies(normalizeArray(species));
+  }, [campaignActions]);
+
+  const saveGatheringTools = useCallback((tools: unknown[]) => {
+    campaignActions.setGatheringTools(normalizeArray(tools));
+  }, [campaignActions]);
+
+  const saveGatheringTables = useCallback((tables: unknown[]) => {
+    campaignActions.setGatheringTables(normalizeArray(tables));
+  }, [campaignActions]);
+
+  const saveGatheringEnvironments = useCallback((envs: unknown[]) => {
+    campaignActions.setGatheringEnvironments(normalizeArray(envs));
+  }, [campaignActions]);
+
+  const saveGatheringBait = useCallback((baitList: unknown[]) => {
+    campaignActions.setGatheringBait(normalizeArray(baitList));
+  }, [campaignActions]);
+
+  const saveGatheringCategories = useCallback((cats: unknown[]) => {
+    campaignActions.setGatheringCategories(normalizeArray(cats));
+  }, [campaignActions]);
+
+  const saveGatheringItems = useCallback((items: unknown[]) => {
+    campaignActions.setGatheringItems(normalizeArray(items));
+  }, [campaignActions]);
+
+  const saveCurrentDay = useCallback((day: number) => {
+    // Day is managed through time system, but for compatibility we can log this
+    console.log('saveCurrentDay called with', day);
+  }, []);
 
   // Delete handler for all views
   function handleDelete(type: string, value: string, extra: { id?: Id; templateType?: string } = {}) {
@@ -341,6 +526,12 @@ export function ManagerTab({
         <button onClick={() => setView('gathering')} className={`px-4 py-2 ${view === 'gathering' ? 'border-b-2 border-cyan-500 text-cyan-400' : 'text-gray-400'}`}>
           Gathering
         </button>
+        <button onClick={() => setView('toolTemplates')} className={`px-4 py-2 ${view === 'toolTemplates' ? 'border-b-2 border-purple-500 text-purple-400' : 'text-gray-400'}`}>
+          Tool Templates
+        </button>
+        <button onClick={() => setView('facilities')} className={`px-4 py-2 ${view === 'facilities' ? 'border-b-2 border-purple-500 text-purple-400' : 'text-gray-400'}`}>
+          Facilities
+        </button>
         {gmMode && (
           <button
             onClick={() => setView('debug')}
@@ -484,6 +675,10 @@ export function ManagerTab({
           saveCurrentDay={saveCurrentDay}
         />
       )}
+
+      {view === 'toolTemplates' && <ToolTemplatesView />}
+
+      {view === 'facilities' && <FacilitiesView />}
     </div>
   );
 }
