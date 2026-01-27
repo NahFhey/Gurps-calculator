@@ -40,23 +40,26 @@
 
 ---
 
-## Phase 2: Party Characters in Combat
+## Phase 2: Party Characters in Combat ✅ COMPLETE
 
-- [ ] Add party character access to CombatContext
-  - [ ] Modify `src/contexts/CombatContext.jsx`
-  - [ ] Expose `partyCharacters` from `state.entities.characters`
-  - [ ] Filter to only characters with `isPlayer: true`
+- [x] Add party character access to CombatContext
+  - [x] Modify `src/contexts/CombatContext.jsx`
+  - [x] Expose `partyCharacters` from `state.entities.characters`
 
-- [ ] Update Encounter Setup UI
-  - [ ] Modify `src/components/combat/EncounterSetup.tsx`
-  - [ ] Add "Party Characters" section above "Add from Library"
-  - [ ] Show party characters with + button to add to encounter
-  - [ ] Party characters auto-assigned "Player" category
+- [x] Update Encounter Setup UI
+  - [x] Modify `src/components/combat/EncounterSetup.tsx`
+  - [x] Add "Party Characters" section above "Add from Library"
+  - [x] Show party characters with + button to add to encounter
+  - [x] Party characters auto-assigned "Player" category
+  - [x] Visual "Party" badge on party characters in encounter
 
-- [ ] Handle party character data in combat
-  - [ ] Map party character stats to combat participant format
-  - [ ] Use `gcsData.attributes` for HP, ST, DX, etc.
-  - [ ] Use character's `hitLocationProfileId` for hit locations
+- [x] Handle party character data in combat
+  - [x] Created `partyCharacterToCombat()` conversion function
+  - [x] Use `gcsData.attributes` for HP, ST, DX, etc.
+  - [x] Use character's `hitLocationProfileId` for hit locations
+  - [x] Track `isFromParty` and `partyCharacterId` on participants
+
+**Commit:** `7bdbdc8` Feat: Integrate party characters into Combat system (Phase 2)
 
 ---
 
