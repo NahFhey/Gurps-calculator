@@ -42,7 +42,7 @@
   - [x] Show combat status (inactive/active, round, participants)
   - [x] Click to expand to full Combat module
 
-**Commit:** (pending)
+**Commit:** `12f1648 Feat: Implement Phase 2 - Layout Restructure`
 
 ---
 
