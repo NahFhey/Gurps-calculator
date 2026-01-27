@@ -1,16 +1,24 @@
-import React from 'react';
+import { Component, ErrorInfo, ReactNode } from 'react';
 import { logger } from '../utils/logger';
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+  errorInfo: ErrorInfo | null;
+}
 
 /**
  * ErrorBoundary component to catch and handle React errors
  *
  * Provides a fallback UI when an error occurs in the component tree,
  * preventing the entire application from crashing.
- *
- * @component
  */
-export class ErrorBoundary extends React.Component {
-  constructor(props) {
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = {
       hasError: false,
@@ -19,12 +27,12 @@ export class ErrorBoundary extends React.Component {
     };
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
     // Update state so the next render will show the fallback UI
     return { hasError: true, error };
   }
 
-  componentDidCatch(error, errorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Log the error to console
     logger.error('ErrorBoundary caught an error:', error, errorInfo);
   }

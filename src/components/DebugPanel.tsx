@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, ChangeEvent } from 'react';
 import { useCampaignStore } from '../state/campaignStore';
+import type { CampaignState } from '../state/campaignReducer';
 
-const serializeCampaignState = (state) =>
+const serializeCampaignState = (state: CampaignState): string =>
   JSON.stringify(
     state,
     (_key, value) => {
@@ -19,7 +20,7 @@ const serializeCampaignState = (state) =>
 export function DebugPanel() {
   const { state, actions } = useCampaignStore();
   const [jsonText, setJsonText] = useState('');
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const serializedState = useMemo(() => serializeCampaignState(state), [state]);
 
   useEffect(() => {
@@ -28,10 +29,10 @@ export function DebugPanel() {
 
   const handleApply = () => {
     setError(null);
-    let parsed;
+    let parsed: CampaignState;
     try {
       parsed = JSON.parse(jsonText);
-    } catch (err) {
+    } catch {
       setError('Invalid JSON. Please fix the syntax and try again.');
       return;
     }
@@ -73,7 +74,7 @@ export function DebugPanel() {
       <textarea
         className="mt-4 h-80 w-full rounded bg-gray-900 px-3 py-2 text-xs text-gray-100"
         value={jsonText}
-        onChange={(event) => setJsonText(event.target.value)}
+        onChange={(event: ChangeEvent<HTMLTextAreaElement>) => setJsonText(event.target.value)}
         data-testid="debug-json"
       />
     </div>

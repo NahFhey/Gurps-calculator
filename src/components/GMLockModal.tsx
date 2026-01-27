@@ -1,12 +1,18 @@
-import React, { useState } from 'react';
-import PropTypes from 'prop-types';
+import { useState, KeyboardEvent } from 'react';
 import { Lock, Unlock, X, AlertTriangle } from 'lucide-react';
+
+interface GMLockModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onUnlock: (password: string) => void | Promise<void>;
+  error?: string | null;
+}
 
 /**
  * Modal for entering password to unlock GM mode when gmLock is present.
  * Used when importing locked data and user wants to access GM features.
  */
-export function GMLockModal({ isOpen, onClose, onUnlock, error }) {
+export function GMLockModal({ isOpen, onClose, onUnlock, error }: GMLockModalProps) {
   const [password, setPassword] = useState('');
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -29,7 +35,7 @@ export function GMLockModal({ isOpen, onClose, onUnlock, error }) {
     }
   };
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && password) {
       handleUnlock();
     } else if (e.key === 'Escape') {
@@ -142,10 +148,3 @@ export function GMLockModal({ isOpen, onClose, onUnlock, error }) {
     </div>
   );
 }
-
-GMLockModal.propTypes = {
-  isOpen: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired,
-  onUnlock: PropTypes.func.isRequired,
-  error: PropTypes.string
-};

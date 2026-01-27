@@ -1,17 +1,26 @@
-import React from 'react';
 import { useCampaignStore } from '../state/campaignStore';
+
+interface LogEntry {
+  id: string;
+  type: string;
+  visibility?: 'gmOnly' | 'mixed' | 'public';
+  timestamp: number;
+  payload?: {
+    message?: string;
+    maskedMessage?: string;
+    title?: string;
+  };
+}
 
 /**
  * ChangelogTab Component - Displays version history and release notes
  *
  * Renders an expandable/collapsible list of application versions with
  * categorized change items. The most recent version is expanded by default.
- *
- * @returns {JSX.Element} The changelog interface
  */
 export function ChangelogTab() {
   const { state } = useCampaignStore();
-  const entries = state.logs.entries;
+  const entries = state.logs.entries as LogEntry[];
   const gmModeEnabled = state.ui.gmModeEnabled;
 
   const visibleEntries = entries.filter((entry) => {
