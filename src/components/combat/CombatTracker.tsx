@@ -1,13 +1,12 @@
-import { useState, useEffect, memo, ChangeEvent, KeyboardEvent, ReactNode } from 'react';
-import { ChevronLeft, ChevronRight, X, Download, Plus, Undo, Redo, Upload, Dices } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useCombat } from '../../contexts/CombatContext';
-import { calculateHPStatus, exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, createActionLogEntry, createInjuryLogEntry, createEffectLogEntry, createConditionLogEntry, createManeuverLogEntry, createReinforcementLogEntry, generateId, exportActiveCombat, parseImportedCombat, exportCombatPlayerView, exportCombatGMLocked, importCombatWithGMLock } from '../../utils/combatHelpers';
+import { exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, createActionLogEntry, createInjuryLogEntry, createEffectLogEntry, createConditionLogEntry, createManeuverLogEntry, createReinforcementLogEntry, generateId, exportActiveCombat, parseImportedCombat, exportCombatPlayerView, exportCombatGMLocked, importCombatWithGMLock } from '../../utils/combatHelpers';
 import { MAX_COMBAT_HISTORY } from '../../constants';
 import { roll, rollVsTarget } from '../../utils/dice';
 import { createTurnAdvanceAction, createSetResourceAction, createAddLogEntryAction, createAddConditionAction, createRemoveConditionAction, createUpdateConditionAction, createSetTurnDecisionAction, createAddReinforcementsAction } from '../../utils/combatActions';
-import { addAction, canUndo, canRedo, getUndoCount, getRedoCount, undo, redo, createHistoryState, createSnapshot } from '../../utils/combatHistory';
+import { addAction, canUndo, canRedo, undo, redo, createHistoryState, createSnapshot } from '../../utils/combatHistory';
 import { validateCombatState, validateCombatExport, validateCombatImport } from '../../utils/combatValidation';
-import { clearShock, applyEffect, getActiveEffects } from '../../utils/effectsEngine';
+import { clearShock, applyEffect } from '../../utils/effectsEngine';
 import { getCombatView, ViewMode } from '../../utils/combatViewFilter';
 import {
   createDefaultRevealForInstance,
@@ -18,268 +17,39 @@ import {
   syncRevealStateForParticipants
 } from '../../utils/combatReveal';
 import { filterLogForPlayerView } from '../../utils/combatLogFilter';
-import { tickConditionsTurn, tickConditionsRound, getActiveConditions } from '../../utils/conditionsEngine';
+import { tickConditionsTurn, tickConditionsRound } from '../../utils/conditionsEngine';
 import { ManeuverCatalog } from '../../constants/maneuvers';
 import { deriveTurnContext } from '../../utils/turnContext';
 import { filterManeuvers } from '../../utils/maneuverFilter';
 import ActionPanel from './ActionPanel';
 import ViewModeToggle from './ViewModeToggle';
 import RevealPanel from './RevealPanel';
-import ConditionBadge from './ConditionBadge';
 import ManeuverSelector from './ManeuverSelector';
 import ReinforcementsModal from './ReinforcementsModal';
-
-// ============================================================================
-// Type Definitions
-// ============================================================================
-
-interface Attack {
-  name: string;
-  skill: number;
-  damage?: string;
-}
-
-interface ConditionDuration {
-  type: string;
-  value?: number;
-}
-
-interface ConditionInstance {
-  instanceId: string;
-  conditionId: string;
-  label: string;
-  duration?: ConditionDuration;
-  source?: string;
-}
-
-interface Participant {
-  instanceId: string;
-  id?: string;
-  libraryId?: string;
-  name: string;
-  category: string;
-  st: number;
-  dx: number;
-  iq: number;
-  ht: number;
-  hp: number | HPValue;
-  fp: number | FPValue;
-  mp: number | MPValue;
-  maxHP?: number;
-  maxFP?: number;
-  maxMP?: number;
-  currentHP?: number;
-  currentFP?: number;
-  currentMP?: number;
-  currentRound?: number;
-  basicSpeed: number;
-  basicMove: number;
-  dodge?: number;
-  parry?: number;
-  block?: number;
-  dr?: number;
-  defenses?: {
-    dodge?: number;
-    parry?: number;
-    block?: number;
-  };
-  attacks?: Attack[];
-  shockPenalty?: number;
-  isStunned?: boolean;
-  isUnconscious?: boolean;
-  isDead?: boolean;
-  bleeding?: { rate: number; round: number } | null;
-  crippled?: string[];
-  conditions?: ConditionInstance[];
-}
-
-interface HPValue {
-  mode: 'exact' | 'band' | 'unknown';
-  current?: number;
-  max?: number;
-  band?: string;
-  bandText?: string;
-}
-
-interface FPValue {
-  mode: 'exact' | 'unknown';
-  current?: number;
-  max?: number;
-}
-
-interface MPValue {
-  mode: 'exact' | 'unknown';
-  current?: number;
-  max?: number;
-}
-
-interface LogEntry {
-  id?: string;
-  timestamp: number;
-  entryType?: string;
-  text?: string;
-  message?: string;
-  round?: number;
-  turn?: number;
-  roll?: RollData;
-  action?: ActionData;
-  maneuver?: string;
-}
-
-interface RollData {
-  expression: string;
-  dice: number[];
-  modifier: number;
-  total: number;
-  target: number | null;
-  margin: number;
-  success: boolean;
-  valid?: boolean;
-  error?: string;
-}
-
-interface ActionData {
-  kind: string;
-  attack?: AttackActionData;
-  defense?: DefenseActionData;
-  damage?: DamageActionData;
-}
-
-interface AttackActionData {
-  modifiers?: { label: string; value: number }[];
-}
-
-interface DefenseActionData {
-  type?: string;
-  success?: boolean;
-  modifiers?: { label: string; value: number }[];
-}
-
-interface DamageActionData {
-  expression?: string;
-  rolledDamage?: number;
-  generalDRUsed?: number;
-}
-
-interface CombatState {
-  version?: number;
-  id: string;
-  name: string;
-  startTime: number;
-  endTime?: number;
-  participants: Participant[];
-  turnOrder: string[];
-  currentTurnIndex: number;
-  currentRound: number;
-  turnDecisions: Record<string, TurnDecision>;
-  log: LogEntry[];
-}
-
-interface TurnDecision {
-  maneuverId?: string;
-  notes?: string;
-  aim?: { targetInstanceId?: string; turnsAimed?: number };
-  wait?: { triggerText?: string };
-}
-
-interface HistoryState {
-  actions: unknown[];
-  undoStack: unknown[];
-  redoStack: unknown[];
-}
-
-interface RevealState {
-  combatId: string;
-  byInstanceId: Record<string, RevealEntry>;
-}
-
-interface RevealEntry {
-  name?: { mode: string };
-  hp?: { mode: string };
-  defenses?: { dodge?: { mode: string }; parry?: { mode: string }; block?: { mode: string } };
-}
-
-interface Maneuver {
-  id: string;
-  label: string;
-  prompts?: ManeuverPrompts;
-  workflow?: ManeuverWorkflow;
-}
-
-interface ManeuverPrompts {
-  allowsAttackPanel?: boolean;
-  allowsDefensePanel?: boolean;
-}
-
-interface ManeuverWorkflow {
-  attack?: { modifiers: { label: string; value: number }[] };
-  defense?: { modifiers: { label: string; value: number }[] };
-  damage?: { modifiers: { label: string; value: number }[] };
-}
-
-interface TurnContext {
-  isStunned: boolean;
-  isProne: boolean;
-  isGrappled: boolean;
-  isUnconscious: boolean;
-  shockPenalty: number;
-}
-
-interface ReinforcementData {
-  characterId: string;
-  category: string;
-  previewNames: string[];
-  insertionMode: string;
-  manualOrder?: string[];
-}
-
-interface Character {
-  id: string;
-  name: string;
-  category: string;
-  hp: number;
-  fp: number;
-  mp: number;
-  basicSpeed: number;
-  dx: number;
-  st: number;
-  iq: number;
-  ht: number;
-  dodge: number;
-  parry: number;
-  block: number;
-  dr: number;
-}
-
-interface InjuryEffect {
-  type: string;
-  autoApplied?: boolean;
-  value?: number;
-  success?: boolean;
-  outcome?: string;
-  locationKey?: string;
-  locationLabel?: string;
-}
-
-interface InjuryData {
-  hitLocation?: unknown;
-  damageBreakdown?: unknown;
-  effects?: InjuryEffect[];
-  newHP?: number;
-  targetInstanceId?: string;
-}
-
-interface ActionCompleteData {
-  maneuver?: string | null;
-  kind: string;
-  attack?: unknown;
-  defense?: DefenseActionData;
-  damage?: unknown;
-  injury?: InjuryData;
-  note?: string;
-  targetInstanceId?: string | null;
-  newHP?: number;
-}
+import {
+  CombatHeaderView,
+  TurnControlsView,
+  DicePanelView,
+  ParticipantListView,
+  CombatLogView
+} from './views';
+import type {
+  Participant,
+  LogEntry,
+  RollData,
+  CombatState,
+  TurnDecision,
+  HistoryState,
+  RevealState,
+  RevealEntry,
+  Maneuver,
+  TurnContext,
+  ReinforcementData,
+  Character,
+  ConditionInstance,
+  ConditionDuration,
+  ActionCompleteData
+} from '../../types/combatTracker';
 
 // ============================================================================
 // CombatTracker Component
@@ -1611,106 +1381,25 @@ export default function CombatTracker() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold">{combat.name}</h2>
-          <p className="text-gray-400">Round {combat.currentRound}</p>
-        </div>
-        <div className="flex gap-2">
-          {/* Undo/Redo */}
-          <button
-            onClick={handleUndo}
-            disabled={!canUndo(history)}
-            className="flex items-center gap-2 px-3 py-2 bg-gray-600 hover:bg-gray-500 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-            title={`Undo (${getUndoCount(history)})`}
-          >
-            <Undo size={16} />
-            Undo ({getUndoCount(history)})
-          </button>
-          <button
-            onClick={handleRedo}
-            disabled={!canRedo(history)}
-            className="flex items-center gap-2 px-3 py-2 bg-gray-600 hover:bg-gray-500 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-            title={`Redo (${getRedoCount(history)})`}
-          >
-            <Redo size={16} />
-            Redo ({getRedoCount(history)})
-          </button>
+      <CombatHeaderView
+        combat={combat}
+        history={history}
+        viewMode={viewMode}
+        gmMode={gmMode}
+        showExportMenu={showExportMenu}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onShowReinforcements={() => setShowReinforcementsModal(true)}
+        onToggleExportMenu={() => setShowExportMenu(!showExportMenu)}
+        onExportPlayerView={handleExportPlayerView}
+        onExportGMLocked={handleExportGMLocked}
+        onSaveCombat={handleSaveCombat}
+        onExportLog={handleExportLog}
+        onLoadCombat={handleLoadCombat}
+        onEndCombat={handleEndCombat}
+      />
 
-          {viewMode === ViewMode.GM && gmMode && (
-            <button
-              onClick={() => setShowReinforcementsModal(true)}
-              className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded"
-            >
-              <Plus size={16} />
-              Reinforcements
-            </button>
-          )}
-
-          {/* Phase 5: Export Menu */}
-          <div className="relative">
-            <button
-              onClick={() => setShowExportMenu(!showExportMenu)}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded"
-            >
-              <Download size={16} />
-              Export
-            </button>
-            {showExportMenu && (
-              <div className="absolute top-full right-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-50 min-w-64">
-                <button
-                  onClick={() => { handleExportPlayerView(); setShowExportMenu(false); }}
-                  className="w-full text-left px-4 py-3 hover:bg-gray-700 border-b border-gray-700"
-                >
-                  <div className="font-medium text-blue-400">Export Player View</div>
-                  <div className="text-xs text-gray-400">Filtered, safe to share with players</div>
-                </button>
-                <button
-                  onClick={() => { handleExportGMLocked(); setShowExportMenu(false); }}
-                  className="w-full text-left px-4 py-3 hover:bg-gray-700 border-b border-gray-700"
-                >
-                  <div className="font-medium text-purple-400">Export GM Locked</div>
-                  <div className="text-xs text-gray-400">Password-encrypted full state</div>
-                </button>
-                <button
-                  onClick={() => { handleSaveCombat(); setShowExportMenu(false); }}
-                  className="w-full text-left px-4 py-3 hover:bg-gray-700 border-b border-gray-700"
-                >
-                  <div className="font-medium text-green-400">Export Full (Legacy)</div>
-                  <div className="text-xs text-gray-400">Unencrypted, all data</div>
-                </button>
-                <button
-                  onClick={() => { handleExportLog(); setShowExportMenu(false); }}
-                  className="w-full text-left px-4 py-3 hover:bg-gray-700"
-                >
-                  <div className="font-medium text-gray-300">Export Log Only</div>
-                  <div className="text-xs text-gray-400">Text file of combat log</div>
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Load */}
-          <button
-            onClick={handleLoadCombat}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded"
-          >
-            <Upload size={16} />
-            Load
-          </button>
-
-          {/* End Combat */}
-          <button
-            onClick={handleEndCombat}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 rounded"
-          >
-            <X size={16} />
-            End Combat
-          </button>
-        </div>
-      </div>
-
-      {/* Phase 5: View Mode Toggle */}
+      {/* View Mode Toggle */}
       <ViewModeToggle
         viewMode={viewMode}
         setViewMode={setViewMode}
@@ -1719,34 +1408,14 @@ export default function CombatTracker() {
       />
 
       {/* Current Turn */}
-      <div className="bg-gradient-to-r from-blue-900 to-gray-800 rounded-lg p-4 border-2 border-blue-500">
-        <div className="flex justify-between items-center">
-          <div>
-            <p className="text-sm text-gray-400">Current Turn</p>
-            <h3 className="text-2xl font-bold">{currentActor?.name}</h3>
-            <p className="text-sm text-gray-400">
-              Speed: {currentActor?.basicSpeed} | Turn {combat.currentTurnIndex + 1} of {combat.turnOrder.length}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handlePrevTurn}
-              className="p-3 bg-gray-700 hover:bg-gray-600 rounded"
-              title="Previous turn"
-            >
-              <ChevronLeft size={24} />
-            </button>
-            <button
-              onClick={handleNextTurn}
-              className="p-3 bg-green-600 hover:bg-green-700 rounded"
-              title="Next turn"
-            >
-              <ChevronRight size={24} />
-            </button>
-          </div>
-        </div>
-      </div>
+      <TurnControlsView
+        currentActor={currentActor}
+        combat={combat}
+        onPrevTurn={handlePrevTurn}
+        onNextTurn={handleNextTurn}
+      />
 
+      {/* Maneuver Selection */}
       {!isEnemyInPlayerView ? (
         <ManeuverSelector
           maneuvers={availableManeuvers}
@@ -1760,7 +1429,7 @@ export default function CombatTracker() {
         </div>
       )}
 
-      {/* Action Panel (Phase 3, 4, 6) */}
+      {/* Action Panel */}
       <ActionPanel
         currentActor={currentActor as any}
         participants={combatView.participants as any}
@@ -1781,6 +1450,7 @@ export default function CombatTracker() {
         onUpdateCondition={handleUpdateCondition}
       />
 
+      {/* Reinforcements Modal */}
       {showReinforcementsModal && (
         <ReinforcementsModal
           onClose={() => setShowReinforcementsModal(false)}
@@ -1792,7 +1462,7 @@ export default function CombatTracker() {
         />
       )}
 
-      {/* Phase 5: Reveal Panel (GM View only) */}
+      {/* Reveal Panel (GM View only) */}
       {viewMode === ViewMode.GM && (
         <RevealPanel
           combatActive={combat as any}
@@ -1803,550 +1473,34 @@ export default function CombatTracker() {
       )}
 
       {/* Dice Panel */}
-      <div className="bg-gray-800 rounded-lg p-4">
-        <button
-          onClick={() => setShowDicePanel(!showDicePanel)}
-          className="flex items-center gap-2 w-full justify-between"
-        >
-          <div className="flex items-center gap-2">
-            <Dices size={20} />
-            <span className="font-semibold">Dice Tools</span>
-          </div>
-          <span className="text-gray-400">{showDicePanel ? '▲' : '▼'}</span>
-        </button>
+      <DicePanelView
+        showDicePanel={showDicePanel}
+        diceExpression={diceExpression}
+        rollTarget={rollTarget}
+        onToggleDicePanel={() => setShowDicePanel(!showDicePanel)}
+        onSetDiceExpression={setDiceExpression}
+        onSetRollTarget={setRollTarget}
+        onRoll={handleRoll}
+      />
 
-        {showDicePanel && (
-          <div className="mt-4 space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Expression</label>
-                <input
-                  type="text"
-                  value={diceExpression}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setDiceExpression(e.target.value)}
-                  placeholder="e.g. 3d6, 2d+1"
-                  className="w-full px-3 py-2 bg-gray-700 rounded"
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Target (optional)</label>
-                <input
-                  type="number"
-                  value={rollTarget}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setRollTarget(e.target.value)}
-                  placeholder="e.g. 12"
-                  className="w-full px-3 py-2 bg-gray-700 rounded"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={handleRoll}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
-              >
-                Roll
-              </button>
-              <button
-                onClick={() => setDiceExpression('3d6')}
-                className="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded"
-              >
-                3d6
-              </button>
-              <button
-                onClick={() => setDiceExpression('1d')}
-                className="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded"
-              >
-                1d
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
+      {/* Two-column layout for Participants and Combat Log */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Participants */}
-        <div className="space-y-2">
-          <h3 className="text-lg font-semibold">Participants</h3>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {combatView.participants.map(p => (
-              <ParticipantCard
-                key={p.instanceId}
-                participant={p}
-                viewMode={viewMode}
-                isCurrent={p.instanceId === currentActorInstanceId}
-                onUpdateResource={updateResource}
-              />
-            ))}
-          </div>
-        </div>
+        <ParticipantListView
+          participants={combatView.participants}
+          currentActorInstanceId={currentActorInstanceId}
+          viewMode={viewMode}
+          onUpdateResource={updateResource}
+        />
 
         {/* Combat Log */}
-        <div className="space-y-2">
-          <h3 className="text-lg font-semibold">Combat Log</h3>
-          <div className="bg-gray-800 rounded p-4 h-96 overflow-y-auto font-mono text-sm">
-            {displayLog.map((entry, index) => {
-              const formatted = formatLogEntry(entry);
-              return (
-                <div key={entry.id || index} className="mb-1">
-                  {formatted}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Add Note */}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={noteText}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setNoteText(e.target.value)}
-              onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleAddNote()}
-              placeholder="Add a note..."
-              className="flex-1 px-3 py-2 bg-gray-700 rounded"
-            />
-            <button
-              onClick={handleAddNote}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded"
-            >
-              <Plus size={16} />
-            </button>
-          </div>
-        </div>
+        <CombatLogView
+          displayLog={displayLog}
+          noteText={noteText}
+          onSetNoteText={setNoteText}
+          onAddNote={handleAddNote}
+        />
       </div>
     </div>
   );
 }
-
-// ============================================================================
-// ParticipantCard Component
-// ============================================================================
-
-interface ParticipantCardProps {
-  participant: Participant;
-  isCurrent: boolean;
-  onUpdateResource: (instanceId: string, resource: string, value: number) => void;
-  viewMode: string;
-}
-
-/**
- * Participant Card Component - Phase 5 compatible
- * Shows participant status with editable resources
- * Handles both truth state (GM View) and filtered state (Player View)
- * Memoized to prevent re-renders when sibling participants change
- */
-function ParticipantCardBase({ participant, isCurrent, onUpdateResource, viewMode }: ParticipantCardProps) {
-  const [editing, setEditing] = useState<string | null>(null); // 'HP', 'FP', or 'MP'
-  const [editValue, setEditValue] = useState('');
-
-  // Phase 5: Extract values based on data structure (truth vs filtered)
-  const getHPValues = (): { mode: string; current?: number; max?: number; band?: string; bandText?: string } => {
-    if (participant.hp && typeof participant.hp === 'object') {
-      // Filtered state
-      return {
-        mode: (participant.hp as HPValue).mode,
-        current: (participant.hp as HPValue).current,
-        max: (participant.hp as HPValue).max,
-        band: (participant.hp as HPValue).band,
-        bandText: (participant.hp as HPValue).bandText
-      };
-    }
-    // Truth state (backward compat)
-    return {
-      mode: 'exact',
-      current: participant.currentHP,
-      max: (participant.hp as number) || participant.maxHP
-    };
-  };
-
-  const getFPValues = (): { mode: string; current?: number; max?: number } => {
-    if (participant.fp && typeof participant.fp === 'object') {
-      return {
-        mode: (participant.fp as FPValue).mode,
-        current: (participant.fp as FPValue).current,
-        max: (participant.fp as FPValue).max
-      };
-    }
-    return {
-      mode: 'exact',
-      current: participant.currentFP,
-      max: (participant.fp as number) || participant.maxFP
-    };
-  };
-
-  const getMPValues = (): { mode: string; current?: number; max?: number } => {
-    if (participant.mp && typeof participant.mp === 'object') {
-      return {
-        mode: (participant.mp as MPValue).mode,
-        current: (participant.mp as MPValue).current,
-        max: (participant.mp as MPValue).max
-      };
-    }
-    return {
-      mode: 'exact',
-      current: participant.currentMP,
-      max: (participant.mp as number) || participant.maxMP
-    };
-  };
-
-  const hp = getHPValues();
-  const fp = getFPValues();
-  const mp = getMPValues();
-
-  const hpStatus = hp.mode === 'exact'
-    ? calculateHPStatus(hp.current, hp.max)
-    : (hp.band || 'unknown');
-
-  const getHPStatusColor = (status: string): string => {
-    switch (status) {
-      case 'healthy': return 'text-green-400';
-      case 'injured': return 'text-yellow-400';
-      case 'critical': return 'text-orange-400';
-      case 'dead': return 'text-red-400';
-      default: return 'text-gray-400';
-    }
-  };
-
-  const startEdit = (resource: string) => {
-    // Only allow editing if we have exact values (not hidden/unknown)
-    let currentValue: number | undefined;
-    if (resource === 'HP' && hp.mode === 'exact') {
-      currentValue = hp.current;
-    } else if (resource === 'FP' && fp.mode === 'exact') {
-      currentValue = fp.current;
-    } else if (resource === 'MP' && mp.mode === 'exact') {
-      currentValue = mp.current;
-    } else {
-      return; // Can't edit hidden/unknown values
-    }
-
-    setEditing(resource);
-    setEditValue(currentValue?.toString() || '0');
-  };
-
-  const saveEdit = () => {
-    if (editing) {
-      const newValue = parseInt(editValue) || 0;
-      onUpdateResource(participant.instanceId, editing, newValue);
-      setEditing(null);
-    }
-  };
-
-  const cancelEdit = () => {
-    setEditing(null);
-    setEditValue('');
-  };
-
-  return (
-    <div className={`bg-gray-800 rounded p-3 ${isCurrent ? 'border-2 border-blue-500' : ''}`}>
-      <div className="flex justify-between items-start mb-2">
-        <div>
-          <h4 className="font-semibold">{participant.name}</h4>
-          <p className="text-xs text-gray-400">{participant.category}</p>
-        </div>
-        <span className={`text-xs font-semibold ${getHPStatusColor(hpStatus)}`}>
-          {hpStatus.toUpperCase()}
-        </span>
-      </div>
-
-      <div className="grid grid-cols-3 gap-2 text-sm">
-        {/* HP */}
-        <div>
-          <div className="text-xs text-gray-400">HP</div>
-          {hp.mode === 'unknown' ? (
-            <div className="text-gray-500 italic">Unknown</div>
-          ) : hp.mode === 'band' ? (
-            <div className="text-yellow-400">{hp.bandText}</div>
-          ) : editing === 'HP' ? (
-            <input
-              type="number"
-              value={editValue}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setEditValue(e.target.value)}
-              onBlur={saveEdit}
-              onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => {
-                if (e.key === 'Enter') saveEdit();
-                if (e.key === 'Escape') cancelEdit();
-              }}
-              className="w-full px-1 py-0.5 bg-gray-600 rounded text-sm"
-              autoFocus
-            />
-          ) : (
-            <div
-              onClick={() => startEdit('HP')}
-              className="cursor-pointer hover:bg-gray-700 px-1 rounded"
-            >
-              {hp.current}/{hp.max}
-            </div>
-          )}
-        </div>
-
-        {/* FP */}
-        <div>
-          <div className="text-xs text-gray-400">FP</div>
-          {fp.mode === 'unknown' ? (
-            <div className="text-gray-500 italic">Unknown</div>
-          ) : editing === 'FP' ? (
-            <input
-              type="number"
-              value={editValue}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setEditValue(e.target.value)}
-              onBlur={saveEdit}
-              onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => {
-                if (e.key === 'Enter') saveEdit();
-                if (e.key === 'Escape') cancelEdit();
-              }}
-              className="w-full px-1 py-0.5 bg-gray-600 rounded text-sm"
-              autoFocus
-            />
-          ) : (
-            <div
-              onClick={() => startEdit('FP')}
-              className="cursor-pointer hover:bg-gray-700 px-1 rounded"
-            >
-              {fp.current}/{fp.max}
-            </div>
-          )}
-        </div>
-
-        {/* MP */}
-        {(mp.max || 0) > 0 && (
-          <div>
-            <div className="text-xs text-gray-400">MP</div>
-            {mp.mode === 'unknown' ? (
-              <div className="text-gray-500 italic">Unknown</div>
-            ) : editing === 'MP' ? (
-              <input
-                type="number"
-                value={editValue}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setEditValue(e.target.value)}
-                onBlur={saveEdit}
-                onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => {
-                  if (e.key === 'Enter') saveEdit();
-                  if (e.key === 'Escape') cancelEdit();
-                }}
-                className="w-full px-1 py-0.5 bg-gray-600 rounded text-sm"
-                autoFocus
-              />
-            ) : (
-              <div
-                onClick={() => startEdit('MP')}
-                className="cursor-pointer hover:bg-gray-700 px-1 rounded"
-              >
-                {mp.current}/{mp.max}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Phase 4: Status Effects */}
-      {(() => {
-        const effects = getActiveEffects(participant) as string[];
-        if (effects.length === 0) return null;
-        return (
-          <div className="mt-2 pt-2 border-t border-gray-700">
-            <div className="text-xs text-gray-400 mb-1">Effects:</div>
-            <div className="flex flex-wrap gap-1">
-              {effects.map((effect, index) => (
-                <span
-                  key={index}
-                  className="text-xs px-2 py-0.5 bg-red-900/50 text-red-300 rounded"
-                >
-                  {effect}
-                </span>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Phase 6: Conditions */}
-      {(() => {
-        const conditions = getActiveConditions(participant) as ConditionInstance[];
-        if (conditions.length === 0) return null;
-        return (
-          <div className="mt-2 pt-2 border-t border-gray-700">
-            <div className="text-xs text-gray-400 mb-1">Conditions:</div>
-            <div className="flex flex-wrap gap-1">
-              {conditions.map(condition => (
-                <ConditionBadge
-                  key={condition.instanceId}
-                  condition={condition}
-                  currentRound={participant.currentRound || 0}
-                  showDuration={true}
-                />
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-    </div>
-  );
-}
-
-/**
- * Custom comparison for ParticipantCard memoization
- * Prevents re-renders when participant data hasn't meaningfully changed
- */
-const areParticipantPropsEqual = (prevProps: ParticipantCardProps, nextProps: ParticipantCardProps): boolean => {
-  const prev = prevProps.participant;
-  const next = nextProps.participant;
-
-  return (
-    prev.instanceId === next.instanceId &&
-    prev.name === next.name &&
-    prev.category === next.category &&
-    prev.currentHP === next.currentHP &&
-    prev.hp === next.hp &&
-    (typeof prev.hp === 'object' && typeof next.hp === 'object'
-      ? (prev.hp as HPValue).current === (next.hp as HPValue).current && (prev.hp as HPValue).max === (next.hp as HPValue).max
-      : true) &&
-    prev.currentFP === next.currentFP &&
-    prev.currentMP === next.currentMP &&
-    prevProps.isCurrent === nextProps.isCurrent &&
-    prevProps.viewMode === nextProps.viewMode &&
-    prevProps.onUpdateResource === nextProps.onUpdateResource
-  );
-};
-
-const ParticipantCard = memo(ParticipantCardBase, areParticipantPropsEqual);
-
-// ============================================================================
-// Log Entry Components
-// ============================================================================
-
-/**
- * Format log entry for display
- * Renders special components for roll entries with colored dice and action entries
- */
-function formatLogEntry(entry: LogEntry): ReactNode {
-  const timestamp = new Date(entry.timestamp).toLocaleTimeString();
-
-  // Phase 3 action entry with detailed breakdown
-  if (entry.entryType === 'action' && entry.action) {
-    return <ActionLogEntry timestamp={timestamp} entry={entry} />;
-  }
-
-  // Phase 2 structured format with roll data
-  if (entry.entryType === 'roll' && entry.roll) {
-    return <RollLogEntry timestamp={timestamp} entry={entry} />;
-  }
-
-  // Regular Phase 2 structured format
-  if (entry.entryType) {
-    return `[${timestamp}] ${entry.text}`;
-  }
-
-  // Fallback for Phase 1
-  return `[${timestamp}] ${entry.message || 'Unknown event'}`;
-}
-
-interface RollLogEntryProps {
-  timestamp: string;
-  entry: LogEntry;
-}
-
-/**
- * Roll Log Entry Component
- * Displays roll with colored individual dice
- * Memoized to prevent re-renders when other log entries change
- */
-function RollLogEntryBase({ timestamp, entry }: RollLogEntryProps): ReactNode {
-  const { roll } = entry;
-  if (!roll) return null;
-
-  const actorName = entry.text?.split(' rolled ')[0] || 'Unknown'; // Extract actor name from text
-
-  // Colors for dice (cycling through a palette)
-  const diceColors = [
-    'text-red-400',
-    'text-blue-400',
-    'text-green-400',
-    'text-yellow-400',
-    'text-purple-400',
-    'text-pink-400',
-    'text-cyan-400',
-    'text-orange-400'
-  ];
-
-  const getDiceColor = (index: number): string => diceColors[index % diceColors.length];
-
-  // Format: [timestamp] Name rolled 3d6 [3][4][5]: 12
-  return (
-    <span>
-      [{timestamp}] {actorName} rolled {roll.expression}{' '}
-      {roll.dice.map((die, index) => (
-        <span key={index} className={`font-bold ${getDiceColor(index)}`}>
-          [{die}]
-        </span>
-      ))}
-      {roll.modifier !== 0 && (
-        <span> {roll.modifier > 0 ? `+${roll.modifier}` : roll.modifier}</span>
-      )}
-      : {roll.total}
-      {roll.target !== null && (
-        <span>
-          {' vs '}
-          <span className="font-semibold">{roll.target}</span>
-          {' ['}
-          <span className={roll.margin >= 0 ? 'text-green-400 font-bold' : 'text-red-400 font-bold'}>
-            {roll.margin >= 0 ? `+${roll.margin}` : roll.margin}
-          </span>
-          {'] '}
-          <span className={roll.success ? 'text-green-400 font-bold' : 'text-red-400 font-bold'}>
-            {roll.success ? 'SUCCESS' : 'FAILURE'}
-          </span>
-        </span>
-      )}
-    </span>
-  );
-}
-
-const RollLogEntry = memo(RollLogEntryBase);
-
-interface ActionLogEntryProps {
-  timestamp: string;
-  entry: LogEntry;
-}
-
-/**
- * Action Log Entry Component (Phase 3)
- * Displays combat actions with detailed breakdown
- * Memoized to prevent re-renders when other log entries change
- */
-function ActionLogEntryBase({ timestamp, entry }: ActionLogEntryProps): ReactNode {
-  const { action } = entry;
-  if (!action) return null;
-
-  return (
-    <div className="bg-gray-900 rounded p-2 my-1">
-      <div className="text-xs text-gray-500">[{timestamp}]</div>
-      <div className="font-semibold">{entry.text}</div>
-
-      {/* Show modifier details if available */}
-      {action.attack && action.attack.modifiers && action.attack.modifiers.length > 0 && (
-        <div className="text-xs text-gray-400 mt-1">
-          Modifiers: {action.attack.modifiers.map(m => `${m.label} ${m.value >= 0 ? '+' : ''}${m.value}`).join(', ')}
-        </div>
-      )}
-
-      {action.defense && action.defense.modifiers && action.defense.modifiers.length > 0 && (
-        <div className="text-xs text-gray-400 mt-1">
-          Modifiers: {action.defense.modifiers.map(m => `${m.label} ${m.value >= 0 ? '+' : ''}${m.value}`).join(', ')}
-        </div>
-      )}
-
-      {action.damage && (
-        <div className="text-xs text-gray-400 mt-1">
-          {action.damage.expression && action.damage.expression !== 'manual' && (
-            <span>Damage: {action.damage.expression} → {action.damage.rolledDamage}</span>
-          )}
-          {(action.damage.generalDRUsed || 0) > 0 && (
-            <span> | DR: {action.damage.generalDRUsed}</span>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-const ActionLogEntry = memo(ActionLogEntryBase);
