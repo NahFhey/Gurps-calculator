@@ -518,6 +518,63 @@ Notes:
 - Shots = Magazine capacity (reload time)
 ```
 
+**Section J: Spells Table**
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│ Spell                │ Class    │ Cast │ Maint │ Duration  │ College       │ SL │ RSL  │ Pts │ Ref  │
+├─────────────────────────────────────────────────────────────────────────────────────────┤
+│ Light                │ Regular  │  1   │  1    │ 1 min     │ Light         │ 16 │ IQ+1 │  1  │ M110 │
+│   Ritual: speak a word or two OR make a small gesture; Cost: -1                         │
+├─────────────────────────────────────────────────────────────────────────────────────────┤
+│ Recover Energy       │ Special  │  0   │  0    │ Special   │ Healing       │ 16 │ IQ+1 │  1  │ M89  │
+│   Ritual: speak a word or two OR make a small gesture; Cost: -1                         │
+├─────────────────────────────────────────────────────────────────────────────────────────┤
+│ Explosive Fireball   │ Missile  │ 2-2× │ 1-3   │ Instant   │ Fire          │ 16 │ IQ+1 │  1  │ M75  │
+│   Ritual: speak a word or two OR make a small gesture; Cost: -1                         │
+├─────────────────────────────────────────────────────────────────────────────────────────┤
+│ Extinguish Fire      │ Regular  │  3   │  —    │ Permanent │ Fire          │ 16 │ IQ+1 │  1  │ M72  │
+│   Ritual: speak a word or two OR make a small gesture; Cost: -1                         │
+├─────────────────────────────────────────────────────────────────────────────────────────┤
+│ Sense Emotion        │ Regular  │  2   │  —    │ Instant   │ Communication │ 16 │ IQ+1 │  1  │ M45  │
+│   Ritual: speak a word or two OR make a small gesture; Cost: -1                         │
+├─────────────────────────────────────────────────────────────────────────────────────────┤
+│ Detect Magic         │ Regular  │  2   │  —    │ Instant   │ Knowledge     │ 16 │ IQ+1 │  1  │ M101 │
+│   Ritual: speak a word or two OR make a small gesture; Cost: -1                         │
+├─────────────────────────────────────────────────────────────────────────────────────────┤
+│ Deflect Energy       │ Blocking │  1   │  —    │ Instant   │ Fire          │ 16 │ IQ+1 │  1  │ M73  │
+│   Ritual: speak a word or two OR make a small gesture                                   │
+├─────────────────────────────────────────────────────────────────────────────────────────┤
+│ Armor                │ Regular  │ 2/DR │ Half  │ 1 min     │ Protection    │ 16 │ IQ+1 │  1  │ M167 │
+│   Ritual: speak a word or two OR make a small gesture; Cost: -1                         │
+├─────────────────────────────────────────────────────────────────────────────────────────┤
+│ Create Fire          │ Area     │  2   │ Half  │ 1 min     │ Fire          │ 16 │ IQ+1 │  1  │ M72  │
+│   Ritual: speak a word or two OR make a small gesture; Cost: -1                         │
+├─────────────────────────────────────────────────────────────────────────────────────────┤
+│ Continual Light      │ Regular  │ 2m,4t│  —    │ 2d days   │ Light         │ 16 │ IQ+1 │  1  │ M110 │
+│   Ritual: speak a word or two OR make a small gesture; Cost: -1                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+Spell Classes:
+- Regular: Standard spell, roll vs skill to cast
+- Missile: Ranged attack spell, uses Innate Attack to hit
+- Blocking: Defensive spell, cast as a reaction
+- Area: Affects an area, base 2 yards radius
+- Special: Unique mechanics (see spell description)
+
+Columns Explained:
+- SL: Skill Level (absolute level, e.g., 16)
+- RSL: Relative Skill Level (e.g., IQ+1 means 1 above IQ)
+- Pts: Character points spent on this spell
+- Cast: Energy cost to cast (some scale with effect)
+- Maint: Energy cost to maintain per duration period
+- Ref: Page reference (M = GURPS Magic)
+
+Spell Difficulty:
+- All spells default to IQ/Hard unless noted
+- Prerequisite count affects effective difficulty
+- Magery adds to all spell skills
+```
+
 #### 1.3 Edit Mode Behavior
 
 **View Mode (Default):**
@@ -1081,9 +1138,15 @@ App.tsx
         │   ├── CenterPanel
         │   │   └── CharacterSheet (when character selected)
         │   │       ├── IdentitySection
+        │   │       ├── DescriptionSection
         │   │       ├── AttributesSection
+        │   │       ├── SecondaryStatsSection
         │   │       ├── SkillsTable
-        │   │       └── ... (other sections)
+        │   │       ├── SpellsTable
+        │   │       ├── TraitsSection
+        │   │       ├── EquipmentTable
+        │   │       ├── MeleeWeaponsTable
+        │   │       └── RangedWeaponsTable
         │   ├── RightPanel
         │   │   └── (varies by active module)
         │   │       ├── ActivitiesPanel (default)
@@ -1255,6 +1318,49 @@ interface Skill {
   reference: string;
   defaults: SkillDefault[];
   notes?: string;
+}
+
+interface Spell {
+  id: Id;
+  name: string;
+  college: string;           // e.g., "Fire", "Light", "Healing"
+  class: SpellClass;         // "Regular" | "Missile" | "Blocking" | "Area" | "Special"
+  castingCost: string;       // e.g., "2", "1-3", "2/DR"
+  maintenanceCost: string;   // e.g., "1", "Half", "—"
+  castingTime: string;       // e.g., "1 sec", "1-3 sec"
+  duration: string;          // e.g., "1 min", "Instant", "Permanent"
+
+  // Ritual requirements
+  ritual: {
+    verbal: boolean;         // Speak words
+    somatic: boolean;        // Hand gestures
+    description?: string;    // Custom ritual description
+  };
+
+  // Skill information
+  difficulty: "H" | "VH";    // Spells are always IQ/Hard or IQ/Very Hard
+  points: number;
+  level: number;             // Calculated skill level
+  relativeLevel: string;     // e.g., "IQ+1"
+
+  // Prerequisites
+  prerequisites: SpellPrerequisite[];
+  prerequisiteCount: number;
+
+  // Reference
+  reference: string;         // e.g., "M110" (GURPS Magic page 110)
+  notes?: string;
+
+  // Magery requirement
+  mageryRequired?: number;   // Minimum Magery level needed
+}
+
+type SpellClass = "Regular" | "Missile" | "Blocking" | "Area" | "Special" | "Melee" | "Information" | "Enchantment";
+
+interface SpellPrerequisite {
+  type: "spell" | "advantage" | "attribute" | "skill";
+  name: string;
+  level?: number;            // Required level (for attributes/skills)
 }
 
 interface Equipment {
@@ -1590,6 +1696,7 @@ src/
 │   │       ├── RangedWeaponsTable.tsx
 │   │       ├── TraitsSection.tsx
 │   │       ├── SkillsTable.tsx
+│   │       ├── SpellsTable.tsx
 │   │       └── EquipmentTable.tsx
 │   │
 │   ├── activities/                # NEW - Phase 3
