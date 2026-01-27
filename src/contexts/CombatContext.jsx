@@ -10,6 +10,7 @@ import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
  *
  * @typedef {Object} CombatContextValue
  * @property {Array} characters - Combat character library
+ * @property {Array} partyCharacters - Party characters (from entities.characters)
  * @property {Object} combatActive - Active combat session
  * @property {Object} combatActiveHistory - Undo/redo history for active combat
  * @property {Array} combatHistory - Past combat sessions
@@ -40,12 +41,18 @@ export function CombatProvider({ children }) {
     const combatCharacters = denormalizeObject(state.entities.combatCharacters);
     const combatItems = denormalizeObject(state.entities.combatItems);
 
+    // Get party characters (from entities.characters) for combat integration
+    const partyCharacters = denormalizeObject(state.entities.characters);
+
     return {
       // Characters
       combatCharacters,
       saveCombatCharacters: (charactersArray) => {
         actions.setCombatCharacters(normalizeArray(charactersArray));
       },
+
+      // Party Characters (read-only, for combat integration)
+      partyCharacters,
 
       // Active Combat
       combatActive: state.combat.activeSession,
@@ -90,6 +97,7 @@ export function CombatProvider({ children }) {
     };
   }, [
     state.entities.combatCharacters,
+    state.entities.characters,
     state.combat.activeSession,
     state.entities.combatHistory,
     state.entities.combatTombstones,

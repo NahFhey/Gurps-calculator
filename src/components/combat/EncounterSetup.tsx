@@ -1,8 +1,10 @@
 import { useState, ChangeEvent } from 'react';
-import { Plus, Play, ChevronUp, ChevronDown, X } from 'lucide-react';
+import { Plus, Play, ChevronUp, ChevronDown, X, Users } from 'lucide-react';
 import { useCombat } from '../../contexts/CombatContext';
 import { generateTurnOrder, createNumberedEnemies, generateId, createLogEntry, createTurnLogEntry } from '../../utils/combatHelpers';
 import { createHistoryState } from '../../utils/combatHistory';
+import type { Character as PartyCharacter } from '../../types/campaign';
+import { DEFAULT_HIT_LOCATION_PROFILE } from '../../types/characterSheet';
 
 interface Attack {
   name: string;
@@ -32,6 +34,48 @@ interface Character {
   drByLocation?: Record<string, number>;
   attacks?: Attack[];
   notes?: string;
+  // Party character integration
+  isFromParty?: boolean;
+  partyCharacterId?: string;
+}
+
+/**
+ * Convert a party character (with gcsData) to combat character format
+ */
+function partyCharacterToCombat(partyChar: PartyCharacter): Character {
+  const gcs = partyChar.gcsData;
+  const attrs = gcs?.attributes || { ST: 10, DX: 10, IQ: 10, HT: 10 };
+  const pools = gcs?.pools || { HP: { current: 10, max: 10 }, FP: { current: 10, max: 10 } };
+  const secondary = gcs?.secondaryAttributes;
+
+  // Calculate derived stats
+  const basicSpeed = secondary?.basicSpeed?.value ?? (attrs.DX + attrs.HT) / 4;
+  const basicMove = secondary?.basicMove?.value ?? Math.floor(basicSpeed);
+  const dodge = Math.floor(basicSpeed) + 3;
+
+  return {
+    id: partyChar.id,
+    name: partyChar.name,
+    category: 'player', // Party characters are always players
+    st: attrs.ST,
+    dx: attrs.DX,
+    iq: attrs.IQ,
+    ht: attrs.HT,
+    hp: pools.HP.max,
+    fp: pools.FP.max,
+    mp: 0,
+    basicSpeed,
+    basicMove,
+    dodge,
+    parry: 0,
+    block: 0,
+    dr: 0,
+    hitLocationProfileId: partyChar.hitLocationProfileId || DEFAULT_HIT_LOCATION_PROFILE,
+    attacks: [],
+    notes: gcs?.notes || '',
+    isFromParty: true,
+    partyCharacterId: partyChar.id
+  };
 }
 
 interface Participant extends Character {
@@ -47,6 +91,9 @@ interface Participant extends Character {
   bleeding: null;
   crippled: string[];
   conditions: unknown[];
+  // Party character tracking
+  isFromParty?: boolean;
+  partyCharacterId?: string;
 }
 
 interface CharacterSelectorProps {
@@ -62,6 +109,7 @@ interface CharacterSelectorProps {
 export default function EncounterSetup() {
   const {
     combatCharacters,
+    partyCharacters,
     saveCombatActive,
     saveCombatActiveHistory,
     combatHistory,
@@ -73,12 +121,20 @@ export default function EncounterSetup() {
   const [turnOrder, setTurnOrder] = useState<string[]>([]);
   const [showTurnOrderPreview, setShowTurnOrderPreview] = useState(false);
 
-  // Categorize characters
+  // Categorize combat library characters
   const characters = combatCharacters as Character[];
   const players = characters.filter(c => c.category === 'player');
   const allies = characters.filter(c => c.category === 'ally');
   const enemies = characters.filter(c => c.category === 'enemy');
   const objects = characters.filter(c => c.category === 'object');
+
+  // Convert party characters to combat format
+  const partyCharsForCombat = (partyCharacters as PartyCharacter[] || []).map(partyCharacterToCombat);
+
+  // Check if a party character is already in the encounter
+  const isPartyCharInEncounter = (partyCharId: string) => {
+    return participants.some(p => p.partyCharacterId === partyCharId);
+  };
 
   // Add character to encounter
   const addCharacter = (character: Character, quantity = 1) => {
@@ -103,7 +159,10 @@ export default function EncounterSetup() {
         bleeding: null,
         crippled: [],
         // Phase 6 fields
-        conditions: []
+        conditions: [],
+        // Party character tracking
+        isFromParty: character.isFromParty || false,
+        partyCharacterId: character.partyCharacterId
       };
       setParticipants([...participants, participant]);
     }
@@ -232,14 +291,60 @@ export default function EncounterSetup() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Character Library Selection */}
+        {/* Left: Character Selection */}
         <div className="space-y-4">
+          {/* Party Characters Section */}
+          {partyCharsForCombat.length > 0 && (
+            <>
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Users size={20} className="text-purple-400" />
+                Party Characters
+              </h3>
+              <div className="bg-gray-800 rounded p-4 border-2 border-purple-600/50">
+                <div className="space-y-2">
+                  {partyCharsForCombat.map(char => {
+                    const alreadyAdded = isPartyCharInEncounter(char.partyCharacterId || char.id);
+                    return (
+                      <div key={char.id} className="flex items-center gap-2 bg-gray-700 rounded p-2">
+                        <div className="flex-1">
+                          <div className="font-semibold text-sm flex items-center gap-2">
+                            {char.name}
+                            <span className="text-xs px-1.5 py-0.5 bg-purple-600/30 text-purple-300 rounded">Party</span>
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            Speed: {char.basicSpeed} | HP: {char.hp}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => addCharacter(char, 1)}
+                          disabled={alreadyAdded}
+                          className={`p-1.5 rounded ${
+                            alreadyAdded
+                              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                              : 'bg-green-600 hover:bg-green-700'
+                          }`}
+                          title={alreadyAdded ? 'Already in encounter' : 'Add to encounter'}
+                        >
+                          <Plus size={16} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="text-xs text-gray-500 mt-2">
+                  Party characters are locked as Players in combat
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Combat Library Section */}
           <h3 className="text-lg font-semibold">Add from Library</h3>
 
-          {/* Players */}
+          {/* Players from library */}
           {players.length > 0 && (
             <div className="bg-gray-800 rounded p-4">
-              <h4 className="font-semibold text-blue-400 mb-2">Player Characters</h4>
+              <h4 className="font-semibold text-blue-400 mb-2">Player Characters (Library)</h4>
               <div className="space-y-2">
                 {players.map(char => (
                   <CharacterSelector
@@ -317,14 +422,21 @@ export default function EncounterSetup() {
 
           {participants.length === 0 ? (
             <div className="bg-gray-800 rounded p-8 text-center text-gray-400">
-              Add participants from the library
+              Add participants from the party or library
             </div>
           ) : (
             <div className="space-y-2">
               {participants.map(p => (
-                <div key={p.id} className="flex justify-between items-center bg-gray-800 rounded p-3">
+                <div key={p.id} className={`flex justify-between items-center rounded p-3 ${
+                  p.isFromParty ? 'bg-gray-800 border border-purple-600/50' : 'bg-gray-800'
+                }`}>
                   <div>
-                    <div className="font-semibold">{p.name}</div>
+                    <div className="font-semibold flex items-center gap-2">
+                      {p.name}
+                      {p.isFromParty && (
+                        <span className="text-xs px-1.5 py-0.5 bg-purple-600/30 text-purple-300 rounded">Party</span>
+                      )}
+                    </div>
                     <div className="text-sm text-gray-400">
                       Speed: {p.basicSpeed} | HP: {p.hp}
                     </div>
