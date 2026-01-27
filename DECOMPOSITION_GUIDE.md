@@ -9,9 +9,18 @@
 - **Simplified:** App.jsx from 260 lines → 96 lines (-63%)
 - **Performance:** Bundle size reduced 800KB → 625KB (-22%)
 
-### Phase 2: ManagerTab Decomposition Started
+### Phase 2: ManagerTab Decomposition In Progress (64% Complete)
 - **Created:** Directory structure (`src/components/manager/views/`, `src/components/manager/shared/`)
-- **Extracted:** FoodTypesView component (155 lines, self-contained)
+- **Extracted 9 views (1,550+ lines):**
+  1. FoodTypesView (155 lines)
+  2. SkillsView (120 lines)
+  3. ProjectsView (95 lines)
+  4. AlchemySettingsView (145 lines)
+  5. WorkersView (240 lines)
+  6. LabsView (185 lines)
+  7. KitchensView (185 lines)
+  8. MaterialTypesView (290 lines)
+  9. EffectFamilyMapView (200 lines)
 - **Setup:** TypeScript configuration (tsconfig.json)
 
 ---
@@ -34,74 +43,37 @@ Split into **15 focused components** of 50-200 lines each, making the codebase:
 
 ### Views to Extract (Ordered by Complexity)
 
-#### ✅ Completed (1/15)
-1. **FoodTypesView** - 70 lines → ✅ **DONE** (`views/FoodTypesView.jsx`)
+#### ✅ Completed Simple Views (4/4)
+1. **FoodTypesView** - 155 lines → ✅ **DONE** (`views/FoodTypesView.jsx`)
+2. **SkillsView** - 120 lines → ✅ **DONE** (`views/SkillsView.jsx`)
+3. **ProjectsView** - 95 lines → ✅ **DONE** (`views/ProjectsView.jsx`)
+4. **AlchemySettingsView** - 145 lines → ✅ **DONE** (`views/AlchemySettingsView.jsx`)
 
-#### 🔵 Simple Views (Next Priority - 3 components)
-2. **SkillsView** - 70 lines
-   - Lines: 1176-1243
-   - State: `showAdd`, `newSkillName`, `deleteConfirm`
-   - Props: `cookingSkills`, `saveCookingSkills`, `gmMode`
-   - Pattern: Same as FoodTypesView with GM-only editing
+#### ✅ Completed Medium Views (4/4)
+5. **WorkersView** - 240 lines → ✅ **DONE** (`views/WorkersView.jsx`)
+6. **LabsView** - 185 lines → ✅ **DONE** (`views/LabsView.jsx`)
+7. **KitchensView** - 185 lines → ✅ **DONE** (`views/KitchensView.jsx`)
+8. **MaterialTypesView** - 290 lines → ✅ **DONE** (`views/MaterialTypesView.jsx`)
 
-3. **ProjectsView** - 50 lines
-   - Lines: 1245-1291
-   - State: `deleteConfirm`
-   - Props: `crafts`, `saveCrafts`, `materials`, `saveMaterials`
-   - Pattern: Read-only list with delete, refund materials on delete
+#### ✅ Completed Complex Views (1/3)
+9. **EffectFamilyMapView** - 200 lines → ✅ **DONE** (`views/EffectFamilyMapView.jsx`)
 
-4. **AlchemySettingsView** - 115 lines
-   - Lines: 2412-2526
-   - State: None (direct props editing)
-   - Props: `alchemySettings`, `saveAlchemySettings`
-   - Pattern: Simple form with toggles and number inputs
-
-#### 🟡 Medium Views (4 components)
-5. **WorkersView** - 170 lines
-   - Lines: 744-912
-   - State: `showAdd`, `newType`, `expanded`, `deleteConfirm`
-   - Props: `workers`, `saveWorkers`
-   - Pattern: Expandable items with skill editing
-
-6. **LabsView** - 130 lines
-   - Lines: 914-1043
-   - State: `showAdd`, `newLabName/Rating/Description`, `expanded`, `deleteConfirm`
-   - Props: `alchemyLabs`, `saveAlchemyLabs`
-   - Pattern: Expandable items with rating (0-4)
-
-7. **KitchensView** - 130 lines
-   - Lines: 1045-1174
-   - State: `showAdd`, `newKitchenName/Rating/Description`, `expanded`, `deleteConfirm`
-   - Props: `kitchens`, `saveKitchens`
-   - Pattern: Nearly identical to LabsView
-
-8. **MaterialTypesView** - 180 lines
-   - Lines: 564-742
-   - State: `showAdd`, material props (7 fields), `expanded`, `draftMatTypeName`, `deleteConfirm`
-   - Props: `materialTypes`, `saveMaterialTypes`, `renameMaterialType`
-   - Pattern: Expandable with complex property editing
-
-#### 🟠 Complex Views (3 components)
-9. **EffectFamilyMapView** - 200 lines
-   - Lines: 1499-1695
-   - State: `expanded`
-   - Props: `effectFamilyMap`, `saveEffectFamilyMap`
-   - Pattern: Nested aspect pairs with effect management
-
-10. **TemplatesView** - 205 lines
+#### 🔴 Remaining Complex Views (2/3 - TODO)
+10. **TemplatesView** - ~205 lines ⏳ **TODO**
     - Lines: 1293-1497
     - State: `templateType`, `showAdd`, 19 template fields, `expanded`, `deleteConfirm`
     - Props: `customTemplates`, `materialTypes`, `saveCustomTemplates`
     - Pattern: 4 template types (weapons/armor/ranged/explosives) with conditional fields
+    - Complexity: Conditional form fields based on template type
 
-11. **ReagentsView** - 430 lines
+11. **ReagentsView** - ~430 lines ⏳ **TODO** (Most Complex)
     - Lines: 1697-2122
     - State: `showAdd`, `newType`, complex reagent properties, `expanded`, `deleteConfirm`
     - Props: `alchemyReagents`, `saveAlchemyReagents`
     - Pattern: Most complex form with aspects, potency, roles, hazards
 
-#### 🔴 Very Complex View (1 component)
-12. **FormulasView** - 290 lines
+#### 🔴 Very Complex View (1 component - TODO)
+12. **FormulasView** - ~290 lines ⏳ **TODO**
     - Lines: 2124-2410
     - State: `formulaName`, `ingredients`, `selectedVector`, `formulaTraits`, `expandedFormula`, `deleteConfirm`
     - Props: `alchemyReagents`, `alchemyFormulas`, `saveAlchemyFormulas`
@@ -230,14 +202,14 @@ These functions are defined in ManagerTab and used by specific views:
 
 | Category | Total | Completed | Remaining |
 |----------|-------|-----------|-----------|
-| Simple Views | 3 | 1 | 2 |
-| Medium Views | 4 | 0 | 4 |
-| Complex Views | 3 | 0 | 3 |
+| Simple Views | 4 | 4 ✅ | 0 |
+| Medium Views | 4 | 4 ✅ | 0 |
+| Complex Views | 3 | 1 | 2 |
 | Very Complex | 1 | 0 | 1 |
-| Delegated (no work) | 3 | 3 | 0 |
-| **TOTAL** | **14** | **4** | **10** |
+| Delegated (no work) | 3 | 3 ✅ | 0 |
+| **TOTAL** | **15** | **12** | **3** |
 
-**Overall Progress:** 29% complete (4/14 views done)
+**Overall Progress:** 64% complete (9/14 views extracted, 3 delegated already done)
 
 ---
 
@@ -299,6 +271,7 @@ git commit -m "Extract NewView from ManagerTab"
 
 ---
 
-**Status:** Decomposition in progress. FoodTypesView extracted as proof-of-concept.
-**Next:** Extract 2 more simple views to establish pattern, then tackle medium/complex views.
-**Timeline:** 2-3 days for full decomposition if working incrementally.
+**Status:** 64% complete - 9/14 views extracted (all simple & medium views done)
+**Remaining:** 3 complex views (Templates, Reagents, Formulas)
+**Next:** Extract TemplatesView, ReagentsView, FormulasView
+**Estimated Time:** 2-3 hours to complete remaining views + ManagerTab router update
