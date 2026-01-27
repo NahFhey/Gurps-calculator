@@ -1,6 +1,18 @@
-import React from 'react';
-import PropTypes from 'prop-types';
+import { ChangeEvent } from 'react';
 import { Dices } from 'lucide-react';
+
+interface DiceRollerProps {
+  label?: string;
+  diceCount?: number;
+  diceSides?: number;
+  dice?: number[];
+  total?: number;
+  onRoll: (dice: number[], total: number) => void;
+  onTotalChange: (total: number) => void;
+  disabled?: boolean;
+  targetNumber?: number | null;
+  modifier?: number;
+}
 
 /**
  * DiceRoller - Manual dice rolling component with colored dice display
@@ -12,7 +24,7 @@ import { Dices } from 'lucide-react';
  * - Supports any number of dice and sides
  */
 export function DiceRoller({
-  label,
+  label = 'Roll Dice',
   diceCount = 3,
   diceSides = 6,
   dice = [],
@@ -22,7 +34,7 @@ export function DiceRoller({
   disabled = false,
   targetNumber = null,
   modifier = 0
-}) {
+}: DiceRollerProps) {
   const hasRolled = dice.length > 0;
 
   // Colors for individual dice (cycle through if more dice than colors)
@@ -38,7 +50,7 @@ export function DiceRoller({
   ];
 
   function handleRoll() {
-    const rolls = [];
+    const rolls: number[] = [];
     for (let i = 0; i < diceCount; i++) {
       rolls.push(Math.floor(Math.random() * diceSides) + 1);
     }
@@ -99,7 +111,7 @@ export function DiceRoller({
         <input
           type="number"
           value={total || ''}
-          onChange={(e) => onTotalChange(parseInt(e.target.value) || 0)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => onTotalChange(parseInt(e.target.value) || 0)}
           placeholder={hasRolled ? '' : 'Enter or roll'}
           disabled={disabled}
           className="w-20 bg-gray-600 px-2 py-1 rounded text-center text-lg font-bold disabled:opacity-50"
@@ -115,27 +127,3 @@ export function DiceRoller({
     </div>
   );
 }
-
-DiceRoller.propTypes = {
-  label: PropTypes.string,
-  diceCount: PropTypes.number,
-  diceSides: PropTypes.number,
-  dice: PropTypes.arrayOf(PropTypes.number),
-  total: PropTypes.number,
-  onRoll: PropTypes.func.isRequired,
-  onTotalChange: PropTypes.func.isRequired,
-  disabled: PropTypes.bool,
-  targetNumber: PropTypes.number,
-  modifier: PropTypes.number
-};
-
-DiceRoller.defaultProps = {
-  label: 'Roll Dice',
-  diceCount: 3,
-  diceSides: 6,
-  dice: [],
-  total: 0,
-  disabled: false,
-  targetNumber: null,
-  modifier: 0
-};

@@ -1,7 +1,24 @@
-import React, { useState } from 'react';
-import PropTypes from 'prop-types';
+import { useState, ChangeEvent } from 'react';
 import { Download, Upload, Lock, Unlock, FileJson, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { exportUnlocked, exportLocked, importFile, downloadJSON, mergeGM } from '../utils/exportImport';
+import type { CampaignState } from '../state/campaignReducer';
+import type { GMLockData } from '../types/views';
+
+interface ImportStatus {
+  type: 'success' | 'error' | 'warning';
+  message: string;
+  warnings?: string[];
+}
+
+interface ImportExportPanelProps {
+  state: CampaignState;
+  gmMode: boolean;
+  gmLockData?: GMLockData | null;
+  setGmMode: (mode: boolean) => void;
+  setGmLockData: (data: GMLockData | null) => void;
+  onImport: (state: unknown) => void;
+  onShowGMLockModal: () => void;
+}
 
 /**
  * Panel for importing and exporting GURPS Tool data with GM/Player separation.
@@ -9,18 +26,15 @@ import { exportUnlocked, exportLocked, importFile, downloadJSON, mergeGM } from 
  */
 export function ImportExportPanel({
   state,
-  _gmMode,
   gmLockData,
-  _setGmMode,
   setGmLockData,
   onImport,
-  onShowGMLockModal
-}) {
+}: ImportExportPanelProps) {
   const [exportPassword, setExportPassword] = useState('');
   const [exportPasswordConfirm, setExportPasswordConfirm] = useState('');
   const [showExportPassword, setShowExportPassword] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [importStatus, setImportStatus] = useState(null); // { type: 'success'|'error'|'warning', message, warnings: [] }
+  const [importStatus, setImportStatus] = useState<ImportStatus | null>(null);
 
   // Handle export unlocked (GM only)
   const handleExportUnlocked = () => {
@@ -36,7 +50,7 @@ export function ImportExportPanel({
     } catch (err) {
       setImportStatus({
         type: 'error',
-        message: `Export failed: ${err.message}`
+        message: `Export failed: ${(err as Error).message}`
       });
     } finally {
       setExporting(false);
@@ -82,7 +96,7 @@ export function ImportExportPanel({
     } catch (err) {
       setImportStatus({
         type: 'error',
-        message: `Export failed: ${err.message}`
+        message: `Export failed: ${(err as Error).message}`
       });
     } finally {
       setExporting(false);
@@ -90,7 +104,7 @@ export function ImportExportPanel({
   };
 
   // Handle file selection for import
-  const handleFileSelect = async (e) => {
+  const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -142,7 +156,7 @@ export function ImportExportPanel({
     } catch (err) {
       setImportStatus({
         type: 'error',
-        message: `Import failed: ${err.message}`
+        message: `Import failed: ${(err as Error).message}`
       });
     }
 
@@ -337,13 +351,3 @@ export function ImportExportPanel({
     </div>
   );
 }
-
-ImportExportPanel.propTypes = {
-  state: PropTypes.object.isRequired,
-  _gmMode: PropTypes.bool.isRequired,
-  gmLockData: PropTypes.object,
-  _setGmMode: PropTypes.func.isRequired,
-  setGmLockData: PropTypes.func.isRequired,
-  onImport: PropTypes.func.isRequired,
-  onShowGMLockModal: PropTypes.func.isRequired
-};
