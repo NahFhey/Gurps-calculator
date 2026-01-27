@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import PropTypes from 'prop-types';
+import { useState } from 'react';
 import { Shield, ShieldOff } from 'lucide-react';
 import { refundMaterialsFromProject } from '../utils/helpers';
 import { unlockGMData, mergeGM } from '../utils/exportImport';
 import { useCampaignStore } from '../state/campaignStore';
+import type { ManagerTabProps, GMLockData } from '../types/views';
+import type { Id } from '../types/campaign';
 
 // View components
 import { FoodTypesView } from './manager/views/FoodTypesView';
@@ -25,6 +26,33 @@ import { GMLockModal } from './GMLockModal';
 import { GatheringManager } from './GatheringManager';
 import { DebugPanel } from './DebugPanel';
 
+// View types for the navigation tabs
+type ManagerView =
+  | 'importExport'
+  | 'foodTypes'
+  | 'materialTypes'
+  | 'workers'
+  | 'labs'
+  | 'kitchens'
+  | 'skills'
+  | 'projects'
+  | 'templates'
+  | 'reagents'
+  | 'formulas'
+  | 'effectFamilyMap'
+  | 'alchemySettings'
+  | 'gathering'
+  | 'debug';
+
+// Delete confirmation state type
+interface DeleteConfirmState {
+  type: string;
+  value: string;
+  id?: Id;
+  name?: string;
+  templateType?: string;
+}
+
 export function ManagerTab({
   foodTypes, materialTypes, workers, crafts, craftDesigns, customTemplates, materials,
   effectFamilyMap, alchemySettings, alchemyReagents, alchemyFormulas, alchemyBatches, alchemyLabs, kitchens, cookingSkills,
@@ -36,15 +64,15 @@ export function ManagerTab({
   // Gathering system props
   gatheringSpecies, gatheringTools, gatheringTables, gatheringEnvironments, gatheringBait, gatheringCategories, gatheringItems, currentDay,
   saveGatheringSpecies, saveGatheringTools, saveGatheringTables, saveGatheringEnvironments, saveGatheringBait, saveGatheringCategories, saveGatheringItems, saveCurrentDay
-}) {
-  const [view, setView] = useState('foodTypes');
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
+}: ManagerTabProps) {
+  const [view, setView] = useState<ManagerView>('foodTypes');
+  const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState | null>(null);
   const [showGMLockModal, setShowGMLockModal] = useState(false);
-  const [gmLockError, setGmLockError] = useState(null);
+  const [gmLockError, setGmLockError] = useState<string | null>(null);
   const { state: campaignState, actions: campaignActions } = useCampaignStore();
 
   // Delete handler for all views
-  function handleDelete(type, value, extra = {}) {
+  function handleDelete(type: string, value: string, extra: { id?: Id; templateType?: string } = {}) {
     setDeleteConfirm({ type, value, ...extra });
   }
 
@@ -68,7 +96,7 @@ export function ManagerTab({
   };
 
   // Handle GM unlock with password
-  const handleGMUnlock = (password) => {
+  const handleGMUnlock = (password: string) => {
     if (!password) {
       setGmLockError('Password is required');
       return;
@@ -80,7 +108,7 @@ export function ManagerTab({
     }
 
     try {
-      const decryptedState = unlockGMData(gmLockData, password);
+      const decryptedState = unlockGMData(gmLockData as GMLockData, password);
       if (decryptedState) {
         // Merge GM data into campaign state
         mergeGM(campaignActions, decryptedState);
@@ -91,12 +119,12 @@ export function ManagerTab({
         setGmLockError('Incorrect password');
       }
     } catch (error) {
-      setGmLockError('Decryption failed: ' + error.message);
+      setGmLockError('Decryption failed: ' + (error as Error).message);
     }
   };
 
   // Handle import
-  const handleImport = (importedState) => {
+  const handleImport = () => {
     // The import is handled by ImportExportPanel, which calls campaignActions.importState
     // Just close GM lock modal if it's open
     setShowGMLockModal(false);
@@ -224,7 +252,10 @@ export function ManagerTab({
               <button
                 onClick={() => {
                   if (deleteConfirm.type === 'foodType') {
-                    saveFoodTypes(foodTypes.filter(t => t.name !== deleteConfirm.value));
+                    saveFoodTypes(foodTypes.filter(t => {
+                      const typeName = typeof t === 'string' ? t : t.name;
+                      return typeName !== deleteConfirm.value;
+                    }));
                   } else if (deleteConfirm.type === 'materialType') {
                     saveMaterialTypes(materialTypes.filter(t => t.name !== deleteConfirm.value));
                   } else if (deleteConfirm.type === 'worker') {
@@ -246,8 +277,9 @@ export function ManagerTab({
                       saveMaterials(refunded);
                     }
                     saveCrafts(crafts.filter(c => c.id !== deleteConfirm.id));
-                  } else if (deleteConfirm.type === 'template') {
-                    const typeTemplates = { ...customTemplates[deleteConfirm.templateType] };
+                  } else if (deleteConfirm.type === 'template' && deleteConfirm.templateType) {
+                    const templateType = deleteConfirm.templateType as keyof typeof customTemplates;
+                    const typeTemplates = { ...customTemplates[templateType] };
                     delete typeTemplates[deleteConfirm.value];
                     saveCustomTemplates({
                       ...customTemplates,
@@ -455,74 +487,3 @@ export function ManagerTab({
     </div>
   );
 }
-
-ManagerTab.propTypes = {
-  // Inventory
-  foodTypes: PropTypes.array.isRequired,
-  materialTypes: PropTypes.array.isRequired,
-  materials: PropTypes.array.isRequired,
-  foods: PropTypes.array.isRequired,
-
-  // Workers and crafting
-  workers: PropTypes.array.isRequired,
-  crafts: PropTypes.array.isRequired,
-  craftDesigns: PropTypes.array.isRequired,
-  customTemplates: PropTypes.object.isRequired,
-
-  // Alchemy
-  effectFamilyMap: PropTypes.object.isRequired,
-  alchemySettings: PropTypes.object.isRequired,
-  alchemyReagents: PropTypes.array.isRequired,
-  alchemyFormulas: PropTypes.array.isRequired,
-  alchemyBatches: PropTypes.array.isRequired,
-  alchemyLabs: PropTypes.array.isRequired,
-
-  // Cooking
-  kitchens: PropTypes.array.isRequired,
-  cookingSkills: PropTypes.array.isRequired,
-  recipes: PropTypes.array.isRequired,
-
-  // GM Mode
-  gmMode: PropTypes.bool.isRequired,
-  gmLockData: PropTypes.object,
-  setGmMode: PropTypes.func.isRequired,
-  setGmLockData: PropTypes.func.isRequired,
-
-  // Save functions
-  saveMaterials: PropTypes.func.isRequired,
-  saveFoods: PropTypes.func.isRequired,
-  saveRecipes: PropTypes.func.isRequired,
-  saveFoodTypes: PropTypes.func.isRequired,
-  saveMaterialTypes: PropTypes.func.isRequired,
-  saveWorkers: PropTypes.func.isRequired,
-  saveCrafts: PropTypes.func.isRequired,
-  saveCraftDesigns: PropTypes.func.isRequired,
-  saveCustomTemplates: PropTypes.func.isRequired,
-  saveEffectFamilyMap: PropTypes.func.isRequired,
-  saveAlchemySettings: PropTypes.func.isRequired,
-  saveAlchemyReagents: PropTypes.func.isRequired,
-  saveAlchemyFormulas: PropTypes.func.isRequired,
-  saveAlchemyBatches: PropTypes.func.isRequired,
-  saveAlchemyLabs: PropTypes.func.isRequired,
-  saveKitchens: PropTypes.func.isRequired,
-  saveCookingSkills: PropTypes.func.isRequired,
-  renameMaterialType: PropTypes.func.isRequired,
-
-  // Gathering system
-  gatheringSpecies: PropTypes.array.isRequired,
-  gatheringTools: PropTypes.array.isRequired,
-  gatheringTables: PropTypes.array.isRequired,
-  gatheringEnvironments: PropTypes.array.isRequired,
-  gatheringBait: PropTypes.array.isRequired,
-  gatheringCategories: PropTypes.array.isRequired,
-  gatheringItems: PropTypes.array.isRequired,
-  currentDay: PropTypes.number.isRequired,
-  saveGatheringSpecies: PropTypes.func.isRequired,
-  saveGatheringTools: PropTypes.func.isRequired,
-  saveGatheringTables: PropTypes.func.isRequired,
-  saveGatheringEnvironments: PropTypes.func.isRequired,
-  saveGatheringBait: PropTypes.func.isRequired,
-  saveGatheringCategories: PropTypes.func.isRequired,
-  saveGatheringItems: PropTypes.func.isRequired,
-  saveCurrentDay: PropTypes.func.isRequired
-};

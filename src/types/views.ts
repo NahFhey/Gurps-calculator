@@ -9,12 +9,24 @@ import type {
   Id,
   FoodType,
   MaterialType,
+  Material,
+  Food,
+  Recipe,
   AlchemyLab,
+  AlchemyBatch,
   AlchemySettings,
   Kitchen,
   Craft,
+  CraftDesign,
   CustomTemplates,
   EffectFamilyMap,
+  GatheringSpecies,
+  GatheringTool,
+  GatheringTable,
+  GatheringEnvironment,
+  GatheringBait,
+  GatheringCategory,
+  GatheringItem,
 } from './campaign';
 
 // ============================================================================
@@ -239,4 +251,92 @@ export interface FormulasViewProps {
   alchemyFormulas: AlchemyFormula[];
   saveAlchemyFormulas: (formulas: AlchemyFormula[]) => void;
   onDelete: OnDeleteHandler;
+}
+
+// ============================================================================
+// GM LOCK DATA TYPE
+// ============================================================================
+
+export interface GMLockData {
+  encryptedData?: string;
+  iv?: string;
+  salt?: string;
+}
+
+// ============================================================================
+// MANAGER TAB PROPS
+// ============================================================================
+
+export interface ManagerTabProps {
+  // Inventory
+  foodTypes: (FoodType | string)[];
+  materialTypes: MaterialType[];
+  materials: Material[];
+  foods: Food[];
+
+  // Workers and crafting
+  workers: Worker[];
+  crafts: (Craft & { completed?: boolean; completedDate?: string; name?: string })[];
+  craftDesigns: CraftDesign[];
+  customTemplates: CustomTemplates;
+
+  // Alchemy
+  effectFamilyMap: EffectFamilyMapExtended;
+  alchemySettings: AlchemySettings & {
+    autoSaveRecipes?: boolean;
+    showObviousRoles?: boolean;
+  };
+  alchemyReagents: AlchemyReagent[];
+  alchemyFormulas: AlchemyFormula[];
+  alchemyBatches: AlchemyBatch[];
+  alchemyLabs: AlchemyLab[];
+
+  // Cooking
+  kitchens: Kitchen[];
+  cookingSkills: CookingSkill[];
+  recipes: Recipe[];
+
+  // GM Mode
+  gmMode: boolean;
+  gmLockData?: GMLockData | null;
+  setGmMode: (mode: boolean) => void;
+  setGmLockData: (data: GMLockData | null) => void;
+
+  // Save functions
+  saveMaterials: (materials: Material[]) => void;
+  saveFoods: (foods: Food[]) => void;
+  saveRecipes: (recipes: Recipe[]) => void;
+  saveFoodTypes: (types: (FoodType | string)[]) => void;
+  saveMaterialTypes: (types: MaterialType[]) => void;
+  saveWorkers: (workers: Worker[]) => void;
+  saveCrafts: (crafts: Craft[]) => void;
+  saveCraftDesigns: (designs: CraftDesign[]) => void;
+  saveCustomTemplates: (templates: CustomTemplates) => void;
+  saveEffectFamilyMap: (map: EffectFamilyMapExtended) => void;
+  saveAlchemySettings: (settings: AlchemySettings) => void;
+  saveAlchemyReagents: (reagents: AlchemyReagent[]) => void;
+  saveAlchemyFormulas: (formulas: AlchemyFormula[]) => void;
+  saveAlchemyBatches: (batches: AlchemyBatch[]) => void;
+  saveAlchemyLabs: (labs: AlchemyLab[]) => void;
+  saveKitchens: (kitchens: Kitchen[]) => void;
+  saveCookingSkills: (skills: CookingSkill[]) => void;
+  renameMaterialType: (oldName: string, newName: string) => void;
+
+  // Gathering system
+  gatheringSpecies: GatheringSpecies[];
+  gatheringTools: GatheringTool[];
+  gatheringTables: GatheringTable[];
+  gatheringEnvironments: GatheringEnvironment[];
+  gatheringBait: GatheringBait[];
+  gatheringCategories: GatheringCategory[];
+  gatheringItems: GatheringItem[];
+  currentDay: number;
+  saveGatheringSpecies: (species: GatheringSpecies[]) => void;
+  saveGatheringTools: (tools: GatheringTool[]) => void;
+  saveGatheringTables: (tables: GatheringTable[]) => void;
+  saveGatheringEnvironments: (environments: GatheringEnvironment[]) => void;
+  saveGatheringBait: (bait: GatheringBait[]) => void;
+  saveGatheringCategories: (categories: GatheringCategory[]) => void;
+  saveGatheringItems: (items: GatheringItem[]) => void;
+  saveCurrentDay: (day: number) => void;
 }
