@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo, ReactNode, KeyboardEvent, MouseEvent } from 'react';
 import { InventoryTab } from '../components/InventoryTab';
 import { ManagerTab } from '../components/ManagerTab';
 import { RulesTab } from '../components/RulesTab';
@@ -12,11 +12,22 @@ import {
   useSelectedCharacter,
   useSelectedCharacterId
 } from '../state/campaignStore';
+import type { Character } from '../types/campaign';
 
-export function UnifiedShell({ modules }) {
+interface ModuleDefinition {
+  id: string;
+  label: string;
+  content: ReactNode;
+}
+
+interface UnifiedShellProps {
+  modules?: ModuleDefinition[];
+}
+
+export function UnifiedShell({ modules }: UnifiedShellProps) {
   const legacyAppState = useLegacyAppState();
   const characters = useCampaignCharacters();
-  const availableModules = useMemo(() => {
+  const availableModules = useMemo<ModuleDefinition[]>(() => {
     if (modules?.length) {
       return modules;
     }
@@ -26,13 +37,13 @@ export function UnifiedShell({ modules }) {
       {
         id: 'manager',
         label: 'Manager',
-        content: <ManagerTab {...(legacyAppState.managerTabProps || {})} />
+        content: <ManagerTab {...((legacyAppState as { managerTabProps?: Record<string, unknown> }).managerTabProps || {})} />
       },
       { id: 'rules', label: 'Rules', content: <RulesTab /> },
       { id: 'changelog', label: 'Changelog', content: <ChangelogTab /> },
       { id: 'combat', label: 'Combat', content: <CombatTab /> }
     ];
-  }, [legacyAppState.managerTabProps, modules]);
+  }, [legacyAppState, modules]);
   const { state, actions } = useCampaignStore();
   const activeModuleId = state.ui.activeModule || availableModules[0]?.id;
   const activeModule = availableModules.find((moduleItem) => moduleItem.id === activeModuleId);
@@ -42,7 +53,7 @@ export function UnifiedShell({ modules }) {
     () => [...characters].sort((a, b) => a.name.localeCompare(b.name)),
     [characters]
   );
-  const selectedSkills = selectedCharacter?.work?.skills
+  const selectedSkills: [string, number][] = selectedCharacter?.work?.skills
     ? Object.entries(selectedCharacter.work.skills)
     : [];
 
@@ -100,7 +111,7 @@ export function UnifiedShell({ modules }) {
         <section className="rounded border border-gray-700 bg-gray-800/60 p-4">
           <h2 className="text-sm uppercase tracking-wide text-gray-400">Party Column</h2>
           <div className="mt-3 space-y-2">
-            {sortedCharacters.map((character) => {
+            {sortedCharacters.map((character: Character) => {
               const isSelected = character.id === selectedCharacterId;
               return (
                 <div
@@ -110,7 +121,7 @@ export function UnifiedShell({ modules }) {
                   data-testid={`party-character-${character.id}`}
                   data-selected={isSelected}
                   onClick={() => actions.selectCharacter(character.id)}
-                  onKeyDown={(event) => {
+                  onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       actions.selectCharacter(character.id);
                     }
@@ -131,7 +142,7 @@ export function UnifiedShell({ modules }) {
                     <button
                       type="button"
                       className="rounded border border-gray-600 px-2 py-1 text-xs text-gray-200 hover:border-gray-300"
-                      onClick={(event) => {
+                      onClick={(event: MouseEvent<HTMLButtonElement>) => {
                         event.stopPropagation();
                         actions.selectCharacter(character.id);
                         actions.setActiveModule('activities');
@@ -143,7 +154,7 @@ export function UnifiedShell({ modules }) {
                     <button
                       type="button"
                       className="rounded border border-gray-600 px-2 py-1 text-xs text-gray-200 hover:border-gray-300"
-                      onClick={(event) => {
+                      onClick={(event: MouseEvent<HTMLButtonElement>) => {
                         event.stopPropagation();
                         actions.selectCharacter(character.id);
                         actions.setActiveModule('activities');
@@ -155,7 +166,7 @@ export function UnifiedShell({ modules }) {
                     <button
                       type="button"
                       className="rounded border border-gray-600 px-2 py-1 text-xs text-gray-200 hover:border-gray-300"
-                      onClick={(event) => {
+                      onClick={(event: MouseEvent<HTMLButtonElement>) => {
                         event.stopPropagation();
                         actions.selectCharacter(character.id);
                         actions.setActiveModule('inventory');
