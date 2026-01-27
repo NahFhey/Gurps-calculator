@@ -1,7 +1,12 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useMemo } from 'react';
+import { useCampaignStore } from '../state/campaignStore';
+import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
 
 /**
  * Context for gathering system (fishing, foraging, and day planner)
+ *
+ * MIGRATION NOTE: This context now bridges to CampaignStore while maintaining
+ * backward compatibility with the legacy API.
  *
  * @typedef {Object} GatheringContextValue
  * @property {Array} gatheringSpecies - Available fish/creature species
@@ -35,6 +40,129 @@ import { createContext, useContext } from 'react';
  */
 
 const GatheringContext = createContext(null);
+
+/**
+ * Gathering Provider - Bridges CampaignStore to legacy API
+ */
+export function GatheringProvider({ children }) {
+  const { state, actions } = useCampaignStore();
+
+  const value = useMemo(() => {
+    // Convert normalized objects back to arrays for legacy API
+    const gatheringSpecies = denormalizeObject(state.entities.gatheringSpecies);
+    const gatheringTools = denormalizeObject(state.entities.gatheringTools);
+    const gatheringTables = denormalizeObject(state.entities.gatheringTables);
+    const gatheringEnvironments = denormalizeObject(state.entities.gatheringEnvironments);
+    const gatheringSessions = denormalizeObject(state.entities.gatheringSessions);
+    const gatheringBait = denormalizeObject(state.entities.gatheringBait);
+    const gatheringCategories = denormalizeObject(state.entities.gatheringCategories);
+    const gatheringItems = denormalizeObject(state.entities.gatheringItems);
+
+    return {
+      // Species
+      gatheringSpecies,
+      saveGatheringSpecies: (speciesArray) => {
+        actions.setGatheringSpecies(normalizeArray(speciesArray));
+      },
+
+      // Tools
+      gatheringTools,
+      saveGatheringTools: (toolsArray) => {
+        actions.setGatheringTools(normalizeArray(toolsArray));
+      },
+
+      // Tables
+      gatheringTables,
+      saveGatheringTables: (tablesArray) => {
+        actions.setGatheringTables(normalizeArray(tablesArray));
+      },
+
+      // Environments
+      gatheringEnvironments,
+      saveGatheringEnvironments: (environmentsArray) => {
+        actions.setGatheringEnvironments(normalizeArray(environmentsArray));
+      },
+
+      // Sessions
+      gatheringSessions,
+      saveGatheringSessions: (sessionsArray) => {
+        actions.setGatheringSessions(normalizeArray(sessionsArray));
+      },
+
+      // Daily Events (already an object)
+      gatheringDailyEvents: state.entities.gatheringDailyEvents,
+      saveGatheringDailyEvents: (events) => {
+        actions.setGatheringDailyEvents(events);
+      },
+
+      // Bait
+      gatheringBait,
+      saveGatheringBait: (baitArray) => {
+        actions.setGatheringBait(normalizeArray(baitArray));
+      },
+
+      // Categories
+      gatheringCategories,
+      saveGatheringCategories: (categoriesArray) => {
+        actions.setGatheringCategories(normalizeArray(categoriesArray));
+      },
+
+      // Items
+      gatheringItems,
+      saveGatheringItems: (itemsArray) => {
+        actions.setGatheringItems(normalizeArray(itemsArray));
+      },
+
+      // Time tracking (from time state)
+      currentDay: state.time.day,
+      saveCurrentDay: (day) => {
+        // Will need to add a setCurrentDay action or use existing time mutations
+        // For now, this maintains compatibility
+        console.warn('saveCurrentDay deprecated - use time.day from CampaignStore');
+      },
+
+      // Day Planner
+      timeSlots: state.dayPlanner.timeSlots,
+      saveTimeSlots: (slots) => {
+        actions.setTimeSlots(slots);
+      },
+
+      taskAssignments: state.dayPlanner.taskAssignments,
+      saveTaskAssignments: (assignments) => {
+        actions.setTaskAssignments(assignments);
+      },
+
+      pendingDayLedger: state.dayPlanner.pendingDayLedger,
+      savePendingDayLedger: (ledger) => {
+        actions.setPendingDayLedger(ledger);
+      },
+
+      currentSlot: state.dayPlanner.currentSlot,
+      saveCurrentSlot: (slot) => {
+        // Update through dayPlanner state
+        console.warn('saveCurrentSlot deprecated - use dayPlanner.currentSlot from CampaignStore');
+      }
+    };
+  }, [
+    state.entities.gatheringSpecies,
+    state.entities.gatheringTools,
+    state.entities.gatheringTables,
+    state.entities.gatheringEnvironments,
+    state.entities.gatheringSessions,
+    state.entities.gatheringDailyEvents,
+    state.entities.gatheringBait,
+    state.entities.gatheringCategories,
+    state.entities.gatheringItems,
+    state.time.day,
+    state.dayPlanner.timeSlots,
+    state.dayPlanner.taskAssignments,
+    state.dayPlanner.pendingDayLedger,
+    state.dayPlanner.currentSlot,
+    actions
+  ]);
+
+  return <GatheringContext.Provider value={value}>{children}</GatheringContext.Provider>;
+}
 
 /**
  * Hook to access gathering context

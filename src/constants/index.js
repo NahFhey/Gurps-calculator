@@ -11,6 +11,12 @@
  */
 
 /**
+ * Feature flags
+ * @type {boolean}
+ */
+export const UNIFIED_UI_ENABLED = true;
+
+/**
  * Template data for crafting items
  * Defines base stats for weapons, armor, ranged weapons, and explosives
  *
@@ -749,4 +755,3 @@ export const LOG_ENTRY_TYPES = [
  * @type {number}
  */
 export const MAX_COMBAT_HISTORY = 50;
-

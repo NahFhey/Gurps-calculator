@@ -1,0 +1,60 @@
+import { MouseEvent } from 'react';
+import { formatConditionDuration, formatConditionTooltip } from '../../utils/conditionsEngine';
+import { getConditionIcon } from '../../constants/conditions';
+
+interface Condition {
+  conditionId: string;
+  label: string;
+  expiresAt?: number | null;
+  severity?: number | null;
+}
+
+interface ConditionBadgeProps {
+  condition: Condition;
+  currentRound?: number;
+  showDuration?: boolean;
+  onClick?: ((condition: Condition) => void) | null;
+}
+
+/**
+ * Phase 6: Condition Badge Component
+ *
+ * Displays a condition icon/badge with tooltip.
+ * Used in combatant cards to show active conditions.
+ */
+export default function ConditionBadge({
+  condition,
+  currentRound = 0,
+  showDuration = true,
+  onClick = null
+}: ConditionBadgeProps) {
+  const icon = getConditionIcon(condition.conditionId);
+  const tooltip = formatConditionTooltip(condition, currentRound);
+  const duration = formatConditionDuration(condition, currentRound);
+
+  const handleClick = (e: MouseEvent<HTMLDivElement>) => {
+    if (onClick) {
+      e.stopPropagation();
+      onClick(condition);
+    }
+  };
+
+  return (
+    <div
+      className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs bg-purple-900/50 border border-purple-700 ${
+        onClick ? 'cursor-pointer hover:bg-purple-800/50' : ''
+      }`}
+      title={tooltip}
+      onClick={handleClick}
+    >
+      <span>{icon}</span>
+      <span className="font-medium">{condition.label}</span>
+      {showDuration && condition.expiresAt && (
+        <span className="text-gray-400 text-xs">({duration})</span>
+      )}
+      {condition.severity != null && (
+        <span className="text-yellow-400 font-bold">×{condition.severity}</span>
+      )}
+    </div>
+  );
+}
