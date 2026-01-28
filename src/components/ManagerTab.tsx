@@ -654,28 +654,7 @@ export function ManagerTab() {
         />
       )}
 
-      {view === 'gathering' && (
-        <GatheringManager
-          species={gatheringSpecies || []}
-          tools={gatheringTools || []}
-          tables={gatheringTables || []}
-          environments={gatheringEnvironments || []}
-          bait={gatheringBait || []}
-          categories={gatheringCategories || []}
-          items={gatheringItems || []}
-          currentDay={currentDay || 1}
-          foodTypes={foodTypes || []}
-          materialTypes={materialTypes || []}
-          saveSpecies={saveGatheringSpecies}
-          saveTools={saveGatheringTools}
-          saveTables={saveGatheringTables}
-          saveEnvironments={saveGatheringEnvironments}
-          saveBait={saveGatheringBait}
-          saveCategories={saveGatheringCategories}
-          saveItems={saveGatheringItems}
-          saveCurrentDay={saveCurrentDay}
-        />
-      )}
+      {view === 'gathering' && <GatheringManager />}
 
       {view === 'toolTemplates' && <ToolTemplatesView />}
 

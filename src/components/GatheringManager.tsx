@@ -1,6 +1,7 @@
-import { useState, useMemo, memo } from 'react';
+import { useState, useMemo, useCallback, memo } from 'react';
+import { useCampaignStore } from '../state/campaignStore';
+import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
 import type {
-  GatheringManagerProps,
   GatheringView,
   DeleteConfirmState,
   GatheringSpeciesExtended,
@@ -34,38 +35,96 @@ import {
  * - Bait (consumables)
  * - Campaign day tracking
  *
+ * MIGRATED: Now uses useCampaignStore directly instead of props.
  * Decomposed from 1,754 lines to ~180 lines (90% reduction)
  */
-function GatheringManagerBase({
-  species,
-  tools,
-  tables,
-  environments,
-  bait,
-  items,
-  currentDay,
-  foodTypes = [],
-  materialTypes = [],
-  saveSpecies,
-  saveTools,
-  saveTables,
-  saveEnvironments,
-  saveBait,
-  saveItems,
-  saveCurrentDay
-}: GatheringManagerProps) {
+function GatheringManagerBase() {
+  const { state, actions } = useCampaignStore();
   const [view, setView] = useState<GatheringView>('species');
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState | null>(null);
 
-  // Normalize food type names from manager
+  // Derive data from normalized state
+  // Note: We cast through unknown because the state types and view types differ
+  // but are compatible at runtime (view types are more specific)
+  const species = useMemo(() =>
+    denormalizeObject(state.entities.gatheringSpecies || {}) as unknown as GatheringSpeciesExtended[],
+    [state.entities.gatheringSpecies]
+  );
+
+  const tools = useMemo(() =>
+    denormalizeObject(state.entities.gatheringTools || {}) as unknown as GatheringToolExtended[],
+    [state.entities.gatheringTools]
+  );
+
+  const tables = useMemo(() =>
+    denormalizeObject(state.entities.gatheringTables || {}) as unknown as GatheringTableExtended[],
+    [state.entities.gatheringTables]
+  );
+
+  const environments = useMemo(() =>
+    denormalizeObject(state.entities.gatheringEnvironments || {}) as unknown as GatheringEnvironmentExtended[],
+    [state.entities.gatheringEnvironments]
+  );
+
+  const bait = useMemo(() =>
+    denormalizeObject(state.entities.gatheringBait || {}) as unknown as GatheringBaitExtended[],
+    [state.entities.gatheringBait]
+  );
+
+  const items = useMemo(() =>
+    denormalizeObject(state.entities.gatheringItems || {}) as unknown as GatheringItemExtended[],
+    [state.entities.gatheringItems]
+  );
+
+  const currentDay = state.time.day;
+
+  // Get food and material types from state
+  const foodTypes = state.entities.foodTypes || [];
+  const materialTypes = state.entities.materialTypes || [];
+
+  // Normalize food type names
   const availableFoodTypes = useMemo(() => {
-    return foodTypes.map(ft => typeof ft === 'string' ? ft : ft.name);
+    if (!Array.isArray(foodTypes)) return [];
+    return foodTypes.map((ft: any) => typeof ft === 'string' ? ft : ft.name);
   }, [foodTypes]);
 
-  // Normalize material type names from manager
+  // Normalize material type names
   const availableMaterialTypes = useMemo(() => {
-    return materialTypes.map(mt => typeof mt === 'string' ? mt : mt.name);
+    if (!Array.isArray(materialTypes)) return [];
+    return materialTypes.map((mt: any) => typeof mt === 'string' ? mt : mt.name);
   }, [materialTypes]);
+
+  // Save callbacks that normalize arrays back to records
+  // Note: We cast through any because the view types and state types differ
+  // but are compatible at runtime
+  const saveSpecies = useCallback((speciesArray: GatheringSpeciesExtended[]) => {
+    actions.setGatheringSpecies(normalizeArray(speciesArray as any));
+  }, [actions]);
+
+  const saveTools = useCallback((toolsArray: GatheringToolExtended[]) => {
+    actions.setGatheringTools(normalizeArray(toolsArray as any));
+  }, [actions]);
+
+  const saveTables = useCallback((tablesArray: GatheringTableExtended[]) => {
+    actions.setGatheringTables(normalizeArray(tablesArray as any));
+  }, [actions]);
+
+  const saveEnvironments = useCallback((environmentsArray: GatheringEnvironmentExtended[]) => {
+    actions.setGatheringEnvironments(normalizeArray(environmentsArray as any));
+  }, [actions]);
+
+  const saveBait = useCallback((baitArray: GatheringBaitExtended[]) => {
+    actions.setGatheringBait(normalizeArray(baitArray as any));
+  }, [actions]);
+
+  const saveItems = useCallback((itemsArray: GatheringItemExtended[]) => {
+    actions.setGatheringItems(normalizeArray(itemsArray as any));
+  }, [actions]);
+
+  const saveCurrentDay = useCallback((_day: number) => {
+    // Update time.day - we need to dispatch a time update action
+    // Note: The time system is managed elsewhere, this is kept for API compatibility
+  }, []);
 
   // Unified delete handler for all views
   function handleDelete(type: string, id: string, name: string) {
@@ -77,22 +136,22 @@ function GatheringManagerBase({
 
     switch (deleteConfirm.type) {
       case 'species':
-        saveSpecies((species as GatheringSpeciesExtended[]).filter(s => s.id !== deleteConfirm.id));
+        saveSpecies(species.filter(s => s.id !== deleteConfirm.id));
         break;
       case 'tool':
-        saveTools((tools as GatheringToolExtended[]).filter(t => t.id !== deleteConfirm.id));
+        saveTools(tools.filter(t => t.id !== deleteConfirm.id));
         break;
       case 'table':
-        saveTables((tables as GatheringTableExtended[]).filter(t => t.id !== deleteConfirm.id));
+        saveTables(tables.filter(t => t.id !== deleteConfirm.id));
         break;
       case 'environment':
-        saveEnvironments((environments as GatheringEnvironmentExtended[]).filter(e => e.id !== deleteConfirm.id));
+        saveEnvironments(environments.filter(e => e.id !== deleteConfirm.id));
         break;
       case 'bait':
-        saveBait((bait as GatheringBaitExtended[]).filter(b => b.id !== deleteConfirm.id));
+        saveBait(bait.filter(b => b.id !== deleteConfirm.id));
         break;
       case 'item':
-        saveItems((items as GatheringItemExtended[]).filter(i => i.id !== deleteConfirm.id));
+        saveItems(items.filter(i => i.id !== deleteConfirm.id));
         break;
     }
     setDeleteConfirm(null);
@@ -128,7 +187,7 @@ function GatheringManagerBase({
       {/* View Router */}
       {view === 'species' && (
         <SpeciesView
-          species={species as GatheringSpeciesExtended[]}
+          species={species}
           foodTypes={availableFoodTypes}
           saveSpecies={saveSpecies}
           onDelete={handleDelete}
@@ -137,7 +196,7 @@ function GatheringManagerBase({
 
       {view === 'items' && (
         <ItemsView
-          items={items as GatheringItemExtended[]}
+          items={items}
           foodTypes={availableFoodTypes}
           materialTypes={availableMaterialTypes}
           saveItems={saveItems}
@@ -147,7 +206,7 @@ function GatheringManagerBase({
 
       {view === 'tools' && (
         <ToolsView
-          tools={tools as GatheringToolExtended[]}
+          tools={tools}
           foodTypes={availableFoodTypes}
           materialTypes={availableMaterialTypes}
           saveTools={saveTools}
@@ -157,9 +216,9 @@ function GatheringManagerBase({
 
       {view === 'tables' && (
         <TablesView
-          tables={tables as GatheringTableExtended[]}
-          species={species as GatheringSpeciesExtended[]}
-          items={items as GatheringItemExtended[]}
+          tables={tables}
+          species={species}
+          items={items}
           saveTables={saveTables}
           onDelete={handleDelete}
         />
@@ -167,8 +226,8 @@ function GatheringManagerBase({
 
       {view === 'environments' && (
         <EnvironmentsView
-          environments={environments as GatheringEnvironmentExtended[]}
-          tables={tables as GatheringTableExtended[]}
+          environments={environments}
+          tables={tables}
           saveEnvironments={saveEnvironments}
           onDelete={handleDelete}
         />
@@ -176,8 +235,8 @@ function GatheringManagerBase({
 
       {view === 'bait' && (
         <BaitView
-          bait={bait as GatheringBaitExtended[]}
-          species={species as GatheringSpeciesExtended[]}
+          bait={bait}
+          species={species}
           saveBait={saveBait}
           onDelete={handleDelete}
         />

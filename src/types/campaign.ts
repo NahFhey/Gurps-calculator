@@ -515,11 +515,29 @@ export interface ToolInstance {
   ownerId?: Id;  // Character or 'party'
 }
 
+/**
+ * Unified Facility type - supports both simple (rating-based) and complex
+ * (activity category-based) facilities like kitchens, labs, workshops.
+ *
+ * Activity types: 'cooking', 'alchemy', 'crafting', 'gathering', 'hunting'
+ */
+export type FacilityType = 'kitchen' | 'lab' | 'workshop' | 'general';
+
 export interface Facility {
   id: Id;
   name: string;
-  conditionId: Id;
-  activityCategories: Record<string, ToolModifierSet>;
+  facilityType: FacilityType;
+  /** Simple rating (0-4) for backwards compatibility with kitchens/labs */
+  rating: number;
+  /** Optional description */
+  description?: string;
+  /** Condition tracking (good, worn, damaged, etc.) */
+  conditionId?: Id;
+  /**
+   * Activity-specific modifiers. Keys are activity types like 'cooking', 'alchemy'.
+   * If not provided, `rating` is used as `skillBonus` for the facility's primary activity.
+   */
+  activityCategories?: Record<string, ToolModifierSet>;
 }
 
 export interface ItemInstance {

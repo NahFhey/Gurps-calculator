@@ -1206,6 +1206,9 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
       case 'addKitchen':
         draft.entities.kitchens[action.payload.id] = action.payload;
         return;
+      case 'setFacilities':
+        draft.entities.facilities = action.payload;
+        return;
       case 'setCookingSkills':
         draft.entities.cookingSkills = action.payload;
         return;

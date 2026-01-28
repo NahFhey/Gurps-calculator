@@ -41,7 +41,8 @@ import type {
   Kitchen,
   CookingSkill,
   EffectFamilyMap,
-  Inventory
+  Inventory,
+  Facility
 } from '../types/campaign';
 import type {
   Location,
@@ -192,6 +193,7 @@ type CampaignStoreValue = {
     // Config Actions
     setKitchens: (kitchens: Record<Id, Kitchen>) => void;
     addKitchen: (kitchen: Kitchen) => void;
+    setFacilities: (facilities: Record<Id, Facility>) => void;
     setCookingSkills: (skills: CookingSkill[]) => void;
     setEffectFamilyMap: (map: EffectFamilyMap) => void;
 
@@ -428,6 +430,7 @@ export function CampaignStoreProvider({
       // Config Actions
       setKitchens: (kitchens: Record<Id, Kitchen>) => dispatch({ type: 'setKitchens', payload: kitchens }),
       addKitchen: (kitchen: Kitchen) => dispatch({ type: 'addKitchen', payload: kitchen }),
+      setFacilities: (facilities: Record<Id, Facility>) => dispatch({ type: 'setFacilities', payload: facilities }),
       setCookingSkills: (skills: CookingSkill[]) => dispatch({ type: 'setCookingSkills', payload: skills }),
       setEffectFamilyMap: (map: EffectFamilyMap) => dispatch({ type: 'setEffectFamilyMap', payload: map }),
 
