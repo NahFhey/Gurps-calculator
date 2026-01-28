@@ -4,6 +4,7 @@ import { TileGrid } from './views/TileGrid';
 import { FishingActivity } from './views/FishingActivity';
 import { ForagingActivity } from './views/ForagingActivity';
 import { AlchemyActivity } from './views/AlchemyActivity';
+import { CraftingActivity } from './views/CraftingActivity';
 import { DowntimeProvider } from './DowntimeContext';
 
 type DowntimeView = 'tiles' | 'fishing' | 'foraging' | 'alchemy' | 'crafting';
@@ -56,14 +57,14 @@ export function DowntimePanel({ currentDayKey, currentSlot }: DowntimePanelProps
               currentSlot={currentSlot}
             />
           )}
-          {activeView === 'crafting' && <ActivityPlaceholder name="Crafting" />}
+          {activeView === 'crafting' && (
+            <CraftingActivity
+              currentDayKey={currentDayKey}
+              currentSlot={currentSlot}
+            />
+          )}
         </main>
       </div>
     </DowntimeProvider>
   );
-}
-
-// Temporary placeholder - will be replaced with actual activity views
-function ActivityPlaceholder({ name }: { name: string }) {
-  return <div className="text-gray-500">{name} activity coming soon...</div>;
 }

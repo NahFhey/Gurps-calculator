@@ -118,25 +118,22 @@ export interface AlchemyData {
 
 /**
  * Configuration data for crafting activities.
- * Includes project tracking and material management.
+ * Slot-bounded: each task completes within a single slot.
+ * NO multi-slot project persistence - each attempt is independent.
  */
 export interface CraftingData {
   /** Discriminator field for the discriminated union */
   type: 'crafting';
-  /** Ongoing project this work session belongs to */
-  projectId: string;
   /** Recipe/blueprint being followed */
   recipeId: string;
-  /** Material items being consumed */
-  materialIds: string[];
-  /** Workshop tools and equipment being used */
-  toolIds: string[];
-  /** Current crafting phase */
-  phase: 'setup' | 'design' | 'craft';
-  /** Work units completed so far */
-  progressCurrent: number;
-  /** Total work units needed to complete */
-  progressRequired: number;
+  /** Inventory item IDs for materials being consumed */
+  materialInstanceIds: string[];
+  /** Inventory item IDs for tools being used */
+  toolInstanceIds: string[];
+  /** Target quality level for the crafted item */
+  qualityTarget: 'basic' | 'standard' | 'fine' | 'masterwork';
+  /** Cumulative skill modifier from conditions, equipment, etc. */
+  skillModifier: number;
 }
 
 /**

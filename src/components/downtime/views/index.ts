@@ -16,3 +16,6 @@ export { ForagingTaskCard } from './ForagingTaskCard';
 export { AlchemyActivity } from './AlchemyActivity';
 export { AlchemyTaskForm } from './AlchemyTaskForm';
 export { AlchemyTaskCard } from './AlchemyTaskCard';
+export { CraftingActivity } from './CraftingActivity';
+export { CraftingTaskForm } from './CraftingTaskForm';
+export { CraftingTaskCard } from './CraftingTaskCard';

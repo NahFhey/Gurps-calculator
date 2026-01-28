@@ -27,6 +27,9 @@ import type {
   AlchemyFormula,
   AlchemyBatch,
   AlchemyLab,
+  Recipe,
+  Material,
+  Facility,
 } from '../../types/campaign';
 
 // ============================================================================
@@ -60,6 +63,12 @@ interface DowntimeContextValue {
   alchemyBatches: AlchemyBatch[];
   /** Alchemy labs */
   alchemyLabs: AlchemyLab[];
+  /** Crafting recipes */
+  craftingRecipes: Recipe[];
+  /** Materials for crafting */
+  craftingMaterials: Material[];
+  /** Crafting workshops */
+  craftingWorkshops: Facility[];
   /** Current day key */
   currentDayKey: number;
   /** Current time slot */
@@ -174,6 +183,24 @@ export function DowntimeProvider({
     [campaignState.entities?.alchemyLabs]
   );
 
+  // Extract crafting recipes
+  const craftingRecipes = useMemo(
+    () => Object.values(campaignState.entities?.recipes ?? {}),
+    [campaignState.entities?.recipes]
+  );
+
+  // Extract crafting materials
+  const craftingMaterials = useMemo(
+    () => Object.values(campaignState.entities?.materials ?? {}),
+    [campaignState.entities?.materials]
+  );
+
+  // Extract crafting workshops (facilities with type 'workshop')
+  const craftingWorkshops = useMemo(() => {
+    const facilities = Object.values(campaignState.entities?.facilities ?? {});
+    return facilities.filter((f) => f.facilityType === 'workshop');
+  }, [campaignState.entities?.facilities]);
+
   // Get current time from campaign state
   const currentDayKey = dayKeyOverride ?? campaignState.time?.day ?? 1;
   const currentSlot = slotOverride ?? campaignState.dayPlanner?.currentSlot ?? 0;
@@ -210,6 +237,9 @@ export function DowntimeProvider({
       alchemyFormulas,
       alchemyBatches,
       alchemyLabs,
+      craftingRecipes,
+      craftingMaterials,
+      craftingWorkshops,
       currentDayKey,
       currentSlot,
       createDowntimeTask,
@@ -230,6 +260,9 @@ export function DowntimeProvider({
       alchemyFormulas,
       alchemyBatches,
       alchemyLabs,
+      craftingRecipes,
+      craftingMaterials,
+      craftingWorkshops,
       currentDayKey,
       currentSlot,
     ]
