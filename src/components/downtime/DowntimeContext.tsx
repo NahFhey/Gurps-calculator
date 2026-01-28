@@ -17,7 +17,7 @@ import {
   cancelTask,
 } from '../../state/downtime';
 import type { DowntimeState, TaskResults } from '../../types/downtime';
-import type { Character, GatheringSpecies, GatheringTool, GatheringEnvironment } from '../../types/campaign';
+import type { Character, GatheringSpecies, GatheringTool, GatheringEnvironment, GatheringTable } from '../../types/campaign';
 
 // ============================================================================
 // CONTEXT TYPE DEFINITIONS
@@ -36,6 +36,12 @@ interface DowntimeContextValue {
   fishSpecies: GatheringSpecies[];
   /** All gathering tools */
   tools: GatheringTool[];
+  /** Available foraging biomes (all environments) */
+  foragingBiomes: GatheringEnvironment[];
+  /** Foraging nodes (plant and game species) */
+  foragingNodes: GatheringSpecies[];
+  /** Gathering tables for loot resolution */
+  gatheringTables: GatheringTable[];
   /** Current day key */
   currentDayKey: number;
   /** Current time slot */
@@ -108,6 +114,24 @@ export function DowntimeProvider({
     [campaignState.entities?.gatheringTools]
   );
 
+  // Extract foraging biomes (all environments)
+  const foragingBiomes = useMemo(
+    () => Object.values(campaignState.entities?.gatheringEnvironments ?? {}),
+    [campaignState.entities?.gatheringEnvironments]
+  );
+
+  // Extract foraging nodes (plant and game species)
+  const foragingNodes = useMemo(() => {
+    const species = Object.values(campaignState.entities?.gatheringSpecies ?? {});
+    return species.filter((s) => s.category === 'plant' || s.category === 'game');
+  }, [campaignState.entities?.gatheringSpecies]);
+
+  // Extract gathering tables
+  const gatheringTables = useMemo(
+    () => Object.values(campaignState.entities?.gatheringTables ?? {}),
+    [campaignState.entities?.gatheringTables]
+  );
+
   // Get current time from campaign state
   const currentDayKey = dayKeyOverride ?? campaignState.time?.day ?? 1;
   const currentSlot = slotOverride ?? campaignState.dayPlanner?.currentSlot ?? 0;
@@ -137,6 +161,9 @@ export function DowntimeProvider({
       fishingSpots,
       fishSpecies,
       tools,
+      foragingBiomes,
+      foragingNodes,
+      gatheringTables,
       currentDayKey,
       currentSlot,
       createDowntimeTask,
@@ -150,6 +177,9 @@ export function DowntimeProvider({
       fishingSpots,
       fishSpecies,
       tools,
+      foragingBiomes,
+      foragingNodes,
+      gatheringTables,
       currentDayKey,
       currentSlot,
     ]

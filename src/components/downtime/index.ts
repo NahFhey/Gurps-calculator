@@ -20,4 +20,7 @@ export {
   FishingActivity,
   FishingTaskForm,
   FishingTaskCard,
+  ForagingActivity,
+  ForagingTaskForm,
+  ForagingTaskCard,
 } from './views';

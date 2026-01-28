@@ -10,3 +10,6 @@ export { TimeAdvancementBlocker } from './TimeAdvancementBlocker';
 export { FishingActivity } from './FishingActivity';
 export { FishingTaskForm } from './FishingTaskForm';
 export { FishingTaskCard } from './FishingTaskCard';
+export { ForagingActivity } from './ForagingActivity';
+export { ForagingTaskForm } from './ForagingTaskForm';
+export { ForagingTaskCard } from './ForagingTaskCard';
