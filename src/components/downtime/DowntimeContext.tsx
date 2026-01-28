@@ -17,7 +17,17 @@ import {
   cancelTask,
 } from '../../state/downtime';
 import type { DowntimeState, TaskResults } from '../../types/downtime';
-import type { Character, GatheringSpecies, GatheringTool, GatheringEnvironment, GatheringTable } from '../../types/campaign';
+import type {
+  Character,
+  GatheringSpecies,
+  GatheringTool,
+  GatheringEnvironment,
+  GatheringTable,
+  AlchemyReagent,
+  AlchemyFormula,
+  AlchemyBatch,
+  AlchemyLab,
+} from '../../types/campaign';
 
 // ============================================================================
 // CONTEXT TYPE DEFINITIONS
@@ -42,6 +52,14 @@ interface DowntimeContextValue {
   foragingNodes: GatheringSpecies[];
   /** Gathering tables for loot resolution */
   gatheringTables: GatheringTable[];
+  /** Alchemy reagents */
+  alchemyReagents: AlchemyReagent[];
+  /** Alchemy formulas (saved recipes) */
+  alchemyFormulas: AlchemyFormula[];
+  /** Alchemy batches (active and completed) */
+  alchemyBatches: AlchemyBatch[];
+  /** Alchemy labs */
+  alchemyLabs: AlchemyLab[];
   /** Current day key */
   currentDayKey: number;
   /** Current time slot */
@@ -132,6 +150,30 @@ export function DowntimeProvider({
     [campaignState.entities?.gatheringTables]
   );
 
+  // Extract alchemy reagents
+  const alchemyReagents = useMemo(
+    () => Object.values(campaignState.entities?.alchemyReagents ?? {}),
+    [campaignState.entities?.alchemyReagents]
+  );
+
+  // Extract alchemy formulas
+  const alchemyFormulas = useMemo(
+    () => Object.values(campaignState.entities?.alchemyFormulas ?? {}),
+    [campaignState.entities?.alchemyFormulas]
+  );
+
+  // Extract alchemy batches
+  const alchemyBatches = useMemo(
+    () => Object.values(campaignState.entities?.alchemyBatches ?? {}),
+    [campaignState.entities?.alchemyBatches]
+  );
+
+  // Extract alchemy labs
+  const alchemyLabs = useMemo(
+    () => Object.values(campaignState.entities?.alchemyLabs ?? {}),
+    [campaignState.entities?.alchemyLabs]
+  );
+
   // Get current time from campaign state
   const currentDayKey = dayKeyOverride ?? campaignState.time?.day ?? 1;
   const currentSlot = slotOverride ?? campaignState.dayPlanner?.currentSlot ?? 0;
@@ -164,6 +206,10 @@ export function DowntimeProvider({
       foragingBiomes,
       foragingNodes,
       gatheringTables,
+      alchemyReagents,
+      alchemyFormulas,
+      alchemyBatches,
+      alchemyLabs,
       currentDayKey,
       currentSlot,
       createDowntimeTask,
@@ -180,6 +226,10 @@ export function DowntimeProvider({
       foragingBiomes,
       foragingNodes,
       gatheringTables,
+      alchemyReagents,
+      alchemyFormulas,
+      alchemyBatches,
+      alchemyLabs,
       currentDayKey,
       currentSlot,
     ]

@@ -23,4 +23,7 @@ export {
   ForagingActivity,
   ForagingTaskForm,
   ForagingTaskCard,
+  AlchemyActivity,
+  AlchemyTaskForm,
+  AlchemyTaskCard,
 } from './views';

@@ -3,6 +3,7 @@ import { Moon, ArrowLeft } from 'lucide-react';
 import { TileGrid } from './views/TileGrid';
 import { FishingActivity } from './views/FishingActivity';
 import { ForagingActivity } from './views/ForagingActivity';
+import { AlchemyActivity } from './views/AlchemyActivity';
 import { DowntimeProvider } from './DowntimeContext';
 
 type DowntimeView = 'tiles' | 'fishing' | 'foraging' | 'alchemy' | 'crafting';
@@ -49,7 +50,12 @@ export function DowntimePanel({ currentDayKey, currentSlot }: DowntimePanelProps
               currentSlot={currentSlot}
             />
           )}
-          {activeView === 'alchemy' && <ActivityPlaceholder name="Alchemy" />}
+          {activeView === 'alchemy' && (
+            <AlchemyActivity
+              currentDayKey={currentDayKey}
+              currentSlot={currentSlot}
+            />
+          )}
           {activeView === 'crafting' && <ActivityPlaceholder name="Crafting" />}
         </main>
       </div>
