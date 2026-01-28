@@ -91,7 +91,12 @@ export {
 } from './downtimeMigration';
 
 // Validation
-export { validateTaskCreation, type ValidationResult } from './downtimeValidation';
+export {
+  validateTaskCreation,
+  validateAssignment,
+  validateLockOnCreate,
+  type ValidationResult,
+} from './downtimeValidation';
 
 // Errors
 export {

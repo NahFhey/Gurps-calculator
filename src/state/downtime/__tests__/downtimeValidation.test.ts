@@ -1,9 +1,15 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import type { DowntimeState, DowntimeTask, FishingData } from '../../../types/downtime';
+import type {
+  DowntimeState,
+  DowntimeTask,
+  FishingData,
+  AlchemyData,
+  TaskStatus,
+} from '../../../types/downtime';
 import { downtimeInitialState } from '../downtimeInitialState';
 import { downtimeReducer } from '../downtimeReducer';
-import { createTask, type CreateTaskPayload } from '../downtimeActions';
-import { validateTaskCreation } from '../downtimeValidation';
+import { createTask, cancelTask, type CreateTaskPayload } from '../downtimeActions';
+import { validateTaskCreation, validateLockOnCreate } from '../downtimeValidation';
 import { DowntimeValidationError, DOWNTIME_ERROR_CODES } from '../downtimeErrors';
 
 // ============================================================================
@@ -28,6 +34,20 @@ function createFishingData(overrides?: Partial<FishingData>): FishingData {
 }
 
 /**
+ * Creates alchemy activity data for tests.
+ */
+function createAlchemyData(overrides?: Partial<AlchemyData>): AlchemyData {
+  return {
+    type: 'alchemy',
+    recipeId: 'recipe-healing-potion',
+    formulaId: 'formula-basic',
+    reagentIds: ['reagent-1'],
+    batchSize: 1,
+    ...overrides,
+  };
+}
+
+/**
  * Creates a task payload for tests.
  */
 function createTaskPayload(overrides?: Partial<CreateTaskPayload>): CreateTaskPayload {
@@ -42,28 +62,35 @@ function createTaskPayload(overrides?: Partial<CreateTaskPayload>): CreateTaskPa
   };
 }
 
-/**
- * Creates a pending task for tests.
- */
-function createPendingTask(options: {
+interface TaskOptions {
   id?: string;
   leaderId?: string;
   helperIds?: string[];
   dayKey?: number;
   slot?: number;
-}): DowntimeTask {
+  activityType?: 'fishing' | 'alchemy';
+  activityData?: FishingData | AlchemyData;
+}
+
+/**
+ * Creates a pending task for tests.
+ */
+function createPendingTask(options: TaskOptions = {}): DowntimeTask {
   const id = options.id ?? `task-${++idCounter}`;
   const now = Date.now();
+  const activityType = options.activityType ?? 'fishing';
+  const activityData = options.activityData ??
+    (activityType === 'alchemy' ? createAlchemyData() : createFishingData());
 
   return {
     id,
-    activityType: 'fishing',
+    activityType,
     dayKey: options.dayKey ?? 1,
     slot: options.slot ?? 0,
     leaderId: options.leaderId ?? 'char-1',
     helperIds: options.helperIds ?? [],
     status: 'pending',
-    activityData: createFishingData(),
+    activityData,
     createdAt: now,
     updatedAt: now,
   };
@@ -72,16 +99,20 @@ function createPendingTask(options: {
 /**
  * Creates a cancelled task for tests.
  */
-function createCancelledTask(options: {
-  id?: string;
-  leaderId?: string;
-  helperIds?: string[];
-  dayKey?: number;
-  slot?: number;
-}): DowntimeTask {
+function createCancelledTask(options: TaskOptions = {}): DowntimeTask {
   return {
     ...createPendingTask(options),
     status: 'cancelled',
+  };
+}
+
+/**
+ * Creates a task with a specific status for tests.
+ */
+function createTaskWithStatus(status: TaskStatus, options: TaskOptions = {}): DowntimeTask {
+  return {
+    ...createPendingTask(options),
+    status,
   };
 }
 
@@ -236,9 +267,14 @@ describe('validateTaskCreation - single assignment', () => {
     expect(result.valid).toBe(true);
   });
 
-  it('allows task when only cancelled tasks exist in slot', () => {
+  it('allows task when only cancelled tasks exist in slot (different target)', () => {
     const state = createTestState([
-      createCancelledTask({ leaderId: 'char-1', dayKey: 1, slot: 0 }),
+      createCancelledTask({
+        leaderId: 'char-1',
+        dayKey: 1,
+        slot: 0,
+        activityData: createFishingData({ speciesId: 'trout' }),
+      }),
     ]);
 
     const result = validateTaskCreation(state, createTaskPayload({
@@ -247,9 +283,10 @@ describe('validateTaskCreation - single assignment', () => {
       slot: 0,
       leaderId: 'char-1', // Same as cancelled task
       helperIds: [],
+      activityData: createFishingData({ speciesId: 'salmon' }), // Different target to avoid lock
     }));
 
-    // Cancelled tasks don't count as assigned
+    // Cancelled tasks don't count as assigned (but locks still apply, hence different target)
     expect(result.valid).toBe(true);
   });
 
@@ -486,5 +523,361 @@ describe('DowntimeValidationError', () => {
 
     expect(error).toBeInstanceOf(Error);
     expect(error).toBeInstanceOf(DowntimeValidationError);
+  });
+});
+
+// ============================================================================
+// validateLockOnCreate - LOCK VALIDATION TESTS
+// ============================================================================
+
+describe('validateLockOnCreate', () => {
+  beforeEach(() => {
+    idCounter = 0;
+  });
+
+  it('allows first task for a target', () => {
+    const state = createTestState([]);
+    const result = validateLockOnCreate(state, createTaskPayload({
+      activityType: 'fishing',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-1',
+      helperIds: [],
+      activityData: createFishingData({ speciesId: 'trout' }),
+    }));
+
+    expect(result.valid).toBe(true);
+  });
+
+  it('blocks second task for same target by same character (pending)', () => {
+    const existingTask = createPendingTask({
+      leaderId: 'char-1',
+      dayKey: 1,
+      slot: 0,
+      activityType: 'fishing',
+      activityData: createFishingData({ speciesId: 'trout' }),
+    });
+    const state = createTestState([existingTask]);
+
+    const result = validateLockOnCreate(state, createTaskPayload({
+      activityType: 'fishing',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-1',
+      helperIds: [],
+      activityData: createFishingData({ speciesId: 'trout' }),
+    }));
+
+    expect(result.valid).toBe(false);
+    expect(result.code).toBe(DOWNTIME_ERROR_CODES.LOCK_CONFLICT);
+  });
+
+  it('blocks task for same target after cancellation (lock persists)', () => {
+    // Create a pending task then cancel it via reducer
+    const initialState = downtimeInitialState;
+    const state1 = downtimeReducer(initialState, createTask(createTaskPayload({
+      activityType: 'fishing',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-1',
+      helperIds: [],
+      activityData: createFishingData({ speciesId: 'trout' }),
+    })));
+
+    // Get the created task ID
+    const taskId = state1.taskOrder[0];
+
+    // Cancel the task
+    const stateWithCancel = downtimeReducer(state1, cancelTask(taskId));
+
+    // Verify task is cancelled
+    expect(stateWithCancel.tasksById[taskId].status).toBe('cancelled');
+
+    // Try to create another task for same target - should fail due to lock
+    const result = validateLockOnCreate(stateWithCancel, createTaskPayload({
+      activityType: 'fishing',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-1',
+      helperIds: [],
+      activityData: createFishingData({ speciesId: 'trout' }),
+    }));
+
+    expect(result.valid).toBe(false);
+    expect(result.code).toBe(DOWNTIME_ERROR_CODES.LOCK_CONFLICT);
+  });
+
+  it('allows different character to target same thing', () => {
+    const state = createTestState([
+      createPendingTask({
+        leaderId: 'char-1',
+        dayKey: 1,
+        slot: 0,
+        activityType: 'fishing',
+        activityData: createFishingData({ speciesId: 'trout' }),
+      }),
+    ]);
+
+    const result = validateLockOnCreate(state, createTaskPayload({
+      activityType: 'fishing',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-2', // Different character
+      helperIds: [],
+      activityData: createFishingData({ speciesId: 'trout' }),
+    }));
+
+    expect(result.valid).toBe(true);
+  });
+
+  it('allows same character to target different thing', () => {
+    const state = createTestState([
+      createCancelledTask({
+        leaderId: 'char-1',
+        dayKey: 1,
+        slot: 0,
+        activityType: 'fishing',
+        activityData: createFishingData({ speciesId: 'trout' }),
+      }),
+    ]);
+
+    const result = validateLockOnCreate(state, createTaskPayload({
+      activityType: 'fishing',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-1',
+      helperIds: [],
+      activityData: createFishingData({ speciesId: 'salmon' }), // Different target
+    }));
+
+    expect(result.valid).toBe(true);
+  });
+
+  it('allows same target in different slot', () => {
+    const state = createTestState([
+      createCancelledTask({
+        leaderId: 'char-1',
+        dayKey: 1,
+        slot: 0,
+        activityType: 'fishing',
+        activityData: createFishingData({ speciesId: 'trout' }),
+      }),
+    ]);
+
+    const result = validateLockOnCreate(state, createTaskPayload({
+      activityType: 'fishing',
+      dayKey: 1,
+      slot: 1, // Different slot
+      leaderId: 'char-1',
+      helperIds: [],
+      activityData: createFishingData({ speciesId: 'trout' }),
+    }));
+
+    expect(result.valid).toBe(true);
+  });
+
+  it('allows same target on different day', () => {
+    const state = createTestState([
+      createCancelledTask({
+        leaderId: 'char-1',
+        dayKey: 1,
+        slot: 0,
+        activityType: 'fishing',
+        activityData: createFishingData({ speciesId: 'trout' }),
+      }),
+    ]);
+
+    const result = validateLockOnCreate(state, createTaskPayload({
+      activityType: 'fishing',
+      dayKey: 2, // Different day
+      slot: 0,
+      leaderId: 'char-1',
+      helperIds: [],
+      activityData: createFishingData({ speciesId: 'trout' }),
+    }));
+
+    expect(result.valid).toBe(true);
+  });
+
+  it('lock persists through all task statuses', () => {
+    const statuses: TaskStatus[] = ['pending', 'in_progress', 'resolved', 'cancelled'];
+
+    for (const status of statuses) {
+      const state = createTestState([
+        createTaskWithStatus(status, {
+          leaderId: 'char-1',
+          dayKey: 1,
+          slot: 0,
+          activityType: 'alchemy',
+          activityData: createAlchemyData({ recipeId: 'potion1' }),
+        }),
+      ]);
+
+      const result = validateLockOnCreate(state, createTaskPayload({
+        activityType: 'alchemy',
+        dayKey: 1,
+        slot: 0,
+        leaderId: 'char-1',
+        helperIds: [],
+        activityData: createAlchemyData({ recipeId: 'potion1' }),
+      }));
+
+      expect(result.valid).toBe(false);
+      expect(result.code).toBe(DOWNTIME_ERROR_CODES.LOCK_CONFLICT);
+    }
+  });
+
+  it('includes metadata in lock conflict error', () => {
+    const state = createTestState([
+      createPendingTask({
+        leaderId: 'char-1',
+        dayKey: 1,
+        slot: 0,
+        activityType: 'fishing',
+        activityData: createFishingData({ speciesId: 'trout' }),
+      }),
+    ]);
+
+    const result = validateLockOnCreate(state, createTaskPayload({
+      activityType: 'fishing',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-1',
+      helperIds: [],
+      activityData: createFishingData({ speciesId: 'trout' }),
+    }));
+
+    expect(result.valid).toBe(false);
+    expect(result.meta?.activityType).toBe('fishing');
+    expect(result.meta?.targetKey).toBe('species:trout');
+    expect(result.meta?.characterId).toBe('char-1');
+    expect(result.meta?.dayKey).toBe(1);
+    expect(result.meta?.slot).toBe(0);
+  });
+});
+
+// ============================================================================
+// validateTaskCreation - COMBINED VALIDATION TESTS
+// ============================================================================
+
+describe('validateTaskCreation - combined validation', () => {
+  beforeEach(() => {
+    idCounter = 0;
+  });
+
+  it('runs assignment check before lock check', () => {
+    // Create a state where both assignment AND lock would fail
+    // The assignment check should fail first
+    const state = createTestState([
+      createPendingTask({
+        leaderId: 'char-1',
+        dayKey: 1,
+        slot: 0,
+        activityType: 'fishing',
+        activityData: createFishingData({ speciesId: 'trout' }),
+      }),
+    ]);
+
+    const result = validateTaskCreation(state, createTaskPayload({
+      activityType: 'fishing',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-1', // Same leader - assignment conflict
+      helperIds: [],
+      activityData: createFishingData({ speciesId: 'trout' }), // Same target - lock conflict
+    }));
+
+    // Should fail on assignment first, not lock
+    expect(result.valid).toBe(false);
+    expect(result.code).toBe(DOWNTIME_ERROR_CODES.LEADER_ALREADY_ASSIGNED);
+  });
+
+  it('checks lock when assignment passes', () => {
+    // cancelled task - assignment passes (cancelled doesn't block assignment)
+    // but lock still fails (lock persists through cancellation)
+    const state = createTestState([
+      createCancelledTask({
+        leaderId: 'char-1',
+        dayKey: 1,
+        slot: 0,
+        activityType: 'fishing',
+        activityData: createFishingData({ speciesId: 'trout' }),
+      }),
+    ]);
+
+    const result = validateTaskCreation(state, createTaskPayload({
+      activityType: 'fishing',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-1',
+      helperIds: [],
+      activityData: createFishingData({ speciesId: 'trout' }),
+    }));
+
+    // Assignment passes (cancelled), but lock fails
+    expect(result.valid).toBe(false);
+    expect(result.code).toBe(DOWNTIME_ERROR_CODES.LOCK_CONFLICT);
+  });
+});
+
+// ============================================================================
+// downtimeReducer - LOCK VALIDATION TESTS
+// ============================================================================
+
+describe('downtimeReducer - lock validation', () => {
+  beforeEach(() => {
+    idCounter = 0;
+  });
+
+  it('throws DowntimeValidationError on lock conflict after cancellation', () => {
+    // Create task
+    const state1 = downtimeReducer(downtimeInitialState, createTask(createTaskPayload({
+      activityType: 'fishing',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-1',
+      activityData: createFishingData({ speciesId: 'trout' }),
+    })));
+
+    // Cancel it
+    const taskId = state1.taskOrder[0];
+    const state2 = downtimeReducer(state1, cancelTask(taskId));
+
+    // Try to recreate same task - should throw
+    expect(() => {
+      downtimeReducer(state2, createTask(createTaskPayload({
+        activityType: 'fishing',
+        dayKey: 1,
+        slot: 0,
+        leaderId: 'char-1',
+        activityData: createFishingData({ speciesId: 'trout' }),
+      })));
+    }).toThrow(DowntimeValidationError);
+  });
+
+  it('allows different target after cancellation', () => {
+    // Create task
+    const state1 = downtimeReducer(downtimeInitialState, createTask(createTaskPayload({
+      activityType: 'fishing',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-1',
+      activityData: createFishingData({ speciesId: 'trout' }),
+    })));
+
+    // Cancel it
+    const taskId = state1.taskOrder[0];
+    const state2 = downtimeReducer(state1, cancelTask(taskId));
+
+    // Create different target - should succeed
+    const state3 = downtimeReducer(state2, createTask(createTaskPayload({
+      activityType: 'fishing',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-1',
+      activityData: createFishingData({ speciesId: 'salmon' }), // Different target
+    })));
+
+    expect(Object.keys(state3.tasksById)).toHaveLength(2);
   });
 });
