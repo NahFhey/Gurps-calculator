@@ -33,6 +33,19 @@ export function validateAssignment(
   state: DowntimeState,
   payload: CreateTaskPayload
 ): ValidationResult {
+  // Check for self-assignment (leader cannot also be a helper)
+  if (payload.helperIds.includes(payload.leaderId)) {
+    return {
+      valid: false,
+      code: DOWNTIME_ERROR_CODES.HELPER_ALREADY_ASSIGNED,
+      message: `${payload.leaderId} cannot be both leader and helper on the same task`,
+      meta: {
+        characterId: payload.leaderId,
+        existingRole: 'leader',
+      },
+    };
+  }
+
   // Check leader assignment
   const leaderAssignment = selectCharacterAssignmentForSlot(
     state,
@@ -139,13 +152,14 @@ export function validateLockOnCreate(
 export function getToolIdsFromActivityData(activityData: ActivityData): string[] {
   switch (activityData.type) {
     case 'fishing':
-      return activityData.toolIds;
+      return activityData.toolIds ?? [];
     case 'foraging':
-      return activityData.toolIds;
+      return activityData.toolIds ?? [];
     case 'alchemy':
       return activityData.toolIds ?? [];
     case 'crafting':
-      return activityData.toolIds;
+      // CraftingData uses toolInstanceIds instead of toolIds
+      return activityData.toolInstanceIds ?? [];
     case 'rest':
       return []; // Rest uses no tools
     default:

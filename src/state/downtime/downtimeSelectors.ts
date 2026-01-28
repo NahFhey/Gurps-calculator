@@ -443,6 +443,29 @@ export function canCreateTaskForTarget(
  * NOTE: Cancelled tasks FREE their tools (unlike locks which persist).
  * Only pending and in_progress tasks hold tool reservations.
  */
+/**
+ * Extracts tool IDs from activity data, handling different field names.
+ * Mirrors the logic in downtimeValidation.ts
+ */
+function getToolIdsFromTask(task: DowntimeTask): string[] {
+  const data = task.activityData;
+  switch (data.type) {
+    case 'fishing':
+      return (data as { toolIds?: string[] }).toolIds ?? [];
+    case 'foraging':
+      return (data as { toolIds?: string[] }).toolIds ?? [];
+    case 'alchemy':
+      return (data as { toolIds?: string[] }).toolIds ?? [];
+    case 'crafting':
+      // CraftingData uses toolInstanceIds
+      return (data as { toolInstanceIds?: string[] }).toolInstanceIds ?? [];
+    case 'rest':
+      return [];
+    default:
+      return [];
+  }
+}
+
 export function selectReservedToolIdsForSlot(
   state: DowntimeState,
   dayKey: number,
@@ -458,12 +481,10 @@ export function selectReservedToolIdsForSlot(
       continue;
     }
 
-    // Extract toolIds from activity data
-    const activityData = task.activityData as { toolIds?: string[] };
-    if (activityData.toolIds) {
-      for (const toolId of activityData.toolIds) {
-        reservedTools.add(toolId);
-      }
+    // Extract tool IDs using the helper function
+    const toolIds = getToolIdsFromTask(task);
+    for (const toolId of toolIds) {
+      reservedTools.add(toolId);
     }
   }
 
