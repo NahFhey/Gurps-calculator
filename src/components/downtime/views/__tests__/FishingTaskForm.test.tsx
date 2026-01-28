@@ -1,0 +1,287 @@
+import '@testing-library/jest-dom';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { FishingTaskForm } from '../FishingTaskForm';
+import { downtimeInitialState } from '../../../../state/downtime/downtimeInitialState';
+import type { Character, GatheringSpecies, GatheringTool, GatheringEnvironment } from '../../../../types/campaign';
+
+// Mock data
+const mockCharacters: Character[] = [
+  {
+    id: 'char-1',
+    name: 'Aldric',
+    hp: { current: 10, max: 10 },
+    fp: { current: 10, max: 10 },
+    speed: 5,
+    st: 10,
+    dx: 10,
+    iq: 10,
+    ht: 10,
+    skills: {},
+    advantages: [],
+    disadvantages: [],
+    equipment: [],
+  },
+  {
+    id: 'char-2',
+    name: 'Brina',
+    hp: { current: 12, max: 12 },
+    fp: { current: 12, max: 12 },
+    speed: 5,
+    st: 12,
+    dx: 10,
+    iq: 10,
+    ht: 12,
+    skills: {},
+    advantages: [],
+    disadvantages: [],
+    equipment: [],
+  },
+];
+
+const mockSpots: GatheringEnvironment[] = [
+  {
+    id: 'spot-1',
+    name: 'River Bank',
+    supportedModes: ['Fishing'],
+    defaultsByMode: {
+      Fishing: {
+        randomCatchTableId: 'table-1',
+        mildEventTableId: null,
+        rareEventTableId: null,
+      },
+    },
+    skillMod: 0,
+  },
+  {
+    id: 'spot-2',
+    name: 'Deep Lake',
+    supportedModes: ['Fishing'],
+    defaultsByMode: {
+      Fishing: {
+        randomCatchTableId: 'table-2',
+        mildEventTableId: null,
+        rareEventTableId: null,
+      },
+    },
+    skillMod: -2,
+  },
+];
+
+const mockSpecies: GatheringSpecies[] = [
+  {
+    id: 'species-1',
+    name: 'Trout',
+    type: 'fish',
+    tags: ['freshwater'],
+    foodType: 'fish',
+    yieldMeatFormula: '1d6',
+    secondaryMaterialType: null,
+    yieldSecondaryFormula: null,
+    secondaryNameOverride: null,
+    st: null,
+    specialRules: [],
+  },
+  {
+    id: 'species-2',
+    name: 'Bass',
+    type: 'fish',
+    tags: ['freshwater'],
+    foodType: 'fish',
+    yieldMeatFormula: '2d6',
+    secondaryMaterialType: null,
+    yieldSecondaryFormula: null,
+    secondaryNameOverride: null,
+    st: null,
+    specialRules: [],
+  },
+];
+
+const mockTools: GatheringTool[] = [
+  {
+    id: 'tool-1',
+    name: 'Fishing Rod',
+    toolType: 'rod',
+    allowedModes: ['Fishing'],
+    allowedMethods: [],
+    bonuses: [{ type: 'skill_bonus', value: 1 }],
+    durability: 10,
+    notes: '',
+  },
+  {
+    id: 'tool-2',
+    name: 'Fishing Net',
+    toolType: 'net',
+    allowedModes: ['Fishing'],
+    allowedMethods: [],
+    bonuses: [{ type: 'yield_bonus', dice: 1 }],
+    durability: 5,
+    notes: '',
+  },
+];
+
+describe('FishingTaskForm', () => {
+  const defaultProps = {
+    characters: mockCharacters,
+    spots: mockSpots,
+    species: mockSpecies,
+    tools: mockTools,
+    state: downtimeInitialState,
+    currentDayKey: 1,
+    currentSlot: 0,
+    onSubmit: vi.fn(),
+    onCancel: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('rendering', () => {
+    it('renders form title', () => {
+      render(<FishingTaskForm {...defaultProps} />);
+      expect(screen.getByText('New Fishing Task')).toBeInTheDocument();
+    });
+
+    it('renders leader select with characters', () => {
+      render(<FishingTaskForm {...defaultProps} />);
+
+      const leaderSelect = screen.getByTestId('leader-select');
+      expect(leaderSelect).toBeInTheDocument();
+
+      // Check that the select has the expected options
+      const options = leaderSelect.querySelectorAll('option');
+      expect(options.length).toBe(3); // "Select character..." + 2 characters
+      expect(options[1]).toHaveTextContent('Aldric');
+      expect(options[2]).toHaveTextContent('Brina');
+    });
+
+    it('renders spot select with spots', () => {
+      render(<FishingTaskForm {...defaultProps} />);
+
+      const spotSelect = screen.getByTestId('spot-select');
+      expect(spotSelect).toBeInTheDocument();
+    });
+
+    it('renders species select with species', () => {
+      render(<FishingTaskForm {...defaultProps} />);
+
+      const speciesSelect = screen.getByTestId('species-select');
+      expect(speciesSelect).toBeInTheDocument();
+    });
+
+    it('renders submit and cancel buttons', () => {
+      render(<FishingTaskForm {...defaultProps} />);
+
+      expect(screen.getByTestId('submit-button')).toBeInTheDocument();
+      expect(screen.getByTestId('cancel-button')).toBeInTheDocument();
+    });
+  });
+
+  describe('interactions', () => {
+    it('calls onCancel when cancel button is clicked', () => {
+      const onCancel = vi.fn();
+      render(<FishingTaskForm {...defaultProps} onCancel={onCancel} />);
+
+      fireEvent.click(screen.getByTestId('cancel-button'));
+      expect(onCancel).toHaveBeenCalled();
+    });
+
+    it('submit button is disabled when required fields are empty', () => {
+      render(<FishingTaskForm {...defaultProps} />);
+
+      const submitButton = screen.getByTestId('submit-button');
+      expect(submitButton).toBeDisabled();
+    });
+
+    it('enables submit button when required fields are filled', () => {
+      render(<FishingTaskForm {...defaultProps} />);
+
+      // Fill required fields
+      fireEvent.change(screen.getByTestId('leader-select'), {
+        target: { value: 'char-1' },
+      });
+      fireEvent.change(screen.getByTestId('spot-select'), {
+        target: { value: 'spot-1' },
+      });
+      fireEvent.change(screen.getByTestId('species-select'), {
+        target: { value: 'species-1' },
+      });
+
+      const submitButton = screen.getByTestId('submit-button');
+      expect(submitButton).not.toBeDisabled();
+    });
+
+    it('calls onSubmit with correct data when form is submitted', () => {
+      const onSubmit = vi.fn();
+      render(<FishingTaskForm {...defaultProps} onSubmit={onSubmit} />);
+
+      // Fill required fields
+      fireEvent.change(screen.getByTestId('leader-select'), {
+        target: { value: 'char-1' },
+      });
+      fireEvent.change(screen.getByTestId('spot-select'), {
+        target: { value: 'spot-1' },
+      });
+      fireEvent.change(screen.getByTestId('species-select'), {
+        target: { value: 'species-1' },
+      });
+
+      // Submit form
+      fireEvent.click(screen.getByTestId('submit-button'));
+
+      expect(onSubmit).toHaveBeenCalledWith({
+        leaderId: 'char-1',
+        helperIds: [],
+        activityData: expect.objectContaining({
+          type: 'fishing',
+          speciesId: 'species-1',
+          spotId: 'spot-1',
+        }),
+      });
+    });
+  });
+
+  describe('character availability', () => {
+    it('shows message when no characters are available', () => {
+      render(<FishingTaskForm {...defaultProps} characters={[]} />);
+      expect(
+        screen.getByText('All characters are already assigned to tasks in this slot')
+      ).toBeInTheDocument();
+    });
+
+    it('shows no available helpers message when only one character exists', () => {
+      render(
+        <FishingTaskForm {...defaultProps} characters={[mockCharacters[0]]} />
+      );
+
+      // Select the only character as leader
+      fireEvent.change(screen.getByTestId('leader-select'), {
+        target: { value: 'char-1' },
+      });
+
+      expect(screen.getByText('No available helpers')).toBeInTheDocument();
+    });
+  });
+
+  describe('tool selection', () => {
+    it('renders available tools', () => {
+      render(<FishingTaskForm {...defaultProps} />);
+
+      expect(screen.getByText('Fishing Rod')).toBeInTheDocument();
+      expect(screen.getByText('Fishing Net')).toBeInTheDocument();
+    });
+
+    it('shows no tools message when none available', () => {
+      render(<FishingTaskForm {...defaultProps} tools={[]} />);
+      expect(screen.getByText('No fishing tools available')).toBeInTheDocument();
+    });
+  });
+
+  describe('skill modifier calculation', () => {
+    it('shows skill modifier summary', () => {
+      render(<FishingTaskForm {...defaultProps} />);
+      expect(screen.getByText(/Total Skill Modifier:/)).toBeInTheDocument();
+    });
+  });
+});
