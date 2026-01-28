@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Moon, ArrowLeft } from 'lucide-react';
+import { TileGrid } from './views/TileGrid';
 
 type DowntimeView = 'tiles' | 'fishing' | 'foraging' | 'alchemy' | 'crafting';
 
@@ -31,9 +32,7 @@ export function DowntimePanel({ currentDayKey: _currentDayKey, currentSlot: _cur
       </header>
 
       <main className="flex-1 overflow-y-auto p-4">
-        {activeView === 'tiles' && (
-          <TileGridPlaceholder onNavigate={navigateTo} />
-        )}
+        {activeView === 'tiles' && <TileGrid onNavigate={navigateTo} />}
         {activeView === 'fishing' && <ActivityPlaceholder name="Fishing" />}
         {activeView === 'foraging' && <ActivityPlaceholder name="Foraging" />}
         {activeView === 'alchemy' && <ActivityPlaceholder name="Alchemy" />}
@@ -43,26 +42,7 @@ export function DowntimePanel({ currentDayKey: _currentDayKey, currentSlot: _cur
   );
 }
 
-// Temporary placeholders - will be replaced
-function TileGridPlaceholder({ onNavigate }: { onNavigate: (view: DowntimeView) => void }) {
-  return (
-    <div className="grid grid-cols-2 gap-4">
-      <button onClick={() => onNavigate('fishing')} className="p-4 bg-blue-100 rounded">
-        Fishing
-      </button>
-      <button onClick={() => onNavigate('foraging')} className="p-4 bg-green-100 rounded">
-        Foraging
-      </button>
-      <button onClick={() => onNavigate('alchemy')} className="p-4 bg-purple-100 rounded">
-        Alchemy
-      </button>
-      <button onClick={() => onNavigate('crafting')} className="p-4 bg-orange-100 rounded">
-        Crafting
-      </button>
-    </div>
-  );
-}
-
+// Temporary placeholder - will be replaced with actual activity views
 function ActivityPlaceholder({ name }: { name: string }) {
   return <div className="text-gray-500">{name} activity coming soon...</div>;
 }
