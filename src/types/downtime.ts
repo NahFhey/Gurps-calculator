@@ -19,6 +19,12 @@ export type TaskId = string;
 /** Unique identifier for a tool/equipment */
 export type ToolId = string;
 
+/**
+ * Composite key for targeting specific resources.
+ * Format: 'resourceType:resourceId' (e.g., 'recipe:123', 'species:456')
+ */
+export type ActivityTargetKey = string;
+
 // ============================================================================
 // ACTIVITY TYPES
 // ============================================================================
@@ -46,6 +52,140 @@ export type DowntimeActivityType =
  * - cancelled: Task was cancelled before completion
  */
 export type TaskStatus = 'pending' | 'in_progress' | 'resolved' | 'cancelled';
+
+// ============================================================================
+// ACTIVITY-SPECIFIC DATA INTERFACES
+// ============================================================================
+
+/**
+ * Configuration data for fishing activities.
+ * Includes location, equipment, and targeting information.
+ */
+export interface FishingData {
+  /** Discriminator field for the discriminated union */
+  type: 'fishing';
+  /** Target species to catch */
+  speciesId: string;
+  /** Fishing location/spot identifier */
+  spotId: string;
+  /** Equipment being used (rods, nets, traps, etc.) */
+  toolIds: string[];
+  /** Cumulative skill modifier from conditions, equipment, etc. */
+  skillModifier: number;
+  /** Expected yield amount on success */
+  targetYield: number;
+}
+
+/**
+ * Configuration data for foraging activities.
+ * Includes biome, node, and gathering table information.
+ */
+export interface ForagingData {
+  /** Discriminator field for the discriminated union */
+  type: 'foraging';
+  /** Environment/biome where foraging occurs */
+  biomeId: string;
+  /** Specific gathering node within the biome */
+  nodeId: string;
+  /** Random encounter/loot table for results */
+  tableId: string;
+  /** Equipment being used (baskets, knives, etc.) */
+  toolIds: string[];
+  /** Cumulative skill modifier from conditions, equipment, etc. */
+  skillModifier: number;
+}
+
+/**
+ * Configuration data for alchemy activities.
+ * Includes recipe, reagents, and batch configuration.
+ */
+export interface AlchemyData {
+  /** Discriminator field for the discriminated union */
+  type: 'alchemy';
+  /** High-level recipe category */
+  recipeId: string;
+  /** Specific formula being followed */
+  formulaId: string;
+  /** Reagent items being consumed */
+  reagentIds: string[];
+  /** Lab equipment and tools being used */
+  toolIds: string[];
+  /** Number of units being produced in this batch */
+  batchSize: number;
+  /** Modifiers for different alchemical aspects (potency, duration, etc.) */
+  aspectModifiers: Record<string, number>;
+}
+
+/**
+ * Configuration data for crafting activities.
+ * Includes project tracking and material management.
+ */
+export interface CraftingData {
+  /** Discriminator field for the discriminated union */
+  type: 'crafting';
+  /** Ongoing project this work session belongs to */
+  projectId: string;
+  /** Recipe/blueprint being followed */
+  recipeId: string;
+  /** Material items being consumed */
+  materialIds: string[];
+  /** Workshop tools and equipment being used */
+  toolIds: string[];
+  /** Current crafting phase */
+  phase: 'setup' | 'design' | 'craft';
+  /** Work units completed so far */
+  progressCurrent: number;
+  /** Total work units needed to complete */
+  progressRequired: number;
+}
+
+/**
+ * Configuration data for rest activities.
+ * Includes rest type and recovery modifiers.
+ */
+export interface RestData {
+  /** Discriminator field for the discriminated union */
+  type: 'rest';
+  /** Type of rest being performed */
+  restType: 'sleep' | 'light_rest' | 'meditation';
+  /** Bonus to recovery rolls from conditions (comfortable bed, etc.) */
+  recoveryBonus: number;
+}
+
+// ============================================================================
+// ACTIVITY DATA DISCRIMINATED UNION
+// ============================================================================
+
+/**
+ * Discriminated union of all activity-specific data types.
+ * Use the `type` field to narrow to specific activity data.
+ *
+ * @example
+ * ```ts
+ * if (task.activityData.type === 'fishing') {
+ *   // TypeScript knows activityData is FishingData here
+ *   console.log(task.activityData.speciesId);
+ * }
+ * ```
+ */
+export type ActivityData =
+  | FishingData
+  | ForagingData
+  | AlchemyData
+  | CraftingData
+  | RestData;
+
+// ============================================================================
+// TASK LOCK KEY
+// ============================================================================
+
+/**
+ * Composite key for task locking/deduplication.
+ * Format: 'activityType|characterId|dayKey|slot|targetKey'
+ * Used to prevent duplicate task assignments.
+ */
+export type TaskLockKey =
+  `${DowntimeActivityType}|${CharacterId}|${number}|${number}|${ActivityTargetKey}`;
 
 // ============================================================================
 // INVENTORY DELTA
@@ -109,16 +249,69 @@ export interface DowntimeTask {
   status: TaskStatus;
   /**
    * Activity-specific configuration data.
-   * Will be a discriminated union based on activityType in future.
-   * @todo Define specific interfaces for each activity type
+   * Discriminated union - use the `type` field to narrow.
    */
-  activityData: unknown;
+  activityData: ActivityData;
   /** Results populated when task is resolved */
   results?: TaskResults;
   /** Unix timestamp when task was created */
   createdAt: number;
   /** Unix timestamp of last modification */
   updatedAt: number;
+}
+
+// ============================================================================
+// TYPE GUARDS
+// ============================================================================
+
+/**
+ * Type guard to check if a task is a fishing task.
+ * Narrows the activityData type to FishingData.
+ */
+export function isFishingTask(
+  task: DowntimeTask
+): task is DowntimeTask & { activityData: FishingData } {
+  return task.activityData.type === 'fishing';
+}
+
+/**
+ * Type guard to check if a task is a foraging task.
+ * Narrows the activityData type to ForagingData.
+ */
+export function isForagingTask(
+  task: DowntimeTask
+): task is DowntimeTask & { activityData: ForagingData } {
+  return task.activityData.type === 'foraging';
+}
+
+/**
+ * Type guard to check if a task is an alchemy task.
+ * Narrows the activityData type to AlchemyData.
+ */
+export function isAlchemyTask(
+  task: DowntimeTask
+): task is DowntimeTask & { activityData: AlchemyData } {
+  return task.activityData.type === 'alchemy';
+}
+
+/**
+ * Type guard to check if a task is a crafting task.
+ * Narrows the activityData type to CraftingData.
+ */
+export function isCraftingTask(
+  task: DowntimeTask
+): task is DowntimeTask & { activityData: CraftingData } {
+  return task.activityData.type === 'crafting';
+}
+
+/**
+ * Type guard to check if a task is a rest task.
+ * Narrows the activityData type to RestData.
+ */
+export function isRestTask(
+  task: DowntimeTask
+): task is DowntimeTask & { activityData: RestData } {
+  return task.activityData.type === 'rest';
 }
 
 // ============================================================================
