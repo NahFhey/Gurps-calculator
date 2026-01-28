@@ -622,3 +622,104 @@ export function selectCharacterFatigueMap(
 
   return fatigueMap;
 }
+
+// ============================================================================
+// CHARACTER SLOT SUMMARY SELECTORS
+// ============================================================================
+
+/**
+ * Unified summary of a character's status for a specific slot.
+ * This is the single source of truth for character status in UI components.
+ */
+export interface CharacterSlotSummary {
+  /** Character ID */
+  characterId: string;
+  /** Whether the character is assigned to a task in this slot */
+  isAssigned: boolean;
+  /** Display name of the activity (if assigned) */
+  activityDisplayName: string | null;
+  /** The character's role in the task */
+  role: 'leader' | 'helper' | null;
+  /** Task ID (if assigned) */
+  taskId: string | null;
+  /** Current fatigue status */
+  fatigueStatus: FatigueStatus;
+}
+
+/**
+ * Activity type to display name mapping.
+ */
+const ACTIVITY_DISPLAY_NAMES: Record<DowntimeActivityType, string> = {
+  fishing: 'Fishing',
+  foraging: 'Foraging',
+  alchemy: 'Alchemy',
+  crafting: 'Crafting',
+  rest: 'Resting',
+};
+
+/**
+ * Get a unified summary of a character's status for a specific slot.
+ * This combines assignment and fatigue information into a single object.
+ */
+export function selectCharacterSlotSummary(
+  state: DowntimeState,
+  characterId: string,
+  dayKey: number,
+  slot: number
+): CharacterSlotSummary {
+  // Get assignment info
+  const assignment = selectCharacterAssignmentForSlot(
+    state,
+    characterId,
+    dayKey,
+    slot
+  );
+
+  // Get activity display name if assigned
+  let activityDisplayName: string | null = null;
+  if (assignment) {
+    const task = selectTaskById(state, assignment.taskId);
+    if (task) {
+      activityDisplayName = ACTIVITY_DISPLAY_NAMES[task.activityType];
+    }
+  }
+
+  // Get fatigue status
+  const fatigueStatus = selectCharacterFatigueStatus(
+    state,
+    characterId,
+    dayKey,
+    slot
+  );
+
+  return {
+    characterId,
+    isAssigned: assignment !== null,
+    activityDisplayName,
+    role: assignment?.role ?? null,
+    taskId: assignment?.taskId ?? null,
+    fatigueStatus,
+  };
+}
+
+/**
+ * Get slot summaries for all characters.
+ * Returns a Map for efficient lookup by character ID.
+ */
+export function selectAllCharacterSlotSummaries(
+  state: DowntimeState,
+  characterIds: string[],
+  dayKey: number,
+  slot: number
+): Map<string, CharacterSlotSummary> {
+  const summaries = new Map<string, CharacterSlotSummary>();
+
+  for (const characterId of characterIds) {
+    summaries.set(
+      characterId,
+      selectCharacterSlotSummary(state, characterId, dayKey, slot)
+    );
+  }
+
+  return summaries;
+}

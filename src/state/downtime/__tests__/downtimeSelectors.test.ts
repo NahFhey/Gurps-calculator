@@ -37,6 +37,9 @@ import {
   // Fatigue selectors
   selectCharacterFatigueStatus,
   selectCharacterFatigueMap,
+  // Character slot summary selectors
+  selectCharacterSlotSummary,
+  selectAllCharacterSlotSummaries,
 } from '../downtimeSelectors';
 
 // ============================================================================
@@ -1543,6 +1546,202 @@ describe('Fatigue derivation', () => {
     it('returns empty map for empty character list', () => {
       const state = createTestState([]);
       const map = selectCharacterFatigueMap(state, 1, 0, []);
+      expect(map.size).toBe(0);
+    });
+  });
+});
+
+// ============================================================================
+// CHARACTER SLOT SUMMARY TESTS
+// ============================================================================
+
+describe('Character slot summary', () => {
+  describe('selectCharacterSlotSummary', () => {
+    it('returns rested unassigned status for empty state', () => {
+      const state = createTestState([]);
+      const summary = selectCharacterSlotSummary(state, 'char1', 1, 0);
+
+      expect(summary.characterId).toBe('char1');
+      expect(summary.isAssigned).toBe(false);
+      expect(summary.activityDisplayName).toBeNull();
+      expect(summary.role).toBeNull();
+      expect(summary.taskId).toBeNull();
+      expect(summary.fatigueStatus).toBe('rested');
+    });
+
+    it('returns assigned status when character is leader of pending task', () => {
+      const task = createTestTask({
+        id: 'task-1',
+        dayKey: 1,
+        slot: 0,
+        leaderId: 'char1',
+        activityType: 'fishing',
+        status: 'pending',
+      });
+      const state = createTestState([task]);
+      const summary = selectCharacterSlotSummary(state, 'char1', 1, 0);
+
+      expect(summary.isAssigned).toBe(true);
+      expect(summary.activityDisplayName).toBe('Fishing');
+      expect(summary.role).toBe('leader');
+      expect(summary.taskId).toBe('task-1');
+    });
+
+    it('returns assigned status when character is helper', () => {
+      const task = createTestTask({
+        id: 'task-1',
+        dayKey: 1,
+        slot: 0,
+        leaderId: 'char1',
+        helperIds: ['char2'],
+        activityType: 'crafting',
+        status: 'pending',
+      });
+      const state = createTestState([task]);
+      const summary = selectCharacterSlotSummary(state, 'char2', 1, 0);
+
+      expect(summary.isAssigned).toBe(true);
+      expect(summary.activityDisplayName).toBe('Crafting');
+      expect(summary.role).toBe('helper');
+      expect(summary.taskId).toBe('task-1');
+    });
+
+    it('returns correct fatigue status', () => {
+      const state = createTestState([
+        createResolvedTask({
+          leaderId: 'char1',
+          dayKey: 1,
+          slot: 0,
+          activityType: 'fishing',
+        }),
+      ]);
+      const summary = selectCharacterSlotSummary(state, 'char1', 1, 1);
+
+      expect(summary.fatigueStatus).toBe('tired');
+    });
+
+    it('combines assignment and fatigue correctly', () => {
+      // char1 worked in slot 0 (resolved), now assigned to slot 1 (pending)
+      const state = createTestState([
+        createResolvedTask({
+          leaderId: 'char1',
+          dayKey: 1,
+          slot: 0,
+          activityType: 'fishing',
+        }),
+        createTestTask({
+          id: 'task-pending',
+          leaderId: 'char1',
+          dayKey: 1,
+          slot: 1,
+          activityType: 'alchemy',
+          status: 'pending',
+        }),
+      ]);
+      const summary = selectCharacterSlotSummary(state, 'char1', 1, 1);
+
+      expect(summary.isAssigned).toBe(true);
+      expect(summary.activityDisplayName).toBe('Alchemy');
+      expect(summary.fatigueStatus).toBe('tired');
+    });
+
+    it('returns correct display name for rest activity', () => {
+      const state = createTestState([
+        createTestTask({
+          id: 'task-rest',
+          leaderId: 'char1',
+          dayKey: 1,
+          slot: 0,
+          activityType: 'rest',
+          status: 'pending',
+          activityData: {
+            type: 'rest',
+            restType: 'sleep',
+            recoveryBonus: 0,
+          },
+        }),
+      ]);
+      const summary = selectCharacterSlotSummary(state, 'char1', 1, 0);
+
+      expect(summary.activityDisplayName).toBe('Resting');
+    });
+
+    it('returns not assigned for cancelled tasks', () => {
+      const task = createTestTask({
+        id: 'task-1',
+        dayKey: 1,
+        slot: 0,
+        leaderId: 'char1',
+        activityType: 'fishing',
+        status: 'cancelled',
+      });
+      const state = createTestState([task]);
+      const summary = selectCharacterSlotSummary(state, 'char1', 1, 0);
+
+      expect(summary.isAssigned).toBe(false);
+      expect(summary.activityDisplayName).toBeNull();
+    });
+  });
+
+  describe('selectAllCharacterSlotSummaries', () => {
+    it('returns map with all character IDs', () => {
+      const state = createTestState([]);
+      const map = selectAllCharacterSlotSummaries(
+        state,
+        ['char1', 'char2', 'char3'],
+        1,
+        0
+      );
+
+      expect(map.size).toBe(3);
+      expect(map.has('char1')).toBe(true);
+      expect(map.has('char2')).toBe(true);
+      expect(map.has('char3')).toBe(true);
+    });
+
+    it('correctly maps different character statuses', () => {
+      const state = createTestState([
+        createTestTask({
+          id: 'task-1',
+          dayKey: 1,
+          slot: 0,
+          leaderId: 'char1',
+          helperIds: ['char2'],
+          activityType: 'fishing',
+          status: 'pending',
+        }),
+        createResolvedTask({
+          leaderId: 'char3',
+          dayKey: 1,
+          slot: 0,
+          activityType: 'crafting',
+        }),
+      ]);
+
+      // Check at slot 1 for fatigue effects
+      const map = selectAllCharacterSlotSummaries(
+        state,
+        ['char1', 'char2', 'char3', 'char4'],
+        1,
+        1
+      );
+
+      // char1: was pending in slot 0, rested (no resolved work)
+      expect(map.get('char1')?.fatigueStatus).toBe('rested');
+
+      // char2: was helper in pending task, rested
+      expect(map.get('char2')?.fatigueStatus).toBe('rested');
+
+      // char3: resolved work in slot 0, tired
+      expect(map.get('char3')?.fatigueStatus).toBe('tired');
+
+      // char4: no activity, rested
+      expect(map.get('char4')?.fatigueStatus).toBe('rested');
+    });
+
+    it('returns empty map for empty character list', () => {
+      const state = createTestState([]);
+      const map = selectAllCharacterSlotSummaries(state, [], 1, 0);
       expect(map.size).toBe(0);
     });
   });
