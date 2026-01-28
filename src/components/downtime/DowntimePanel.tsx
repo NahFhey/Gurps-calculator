@@ -1,115 +1,68 @@
-import { useMemo } from 'react';
-import { useCampaignStore } from '../../state/campaignStore';
-import { DowntimeTile } from './DowntimeTile';
-import { AlchemyTab } from '../AlchemyTab';
-import { CookingTab } from '../CookingTab';
-import { CraftingTab } from '../CraftingTab';
-import { DayPlannerTab } from '../DayPlannerTab';
-import { useAllWeatherModifiers } from '../../hooks/useWeatherModifiers';
+import { useState } from 'react';
+import { Moon, ArrowLeft } from 'lucide-react';
 
-/**
- * DowntimePanel - Simple 4-tile grid for launching downtime activity systems
- *
- * Part of the Downtime System
- *
- * Each tile opens the corresponding activity system (Alchemy, Cooking,
- * Crafting, Gathering) as a modal overlay.
- */
+type DowntimeView = 'tiles' | 'fishing' | 'foraging' | 'alchemy' | 'crafting';
 
 interface DowntimePanelProps {
-  /** Optional: Show time and weather info at bottom */
-  showTimeWeather?: boolean;
+  currentDayKey: number;
+  currentSlot: number;
 }
 
-export function DowntimePanel({ showTimeWeather = true }: DowntimePanelProps) {
-  const { state } = useCampaignStore();
-  const { day, slot, slotLabels } = state.time;
-  const slotLabel = slotLabels[slot] || `Slot ${slot + 1}`;
+export function DowntimePanel({ currentDayKey: _currentDayKey, currentSlot: _currentSlot }: DowntimePanelProps) {
+  const [activeView, setActiveView] = useState<DowntimeView>('tiles');
 
-  // Get weather effects from the location system
-  const { effects, hasAnyEffect } = useAllWeatherModifiers();
-
-  // Format weather effects for display
-  const weatherEffects = useMemo(() => {
-    if (!hasAnyEffect) return 'No weather modifiers';
-
-    const effectStrings: string[] = [];
-    if (effects.gathering !== 0) {
-      effectStrings.push(`Gathering ${effects.gathering > 0 ? '+' : ''}${effects.gathering}`);
-    }
-    if (effects.hunting !== 0) {
-      effectStrings.push(`Hunting ${effects.hunting > 0 ? '+' : ''}${effects.hunting}`);
-    }
-    if (effects.crafting !== 0) {
-      effectStrings.push(`Crafting ${effects.crafting > 0 ? '+' : ''}${effects.crafting}`);
-    }
-    if (effects.cooking !== 0) {
-      effectStrings.push(`Cooking ${effects.cooking > 0 ? '+' : ''}${effects.cooking}`);
-    }
-    if (effects.alchemy !== 0) {
-      effectStrings.push(`Alchemy ${effects.alchemy > 0 ? '+' : ''}${effects.alchemy}`);
-    }
-
-    return effectStrings.length > 0 ? effectStrings.join(', ') : 'No modifiers';
-  }, [effects, hasAnyEffect]);
+  const navigateTo = (view: DowntimeView) => setActiveView(view);
+  const navigateBack = () => setActiveView('tiles');
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-slate-700 bg-slate-800/50">
-        <h2 className="text-lg font-semibold text-slate-100">Downtime</h2>
-      </div>
+    <div className="flex flex-col h-full">
+      <header className="flex items-center gap-2 p-4 border-b border-gray-200">
+        {activeView !== 'tiles' && (
+          <button
+            onClick={navigateBack}
+            className="p-1 hover:bg-gray-100 rounded"
+            aria-label="Back to activities"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+        )}
+        <h2 className="text-lg font-semibold">Downtime</h2>
+        <Moon className="w-5 h-5 text-gray-500" />
+      </header>
 
-      {/* Tiles Grid */}
-      <div className="flex-1 p-4 overflow-auto">
-        <div className="grid grid-cols-2 gap-4">
-          {/* Alchemy Tile */}
-          <DowntimeTile
-            title="Alchemy"
-            description="Potions & Elixirs"
-            icon="⚗️"
-            activityComponent={<AlchemyTab />}
-          />
-
-          {/* Cooking Tile */}
-          <DowntimeTile
-            title="Cooking"
-            description="Meals & Rations"
-            icon="🍳"
-            activityComponent={<CookingTab />}
-          />
-
-          {/* Crafting Tile */}
-          <DowntimeTile
-            title="Crafting"
-            description="Equipment & Items"
-            icon="🔨"
-            activityComponent={<CraftingTab />}
-          />
-
-          {/* Gathering Tile */}
-          <DowntimeTile
-            title="Gathering"
-            description="Foraging & Hunting"
-            icon="🌿"
-            activityComponent={<DayPlannerTab />}
-          />
-        </div>
-      </div>
-
-      {/* Time & Weather Footer */}
-      {showTimeWeather && (
-        <div className="px-4 py-3 border-t border-slate-700 bg-slate-800/30">
-          <div className="text-sm text-slate-400">
-            <div className="flex items-center justify-between">
-              <span>Day {day}, {slotLabel}</span>
-              <span className="text-slate-500">{weatherEffects}</span>
-            </div>
-          </div>
-        </div>
-      )}
+      <main className="flex-1 overflow-y-auto p-4">
+        {activeView === 'tiles' && (
+          <TileGridPlaceholder onNavigate={navigateTo} />
+        )}
+        {activeView === 'fishing' && <ActivityPlaceholder name="Fishing" />}
+        {activeView === 'foraging' && <ActivityPlaceholder name="Foraging" />}
+        {activeView === 'alchemy' && <ActivityPlaceholder name="Alchemy" />}
+        {activeView === 'crafting' && <ActivityPlaceholder name="Crafting" />}
+      </main>
     </div>
   );
 }
 
-export default DowntimePanel;
+// Temporary placeholders - will be replaced
+function TileGridPlaceholder({ onNavigate }: { onNavigate: (view: DowntimeView) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      <button onClick={() => onNavigate('fishing')} className="p-4 bg-blue-100 rounded">
+        Fishing
+      </button>
+      <button onClick={() => onNavigate('foraging')} className="p-4 bg-green-100 rounded">
+        Foraging
+      </button>
+      <button onClick={() => onNavigate('alchemy')} className="p-4 bg-purple-100 rounded">
+        Alchemy
+      </button>
+      <button onClick={() => onNavigate('crafting')} className="p-4 bg-orange-100 rounded">
+        Crafting
+      </button>
+    </div>
+  );
+}
+
+function ActivityPlaceholder({ name }: { name: string }) {
+  return <div className="text-gray-500">{name} activity coming soon...</div>;
+}
