@@ -3,8 +3,6 @@ import type {
   DowntimeState,
   DowntimeTask,
   FishingData,
-  TaskStatus,
-  DowntimeActivityType,
 } from '../../../types/downtime';
 import { downtimeInitialState } from '../downtimeInitialState';
 import {
