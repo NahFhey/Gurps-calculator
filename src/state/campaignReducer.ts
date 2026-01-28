@@ -49,12 +49,14 @@ import type {
   TravelAction,
   ActiveWeather
 } from '../types/location';
+import type { DowntimeState } from '../types/downtime';
 import {
   createInitialLocationState,
   generateWeather,
   isWeatherExpired,
   getCurrentLocation
 } from '../utils/weatherSystem';
+import { downtimeInitialState, DOWNTIME_SCHEMA_VERSION } from './downtime';
 
 export const CAMPAIGN_META = {
   rulesVersion: '1.0.0',
@@ -83,6 +85,7 @@ export type CampaignState = {
   meta: {
     rulesVersion: string;
     schemaVersion: string;
+    downtimeSchemaVersion: number;
   };
   entities: {
     // Shared characters (merged workers + party characters)
@@ -205,6 +208,7 @@ export type CampaignState = {
     };
   };
   locations: LocationState;
+  downtime: DowntimeState;
 };
 
 export const initialLegacyAppState: LegacyAppState = {};
@@ -282,7 +286,8 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
   },
   meta: {
     rulesVersion: CAMPAIGN_META.rulesVersion,
-    schemaVersion: CAMPAIGN_META.schemaVersion
+    schemaVersion: CAMPAIGN_META.schemaVersion,
+    downtimeSchemaVersion: DOWNTIME_SCHEMA_VERSION,
   },
   entities: {
     // Characters (from Party Tool initially)
@@ -416,7 +421,8 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
       revealedDefenseValues: {}
     }
   },
-  locations: createInitialLocationState({ day: 1, slot: 0 })
+  locations: createInitialLocationState({ day: 1, slot: 0 }),
+  downtime: downtimeInitialState,
 });
 
 export const initialCampaignState: CampaignState = createCampaignState();
@@ -658,6 +664,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.logs = nextState.logs;
         draft.combat = normalizeCombatReveal(nextState.combat);
         draft.locations = nextState.locations || createInitialLocationState(nextState.time || { day: 1, slot: 0 });
+        draft.downtime = nextState.downtime || downtimeInitialState;
         draft.checkpoints = preservedCheckpoints;
         return;
       }
@@ -721,6 +728,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.checkpoints = nextState.checkpoints;
         draft.combat = normalizeCombatReveal(nextState.combat);
         draft.locations = nextState.locations || createInitialLocationState(nextState.time || { day: 1, slot: 0 });
+        draft.downtime = nextState.downtime || downtimeInitialState;
         return;
       }
       case 'restoreCheckpoint': {
@@ -748,6 +756,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         };
         draft.combat = restoredSnapshot.combat;
         draft.locations = (restoredSnapshot as CampaignState).locations || createInitialLocationState(restoredSnapshot.time || { day: 1, slot: 0 });
+        draft.downtime = (restoredSnapshot as CampaignState).downtime || downtimeInitialState;
         return;
       }
       case 'advanceTime': {
