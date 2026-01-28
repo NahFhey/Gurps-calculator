@@ -181,16 +181,16 @@ export function AlchemyTaskForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="alchemy-task-form bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4"
+      className="alchemy-task-form bg-gray-800/60 border border-gray-700 rounded-lg p-4 mb-4"
       data-testid="alchemy-task-form"
     >
       {/* Form Header */}
       <div className="flex justify-between items-center mb-4">
-        <h4 className="font-medium text-gray-900">New Work Session</h4>
+        <h4 className="font-medium text-gray-100">New Work Session</h4>
         <button
           type="button"
           onClick={onCancel}
-          className="text-gray-500 hover:text-gray-700"
+          className="text-gray-400 hover:text-gray-200"
           aria-label="Close form"
         >
           <X className="w-5 h-5" />
@@ -199,14 +199,14 @@ export function AlchemyTaskForm({
 
       {/* Worker Selection */}
       <div className="form-group mb-4">
-        <label htmlFor="leader-select" className="block text-sm font-medium text-gray-700 mb-1">
-          Alchemist <span className="text-red-500">*</span>
+        <label htmlFor="leader-select" className="block text-sm font-medium text-gray-300 mb-1">
+          Alchemist <span className="text-red-400">*</span>
         </label>
         <select
           id="leader-select"
           value={leaderId}
           onChange={(e) => setLeaderId(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
           required
           data-testid="leader-select"
         >
@@ -218,7 +218,7 @@ export function AlchemyTaskForm({
           ))}
         </select>
         {availableCharacters.length === 0 && (
-          <p className="text-sm text-yellow-600 mt-1">
+          <p className="text-sm text-yellow-400 mt-1">
             All characters are already assigned to tasks in this slot
           </p>
         )}
@@ -226,7 +226,7 @@ export function AlchemyTaskForm({
 
       {/* Helper Selection */}
       <div className="form-group mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-300 mb-1">
           Assistants (optional, max +2 bonus)
         </label>
         {availableHelpers.length === 0 ? (
@@ -238,8 +238,8 @@ export function AlchemyTaskForm({
                 key={c.id}
                 className={`flex items-center gap-1 px-2 py-1 rounded border cursor-pointer transition-colors ${
                   helperIds.includes(c.id)
-                    ? 'bg-purple-100 border-purple-300'
-                    : 'bg-white border-gray-300 hover:bg-gray-50'
+                    ? 'bg-purple-900/50 border-purple-500 text-purple-200'
+                    : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
                 }`}
               >
                 <input
@@ -257,14 +257,14 @@ export function AlchemyTaskForm({
 
       {/* Batch Selection */}
       <div className="form-group mb-4">
-        <label htmlFor="batch-select" className="block text-sm font-medium text-gray-700 mb-1">
-          Batch <span className="text-red-500">*</span>
+        <label htmlFor="batch-select" className="block text-sm font-medium text-gray-300 mb-1">
+          Batch <span className="text-red-400">*</span>
         </label>
         <select
           id="batch-select"
           value={selectedBatchId}
           onChange={(e) => setSelectedBatchId(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
           required
           data-testid="batch-select"
         >
@@ -281,7 +281,7 @@ export function AlchemyTaskForm({
           })}
         </select>
         {batches.length === 0 && (
-          <p className="text-sm text-yellow-600 mt-1">
+          <p className="text-sm text-yellow-400 mt-1">
             No active batches. Start a batch in the Alchemy tab first.
           </p>
         )}
@@ -289,14 +289,14 @@ export function AlchemyTaskForm({
 
       {/* Lab Selection */}
       <div className="form-group mb-4">
-        <label htmlFor="lab-select" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="lab-select" className="block text-sm font-medium text-gray-300 mb-1">
           Laboratory
         </label>
         <select
           id="lab-select"
           value={selectedLabId}
           onChange={(e) => setSelectedLabId(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
           data-testid="lab-select"
         >
           <option value="">No lab (0 bonus)</option>
@@ -310,9 +310,9 @@ export function AlchemyTaskForm({
 
       {/* Batch Details (when selected) */}
       {selectedBatch && (
-        <div className="bg-purple-100 rounded p-3 mb-4" data-testid="batch-details">
-          <h5 className="text-sm font-medium text-purple-800 mb-2">Batch Details</h5>
-          <div className="text-sm text-purple-700 space-y-1">
+        <div className="bg-purple-900/30 border border-purple-700/50 rounded p-3 mb-4" data-testid="batch-details">
+          <h5 className="text-sm font-medium text-purple-300 mb-2">Batch Details</h5>
+          <div className="text-sm text-purple-200/80 space-y-1">
             <p>
               <span className="font-medium">Progress:</span>{' '}
               {(selectedBatch as any).PP ?? 0}/{(selectedBatch as any).WR ?? '?'} PP
@@ -338,10 +338,10 @@ export function AlchemyTaskForm({
       )}
 
       {/* Skill Modifier Summary */}
-      <div className="bg-gray-100 rounded p-2 mb-4">
-        <p className="text-sm text-gray-600">
+      <div className="bg-gray-900/50 border border-gray-700 rounded p-2 mb-4">
+        <p className="text-sm text-gray-300">
           Total Skill Modifier:{' '}
-          <span className={`font-medium ${skillModifier >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <span className={`font-medium ${skillModifier >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {skillModifier >= 0 ? '+' : ''}{skillModifier}
           </span>
           <span className="text-xs text-gray-500 ml-2">
@@ -355,7 +355,7 @@ export function AlchemyTaskForm({
         <button
           type="submit"
           disabled={!isFormValid}
-          className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+          className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed"
           data-testid="submit-button"
         >
           Start Work Session
@@ -363,7 +363,7 @@ export function AlchemyTaskForm({
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+          className="px-4 py-2 border border-gray-600 text-gray-300 rounded hover:bg-gray-700 transition-colors"
           data-testid="cancel-button"
         >
           Cancel

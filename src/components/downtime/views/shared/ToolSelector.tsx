@@ -82,10 +82,10 @@ export function ToolSelector({
 
   return (
     <div className={`tool-selector ${className}`}>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
+      <label className="block text-sm font-medium text-gray-300 mb-1">
         {label}
         {(minRequired > 0 || maxAllowed) && (
-          <span className={`ml-1 font-normal ${hasMinimum ? 'text-gray-500' : 'text-red-500'}`}>
+          <span className={`ml-1 font-normal ${hasMinimum ? 'text-gray-500' : 'text-red-400'}`}>
             ({selectedCount}
             {minRequired > 0 && `/${minRequired} min`}
             {maxAllowed && `, ${maxAllowed} max`})
@@ -95,8 +95,8 @@ export function ToolSelector({
 
       <div
         className={`
-          space-y-1 max-h-40 overflow-y-auto border rounded-md p-2
-          ${error ? 'border-red-300' : 'border-gray-300'}
+          space-y-1 max-h-40 overflow-y-auto border rounded-md p-2 bg-gray-900
+          ${error ? 'border-red-500' : 'border-gray-600'}
         `}
       >
         {sortedTools.length === 0 ? (
@@ -113,9 +113,9 @@ export function ToolSelector({
                 key={tool.id}
                 className={`
                   flex items-center gap-2 p-1.5 rounded cursor-pointer
-                  ${isSelected ? 'bg-blue-50 border border-blue-200' : 'border border-transparent'}
+                  ${isSelected ? 'bg-blue-900/50 border border-blue-700/50' : 'border border-transparent'}
                   ${isReserved && !isSelected ? 'opacity-50' : ''}
-                  ${disabled || isDisabledByMax || isDisabledByReserve ? 'cursor-not-allowed' : 'hover:bg-gray-50'}
+                  ${disabled || isDisabledByMax || isDisabledByReserve ? 'cursor-not-allowed' : 'hover:bg-gray-800'}
                 `}
                 title={isReserved ? 'This tool is reserved by another task in this slot' : undefined}
               >
@@ -124,7 +124,7 @@ export function ToolSelector({
                   checked={isSelected}
                   onChange={() => toggleTool(tool.id)}
                   disabled={disabled || !!isDisabledByMax || isDisabledByReserve}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-gray-600 bg-gray-800 text-blue-600 focus:ring-blue-500"
                 />
 
                 {/* Tool Icon */}
@@ -132,15 +132,15 @@ export function ToolSelector({
                   {isReserved ? (
                     <Lock className="w-4 h-4 text-red-400" />
                   ) : isSelected ? (
-                    <CheckCircle className="w-4 h-4 text-green-500" />
+                    <CheckCircle className="w-4 h-4 text-green-400" />
                   ) : (
-                    <Wrench className="w-4 h-4 text-gray-400" />
+                    <Wrench className="w-4 h-4 text-gray-500" />
                   )}
                 </span>
 
                 {/* Tool Info */}
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm block truncate">{tool.name}</span>
+                  <span className="text-sm block truncate text-gray-200">{tool.name}</span>
                   {tool.type && (
                     <span className="text-xs text-gray-500">{tool.type}</span>
                   )}
@@ -148,7 +148,7 @@ export function ToolSelector({
 
                 {/* Status Badge */}
                 {isReserved && (
-                  <span className="text-xs text-red-500 flex-shrink-0">In use</span>
+                  <span className="text-xs text-red-400 flex-shrink-0">In use</span>
                 )}
                 {tool.condition && !isReserved && (
                   <span className="text-xs text-gray-500 flex-shrink-0">{tool.condition}</span>
@@ -161,7 +161,7 @@ export function ToolSelector({
 
       {/* Error Message */}
       {error && (
-        <p className="mt-1 text-sm text-red-600" role="alert">
+        <p className="mt-1 text-sm text-red-400" role="alert">
           {error}
         </p>
       )}
@@ -205,8 +205,8 @@ export function ToolDisplay({ toolIds, tools, label = 'Tools', className = '' }:
 
   return (
     <div className={`tool-display text-sm ${className}`}>
-      <span className="font-medium">{label}:</span>{' '}
-      <span className="text-gray-600">{toolNames}</span>
+      <span className="font-medium text-gray-300">{label}:</span>{' '}
+      <span className="text-gray-400">{toolNames}</span>
     </div>
   );
 }

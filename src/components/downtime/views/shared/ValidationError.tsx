@@ -41,46 +41,46 @@ const ERROR_CONFIG: Record<string, ErrorConfig> = {
   [DOWNTIME_ERROR_CODES.LEADER_ALREADY_ASSIGNED]: {
     icon: AlertCircle,
     title: 'Character Already Assigned',
-    bgColor: 'bg-yellow-50',
-    borderColor: 'border-yellow-300',
-    textColor: 'text-yellow-800',
+    bgColor: 'bg-yellow-900/30',
+    borderColor: 'border-yellow-700/50',
+    textColor: 'text-yellow-300',
   },
   [DOWNTIME_ERROR_CODES.HELPER_ALREADY_ASSIGNED]: {
     icon: AlertCircle,
     title: 'Helper Already Assigned',
-    bgColor: 'bg-yellow-50',
-    borderColor: 'border-yellow-300',
-    textColor: 'text-yellow-800',
+    bgColor: 'bg-yellow-900/30',
+    borderColor: 'border-yellow-700/50',
+    textColor: 'text-yellow-300',
   },
   [DOWNTIME_ERROR_CODES.LOCK_CONFLICT]: {
     icon: AlertTriangle,
     title: 'Cannot Retry This Task',
-    bgColor: 'bg-orange-50',
-    borderColor: 'border-orange-300',
-    textColor: 'text-orange-800',
+    bgColor: 'bg-orange-900/30',
+    borderColor: 'border-orange-700/50',
+    textColor: 'text-orange-300',
   },
   [DOWNTIME_ERROR_CODES.TOOL_CONFLICT]: {
     icon: AlertCircle,
     title: 'Tool Already In Use',
-    bgColor: 'bg-red-50',
-    borderColor: 'border-red-300',
-    textColor: 'text-red-800',
+    bgColor: 'bg-red-900/30',
+    borderColor: 'border-red-700/50',
+    textColor: 'text-red-300',
   },
   [DOWNTIME_ERROR_CODES.UNKNOWN_ERROR]: {
     icon: AlertCircle,
     title: 'Error',
-    bgColor: 'bg-red-50',
-    borderColor: 'border-red-300',
-    textColor: 'text-red-800',
+    bgColor: 'bg-red-900/30',
+    borderColor: 'border-red-700/50',
+    textColor: 'text-red-300',
   },
 };
 
 const DEFAULT_CONFIG: ErrorConfig = {
   icon: AlertCircle,
   title: 'Validation Error',
-  bgColor: 'bg-red-50',
-  borderColor: 'border-red-300',
-  textColor: 'text-red-800',
+  bgColor: 'bg-red-900/30',
+  borderColor: 'border-red-700/50',
+  textColor: 'text-red-300',
 };
 
 // ============================================================================
@@ -141,7 +141,7 @@ function ErrorMetadata({ code, meta }: ErrorMetadataProps) {
     case DOWNTIME_ERROR_CODES.LEADER_ALREADY_ASSIGNED:
     case DOWNTIME_ERROR_CODES.HELPER_ALREADY_ASSIGNED:
       return (
-        <div className="text-xs mt-2 space-y-0.5 text-gray-600">
+        <div className="text-xs mt-2 space-y-0.5 text-gray-400">
           {meta.existingRole && (
             <p>Currently assigned as: {String(meta.existingRole)}</p>
           )}
@@ -153,7 +153,7 @@ function ErrorMetadata({ code, meta }: ErrorMetadataProps) {
 
     case DOWNTIME_ERROR_CODES.LOCK_CONFLICT:
       return (
-        <div className="text-xs mt-2 space-y-0.5 text-gray-600">
+        <div className="text-xs mt-2 space-y-0.5 text-gray-400">
           <p>You cannot retry the same activity target in this slot.</p>
           <p>Try a different target or wait for the next time slot.</p>
         </div>
@@ -162,7 +162,7 @@ function ErrorMetadata({ code, meta }: ErrorMetadataProps) {
     case DOWNTIME_ERROR_CODES.TOOL_CONFLICT:
       if (Array.isArray(meta.conflictingToolIds)) {
         return (
-          <div className="text-xs mt-2 text-gray-600">
+          <div className="text-xs mt-2 text-gray-400">
             <p>Conflicting tools: {(meta.conflictingToolIds as string[]).join(', ')}</p>
           </div>
         );
@@ -191,7 +191,7 @@ interface InlineErrorProps {
 export function InlineError({ message, className = '' }: InlineErrorProps) {
   return (
     <p
-      className={`text-sm text-red-600 flex items-center gap-1 ${className}`}
+      className={`text-sm text-red-400 flex items-center gap-1 ${className}`}
       role="alert"
       data-testid="inline-error"
     >

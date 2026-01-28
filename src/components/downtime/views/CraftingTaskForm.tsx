@@ -192,16 +192,16 @@ export function CraftingTaskForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="crafting-task-form bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4"
+      className="crafting-task-form bg-gray-800/60 border border-gray-700 rounded-lg p-4 mb-4"
       data-testid="crafting-task-form"
     >
       {/* Form Header */}
       <div className="flex justify-between items-center mb-4">
-        <h4 className="font-medium text-gray-900">New Crafting Task</h4>
+        <h4 className="font-medium text-gray-100">New Crafting Task</h4>
         <button
           type="button"
           onClick={onCancel}
-          className="text-gray-500 hover:text-gray-700"
+          className="text-gray-400 hover:text-gray-200"
           aria-label="Close form"
         >
           <X className="w-5 h-5" />
@@ -210,14 +210,14 @@ export function CraftingTaskForm({
 
       {/* Worker Selection */}
       <div className="form-group mb-4">
-        <label htmlFor="leader-select" className="block text-sm font-medium text-gray-700 mb-1">
-          Crafter <span className="text-red-500">*</span>
+        <label htmlFor="leader-select" className="block text-sm font-medium text-gray-300 mb-1">
+          Crafter <span className="text-red-400">*</span>
         </label>
         <select
           id="leader-select"
           value={leaderId}
           onChange={(e) => setLeaderId(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500"
+          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
           required
           data-testid="leader-select"
         >
@@ -229,7 +229,7 @@ export function CraftingTaskForm({
           ))}
         </select>
         {availableCharacters.length === 0 && (
-          <p className="text-sm text-yellow-600 mt-1">
+          <p className="text-sm text-yellow-400 mt-1">
             All characters are already assigned to tasks in this slot
           </p>
         )}
@@ -237,7 +237,7 @@ export function CraftingTaskForm({
 
       {/* Helper Selection */}
       <div className="form-group mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-300 mb-1">
           Assistants (optional, max +2 bonus)
         </label>
         {availableHelpers.length === 0 ? (
@@ -249,8 +249,8 @@ export function CraftingTaskForm({
                 key={c.id}
                 className={`flex items-center gap-1 px-2 py-1 rounded border cursor-pointer transition-colors ${
                   helperIds.includes(c.id)
-                    ? 'bg-orange-100 border-orange-300'
-                    : 'bg-white border-gray-300 hover:bg-gray-50'
+                    ? 'bg-amber-900/50 border-amber-500 text-amber-200'
+                    : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
                 }`}
               >
                 <input
@@ -268,14 +268,14 @@ export function CraftingTaskForm({
 
       {/* Recipe Selection */}
       <div className="form-group mb-4">
-        <label htmlFor="recipe-select" className="block text-sm font-medium text-gray-700 mb-1">
-          Recipe <span className="text-red-500">*</span>
+        <label htmlFor="recipe-select" className="block text-sm font-medium text-gray-300 mb-1">
+          Recipe <span className="text-red-400">*</span>
         </label>
         <select
           id="recipe-select"
           value={selectedRecipeId}
           onChange={(e) => setSelectedRecipeId(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500"
+          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
           required
           data-testid="recipe-select"
         >
@@ -287,7 +287,7 @@ export function CraftingTaskForm({
           ))}
         </select>
         {recipes.length === 0 && (
-          <p className="text-sm text-yellow-600 mt-1">
+          <p className="text-sm text-yellow-400 mt-1">
             No recipes available. Add recipes to begin crafting.
           </p>
         )}
@@ -295,14 +295,14 @@ export function CraftingTaskForm({
 
       {/* Quality Target Selection */}
       <div className="form-group mb-4">
-        <label htmlFor="quality-select" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="quality-select" className="block text-sm font-medium text-gray-300 mb-1">
           Quality Target
         </label>
         <select
           id="quality-select"
           value={qualityTarget}
           onChange={(e) => setQualityTarget(e.target.value as QualityTarget)}
-          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500"
+          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
           data-testid="quality-select"
         >
           {QUALITY_OPTIONS.map((opt) => (
@@ -315,14 +315,14 @@ export function CraftingTaskForm({
 
       {/* Workshop Selection */}
       <div className="form-group mb-4">
-        <label htmlFor="workshop-select" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="workshop-select" className="block text-sm font-medium text-gray-300 mb-1">
           Workshop
         </label>
         <select
           id="workshop-select"
           value={selectedWorkshopId}
           onChange={(e) => setSelectedWorkshopId(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-500"
+          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
           data-testid="workshop-select"
         >
           <option value="">No workshop (0 bonus)</option>
@@ -336,9 +336,9 @@ export function CraftingTaskForm({
 
       {/* Recipe Details (when selected) */}
       {selectedRecipe && (
-        <div className="bg-orange-100 rounded p-3 mb-4" data-testid="recipe-details">
-          <h5 className="text-sm font-medium text-orange-800 mb-2">Recipe Details</h5>
-          <div className="text-sm text-orange-700 space-y-1">
+        <div className="bg-amber-900/30 border border-amber-700/50 rounded p-3 mb-4" data-testid="recipe-details">
+          <h5 className="text-sm font-medium text-amber-300 mb-2">Recipe Details</h5>
+          <div className="text-sm text-amber-200/80 space-y-1">
             <p>
               <span className="font-medium">Name:</span> {selectedRecipe.name}
             </p>
@@ -365,10 +365,10 @@ export function CraftingTaskForm({
       )}
 
       {/* Skill Modifier Summary */}
-      <div className="bg-gray-100 rounded p-2 mb-4">
-        <p className="text-sm text-gray-600">
+      <div className="bg-gray-900/50 border border-gray-700 rounded p-2 mb-4">
+        <p className="text-sm text-gray-300">
           Total Skill Modifier:{' '}
-          <span className={`font-medium ${skillModifier + qualityModifier >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <span className={`font-medium ${skillModifier + qualityModifier >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {skillModifier + qualityModifier >= 0 ? '+' : ''}{skillModifier + qualityModifier}
           </span>
           <span className="text-xs text-gray-500 ml-2">
@@ -378,8 +378,8 @@ export function CraftingTaskForm({
       </div>
 
       {/* Slot-Bounded Notice */}
-      <div className="bg-blue-50 border border-blue-200 rounded p-2 mb-4">
-        <p className="text-xs text-blue-700">
+      <div className="bg-blue-900/30 border border-blue-700/50 rounded p-2 mb-4">
+        <p className="text-xs text-blue-300">
           <strong>Note:</strong> Crafting completes in a single slot. Success/failure is determined immediately. Materials are consumed regardless of outcome.
         </p>
       </div>
@@ -389,7 +389,7 @@ export function CraftingTaskForm({
         <button
           type="submit"
           disabled={!isFormValid}
-          className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+          className="px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed"
           data-testid="submit-button"
         >
           Start Crafting
@@ -397,7 +397,7 @@ export function CraftingTaskForm({
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+          className="px-4 py-2 border border-gray-600 text-gray-300 rounded hover:bg-gray-700 transition-colors"
           data-testid="cancel-button"
         >
           Cancel

@@ -34,26 +34,26 @@ interface StatusConfig {
 
 const STATUS_CONFIG: Record<TaskStatus, StatusConfig> = {
   pending: {
-    bg: 'bg-yellow-100',
-    text: 'text-yellow-800',
+    bg: 'bg-yellow-900/50',
+    text: 'text-yellow-300',
     icon: Clock,
     label: 'Pending',
   },
   in_progress: {
-    bg: 'bg-blue-100',
-    text: 'text-blue-800',
+    bg: 'bg-blue-900/50',
+    text: 'text-blue-300',
     icon: Loader,
     label: 'In Progress',
   },
   resolved: {
-    bg: 'bg-green-100',
-    text: 'text-green-800',
+    bg: 'bg-green-900/50',
+    text: 'text-green-300',
     icon: Check,
     label: 'Resolved',
   },
   cancelled: {
-    bg: 'bg-gray-100',
-    text: 'text-gray-600',
+    bg: 'bg-gray-800',
+    text: 'text-gray-400',
     icon: Ban,
     label: 'Cancelled',
   },
@@ -90,10 +90,10 @@ export function StatusBadge({ status, label, className = '' }: StatusBadgeProps)
  */
 export function getStatusBorderColor(status: TaskStatus): string {
   const borders: Record<TaskStatus, string> = {
-    pending: 'border-yellow-300',
-    in_progress: 'border-blue-300',
-    resolved: 'border-green-300',
-    cancelled: 'border-gray-300',
+    pending: 'border-yellow-700/50',
+    in_progress: 'border-blue-700/50',
+    resolved: 'border-green-700/50',
+    cancelled: 'border-gray-700',
   };
   return borders[status];
 }

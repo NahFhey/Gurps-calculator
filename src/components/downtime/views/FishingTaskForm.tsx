@@ -175,16 +175,16 @@ export function FishingTaskForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="fishing-task-form bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4"
+      className="fishing-task-form bg-gray-800/60 border border-gray-700 rounded-lg p-4 mb-4"
       data-testid="fishing-task-form"
     >
       {/* Form Header */}
       <div className="flex justify-between items-center mb-4">
-        <h4 className="font-medium text-gray-900">New Fishing Task</h4>
+        <h4 className="font-medium text-gray-100">New Fishing Task</h4>
         <button
           type="button"
           onClick={onCancel}
-          className="text-gray-500 hover:text-gray-700"
+          className="text-gray-400 hover:text-gray-200"
           aria-label="Close form"
         >
           <X className="w-5 h-5" />
@@ -193,14 +193,14 @@ export function FishingTaskForm({
 
       {/* Leader Selection */}
       <div className="form-group mb-4">
-        <label htmlFor="leader-select" className="block text-sm font-medium text-gray-700 mb-1">
-          Leader <span className="text-red-500">*</span>
+        <label htmlFor="leader-select" className="block text-sm font-medium text-gray-300 mb-1">
+          Leader <span className="text-red-400">*</span>
         </label>
         <select
           id="leader-select"
           value={leaderId}
           onChange={(e) => setLeaderId(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           required
           data-testid="leader-select"
         >
@@ -212,7 +212,7 @@ export function FishingTaskForm({
           ))}
         </select>
         {availableCharacters.length === 0 && (
-          <p className="text-sm text-yellow-600 mt-1">
+          <p className="text-sm text-yellow-400 mt-1">
             All characters are already assigned to tasks in this slot
           </p>
         )}
@@ -220,7 +220,7 @@ export function FishingTaskForm({
 
       {/* Helper Selection */}
       <div className="form-group mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-300 mb-1">
           Helpers (optional)
         </label>
         {availableHelpers.length === 0 ? (
@@ -232,8 +232,8 @@ export function FishingTaskForm({
                 key={c.id}
                 className={`flex items-center gap-1 px-2 py-1 rounded border cursor-pointer transition-colors ${
                   helperIds.includes(c.id)
-                    ? 'bg-blue-100 border-blue-300'
-                    : 'bg-white border-gray-300 hover:bg-gray-50'
+                    ? 'bg-blue-900/50 border-blue-500 text-blue-200'
+                    : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
                 }`}
               >
                 <input
@@ -251,14 +251,14 @@ export function FishingTaskForm({
 
       {/* Fishing Spot Selection */}
       <div className="form-group mb-4">
-        <label htmlFor="spot-select" className="block text-sm font-medium text-gray-700 mb-1">
-          Fishing Spot <span className="text-red-500">*</span>
+        <label htmlFor="spot-select" className="block text-sm font-medium text-gray-300 mb-1">
+          Fishing Spot <span className="text-red-400">*</span>
         </label>
         <select
           id="spot-select"
           value={spotId}
           onChange={(e) => setSpotId(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           required
           data-testid="spot-select"
         >
@@ -273,14 +273,14 @@ export function FishingTaskForm({
 
       {/* Species Selection */}
       <div className="form-group mb-4">
-        <label htmlFor="species-select" className="block text-sm font-medium text-gray-700 mb-1">
-          Target Species <span className="text-red-500">*</span>
+        <label htmlFor="species-select" className="block text-sm font-medium text-gray-300 mb-1">
+          Target Species <span className="text-red-400">*</span>
         </label>
         <select
           id="species-select"
           value={speciesId}
           onChange={(e) => setSpeciesId(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           required
           data-testid="species-select"
         >
@@ -295,7 +295,7 @@ export function FishingTaskForm({
 
       {/* Tool Selection */}
       <div className="form-group mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-300 mb-1">
           Equipment (optional)
         </label>
         {tools.length === 0 ? (
@@ -311,10 +311,10 @@ export function FishingTaskForm({
                   key={tool.id}
                   className={`flex items-center gap-1 px-2 py-1 rounded border transition-colors ${
                     isReserved
-                      ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+                      ? 'bg-gray-900/50 border-gray-700 text-gray-500 cursor-not-allowed'
                       : isSelected
-                      ? 'bg-blue-100 border-blue-300 cursor-pointer'
-                      : 'bg-white border-gray-300 hover:bg-gray-50 cursor-pointer'
+                      ? 'bg-blue-900/50 border-blue-500 text-blue-200 cursor-pointer'
+                      : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700 cursor-pointer'
                   }`}
                   title={isReserved ? 'Tool already in use' : undefined}
                 >
@@ -327,7 +327,7 @@ export function FishingTaskForm({
                   />
                   <span className="text-sm">{tool.name}</span>
                   {isReserved && (
-                    <span className="text-xs text-gray-400">(in use)</span>
+                    <span className="text-xs text-gray-500">(in use)</span>
                   )}
                 </label>
               );
@@ -338,7 +338,7 @@ export function FishingTaskForm({
 
       {/* Target Yield */}
       <div className="form-group mb-4">
-        <label htmlFor="yield-input" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="yield-input" className="block text-sm font-medium text-gray-300 mb-1">
           Target Yield
         </label>
         <input
@@ -348,15 +348,15 @@ export function FishingTaskForm({
           max={10}
           value={targetYield}
           onChange={(e) => setTargetYield(Math.max(1, parseInt(e.target.value) || 1))}
-          className="w-24 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-24 px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
 
       {/* Skill Modifier Summary */}
-      <div className="bg-gray-100 rounded p-2 mb-4">
-        <p className="text-sm text-gray-600">
+      <div className="bg-gray-900/50 border border-gray-700 rounded p-2 mb-4">
+        <p className="text-sm text-gray-300">
           Total Skill Modifier:{' '}
-          <span className={`font-medium ${skillModifier >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <span className={`font-medium ${skillModifier >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {skillModifier >= 0 ? '+' : ''}{skillModifier}
           </span>
         </p>
@@ -367,7 +367,7 @@ export function FishingTaskForm({
         <button
           type="submit"
           disabled={!isFormValid}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed"
           data-testid="submit-button"
         >
           Create Task
@@ -375,7 +375,7 @@ export function FishingTaskForm({
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+          className="px-4 py-2 border border-gray-600 text-gray-300 rounded hover:bg-gray-700 transition-colors"
           data-testid="cancel-button"
         >
           Cancel
