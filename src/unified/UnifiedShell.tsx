@@ -12,6 +12,7 @@ import {
   CharacterContextMenu,
   type CharacterContextMenuAction,
 } from '../components/character-management';
+import { CharacterStatusBadge } from '../components/downtime/views/CharacterStatusBadge';
 import { duplicateCharacter, downloadCharacterJSON } from '../utils/characterManagement';
 import { parseCharacterText } from '../utils/characterImport';
 import { WeatherWidget, TimeDisplay, TimeControls } from '../components/header';
@@ -23,6 +24,7 @@ import {
   useSelectedCharacter,
   useSelectedCharacterId
 } from '../state/campaignStore';
+import { useAllCharacterSlotSummaries } from '../hooks/useCharacterSlotSummary';
 import type { Character } from '../types/campaign';
 
 interface ModuleDefinition {
@@ -78,6 +80,15 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
     () => [...characters].sort((a, b) => a.name.localeCompare(b.name)),
     [characters]
   );
+
+  // Get character IDs for downtime status lookup
+  const characterIds = useMemo(
+    () => sortedCharacters.map((c) => c.id),
+    [sortedCharacters]
+  );
+
+  // Get downtime status summaries for all characters
+  const characterSummaries = useAllCharacterSlotSummaries(characterIds);
 
   // Character creation modal state
   const [showCreationModal, setShowCreationModal] = useState(false);
@@ -296,6 +307,19 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                 const fpDisplay = character.gcsData
                   ? `${character.gcsData.pools.FP.current}/${character.gcsData.pools.FP.max}`
                   : '—';
+
+                // Get downtime status for this character
+                const downtimeSummary = characterSummaries.get(character.id);
+
+                // Determine highlight class based on downtime status
+                const downtimeHighlightClass = downtimeSummary?.isAssigned
+                  ? 'border-l-4 border-l-green-500'
+                  : downtimeSummary?.fatigueStatus === 'exhausted'
+                  ? 'border-l-4 border-l-red-500'
+                  : downtimeSummary?.fatigueStatus === 'tired'
+                  ? 'border-l-4 border-l-yellow-500'
+                  : '';
+
                 return (
                   <div
                     key={character.id}
@@ -303,13 +327,15 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                     tabIndex={0}
                     data-testid={`party-character-${character.id}`}
                     data-selected={isSelected}
+                    data-fatigue={downtimeSummary?.fatigueStatus}
+                    data-assigned={downtimeSummary?.isAssigned}
                     onClick={() => actions.selectCharacter(character.id)}
                     onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
                       if (event.key === 'Enter' || event.key === ' ') {
                         actions.selectCharacter(character.id);
                       }
                     }}
-                    className={`rounded border p-3 cursor-pointer transition-colors ${
+                    className={`rounded border p-3 cursor-pointer transition-colors ${downtimeHighlightClass} ${
                       isSelected
                         ? 'border-blue-500 bg-blue-500/10'
                         : 'border-gray-700 bg-gray-900 hover:border-gray-600'
@@ -317,7 +343,10 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <div className="text-sm font-semibold text-gray-100 truncate">{character.name}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-gray-100 truncate">{character.name}</span>
+                          {downtimeSummary && <CharacterStatusBadge summary={downtimeSummary} />}
+                        </div>
                         <div className="text-xs text-gray-400">
                           HP {hpDisplay} / FP {fpDisplay}
                         </div>
