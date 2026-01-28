@@ -723,3 +723,52 @@ export function selectAllCharacterSlotSummaries(
 
   return summaries;
 }
+
+// ============================================================================
+// TIME ADVANCEMENT SELECTORS
+// ============================================================================
+
+/**
+ * Result of checking whether time can advance past a slot.
+ */
+export interface AdvancementCheck {
+  /** Whether time can advance past this slot */
+  canAdvance: boolean;
+  /** Human-readable reason if advancement is blocked */
+  reason?: string;
+  /** IDs of tasks blocking advancement */
+  blockingTaskIds: string[];
+}
+
+/**
+ * Check if time can advance past a specific slot.
+ *
+ * From spec: "All tasks must be resolved or cancelled within the slot.
+ * Time cannot advance with unresolved tasks."
+ *
+ * Returns blocking task IDs for UI to highlight/navigate to.
+ */
+export function selectCanAdvanceSlot(
+  state: DowntimeState,
+  dayKey: number,
+  slot: number
+): AdvancementCheck {
+  const tasks = selectTasksForSlot(state, dayKey, slot);
+
+  const blockingTasks = tasks.filter(
+    (task) => task.status === 'pending' || task.status === 'in_progress'
+  );
+
+  if (blockingTasks.length === 0) {
+    return {
+      canAdvance: true,
+      blockingTaskIds: [],
+    };
+  }
+
+  return {
+    canAdvance: false,
+    reason: `${blockingTasks.length} task(s) must be resolved or cancelled`,
+    blockingTaskIds: blockingTasks.map((t) => t.id),
+  };
+}

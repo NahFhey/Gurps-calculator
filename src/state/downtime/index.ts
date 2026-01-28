@@ -72,6 +72,9 @@ export {
   // Tool reservation selectors
   selectReservedToolIdsForSlot,
   canUseTools,
+  // Time advancement selectors
+  selectCanAdvanceSlot,
+  type AdvancementCheck,
 } from './downtimeSelectors';
 
 // Migration

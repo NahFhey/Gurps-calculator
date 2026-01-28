@@ -40,6 +40,8 @@ import {
   // Character slot summary selectors
   selectCharacterSlotSummary,
   selectAllCharacterSlotSummaries,
+  // Time advancement selectors
+  selectCanAdvanceSlot,
 } from '../downtimeSelectors';
 
 // ============================================================================
@@ -1744,5 +1746,121 @@ describe('Character slot summary', () => {
       const map = selectAllCharacterSlotSummaries(state, [], 1, 0);
       expect(map.size).toBe(0);
     });
+  });
+});
+
+// ============================================================================
+// selectCanAdvanceSlot TESTS
+// ============================================================================
+
+describe('selectCanAdvanceSlot', () => {
+  it('returns canAdvance true when no tasks', () => {
+    const state = createTestState([]);
+    const result = selectCanAdvanceSlot(state, 1, 0);
+
+    expect(result.canAdvance).toBe(true);
+    expect(result.blockingTaskIds).toHaveLength(0);
+    expect(result.reason).toBeUndefined();
+  });
+
+  it('returns canAdvance true when all tasks resolved', () => {
+    const state = createTestState([
+      createResolvedTask({ leaderId: 'char-1', dayKey: 1, slot: 0, activityType: 'fishing' }),
+      createResolvedTask({ leaderId: 'char-2', dayKey: 1, slot: 0, activityType: 'crafting' }),
+    ]);
+    const result = selectCanAdvanceSlot(state, 1, 0);
+
+    expect(result.canAdvance).toBe(true);
+    expect(result.blockingTaskIds).toHaveLength(0);
+  });
+
+  it('returns canAdvance true when all tasks cancelled', () => {
+    const state = createTestState([
+      createCancelledTask({ leaderId: 'char-1', dayKey: 1, slot: 0, activityType: 'fishing' }),
+    ]);
+    const result = selectCanAdvanceSlot(state, 1, 0);
+
+    expect(result.canAdvance).toBe(true);
+    expect(result.blockingTaskIds).toHaveLength(0);
+  });
+
+  it('returns canAdvance true with mix of resolved and cancelled', () => {
+    const state = createTestState([
+      createResolvedTask({ leaderId: 'char-1', dayKey: 1, slot: 0, activityType: 'fishing' }),
+      createCancelledTask({ leaderId: 'char-2', dayKey: 1, slot: 0, activityType: 'crafting' }),
+    ]);
+    const result = selectCanAdvanceSlot(state, 1, 0);
+
+    expect(result.canAdvance).toBe(true);
+  });
+
+  it('returns canAdvance false when pending tasks exist', () => {
+    const state = createTestState([
+      createPendingTask({ leaderId: 'char-1', dayKey: 1, slot: 0, activityType: 'fishing' }),
+    ]);
+    // Get the task id from the state
+    const taskId = state.taskOrder[0];
+    const result = selectCanAdvanceSlot(state, 1, 0);
+
+    expect(result.canAdvance).toBe(false);
+    expect(result.blockingTaskIds).toContain(taskId);
+    expect(result.reason).toContain('1 task(s)');
+  });
+
+  it('returns canAdvance false when in_progress tasks exist', () => {
+    const task = createTestTask({ id: 'task-ip-1', dayKey: 1, slot: 0, status: 'in_progress' });
+    const state = createTestState([task]);
+    const result = selectCanAdvanceSlot(state, 1, 0);
+
+    expect(result.canAdvance).toBe(false);
+    expect(result.blockingTaskIds).toContain('task-ip-1');
+  });
+
+  it('includes all blocking task IDs', () => {
+    const pending = createPendingTask({ leaderId: 'char-1', dayKey: 1, slot: 0, activityType: 'fishing' });
+    const inProgress = createTestTask({ id: 'task-ip-2', dayKey: 1, slot: 0, status: 'in_progress' });
+    const resolved = createResolvedTask({ leaderId: 'char-3', dayKey: 1, slot: 0, activityType: 'crafting' });
+
+    const state = createTestState([pending, inProgress, resolved]);
+    const result = selectCanAdvanceSlot(state, 1, 0);
+
+    expect(result.canAdvance).toBe(false);
+    expect(result.blockingTaskIds).toHaveLength(2);
+    expect(result.blockingTaskIds).toContain(pending.id);
+    expect(result.blockingTaskIds).toContain('task-ip-2');
+    expect(result.reason).toContain('2 task(s)');
+  });
+
+  it('only checks specified slot', () => {
+    const state = createTestState([
+      createPendingTask({ leaderId: 'char-1', dayKey: 1, slot: 0, activityType: 'fishing' }), // Slot 0
+    ]);
+    const result = selectCanAdvanceSlot(state, 1, 1); // Checking slot 1
+
+    expect(result.canAdvance).toBe(true);
+    expect(result.blockingTaskIds).toHaveLength(0);
+  });
+
+  it('only checks specified day', () => {
+    const state = createTestState([
+      createPendingTask({ leaderId: 'char-1', dayKey: 1, slot: 0, activityType: 'fishing' }), // Day 1
+    ]);
+    const result = selectCanAdvanceSlot(state, 2, 0); // Checking day 2
+
+    expect(result.canAdvance).toBe(true);
+    expect(result.blockingTaskIds).toHaveLength(0);
+  });
+
+  it('provides reason with correct task count', () => {
+    const state = createTestState([
+      createPendingTask({ leaderId: 'char-1', dayKey: 1, slot: 0, activityType: 'fishing' }),
+      createPendingTask({ leaderId: 'char-2', dayKey: 1, slot: 0, activityType: 'crafting' }),
+      createPendingTask({ leaderId: 'char-3', dayKey: 1, slot: 0, activityType: 'alchemy' }),
+    ]);
+    const result = selectCanAdvanceSlot(state, 1, 0);
+
+    expect(result.canAdvance).toBe(false);
+    expect(result.reason).toBe('3 task(s) must be resolved or cancelled');
+    expect(result.blockingTaskIds).toHaveLength(3);
   });
 });
