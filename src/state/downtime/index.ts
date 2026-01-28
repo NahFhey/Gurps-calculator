@@ -31,3 +31,33 @@ export {
   type UpdateTaskPayload,
   type DowntimeAction,
 } from './downtimeActions';
+
+// Selectors
+export {
+  // Basic selectors
+  selectAllTasks,
+  selectTaskById,
+  // Slot-based selectors
+  selectTasksForSlot,
+  selectPendingTasksForSlot,
+  selectResolvedTasksForSlot,
+  selectCancelledTasksForSlot,
+  selectInProgressTasksForSlot,
+  // Filter selectors
+  selectTasksByActivityType,
+  selectTasksByLeader,
+  selectTasksByHelper,
+  selectTasksByCharacter,
+  // Status selectors
+  selectTasksByStatus,
+  selectPendingTasks,
+  selectResolvedTasks,
+  selectCancelledTasks,
+  selectInProgressTasks,
+  // Day-based selectors
+  selectTasksForDay,
+  selectTaskCountsByStatusForDay,
+  // Utility selectors
+  selectSlotHasUnresolvedTasks,
+  selectTaskCount,
+} from './downtimeSelectors';
