@@ -68,9 +68,11 @@ describe('downtimeReducer - taskCreate', () => {
   });
 
   it('generates unique ID', () => {
-    const payload = createFishingPayload();
-    const state1 = downtimeReducer(state, createTask(payload));
-    const state2 = downtimeReducer(state1, createTask(payload));
+    // Use different slots to avoid validation conflict
+    const payload1 = createFishingPayload({ slot: 0 });
+    const payload2 = createFishingPayload({ slot: 1 });
+    const state1 = downtimeReducer(state, createTask(payload1));
+    const state2 = downtimeReducer(state1, createTask(payload2));
 
     const taskIds = Object.keys(state2.tasksById);
     expect(taskIds).toHaveLength(2);

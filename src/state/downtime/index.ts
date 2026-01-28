@@ -89,3 +89,13 @@ export {
   type LegacyTaskAssignment,
   type LegacyDayPlannerState,
 } from './downtimeMigration';
+
+// Validation
+export { validateTaskCreation, type ValidationResult } from './downtimeValidation';
+
+// Errors
+export {
+  DowntimeValidationError,
+  DOWNTIME_ERROR_CODES,
+  type DowntimeErrorCode,
+} from './downtimeErrors';

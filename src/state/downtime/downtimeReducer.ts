@@ -15,6 +15,8 @@ import {
   DOWNTIME_TASK_CANCEL,
   DOWNTIME_TASK_REORDER,
 } from './downtimeActions';
+import { validateTaskCreation } from './downtimeValidation';
+import { DowntimeValidationError } from './downtimeErrors';
 
 // ============================================================================
 // ID GENERATION
@@ -43,6 +45,12 @@ export function downtimeReducer(
   return produce(state, (draft) => {
     switch (action.type) {
       case DOWNTIME_TASK_CREATE: {
+        // Validate assignment constraints before creating task
+        const validation = validateTaskCreation(state, action.payload);
+        if (!validation.valid) {
+          throw new DowntimeValidationError(validation);
+        }
+
         const { activityType, dayKey, slot, leaderId, helperIds, activityData } = action.payload;
         const now = Date.now();
         const id = generateTaskId();
