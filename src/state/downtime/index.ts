@@ -73,3 +73,19 @@ export {
   selectReservedToolIdsForSlot,
   canUseTools,
 } from './downtimeSelectors';
+
+// Migration
+export {
+  // Main migration functions
+  needsMigration,
+  migrateToDowntimeState,
+  migrateV0ToV1,
+  initializeDowntimeState,
+  // Helpers
+  convertLegacyTaskAssignment,
+  resetMigrationIdCounter,
+  // Types
+  type MigrationResult,
+  type LegacyTaskAssignment,
+  type LegacyDayPlannerState,
+} from './downtimeMigration';
