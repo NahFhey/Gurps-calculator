@@ -9,7 +9,7 @@ describe('UnifiedShell party list', () => {
   it('highlights the selected character when clicked', () => {
     const modules = [
       { id: 'inventory', label: 'Inventory', content: <div>Inventory Module</div> },
-      { id: 'activities', label: 'Activities', content: <div>Activities Module</div> }
+      { id: 'downtime', label: 'Downtime', content: <div>Downtime Module</div> }
     ];
 
     render(
@@ -27,7 +27,7 @@ describe('UnifiedShell party list', () => {
   it('sets active module to inventory when Inventory is clicked', () => {
     const modules = [
       { id: 'inventory', label: 'Inventory', content: <div>Inventory Module</div> },
-      { id: 'activities', label: 'Activities', content: <div>Activities Module</div> }
+      { id: 'downtime', label: 'Downtime', content: <div>Downtime Module</div> }
     ];
 
     render(
@@ -41,7 +41,7 @@ describe('UnifiedShell party list', () => {
     const skillsButton = within(rinaRow).getByRole('button', { name: 'Skills' });
 
     fireEvent.click(skillsButton);
-    expect(screen.getByText('Active Module: Activities')).toBeInTheDocument();
+    expect(screen.getByText('Active Module: Downtime')).toBeInTheDocument();
 
     fireEvent.click(inventoryButton);
     expect(screen.getByText('Active Module: Inventory')).toBeInTheDocument();

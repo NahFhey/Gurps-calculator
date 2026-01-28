@@ -7,7 +7,7 @@ import { UnifiedShell } from '../UnifiedShell';
 
 const modules = [
   { id: 'inventory', label: 'Inventory', content: <div>Inventory Module</div> },
-  { id: 'activities', label: 'Activities', content: <div>Activities Module</div> }
+  { id: 'downtime', label: 'Downtime', content: <div>Downtime Module</div> }
 ];
 
 describe('UnifiedShell character pane', () => {

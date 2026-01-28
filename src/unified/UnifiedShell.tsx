@@ -5,7 +5,7 @@ import { ManagerTab } from '../components/ManagerTab';
 import { RulesTab } from '../components/RulesTab';
 import { ChangelogTab } from '../components/ChangelogTab';
 import { CombatTab } from '../components/CombatTab';
-import { ActivitiesPanel } from '../components/activities';
+import { DowntimePanel } from '../components/downtime';
 import { CharacterSheet } from '../components/character-sheet';
 import {
   CharacterCreationModal,
@@ -48,7 +48,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
     }
     return [
       { id: 'inventory', label: 'Inventory', content: <InventoryTab /> },
-      { id: 'activities', label: 'Activities', content: <ActivitiesPanel /> },
+      { id: 'downtime', label: 'Downtime', content: <DowntimePanel /> },
       {
         id: 'manager',
         label: 'Manager',
@@ -329,7 +329,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                         onClick={(event: MouseEvent<HTMLButtonElement>) => {
                           event.stopPropagation();
                           actions.selectCharacter(character.id);
-                          actions.setActiveModule('activities');
+                          actions.setActiveModule('downtime');
                           actions.setActivitiesSubview('skills');
                         }}
                       >
@@ -341,7 +341,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                         onClick={(event: MouseEvent<HTMLButtonElement>) => {
                           event.stopPropagation();
                           actions.selectCharacter(character.id);
-                          actions.setActiveModule('activities');
+                          actions.setActiveModule('downtime');
                           actions.setActivitiesSubview('equipment');
                         }}
                       >

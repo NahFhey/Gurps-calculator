@@ -2,15 +2,15 @@ import { ReactNode } from 'react';
 import { usePanelLayout } from '../../contexts/PanelLayoutContext';
 
 /**
- * ActivityTile - A clickable tile that opens an activity system
+ * DowntimeTile - A clickable tile that opens a downtime activity system
  *
- * Part of Phase 3: Activities Panel Simplification
+ * Part of the Downtime System
  *
  * Clicking a tile expands it to fill the center panel area (default behavior)
  * or can open as a modal overlay.
  */
 
-export interface ActivityTileProps {
+export interface DowntimeTileProps {
   /** Title of the activity (e.g., "Alchemy", "Cooking") */
   title: string;
   /** Brief description shown below the title */
@@ -27,7 +27,7 @@ export interface ActivityTileProps {
   onClick?: () => void;
 }
 
-export function ActivityTile({
+export function DowntimeTile({
   title,
   description,
   icon,
@@ -35,7 +35,7 @@ export function ActivityTile({
   activeCount,
   useModal = false,
   onClick,
-}: ActivityTileProps) {
+}: DowntimeTileProps) {
   const { actions } = usePanelLayout();
 
   const handleClick = () => {
@@ -85,4 +85,4 @@ export function ActivityTile({
   );
 }
 
-export default ActivityTile;
+export default DowntimeTile;

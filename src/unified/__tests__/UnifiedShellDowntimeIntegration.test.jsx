@@ -4,40 +4,40 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { CampaignStoreProvider, useCampaignStore } from '../../state/campaignStore';
 import { UnifiedShell } from '../UnifiedShell';
-import { ActivitiesPanel } from '../../components/activities';
+import { DowntimePanel } from '../../components/downtime';
 
 const modules = [
-  { id: 'activities', label: 'Activities', content: <ActivitiesPanel /> }
+  { id: 'downtime', label: 'Downtime', content: <DowntimePanel /> }
 ];
 
-function ActivateActivities() {
+function ActivateDowntime() {
   const { actions } = useCampaignStore();
   useEffect(() => {
-    actions.setActiveModule('activities');
+    actions.setActiveModule('downtime');
   }, [actions]);
   return null;
 }
 
-describe('UnifiedShell activities integration', () => {
-  it('renders activity tiles for each activity type', () => {
+describe('UnifiedShell downtime integration', () => {
+  it('renders downtime tiles for each activity type', () => {
     render(
       <CampaignStoreProvider>
-        <ActivateActivities />
+        <ActivateDowntime />
         <UnifiedShell modules={modules} />
       </CampaignStoreProvider>
     );
 
-    // Check that activity tiles are rendered
+    // Check that downtime tiles are rendered
     expect(screen.getByText('Alchemy')).toBeInTheDocument();
     expect(screen.getByText('Cooking')).toBeInTheDocument();
     expect(screen.getByText('Crafting')).toBeInTheDocument();
     expect(screen.getByText('Gathering')).toBeInTheDocument();
   });
 
-  it('opens activity modal when tile is clicked', () => {
+  it('opens downtime modal when tile is clicked', () => {
     render(
       <CampaignStoreProvider>
-        <ActivateActivities />
+        <ActivateDowntime />
         <UnifiedShell modules={modules} />
       </CampaignStoreProvider>
     );
