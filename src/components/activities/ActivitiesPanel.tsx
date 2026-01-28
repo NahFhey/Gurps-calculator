@@ -4,7 +4,7 @@ import { ActivityTile } from './ActivityTile';
 import { AlchemyTab } from '../AlchemyTab';
 import { CookingTab } from '../CookingTab';
 import { CraftingTab } from '../CraftingTab';
-import { GatheringManager } from '../GatheringManager';
+import { DayPlannerTab } from '../DayPlannerTab';
 import { useAllWeatherModifiers } from '../../hooks/useWeatherModifiers';
 
 /**
@@ -96,7 +96,7 @@ export function ActivitiesPanel({ showTimeWeather = true }: ActivitiesPanelProps
             title="Gathering"
             description="Foraging & Hunting"
             icon="🌿"
-            activityComponent={<GatheringManager />}
+            activityComponent={<DayPlannerTab />}
           />
         </div>
       </div>

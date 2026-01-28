@@ -1,5 +1,7 @@
-import { useState, useEffect, useMemo, memo } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { TASK_STATUS } from '../constants';
+import { useCampaignStore } from '../state/campaignStore';
+import { denormalizeObject, normalizeArray } from '../state/campaignUtils';
 import {
   createTaskAssignment,
   createPendingDayLedger,
@@ -19,7 +21,6 @@ import {
   TaskDetailPanel
 } from './dayplanner/views';
 import type {
-  DayPlannerTabProps,
   TaskAssignment,
   TaskMode,
   PendingDayLedger
@@ -36,41 +37,103 @@ import type {
  * - TaskDetailPanel (task configuration and resolution)
  * - DaySummaryPanel (pending inventory summary)
  *
+ * MIGRATED: Now uses useCampaignStore directly instead of props.
  * Decomposed from 1,365 lines to ~220 lines (84% reduction)
  */
-function DayPlannerTabBase({
-  // Gathering data
-  species,
-  tools,
-  tables,
-  environments,
-  bait,
-  categories,
-  items,
-  workers,
-  foods,
-  materials,
+function DayPlannerTabBase() {
+  const { state, actions } = useCampaignStore();
 
-  // Day Planner data
-  timeSlots,
-  taskAssignments,
-  pendingDayLedger,
-  currentDay,
-  currentSlot,
-
-  // Save functions
-  saveTimeSlots,
-  saveTaskAssignments,
-  savePendingDayLedger,
-  saveCurrentDay,
-  saveCurrentSlot,
-  saveFoods,
-  saveMaterials
-}: DayPlannerTabProps) {
   // Local state
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTaskMode, setNewTaskMode] = useState<TaskMode>('Fishing');
+
+  // Derive data from normalized state
+  const species = useMemo(() =>
+    denormalizeObject(state.entities.gatheringSpecies || {}) as any[],
+    [state.entities.gatheringSpecies]
+  );
+
+  const tools = useMemo(() =>
+    denormalizeObject(state.entities.gatheringTools || {}) as any[],
+    [state.entities.gatheringTools]
+  );
+
+  const tables = useMemo(() =>
+    denormalizeObject(state.entities.gatheringTables || {}) as any[],
+    [state.entities.gatheringTables]
+  );
+
+  const environments = useMemo(() =>
+    denormalizeObject(state.entities.gatheringEnvironments || {}) as any[],
+    [state.entities.gatheringEnvironments]
+  );
+
+  const bait = useMemo(() =>
+    denormalizeObject(state.entities.gatheringBait || {}) as any[],
+    [state.entities.gatheringBait]
+  );
+
+  const categories = useMemo(() =>
+    denormalizeObject(state.entities.gatheringCategories || {}) as any[],
+    [state.entities.gatheringCategories]
+  );
+
+  const items = useMemo(() =>
+    denormalizeObject(state.entities.gatheringItems || {}) as any[],
+    [state.entities.gatheringItems]
+  );
+
+  const workers = useMemo(() => {
+    const chars = denormalizeObject(state.entities.characters || {}) as any[];
+    return chars.filter(c => c.work?.enabled);
+  }, [state.entities.characters]);
+
+  const foods = useMemo(() =>
+    denormalizeObject(state.entities.foods || {}) as any[],
+    [state.entities.foods]
+  );
+
+  const materials = useMemo(() =>
+    denormalizeObject(state.entities.materials || {}) as any[],
+    [state.entities.materials]
+  );
+
+  // Day planner state
+  const timeSlots = state.dayPlanner.timeSlots || [];
+  const taskAssignments = state.dayPlanner.taskAssignments || [];
+  const pendingDayLedger = state.dayPlanner.pendingDayLedger;
+  const currentDay = state.time.day;
+  const currentSlot = state.dayPlanner.currentSlot || 0;
+
+  // Save callbacks
+  const saveTimeSlots = useCallback((slots: any[]) => {
+    actions.setTimeSlots(slots);
+  }, [actions]);
+
+  const saveTaskAssignments = useCallback((tasks: TaskAssignment[]) => {
+    actions.setTaskAssignments(tasks);
+  }, [actions]);
+
+  const savePendingDayLedger = useCallback((ledger: PendingDayLedger | null) => {
+    actions.setPendingDayLedger(ledger as any);
+  }, [actions]);
+
+  const saveCurrentDay = useCallback((day: number) => {
+    actions.setTimeDay(day);
+  }, [actions]);
+
+  const saveCurrentSlot = useCallback((slot: number) => {
+    actions.setDayPlannerSlot(slot);
+  }, [actions]);
+
+  const saveFoods = useCallback((foodsList: any[]) => {
+    actions.setFoods(normalizeArray(foodsList));
+  }, [actions]);
+
+  const saveMaterials = useCallback((materialsList: any[]) => {
+    actions.setMaterials(normalizeArray(materialsList));
+  }, [actions]);
 
   // Initialize slots and ledger on mount or day change
   useEffect(() => {

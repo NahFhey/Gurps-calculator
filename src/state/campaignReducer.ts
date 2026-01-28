@@ -1149,6 +1149,12 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
       case 'setPendingDayLedger':
         draft.dayPlanner.pendingDayLedger = action.payload;
         return;
+      case 'setDayPlannerSlot':
+        draft.dayPlanner.currentSlot = action.payload;
+        return;
+      case 'setTimeDay':
+        draft.time.day = action.payload;
+        return;
 
       // ========================================================================
       // COMBAT ACTIONS

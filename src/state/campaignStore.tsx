@@ -176,6 +176,8 @@ type CampaignStoreValue = {
     updateTaskAssignment: (id: Id, changes: Partial<TaskAssignment>) => void;
     setTaskAssignments: (tasks: TaskAssignment[]) => void;
     setPendingDayLedger: (ledger: DayLedger | null) => void;
+    setDayPlannerSlot: (slot: number) => void;
+    setTimeDay: (day: number) => void;
 
     // Combat Actions
     addCombatCharacter: (character: CombatCharacter) => void;
@@ -407,6 +409,8 @@ export function CampaignStoreProvider({
       setTaskAssignments: (tasks: TaskAssignment[]) => dispatch({ type: 'setTaskAssignments', payload: tasks }),
       setPendingDayLedger: (ledger: DayLedger | null) =>
         dispatch({ type: 'setPendingDayLedger', payload: ledger }),
+      setDayPlannerSlot: (slot: number) => dispatch({ type: 'setDayPlannerSlot', payload: slot }),
+      setTimeDay: (day: number) => dispatch({ type: 'setTimeDay', payload: day }),
 
       // Combat Actions
       addCombatCharacter: (character: CombatCharacter) =>
