@@ -42,13 +42,24 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
   const characters = useCampaignCharacters();
   const { state: layoutState, actions: layoutActions } = usePanelLayout();
 
+  const { state, actions } = useCampaignStore();
+
   const availableModules = useMemo<ModuleDefinition[]>(() => {
     if (modules?.length) {
       return modules;
     }
     return [
       { id: 'inventory', label: 'Inventory', content: <InventoryTab /> },
-      { id: 'downtime', label: 'Downtime', content: <DowntimePanel /> },
+      {
+        id: 'downtime',
+        label: 'Downtime',
+        content: (
+          <DowntimePanel
+            currentDayKey={state.time?.day ?? 1}
+            currentSlot={state.time?.slot ?? 0}
+          />
+        ),
+      },
       {
         id: 'manager',
         label: 'Manager',
@@ -58,8 +69,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
       { id: 'changelog', label: 'Changelog', content: <ChangelogTab /> },
       { id: 'combat', label: 'Combat', content: <CombatTab /> }
     ];
-  }, [modules]);
-  const { state, actions } = useCampaignStore();
+  }, [modules, state.time?.day, state.time?.slot]);
   const activeModuleId = state.ui.activeModule || availableModules[0]?.id;
   const activeModule = availableModules.find((moduleItem) => moduleItem.id === activeModuleId);
   const selectedCharacterId = useSelectedCharacterId();
