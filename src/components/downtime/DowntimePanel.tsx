@@ -5,9 +5,10 @@ import { FishingActivity } from './views/FishingActivity';
 import { ForagingActivity } from './views/ForagingActivity';
 import { AlchemyActivity } from './views/AlchemyActivity';
 import { CraftingActivity } from './views/CraftingActivity';
+import { CookingTab } from '../CookingTab';
 import { DowntimeProvider } from './DowntimeContext';
 
-type DowntimeView = 'tiles' | 'fishing' | 'foraging' | 'alchemy' | 'crafting';
+type DowntimeView = 'tiles' | 'fishing' | 'foraging' | 'alchemy' | 'crafting' | 'cooking';
 
 interface DowntimePanelProps {
   currentDayKey: number;
@@ -63,6 +64,7 @@ export function DowntimePanel({ currentDayKey, currentSlot }: DowntimePanelProps
               currentSlot={currentSlot}
             />
           )}
+          {activeView === 'cooking' && <CookingTab />}
         </main>
       </div>
     </DowntimeProvider>

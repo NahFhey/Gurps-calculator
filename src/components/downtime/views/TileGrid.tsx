@@ -1,6 +1,6 @@
-import { Fish, Leaf, FlaskConical, Hammer } from 'lucide-react';
+import { Fish, Leaf, FlaskConical, Hammer, ChefHat } from 'lucide-react';
 
-type NavigableView = 'fishing' | 'foraging' | 'alchemy' | 'crafting';
+type NavigableView = 'fishing' | 'foraging' | 'alchemy' | 'crafting' | 'cooking';
 
 interface TileGridProps {
   onNavigate: (view: NavigableView) => void;
@@ -43,6 +43,13 @@ const TILES: TileConfig[] = [
     description: 'Gear & Projects',
     icon: Hammer,
     color: 'bg-amber-900/50 hover:bg-amber-800/60 border-amber-700/50',
+  },
+  {
+    id: 'cooking',
+    label: 'Cooking',
+    description: 'Recipes & Meals',
+    icon: ChefHat,
+    color: 'bg-orange-900/50 hover:bg-orange-800/60 border-orange-700/50',
   },
 ];
 
