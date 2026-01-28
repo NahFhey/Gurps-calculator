@@ -95,6 +95,8 @@ export {
   validateTaskCreation,
   validateAssignment,
   validateLockOnCreate,
+  validateToolExclusivity,
+  getToolIdsFromActivityData,
   type ValidationResult,
 } from './downtimeValidation';
 

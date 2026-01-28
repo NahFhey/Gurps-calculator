@@ -5,12 +5,13 @@
  * Enforces constraints like single assignment per slot.
  */
 
-import type { DowntimeState } from '../../types/downtime';
+import type { DowntimeState, ActivityData } from '../../types/downtime';
 import type { CreateTaskPayload } from './downtimeActions';
 import {
   selectCharacterAssignmentForSlot,
   canCreateTaskForTarget,
   getTargetKeyFromActivityData,
+  selectReservedToolIdsForSlot,
 } from './downtimeSelectors';
 import { type ValidationResult, DOWNTIME_ERROR_CODES } from './downtimeErrors';
 
@@ -128,6 +129,74 @@ export function validateLockOnCreate(
 }
 
 // ============================================================================
+// TOOL EXCLUSIVITY VALIDATION
+// ============================================================================
+
+/**
+ * Extracts tool IDs from activity data.
+ * Different activity types store tools in different structures.
+ */
+export function getToolIdsFromActivityData(activityData: ActivityData): string[] {
+  switch (activityData.type) {
+    case 'fishing':
+      return activityData.toolIds;
+    case 'foraging':
+      return activityData.toolIds;
+    case 'alchemy':
+      return activityData.toolIds ?? [];
+    case 'crafting':
+      return activityData.toolIds;
+    case 'rest':
+      return []; // Rest uses no tools
+    default:
+      return [];
+  }
+}
+
+/**
+ * Validates tool exclusivity constraint.
+ *
+ * From spec: "A single tool instance (by toolId) may not be used by more than
+ * one task in the same (dayKey, slot). Cancelled tasks FREE their tools."
+ *
+ * Only pending and in_progress tasks reserve tools.
+ */
+export function validateToolExclusivity(
+  state: DowntimeState,
+  payload: CreateTaskPayload
+): ValidationResult {
+  const toolIds = getToolIdsFromActivityData(payload.activityData);
+
+  // No tools = no conflict possible
+  if (toolIds.length === 0) {
+    return { valid: true };
+  }
+
+  const reservedTools = selectReservedToolIdsForSlot(
+    state,
+    payload.dayKey,
+    payload.slot
+  );
+
+  const conflictingTools = toolIds.filter((id) => reservedTools.has(id));
+
+  if (conflictingTools.length > 0) {
+    return {
+      valid: false,
+      code: DOWNTIME_ERROR_CODES.TOOL_CONFLICT,
+      message: `Tool(s) already in use: ${conflictingTools.join(', ')}`,
+      meta: {
+        conflictingToolIds: conflictingTools,
+        dayKey: payload.dayKey,
+        slot: payload.slot,
+      },
+    };
+  }
+
+  return { valid: true };
+}
+
+// ============================================================================
 // COMBINED TASK CREATION VALIDATION
 // ============================================================================
 
@@ -137,6 +206,7 @@ export function validateLockOnCreate(
  * Runs all validation checks in order:
  * 1. Assignment validation (single assignment per slot)
  * 2. Lock-on-create validation (no duplicate targets)
+ * 3. Tool exclusivity validation (no shared tools)
  */
 export function validateTaskCreation(
   state: DowntimeState,
@@ -152,6 +222,12 @@ export function validateTaskCreation(
   const lockResult = validateLockOnCreate(state, payload);
   if (!lockResult.valid) {
     return lockResult;
+  }
+
+  // Check tool exclusivity
+  const toolResult = validateToolExclusivity(state, payload);
+  if (!toolResult.valid) {
+    return toolResult;
   }
 
   return { valid: true };

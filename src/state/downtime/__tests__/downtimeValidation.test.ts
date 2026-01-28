@@ -4,12 +4,18 @@ import type {
   DowntimeTask,
   FishingData,
   AlchemyData,
+  CraftingData,
+  RestData,
   TaskStatus,
 } from '../../../types/downtime';
 import { downtimeInitialState } from '../downtimeInitialState';
 import { downtimeReducer } from '../downtimeReducer';
 import { createTask, cancelTask, type CreateTaskPayload } from '../downtimeActions';
-import { validateTaskCreation, validateLockOnCreate } from '../downtimeValidation';
+import {
+  validateTaskCreation,
+  validateLockOnCreate,
+  validateToolExclusivity,
+} from '../downtimeValidation';
 import { DowntimeValidationError, DOWNTIME_ERROR_CODES } from '../downtimeErrors';
 
 // ============================================================================
@@ -43,6 +49,35 @@ function createAlchemyData(overrides?: Partial<AlchemyData>): AlchemyData {
     formulaId: 'formula-basic',
     reagentIds: ['reagent-1'],
     batchSize: 1,
+    toolIds: [],
+    ...overrides,
+  };
+}
+
+/**
+ * Creates crafting activity data for tests.
+ */
+function createCraftingData(overrides?: Partial<CraftingData>): CraftingData {
+  return {
+    type: 'crafting',
+    projectId: 'project-sword',
+    recipeId: 'recipe-longsword',
+    materialIds: ['material-1'],
+    toolIds: [],
+    phase: 'craft',
+    progress: 0,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates rest activity data for tests.
+ */
+function createRestData(overrides?: Partial<RestData>): RestData {
+  return {
+    type: 'rest',
+    restType: 'sleep',
+    recoveryBonus: 0,
     ...overrides,
   };
 }
@@ -68,8 +103,24 @@ interface TaskOptions {
   helperIds?: string[];
   dayKey?: number;
   slot?: number;
-  activityType?: 'fishing' | 'alchemy';
-  activityData?: FishingData | AlchemyData;
+  activityType?: 'fishing' | 'alchemy' | 'crafting' | 'rest';
+  activityData?: FishingData | AlchemyData | CraftingData | RestData;
+}
+
+/**
+ * Gets default activity data for a given activity type.
+ */
+function getDefaultActivityData(activityType: string) {
+  switch (activityType) {
+    case 'alchemy':
+      return createAlchemyData();
+    case 'crafting':
+      return createCraftingData();
+    case 'rest':
+      return createRestData();
+    default:
+      return createFishingData();
+  }
 }
 
 /**
@@ -79,8 +130,7 @@ function createPendingTask(options: TaskOptions = {}): DowntimeTask {
   const id = options.id ?? `task-${++idCounter}`;
   const now = Date.now();
   const activityType = options.activityType ?? 'fishing';
-  const activityData = options.activityData ??
-    (activityType === 'alchemy' ? createAlchemyData() : createFishingData());
+  const activityData = options.activityData ?? getDefaultActivityData(activityType);
 
   return {
     id,
@@ -103,6 +153,16 @@ function createCancelledTask(options: TaskOptions = {}): DowntimeTask {
   return {
     ...createPendingTask(options),
     status: 'cancelled',
+  };
+}
+
+/**
+ * Creates an in_progress task for tests.
+ */
+function createInProgressTask(options: TaskOptions = {}): DowntimeTask {
+  return {
+    ...createPendingTask(options),
+    status: 'in_progress',
   };
 }
 
@@ -876,6 +936,275 @@ describe('downtimeReducer - lock validation', () => {
       slot: 0,
       leaderId: 'char-1',
       activityData: createFishingData({ speciesId: 'salmon' }), // Different target
+    })));
+
+    expect(Object.keys(state3.tasksById)).toHaveLength(2);
+  });
+});
+
+// ============================================================================
+// validateToolExclusivity - TOOL VALIDATION TESTS
+// ============================================================================
+
+describe('validateToolExclusivity', () => {
+  beforeEach(() => {
+    idCounter = 0;
+  });
+
+  it('allows task when all tools are available', () => {
+    const state = createTestState([]);
+    const result = validateToolExclusivity(state, createTaskPayload({
+      activityType: 'fishing',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-1',
+      helperIds: [],
+      activityData: createFishingData({ toolIds: ['rod-1', 'net-1'] }),
+    }));
+
+    expect(result.valid).toBe(true);
+  });
+
+  it('blocks task when tool is reserved by pending task', () => {
+    const state = createTestState([
+      createPendingTask({
+        leaderId: 'char-2',
+        dayKey: 1,
+        slot: 0,
+        activityType: 'fishing',
+        activityData: createFishingData({ toolIds: ['rod-1'], speciesId: 'bass' }),
+      }),
+    ]);
+
+    const result = validateToolExclusivity(state, createTaskPayload({
+      activityType: 'fishing',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-1',
+      helperIds: [],
+      activityData: createFishingData({ toolIds: ['rod-1'], speciesId: 'trout' }), // Same tool
+    }));
+
+    expect(result.valid).toBe(false);
+    expect(result.code).toBe(DOWNTIME_ERROR_CODES.TOOL_CONFLICT);
+    expect(result.meta?.conflictingToolIds).toContain('rod-1');
+  });
+
+  it('blocks task when tool is reserved by in_progress task', () => {
+    const state = createTestState([
+      createInProgressTask({
+        leaderId: 'char-2',
+        dayKey: 1,
+        slot: 0,
+        activityType: 'alchemy',
+        activityData: createAlchemyData({ toolIds: ['alembic-1'], recipeId: 'potion-a' }),
+      }),
+    ]);
+
+    const result = validateToolExclusivity(state, createTaskPayload({
+      activityType: 'alchemy',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-1',
+      helperIds: [],
+      activityData: createAlchemyData({ toolIds: ['alembic-1'], recipeId: 'potion-b' }),
+    }));
+
+    expect(result.valid).toBe(false);
+    expect(result.code).toBe(DOWNTIME_ERROR_CODES.TOOL_CONFLICT);
+  });
+
+  it('allows task when tool was freed by cancelled task', () => {
+    const state = createTestState([
+      createCancelledTask({
+        leaderId: 'char-2',
+        dayKey: 1,
+        slot: 0,
+        activityType: 'fishing',
+        activityData: createFishingData({ toolIds: ['rod-1'], speciesId: 'bass' }),
+      }),
+    ]);
+
+    const result = validateToolExclusivity(state, createTaskPayload({
+      activityType: 'fishing',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-1',
+      helperIds: [],
+      activityData: createFishingData({ toolIds: ['rod-1'], speciesId: 'trout' }),
+    }));
+
+    expect(result.valid).toBe(true);
+  });
+
+  it('allows same tool in different slot', () => {
+    const state = createTestState([
+      createPendingTask({
+        leaderId: 'char-1',
+        dayKey: 1,
+        slot: 0,
+        activityType: 'crafting',
+        activityData: createCraftingData({ toolIds: ['hammer-1'], projectId: 'project-a' }),
+      }),
+    ]);
+
+    const result = validateToolExclusivity(state, createTaskPayload({
+      activityType: 'crafting',
+      dayKey: 1,
+      slot: 1, // Different slot
+      leaderId: 'char-2',
+      helperIds: [],
+      activityData: createCraftingData({ toolIds: ['hammer-1'], projectId: 'project-b' }),
+    }));
+
+    expect(result.valid).toBe(true);
+  });
+
+  it('allows same tool on different day', () => {
+    const state = createTestState([
+      createPendingTask({
+        leaderId: 'char-1',
+        dayKey: 1,
+        slot: 0,
+        activityType: 'crafting',
+        activityData: createCraftingData({ toolIds: ['hammer-1'], projectId: 'project-a' }),
+      }),
+    ]);
+
+    const result = validateToolExclusivity(state, createTaskPayload({
+      activityType: 'crafting',
+      dayKey: 2, // Different day
+      slot: 0,
+      leaderId: 'char-2',
+      helperIds: [],
+      activityData: createCraftingData({ toolIds: ['hammer-1'], projectId: 'project-b' }),
+    }));
+
+    expect(result.valid).toBe(true);
+  });
+
+  it('reports all conflicting tools', () => {
+    const state = createTestState([
+      createPendingTask({
+        leaderId: 'char-2',
+        dayKey: 1,
+        slot: 0,
+        activityType: 'alchemy',
+        activityData: createAlchemyData({
+          toolIds: ['alembic-1', 'mortar-1'],
+          recipeId: 'potion-a',
+        }),
+      }),
+    ]);
+
+    const result = validateToolExclusivity(state, createTaskPayload({
+      activityType: 'alchemy',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-1',
+      helperIds: [],
+      activityData: createAlchemyData({
+        toolIds: ['alembic-1', 'mortar-1', 'flask-1'],
+        recipeId: 'potion-b',
+      }),
+    }));
+
+    expect(result.valid).toBe(false);
+    expect(result.meta?.conflictingToolIds).toHaveLength(2);
+    expect(result.meta?.conflictingToolIds).toContain('alembic-1');
+    expect(result.meta?.conflictingToolIds).toContain('mortar-1');
+  });
+
+  it('allows task with no tools', () => {
+    const state = createTestState([]);
+    const result = validateToolExclusivity(state, createTaskPayload({
+      activityType: 'rest',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-1',
+      helperIds: [],
+      activityData: createRestData(),
+    }));
+
+    expect(result.valid).toBe(true);
+  });
+
+  it('allows task when using different tools than reserved', () => {
+    const state = createTestState([
+      createPendingTask({
+        leaderId: 'char-2',
+        dayKey: 1,
+        slot: 0,
+        activityType: 'fishing',
+        activityData: createFishingData({ toolIds: ['rod-1'], speciesId: 'bass' }),
+      }),
+    ]);
+
+    const result = validateToolExclusivity(state, createTaskPayload({
+      activityType: 'fishing',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-1',
+      helperIds: [],
+      activityData: createFishingData({ toolIds: ['rod-2'], speciesId: 'trout' }), // Different tool
+    }));
+
+    expect(result.valid).toBe(true);
+  });
+});
+
+// ============================================================================
+// downtimeReducer - TOOL VALIDATION TESTS
+// ============================================================================
+
+describe('downtimeReducer - tool validation', () => {
+  beforeEach(() => {
+    idCounter = 0;
+  });
+
+  it('throws DowntimeValidationError on tool conflict', () => {
+    // Create task with tool
+    const state1 = downtimeReducer(downtimeInitialState, createTask(createTaskPayload({
+      activityType: 'fishing',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-1',
+      activityData: createFishingData({ toolIds: ['rod-1'], speciesId: 'trout' }),
+    })));
+
+    // Try to create second task with same tool
+    expect(() => {
+      downtimeReducer(state1, createTask(createTaskPayload({
+        activityType: 'fishing',
+        dayKey: 1,
+        slot: 0,
+        leaderId: 'char-2',
+        activityData: createFishingData({ toolIds: ['rod-1'], speciesId: 'bass' }),
+      })));
+    }).toThrow(DowntimeValidationError);
+  });
+
+  it('allows tool reuse after cancellation', () => {
+    // Create task with tool
+    const state1 = downtimeReducer(downtimeInitialState, createTask(createTaskPayload({
+      activityType: 'fishing',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-1',
+      activityData: createFishingData({ toolIds: ['rod-1'], speciesId: 'trout' }),
+    })));
+
+    // Cancel it
+    const taskId = state1.taskOrder[0];
+    const state2 = downtimeReducer(state1, cancelTask(taskId));
+
+    // Create second task with same tool (different target to avoid lock)
+    const state3 = downtimeReducer(state2, createTask(createTaskPayload({
+      activityType: 'fishing',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'char-2',
+      activityData: createFishingData({ toolIds: ['rod-1'], speciesId: 'bass' }),
     })));
 
     expect(Object.keys(state3.tasksById)).toHaveLength(2);
