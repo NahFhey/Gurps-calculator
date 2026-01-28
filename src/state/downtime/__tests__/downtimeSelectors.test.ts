@@ -22,6 +22,18 @@ import {
   selectTasksForDay,
   selectTaskCount,
   selectSlotHasUnresolvedTasks,
+  // Assignment selectors
+  selectCharacterAssignmentForSlot,
+  selectAssignedCharacterIdsForSlot,
+  selectAvailableCharacterIdsForSlot,
+  // Lock selectors
+  generateTaskLockKey,
+  selectExistingLockKeysForSlot,
+  canCreateTaskForTarget,
+  getTargetKeyFromActivityData,
+  // Tool selectors
+  selectReservedToolIdsForSlot,
+  canUseTools,
 } from '../downtimeSelectors';
 
 // ============================================================================
@@ -470,5 +482,658 @@ describe('selectSlotHasUnresolvedTasks', () => {
 
   it('returns false for empty slot', () => {
     expect(selectSlotHasUnresolvedTasks(downtimeInitialState, 1, 0)).toBe(false);
+  });
+});
+
+// ============================================================================
+// selectCharacterAssignmentForSlot TESTS
+// ============================================================================
+
+describe('selectCharacterAssignmentForSlot', () => {
+  it('returns leader role correctly', () => {
+    const task = createTestTask({
+      id: 't1',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'alice',
+      helperIds: ['bob'],
+      status: 'pending',
+    });
+    const state = createTestState([task]);
+
+    const result = selectCharacterAssignmentForSlot(state, 'alice', 1, 0);
+
+    expect(result).toEqual({ taskId: 't1', role: 'leader' });
+  });
+
+  it('returns helper role correctly', () => {
+    const task = createTestTask({
+      id: 't1',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'alice',
+      helperIds: ['bob', 'charlie'],
+      status: 'pending',
+    });
+    const state = createTestState([task]);
+
+    const result = selectCharacterAssignmentForSlot(state, 'bob', 1, 0);
+
+    expect(result).toEqual({ taskId: 't1', role: 'helper' });
+  });
+
+  it('returns null when not assigned', () => {
+    const task = createTestTask({
+      id: 't1',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'alice',
+      helperIds: ['bob'],
+      status: 'pending',
+    });
+    const state = createTestState([task]);
+
+    const result = selectCharacterAssignmentForSlot(state, 'charlie', 1, 0);
+
+    expect(result).toBeNull();
+  });
+
+  it('ignores cancelled tasks', () => {
+    const task = createTestTask({
+      id: 't1',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'alice',
+      helperIds: [],
+      status: 'cancelled',
+    });
+    const state = createTestState([task]);
+
+    const result = selectCharacterAssignmentForSlot(state, 'alice', 1, 0);
+
+    expect(result).toBeNull();
+  });
+});
+
+// ============================================================================
+// selectAssignedCharacterIdsForSlot TESTS
+// ============================================================================
+
+describe('selectAssignedCharacterIdsForSlot', () => {
+  it('includes both leaders and helpers', () => {
+    const task1 = createTestTask({
+      id: 't1',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'alice',
+      helperIds: ['bob'],
+      status: 'pending',
+    });
+    const task2 = createTestTask({
+      id: 't2',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'charlie',
+      helperIds: ['diana'],
+      status: 'in_progress',
+    });
+    const state = createTestState([task1, task2]);
+
+    const result = selectAssignedCharacterIdsForSlot(state, 1, 0);
+
+    expect(result).toEqual(new Set(['alice', 'bob', 'charlie', 'diana']));
+  });
+
+  it('excludes characters from cancelled tasks', () => {
+    const active = createTestTask({
+      id: 't1',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'alice',
+      helperIds: [],
+      status: 'pending',
+    });
+    const cancelled = createTestTask({
+      id: 't2',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'bob',
+      helperIds: ['charlie'],
+      status: 'cancelled',
+    });
+    const state = createTestState([active, cancelled]);
+
+    const result = selectAssignedCharacterIdsForSlot(state, 1, 0);
+
+    expect(result).toEqual(new Set(['alice']));
+    expect(result.has('bob')).toBe(false);
+    expect(result.has('charlie')).toBe(false);
+  });
+
+  it('returns empty set for empty slot', () => {
+    const result = selectAssignedCharacterIdsForSlot(downtimeInitialState, 1, 0);
+    expect(result.size).toBe(0);
+  });
+});
+
+// ============================================================================
+// selectAvailableCharacterIdsForSlot TESTS
+// ============================================================================
+
+describe('selectAvailableCharacterIdsForSlot', () => {
+  it('excludes assigned characters', () => {
+    const task = createTestTask({
+      id: 't1',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'alice',
+      helperIds: ['bob'],
+      status: 'pending',
+    });
+    const state = createTestState([task]);
+    const allCharacters = ['alice', 'bob', 'charlie', 'diana'];
+
+    const result = selectAvailableCharacterIdsForSlot(state, 1, 0, allCharacters);
+
+    expect(result).toEqual(['charlie', 'diana']);
+  });
+
+  it('returns all characters when none assigned', () => {
+    const allCharacters = ['alice', 'bob', 'charlie'];
+
+    const result = selectAvailableCharacterIdsForSlot(
+      downtimeInitialState,
+      1,
+      0,
+      allCharacters
+    );
+
+    expect(result).toEqual(['alice', 'bob', 'charlie']);
+  });
+});
+
+// ============================================================================
+// generateTaskLockKey TESTS
+// ============================================================================
+
+describe('generateTaskLockKey', () => {
+  it('produces correct format', () => {
+    const result = generateTaskLockKey('fishing', 'char-1', 1, 0, 'species:trout');
+
+    expect(result).toBe('fishing|char-1|1|0|species:trout');
+  });
+
+  it('handles different activity types', () => {
+    const fishing = generateTaskLockKey('fishing', 'c1', 1, 0, 'species:salmon');
+    const alchemy = generateTaskLockKey('alchemy', 'c1', 1, 0, 'recipe:potion');
+
+    expect(fishing).toBe('fishing|c1|1|0|species:salmon');
+    expect(alchemy).toBe('alchemy|c1|1|0|recipe:potion');
+  });
+});
+
+// ============================================================================
+// getTargetKeyFromActivityData TESTS
+// ============================================================================
+
+describe('getTargetKeyFromActivityData', () => {
+  it('extracts fishing target key', () => {
+    const activityData = {
+      type: 'fishing' as const,
+      speciesId: 'trout',
+      spotId: 'river',
+      toolIds: [],
+      skillModifier: 0,
+      targetYield: 1,
+    };
+
+    const result = getTargetKeyFromActivityData('fishing', activityData);
+
+    expect(result).toBe('species:trout');
+  });
+
+  it('extracts foraging target key', () => {
+    const activityData = {
+      type: 'foraging' as const,
+      biomeId: 'forest',
+      nodeId: 'berry-bush',
+      tableId: 'table-1',
+      toolIds: [],
+      skillModifier: 0,
+    };
+
+    const result = getTargetKeyFromActivityData('foraging', activityData);
+
+    expect(result).toBe('node:berry-bush');
+  });
+
+  it('extracts alchemy target key', () => {
+    const activityData = {
+      type: 'alchemy' as const,
+      recipeId: 'healing-potion',
+      formulaId: 'f1',
+      reagentIds: [],
+      toolIds: [],
+      batchSize: 1,
+      aspectModifiers: {},
+    };
+
+    const result = getTargetKeyFromActivityData('alchemy', activityData);
+
+    expect(result).toBe('recipe:healing-potion');
+  });
+
+  it('extracts crafting target key', () => {
+    const activityData = {
+      type: 'crafting' as const,
+      projectId: 'sword-project',
+      recipeId: 'r1',
+      materialIds: [],
+      toolIds: [],
+      phase: 'craft' as const,
+      progressCurrent: 0,
+      progressRequired: 10,
+    };
+
+    const result = getTargetKeyFromActivityData('crafting', activityData);
+
+    expect(result).toBe('project:sword-project');
+  });
+
+  it('extracts rest target key', () => {
+    const activityData = {
+      type: 'rest' as const,
+      restType: 'sleep' as const,
+      recoveryBonus: 0,
+    };
+
+    const result = getTargetKeyFromActivityData('rest', activityData);
+
+    expect(result).toBe('rest:sleep');
+  });
+});
+
+// ============================================================================
+// selectExistingLockKeysForSlot TESTS
+// ============================================================================
+
+describe('selectExistingLockKeysForSlot', () => {
+  it('includes pending tasks', () => {
+    const task = createTestTask({
+      id: 't1',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'alice',
+      status: 'pending',
+      activityData: {
+        type: 'fishing',
+        speciesId: 'trout',
+        spotId: 'river',
+        toolIds: [],
+        skillModifier: 0,
+        targetYield: 1,
+      },
+    });
+    const state = createTestState([task]);
+
+    const result = selectExistingLockKeysForSlot(state, 1, 0);
+
+    expect(result.has('fishing|alice|1|0|species:trout')).toBe(true);
+  });
+
+  it('includes resolved tasks', () => {
+    const task = createTestTask({
+      id: 't1',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'alice',
+      status: 'resolved',
+      activityData: {
+        type: 'fishing',
+        speciesId: 'salmon',
+        spotId: 'river',
+        toolIds: [],
+        skillModifier: 0,
+        targetYield: 1,
+      },
+    });
+    const state = createTestState([task]);
+
+    const result = selectExistingLockKeysForSlot(state, 1, 0);
+
+    expect(result.has('fishing|alice|1|0|species:salmon')).toBe(true);
+  });
+
+  it('includes CANCELLED tasks (critical!)', () => {
+    const task = createTestTask({
+      id: 't1',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'alice',
+      status: 'cancelled',
+      activityData: {
+        type: 'fishing',
+        speciesId: 'bass',
+        spotId: 'lake',
+        toolIds: [],
+        skillModifier: 0,
+        targetYield: 1,
+      },
+    });
+    const state = createTestState([task]);
+
+    const result = selectExistingLockKeysForSlot(state, 1, 0);
+
+    // CRITICAL: Cancelled tasks still hold their locks!
+    expect(result.has('fishing|alice|1|0|species:bass')).toBe(true);
+  });
+});
+
+// ============================================================================
+// canCreateTaskForTarget TESTS
+// ============================================================================
+
+describe('canCreateTaskForTarget', () => {
+  it('returns true when no conflict', () => {
+    const task = createTestTask({
+      id: 't1',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'alice',
+      activityData: {
+        type: 'fishing',
+        speciesId: 'trout',
+        spotId: 'river',
+        toolIds: [],
+        skillModifier: 0,
+        targetYield: 1,
+      },
+    });
+    const state = createTestState([task]);
+
+    // Different character, same target - allowed
+    const result = canCreateTaskForTarget(
+      state,
+      'bob',
+      'fishing',
+      'species:trout',
+      1,
+      0
+    );
+
+    expect(result).toBe(true);
+  });
+
+  it('returns false when lock exists', () => {
+    const task = createTestTask({
+      id: 't1',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'alice',
+      activityData: {
+        type: 'fishing',
+        speciesId: 'trout',
+        spotId: 'river',
+        toolIds: [],
+        skillModifier: 0,
+        targetYield: 1,
+      },
+    });
+    const state = createTestState([task]);
+
+    // Same character, same activity, same target - blocked
+    const result = canCreateTaskForTarget(
+      state,
+      'alice',
+      'fishing',
+      'species:trout',
+      1,
+      0
+    );
+
+    expect(result).toBe(false);
+  });
+
+  it('returns false when cancelled task holds lock', () => {
+    const task = createTestTask({
+      id: 't1',
+      dayKey: 1,
+      slot: 0,
+      leaderId: 'alice',
+      status: 'cancelled',
+      activityData: {
+        type: 'fishing',
+        speciesId: 'trout',
+        spotId: 'river',
+        toolIds: [],
+        skillModifier: 0,
+        targetYield: 1,
+      },
+    });
+    const state = createTestState([task]);
+
+    // Even cancelled tasks block re-creation!
+    const result = canCreateTaskForTarget(
+      state,
+      'alice',
+      'fishing',
+      'species:trout',
+      1,
+      0
+    );
+
+    expect(result).toBe(false);
+  });
+});
+
+// ============================================================================
+// selectReservedToolIdsForSlot TESTS
+// ============================================================================
+
+describe('selectReservedToolIdsForSlot', () => {
+  it('includes tools from pending tasks', () => {
+    const task = createTestTask({
+      id: 't1',
+      dayKey: 1,
+      slot: 0,
+      status: 'pending',
+      activityData: {
+        type: 'fishing',
+        speciesId: 'trout',
+        spotId: 'river',
+        toolIds: ['rod-1', 'net-1'],
+        skillModifier: 0,
+        targetYield: 1,
+      },
+    });
+    const state = createTestState([task]);
+
+    const result = selectReservedToolIdsForSlot(state, 1, 0);
+
+    expect(result).toEqual(new Set(['rod-1', 'net-1']));
+  });
+
+  it('includes tools from in_progress tasks', () => {
+    const task = createTestTask({
+      id: 't1',
+      dayKey: 1,
+      slot: 0,
+      status: 'in_progress',
+      activityData: {
+        type: 'fishing',
+        speciesId: 'trout',
+        spotId: 'river',
+        toolIds: ['rod-2'],
+        skillModifier: 0,
+        targetYield: 1,
+      },
+    });
+    const state = createTestState([task]);
+
+    const result = selectReservedToolIdsForSlot(state, 1, 0);
+
+    expect(result).toEqual(new Set(['rod-2']));
+  });
+
+  it('EXCLUDES tools from cancelled tasks', () => {
+    const cancelled = createTestTask({
+      id: 't1',
+      dayKey: 1,
+      slot: 0,
+      status: 'cancelled',
+      activityData: {
+        type: 'fishing',
+        speciesId: 'trout',
+        spotId: 'river',
+        toolIds: ['rod-cancelled'],
+        skillModifier: 0,
+        targetYield: 1,
+      },
+    });
+    const pending = createTestTask({
+      id: 't2',
+      dayKey: 1,
+      slot: 0,
+      status: 'pending',
+      activityData: {
+        type: 'fishing',
+        speciesId: 'salmon',
+        spotId: 'river',
+        toolIds: ['rod-active'],
+        skillModifier: 0,
+        targetYield: 1,
+      },
+    });
+    const state = createTestState([cancelled, pending]);
+
+    const result = selectReservedToolIdsForSlot(state, 1, 0);
+
+    // Cancelled task's tools are freed!
+    expect(result.has('rod-cancelled')).toBe(false);
+    expect(result.has('rod-active')).toBe(true);
+  });
+
+  it('EXCLUDES tools from resolved tasks', () => {
+    const resolved = createTestTask({
+      id: 't1',
+      dayKey: 1,
+      slot: 0,
+      status: 'resolved',
+      activityData: {
+        type: 'fishing',
+        speciesId: 'trout',
+        spotId: 'river',
+        toolIds: ['rod-done'],
+        skillModifier: 0,
+        targetYield: 1,
+      },
+    });
+    const state = createTestState([resolved]);
+
+    const result = selectReservedToolIdsForSlot(state, 1, 0);
+
+    expect(result.has('rod-done')).toBe(false);
+  });
+
+  it('returns empty set for empty slot', () => {
+    const result = selectReservedToolIdsForSlot(downtimeInitialState, 1, 0);
+    expect(result.size).toBe(0);
+  });
+});
+
+// ============================================================================
+// canUseTools TESTS
+// ============================================================================
+
+describe('canUseTools', () => {
+  it('returns true when all tools available', () => {
+    const task = createTestTask({
+      id: 't1',
+      dayKey: 1,
+      slot: 0,
+      status: 'pending',
+      activityData: {
+        type: 'fishing',
+        speciesId: 'trout',
+        spotId: 'river',
+        toolIds: ['rod-1'],
+        skillModifier: 0,
+        targetYield: 1,
+      },
+    });
+    const state = createTestState([task]);
+
+    // Different tools - available
+    const result = canUseTools(state, ['rod-2', 'net-1'], 1, 0);
+
+    expect(result).toBe(true);
+  });
+
+  it('returns false when any tool reserved', () => {
+    const task = createTestTask({
+      id: 't1',
+      dayKey: 1,
+      slot: 0,
+      status: 'pending',
+      activityData: {
+        type: 'fishing',
+        speciesId: 'trout',
+        spotId: 'river',
+        toolIds: ['rod-1', 'net-1'],
+        skillModifier: 0,
+        targetYield: 1,
+      },
+    });
+    const state = createTestState([task]);
+
+    // One tool conflicts
+    const result = canUseTools(state, ['rod-2', 'rod-1'], 1, 0);
+
+    expect(result).toBe(false);
+  });
+
+  it('returns true for empty tool list', () => {
+    const task = createTestTask({
+      id: 't1',
+      dayKey: 1,
+      slot: 0,
+      status: 'pending',
+      activityData: {
+        type: 'fishing',
+        speciesId: 'trout',
+        spotId: 'river',
+        toolIds: ['rod-1'],
+        skillModifier: 0,
+        targetYield: 1,
+      },
+    });
+    const state = createTestState([task]);
+
+    const result = canUseTools(state, [], 1, 0);
+
+    expect(result).toBe(true);
+  });
+
+  it('returns true when tools freed by cancelled task', () => {
+    const cancelled = createTestTask({
+      id: 't1',
+      dayKey: 1,
+      slot: 0,
+      status: 'cancelled',
+      activityData: {
+        type: 'fishing',
+        speciesId: 'trout',
+        spotId: 'river',
+        toolIds: ['rod-freed'],
+        skillModifier: 0,
+        targetYield: 1,
+      },
+    });
+    const state = createTestState([cancelled]);
+
+    // Tool was freed by cancellation
+    const result = canUseTools(state, ['rod-freed'], 1, 0);
+
+    expect(result).toBe(true);
   });
 });

@@ -10,6 +10,8 @@ import type {
   DowntimeTask,
   DowntimeActivityType,
   TaskStatus,
+  ActivityData,
+  TaskLockKey,
 } from '../../types/downtime';
 
 // ============================================================================
@@ -258,4 +260,228 @@ export function selectSlotHasUnresolvedTasks(
  */
 export function selectTaskCount(state: DowntimeState): number {
   return state.taskOrder.length;
+}
+
+// ============================================================================
+// ASSIGNMENT SELECTORS
+// ============================================================================
+
+/**
+ * Check if a character is assigned in a slot (as leader OR helper).
+ * Only considers active tasks (pending, in_progress, resolved).
+ * Returns the task ID and role, or null if not assigned.
+ */
+export function selectCharacterAssignmentForSlot(
+  state: DowntimeState,
+  characterId: string,
+  dayKey: number,
+  slot: number
+): { taskId: string; role: 'leader' | 'helper' } | null {
+  const tasks = selectTasksForSlot(state, dayKey, slot);
+
+  for (const task of tasks) {
+    // Skip cancelled tasks for assignment purposes
+    if (task.status === 'cancelled') continue;
+
+    if (task.leaderId === characterId) {
+      return { taskId: task.id, role: 'leader' };
+    }
+    if (task.helperIds.includes(characterId)) {
+      return { taskId: task.id, role: 'helper' };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Get all assigned character IDs for a slot.
+ * Includes both leaders and helpers from non-cancelled tasks.
+ */
+export function selectAssignedCharacterIdsForSlot(
+  state: DowntimeState,
+  dayKey: number,
+  slot: number
+): Set<string> {
+  const assigned = new Set<string>();
+  const tasks = selectTasksForSlot(state, dayKey, slot);
+
+  for (const task of tasks) {
+    // Skip cancelled tasks
+    if (task.status === 'cancelled') continue;
+
+    assigned.add(task.leaderId);
+    for (const helperId of task.helperIds) {
+      assigned.add(helperId);
+    }
+  }
+
+  return assigned;
+}
+
+/**
+ * Get available (unassigned) characters for a slot.
+ * Filters out characters already assigned to non-cancelled tasks.
+ */
+export function selectAvailableCharacterIdsForSlot(
+  state: DowntimeState,
+  dayKey: number,
+  slot: number,
+  allCharacterIds: string[]
+): string[] {
+  const assigned = selectAssignedCharacterIdsForSlot(state, dayKey, slot);
+  return allCharacterIds.filter((id) => !assigned.has(id));
+}
+
+// ============================================================================
+// TARGET KEY HELPERS
+// ============================================================================
+
+/**
+ * Extract the target key from activity data.
+ * Target keys uniquely identify the resource being worked on.
+ */
+export function getTargetKeyFromActivityData(
+  activityType: DowntimeActivityType,
+  activityData: ActivityData
+): string {
+  switch (activityType) {
+    case 'fishing':
+      return `species:${(activityData as { speciesId: string }).speciesId}`;
+    case 'foraging':
+      return `node:${(activityData as { nodeId: string }).nodeId}`;
+    case 'alchemy':
+      return `recipe:${(activityData as { recipeId: string }).recipeId}`;
+    case 'crafting':
+      return `project:${(activityData as { projectId: string }).projectId}`;
+    case 'rest':
+      return `rest:${(activityData as { restType: string }).restType}`;
+    default:
+      return 'unknown';
+  }
+}
+
+// ============================================================================
+// LOCK SELECTORS
+// ============================================================================
+
+/**
+ * Generate a lock key for task deduplication.
+ * Format: activityType|characterId|dayKey|slot|targetKey
+ */
+export function generateTaskLockKey(
+  activityType: DowntimeActivityType,
+  characterId: string,
+  dayKey: number,
+  slot: number,
+  targetKey: string
+): TaskLockKey {
+  return `${activityType}|${characterId}|${dayKey}|${slot}|${targetKey}` as TaskLockKey;
+}
+
+/**
+ * Get all existing lock keys for a slot.
+ * IMPORTANT: Includes cancelled tasks! Locks persist even after cancellation
+ * to prevent re-creating the same task.
+ */
+export function selectExistingLockKeysForSlot(
+  state: DowntimeState,
+  dayKey: number,
+  slot: number
+): Set<TaskLockKey> {
+  const lockKeys = new Set<TaskLockKey>();
+  const tasks = selectTasksForSlot(state, dayKey, slot);
+
+  for (const task of tasks) {
+    // Include ALL tasks including cancelled (locks persist!)
+    const targetKey = getTargetKeyFromActivityData(
+      task.activityType,
+      task.activityData
+    );
+    const lockKey = generateTaskLockKey(
+      task.activityType,
+      task.leaderId,
+      dayKey,
+      slot,
+      targetKey
+    );
+    lockKeys.add(lockKey);
+  }
+
+  return lockKeys;
+}
+
+/**
+ * Check if a new task can be created (no lock conflict).
+ * Returns true if no existing task has the same lock key.
+ */
+export function canCreateTaskForTarget(
+  state: DowntimeState,
+  characterId: string,
+  activityType: DowntimeActivityType,
+  targetKey: string,
+  dayKey: number,
+  slot: number
+): boolean {
+  const existingLocks = selectExistingLockKeysForSlot(state, dayKey, slot);
+  const proposedLockKey = generateTaskLockKey(
+    activityType,
+    characterId,
+    dayKey,
+    slot,
+    targetKey
+  );
+  return !existingLocks.has(proposedLockKey);
+}
+
+// ============================================================================
+// TOOL RESERVATION SELECTORS
+// ============================================================================
+
+/**
+ * Get all reserved tool IDs for a slot.
+ * NOTE: Cancelled tasks FREE their tools (unlike locks which persist).
+ * Only pending and in_progress tasks hold tool reservations.
+ */
+export function selectReservedToolIdsForSlot(
+  state: DowntimeState,
+  dayKey: number,
+  slot: number
+): Set<string> {
+  const reservedTools = new Set<string>();
+  const tasks = selectTasksForSlot(state, dayKey, slot);
+
+  for (const task of tasks) {
+    // Only pending and in_progress tasks reserve tools
+    // Cancelled and resolved tasks free their tools
+    if (task.status !== 'pending' && task.status !== 'in_progress') {
+      continue;
+    }
+
+    // Extract toolIds from activity data
+    const activityData = task.activityData as { toolIds?: string[] };
+    if (activityData.toolIds) {
+      for (const toolId of activityData.toolIds) {
+        reservedTools.add(toolId);
+      }
+    }
+  }
+
+  return reservedTools;
+}
+
+/**
+ * Check if specific tools are available for use in a slot.
+ * Returns true if none of the tools are reserved.
+ */
+export function canUseTools(
+  state: DowntimeState,
+  toolIds: string[],
+  dayKey: number,
+  slot: number
+): boolean {
+  if (toolIds.length === 0) return true;
+
+  const reserved = selectReservedToolIdsForSlot(state, dayKey, slot);
+  return !toolIds.some((toolId) => reserved.has(toolId));
 }

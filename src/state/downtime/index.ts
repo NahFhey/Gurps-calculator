@@ -60,4 +60,16 @@ export {
   // Utility selectors
   selectSlotHasUnresolvedTasks,
   selectTaskCount,
+  // Assignment selectors
+  selectCharacterAssignmentForSlot,
+  selectAssignedCharacterIdsForSlot,
+  selectAvailableCharacterIdsForSlot,
+  // Lock selectors
+  generateTaskLockKey,
+  selectExistingLockKeysForSlot,
+  canCreateTaskForTarget,
+  getTargetKeyFromActivityData,
+  // Tool reservation selectors
+  selectReservedToolIdsForSlot,
+  canUseTools,
 } from './downtimeSelectors';
