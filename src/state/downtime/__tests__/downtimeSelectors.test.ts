@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type {
   DowntimeState,
   DowntimeTask,
+  DowntimeActivityType,
   FishingData,
+  RestData,
 } from '../../../types/downtime';
 import { downtimeInitialState } from '../downtimeInitialState';
 import {
@@ -32,6 +34,9 @@ import {
   // Tool selectors
   selectReservedToolIdsForSlot,
   canUseTools,
+  // Fatigue selectors
+  selectCharacterFatigueStatus,
+  selectCharacterFatigueMap,
 } from '../downtimeSelectors';
 
 // ============================================================================
@@ -1133,5 +1138,412 @@ describe('canUseTools', () => {
     const result = canUseTools(state, ['rod-freed'], 1, 0);
 
     expect(result).toBe(true);
+  });
+});
+
+// ============================================================================
+// FATIGUE TEST FACTORIES
+// ============================================================================
+
+/**
+ * Options for creating fatigue test tasks.
+ */
+interface FatigueTaskOptions {
+  leaderId: string;
+  helperIds?: string[];
+  dayKey: number;
+  slot: number;
+  activityType: DowntimeActivityType;
+}
+
+/**
+ * Creates a resolved task for fatigue testing.
+ */
+function createResolvedTask(options: FatigueTaskOptions): DowntimeTask {
+  const {
+    leaderId,
+    helperIds = [],
+    dayKey,
+    slot,
+    activityType,
+  } = options;
+  const now = Date.now();
+
+  const activityData =
+    activityType === 'rest'
+      ? ({
+          type: 'rest',
+          restType: 'sleep',
+          recoveryBonus: 0,
+        } as RestData)
+      : ({
+          type: 'fishing',
+          speciesId: 'species-1',
+          spotId: 'spot-1',
+          toolIds: [],
+          skillModifier: 0,
+          targetYield: 1,
+        } as FishingData);
+
+  return {
+    id: `resolved-${++idCounter}`,
+    activityType,
+    dayKey,
+    slot,
+    leaderId,
+    helperIds,
+    status: 'resolved',
+    activityData,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/**
+ * Creates a pending task for fatigue testing.
+ */
+function createPendingTask(options: FatigueTaskOptions): DowntimeTask {
+  const {
+    leaderId,
+    helperIds = [],
+    dayKey,
+    slot,
+    activityType,
+  } = options;
+  const now = Date.now();
+
+  const activityData =
+    activityType === 'rest'
+      ? ({
+          type: 'rest',
+          restType: 'sleep',
+          recoveryBonus: 0,
+        } as RestData)
+      : ({
+          type: 'fishing',
+          speciesId: 'species-1',
+          spotId: 'spot-1',
+          toolIds: [],
+          skillModifier: 0,
+          targetYield: 1,
+        } as FishingData);
+
+  return {
+    id: `pending-${++idCounter}`,
+    activityType,
+    dayKey,
+    slot,
+    leaderId,
+    helperIds,
+    status: 'pending',
+    activityData,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/**
+ * Creates a cancelled task for fatigue testing.
+ */
+function createCancelledTask(options: FatigueTaskOptions): DowntimeTask {
+  const {
+    leaderId,
+    helperIds = [],
+    dayKey,
+    slot,
+    activityType,
+  } = options;
+  const now = Date.now();
+
+  const activityData =
+    activityType === 'rest'
+      ? ({
+          type: 'rest',
+          restType: 'sleep',
+          recoveryBonus: 0,
+        } as RestData)
+      : ({
+          type: 'fishing',
+          speciesId: 'species-1',
+          spotId: 'spot-1',
+          toolIds: [],
+          skillModifier: 0,
+          targetYield: 1,
+        } as FishingData);
+
+  return {
+    id: `cancelled-${++idCounter}`,
+    activityType,
+    dayKey,
+    slot,
+    leaderId,
+    helperIds,
+    status: 'cancelled',
+    activityData,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+// ============================================================================
+// FATIGUE DERIVATION TESTS
+// ============================================================================
+
+describe('Fatigue derivation', () => {
+  describe('selectCharacterFatigueStatus', () => {
+    it('returns rested when character has no tasks', () => {
+      const state = createTestState([]);
+      expect(selectCharacterFatigueStatus(state, 'char1', 1, 0)).toBe('rested');
+    });
+
+    it('returns tired after working one slot', () => {
+      const state = createTestState([
+        createResolvedTask({
+          leaderId: 'char1',
+          dayKey: 1,
+          slot: 0,
+          activityType: 'fishing',
+        }),
+      ]);
+      expect(selectCharacterFatigueStatus(state, 'char1', 1, 1)).toBe('tired');
+    });
+
+    it('returns rested after working then resting', () => {
+      const state = createTestState([
+        createResolvedTask({
+          leaderId: 'char1',
+          dayKey: 1,
+          slot: 0,
+          activityType: 'fishing',
+        }),
+        // No task in slot 1 = implicit rest
+      ]);
+      expect(selectCharacterFatigueStatus(state, 'char1', 1, 2)).toBe('rested');
+    });
+
+    it('returns exhausted when working while tired', () => {
+      const state = createTestState([
+        createResolvedTask({
+          leaderId: 'char1',
+          dayKey: 1,
+          slot: 0,
+          activityType: 'fishing',
+        }),
+        createResolvedTask({
+          leaderId: 'char1',
+          dayKey: 1,
+          slot: 1,
+          activityType: 'fishing',
+        }),
+      ]);
+      expect(selectCharacterFatigueStatus(state, 'char1', 1, 2)).toBe(
+        'exhausted'
+      );
+    });
+
+    it('explicit rest task clears tired status', () => {
+      const state = createTestState([
+        createResolvedTask({
+          leaderId: 'char1',
+          dayKey: 1,
+          slot: 0,
+          activityType: 'fishing',
+        }),
+        createResolvedTask({
+          leaderId: 'char1',
+          dayKey: 1,
+          slot: 1,
+          activityType: 'rest',
+        }),
+      ]);
+      expect(selectCharacterFatigueStatus(state, 'char1', 1, 2)).toBe('rested');
+    });
+
+    it('helper also gets tired from work', () => {
+      const state = createTestState([
+        createResolvedTask({
+          leaderId: 'char1',
+          helperIds: ['char2'],
+          dayKey: 1,
+          slot: 0,
+          activityType: 'fishing',
+        }),
+      ]);
+      expect(selectCharacterFatigueStatus(state, 'char2', 1, 1)).toBe('tired');
+    });
+
+    it('pending tasks do not affect fatigue', () => {
+      const state = createTestState([
+        createPendingTask({
+          leaderId: 'char1',
+          dayKey: 1,
+          slot: 0,
+          activityType: 'fishing',
+        }),
+      ]);
+      expect(selectCharacterFatigueStatus(state, 'char1', 1, 1)).toBe('rested');
+    });
+
+    it('cancelled tasks do not affect fatigue', () => {
+      const state = createTestState([
+        createCancelledTask({
+          leaderId: 'char1',
+          dayKey: 1,
+          slot: 0,
+          activityType: 'fishing',
+        }),
+      ]);
+      expect(selectCharacterFatigueStatus(state, 'char1', 1, 1)).toBe('rested');
+    });
+
+    it('can recover from exhaustion after resting', () => {
+      const state = createTestState([
+        createResolvedTask({
+          leaderId: 'char1',
+          dayKey: 1,
+          slot: 0,
+          activityType: 'fishing',
+        }),
+        createResolvedTask({
+          leaderId: 'char1',
+          dayKey: 1,
+          slot: 1,
+          activityType: 'fishing',
+        }),
+        // slot 2 = implicit rest (no task)
+        createResolvedTask({
+          leaderId: 'char1',
+          dayKey: 1,
+          slot: 3,
+          activityType: 'fishing',
+        }),
+      ]);
+      // At slot 2, they were exhausted
+      expect(selectCharacterFatigueStatus(state, 'char1', 1, 2)).toBe(
+        'exhausted'
+      );
+      // At slot 3, after resting in slot 2, they should be rested
+      expect(selectCharacterFatigueStatus(state, 'char1', 1, 3)).toBe('rested');
+      // At slot 4, after working in slot 3, they should be tired
+      expect(selectCharacterFatigueStatus(state, 'char1', 1, 4)).toBe('tired');
+    });
+
+    it('only considers resolved tasks for the specified day', () => {
+      const state = createTestState([
+        createResolvedTask({
+          leaderId: 'char1',
+          dayKey: 1,
+          slot: 0,
+          activityType: 'fishing',
+        }),
+        createResolvedTask({
+          leaderId: 'char1',
+          dayKey: 2,
+          slot: 0,
+          activityType: 'fishing',
+        }),
+      ]);
+      // Day 1, slot 1: should be tired from day 1 work
+      expect(selectCharacterFatigueStatus(state, 'char1', 1, 1)).toBe('tired');
+      // Day 2, slot 0: should be rested (no work on day 2 before slot 0)
+      expect(selectCharacterFatigueStatus(state, 'char1', 2, 0)).toBe('rested');
+      // Day 2, slot 1: should be tired from day 2 work
+      expect(selectCharacterFatigueStatus(state, 'char1', 2, 1)).toBe('tired');
+    });
+
+    it('handles different activity types correctly', () => {
+      const state = createTestState([
+        createResolvedTask({
+          leaderId: 'char1',
+          dayKey: 1,
+          slot: 0,
+          activityType: 'crafting',
+        }),
+        createResolvedTask({
+          leaderId: 'char1',
+          dayKey: 1,
+          slot: 1,
+          activityType: 'alchemy',
+        }),
+      ]);
+      // Both crafting and alchemy are work activities
+      expect(selectCharacterFatigueStatus(state, 'char1', 1, 2)).toBe(
+        'exhausted'
+      );
+    });
+  });
+
+  describe('selectCharacterFatigueMap', () => {
+    it('returns map with all character IDs', () => {
+      const state = createTestState([]);
+      const map = selectCharacterFatigueMap(state, 1, 0, [
+        'char1',
+        'char2',
+        'char3',
+      ]);
+      expect(map.size).toBe(3);
+    });
+
+    it('correctly identifies mixed fatigue states', () => {
+      const state = createTestState([
+        createResolvedTask({
+          leaderId: 'char1',
+          dayKey: 1,
+          slot: 0,
+          activityType: 'fishing',
+        }),
+        createResolvedTask({
+          leaderId: 'char1',
+          dayKey: 1,
+          slot: 1,
+          activityType: 'fishing',
+        }),
+        createResolvedTask({
+          leaderId: 'char2',
+          dayKey: 1,
+          slot: 0,
+          activityType: 'crafting',
+        }),
+        createResolvedTask({
+          leaderId: 'char2',
+          dayKey: 1,
+          slot: 1,
+          activityType: 'crafting',
+        }),
+      ]);
+      const map = selectCharacterFatigueMap(state, 1, 2, [
+        'char1',
+        'char2',
+        'char3',
+      ]);
+      // char1: worked slot 0 & 1 → exhausted
+      expect(map.get('char1')).toBe('exhausted');
+      // char2: worked slot 0 & 1 → exhausted
+      expect(map.get('char2')).toBe('exhausted');
+      // char3: no work → rested
+      expect(map.get('char3')).toBe('rested');
+    });
+
+    it('correctly identifies tired state at slot 1', () => {
+      const state = createTestState([
+        createResolvedTask({
+          leaderId: 'char1',
+          dayKey: 1,
+          slot: 0,
+          activityType: 'fishing',
+        }),
+      ]);
+      const map = selectCharacterFatigueMap(state, 1, 1, ['char1', 'char2']);
+      // char1: worked slot 0 → tired
+      expect(map.get('char1')).toBe('tired');
+      // char2: no work → rested
+      expect(map.get('char2')).toBe('rested');
+    });
+
+    it('returns empty map for empty character list', () => {
+      const state = createTestState([]);
+      const map = selectCharacterFatigueMap(state, 1, 0, []);
+      expect(map.size).toBe(0);
+    });
   });
 });

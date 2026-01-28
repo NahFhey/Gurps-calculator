@@ -485,3 +485,140 @@ export function canUseTools(
   const reserved = selectReservedToolIdsForSlot(state, dayKey, slot);
   return !toolIds.some((toolId) => reserved.has(toolId));
 }
+
+// ============================================================================
+// FATIGUE SELECTORS
+// ============================================================================
+
+/**
+ * Fatigue status for a character.
+ * - rested: Character has not worked since last rest
+ * - tired: Character has worked once since last rest
+ * - exhausted: Character worked while already tired
+ */
+export type FatigueStatus = 'rested' | 'tired' | 'exhausted';
+
+/**
+ * Check if a character worked in a specific slot (resolved non-rest task).
+ * A character "works" if they participated in a resolved task that is not rest,
+ * either as a leader or as a helper.
+ */
+function didCharacterWorkInSlot(
+  state: DowntimeState,
+  characterId: string,
+  dayKey: number,
+  slot: number
+): boolean {
+  const resolvedTasks = selectResolvedTasksForSlot(state, dayKey, slot);
+
+  for (const task of resolvedTasks) {
+    // Skip rest tasks - they don't count as work
+    if (task.activityType === 'rest') continue;
+
+    // Check if character is leader or helper
+    if (task.leaderId === characterId || task.helperIds.includes(characterId)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Check if a character rested in a specific slot.
+ * Rest is either explicit (resolved rest task) or implicit (no resolved non-rest task).
+ */
+function didCharacterRestInSlot(
+  state: DowntimeState,
+  characterId: string,
+  dayKey: number,
+  slot: number
+): boolean {
+  const resolvedTasks = selectResolvedTasksForSlot(state, dayKey, slot);
+
+  // Check for explicit rest task
+  for (const task of resolvedTasks) {
+    if (task.activityType === 'rest') {
+      if (
+        task.leaderId === characterId ||
+        task.helperIds.includes(characterId)
+      ) {
+        return true;
+      }
+    }
+  }
+
+  // Implicit rest: no non-rest work in this slot
+  return !didCharacterWorkInSlot(state, characterId, dayKey, slot);
+}
+
+/**
+ * Get fatigue status for a character at a specific point in time.
+ *
+ * Algorithm:
+ * 1. Start from slot 0 of the day
+ * 2. Track: lastAction = 'rested'
+ * 3. For each completed slot up to (but not including) currentSlot:
+ *    a. If worked this slot:
+ *       - If lastAction was 'tired' → return 'exhausted'
+ *       - Else → lastAction = 'tired'
+ *    b. If rested this slot:
+ *       - lastAction = 'rested'
+ * 4. Return lastAction (either 'rested' or 'tired')
+ *
+ * Note: currentSlot is exclusive - we only look at completed slots before it.
+ */
+export function selectCharacterFatigueStatus(
+  state: DowntimeState,
+  characterId: string,
+  dayKey: number,
+  currentSlot: number
+): FatigueStatus {
+  let lastAction: FatigueStatus = 'rested';
+
+  // Iterate through all slots from 0 up to (but not including) currentSlot
+  for (let slot = 0; slot < currentSlot; slot++) {
+    const worked = didCharacterWorkInSlot(state, characterId, dayKey, slot);
+    const rested = didCharacterRestInSlot(state, characterId, dayKey, slot);
+
+    if (worked) {
+      if (lastAction === 'tired') {
+        // Working while tired → exhausted
+        lastAction = 'exhausted';
+      } else {
+        // Working while rested (or even exhausted) → tired
+        lastAction = 'tired';
+      }
+    } else if (rested) {
+      // Resting (explicit or implicit) → rested
+      lastAction = 'rested';
+    }
+  }
+
+  return lastAction;
+}
+
+/**
+ * Get all characters with their fatigue status for display.
+ * Returns a Map for efficient lookup by character ID.
+ */
+export function selectCharacterFatigueMap(
+  state: DowntimeState,
+  dayKey: number,
+  currentSlot: number,
+  allCharacterIds: string[]
+): Map<string, FatigueStatus> {
+  const fatigueMap = new Map<string, FatigueStatus>();
+
+  for (const characterId of allCharacterIds) {
+    const status = selectCharacterFatigueStatus(
+      state,
+      characterId,
+      dayKey,
+      currentSlot
+    );
+    fatigueMap.set(characterId, status);
+  }
+
+  return fatigueMap;
+}
