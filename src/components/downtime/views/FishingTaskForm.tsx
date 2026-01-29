@@ -251,7 +251,8 @@ export function FishingTaskForm({
     }
 
     return {
-      skillModifier: toolMod + helperMod + baitMod,
+      // skillModifier excludes bait - resolution panel handles bait via hasCorrectBait/hasInappropriateBait
+      skillModifier: toolMod + helperMod,
       baitModifier: baitMod,
       toolModifier: toolMod,
       helperModifier: helperMod,
@@ -664,7 +665,7 @@ export function FishingTaskForm({
           <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-600">
             <span className="text-sm text-gray-200 font-medium">Effective Skill:</span>
             <span className="text-sm font-bold text-green-400">
-              {(leaderFishingSkill ?? 10) + skillModifier}
+              {(leaderFishingSkill ?? 10) + skillModifier + baitModifier}
             </span>
           </div>
         )}
