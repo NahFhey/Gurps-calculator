@@ -252,6 +252,7 @@ export function CampaignStoreProvider({
     () => ({
       setActiveModule: (moduleId: string) => dispatch({ type: 'setActiveModule', payload: moduleId }),
       selectCharacter: (id: string | null) => dispatch({ type: 'selectCharacter', payload: id }),
+      setCharacterPanelView: (view: 'sheet' | 'skills' | 'equipment' | 'inventory') => dispatch({ type: 'setCharacterPanelView', payload: view }),
       toggleGmMode: () => dispatch({ type: 'toggleGmMode' }),
       setGmMode: (enabled: boolean) => dispatch({ type: 'setGmMode', payload: enabled }),
       setGmUnlocked: (value: boolean) => dispatch({ type: 'setGmUnlocked', payload: value }),

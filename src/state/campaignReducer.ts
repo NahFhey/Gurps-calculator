@@ -67,10 +67,13 @@ enableMapSet();
 
 export type LegacyAppState = Record<string, unknown>;
 
+export type CharacterPanelView = 'sheet' | 'skills' | 'equipment' | 'inventory';
+
 export type CampaignState = {
   ui: {
     activeModule: string;
     selectedCharacterId: string | null;
+    characterPanelView: CharacterPanelView;
     gmModeEnabled: boolean;
     gmSessionUnlocked: boolean;
     debugMode: boolean;
@@ -278,6 +281,7 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
   ui: {
     activeModule: 'inventory',
     selectedCharacterId: null,
+    characterPanelView: 'sheet',
     gmModeEnabled: false,
     gmSessionUnlocked: false,
     debugMode: false,
@@ -593,6 +597,11 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         return;
       case 'selectCharacter':
         draft.ui.selectedCharacterId = action.payload;
+        // Reset to sheet view when selecting a different character
+        draft.ui.characterPanelView = 'sheet';
+        return;
+      case 'setCharacterPanelView':
+        draft.ui.characterPanelView = action.payload;
         return;
       case 'toggleGmMode':
         draft.ui.gmModeEnabled = !draft.ui.gmModeEnabled;
@@ -841,6 +850,12 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         return;
       case 'removeCharacter':
         delete draft.entities.characters[action.payload];
+        // Also delete the character's inventory if it exists
+        for (const [invId, inv] of Object.entries(draft.entities.inventories)) {
+          if (inv.ownerType === 'character' && inv.ownerId === action.payload) {
+            delete draft.entities.inventories[invId];
+          }
+        }
         return;
       case 'setCharacters':
         draft.entities.characters = action.payload;

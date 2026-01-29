@@ -8,6 +8,11 @@ import { CombatTab } from '../components/CombatTab';
 import { DowntimePanel } from '../components/downtime';
 import { CharacterSheet } from '../components/character-sheet';
 import {
+  CharacterSkillsPanel,
+  CharacterEquipmentPanel,
+  CharacterInventoryPanel,
+} from '../components/character-panels';
+import {
   CharacterCreationModal,
   CharacterContextMenu,
   type CharacterContextMenuAction,
@@ -76,6 +81,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
   const activeModule = availableModules.find((moduleItem) => moduleItem.id === activeModuleId);
   const selectedCharacterId = useSelectedCharacterId();
   const selectedCharacter = useSelectedCharacter();
+  const characterPanelView = state.ui.characterPanelView;
   const sortedCharacters = useMemo(
     () => [...characters].sort((a, b) => a.name.localeCompare(b.name)),
     [characters]
@@ -306,13 +312,11 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
             <div className="space-y-2">
               {sortedCharacters.map((character: Character) => {
                 const isSelected = character.id === selectedCharacterId;
-                // Get HP/FP from gcsData if available
-                const hpDisplay = character.gcsData
-                  ? `${character.gcsData.pools.HP.current}/${character.gcsData.pools.HP.max}`
-                  : '—';
-                const fpDisplay = character.gcsData
-                  ? `${character.gcsData.pools.FP.current}/${character.gcsData.pools.FP.max}`
-                  : '—';
+                // Get HP/FP from gcsData, using defaults if not available
+                const hp = character.gcsData?.pools.HP ?? { current: 10, max: 10 };
+                const fp = character.gcsData?.pools.FP ?? { current: 10, max: 10 };
+                const hpDisplay = `${hp.current} HP`;
+                const fpDisplay = `${fp.current} FP`;
 
                 // Get downtime status for this character
                 const downtimeSummary = characterSummaries.get(character.id);
@@ -354,7 +358,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                           {downtimeSummary && <CharacterStatusBadge summary={downtimeSummary} />}
                         </div>
                         <div className="text-xs text-gray-400">
-                          HP {hpDisplay} / FP {fpDisplay}
+                          {hpDisplay} / {fpDisplay}
                         </div>
                       </div>
                       <button
@@ -374,8 +378,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                         onClick={(event: MouseEvent<HTMLButtonElement>) => {
                           event.stopPropagation();
                           actions.selectCharacter(character.id);
-                          actions.setActiveModule('downtime');
-                          actions.setActivitiesSubview('skills');
+                          actions.setCharacterPanelView('skills');
                         }}
                       >
                         Skills
@@ -386,8 +389,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                         onClick={(event: MouseEvent<HTMLButtonElement>) => {
                           event.stopPropagation();
                           actions.selectCharacter(character.id);
-                          actions.setActiveModule('downtime');
-                          actions.setActivitiesSubview('equipment');
+                          actions.setCharacterPanelView('equipment');
                         }}
                       >
                         Equipment
@@ -398,7 +400,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                         onClick={(event: MouseEvent<HTMLButtonElement>) => {
                           event.stopPropagation();
                           actions.selectCharacter(character.id);
-                          actions.setActiveModule('inventory');
+                          actions.setCharacterPanelView('inventory');
                         }}
                       >
                         Inventory
@@ -465,7 +467,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           )}
         </section>
 
-        {/* Center Panel - Character Sheet (always in DOM to maintain grid structure) */}
+        {/* Center Panel - Character Sheet/Skills/Equipment/Inventory (always in DOM to maintain grid structure) */}
         <section
           className={`overflow-hidden transition-all duration-300 ${
             shouldHideCharacterPanel || isRightExpanded
@@ -474,7 +476,18 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           }`}
         >
           <div className="h-full" data-testid="character-pane">
-            {selectedCharacter && <CharacterSheet character={selectedCharacter} />}
+            {selectedCharacter && characterPanelView === 'sheet' && (
+              <CharacterSheet character={selectedCharacter} />
+            )}
+            {selectedCharacter && characterPanelView === 'skills' && (
+              <CharacterSkillsPanel character={selectedCharacter} />
+            )}
+            {selectedCharacter && characterPanelView === 'equipment' && (
+              <CharacterEquipmentPanel character={selectedCharacter} />
+            )}
+            {selectedCharacter && characterPanelView === 'inventory' && (
+              <CharacterInventoryPanel character={selectedCharacter} />
+            )}
           </div>
         </section>
 
