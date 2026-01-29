@@ -11,13 +11,17 @@
  * - Bait modifiers (+1 correct, -2 wrong)
  * - Large fish penalty (-2) and struggle
  * - Retry mechanics (up to 3 attempts at cumulative -1)
+ *
+ * Supports both auto and manual resolution modes.
  */
 
 import { useState, useCallback, useMemo } from 'react';
 import { Fish, Plus, AlertCircle } from 'lucide-react';
 import { useDowntimeContext } from '../DowntimeContext';
+import { useCampaignStore } from '../../../state/campaignStore';
 import { FishingTaskForm } from './FishingTaskForm';
-import { FishingTaskCard } from './FishingTaskCard';
+import { FishingTaskCard, type ResolutionMode } from './FishingTaskCard';
+import { FishingResolutionPanel } from './FishingResolutionPanel';
 import {
   selectTasksByActivityType,
   validateTaskCreation,
@@ -29,17 +33,14 @@ import {
   rollNetCatch,
   rollOnCatchTable,
   resolveLargeFishStruggle,
-  calculateFishYields,
   roll3d6,
 } from '../../../utils/gathering';
 import {
-  BAIT_MODIFIERS,
-  LARGE_FISH_TARGETING_PENALTY,
   DEFAULT_FISH_ST,
 } from '../../../constants';
 import type { DowntimeTask, FishingData, TaskResults, InventoryDelta } from '../../../types/downtime';
 import type { CreateTaskPayload } from '../../../state/downtime/downtimeActions';
-import type { GatheringSpecies, GatheringEnvironment, GatheringTable, GatheringBait } from '../../../types/campaign';
+import type { GatheringSpecies, GatheringEnvironment, GatheringTable, GatheringBait, Food, Material } from '../../../types/campaign';
 
 // ============================================================================
 // TYPES
@@ -63,27 +64,21 @@ interface CaughtFish {
 }
 
 // ============================================================================
-// FISHING RESOLUTION
+// AUTO FISHING RESOLUTION
 // ============================================================================
 
 /**
- * Calculate fishing results using proper GURPS mechanics.
- *
- * Steps:
- * 1. Calculate effective skill with all modifiers
- * 2. Roll 3d6 vs effective skill
- * 3. Determine fish count based on method and outcome
- * 4. For each fish, determine species (targeted or random)
- * 5. Handle large fish struggle if needed
- * 6. Calculate yields for successful catches
+ * Calculate fishing results using proper GURPS mechanics (auto-roll mode).
+ * Also saves results directly to foods/materials inventory.
  */
-function calculateFishingResults(
+function calculateFishingResultsAuto(
   task: DowntimeTask,
   leader: { st?: number; skills?: { fishing?: number; spear?: number; stealth?: number; survival?: number } } | undefined,
   species: GatheringSpecies[],
   bait: GatheringBait[],
   gatheringTables: GatheringTable[],
-  spot: GatheringEnvironment | undefined
+  spot: GatheringEnvironment | undefined,
+  campaignActions: { addFood: (food: Food) => void; addMaterial: (material: Material) => void }
 ): TaskResults {
   const data = task.activityData as FishingData;
   const method = data.method || 'Line';
@@ -95,7 +90,6 @@ function calculateFishingResults(
     : (leader?.skills?.fishing ?? 10);
 
   // Spear Fishing: Stealth approach roll first
-  // Failure means -2 to the strike roll
   let stealthPenalty = 0;
   let stealthMessage = '';
   if (method === 'Spear') {
@@ -137,11 +131,11 @@ function calculateFishingResults(
   // Calculate effective skill (include stealth penalty for spear fishing)
   const effectiveSkillResult = calculateEffectiveFishingSkill({
     baseFishingSkill: baseSkill,
-    toolBonus: data.skillModifier + stealthPenalty, // Include stealth penalty
+    toolBonus: data.skillModifier + stealthPenalty,
     hasCorrectBait,
     hasInappropriateBait,
     targetingLargeFish,
-    retryPenalty: -(data.retryAttempt ?? 0), // Negative cumulative penalty
+    retryPenalty: -(data.retryAttempt ?? 0),
     environmentMod: spot?.skillMod ?? 0,
   });
 
@@ -167,15 +161,11 @@ function calculateFishingResults(
       success: false,
       message,
       inventoryChanges: [],
-      experienceGained: 5, // Small consolation XP
     };
   }
 
   // Calculate fish count
   let fishCount = rollResult.fish;
-
-  // Net fishing: 1 fish + 1 per 3 MoS (already handled in evaluateFishingRoll)
-  // Make sure we have at least 2 on crit for Net
   if (method === 'Net' && rollResult.critSuccess && fishCount < 2) {
     fishCount = 2;
   }
@@ -195,17 +185,13 @@ function calculateFishingResults(
     let caughtSpecies: GatheringSpecies | undefined;
 
     if (!isRandomCatch && targetSpecies) {
-      // Targeted fishing - catch the target species
       caughtSpecies = targetSpecies;
     } else if (catchTable) {
-      // Random catch - roll on table
       try {
         let tableEntry;
         if (method === 'Net') {
-          // Net fishing rerolls large fish
           tableEntry = rollNetCatch(catchTable as any, species as any);
         } else {
-          // Get bait roll bonus for random Line fishing
           const baitRollBonus = baitItem ? ((baitItem as any).rollBonus ?? 0) : 0;
           tableEntry = rollOnCatchTable(catchTable as any, baitRollBonus);
         }
@@ -214,7 +200,6 @@ function calculateFishingResults(
           caughtSpecies = species.find(s => s.id === tableEntry.speciesId);
         }
       } catch (error) {
-        // Table error - skip this fish
         continue;
       }
     }
@@ -239,12 +224,13 @@ function calculateFishingResults(
     let secondaryType: string | null = null;
 
     if (struggleSuccess) {
-      const yields = calculateFishYields(caughtSpecies as any);
-      if (yields && typeof yields === 'object' && 'meatUnits' in yields) {
-        meatYield = yields.meatUnits ?? 0;
-        secondaryYield = yields.secondaryUnits ?? 0;
-        secondaryType = yields.secondaryType ?? null;
-      }
+      // Roll yield dice
+      const meatFormula = (caughtSpecies as any)?.yieldMeatFormula ?? '1d';
+      const secondaryFormula = (caughtSpecies as any)?.yieldSecondaryFormula ?? '1d-2';
+      secondaryType = (caughtSpecies as any)?.secondaryMaterial ?? 'scales';
+
+      meatYield = rollYieldDice(meatFormula);
+      secondaryYield = rollYieldDice(secondaryFormula);
     }
 
     caughtFish.push({
@@ -257,20 +243,41 @@ function calculateFishingResults(
       secondaryType,
     });
 
-    // Add to inventory changes
+    // Add to inventory and campaign
     if (struggleSuccess && meatYield > 0) {
-      const foodType = (caughtSpecies as any).foodType ?? 'fish';
-      inventoryChanges.push({
-        itemId: caughtSpecies.id,
+      const foodId = `fish-${caughtSpecies.id}-${Date.now()}-${i}`;
+      const foodName = `${caughtSpecies.name} Meat`;
+
+      campaignActions.addFood({
+        id: foodId,
+        name: foodName,
+        type: 'fish',
         quantity: meatYield,
-        itemName: `${caughtSpecies.name} ${foodType.charAt(0).toUpperCase() + foodType.slice(1)}`,
+        source: `Fishing at ${spot?.name ?? 'unknown'}`,
+      } as Food);
+
+      inventoryChanges.push({
+        itemId: foodId,
+        quantity: meatYield,
+        itemName: foodName,
       });
 
       if (secondaryYield > 0 && secondaryType) {
-        inventoryChanges.push({
-          itemId: `${caughtSpecies.id}_secondary`,
+        const materialId = `material-${caughtSpecies.id}-${secondaryType}-${Date.now()}-${i}`;
+        const materialName = `${caughtSpecies.name} ${secondaryType.charAt(0).toUpperCase() + secondaryType.slice(1)}`;
+
+        campaignActions.addMaterial({
+          id: materialId,
+          name: materialName,
+          type: secondaryType,
           quantity: secondaryYield,
-          itemName: `${caughtSpecies.name} ${secondaryType.charAt(0).toUpperCase() + secondaryType.slice(1)}`,
+          source: `Fishing at ${spot?.name ?? 'unknown'}`,
+        } as Material);
+
+        inventoryChanges.push({
+          itemId: materialId,
+          quantity: secondaryYield,
+          itemName: materialName,
         });
       }
     }
@@ -303,15 +310,28 @@ function calculateFishingResults(
     message += ` ${escapedLarge.length} large fish escaped during struggle.`;
   }
 
-  // Calculate total yield for XP
-  const totalYield = successfulCatches.reduce((sum, f) => sum + f.meatYield, 0);
-
   return {
     success: successfulCatches.length > 0,
     message,
     inventoryChanges,
-    experienceGained: Math.max(10, totalYield * 5),
   };
+}
+
+/**
+ * Roll dice for yield formulas like "2d+1" or "1d-2"
+ */
+function rollYieldDice(formula: string): number {
+  const match = formula.match(/(\d+)d([+-]\d+)?/);
+  if (match) {
+    const diceCount = parseInt(match[1], 10);
+    const modifier = match[2] ? parseInt(match[2], 10) : 0;
+    let total = 0;
+    for (let i = 0; i < diceCount; i++) {
+      total += Math.floor(Math.random() * 6) + 1;
+    }
+    return Math.max(0, total + modifier);
+  }
+  return 1;
 }
 
 // ============================================================================
@@ -333,8 +353,11 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
     cancel,
   } = useDowntimeContext();
 
+  const { actions: campaignActions } = useCampaignStore();
+
   const [isCreating, setIsCreating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [resolvingTask, setResolvingTask] = useState<DowntimeTask | null>(null);
 
   // Get fishing tasks for current slot
   const fishingTasks = useMemo(() => {
@@ -354,7 +377,7 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
     [fishingTasks]
   );
 
-  // Filter tools for fishing (show all tools for now - can add category filtering later)
+  // Filter tools for fishing
   const fishingTools = useMemo(() => tools, [tools]);
 
   // Handle task creation
@@ -371,7 +394,6 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
         ...data,
       };
 
-      // Pre-validate before attempting to create
       const validation = validateTaskCreation(state, payload);
       if (!validation.valid) {
         setValidationError(validation.message ?? 'Validation failed');
@@ -395,31 +417,49 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
 
   // Handle task resolution
   const handleResolve = useCallback(
-    (task: DowntimeTask) => {
-      const data = task.activityData as FishingData;
+    (task: DowntimeTask, mode: ResolutionMode) => {
+      if (mode === 'manual') {
+        // Open manual resolution panel
+        setResolvingTask(task);
+      } else {
+        // Auto-resolve
+        const data = task.activityData as FishingData;
+        const leader = characters.find(c => c.id === task.leaderId) as any;
+        const spot = fishingSpots.find(s => s.id === data.spotId);
 
-      // Get leader character
-      const leader = characters.find(c => c.id === task.leaderId) as any;
+        beginResolve(task.id);
 
-      // Get fishing spot
-      const spot = fishingSpots.find(s => s.id === data.spotId);
-
-      // Begin resolution (mark as in_progress)
-      beginResolve(task.id);
-
-      // Calculate and apply results with proper mechanics
-      const results = calculateFishingResults(
-        task,
-        leader,
-        fishSpecies as any[],
-        fishingBait as any[],
-        gatheringTables as any[],
-        spot
-      );
-      resolve(task.id, results);
+        const results = calculateFishingResultsAuto(
+          task,
+          leader,
+          fishSpecies as any[],
+          fishingBait as any[],
+          gatheringTables as any[],
+          spot,
+          campaignActions
+        );
+        resolve(task.id, results);
+      }
     },
-    [characters, fishSpecies, fishingBait, fishingSpots, gatheringTables, beginResolve, resolve]
+    [characters, fishSpecies, fishingBait, fishingSpots, gatheringTables, campaignActions, beginResolve, resolve]
   );
+
+  // Handle manual resolution finalize
+  const handleManualFinalize = useCallback(
+    (results: TaskResults) => {
+      if (resolvingTask) {
+        beginResolve(resolvingTask.id);
+        resolve(resolvingTask.id, results);
+        setResolvingTask(null);
+      }
+    },
+    [resolvingTask, beginResolve, resolve]
+  );
+
+  // Handle manual resolution cancel
+  const handleManualCancel = useCallback(() => {
+    setResolvingTask(null);
+  }, []);
 
   // Handle task cancellation
   const handleCancel = useCallback(
@@ -435,6 +475,11 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
     setValidationError(null);
   }, []);
 
+  // Get leader for resolution panel
+  const resolvingLeader = resolvingTask
+    ? characters.find(c => c.id === resolvingTask.leaderId)
+    : undefined;
+
   return (
     <div className="fishing-activity" data-testid="fishing-activity">
       {/* Header */}
@@ -443,7 +488,7 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
           <Fish className="w-5 h-5 text-blue-600" />
           <h3 className="text-lg font-semibold">Fishing</h3>
         </div>
-        {!isCreating && (
+        {!isCreating && !resolvingTask && (
           <button
             type="button"
             onClick={() => setIsCreating(true)}
@@ -476,8 +521,24 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
         </div>
       )}
 
+      {/* Manual Resolution Panel */}
+      {resolvingTask && (
+        <div className="mb-4">
+          <FishingResolutionPanel
+            task={resolvingTask}
+            leader={resolvingLeader}
+            species={fishSpecies}
+            spots={fishingSpots}
+            bait={fishingBait}
+            gatheringTables={gatheringTables}
+            onFinalize={handleManualFinalize}
+            onCancel={handleManualCancel}
+          />
+        </div>
+      )}
+
       {/* Creation Form */}
-      {isCreating && (
+      {isCreating && !resolvingTask && (
         <FishingTaskForm
           characters={characters}
           spots={fishingSpots}
@@ -493,53 +554,57 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
       )}
 
       {/* Pending Tasks */}
-      <section className="pending-tasks mb-6" data-testid="pending-tasks-section">
-        <h4 className="font-medium mb-2 text-gray-200">
-          Pending ({pendingTasks.length})
-        </h4>
-        {pendingTasks.length === 0 ? (
-          <p className="text-gray-500 text-sm italic">No pending fishing tasks</p>
-        ) : (
-          <div className="space-y-2">
-            {pendingTasks.map((task) => (
-              <FishingTaskCard
-                key={task.id}
-                task={task}
-                species={fishSpecies}
-                spots={fishingSpots}
-                characters={characters}
-                bait={fishingBait}
-                onResolve={() => handleResolve(task)}
-                onCancel={() => handleCancel(task.id)}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+      {!resolvingTask && (
+        <section className="pending-tasks mb-6" data-testid="pending-tasks-section">
+          <h4 className="font-medium mb-2 text-gray-200">
+            Pending ({pendingTasks.length})
+          </h4>
+          {pendingTasks.length === 0 ? (
+            <p className="text-gray-500 text-sm italic">No pending fishing tasks</p>
+          ) : (
+            <div className="space-y-2">
+              {pendingTasks.map((task) => (
+                <FishingTaskCard
+                  key={task.id}
+                  task={task}
+                  species={fishSpecies}
+                  spots={fishingSpots}
+                  characters={characters}
+                  bait={fishingBait}
+                  onResolve={(mode) => handleResolve(task, mode)}
+                  onCancel={() => handleCancel(task.id)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Completed Tasks */}
-      <section className="completed-tasks" data-testid="completed-tasks-section">
-        <h4 className="font-medium mb-2 text-gray-200">
-          Completed ({completedTasks.length})
-        </h4>
-        {completedTasks.length === 0 ? (
-          <p className="text-gray-500 text-sm italic">No completed fishing tasks</p>
-        ) : (
-          <div className="space-y-2">
-            {completedTasks.map((task) => (
-              <FishingTaskCard
-                key={task.id}
-                task={task}
-                species={fishSpecies}
-                spots={fishingSpots}
-                characters={characters}
-                bait={fishingBait}
-                readonly
-              />
-            ))}
-          </div>
-        )}
-      </section>
+      {!resolvingTask && (
+        <section className="completed-tasks" data-testid="completed-tasks-section">
+          <h4 className="font-medium mb-2 text-gray-200">
+            Completed ({completedTasks.length})
+          </h4>
+          {completedTasks.length === 0 ? (
+            <p className="text-gray-500 text-sm italic">No completed fishing tasks</p>
+          ) : (
+            <div className="space-y-2">
+              {completedTasks.map((task) => (
+                <FishingTaskCard
+                  key={task.id}
+                  task={task}
+                  species={fishSpecies}
+                  spots={fishingSpots}
+                  characters={characters}
+                  bait={fishingBait}
+                  readonly
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }

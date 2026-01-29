@@ -3,10 +3,11 @@
  *
  * Displays a single fishing task with its details and status.
  * Provides actions for resolving and cancelling pending tasks.
+ * Includes toggle for auto vs manual resolution mode.
  */
 
-import React from 'react';
-import { Fish, Check, X, Clock, Loader, Ban, Target, Shuffle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Fish, Check, X, Clock, Loader, Ban, Target, Shuffle, Dices, Zap } from 'lucide-react';
 import { FISHING_METHODS } from '../../../constants';
 import type { DowntimeTask, FishingData, TaskStatus, FishingMethod } from '../../../types/downtime';
 import type { Character, GatheringSpecies, GatheringEnvironment, GatheringBait } from '../../../types/campaign';
@@ -14,6 +15,8 @@ import type { Character, GatheringSpecies, GatheringEnvironment, GatheringBait }
 // ============================================================================
 // TYPES
 // ============================================================================
+
+export type ResolutionMode = 'auto' | 'manual';
 
 interface FishingTaskCardProps {
   /** The fishing task to display */
@@ -26,8 +29,8 @@ interface FishingTaskCardProps {
   characters: Character[];
   /** Bait data for name lookup */
   bait?: GatheringBait[];
-  /** Called when the resolve button is clicked */
-  onResolve?: () => void;
+  /** Called when the resolve button is clicked with selected mode */
+  onResolve?: (mode: ResolutionMode) => void;
   /** Called when the cancel button is clicked */
   onCancel?: () => void;
   /** When true, hides action buttons (for completed tasks) */
@@ -80,6 +83,45 @@ function MethodBadge({ method }: { method: FishingMethod }) {
   );
 }
 
+// Resolution mode toggle component
+interface ResolutionModeToggleProps {
+  mode: ResolutionMode;
+  onChange: (mode: ResolutionMode) => void;
+}
+
+function ResolutionModeToggle({ mode, onChange }: ResolutionModeToggleProps) {
+  return (
+    <div className="flex items-center gap-1 bg-gray-900/50 rounded p-0.5">
+      <button
+        type="button"
+        onClick={() => onChange('auto')}
+        className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+          mode === 'auto'
+            ? 'bg-purple-600 text-white'
+            : 'text-gray-400 hover:text-gray-200'
+        }`}
+        title="Auto-roll all dice"
+      >
+        <Zap className="w-3 h-3" />
+        Auto
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('manual')}
+        className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+          mode === 'manual'
+            ? 'bg-purple-600 text-white'
+            : 'text-gray-400 hover:text-gray-200'
+        }`}
+        title="Roll dice manually"
+      >
+        <Dices className="w-3 h-3" />
+        Manual
+      </button>
+    </div>
+  );
+}
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -94,6 +136,8 @@ export function FishingTaskCard({
   onCancel,
   readonly = false,
 }: FishingTaskCardProps) {
+  const [resolutionMode, setResolutionMode] = useState<ResolutionMode>('manual');
+
   const data = task.activityData as FishingData;
   const method = data.method || 'Line';
   const methodConfig = FISHING_METHODS[method];
@@ -130,8 +174,12 @@ export function FishingTaskCard({
 
   // Build the title based on targeting mode
   const title = isRandomCatch
-    ? `${methodConfig?.label ?? method} - Random Catch`
-    : `${methodConfig?.label ?? method} - Target: ${speciesName}`;
+    ? `${methodConfig?.label ?? method} Fishing - Random Catch`
+    : `${methodConfig?.label ?? method} Fishing - Target: ${speciesName}`;
+
+  const handleResolve = () => {
+    onResolve?.(resolutionMode);
+  };
 
   return (
     <div
@@ -221,9 +269,6 @@ export function FishingTaskCard({
               ))}
             </ul>
           )}
-          {task.results.experienceGained !== undefined && task.results.experienceGained > 0 && (
-            <p className="text-blue-400 mt-1">+{task.results.experienceGained} XP</p>
-          )}
         </div>
       )}
 
@@ -236,27 +281,45 @@ export function FishingTaskCard({
 
       {/* Action Buttons */}
       {isActionable && (
-        <div className="task-actions mt-3 flex gap-2">
-          <button
-            type="button"
-            onClick={onResolve}
-            className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
-            disabled={task.status === 'in_progress'}
-            data-testid="resolve-button"
-          >
-            <Check className="w-3 h-3" />
-            {task.status === 'in_progress' ? 'Resolving...' : 'Resolve'}
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="flex items-center gap-1 px-3 py-1.5 border border-red-500/50 text-red-400 text-sm rounded hover:bg-red-900/30 transition-colors"
-            disabled={task.status === 'in_progress'}
-            data-testid="cancel-button"
-          >
-            <X className="w-3 h-3" />
-            Cancel
-          </button>
+        <div className="task-actions mt-3 space-y-2">
+          {/* Resolution Mode Toggle */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-400">Resolution Mode:</span>
+            <ResolutionModeToggle mode={resolutionMode} onChange={setResolutionMode} />
+          </div>
+
+          {/* Buttons */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleResolve}
+              className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
+              disabled={task.status === 'in_progress'}
+              data-testid="resolve-button"
+            >
+              {resolutionMode === 'manual' ? (
+                <>
+                  <Dices className="w-3 h-3" />
+                  Resolve (Manual)
+                </>
+              ) : (
+                <>
+                  <Zap className="w-3 h-3" />
+                  Resolve (Auto)
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex items-center gap-1 px-3 py-1.5 border border-red-500/50 text-red-400 text-sm rounded hover:bg-red-900/30 transition-colors"
+              disabled={task.status === 'in_progress'}
+              data-testid="cancel-button"
+            >
+              <X className="w-3 h-3" />
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </div>
