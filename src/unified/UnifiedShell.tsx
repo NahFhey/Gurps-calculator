@@ -214,16 +214,22 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
   const isCenterExpanded = layoutState.centerPanel === 'expanded';
   const isRightExpanded = layoutState.rightPanel === 'expanded';
 
+  // Character panel should hide when no character is selected or party is collapsed
+  const shouldHideCharacterPanel = !selectedCharacterId || isPartyCollapsed;
+
   const gridCols = useMemo(() => {
     if (isPartyCollapsed) {
-      if (isCenterExpanded) return 'grid-cols-[48px_minmax(0,2fr)_0px_160px]';
-      if (isRightExpanded) return 'grid-cols-[48px_0px_minmax(0,2fr)_160px]';
-      return 'grid-cols-[48px_minmax(0,1fr)_minmax(0,1fr)_160px]';
+      // Party collapsed - character panel always hidden, give space to right panel
+      return 'grid-cols-[48px_0px_minmax(0,1fr)_160px]';
+    }
+    if (shouldHideCharacterPanel) {
+      // No character selected - hide center, expand right
+      return 'grid-cols-[220px_0px_minmax(0,1fr)_160px]';
     }
     if (isCenterExpanded) return 'grid-cols-[220px_minmax(0,2fr)_0px_160px]';
     if (isRightExpanded) return 'grid-cols-[220px_0px_minmax(0,2fr)_160px]';
     return 'grid-cols-[220px_minmax(0,1fr)_minmax(0,1fr)_160px]';
-  }, [isPartyCollapsed, isCenterExpanded, isRightExpanded]);
+  }, [isPartyCollapsed, isCenterExpanded, isRightExpanded, shouldHideCharacterPanel]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
@@ -329,10 +335,10 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                     data-selected={isSelected}
                     data-fatigue={downtimeSummary?.fatigueStatus}
                     data-assigned={downtimeSummary?.isAssigned}
-                    onClick={() => actions.selectCharacter(character.id)}
+                    onClick={() => actions.selectCharacter(isSelected ? null : character.id)}
                     onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
                       if (event.key === 'Enter' || event.key === ' ') {
-                        actions.selectCharacter(character.id);
+                        actions.selectCharacter(isSelected ? null : character.id);
                       }
                     }}
                     className={`rounded border p-3 cursor-pointer transition-colors ${downtimeHighlightClass} ${
@@ -443,7 +449,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                   <button
                     key={character.id}
                     type="button"
-                    onClick={() => actions.selectCharacter(character.id)}
+                    onClick={() => actions.selectCharacter(isSelected ? null : character.id)}
                     className={`w-8 h-8 rounded text-xs font-bold flex items-center justify-center ${
                       isSelected
                         ? 'border border-blue-500 bg-blue-500/20 text-blue-200'
@@ -460,24 +466,17 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
         </section>
 
         {/* Center Panel - Character Sheet */}
-        <section
-          className={`rounded border border-gray-700 bg-gray-800/60 overflow-hidden transition-all duration-300 ${
-            isRightExpanded ? 'hidden' : ''
-          }`}
-        >
-          <div className="h-full" data-testid="character-pane">
-            {selectedCharacter ? (
-              <CharacterSheet character={selectedCharacter} />
-            ) : (
-              <div className="p-4" data-testid="party-summary">
-                <h2 className="text-sm uppercase tracking-wide text-gray-400">Character Sheet</h2>
-                <div className="mt-4 text-center text-gray-500">
-                  <p>Select a character from the Party Column to view their sheet.</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
+        {!shouldHideCharacterPanel && (
+          <section
+            className={`rounded border border-gray-700 bg-gray-800/60 overflow-hidden transition-all duration-300 ${
+              isRightExpanded ? 'hidden' : ''
+            }`}
+          >
+            <div className="h-full" data-testid="character-pane">
+              {selectedCharacter && <CharacterSheet character={selectedCharacter} />}
+            </div>
+          </section>
+        )}
 
         {/* Right Panel - Module Pane */}
         <section
