@@ -58,21 +58,37 @@ export type TaskStatus = 'pending' | 'in_progress' | 'resolved' | 'cancelled';
 // ============================================================================
 
 /**
+ * Fishing method type - determines rules and resolution mechanics.
+ * - Line: Can target specific species, success = 1 fish, crit = 2
+ * - Net: Cannot target, bulk catch (1 + 1 per 3 MoS), large fish rerolled
+ * - Spear: Uses Stealth + Spear skill, shallow water only
+ */
+export type FishingMethod = 'Line' | 'Net' | 'Spear';
+
+/**
  * Configuration data for fishing activities.
- * Includes location, equipment, and targeting information.
+ * Includes location, equipment, method, and targeting information.
  */
 export interface FishingData {
   /** Discriminator field for the discriminated union */
   type: 'fishing';
-  /** Target species to catch */
+  /** Fishing method: Line, Net, or Spear */
+  method: FishingMethod;
+  /** Target species to catch (only used for Line/Spear with targeted fishing) */
   speciesId: string;
+  /** Whether this is a random catch (true) or targeted fishing (false) */
+  isRandomCatch: boolean;
   /** Fishing location/spot identifier */
   spotId: string;
-  /** Equipment being used (rods, nets, traps, etc.) */
+  /** Equipment being used (rods, nets, spears, etc.) */
   toolIds: string[];
+  /** Bait item ID (optional, primarily for Line fishing) */
+  baitId: string | null;
+  /** Retry attempt number (0, 1, or 2) - each retry adds -1 cumulative penalty */
+  retryAttempt: number;
   /** Cumulative skill modifier from conditions, equipment, etc. */
   skillModifier: number;
-  /** Expected yield amount on success */
+  /** Expected yield amount on success (deprecated, yields calculated from species) */
   targetYield: number;
 }
 

@@ -2,18 +2,19 @@
  * Fishing Task Form
  *
  * Form component for creating new fishing tasks.
- * Handles leader/helper selection, spot, species, and tool selection
+ * Handles leader/helper selection, method, spot, species, tool, and bait selection
  * with validation for character assignment and tool availability.
  */
 
 import React, { useState, useMemo } from 'react';
-import { X } from 'lucide-react';
+import { X, Target, Shuffle } from 'lucide-react';
 import {
   selectAvailableCharacterIdsForSlot,
   selectReservedToolIdsForSlot,
 } from '../../../state/downtime';
-import type { DowntimeState, FishingData } from '../../../types/downtime';
-import type { Character, GatheringSpecies, GatheringTool, GatheringEnvironment } from '../../../types/campaign';
+import { FISHING_METHODS } from '../../../constants';
+import type { DowntimeState, FishingData, FishingMethod } from '../../../types/downtime';
+import type { Character, GatheringSpecies, GatheringTool, GatheringEnvironment, GatheringBait } from '../../../types/campaign';
 
 // ============================================================================
 // TYPES
@@ -28,6 +29,8 @@ interface FishingTaskFormProps {
   species: GatheringSpecies[];
   /** Available fishing tools */
   tools: GatheringTool[];
+  /** Available fishing bait */
+  bait: GatheringBait[];
   /** Current downtime state for validation */
   state: DowntimeState;
   /** Current day key */
@@ -53,6 +56,7 @@ export function FishingTaskForm({
   spots,
   species,
   tools,
+  bait,
   state,
   currentDayKey,
   currentSlot,
@@ -62,10 +66,16 @@ export function FishingTaskForm({
   // Form state
   const [leaderId, setLeaderId] = useState('');
   const [helperIds, setHelperIds] = useState<string[]>([]);
+  const [method, setMethod] = useState<FishingMethod>('Line');
+  const [isRandomCatch, setIsRandomCatch] = useState(true);
   const [spotId, setSpotId] = useState('');
   const [speciesId, setSpeciesId] = useState('');
   const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
-  const [targetYield, setTargetYield] = useState(1);
+  const [baitId, setBaitId] = useState<string | null>(null);
+
+  // Get method configuration
+  const methodConfig = FISHING_METHODS[method];
+  const canTarget = methodConfig?.canTarget ?? false;
 
   // Get available (unassigned) character IDs
   const allCharacterIds = useMemo(
@@ -102,30 +112,98 @@ export function FishingTaskForm({
     [availableCharacters, leaderId]
   );
 
+  // Filter tools for the selected method
+  const availableTools = useMemo(() => {
+    if (!methodConfig) return [];
+    return tools.filter((tool) => {
+      // Check if tool type is allowed for this method
+      const toolType = (tool as any).toolType;
+      if (toolType && methodConfig.toolTypes) {
+        return methodConfig.toolTypes.includes(toolType);
+      }
+      // If no toolType filter, allow all tools
+      return true;
+    });
+  }, [tools, methodConfig]);
+
+  // Get selected species
+  const selectedSpecies = useMemo(
+    () => species.find((s) => s.id === speciesId),
+    [species, speciesId]
+  );
+
+  // Check if species is large fish
+  const isLargeFish = useMemo(() => {
+    if (!selectedSpecies) return false;
+    const tags = (selectedSpecies as any).tags;
+    return Array.isArray(tags) && tags.includes('LargeFish');
+  }, [selectedSpecies]);
+
+  // Get selected bait item
+  const selectedBait = useMemo(
+    () => bait.find((b) => b.id === baitId),
+    [bait, baitId]
+  );
+
+  // Check bait compatibility with target species
+  const baitStatus = useMemo(() => {
+    if (!selectedBait || !selectedSpecies || isRandomCatch) {
+      return { correct: false, inappropriate: false };
+    }
+    // Check if bait attracts this species
+    const attractsSpeciesIds = (selectedBait as any).attractsSpeciesIds;
+    if (Array.isArray(attractsSpeciesIds)) {
+      const attractsTarget = attractsSpeciesIds.includes(speciesId);
+      return {
+        correct: attractsTarget,
+        inappropriate: !attractsTarget && speciesId !== '',
+      };
+    }
+    return { correct: false, inappropriate: false };
+  }, [selectedBait, selectedSpecies, speciesId, isRandomCatch]);
+
   // Calculate skill modifier based on character skills and tools
   const skillModifier = useMemo(() => {
     let modifier = 0;
 
-    // Get leader's fishing skill (simplified - would need proper skill lookup)
-    const leader = characters.find((c) => c.id === leaderId);
-    if (leader) {
-      // Assume a default fishing skill level exists
-      modifier += 0; // Base modifier from character
-    }
-
-    // Add tool bonuses (use skillBonus from GatheringTool)
+    // Add tool bonuses
     for (const toolId of selectedToolIds) {
       const tool = tools.find((t) => t.id === toolId);
-      if (tool?.skillBonus) {
-        modifier += tool.skillBonus;
+      if (tool) {
+        const skillBonus = (tool as any).skillBonus;
+        if (skillBonus) {
+          modifier += skillBonus;
+        }
+        // Also check bonuses array for skill_bonus type
+        const bonuses = (tool as any).bonuses;
+        if (Array.isArray(bonuses)) {
+          const bonus = bonuses.find((b: any) => b.type === 'skill_bonus' && b.skill === 'Fishing');
+          if (bonus?.value) {
+            modifier += bonus.value;
+          }
+        }
       }
     }
 
-    // Add helper bonus
-    modifier += helperIds.length; // +1 per helper
+    // Add helper bonus (+1 per helper)
+    modifier += helperIds.length;
 
+    // Note: Bait, large fish, and retry penalties are applied during resolution
     return modifier;
-  }, [leaderId, helperIds, selectedToolIds, characters, tools]);
+  }, [selectedToolIds, helperIds, tools]);
+
+  // Handle method change - reset dependent fields
+  const handleMethodChange = (newMethod: FishingMethod) => {
+    setMethod(newMethod);
+    setSelectedToolIds([]); // Clear tools since they're method-specific
+
+    // If new method can't target, force random catch
+    const newMethodConfig = FISHING_METHODS[newMethod];
+    if (!newMethodConfig?.canTarget) {
+      setIsRandomCatch(true);
+      setSpeciesId('');
+    }
+  };
 
   // Handle helper toggle
   const toggleHelper = (helperId: string) => {
@@ -149,17 +227,27 @@ export function FishingTaskForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!leaderId || !spotId || !speciesId) {
+    // Validation
+    if (!leaderId || !spotId) {
       return; // Required fields not filled
+    }
+
+    // Species is required only for targeted fishing
+    if (!isRandomCatch && !speciesId) {
+      return;
     }
 
     const activityData: FishingData = {
       type: 'fishing',
-      speciesId,
+      method,
+      speciesId: isRandomCatch ? '' : speciesId,
+      isRandomCatch,
       spotId,
       toolIds: selectedToolIds,
+      baitId: baitId || null,
+      retryAttempt: 0, // First attempt
       skillModifier,
-      targetYield,
+      targetYield: 1, // Deprecated, but keeping for compatibility
     };
 
     onSubmit({
@@ -170,7 +258,7 @@ export function FishingTaskForm({
   };
 
   // Check if form is valid
-  const isFormValid = leaderId && spotId && speciesId;
+  const isFormValid = leaderId && spotId && (isRandomCatch || speciesId);
 
   return (
     <form
@@ -189,6 +277,36 @@ export function FishingTaskForm({
         >
           <X className="w-5 h-5" />
         </button>
+      </div>
+
+      {/* Fishing Method Selection */}
+      <div className="form-group mb-4">
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Fishing Method <span className="text-red-400">*</span>
+        </label>
+        <div className="flex flex-wrap gap-3">
+          {Object.entries(FISHING_METHODS).map(([key, config]) => (
+            <label
+              key={key}
+              className={`flex items-center gap-2 px-3 py-2 rounded border cursor-pointer transition-colors ${
+                method === key
+                  ? 'bg-blue-900/50 border-blue-500 text-blue-200'
+                  : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              <input
+                type="radio"
+                name="method"
+                value={key}
+                checked={method === key}
+                onChange={() => handleMethodChange(key as FishingMethod)}
+                className="sr-only"
+              />
+              <span className="text-sm font-medium">{config.label}</span>
+            </label>
+          ))}
+        </div>
+        <p className="text-xs text-gray-500 mt-1">{methodConfig?.description}</p>
       </div>
 
       {/* Leader Selection */}
@@ -271,26 +389,115 @@ export function FishingTaskForm({
         </select>
       </div>
 
-      {/* Species Selection */}
+      {/* Targeted vs Random Catch - Only for methods that can target */}
+      {canTarget && (
+        <div className="form-group mb-4 bg-gray-900/50 border border-gray-700 rounded p-3">
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Fishing Intent
+          </label>
+          <div className="flex gap-4">
+            <label
+              className={`flex items-center gap-2 px-3 py-2 rounded border cursor-pointer transition-colors ${
+                isRandomCatch
+                  ? 'bg-green-900/50 border-green-500 text-green-200'
+                  : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              <input
+                type="radio"
+                name="intent"
+                checked={isRandomCatch}
+                onChange={() => {
+                  setIsRandomCatch(true);
+                  setSpeciesId('');
+                }}
+                className="sr-only"
+              />
+              <Shuffle className="w-4 h-4" />
+              <span className="text-sm">Random Catch</span>
+            </label>
+            <label
+              className={`flex items-center gap-2 px-3 py-2 rounded border cursor-pointer transition-colors ${
+                !isRandomCatch
+                  ? 'bg-purple-900/50 border-purple-500 text-purple-200'
+                  : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              <input
+                type="radio"
+                name="intent"
+                checked={!isRandomCatch}
+                onChange={() => setIsRandomCatch(false)}
+                className="sr-only"
+              />
+              <Target className="w-4 h-4" />
+              <span className="text-sm">Target Species</span>
+            </label>
+          </div>
+        </div>
+      )}
+
+      {/* Species Selection - Only when targeting */}
+      {canTarget && !isRandomCatch && (
+        <div className="form-group mb-4">
+          <label htmlFor="species-select" className="block text-sm font-medium text-gray-300 mb-1">
+            Target Species <span className="text-red-400">*</span>
+          </label>
+          <select
+            id="species-select"
+            value={speciesId}
+            onChange={(e) => setSpeciesId(e.target.value)}
+            className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+            data-testid="species-select"
+          >
+            <option value="">Select species...</option>
+            {species.map((s) => {
+              const tags = (s as any).tags;
+              const isLarge = Array.isArray(tags) && tags.includes('LargeFish');
+              return (
+                <option key={s.id} value={s.id}>
+                  {s.name} {isLarge ? '(Large - penalty)' : ''}
+                </option>
+              );
+            })}
+          </select>
+          {isLargeFish && (
+            <p className="text-xs text-orange-400 mt-1">
+              ⚠ Large fish: -2 targeting penalty, requires struggle to land
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Bait Selection - Primarily for Line fishing */}
       <div className="form-group mb-4">
-        <label htmlFor="species-select" className="block text-sm font-medium text-gray-300 mb-1">
-          Target Species <span className="text-red-400">*</span>
+        <label htmlFor="bait-select" className="block text-sm font-medium text-gray-300 mb-1">
+          Bait (optional)
         </label>
         <select
-          id="species-select"
-          value={speciesId}
-          onChange={(e) => setSpeciesId(e.target.value)}
+          id="bait-select"
+          value={baitId || ''}
+          onChange={(e) => setBaitId(e.target.value || null)}
           className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          required
-          data-testid="species-select"
+          data-testid="bait-select"
         >
-          <option value="">Select species...</option>
-          {species.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name} ({s.category})
+          <option value="">No bait</option>
+          {bait.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.name} ({b.quantity ?? 0} available)
             </option>
           ))}
         </select>
+        {baitStatus.correct && (
+          <p className="text-xs text-green-400 mt-1">✓ Correct bait for target (+1 to Fishing)</p>
+        )}
+        {baitStatus.inappropriate && (
+          <p className="text-xs text-red-400 mt-1">✗ Wrong bait for target (-2 to Fishing)</p>
+        )}
+        {method === 'Net' && selectedBait && (
+          <p className="text-xs text-yellow-400 mt-1">Note: Bait has limited effect with net fishing</p>
+        )}
       </div>
 
       {/* Tool Selection */}
@@ -298,13 +505,16 @@ export function FishingTaskForm({
         <label className="block text-sm font-medium text-gray-300 mb-1">
           Equipment (optional)
         </label>
-        {tools.length === 0 ? (
-          <p className="text-sm text-gray-500 italic">No fishing tools available</p>
+        {availableTools.length === 0 ? (
+          <p className="text-sm text-gray-500 italic">No tools available for {methodConfig?.label}</p>
         ) : (
           <div className="flex flex-wrap gap-2">
-            {tools.map((tool) => {
+            {availableTools.map((tool) => {
               const isReserved = reservedToolIds.has(tool.id);
               const isSelected = selectedToolIds.includes(tool.id);
+              const skillBonus = (tool as any).skillBonus;
+              const bonuses = (tool as any).bonuses;
+              const displayBonus = skillBonus || bonuses?.find((b: any) => b.type === 'skill_bonus')?.value;
 
               return (
                 <label
@@ -326,6 +536,9 @@ export function FishingTaskForm({
                     className="sr-only"
                   />
                   <span className="text-sm">{tool.name}</span>
+                  {displayBonus > 0 && (
+                    <span className="text-xs text-green-400">(+{displayBonus})</span>
+                  )}
                   {isReserved && (
                     <span className="text-xs text-gray-500">(in use)</span>
                   )}
@@ -336,29 +549,16 @@ export function FishingTaskForm({
         )}
       </div>
 
-      {/* Target Yield */}
-      <div className="form-group mb-4">
-        <label htmlFor="yield-input" className="block text-sm font-medium text-gray-300 mb-1">
-          Target Yield
-        </label>
-        <input
-          id="yield-input"
-          type="number"
-          min={1}
-          max={10}
-          value={targetYield}
-          onChange={(e) => setTargetYield(Math.max(1, parseInt(e.target.value) || 1))}
-          className="w-24 px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        />
-      </div>
-
       {/* Skill Modifier Summary */}
       <div className="bg-gray-900/50 border border-gray-700 rounded p-2 mb-4">
         <p className="text-sm text-gray-300">
-          Total Skill Modifier:{' '}
+          Equipment Modifier:{' '}
           <span className={`font-medium ${skillModifier >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {skillModifier >= 0 ? '+' : ''}{skillModifier}
           </span>
+        </p>
+        <p className="text-xs text-gray-500 mt-1">
+          Bait, large fish penalty, and retry penalties applied during resolution
         </p>
       </div>
 

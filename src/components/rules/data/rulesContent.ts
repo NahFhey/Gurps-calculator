@@ -525,7 +525,7 @@ export const RULES_SECTIONS: RuleSection[] = [
 
 **Fish Caught:**
 - Line: 1 fish on success, 2 on critical
-- Net: 1d fish on success, 1d+1 on critical
+- Net: 1 fish + 1 per 3 MoS (min 2 on critical)
 - Spear: 1 fish on success, 2 on critical`
       },
       {

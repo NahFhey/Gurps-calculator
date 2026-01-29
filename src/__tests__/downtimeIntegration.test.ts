@@ -45,9 +45,13 @@ import { DowntimeValidationError, DOWNTIME_ERROR_CODES } from '../state/downtime
 function createFishingData(overrides?: Partial<FishingData>): FishingData {
   return {
     type: 'fishing',
+    method: 'Line',
     speciesId: 'species-trout',
+    isRandomCatch: false,
     spotId: 'spot-river',
     toolIds: [],
+    baitId: null,
+    retryAttempt: 0,
     skillModifier: 0,
     targetYield: 5,
     ...overrides,

@@ -23,6 +23,7 @@ import type {
   GatheringTool,
   GatheringEnvironment,
   GatheringTable,
+  GatheringBait,
   AlchemyReagent,
   AlchemyFormula,
   AlchemyBatch,
@@ -49,6 +50,8 @@ interface DowntimeContextValue {
   fishSpecies: GatheringSpecies[];
   /** All gathering tools */
   tools: GatheringTool[];
+  /** Available fishing bait */
+  fishingBait: GatheringBait[];
   /** Available foraging biomes (all environments) */
   foragingBiomes: GatheringEnvironment[];
   /** Foraging nodes (plant and game species) */
@@ -141,6 +144,12 @@ export function DowntimeProvider({
     [campaignState.entities?.gatheringTools]
   );
 
+  // Extract fishing bait (filter to items with quantity > 0)
+  const fishingBait = useMemo(() => {
+    const bait = Object.values(campaignState.entities?.gatheringBait ?? {});
+    return bait.filter((b) => (b.quantity ?? 0) > 0);
+  }, [campaignState.entities?.gatheringBait]);
+
   // Extract foraging biomes (all environments)
   const foragingBiomes = useMemo(
     () => Object.values(campaignState.entities?.gatheringEnvironments ?? {}),
@@ -230,6 +239,7 @@ export function DowntimeProvider({
       fishingSpots,
       fishSpecies,
       tools,
+      fishingBait,
       foragingBiomes,
       foragingNodes,
       gatheringTables,
@@ -253,6 +263,7 @@ export function DowntimeProvider({
       fishingSpots,
       fishSpecies,
       tools,
+      fishingBait,
       foragingBiomes,
       foragingNodes,
       gatheringTables,
