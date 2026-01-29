@@ -200,8 +200,14 @@ function calculateFishingResultsAuto(
           caughtSpecies = species.find(s => s.id === tableEntry.speciesId);
         }
       } catch (error) {
-        continue;
+        // Fall through to use fallback
       }
+    }
+
+    // Fallback: if no catch table or species lookup failed, use first species
+    if (!caughtSpecies && species.length > 0) {
+      // Randomly pick a species from available list for more variety
+      caughtSpecies = species[Math.floor(Math.random() * species.length)];
     }
 
     if (!caughtSpecies) continue;
@@ -227,7 +233,7 @@ function calculateFishingResultsAuto(
       // Roll yield dice
       const meatFormula = (caughtSpecies as any)?.yieldMeatFormula ?? '1d';
       const secondaryFormula = (caughtSpecies as any)?.yieldSecondaryFormula ?? '1d-2';
-      secondaryType = (caughtSpecies as any)?.secondaryMaterial ?? 'scales';
+      secondaryType = (caughtSpecies as any)?.secondaryMaterialType ?? 'scales';
 
       meatYield = rollYieldDice(meatFormula);
       secondaryYield = rollYieldDice(secondaryFormula);

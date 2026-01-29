@@ -366,24 +366,53 @@ export function FishingResolutionPanel({
       ? gatheringTables.find(t => t.id === catchTableId)
       : null;
 
-    if (catchTable) {
-      try {
-        let tableEntry;
-        if (method === 'Net') {
-          tableEntry = rollNetCatch(catchTable as any, species as any);
-        } else {
-          const baitRollBonus = baitItem ? ((baitItem as any).rollBonus ?? 0) : 0;
-          tableEntry = rollOnCatchTable(catchTable as any, baitRollBonus);
-        }
+    if (!catchTable) {
+      // No catch table configured - fall back to first species in list
+      if (species.length > 0) {
+        setCaughtSpecies(species[0]);
+      }
+      return;
+    }
 
+    try {
+      // For Net fishing, need to reroll if large fish
+      if (method === 'Net') {
+        const tableEntry = rollNetCatch(catchTable as any, species as any);
         if (tableEntry.resultType === 'species' && tableEntry.speciesId) {
           const caught = species.find(s => s.id === tableEntry.speciesId);
           if (caught) {
             setCaughtSpecies(caught);
           }
         }
-      } catch (error) {
-        // Table error - no species caught
+      } else {
+        // For Line/Spear: use the displayed roll to look up table entry
+        const baitRollBonus = baitItem ? ((baitItem as any).rollBonus ?? 0) : 0;
+        const modifiedRoll = Math.min(12, result.total + baitRollBonus);
+
+        // Find matching entry in table
+        const entries = (catchTable as any).entries || [];
+        const entry = entries.find((e: any) => e.rollValue === modifiedRoll);
+
+        if (entry && entry.resultType === 'species' && entry.speciesId) {
+          const caught = species.find(s => s.id === entry.speciesId);
+          if (caught) {
+            setCaughtSpecies(caught);
+          }
+        } else if (entries.length > 0) {
+          // Fallback: find closest entry or first species entry
+          const speciesEntry = entries.find((e: any) => e.resultType === 'species' && e.speciesId);
+          if (speciesEntry) {
+            const caught = species.find(s => s.id === speciesEntry.speciesId);
+            if (caught) {
+              setCaughtSpecies(caught);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      // Table error - fall back to first species
+      if (species.length > 0) {
+        setCaughtSpecies(species[0]);
       }
     }
   }, [spot, gatheringTables, method, species, baitItem]);
@@ -510,7 +539,7 @@ export function FishingResolutionPanel({
     if (fishingSuccess && caughtSpecies && (!needsStruggleRoll || struggleWon)) {
       const meatUnits = meatYieldRoll.total;
       const secondaryUnits = secondaryYieldRoll.total;
-      const secondaryType = (caughtSpecies as any)?.secondaryMaterial ?? 'scales';
+      const secondaryType = (caughtSpecies as any)?.secondaryMaterialType ?? 'scales';
 
       // Add to foods
       if (meatUnits > 0) {
@@ -571,7 +600,7 @@ export function FishingResolutionPanel({
   // Get yield formulas for display
   const meatFormula = (caughtSpecies as any)?.yieldMeatFormula ?? '1d';
   const secondaryFormula = (caughtSpecies as any)?.yieldSecondaryFormula ?? '1d-2';
-  const secondaryType = (caughtSpecies as any)?.secondaryMaterial ?? 'scales';
+  const secondaryType = (caughtSpecies as any)?.secondaryMaterialType ?? 'scales';
 
   return (
     <div className="fishing-resolution-panel bg-gray-900 border border-gray-700 rounded-lg p-4 max-w-md">
@@ -633,6 +662,15 @@ export function FishingResolutionPanel({
         disabled={needsStealthRoll && !stealthRoll.rolled}
       />
 
+      {/* Targeted Catch - Show species immediately after fishing success */}
+      {fishingSuccess && !isRandomCatch && caughtSpecies && (
+        <div className="targeted-catch bg-green-900/30 border border-green-700 rounded-lg p-3 mb-3">
+          <div className="text-sm text-green-400 font-medium">
+            Targeted Catch: {caughtSpecies.name}
+          </div>
+        </div>
+      )}
+
       {/* Species Roll (Random catch only) */}
       {fishingSuccess && isRandomCatch && (
         <div className="species-roll bg-gray-800/50 border border-gray-700 rounded-lg p-3 mb-3">
@@ -656,6 +694,11 @@ export function FishingResolutionPanel({
           {speciesRoll.rolled && caughtSpecies && (
             <div className="mt-2 text-sm text-green-400">
               Caught: {caughtSpecies.name}
+            </div>
+          )}
+          {speciesRoll.rolled && !caughtSpecies && (
+            <div className="mt-2 text-sm text-yellow-400">
+              No catch - try again or check catch table configuration
             </div>
           )}
         </div>

@@ -91,9 +91,10 @@ describe('FishingActivity', () => {
 
       fireEvent.click(screen.getByTestId('new-fishing-task-button'));
 
+      // Basic required fields always visible
       expect(screen.getByTestId('leader-select')).toBeInTheDocument();
       expect(screen.getByTestId('spot-select')).toBeInTheDocument();
-      expect(screen.getByTestId('species-select')).toBeInTheDocument();
+      // Note: species-select only visible in targeted mode (not random catch default)
     });
   });
 

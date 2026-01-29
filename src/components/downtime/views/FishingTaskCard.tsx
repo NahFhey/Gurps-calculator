@@ -173,9 +173,10 @@ export function FishingTaskCard({
   const isActionable = !readonly && (task.status === 'pending' || task.status === 'in_progress');
 
   // Build the title based on targeting mode
+  // methodConfig.label already includes "Fishing" (e.g., "Net Fishing")
   const title = isRandomCatch
-    ? `${methodConfig?.label ?? method} Fishing - Random Catch`
-    : `${methodConfig?.label ?? method} Fishing - Target: ${speciesName}`;
+    ? `${methodConfig?.label ?? method} - Random Catch`
+    : `${methodConfig?.label ?? method} - Target: ${speciesName}`;
 
   const handleResolve = () => {
     onResolve?.(resolutionMode);

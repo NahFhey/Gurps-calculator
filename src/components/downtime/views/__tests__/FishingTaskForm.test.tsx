@@ -101,7 +101,7 @@ const mockTools: GatheringTool[] = [
   {
     id: 'tool-1',
     name: 'Fishing Rod',
-    toolType: 'rod',
+    toolType: 'fishing_rod', // Matches Line fishing method's toolTypes
     allowedModes: ['Fishing'],
     allowedMethods: [],
     bonuses: [{ type: 'skill_bonus', value: 1 }],
@@ -111,7 +111,7 @@ const mockTools: GatheringTool[] = [
   {
     id: 'tool-2',
     name: 'Fishing Net',
-    toolType: 'net',
+    toolType: 'fishing_net', // Matches Net fishing method's toolTypes
     allowedModes: ['Fishing'],
     allowedMethods: [],
     bonuses: [{ type: 'yield_bonus', dice: 1 }],
@@ -126,6 +126,7 @@ describe('FishingTaskForm', () => {
     spots: mockSpots,
     species: mockSpecies,
     tools: mockTools,
+    bait: [],
     state: downtimeInitialState,
     currentDayKey: 1,
     currentSlot: 0,
@@ -163,9 +164,17 @@ describe('FishingTaskForm', () => {
       expect(spotSelect).toBeInTheDocument();
     });
 
-    it('renders species select with species', () => {
+    it('renders species select when targeting mode is selected', () => {
       render(<FishingTaskForm {...defaultProps} />);
 
+      // By default, random catch is selected - species select should not be visible
+      expect(screen.queryByTestId('species-select')).not.toBeInTheDocument();
+
+      // Click on "Target Species" to enable targeting mode
+      const targetButton = screen.getByText('Target Species');
+      fireEvent.click(targetButton);
+
+      // Now species select should be visible
       const speciesSelect = screen.getByTestId('species-select');
       expect(speciesSelect).toBeInTheDocument();
     });
@@ -194,7 +203,22 @@ describe('FishingTaskForm', () => {
       expect(submitButton).toBeDisabled();
     });
 
-    it('enables submit button when required fields are filled', () => {
+    it('enables submit button when required fields are filled (random catch mode)', () => {
+      render(<FishingTaskForm {...defaultProps} />);
+
+      // For random catch mode, only leader and spot are required
+      fireEvent.change(screen.getByTestId('leader-select'), {
+        target: { value: 'char-1' },
+      });
+      fireEvent.change(screen.getByTestId('spot-select'), {
+        target: { value: 'spot-1' },
+      });
+
+      const submitButton = screen.getByTestId('submit-button');
+      expect(submitButton).not.toBeDisabled();
+    });
+
+    it('enables submit button when required fields are filled (targeted mode)', () => {
       render(<FishingTaskForm {...defaultProps} />);
 
       // Fill required fields
@@ -204,6 +228,10 @@ describe('FishingTaskForm', () => {
       fireEvent.change(screen.getByTestId('spot-select'), {
         target: { value: 'spot-1' },
       });
+
+      // Switch to targeted mode and select species
+      const targetButton = screen.getByText('Target Species');
+      fireEvent.click(targetButton);
       fireEvent.change(screen.getByTestId('species-select'), {
         target: { value: 'species-1' },
       });
@@ -212,7 +240,34 @@ describe('FishingTaskForm', () => {
       expect(submitButton).not.toBeDisabled();
     });
 
-    it('calls onSubmit with correct data when form is submitted', () => {
+    it('calls onSubmit with correct data when form is submitted (random catch)', () => {
+      const onSubmit = vi.fn();
+      render(<FishingTaskForm {...defaultProps} onSubmit={onSubmit} />);
+
+      // Fill required fields (random catch mode - no species needed)
+      fireEvent.change(screen.getByTestId('leader-select'), {
+        target: { value: 'char-1' },
+      });
+      fireEvent.change(screen.getByTestId('spot-select'), {
+        target: { value: 'spot-1' },
+      });
+
+      // Submit form
+      fireEvent.click(screen.getByTestId('submit-button'));
+
+      expect(onSubmit).toHaveBeenCalledWith({
+        leaderId: 'char-1',
+        helperIds: [],
+        activityData: expect.objectContaining({
+          type: 'fishing',
+          isRandomCatch: true,
+          speciesId: '',
+          spotId: 'spot-1',
+        }),
+      });
+    });
+
+    it('calls onSubmit with correct data when form is submitted (targeted)', () => {
       const onSubmit = vi.fn();
       render(<FishingTaskForm {...defaultProps} onSubmit={onSubmit} />);
 
@@ -223,6 +278,10 @@ describe('FishingTaskForm', () => {
       fireEvent.change(screen.getByTestId('spot-select'), {
         target: { value: 'spot-1' },
       });
+
+      // Switch to targeted mode and select species
+      const targetButton = screen.getByText('Target Species');
+      fireEvent.click(targetButton);
       fireEvent.change(screen.getByTestId('species-select'), {
         target: { value: 'species-1' },
       });
@@ -235,6 +294,7 @@ describe('FishingTaskForm', () => {
         helperIds: [],
         activityData: expect.objectContaining({
           type: 'fishing',
+          isRandomCatch: false,
           speciesId: 'species-1',
           spotId: 'spot-1',
         }),
@@ -265,23 +325,25 @@ describe('FishingTaskForm', () => {
   });
 
   describe('tool selection', () => {
-    it('renders available tools', () => {
+    it('renders available tools for Line method', () => {
       render(<FishingTaskForm {...defaultProps} />);
 
+      // Line method shows fishing_rod tools
       expect(screen.getByText('Fishing Rod')).toBeInTheDocument();
-      expect(screen.getByText('Fishing Net')).toBeInTheDocument();
     });
 
     it('shows no tools message when none available', () => {
       render(<FishingTaskForm {...defaultProps} tools={[]} />);
-      expect(screen.getByText('No fishing tools available')).toBeInTheDocument();
+      // Message format changed to "No tools available for {method}"
+      expect(screen.getByText(/No tools available for/)).toBeInTheDocument();
     });
   });
 
   describe('skill modifier calculation', () => {
     it('shows skill modifier summary', () => {
       render(<FishingTaskForm {...defaultProps} />);
-      expect(screen.getByText(/Total Skill Modifier:/)).toBeInTheDocument();
+      // Label changed from "Total Skill Modifier" to "Equipment Modifier"
+      expect(screen.getByText(/Equipment Modifier:/)).toBeInTheDocument();
     });
   });
 });

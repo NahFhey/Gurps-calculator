@@ -20,9 +20,13 @@ function createFishingTask(
     status: 'pending',
     activityData: {
       type: 'fishing',
+      method: 'Line',
       speciesId: 'species-trout',
+      isRandomCatch: false,
       spotId: 'spot-river',
       toolIds: ['tool-rod'],
+      baitId: null,
+      retryAttempt: 0,
       skillModifier: 2,
       targetYield: 3,
     } as FishingData,
@@ -95,15 +99,38 @@ const defaultProps = {
   species: mockSpecies,
   spots: mockSpots,
   characters: mockCharacters,
+  bait: [],
 };
 
 describe('FishingTaskCard', () => {
   describe('rendering', () => {
-    it('renders task with species name', () => {
+    it('renders task with species name (targeted fishing)', () => {
       const task = createFishingTask();
       render(<FishingTaskCard task={task} {...defaultProps} />);
 
-      expect(screen.getByText(/Fishing: Trout/)).toBeInTheDocument();
+      // Title format: "Line Fishing - Target: Trout"
+      expect(screen.getByText(/Line Fishing - Target: Trout/)).toBeInTheDocument();
+    });
+
+    it('renders task with random catch title', () => {
+      const task = createFishingTask({
+        activityData: {
+          type: 'fishing',
+          method: 'Net',
+          speciesId: '',
+          isRandomCatch: true,
+          spotId: 'spot-river',
+          toolIds: ['tool-rod'],
+          baitId: null,
+          retryAttempt: 0,
+          skillModifier: 2,
+          targetYield: 3,
+        } as FishingData,
+      });
+      render(<FishingTaskCard task={task} {...defaultProps} />);
+
+      // Title format: "Net Fishing - Random Catch" (methodConfig.label includes "Fishing")
+      expect(screen.getByText('Net Fishing - Random Catch')).toBeInTheDocument();
     });
 
     it('renders leader name', () => {
@@ -144,13 +171,20 @@ describe('FishingTaskCard', () => {
       expect(screen.getByText(/\+2/)).toBeInTheDocument();
     });
 
-    it('renders target yield', () => {
+    it('renders method badge', () => {
       const task = createFishingTask();
       render(<FishingTaskCard task={task} {...defaultProps} />);
 
-      // Check for target yield label and value separately since they're in different elements
-      expect(screen.getByText('Target Yield:')).toBeInTheDocument();
-      expect(screen.getByText('3')).toBeInTheDocument();
+      // Method badge should show the fishing method
+      expect(screen.getByText('Line')).toBeInTheDocument();
+    });
+
+    it('renders targeted badge for targeted fishing', () => {
+      const task = createFishingTask();
+      render(<FishingTaskCard task={task} {...defaultProps} />);
+
+      // Should show "Targeted" badge
+      expect(screen.getByText('Targeted')).toBeInTheDocument();
     });
   });
 
@@ -259,7 +293,6 @@ describe('FishingTaskCard', () => {
         inventoryChanges: [
           { itemId: 'species-trout', quantity: 5, itemName: 'Trout' },
         ],
-        experienceGained: 50,
       };
       const task = createFishingTask({ status: 'resolved', results });
       render(<FishingTaskCard task={task} {...defaultProps} />);
@@ -267,7 +300,7 @@ describe('FishingTaskCard', () => {
       expect(screen.getByTestId('task-results')).toBeInTheDocument();
       expect(screen.getByText('Caught 5 trout!')).toBeInTheDocument();
       expect(screen.getByText('+5')).toBeInTheDocument();
-      expect(screen.getByText('+50 XP')).toBeInTheDocument();
+      // Note: XP removed from fishing results as per user request
     });
 
     it('shows failure results', () => {

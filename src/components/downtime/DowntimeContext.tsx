@@ -132,10 +132,21 @@ export function DowntimeProvider({
     [campaignState.entities?.gatheringEnvironments]
   );
 
-  // Extract fish species (filter by 'fish' category)
+  // Extract fish species (filter by fish-related types)
+  // Note: GatheringSpeciesExtended uses 'type' field, not 'category'
   const fishSpecies = useMemo(() => {
     const species = Object.values(campaignState.entities?.gatheringSpecies ?? {});
-    return species.filter((s) => s.category === 'fish');
+    return species.filter((s) => {
+      // Check both 'type' (extended) and 'category' (base) for compatibility
+      const speciesType = (s as any).type;
+      const speciesCategory = s.category;
+      return (
+        speciesType === 'fish' ||
+        speciesType === 'shellfish' ||
+        speciesType === 'crustacean' ||
+        speciesCategory === 'fish'
+      );
+    });
   }, [campaignState.entities?.gatheringSpecies]);
 
   // Extract tools
