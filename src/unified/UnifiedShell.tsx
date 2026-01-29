@@ -465,18 +465,18 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           )}
         </section>
 
-        {/* Center Panel - Character Sheet */}
-        {!shouldHideCharacterPanel && (
-          <section
-            className={`rounded border border-gray-700 bg-gray-800/60 overflow-hidden transition-all duration-300 ${
-              isRightExpanded ? 'hidden' : ''
-            }`}
-          >
-            <div className="h-full" data-testid="character-pane">
-              {selectedCharacter && <CharacterSheet character={selectedCharacter} />}
-            </div>
-          </section>
-        )}
+        {/* Center Panel - Character Sheet (always in DOM to maintain grid structure) */}
+        <section
+          className={`overflow-hidden transition-all duration-300 ${
+            shouldHideCharacterPanel || isRightExpanded
+              ? 'invisible'
+              : 'rounded border border-gray-700 bg-gray-800/60'
+          }`}
+        >
+          <div className="h-full" data-testid="character-pane">
+            {selectedCharacter && <CharacterSheet character={selectedCharacter} />}
+          </div>
+        </section>
 
         {/* Right Panel - Module Pane */}
         <section
