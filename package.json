@@ -4,6 +4,9 @@
   "description": "GURPS Party Management Tool - Inventory, Cooking, Crafting, Alchemy, Gathering & Performance Monitoring",
   "main": "src/App.jsx",
   "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
