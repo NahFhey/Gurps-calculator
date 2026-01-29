@@ -79,7 +79,7 @@ interface CaughtFish {
  */
 function calculateFishingResults(
   task: DowntimeTask,
-  leader: { st?: number; skills?: { fishing?: number; spear?: number } } | undefined,
+  leader: { st?: number; skills?: { fishing?: number; spear?: number; stealth?: number; survival?: number } } | undefined,
   species: GatheringSpecies[],
   bait: GatheringBait[],
   gatheringTables: GatheringTable[],
@@ -89,10 +89,27 @@ function calculateFishingResults(
   const method = data.method || 'Line';
   const isRandomCatch = data.isRandomCatch ?? true;
 
-  // Get base skill (Fishing for Line/Net, could be Spear for spear fishing)
+  // Get base skill (Fishing for Line/Net, Spear for spear fishing)
   const baseSkill = method === 'Spear'
     ? (leader?.skills?.spear ?? leader?.skills?.fishing ?? 10)
     : (leader?.skills?.fishing ?? 10);
+
+  // Spear Fishing: Stealth approach roll first
+  // Failure means -2 to the strike roll
+  let stealthPenalty = 0;
+  let stealthMessage = '';
+  if (method === 'Spear') {
+    const stealthSkill = leader?.skills?.stealth ?? leader?.skills?.survival ?? 10;
+    const stealthRoll = roll3d6();
+    const stealthSuccess = stealthRoll.total <= stealthSkill;
+
+    if (!stealthSuccess) {
+      stealthPenalty = -2;
+      stealthMessage = `Stealth approach failed (${stealthRoll.total} vs ${stealthSkill}), -2 to strike. `;
+    } else {
+      stealthMessage = `Good approach (${stealthRoll.total} vs ${stealthSkill}). `;
+    }
+  }
 
   // Get bait item and check compatibility
   const baitItem = data.baitId ? bait.find(b => b.id === data.baitId) : null;
@@ -117,10 +134,10 @@ function calculateFishingResults(
     : false;
   const targetingLargeFish = !isRandomCatch && targetIsLarge;
 
-  // Calculate effective skill
+  // Calculate effective skill (include stealth penalty for spear fishing)
   const effectiveSkillResult = calculateEffectiveFishingSkill({
     baseFishingSkill: baseSkill,
-    toolBonus: data.skillModifier, // Already includes tool bonus from form
+    toolBonus: data.skillModifier + stealthPenalty, // Include stealth penalty
     hasCorrectBait,
     hasInappropriateBait,
     targetingLargeFish,
@@ -132,7 +149,7 @@ function calculateFishingResults(
     ? effectiveSkillResult
     : effectiveSkillResult.effectiveSkill;
 
-  // Roll 3d6 for fishing
+  // Roll 3d6 for fishing/strike
   const fishingRollResult = roll3d6();
   const roll = fishingRollResult.total;
 
@@ -143,8 +160,8 @@ function calculateFishingResults(
   if (!rollResult.success) {
     const canRetry = !rollResult.critFailure && (data.retryAttempt ?? 0) < 2;
     const message = rollResult.critFailure
-      ? `Critical Failure! (Rolled ${roll} vs ${effectiveSkill}) - ${rollResult.description}`
-      : `Failure (Rolled ${roll} vs ${effectiveSkill}) - ${rollResult.description}${canRetry ? ` You may retry.` : ''}`;
+      ? `${stealthMessage}Critical Failure! (Rolled ${roll} vs ${effectiveSkill}) - ${rollResult.description}`
+      : `${stealthMessage}Failure (Rolled ${roll} vs ${effectiveSkill}) - ${rollResult.description}${canRetry ? ` You may retry.` : ''}`;
 
     return {
       success: false,
@@ -263,9 +280,9 @@ function calculateFishingResults(
   const successfulCatches = caughtFish.filter(f => f.struggleSuccess);
   const escapedLarge = caughtFish.filter(f => f.isLarge && !f.struggleSuccess);
 
-  let message = rollResult.critSuccess
+  let message = stealthMessage + (rollResult.critSuccess
     ? `Critical Success! (Rolled ${roll} vs ${effectiveSkill})`
-    : `Success! (Rolled ${roll} vs ${effectiveSkill}, MoS: ${rollResult.margin})`;
+    : `Success! (Rolled ${roll} vs ${effectiveSkill}, MoS: ${rollResult.margin})`);
 
   if (successfulCatches.length > 0) {
     const catchList = successfulCatches
@@ -477,7 +494,7 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
 
       {/* Pending Tasks */}
       <section className="pending-tasks mb-6" data-testid="pending-tasks-section">
-        <h4 className="font-medium mb-2 text-gray-700">
+        <h4 className="font-medium mb-2 text-gray-200">
           Pending ({pendingTasks.length})
         </h4>
         {pendingTasks.length === 0 ? (
@@ -491,6 +508,7 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
                 species={fishSpecies}
                 spots={fishingSpots}
                 characters={characters}
+                bait={fishingBait}
                 onResolve={() => handleResolve(task)}
                 onCancel={() => handleCancel(task.id)}
               />
@@ -501,7 +519,7 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
 
       {/* Completed Tasks */}
       <section className="completed-tasks" data-testid="completed-tasks-section">
-        <h4 className="font-medium mb-2 text-gray-700">
+        <h4 className="font-medium mb-2 text-gray-200">
           Completed ({completedTasks.length})
         </h4>
         {completedTasks.length === 0 ? (
@@ -515,6 +533,7 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
                 species={fishSpecies}
                 spots={fishingSpots}
                 characters={characters}
+                bait={fishingBait}
                 readonly
               />
             ))}
