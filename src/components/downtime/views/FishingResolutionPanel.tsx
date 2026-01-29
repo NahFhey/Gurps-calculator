@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { X, Dices } from 'lucide-react';
+import { X, Dices, RotateCcw, Edit2 } from 'lucide-react';
 import { useCampaignStore } from '../../../state/campaignStore';
 import {
   evaluateFishingRoll,
@@ -66,9 +66,37 @@ interface DiceDisplayProps {
   dice: number[];
   total: number;
   rolled: boolean;
+  gmMode?: boolean;
+  onEdit?: (newDice: number[], newTotal: number) => void;
 }
 
-function DiceDisplay({ dice, total, rolled }: DiceDisplayProps) {
+function DiceDisplay({ dice, total, rolled, gmMode, onEdit }: DiceDisplayProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editDice, setEditDice] = useState<number[]>([]);
+
+  const startEditing = () => {
+    setEditDice([...dice]);
+    setIsEditing(true);
+  };
+
+  const handleDiceChange = (index: number, value: string) => {
+    const newValue = Math.max(1, Math.min(6, parseInt(value) || 1));
+    const newDice = [...editDice];
+    newDice[index] = newValue;
+    setEditDice(newDice);
+  };
+
+  const applyEdit = () => {
+    const newTotal = editDice.reduce((sum, d) => sum + d, 0);
+    onEdit?.(editDice, newTotal);
+    setIsEditing(false);
+  };
+
+  const cancelEdit = () => {
+    setIsEditing(false);
+    setEditDice([]);
+  };
+
   if (!rolled) {
     return (
       <div className="flex items-center gap-2">
@@ -88,6 +116,46 @@ function DiceDisplay({ dice, total, rolled }: DiceDisplayProps) {
     );
   }
 
+  if (isEditing && gmMode) {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          {editDice.map((value, i) => (
+            <input
+              key={i}
+              type="number"
+              min="1"
+              max="6"
+              value={value}
+              onChange={(e) => handleDiceChange(i, e.target.value)}
+              className={`w-8 h-8 ${DICE_COLORS[i % DICE_COLORS.length]} rounded text-center text-white font-bold border-2 border-yellow-400`}
+            />
+          ))}
+          <span className="text-gray-400">=</span>
+          <div className="px-3 py-1 bg-gray-700 rounded text-gray-100 font-medium min-w-[3rem] text-center">
+            {editDice.reduce((sum, d) => sum + d, 0)}
+          </div>
+        </div>
+        <div className="flex gap-1">
+          <button
+            type="button"
+            onClick={applyEdit}
+            className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+          >
+            Apply
+          </button>
+          <button
+            type="button"
+            onClick={cancelEdit}
+            className="px-2 py-1 text-xs bg-gray-600 text-gray-200 rounded hover:bg-gray-500"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-2">
       {dice.map((value, i) => (
@@ -102,6 +170,16 @@ function DiceDisplay({ dice, total, rolled }: DiceDisplayProps) {
       <div className="px-3 py-1 bg-gray-700 rounded text-gray-100 font-medium min-w-[3rem] text-center">
         {total}
       </div>
+      {gmMode && onEdit && (
+        <button
+          type="button"
+          onClick={startEditing}
+          className="p-1 text-yellow-400 hover:text-yellow-300"
+          title="GM: Edit dice"
+        >
+          <Edit2 className="w-4 h-4" />
+        </button>
+      )}
     </div>
   );
 }
@@ -114,9 +192,12 @@ interface RollStepProps {
   step: ResolutionStep;
   onRoll: () => void;
   disabled?: boolean;
+  gmMode?: boolean;
+  onReroll?: () => void;
+  onEdit?: (newDice: number[], newTotal: number) => void;
 }
 
-function RollStep({ step, onRoll, disabled }: RollStepProps) {
+function RollStep({ step, onRoll, disabled, gmMode, onReroll, onEdit }: RollStepProps) {
   if (!step.visible) return null;
 
   const getResultColor = () => {
@@ -148,27 +229,41 @@ function RollStep({ step, onRoll, disabled }: RollStepProps) {
             <span className="text-gray-400 ml-2">vs {step.targetSkill}</span>
           )}
         </span>
-        <button
-          type="button"
-          onClick={onRoll}
-          disabled={disabled || step.roll.rolled}
-          className={`flex items-center gap-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
-            step.roll.rolled
-              ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-              : disabled
-              ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-              : 'bg-purple-600 text-white hover:bg-purple-700'
-          }`}
-        >
-          <Dices className="w-4 h-4" />
-          Roll {step.diceCount}d6
-        </button>
+        <div className="flex gap-1">
+          {gmMode && step.roll.rolled && onReroll && (
+            <button
+              type="button"
+              onClick={onReroll}
+              className="flex items-center gap-1 px-2 py-1 rounded text-sm font-medium bg-yellow-600 text-white hover:bg-yellow-700"
+              title="GM: Reroll"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onRoll}
+            disabled={disabled || step.roll.rolled}
+            className={`flex items-center gap-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
+              step.roll.rolled
+                ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                : disabled
+                ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                : 'bg-purple-600 text-white hover:bg-purple-700'
+            }`}
+          >
+            <Dices className="w-4 h-4" />
+            Roll {step.diceCount}d6
+          </button>
+        </div>
       </div>
 
       <DiceDisplay
         dice={step.roll.dice}
         total={step.roll.total}
         rolled={step.roll.rolled}
+        gmMode={gmMode}
+        onEdit={onEdit}
       />
 
       {step.roll.rolled && step.result && (
@@ -196,9 +291,12 @@ interface YieldRollProps {
   roll: DiceRoll;
   onRoll: () => void;
   disabled?: boolean;
+  gmMode?: boolean;
+  onReroll?: () => void;
+  onEdit?: (newDice: number[], newTotal: number) => void;
 }
 
-function YieldRoll({ label, formula, roll, onRoll, disabled }: YieldRollProps) {
+function YieldRoll({ label, formula, roll, onRoll, disabled, gmMode, onReroll, onEdit }: YieldRollProps) {
   return (
     <div className="yield-roll bg-gray-800/50 border border-gray-700 rounded-lg p-3 mb-2">
       <div className="flex justify-between items-center mb-2">
@@ -206,27 +304,41 @@ function YieldRoll({ label, formula, roll, onRoll, disabled }: YieldRollProps) {
           {label}
           <span className="text-gray-400 ml-2">({formula})</span>
         </span>
-        <button
-          type="button"
-          onClick={onRoll}
-          disabled={disabled || roll.rolled}
-          className={`flex items-center gap-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
-            roll.rolled
-              ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-              : disabled
-              ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-              : 'bg-purple-600 text-white hover:bg-purple-700'
-          }`}
-        >
-          <Dices className="w-4 h-4" />
-          Roll
-        </button>
+        <div className="flex gap-1">
+          {gmMode && roll.rolled && onReroll && (
+            <button
+              type="button"
+              onClick={onReroll}
+              className="flex items-center gap-1 px-2 py-1 rounded text-sm font-medium bg-yellow-600 text-white hover:bg-yellow-700"
+              title="GM: Reroll"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onRoll}
+            disabled={disabled || roll.rolled}
+            className={`flex items-center gap-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
+              roll.rolled
+                ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                : disabled
+                ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                : 'bg-purple-600 text-white hover:bg-purple-700'
+            }`}
+          >
+            <Dices className="w-4 h-4" />
+            Roll
+          </button>
+        </div>
       </div>
 
       <DiceDisplay
         dice={roll.dice}
         total={roll.total}
         rolled={roll.rolled}
+        gmMode={gmMode}
+        onEdit={onEdit}
       />
 
       {roll.rolled && (
@@ -252,7 +364,8 @@ export function FishingResolutionPanel({
   onFinalize,
   onCancel,
 }: FishingResolutionPanelProps) {
-  const { actions: campaignActions } = useCampaignStore();
+  const { state: campaignState, actions: campaignActions } = useCampaignStore();
+  const gmMode = campaignState?.ui?.gmModeEnabled ?? false;
   const data = task.activityData as FishingData;
   const method = data.method || 'Line';
   const methodConfig = FISHING_METHODS[method];
@@ -474,6 +587,117 @@ export function FishingResolutionPanel({
     });
   }, [caughtSpecies]);
 
+  // GM Mode edit handlers - allows modifying dice after rolled
+  const handleEditFishingRoll = useCallback((newDice: number[], newTotal: number) => {
+    setFishingRoll({ dice: newDice, total: newTotal, rolled: true });
+    // Re-evaluate the result with new dice
+    const rollResult = evaluateFishingRoll(newTotal, effectiveSkill, method);
+    setFishingSuccess(rollResult.success);
+    setFishingCritSuccess(rollResult.critSuccess);
+    if (rollResult.success) {
+      let count = rollResult.fish;
+      if (method === 'Net' && rollResult.critSuccess && count < 2) {
+        count = 2;
+      }
+      setFishCount(count);
+      if (!isRandomCatch && targetSpecies) {
+        setCaughtSpecies(targetSpecies);
+      }
+    } else {
+      setFishCount(0);
+      if (!isRandomCatch) {
+        setCaughtSpecies(null);
+      }
+    }
+  }, [effectiveSkill, method, isRandomCatch, targetSpecies]);
+
+  const handleEditStealthRoll = useCallback((newDice: number[], newTotal: number) => {
+    setStealthRoll({ dice: newDice, total: newTotal, rolled: true });
+    if (newTotal > stealthSkill) {
+      setStealthPenalty(-2);
+    } else {
+      setStealthPenalty(0);
+    }
+  }, [stealthSkill]);
+
+  const handleEditStruggleRoll = useCallback((newDice: number[], newTotal: number) => {
+    setStruggleRoll({ dice: newDice, total: newTotal, rolled: true });
+    // Re-evaluate struggle if fish has also rolled
+    if (fishStruggleRoll.rolled) {
+      const playerMoS = leaderST - newTotal;
+      const fishMoS = ((caughtSpecies as any)?.st ?? DEFAULT_FISH_ST) - fishStruggleRoll.total;
+      setStruggleWon(playerMoS >= fishMoS);
+    }
+  }, [leaderST, fishStruggleRoll, caughtSpecies]);
+
+  const handleEditFishStruggleRoll = useCallback((newDice: number[], newTotal: number) => {
+    setFishStruggleRoll({ dice: newDice, total: newTotal, rolled: true });
+    // Re-evaluate struggle
+    if (struggleRoll.rolled) {
+      const playerMoS = leaderST - struggleRoll.total;
+      const fishMoS = ((caughtSpecies as any)?.st ?? DEFAULT_FISH_ST) - newTotal;
+      setStruggleWon(playerMoS >= fishMoS);
+    }
+  }, [leaderST, struggleRoll, caughtSpecies]);
+
+  const handleEditMeatYield = useCallback((newDice: number[], newTotal: number) => {
+    const formula = (caughtSpecies as any)?.yieldMeatFormula ?? '1d';
+    const { modifier } = parseDiceFormula(formula);
+    setMeatYieldRoll({
+      dice: newDice,
+      total: Math.max(0, newTotal + modifier),
+      rolled: true,
+    });
+  }, [caughtSpecies]);
+
+  const handleEditSecondaryYield = useCallback((newDice: number[], newTotal: number) => {
+    const formula = (caughtSpecies as any)?.yieldSecondaryFormula ?? '1d-2';
+    const { modifier } = parseDiceFormula(formula);
+    setSecondaryYieldRoll({
+      dice: newDice,
+      total: Math.max(0, newTotal + modifier),
+      rolled: true,
+    });
+  }, [caughtSpecies]);
+
+  const handleEditSpeciesRoll = useCallback((newDice: number[], newTotal: number) => {
+    setSpeciesRoll({ dice: newDice, total: newTotal, rolled: true });
+
+    // Re-lookup species based on new roll
+    const spotDefaults = spot?.defaultsByMode?.Fishing ?? (spot as any)?.defaultTables;
+    const catchTableId = spotDefaults?.randomCatchTableId;
+    const catchTable = catchTableId
+      ? gatheringTables.find(t => t.id === catchTableId)
+      : null;
+
+    if (!catchTable) {
+      if (species.length > 0) {
+        setCaughtSpecies(species[0]);
+      }
+      return;
+    }
+
+    const baitRollBonus = baitItem ? ((baitItem as any).rollBonus ?? 0) : 0;
+    const modifiedRoll = Math.min(12, newTotal + baitRollBonus);
+    const entries = (catchTable as any).entries || [];
+    const entry = entries.find((e: any) => e.rollValue === modifiedRoll);
+
+    if (entry && entry.resultType === 'species' && entry.speciesId) {
+      const caught = species.find(s => s.id === entry.speciesId);
+      if (caught) {
+        setCaughtSpecies(caught);
+      }
+    } else if (entries.length > 0) {
+      const speciesEntry = entries.find((e: any) => e.resultType === 'species' && e.speciesId);
+      if (speciesEntry) {
+        const caught = species.find(s => s.id === speciesEntry.speciesId);
+        if (caught) {
+          setCaughtSpecies(caught);
+        }
+      }
+    }
+  }, [spot, gatheringTables, species, baitItem]);
+
   // Determine which steps are visible and required
   const needsStealthRoll = isSpear;
   const needsSpeciesRoll = fishingSuccess && isRandomCatch;
@@ -490,14 +714,21 @@ export function FishingResolutionPanel({
     if (!fishingSuccess) return true; // Failed, no more rolls needed
     if (needsSpeciesRoll && !speciesRoll.rolled) return false;
     if (needsStruggleRoll && (!struggleRoll.rolled || !fishStruggleRoll.rolled)) return false;
-    if (needsYieldRolls && (!meatYieldRoll.rolled || !secondaryYieldRoll.rolled)) return false;
+    if (needsYieldRolls) {
+      if (!meatYieldRoll.rolled) return false;
+      // Only require secondary roll if species has secondary material
+      const hasSecondary = (caughtSpecies as any)?.secondaryMaterialType &&
+        (caughtSpecies as any)?.secondaryMaterialType !== 'None' &&
+        (caughtSpecies as any)?.secondaryMaterialType !== '';
+      if (hasSecondary && !secondaryYieldRoll.rolled) return false;
+    }
     return true;
   }, [
     needsStealthRoll, stealthRoll.rolled,
     fishingRoll.rolled, fishingSuccess,
     needsSpeciesRoll, speciesRoll.rolled,
     needsStruggleRoll, struggleRoll.rolled, fishStruggleRoll.rolled,
-    needsYieldRolls, meatYieldRoll.rolled, secondaryYieldRoll.rolled,
+    needsYieldRolls, meatYieldRoll.rolled, secondaryYieldRoll.rolled, caughtSpecies,
   ]);
 
   // Handle finalize
@@ -545,11 +776,13 @@ export function FishingResolutionPanel({
       if (meatUnits > 0) {
         const foodId = `fish-${caughtSpecies.id}-${Date.now()}`;
         const foodName = `${caughtSpecies.name} Meat`;
+        // Use the species' foodType instead of hardcoded 'fish'
+        const foodType = (caughtSpecies as any).foodType ?? 'fish';
 
         campaignActions.addFood({
           id: foodId,
           name: foodName,
-          type: 'fish',
+          type: foodType,
           quantity: meatUnits,
           source: `Fishing at ${spot?.name ?? 'unknown'}`,
         } as Food);
@@ -561,8 +794,12 @@ export function FishingResolutionPanel({
         });
       }
 
-      // Add to materials
-      if (secondaryUnits > 0) {
+      // Add to materials (only if species has secondary material)
+      const hasSecondary = secondaryType &&
+        secondaryType !== 'None' &&
+        secondaryType !== '' &&
+        secondaryUnits > 0;
+      if (hasSecondary) {
         const materialId = `material-${caughtSpecies.id}-${secondaryType}-${Date.now()}`;
         const materialName = `${caughtSpecies.name} ${secondaryType.charAt(0).toUpperCase() + secondaryType.slice(1)}`;
 
@@ -599,8 +836,10 @@ export function FishingResolutionPanel({
 
   // Get yield formulas for display
   const meatFormula = (caughtSpecies as any)?.yieldMeatFormula ?? '1d';
-  const secondaryFormula = (caughtSpecies as any)?.yieldSecondaryFormula ?? '1d-2';
-  const secondaryType = (caughtSpecies as any)?.secondaryMaterialType ?? 'scales';
+  const secondaryMaterialType = (caughtSpecies as any)?.secondaryMaterialType;
+  const hasSecondaryMaterial = secondaryMaterialType && secondaryMaterialType !== 'None' && secondaryMaterialType !== '';
+  const secondaryFormula = hasSecondaryMaterial ? ((caughtSpecies as any)?.yieldSecondaryFormula ?? '1d-2') : '';
+  const secondaryType = hasSecondaryMaterial ? secondaryMaterialType : '';
 
   return (
     <div className="fishing-resolution-panel bg-gray-900 border border-gray-700 rounded-lg p-4 max-w-md">
@@ -635,6 +874,9 @@ export function FishingResolutionPanel({
             required: true,
           }}
           onRoll={handleStealthRoll}
+          gmMode={gmMode}
+          onReroll={handleStealthRoll}
+          onEdit={handleEditStealthRoll}
         />
       )}
 
@@ -660,6 +902,9 @@ export function FishingResolutionPanel({
         }}
         onRoll={handleFishingRoll}
         disabled={needsStealthRoll && !stealthRoll.rolled}
+        gmMode={gmMode}
+        onReroll={handleFishingRoll}
+        onEdit={handleEditFishingRoll}
       />
 
       {/* Targeted Catch - Show species immediately after fishing success */}
@@ -676,21 +921,39 @@ export function FishingResolutionPanel({
         <div className="species-roll bg-gray-800/50 border border-gray-700 rounded-lg p-3 mb-3">
           <div className="flex justify-between items-center mb-2">
             <span className="text-gray-200 font-medium">Random Catch (2d6)</span>
-            <button
-              type="button"
-              onClick={handleSpeciesRoll}
-              disabled={speciesRoll.rolled}
-              className={`flex items-center gap-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
-                speciesRoll.rolled
-                  ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                  : 'bg-purple-600 text-white hover:bg-purple-700'
-              }`}
-            >
-              <Dices className="w-4 h-4" />
-              Roll 2d6
-            </button>
+            <div className="flex gap-1">
+              {gmMode && speciesRoll.rolled && (
+                <button
+                  type="button"
+                  onClick={handleSpeciesRoll}
+                  className="flex items-center gap-1 px-2 py-1 rounded text-sm font-medium bg-yellow-600 text-white hover:bg-yellow-700"
+                  title="GM: Reroll"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleSpeciesRoll}
+                disabled={speciesRoll.rolled}
+                className={`flex items-center gap-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
+                  speciesRoll.rolled
+                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                    : 'bg-purple-600 text-white hover:bg-purple-700'
+                }`}
+              >
+                <Dices className="w-4 h-4" />
+                Roll 2d6
+              </button>
+            </div>
           </div>
-          <DiceDisplay dice={speciesRoll.dice} total={speciesRoll.total} rolled={speciesRoll.rolled} />
+          <DiceDisplay
+            dice={speciesRoll.dice}
+            total={speciesRoll.total}
+            rolled={speciesRoll.rolled}
+            gmMode={gmMode}
+            onEdit={handleEditSpeciesRoll}
+          />
           {speciesRoll.rolled && caughtSpecies && (
             <div className="mt-2 text-sm text-green-400">
               Caught: {caughtSpecies.name}
@@ -715,21 +978,39 @@ export function FishingResolutionPanel({
               <span className="text-gray-200 font-medium">
                 Your ST vs {leaderST}
               </span>
-              <button
-                type="button"
-                onClick={handleStruggleRoll}
-                disabled={struggleRoll.rolled}
-                className={`flex items-center gap-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
-                  struggleRoll.rolled
-                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                    : 'bg-purple-600 text-white hover:bg-purple-700'
-                }`}
-              >
-                <Dices className="w-4 h-4" />
-                Roll 3d6
-              </button>
+              <div className="flex gap-1">
+                {gmMode && struggleRoll.rolled && (
+                  <button
+                    type="button"
+                    onClick={handleStruggleRoll}
+                    className="flex items-center gap-1 px-2 py-1 rounded text-sm font-medium bg-yellow-600 text-white hover:bg-yellow-700"
+                    title="GM: Reroll"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleStruggleRoll}
+                  disabled={struggleRoll.rolled}
+                  className={`flex items-center gap-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
+                    struggleRoll.rolled
+                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                      : 'bg-purple-600 text-white hover:bg-purple-700'
+                  }`}
+                >
+                  <Dices className="w-4 h-4" />
+                  Roll 3d6
+                </button>
+              </div>
             </div>
-            <DiceDisplay dice={struggleRoll.dice} total={struggleRoll.total} rolled={struggleRoll.rolled} />
+            <DiceDisplay
+              dice={struggleRoll.dice}
+              total={struggleRoll.total}
+              rolled={struggleRoll.rolled}
+              gmMode={gmMode}
+              onEdit={handleEditStruggleRoll}
+            />
           </div>
 
           {/* Fish Struggle Roll */}
@@ -739,21 +1020,39 @@ export function FishingResolutionPanel({
                 <span className="text-gray-200 font-medium">
                   Fish ST vs {(caughtSpecies as any)?.st ?? DEFAULT_FISH_ST}
                 </span>
-                <button
-                  type="button"
-                  onClick={handleFishStruggleRoll}
-                  disabled={fishStruggleRoll.rolled}
-                  className={`flex items-center gap-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
-                    fishStruggleRoll.rolled
-                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                      : 'bg-purple-600 text-white hover:bg-purple-700'
-                  }`}
-                >
-                  <Dices className="w-4 h-4" />
-                  Roll 3d6
-                </button>
+                <div className="flex gap-1">
+                  {gmMode && fishStruggleRoll.rolled && (
+                    <button
+                      type="button"
+                      onClick={handleFishStruggleRoll}
+                      className="flex items-center gap-1 px-2 py-1 rounded text-sm font-medium bg-yellow-600 text-white hover:bg-yellow-700"
+                      title="GM: Reroll"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleFishStruggleRoll}
+                    disabled={fishStruggleRoll.rolled}
+                    className={`flex items-center gap-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
+                      fishStruggleRoll.rolled
+                        ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                        : 'bg-purple-600 text-white hover:bg-purple-700'
+                    }`}
+                  >
+                    <Dices className="w-4 h-4" />
+                    Roll 3d6
+                  </button>
+                </div>
               </div>
-              <DiceDisplay dice={fishStruggleRoll.dice} total={fishStruggleRoll.total} rolled={fishStruggleRoll.rolled} />
+              <DiceDisplay
+                dice={fishStruggleRoll.dice}
+                total={fishStruggleRoll.total}
+                rolled={fishStruggleRoll.rolled}
+                gmMode={gmMode}
+                onEdit={handleEditFishStruggleRoll}
+              />
               {fishStruggleRoll.rolled && (
                 <div className={`mt-2 text-sm font-medium ${struggleWon ? 'text-green-400' : 'text-red-400'}`}>
                   {struggleWon ? 'You landed the fish!' : 'The fish escaped!'}
@@ -774,14 +1073,22 @@ export function FishingResolutionPanel({
             formula={meatFormula}
             roll={meatYieldRoll}
             onRoll={handleMeatYieldRoll}
+            gmMode={gmMode}
+            onReroll={handleMeatYieldRoll}
+            onEdit={handleEditMeatYield}
           />
 
-          <YieldRoll
-            label={`${caughtSpecies?.name} ${secondaryType.charAt(0).toUpperCase() + secondaryType.slice(1)}`}
-            formula={secondaryFormula}
-            roll={secondaryYieldRoll}
-            onRoll={handleSecondaryYieldRoll}
-          />
+          {hasSecondaryMaterial && (
+            <YieldRoll
+              label={`${caughtSpecies?.name} ${secondaryType.charAt(0).toUpperCase() + secondaryType.slice(1)}`}
+              formula={secondaryFormula}
+              roll={secondaryYieldRoll}
+              onRoll={handleSecondaryYieldRoll}
+              gmMode={gmMode}
+              onReroll={handleSecondaryYieldRoll}
+              onEdit={handleEditSecondaryYield}
+            />
+          )}
         </div>
       )}
 

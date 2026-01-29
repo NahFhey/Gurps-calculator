@@ -232,11 +232,15 @@ function calculateFishingResultsAuto(
     if (struggleSuccess) {
       // Roll yield dice
       const meatFormula = (caughtSpecies as any)?.yieldMeatFormula ?? '1d';
-      const secondaryFormula = (caughtSpecies as any)?.yieldSecondaryFormula ?? '1d-2';
-      secondaryType = (caughtSpecies as any)?.secondaryMaterialType ?? 'scales';
-
       meatYield = rollYieldDice(meatFormula);
-      secondaryYield = rollYieldDice(secondaryFormula);
+
+      // Only roll for secondary if species has secondary material type
+      const speciesSecondaryType = (caughtSpecies as any)?.secondaryMaterialType;
+      if (speciesSecondaryType && speciesSecondaryType !== 'None' && speciesSecondaryType !== '') {
+        const secondaryFormula = (caughtSpecies as any)?.yieldSecondaryFormula ?? '1d-2';
+        secondaryType = speciesSecondaryType;
+        secondaryYield = rollYieldDice(secondaryFormula);
+      }
     }
 
     caughtFish.push({
@@ -253,11 +257,13 @@ function calculateFishingResultsAuto(
     if (struggleSuccess && meatYield > 0) {
       const foodId = `fish-${caughtSpecies.id}-${Date.now()}-${i}`;
       const foodName = `${caughtSpecies.name} Meat`;
+      // Use the species' foodType instead of hardcoded 'fish'
+      const foodType = (caughtSpecies as any).foodType ?? 'fish';
 
       campaignActions.addFood({
         id: foodId,
         name: foodName,
-        type: 'fish',
+        type: foodType,
         quantity: meatYield,
         source: `Fishing at ${spot?.name ?? 'unknown'}`,
       } as Food);
@@ -551,6 +557,7 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
           species={fishSpecies}
           tools={fishingTools}
           bait={fishingBait}
+          gatheringTables={gatheringTables}
           state={state}
           currentDayKey={currentDayKey}
           currentSlot={currentSlot}

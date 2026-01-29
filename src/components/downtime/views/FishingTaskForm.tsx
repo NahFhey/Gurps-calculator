@@ -31,6 +31,8 @@ interface FishingTaskFormProps {
   tools: GatheringTool[];
   /** Available fishing bait */
   bait: GatheringBait[];
+  /** Gathering tables for species filtering */
+  gatheringTables?: any[];
   /** Current downtime state for validation */
   state: DowntimeState;
   /** Current day key */
@@ -57,6 +59,7 @@ export function FishingTaskForm({
   species,
   tools,
   bait,
+  gatheringTables = [],
   state,
   currentDayKey,
   currentSlot,
@@ -126,6 +129,59 @@ export function FishingTaskForm({
     });
   }, [tools, methodConfig]);
 
+  // Get selected spot
+  const selectedSpot = useMemo(
+    () => spots.find((s) => s.id === spotId),
+    [spots, spotId]
+  );
+
+  // Filter species by the selected spot's catch table
+  const availableSpecies = useMemo(() => {
+    if (!spotId || !selectedSpot) return [];
+
+    // Get catch table ID from spot
+    const spotDefaults = selectedSpot?.defaultsByMode?.Fishing ?? (selectedSpot as any)?.defaultTables;
+    const catchTableId = spotDefaults?.randomCatchTableId;
+
+    if (!catchTableId) {
+      // No catch table configured - show all species
+      return species;
+    }
+
+    // Find the catch table
+    const catchTable = gatheringTables.find((t: any) => t.id === catchTableId);
+    if (!catchTable || !catchTable.entries) {
+      return species;
+    }
+
+    // Extract unique species IDs from the table
+    const speciesIdsInTable = new Set<string>();
+    for (const entry of catchTable.entries) {
+      if (entry.resultType === 'species' && entry.speciesId) {
+        speciesIdsInTable.add(entry.speciesId);
+      }
+    }
+
+    // Filter species to only those in the table
+    return species.filter((s) => speciesIdsInTable.has(s.id));
+  }, [spotId, selectedSpot, species, gatheringTables]);
+
+  // Get selected leader
+  const selectedLeader = useMemo(
+    () => characters.find((c) => c.id === leaderId),
+    [characters, leaderId]
+  );
+
+  // Get leader's fishing skill
+  const leaderFishingSkill = useMemo(() => {
+    if (!selectedLeader) return null;
+    const skills = (selectedLeader as any).skills ?? {};
+    if (method === 'Spear') {
+      return skills.spear ?? skills.fishing ?? 10;
+    }
+    return skills.fishing ?? 10;
+  }, [selectedLeader, method]);
+
   // Get selected species
   const selectedSpecies = useMemo(
     () => species.find((s) => s.id === speciesId),
@@ -163,8 +219,10 @@ export function FishingTaskForm({
   }, [selectedBait, selectedSpecies, speciesId, isRandomCatch]);
 
   // Calculate skill modifier based on character skills and tools
-  const skillModifier = useMemo(() => {
-    let modifier = 0;
+  const { skillModifier, baitModifier, toolModifier, helperModifier } = useMemo(() => {
+    let toolMod = 0;
+    let baitMod = 0;
+    let helperMod = helperIds.length;
 
     // Add tool bonuses
     for (const toolId of selectedToolIds) {
@@ -172,25 +230,33 @@ export function FishingTaskForm({
       if (tool) {
         const skillBonus = (tool as any).skillBonus;
         if (skillBonus) {
-          modifier += skillBonus;
+          toolMod += skillBonus;
         }
         // Also check bonuses array for skill_bonus type
         const bonuses = (tool as any).bonuses;
         if (Array.isArray(bonuses)) {
           const bonus = bonuses.find((b: any) => b.type === 'skill_bonus' && b.skill === 'Fishing');
           if (bonus?.value) {
-            modifier += bonus.value;
+            toolMod += bonus.value;
           }
         }
       }
     }
 
-    // Add helper bonus (+1 per helper)
-    modifier += helperIds.length;
+    // Calculate bait modifier
+    if (baitStatus.correct) {
+      baitMod = 1;
+    } else if (baitStatus.inappropriate) {
+      baitMod = -2;
+    }
 
-    // Note: Bait, large fish, and retry penalties are applied during resolution
-    return modifier;
-  }, [selectedToolIds, helperIds, tools]);
+    return {
+      skillModifier: toolMod + helperMod + baitMod,
+      baitModifier: baitMod,
+      toolModifier: toolMod,
+      helperModifier: helperMod,
+    };
+  }, [selectedToolIds, helperIds, tools, baitStatus]);
 
   // Handle method change - reset dependent fields
   const handleMethodChange = (newMethod: FishingMethod) => {
@@ -437,31 +503,37 @@ export function FishingTaskForm({
         </div>
       )}
 
-      {/* Species Selection - Only when targeting */}
+      {/* Species Selection - Only when targeting AND spot is selected */}
       {canTarget && !isRandomCatch && (
         <div className="form-group mb-4">
           <label htmlFor="species-select" className="block text-sm font-medium text-gray-300 mb-1">
             Target Species <span className="text-red-400">*</span>
           </label>
-          <select
-            id="species-select"
-            value={speciesId}
-            onChange={(e) => setSpeciesId(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            required
-            data-testid="species-select"
-          >
-            <option value="">Select species...</option>
-            {species.map((s) => {
-              const tags = (s as any).tags;
-              const isLarge = Array.isArray(tags) && tags.includes('LargeFish');
-              return (
-                <option key={s.id} value={s.id}>
-                  {s.name} {isLarge ? '(Large - penalty)' : ''}
-                </option>
-              );
-            })}
-          </select>
+          {!spotId ? (
+            <p className="text-sm text-yellow-400 italic">Select a fishing spot first to see available species</p>
+          ) : availableSpecies.length === 0 ? (
+            <p className="text-sm text-yellow-400 italic">No targetable species at this location</p>
+          ) : (
+            <select
+              id="species-select"
+              value={speciesId}
+              onChange={(e) => setSpeciesId(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required
+              data-testid="species-select"
+            >
+              <option value="">Select species...</option>
+              {availableSpecies.map((s) => {
+                const tags = (s as any).tags;
+                const isLarge = Array.isArray(tags) && tags.includes('LargeFish');
+                return (
+                  <option key={s.id} value={s.id}>
+                    {s.name} {isLarge ? '(Large - penalty)' : ''}
+                  </option>
+                );
+              })}
+            </select>
+          )}
           {isLargeFish && (
             <p className="text-xs text-orange-400 mt-1">
               ⚠ Large fish: -2 targeting penalty, requires struggle to land
@@ -549,16 +621,56 @@ export function FishingTaskForm({
         )}
       </div>
 
-      {/* Skill Modifier Summary */}
-      <div className="bg-gray-900/50 border border-gray-700 rounded p-2 mb-4">
-        <p className="text-sm text-gray-300">
-          Equipment Modifier:{' '}
-          <span className={`font-medium ${skillModifier >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {skillModifier >= 0 ? '+' : ''}{skillModifier}
-          </span>
-        </p>
-        <p className="text-xs text-gray-500 mt-1">
-          Bait, large fish penalty, and retry penalties applied during resolution
+      {/* Skill Summary */}
+      <div className="bg-gray-900/50 border border-gray-700 rounded p-3 mb-4">
+        {/* Leader's base skill */}
+        {selectedLeader && (
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-300">
+              {selectedLeader.name}'s {method === 'Spear' ? 'Spear/Fishing' : 'Fishing'} Skill:
+            </span>
+            <span className="text-sm font-medium text-blue-400">{leaderFishingSkill}</span>
+          </div>
+        )}
+
+        {/* Modifier breakdown */}
+        <div className="border-t border-gray-700 pt-2 space-y-1">
+          {toolModifier !== 0 && (
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-400">Equipment:</span>
+              <span className={toolModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
+                {toolModifier >= 0 ? '+' : ''}{toolModifier}
+              </span>
+            </div>
+          )}
+          {helperModifier > 0 && (
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-400">Helpers ({helperIds.length}):</span>
+              <span className="text-green-400">+{helperModifier}</span>
+            </div>
+          )}
+          {baitModifier !== 0 && (
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-400">Bait:</span>
+              <span className={baitModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
+                {baitModifier >= 0 ? '+' : ''}{baitModifier}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Total effective skill */}
+        {selectedLeader && (
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-600">
+            <span className="text-sm text-gray-200 font-medium">Effective Skill:</span>
+            <span className="text-sm font-bold text-green-400">
+              {(leaderFishingSkill ?? 10) + skillModifier}
+            </span>
+          </div>
+        )}
+
+        <p className="text-xs text-gray-500 mt-2">
+          Large fish penalty (-2) and retry penalties applied during resolution
         </p>
       </div>
 
