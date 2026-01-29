@@ -47,7 +47,8 @@ export interface Material {
 export interface Food {
   id: Id;
   name: string;
-  type: string;  // References FoodType.name
+  type?: string;  // Legacy single type - References FoodType.name
+  types?: string[];  // Multi-type support - Array of FoodType.name
   quantity: number;
   calories?: number;
   quality?: string;
