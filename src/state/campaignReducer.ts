@@ -57,6 +57,11 @@ import {
   getCurrentLocation
 } from '../utils/weatherSystem';
 import { downtimeInitialState, DOWNTIME_SCHEMA_VERSION } from './downtime';
+import { isInventoryAction, handleInventoryAction } from './inventory';
+import { isGatheringAction, handleGatheringAction } from './gathering';
+import { isAlchemyAction, handleAlchemyAction } from './alchemy';
+import { isCraftingAction, handleCraftingAction } from './crafting';
+import { isCharacterAction, handleCharacterAction } from './character';
 
 export const CAMPAIGN_META = {
   rulesVersion: '1.0.0',
@@ -591,6 +596,28 @@ export type CampaignAction =
 
 export function campaignReducer(state: CampaignState, action: CampaignAction) {
   return produce(state, (draft) => {
+    // Delegate to domain-specific reducers first
+    if (isInventoryAction(action)) {
+      handleInventoryAction(draft, action);
+      return;
+    }
+    if (isGatheringAction(action)) {
+      handleGatheringAction(draft, action);
+      return;
+    }
+    if (isAlchemyAction(action)) {
+      handleAlchemyAction(draft, action);
+      return;
+    }
+    if (isCraftingAction(action)) {
+      handleCraftingAction(draft, action);
+      return;
+    }
+    if (isCharacterAction(action)) {
+      handleCharacterAction(draft, action);
+      return;
+    }
+
     switch (action.type) {
       case 'setActiveModule':
         draft.ui.activeModule = action.payload;
@@ -835,318 +862,9 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
       }
 
       // ========================================================================
-      // CHARACTER ACTIONS
+      // CHARACTER, INVENTORY, GATHERING, ALCHEMY, CRAFTING ACTIONS
+      // Delegated to domain-specific reducers (see isXxxAction checks above)
       // ========================================================================
-      case 'addCharacter':
-        draft.entities.characters[action.payload.id] = action.payload;
-        return;
-      case 'updateCharacter':
-        if (draft.entities.characters[action.payload.id]) {
-          draft.entities.characters[action.payload.id] = {
-            ...draft.entities.characters[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'removeCharacter':
-        delete draft.entities.characters[action.payload];
-        // Also delete the character's inventory if it exists
-        for (const [invId, inv] of Object.entries(draft.entities.inventories)) {
-          if (inv.ownerType === 'character' && inv.ownerId === action.payload) {
-            delete draft.entities.inventories[invId];
-          }
-        }
-        return;
-      case 'setCharacters':
-        draft.entities.characters = action.payload;
-        return;
-
-      // ========================================================================
-      // MATERIAL ACTIONS
-      // ========================================================================
-      case 'addMaterial':
-        draft.entities.materials[action.payload.id] = action.payload;
-        return;
-      case 'updateMaterial':
-        if (draft.entities.materials[action.payload.id]) {
-          draft.entities.materials[action.payload.id] = {
-            ...draft.entities.materials[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'removeMaterial':
-        delete draft.entities.materials[action.payload];
-        return;
-      case 'consumeMaterials':
-        action.payload.forEach(({ id, amount }) => {
-          if (draft.entities.materials[id]) {
-            draft.entities.materials[id].quantity -= amount;
-            if (draft.entities.materials[id].quantity <= 0) {
-              delete draft.entities.materials[id];
-            }
-          }
-        });
-        return;
-      case 'setMaterials':
-        draft.entities.materials = action.payload;
-        return;
-
-      // ========================================================================
-      // FOOD ACTIONS
-      // ========================================================================
-      case 'addFood':
-        draft.entities.foods[action.payload.id] = action.payload;
-        return;
-      case 'updateFood':
-        if (draft.entities.foods[action.payload.id]) {
-          draft.entities.foods[action.payload.id] = {
-            ...draft.entities.foods[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'removeFood':
-        delete draft.entities.foods[action.payload];
-        return;
-      case 'consumeFoods':
-        action.payload.forEach(({ id, amount }) => {
-          if (draft.entities.foods[id]) {
-            draft.entities.foods[id].quantity -= amount;
-            if (draft.entities.foods[id].quantity <= 0) {
-              delete draft.entities.foods[id];
-            }
-          }
-        });
-        return;
-      case 'setFoods':
-        draft.entities.foods = action.payload;
-        return;
-
-      // ========================================================================
-      // RECIPE ACTIONS
-      // ========================================================================
-      case 'addRecipe':
-        draft.entities.recipes[action.payload.id] = action.payload;
-        return;
-      case 'updateRecipe':
-        if (draft.entities.recipes[action.payload.id]) {
-          draft.entities.recipes[action.payload.id] = {
-            ...draft.entities.recipes[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'removeRecipe':
-        delete draft.entities.recipes[action.payload];
-        return;
-      case 'setRecipes':
-        draft.entities.recipes = action.payload;
-        return;
-
-      // ========================================================================
-      // FOOD TYPE & MATERIAL TYPE ACTIONS
-      // ========================================================================
-      case 'setFoodTypes':
-        draft.entities.foodTypes = action.payload;
-        return;
-      case 'addFoodType':
-        draft.entities.foodTypes.push(action.payload);
-        return;
-      case 'setMaterialTypes':
-        draft.entities.materialTypes = action.payload;
-        return;
-      case 'addMaterialType':
-        draft.entities.materialTypes.push(action.payload);
-        return;
-
-      // ========================================================================
-      // CRAFT ACTIONS
-      // ========================================================================
-      case 'addCraft':
-        draft.entities.crafts[action.payload.id] = action.payload;
-        return;
-      case 'updateCraft':
-        if (draft.entities.crafts[action.payload.id]) {
-          draft.entities.crafts[action.payload.id] = {
-            ...draft.entities.crafts[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'removeCraft':
-        delete draft.entities.crafts[action.payload];
-        return;
-      case 'completeCraft':
-        if (draft.entities.crafts[action.payload.id]) {
-          draft.entities.crafts[action.payload.id].phase = 'complete';
-          draft.entities.crafts[action.payload.id].finalStats = action.payload.finalStats;
-        }
-        return;
-      case 'setCrafts':
-        draft.entities.crafts = action.payload;
-        return;
-
-      // ========================================================================
-      // CRAFT DESIGN ACTIONS
-      // ========================================================================
-      case 'addCraftDesign':
-        draft.entities.craftDesigns[action.payload.id] = action.payload;
-        return;
-      case 'updateCraftDesign':
-        if (draft.entities.craftDesigns[action.payload.id]) {
-          draft.entities.craftDesigns[action.payload.id] = {
-            ...draft.entities.craftDesigns[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'removeCraftDesign':
-        delete draft.entities.craftDesigns[action.payload];
-        return;
-      case 'setCraftDesigns':
-        draft.entities.craftDesigns = action.payload;
-        return;
-
-      // ========================================================================
-      // CUSTOM TEMPLATES ACTIONS
-      // ========================================================================
-      case 'setCustomTemplates':
-        draft.entities.customTemplates = action.payload;
-        return;
-      case 'addCustomTemplate':
-        draft.entities.customTemplates[action.payload.category][action.payload.templateName] = action.payload.template;
-        return;
-
-      // ========================================================================
-      // ALCHEMY ACTIONS
-      // ========================================================================
-      case 'addAlchemyReagent':
-        draft.entities.alchemyReagents[action.payload.id] = action.payload;
-        return;
-      case 'updateAlchemyReagent':
-        if (draft.entities.alchemyReagents[action.payload.id]) {
-          draft.entities.alchemyReagents[action.payload.id] = {
-            ...draft.entities.alchemyReagents[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'removeAlchemyReagent':
-        delete draft.entities.alchemyReagents[action.payload];
-        return;
-      case 'setAlchemyReagents':
-        draft.entities.alchemyReagents = action.payload;
-        return;
-      case 'addAlchemyFormula':
-        draft.entities.alchemyFormulas[action.payload.id] = action.payload;
-        return;
-      case 'updateAlchemyFormula':
-        if (draft.entities.alchemyFormulas[action.payload.id]) {
-          draft.entities.alchemyFormulas[action.payload.id] = {
-            ...draft.entities.alchemyFormulas[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'removeAlchemyFormula':
-        delete draft.entities.alchemyFormulas[action.payload];
-        return;
-      case 'setAlchemyFormulas':
-        draft.entities.alchemyFormulas = action.payload;
-        return;
-      case 'addAlchemyBatch':
-        draft.entities.alchemyBatches[action.payload.id] = action.payload;
-        return;
-      case 'updateAlchemyBatch':
-        if (draft.entities.alchemyBatches[action.payload.id]) {
-          draft.entities.alchemyBatches[action.payload.id] = {
-            ...draft.entities.alchemyBatches[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'removeAlchemyBatch':
-        delete draft.entities.alchemyBatches[action.payload];
-        return;
-      case 'setAlchemyBatches':
-        draft.entities.alchemyBatches = action.payload;
-        return;
-      case 'setAlchemyLabs':
-        draft.entities.alchemyLabs = action.payload;
-        return;
-      case 'addAlchemyLab':
-        draft.entities.alchemyLabs[action.payload.id] = action.payload;
-        return;
-      case 'updateAlchemySettings':
-        draft.entities.alchemySettings = {
-          ...draft.entities.alchemySettings,
-          ...action.payload
-        };
-        return;
-
-      // ========================================================================
-      // GATHERING ACTIONS
-      // ========================================================================
-      case 'setGatheringSpecies':
-        draft.entities.gatheringSpecies = action.payload;
-        return;
-      case 'addGatheringSpecies':
-        draft.entities.gatheringSpecies[action.payload.id] = action.payload;
-        return;
-      case 'setGatheringTools':
-        draft.entities.gatheringTools = action.payload;
-        return;
-      case 'addGatheringTool':
-        draft.entities.gatheringTools[action.payload.id] = action.payload;
-        return;
-      case 'setGatheringTables':
-        draft.entities.gatheringTables = action.payload;
-        return;
-      case 'addGatheringTable':
-        draft.entities.gatheringTables[action.payload.id] = action.payload;
-        return;
-      case 'setGatheringEnvironments':
-        draft.entities.gatheringEnvironments = action.payload;
-        return;
-      case 'addGatheringEnvironment':
-        draft.entities.gatheringEnvironments[action.payload.id] = action.payload;
-        return;
-      case 'addGatheringSession':
-        draft.entities.gatheringSessions[action.payload.id] = action.payload;
-        return;
-      case 'updateGatheringSession':
-        if (draft.entities.gatheringSessions[action.payload.id]) {
-          draft.entities.gatheringSessions[action.payload.id] = {
-            ...draft.entities.gatheringSessions[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'setGatheringSessions':
-        draft.entities.gatheringSessions = action.payload;
-        return;
-      case 'setGatheringDailyEvents':
-        draft.entities.gatheringDailyEvents = action.payload;
-        return;
-      case 'setGatheringBait':
-        draft.entities.gatheringBait = action.payload;
-        return;
-      case 'addGatheringBait':
-        draft.entities.gatheringBait[action.payload.id] = action.payload;
-        return;
-      case 'setGatheringCategories':
-        draft.entities.gatheringCategories = action.payload;
-        return;
-      case 'addGatheringCategory':
-        draft.entities.gatheringCategories[action.payload.id] = action.payload;
-        return;
-      case 'setGatheringItems':
-        draft.entities.gatheringItems = action.payload;
-        return;
-      case 'addGatheringItem':
-        draft.entities.gatheringItems[action.payload.id] = action.payload;
-        return;
 
       // ========================================================================
       // DAY PLANNER ACTIONS
@@ -1248,21 +966,8 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
 
       // ========================================================================
       // INVENTORY ACTIONS
+      // Delegated to inventory reducer (see isInventoryAction check above)
       // ========================================================================
-      case 'addInventory':
-        draft.entities.inventories[action.payload.id] = action.payload;
-        return;
-      case 'updateInventory':
-        if (draft.entities.inventories[action.payload.id]) {
-          draft.entities.inventories[action.payload.id] = {
-            ...draft.entities.inventories[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'setInventories':
-        draft.entities.inventories = action.payload;
-        return;
 
       // ========================================================================
       // LOCATION & WEATHER ACTIONS

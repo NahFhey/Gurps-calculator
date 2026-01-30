@@ -33,7 +33,8 @@ describe('UnifiedShell time header', () => {
       </CampaignStoreProvider>
     );
 
-    expect(screen.queryByTestId('advance-time')).not.toBeInTheDocument();
+    // TimeControls compact uses 'advance-slot-compact' test ID
+    expect(screen.queryByTestId('advance-slot-compact')).not.toBeInTheDocument();
   });
 
   it('advances time when GM mode is enabled', () => {
@@ -45,14 +46,18 @@ describe('UnifiedShell time header', () => {
     );
 
     const timeDisplay = screen.getByTestId('time-display');
-    expect(timeDisplay).toHaveTextContent('Day 1 · Slot 1');
+    // TimeDisplay shows Day number and slot label (Morning, Afternoon, Night)
+    expect(timeDisplay).toHaveTextContent('Day');
+    expect(timeDisplay).toHaveTextContent('1');
+    expect(timeDisplay).toHaveTextContent('Morning');
 
-    fireEvent.click(screen.getByTestId('advance-time'));
+    fireEvent.click(screen.getByTestId('advance-slot-compact'));
 
-    expect(timeDisplay).toHaveTextContent('Day 1 · Slot 2');
+    // After advancing, slot changes to Afternoon
+    expect(timeDisplay).toHaveTextContent('Afternoon');
   });
 
-  it('shows blocking error and prevents advance when paused sessions exist', () => {
+  it('disables advance button and prevents advance when paused sessions exist', () => {
     render(
       <CampaignStoreProvider>
         <EnableGmMode />
@@ -62,12 +67,14 @@ describe('UnifiedShell time header', () => {
     );
 
     const timeDisplay = screen.getByTestId('time-display');
-    fireEvent.click(screen.getByTestId('advance-time'));
+    const advanceButton = screen.getByTestId('advance-slot-compact');
 
-    expect(timeDisplay).toHaveTextContent('Day 1 · Slot 1');
-    expect(screen.getByTestId('blocking-error')).toHaveTextContent(
-      'Paused activities are blocking time advance.'
-    );
+    // Button should be disabled due to paused activities
+    expect(advanceButton).toBeDisabled();
+
+    // Click should not advance time - still Morning
+    fireEvent.click(advanceButton);
+    expect(timeDisplay).toHaveTextContent('Morning');
   });
 
   it('advances time after paused sessions are cleared', () => {
@@ -80,9 +87,10 @@ describe('UnifiedShell time header', () => {
     );
 
     const timeDisplay = screen.getByTestId('time-display');
-    fireEvent.click(screen.getByTestId('advance-time'));
+    fireEvent.click(screen.getByTestId('advance-slot-compact'));
 
-    expect(timeDisplay).toHaveTextContent('Day 1 · Slot 1');
+    // Time should not advance - still Morning
+    expect(timeDisplay).toHaveTextContent('Morning');
 
     unmount();
 
@@ -94,7 +102,8 @@ describe('UnifiedShell time header', () => {
       </CampaignStoreProvider>
     );
 
-    fireEvent.click(screen.getByTestId('advance-time'));
-    expect(screen.getByTestId('time-display')).toHaveTextContent('Day 1 · Slot 2');
+    fireEvent.click(screen.getByTestId('advance-slot-compact'));
+    // After advancing without paused activities, slot changes to Afternoon
+    expect(screen.getByTestId('time-display')).toHaveTextContent('Afternoon');
   });
 });

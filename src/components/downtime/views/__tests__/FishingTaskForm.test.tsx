@@ -170,6 +170,11 @@ describe('FishingTaskForm', () => {
       // By default, random catch is selected - species select should not be visible
       expect(screen.queryByTestId('species-select')).not.toBeInTheDocument();
 
+      // Must select a spot first, then click Target Species
+      fireEvent.change(screen.getByTestId('spot-select'), {
+        target: { value: 'spot-1' },
+      });
+
       // Click on "Target Species" to enable targeting mode
       const targetButton = screen.getByText('Target Species');
       fireEvent.click(targetButton);
@@ -340,10 +345,10 @@ describe('FishingTaskForm', () => {
   });
 
   describe('skill modifier calculation', () => {
-    it('shows skill modifier summary', () => {
+    it('shows skill modifier summary panel', () => {
       render(<FishingTaskForm {...defaultProps} />);
-      // Label changed from "Total Skill Modifier" to "Equipment Modifier"
-      expect(screen.getByText(/Equipment Modifier:/)).toBeInTheDocument();
+      // The form shows a skill modifier panel with resolution info
+      expect(screen.getByText(/Large fish penalty.*applied during resolution/)).toBeInTheDocument();
     });
   });
 });

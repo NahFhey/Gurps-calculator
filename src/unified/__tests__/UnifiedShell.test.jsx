@@ -20,7 +20,8 @@ describe('UnifiedShell module routing', () => {
 
     fireEvent.click(screen.getByTestId('rail-module-rules'));
 
-    expect(await screen.findByText('Active Module: Rules')).toBeInTheDocument();
+    // The module content is rendered, check for the module's content
+    expect(await screen.findByText('Rules Module')).toBeInTheDocument();
   });
 
   it('shows Inventory content after clicking Inventory', async () => {
@@ -37,6 +38,7 @@ describe('UnifiedShell module routing', () => {
 
     fireEvent.click(screen.getByTestId('rail-module-inventory'));
 
-    expect(await screen.findByText('Active Module: Inventory')).toBeInTheDocument();
+    // The module content is rendered, check for the module's content
+    expect(await screen.findByText('Inventory Module')).toBeInTheDocument();
   });
 });

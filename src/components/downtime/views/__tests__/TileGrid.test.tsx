@@ -4,13 +4,14 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { TileGrid } from '../TileGrid';
 
 describe('TileGrid', () => {
-  it('renders all four activity tiles', () => {
+  it('renders all five activity tiles', () => {
     render(<TileGrid onNavigate={vi.fn()} />);
 
     expect(screen.getByText('Fishing')).toBeInTheDocument();
     expect(screen.getByText('Foraging')).toBeInTheDocument();
     expect(screen.getByText('Alchemy')).toBeInTheDocument();
     expect(screen.getByText('Crafting')).toBeInTheDocument();
+    expect(screen.getByText('Cooking')).toBeInTheDocument();
   });
 
   it('calls onNavigate with fishing when fishing tile clicked', () => {
@@ -52,13 +53,14 @@ describe('TileGrid', () => {
     expect(screen.getByText('Herbs & Materials')).toBeInTheDocument();
     expect(screen.getByText('Potions & Reagents')).toBeInTheDocument();
     expect(screen.getByText('Gear & Projects')).toBeInTheDocument();
+    expect(screen.getByText('Recipes & Meals')).toBeInTheDocument();
   });
 
   it('tiles have accessible labels', () => {
     render(<TileGrid onNavigate={vi.fn()} />);
 
     const buttons = screen.getAllByRole('button');
-    expect(buttons).toHaveLength(4);
+    expect(buttons).toHaveLength(5);
     buttons.forEach((button) => {
       expect(button).toHaveAttribute('aria-label');
     });

@@ -226,7 +226,12 @@ function getDefaultValue(key: string): any {
  */
 function migrateEntities(state: CampaignState, legacy: Record<string, any>): void {
   // Characters (merge workers with party tool characters)
-  const workers = legacy.workers || [];
+  // Handle workers being either an array or an object (Record<Id, Worker>)
+  let workers = legacy.workers || [];
+  if (workers && !Array.isArray(workers)) {
+    // Convert object to array
+    workers = Object.values(workers);
+  }
   state.entities.characters = mergeCharacters(workers, state.entities.characters);
   console.log(`[Migration] Migrated ${Object.keys(state.entities.characters).length} characters`);
 

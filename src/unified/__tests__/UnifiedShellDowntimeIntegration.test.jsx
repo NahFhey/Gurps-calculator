@@ -27,11 +27,11 @@ describe('UnifiedShell downtime integration', () => {
       </CampaignStoreProvider>
     );
 
-    // Check that downtime tiles are rendered
+    // Check that downtime tiles are rendered (Fishing, Foraging, Alchemy, Crafting, Cooking)
     expect(screen.getByText('Alchemy')).toBeInTheDocument();
     expect(screen.getByText('Cooking')).toBeInTheDocument();
     expect(screen.getByText('Crafting')).toBeInTheDocument();
-    expect(screen.getByText('Gathering')).toBeInTheDocument();
+    expect(screen.getByText('Foraging')).toBeInTheDocument();
   });
 
   it('opens downtime modal when tile is clicked', () => {
