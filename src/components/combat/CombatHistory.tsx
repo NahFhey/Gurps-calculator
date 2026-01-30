@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { History, Download, Trash2, Eye, EyeOff } from 'lucide-react';
 import { useCombatStore } from '../../hooks/useCombatStore';
 import { exportCombatLog } from '../../utils/combatHelpers';
+import { ConfirmDialog, useConfirmDialog } from '../ui';
 
 interface LogEntry {
   type: string;
@@ -67,6 +68,14 @@ function formatLogEntry(entry: LogEntry): string {
 export default function CombatHistory() {
   const { combatHistory, saveCombatHistory } = useCombatStore();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  const deleteDialog = useConfirmDialog({
+    title: 'Delete Combat History',
+    message: 'Are you sure you want to delete this combat history entry? This cannot be undone.',
+    confirmLabel: 'Delete',
+    variant: 'danger',
+  });
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
@@ -87,9 +96,13 @@ export default function CombatHistory() {
     URL.revokeObjectURL(url);
   };
 
-  const handleDelete = (id: string) => {
-    if (!confirm('Delete this combat history entry?')) return;
-    saveCombatHistory(combatHistory.filter((c: CombatHistoryEntry) => c.id !== id));
+  const handleDelete = async (id: string) => {
+    setPendingDeleteId(id);
+    const confirmed = await deleteDialog.confirm();
+    if (confirmed) {
+      saveCombatHistory(combatHistory.filter((c: CombatHistoryEntry) => c.id !== id));
+    }
+    setPendingDeleteId(null);
   };
 
   const formatDuration = (startTime: number, endTime: number): string => {
@@ -195,6 +208,9 @@ export default function CombatHistory() {
           </div>
         ))}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog {...deleteDialog.dialogProps} />
     </div>
   );
 }

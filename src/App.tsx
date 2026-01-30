@@ -4,6 +4,7 @@ import { UnifiedShell } from './unified/UnifiedShell';
 import { CampaignStoreProvider } from './state/campaignStore';
 import { loadCampaignState } from './persistence/campaignStorage';
 import { checkMigrationNeeded, migrateToV2 } from './persistence/dataMigration';
+import { ToastProvider, ToastContainer, LoadingSpinner } from './components/ui';
 import type { CampaignState } from './state/campaignReducer';
 
 type MigrationStatus = 'checking' | 'migrating' | 'ready';
@@ -66,7 +67,7 @@ export default function GURPSPartyTool() {
   if (migrationStatus === 'checking') {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-900 text-gray-100">
-        Checking for updates...
+        <LoadingSpinner size="lg" label="Checking for updates..." />
       </div>
     );
   }
@@ -74,10 +75,7 @@ export default function GURPSPartyTool() {
   if (migrationStatus === 'migrating') {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-900 text-gray-100">
-        <div className="text-center">
-          <div className="text-xl mb-2">Migrating to new storage format...</div>
-          <div className="text-sm text-gray-400">This may take a moment</div>
-        </div>
+        <LoadingSpinner size="lg" label="Migrating to new storage format..." />
       </div>
     );
   }
@@ -86,14 +84,17 @@ export default function GURPSPartyTool() {
   if (!initialCampaignState) {
     return (
       <div className="min-h-screen bg-gray-900 text-gray-100 flex items-center justify-center">
-        Loading...
+        <LoadingSpinner size="lg" label="Loading campaign..." />
       </div>
     );
   }
 
   return (
-    <CampaignStoreProvider initialCampaignState={initialCampaignState}>
-      <UnifiedShell />
-    </CampaignStoreProvider>
+    <ToastProvider>
+      <CampaignStoreProvider initialCampaignState={initialCampaignState}>
+        <UnifiedShell />
+        <ToastContainer position="top-right" />
+      </CampaignStoreProvider>
+    </ToastProvider>
   );
 }

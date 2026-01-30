@@ -1,34 +1,140 @@
-import React, { useState, memo, useMemo } from 'react';
-import PropTypes from 'prop-types';
+import { useState, memo, useMemo } from 'react';
 import { Plus } from 'lucide-react';
 import { applyWorkBlockResult, calculateFormulaStats } from '../../utils/alchemy';
 import { DiceRoller } from '../DiceRoller';
 import { VECTORS } from '../../constants';
 import { toNumberOr } from '../../utils/helpers';
+import type { AlchemyReagent, AlchemyFormula, Worker } from '../../types/views';
+import type { AlchemyBatch, AlchemyLab } from '../../types/campaign';
 
-/**
- * BatchesView Component
- * Displays alchemy batches with brewing phase management
- * Memoized to prevent unnecessary re-renders when other alchemy tabs change
- */
-function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatches, saveFormulas, saveReagents }) {
-  const [selectedBatch, setSelectedBatch] = useState(null);
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface DiceRollState {
+  dice: number[];
+  total: number;
+}
+
+interface Ingredient {
+  id: string;
+  reagentId: string;
+  role: string;
+  unitsUsed: number;
+  refinement: string;
+}
+
+interface FormulaIngredientSnapshot {
+  reagentId: string;
+  reagentName: string;
+  role: string;
+  unitsUsed: number;
+  refinement: string;
+  aspects: Record<string, string | undefined>;
+  potency: string;
+  concentrationSteps: number;
+}
+
+interface Forecast {
+  performedAt: string;
+  currentCP: number;
+  predictedQuality: string;
+  dmBonus: number;
+}
+
+interface MicroAssay {
+  performedAt: string;
+  dominantAspect: string | null;
+  secondaryAspect: string | null;
+  revealed: boolean;
+}
+
+interface WorkShift {
+  id: string;
+  date: string;
+  worker: string;
+  skill: number;
+  roll: number;
+  effectiveSkill: number;
+  result: string;
+  ppAdded: number;
+  cpChange: number;
+  labName?: string;
+  labRating?: number;
+}
+
+interface ExtendedBatch extends Omit<AlchemyBatch, 'workSessions'> {
+  formulaName?: string;
+  phase: 'brewing' | 'completed' | 'failed';
+  consumedIngredients?: FormulaIngredientSnapshot[];
+  tier?: number;
+  calculatedTier?: number;
+  potencyLoad?: number;
+  vector?: string;
+  WR?: number;
+  DM?: number;
+  PP?: number;
+  CP?: number;
+  dominantAspect?: string | null;
+  secondaryAspect?: string | null;
+  basePotency?: string;
+  finalPotency?: string;
+  concentrationSteps?: number;
+  totalConcentrationSteps?: number;
+  traitBudget?: number;
+  traits?: Array<{ name: string; cost: number }>;
+  forecast?: Forecast | null;
+  microAssay?: MicroAssay | null;
+  hasMatchingStabilizer?: boolean;
+  shifts?: WorkShift[];
+  quality?: string | null;
+  completedDate?: string | null;
+  hazards?: string[];
+  hazardDetails?: unknown[];
+  labId?: string;
+  labName?: string;
+  labRating?: number;
+  amount?: number;
+  potency?: string;
+}
+
+interface Trait {
+  name: string;
+  cost: number;
+}
+
+export interface BatchesViewProps {
+  batches: ExtendedBatch[];
+  workers: Worker[];
+  formulas: AlchemyFormula[];
+  reagents: AlchemyReagent[];
+  labs: AlchemyLab[];
+  saveBatches: (batches: ExtendedBatch[]) => void;
+  saveFormulas: (formulas: AlchemyFormula[]) => void;
+  saveReagents: (reagents: AlchemyReagent[]) => void;
+}
+
+// ============================================================================
+// COMPONENT
+// ============================================================================
+
+function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatches, saveFormulas, saveReagents }: BatchesViewProps) {
+  const [selectedBatch, setSelectedBatch] = useState<ExtendedBatch | null>(null);
   const [workerName, setWorkerName] = useState('');
   const [skill, setSkill] = useState('');
-  const [roll, setRoll] = useState({ dice: [], total: 0 });
+  const [roll, setRoll] = useState<DiceRollState>({ dice: [], total: 0 });
   const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0]);
   const [showForecast, setShowForecast] = useState(false);
   const [showMicroAssay, setShowMicroAssay] = useState(false);
   const [showSavePrompt, setShowSavePrompt] = useState(false);
-  const [completedBatch, setCompletedBatch] = useState(null);
+  const [completedBatch, setCompletedBatch] = useState<ExtendedBatch | null>(null);
   const [saveAsName, setSaveAsName] = useState('');
 
   // New batch creation state
   const [showNewBatch, setShowNewBatch] = useState(false);
   const [batchName, setBatchName] = useState('');
-  const [ingredients, setIngredients] = useState([]);
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [selectedVector, setSelectedVector] = useState('Potion');
-  const [_selectedTier, _setSelectedTier] = useState(1); // Tier is auto-calculated, not user-selected
   const [selectedLabId, setSelectedLabId] = useState(labs?.[0]?.id || 'default');
 
   // Memoize batch filtering to prevent unnecessary recalculations
@@ -40,19 +146,19 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
       return;
     }
 
-    const currentCP = selectedBatch.CP;
+    const currentCP = selectedBatch.CP || 0;
     const qualityMap = ['Clean', 'Minor Flaw', 'Unstable', 'Flawed', 'Mishap'];
     const predictedQuality = qualityMap[Math.min(currentCP, 4)];
 
-    const updated = {
+    const updated: ExtendedBatch = {
       ...selectedBatch,
       forecast: {
         performedAt: new Date().toISOString(),
         currentCP,
         predictedQuality,
-        dmBonus: -1  // Forecast gives -1 DM bonus
+        dmBonus: -1
       },
-      DM: selectedBatch.DM - 1  // Apply forecast bonus immediately
+      DM: (selectedBatch.DM || 0) - 1
     };
 
     const newBatches = batches.map(b => b.id === selectedBatch.id ? updated : b);
@@ -67,12 +173,12 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
       return;
     }
 
-    const updated = {
+    const updated: ExtendedBatch = {
       ...selectedBatch,
       microAssay: {
         performedAt: new Date().toISOString(),
-        dominantAspect: selectedBatch.dominantAspect,
-        secondaryAspect: selectedBatch.secondaryAspect,
+        dominantAspect: selectedBatch.dominantAspect || null,
+        secondaryAspect: selectedBatch.secondaryAspect || null,
         revealed: true
       }
     };
@@ -87,26 +193,34 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
   function saveRecipeFromBatch() {
     if (!completedBatch || !saveFormulas) return;
 
-    const recipeName = saveAsName.trim() || completedBatch.formulaName;
+    const recipeName = saveAsName.trim() || completedBatch.formulaName || 'Unnamed Formula';
 
-    // Reconstruct formula from batch data
-    const savedFormula = {
+    const savedFormula: AlchemyFormula = {
       id: crypto.randomUUID(),
       name: recipeName,
-      ingredients: completedBatch.consumedIngredients || [],
-      tier: completedBatch.tier || 1,
-      vector: completedBatch.vector || 'Potion',
+      ingredients: (completedBatch.consumedIngredients || []).map(ing => ({
+        reagentId: ing.reagentId,
+        reagentName: ing.reagentName,
+        role: ing.role,
+        unitsUsed: ing.unitsUsed,
+        refinement: ing.refinement as 'crude' | 'prepared' | 'refined',
+        aspects: ing.aspects as { primary?: string; secondary?: string; tertiary?: string }
+      })),
+      tier: completedBatch.tier,
+      calculatedTier: completedBatch.calculatedTier,
+      potencyLoad: completedBatch.potencyLoad,
+      vector: completedBatch.vector,
       baseWR: completedBatch.WR,
       baseDM: completedBatch.DM,
-      dominantAspect: completedBatch.dominantAspect,
-      secondaryAspect: completedBatch.secondaryAspect,
+      dominantAspect: completedBatch.dominantAspect || undefined,
+      secondaryAspect: completedBatch.secondaryAspect || undefined,
       basePotency: completedBatch.basePotency || 'P1',
       finalPotency: completedBatch.finalPotency || 'P1',
-      concentrationSteps: completedBatch.concentrationSteps || 0,
-      totalConcentrationSteps: completedBatch.totalConcentrationSteps || 0,
-      traitBudget: completedBatch.traitBudget || 10,
-      hasMatchingStabilizer: completedBatch.hasMatchingStabilizer || false,
-      traits: completedBatch.traits || []
+      concentrationSteps: completedBatch.concentrationSteps,
+      totalConcentrationSteps: completedBatch.totalConcentrationSteps,
+      traitBudget: completedBatch.traitBudget,
+      hasMatchingStabilizer: completedBatch.hasMatchingStabilizer,
+      traits: completedBatch.traits as Trait[]
     };
 
     saveFormulas([...(formulas || []), savedFormula]);
@@ -116,7 +230,6 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
     alert(`Recipe "${recipeName}" saved to formulas!`);
   }
 
-  // New batch creation helper functions
   function addIngredient() {
     if (reagents.length === 0) {
       alert('No reagents available!');
@@ -131,11 +244,11 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
     }]);
   }
 
-  function removeIngredient(id) {
+  function removeIngredient(id: string) {
     setIngredients(ingredients.filter(i => i.id !== id));
   }
 
-  function updateIngredient(id, field, value) {
+  function updateIngredient(id: string, field: keyof Ingredient, value: string | number) {
     setIngredients(ingredients.map(i => i.id === id ? {...i, [field]: value} : i));
   }
 
@@ -149,7 +262,6 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
       return;
     }
 
-    // Check reagent availability
     for (const ing of ingredients) {
       const reagent = reagents.find(r => r.id === ing.reagentId);
       if (!reagent || reagent.quantity < ing.unitsUsed) {
@@ -159,11 +271,9 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
     }
 
     const reagentsMap = new Map(reagents.map(r => [r.id, r]));
-
-    // Get selected lab info
     const selectedLab = labs?.find(l => l.id === selectedLabId) || { id: 'default', name: 'Basic Lab', rating: 0 };
 
-    const ingredientsSnapshot = ingredients.map(ing => {
+    const ingredientsSnapshot: FormulaIngredientSnapshot[] = ingredients.map(ing => {
       const r = reagentsMap.get(ing.reagentId);
       return {
         reagentId: ing.reagentId,
@@ -180,23 +290,20 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
     const tempFormula = { ingredients: ingredientsSnapshot };
     const stats = calculateFormulaStats(tempFormula, reagentsMap, selectedVector);
 
-    // VALIDATION CHECKS - block if critical errors
     if (!stats.batchValidation.valid) {
       alert('Cannot start batch: ' + stats.batchValidation.errors.join(', '));
       return;
     }
 
-    // Block if missing critical roles (Active, Tool, etc.)
     if (stats.roleCoverage.wrDelta >= 999) {
-      const blockingMessages = stats.roleCoverage.messages.filter(msg =>
+      const blockingMessages = stats.roleCoverage.messages.filter((msg: string) =>
         msg.includes('Cannot brew')
       );
       alert('Cannot start batch:\n\n' + blockingMessages.join('\n'));
       return;
     }
 
-    // WARNINGS - show but allow to proceed (non-blocking missing roles)
-    const warnings = [];
+    const warnings: string[] = [];
     if (!stats.roleCoverage.valid && stats.roleCoverage.wrDelta < 999) {
       warnings.push(...stats.roleCoverage.messages);
     }
@@ -216,7 +323,6 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
       if (!proceed) return;
     }
 
-    // Consume reagents
     const newReagents = reagents.map(r => {
       const used = ingredients.find(ing => ing.reagentId === r.id);
       if (used) {
@@ -225,13 +331,18 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
       return r;
     });
 
-    const newBatch = {
+    const newBatch: ExtendedBatch = {
       id: crypto.randomUUID(),
-      formulaId: null,
+      formulaId: '',
       formulaName: batchName,
+      status: 'brewing',
       phase: 'brewing',
+      worker: '',
+      labId: selectedLab.id,
+      startDate: new Date().toISOString(),
+      startDay: 0,
       consumedIngredients: ingredientsSnapshot,
-      tier: stats.tier, // Auto-calculated
+      tier: stats.tier,
       calculatedTier: stats.calculatedTier,
       potencyLoad: stats.potencyLoad,
       vector: stats.vector,
@@ -251,13 +362,9 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
       hasMatchingStabilizer: stats.hasMatchingStabilizer || false,
       shifts: [],
       quality: null,
-      startDate: new Date().toISOString(),
       completedDate: null,
-      // Store hazard info for triggering during work blocks
       hazards: stats.hazardEvaluation.hazards,
       hazardDetails: stats.hazardEvaluation.details,
-      // Store lab info (locked for entire batch)
-      labId: selectedLab.id,
       labName: selectedLab.name,
       labRating: selectedLab.rating
     };
@@ -283,9 +390,8 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
       roll.total,
       workerName,
       currentDate
-    );
+    ) as ExtendedBatch;
 
-    // Add initial amount to completed batches
     if (updated.phase === 'completed' && !updated.amount) {
       updated.amount = 1;
     }
@@ -294,10 +400,9 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
     saveBatches(newBatches);
 
     if (updated.phase === 'completed') {
-      // Show save prompt for successful batches (not Mishap)
       if (updated.quality !== 'Mishap' && saveFormulas) {
         setCompletedBatch(updated);
-        setSaveAsName(updated.formulaName);
+        setSaveAsName(updated.formulaName || '');
         setShowSavePrompt(true);
       } else {
         alert(`Batch complete! Quality: ${updated.quality}`);
@@ -310,8 +415,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
       setSelectedBatch(updated);
     }
 
-    // Only clear roll, keep worker and skill for next work block
-    setRoll('');
+    setRoll({ dice: [], total: 0 });
   }
 
   return (
@@ -379,7 +483,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
             <div className="w-full bg-gray-600 rounded-full h-4 mb-2">
               <div
                 className="bg-blue-600 h-4 rounded-full"
-                style={{width: `${Math.min(100, (selectedBatch.PP / selectedBatch.WR) * 100)}%`}}
+                style={{width: `${Math.min(100, ((selectedBatch.PP || 0) / (selectedBatch.WR || 1)) * 100)}%`}}
               />
             </div>
             <div className="text-xs text-gray-400 grid grid-cols-2 gap-2">
@@ -399,14 +503,12 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
               <div>Started: {new Date(selectedBatch.startDate).toLocaleDateString()}</div>
             </div>
 
-            {/* Traits display */}
             {selectedBatch.traits && selectedBatch.traits.length > 0 && (
               <div className="mt-2 text-xs text-purple-400">
                 Traits: {selectedBatch.traits.map(t => `${t.name} (${t.cost}pts)`).join(', ')}
               </div>
             )}
 
-            {/* Forecast & Micro-Assay Actions */}
             <div className="mt-4 flex gap-2">
               {!selectedBatch.forecast && (
                 <button
@@ -426,7 +528,6 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
               )}
             </div>
 
-            {/* Forecast Dialog */}
             {showForecast && (
               <div className="mt-3 bg-gray-800 p-3 rounded border border-purple-500">
                 <div className="text-sm font-semibold mb-2">Forecast Quality</div>
@@ -442,7 +543,6 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
               </div>
             )}
 
-            {/* Micro-Assay Dialog */}
             {showMicroAssay && (
               <div className="mt-3 bg-gray-800 p-3 rounded border border-cyan-500">
                 <div className="text-sm font-semibold mb-2">Micro-Assay</div>
@@ -458,7 +558,6 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
               </div>
             )}
 
-            {/* Display completed Forecast */}
             {selectedBatch.forecast && (
               <div className="mt-3 bg-purple-900 bg-opacity-30 p-3 rounded border border-purple-500">
                 <div className="text-sm font-semibold text-purple-400">Forecast Complete</div>
@@ -470,7 +569,6 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
               </div>
             )}
 
-            {/* Display completed Micro-Assay */}
             {selectedBatch.microAssay && (
               <div className="mt-3 bg-cyan-900 bg-opacity-30 p-3 rounded border border-cyan-500">
                 <div className="text-sm font-semibold text-cyan-400">Micro-Assay Complete</div>
@@ -525,7 +623,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                     if (!skill) return 'Effective: ?';
                     const baseSkill = parseInt(skill);
                     const labBonus = selectedBatch.labRating || 0;
-                    const effective = baseSkill + selectedBatch.DM + labBonus;
+                    const effective = baseSkill + (selectedBatch.DM || 0) + labBonus;
                     return labBonus > 0
                       ? `Effective: ${baseSkill} + ${selectedBatch.DM} (DM) + ${labBonus} (lab) = ${effective}`
                       : `Effective: ${baseSkill} + ${selectedBatch.DM} (DM) = ${effective}`;
@@ -548,6 +646,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                     dice={roll.dice}
                     total={roll.total}
                     onRoll={(dice, total) => setRoll({ dice, total })}
+                    onTotalChange={(total) => setRoll({ dice: [], total })}
                   />
                 </div>
               </div>
@@ -559,7 +658,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
 
           <div className="space-y-2">
             <h4 className="font-semibold">Work History</h4>
-            {selectedBatch.shifts.map((s, i) => (
+            {(selectedBatch.shifts || []).map((s, i) => (
               <div key={s.id} className="bg-gray-700 p-3 rounded text-sm">
                 <div className="flex justify-between">
                   <span>Block {i+1}: {s.result}</span>
@@ -573,7 +672,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                 </div>
               </div>
             ))}
-            {selectedBatch.shifts.length === 0 && (
+            {(!selectedBatch.shifts || selectedBatch.shifts.length === 0) && (
               <div className="text-gray-500 text-center py-4">No work blocks yet</div>
             )}
           </div>
@@ -623,7 +722,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                     onChange={(e) => setSelectedVector(e.target.value)}
                     className="w-full bg-gray-600 px-3 py-2 rounded"
                   >
-                    {VECTORS.map(v => (
+                    {VECTORS.map((v: { name: string; wrMod: number; dmMod: number }) => (
                       <option key={v.name} value={v.name}>
                         {v.name} (WR {v.wrMod >= 0 ? '+' : ''}{v.wrMod}, DM {v.dmMod >= 0 ? '+' : ''}{v.dmMod})
                       </option>
@@ -718,11 +817,10 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
 
                 return (
                   <div className="space-y-3">
-                    {/* Validation warnings */}
                     {!stats.roleCoverage.valid && (
                       <div className="bg-red-900 bg-opacity-30 border border-red-500 p-2 rounded text-xs">
                         <div className="font-semibold text-red-300 mb-1">⚠️ Missing Required Roles</div>
-                        {stats.roleCoverage.messages.map((msg, idx) => (
+                        {stats.roleCoverage.messages.map((msg: string, idx: number) => (
                           <div key={idx} className="text-red-200">• {msg}</div>
                         ))}
                       </div>
@@ -731,7 +829,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                     {!stats.batchValidation.valid && (
                       <div className="bg-red-900 bg-opacity-30 border border-red-500 p-2 rounded text-xs">
                         <div className="font-semibold text-red-300 mb-1">⚠️ Constraint Violations</div>
-                        {stats.batchValidation.errors.map((err, idx) => (
+                        {stats.batchValidation.errors.map((err: string, idx: number) => (
                           <div key={idx} className="text-red-200">• {err}</div>
                         ))}
                       </div>
@@ -740,7 +838,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                     {stats.batchValidation.warnings.length > 0 && (
                       <div className="bg-yellow-900 bg-opacity-30 border border-yellow-500 p-2 rounded text-xs">
                         <div className="font-semibold text-yellow-300 mb-1">⚠️ Warnings</div>
-                        {stats.batchValidation.warnings.map((warn, idx) => (
+                        {stats.batchValidation.warnings.map((warn: string, idx: number) => (
                           <div key={idx} className="text-yellow-200">• {warn}</div>
                         ))}
                       </div>
@@ -749,11 +847,11 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                     {stats.hazardEvaluation.count > 0 && (
                       <div className="bg-orange-900 bg-opacity-30 border border-orange-500 p-2 rounded text-xs">
                         <div className="font-semibold text-orange-300 mb-1">⚠️ Hazards Present ({stats.hazardEvaluation.count})</div>
-                        {stats.hazardEvaluation.details.map((h, idx) => (
+                        {stats.hazardEvaluation.details.map((h: { hazard: string; effect: string; wrMod?: number; dmMod?: number }, idx: number) => (
                           <div key={idx} className="text-orange-200">
                             <strong>{h.hazard}</strong>: {h.effect}
-                            {h.wrMod > 0 && ` [+${h.wrMod} WR]`}
-                            {h.dmMod !== 0 && ` [${h.dmMod >= 0 ? '+' : ''}${h.dmMod} DM]`}
+                            {(h.wrMod ?? 0) > 0 && ` [+${h.wrMod} WR]`}
+                            {h.dmMod !== 0 && ` [${(h.dmMod ?? 0) >= 0 ? '+' : ''}${h.dmMod} DM]`}
                           </div>
                         ))}
                       </div>
@@ -792,7 +890,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
           <div>
             <h3 className="font-semibold mb-2">Active Batches ({activeBatches.length})</h3>
             {activeBatches.map(b => {
-              const progressPercent = Math.min(100, (b.PP / b.WR) * 100);
+              const progressPercent = Math.min(100, ((b.PP || 0) / (b.WR || 1)) * 100);
               return (
                 <div key={b.id} className="bg-gray-700 p-3 rounded mb-2 cursor-pointer hover:bg-gray-600" onClick={() => setSelectedBatch(b)}>
                   <div className="flex justify-between items-center">
@@ -800,7 +898,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                     <span className="text-sm text-gray-400">{b.PP}/{b.WR} PP | CP: {b.CP}</span>
                   </div>
                   <div className="text-xs text-gray-400 mt-1 mb-2">
-                    Tier {b.tier || 1} | {b.vector || 'Potion'} | {b.dominantAspect} | Potency {b.finalPotency || b.potency || 'P1'} | {b.shifts.length} work blocks
+                    Tier {b.tier || 1} | {b.vector || 'Potion'} | {b.dominantAspect} | Potency {b.finalPotency || b.potency || 'P1'} | {(b.shifts || []).length} work blocks
                   </div>
                   <div className="w-full bg-gray-600 rounded-full h-2">
                     <div
@@ -819,7 +917,6 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
           <div>
             <h3 className="font-semibold mb-2">Completed Batches ({completedBatches.length})</h3>
             {completedBatches.slice(0, 10).map(b => {
-              // Ensure batches have an amount (backward compatibility)
               const batchAmount = b.amount !== undefined ? b.amount : 1;
 
               return (<div key={b.id} className="bg-gray-700 p-3 rounded mb-2">
@@ -832,7 +929,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                       </span>
                     </div>
                     <div className="text-xs text-gray-400 mt-1">
-                      Completed: {new Date(b.completedDate).toLocaleDateString()} | {b.shifts.length} work blocks
+                      Completed: {b.completedDate ? new Date(b.completedDate).toLocaleDateString() : 'N/A'} | {(b.shifts || []).length} work blocks
                     </div>
                     <div className="text-xs text-gray-400">
                       Tier {b.tier} | {b.vector} | Potency: {b.finalPotency}
@@ -881,33 +978,3 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
 }
 
 export const BatchesView = memo(BatchesViewBase);
-
-BatchesView.propTypes = {
-  batches: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    name: PropTypes.string.isRequired,
-    phase: PropTypes.oneOf(['brewing', 'completed', 'failed']),
-    CP: PropTypes.number,
-    DM: PropTypes.number,
-    dominantAspect: PropTypes.string,
-    secondaryAspect: PropTypes.string,
-    forecast: PropTypes.object,
-    microAssay: PropTypes.object
-  })).isRequired,
-  workers: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    name: PropTypes.string.isRequired,
-    skills: PropTypes.object,
-    st: PropTypes.number
-  })).isRequired,
-  formulas: PropTypes.arrayOf(PropTypes.object).isRequired,
-  reagents: PropTypes.arrayOf(PropTypes.object).isRequired,
-  labs: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    name: PropTypes.string.isRequired,
-    rating: PropTypes.number
-  })).isRequired,
-  saveBatches: PropTypes.func.isRequired,
-  saveFormulas: PropTypes.func.isRequired,
-  saveReagents: PropTypes.func.isRequired
-};

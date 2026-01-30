@@ -1,10 +1,30 @@
-import React, { useState } from 'react';
-import PropTypes from 'prop-types';
+import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { toNumberOr } from '../../utils/helpers';
 
-export function TBBuilderPanel({ traitBudget, initialTraits = [], onUpdate }) {
-  const [traits, setTraits] = useState(initialTraits);
+// ============================================================================
+// TYPES
+// ============================================================================
+
+export interface Trait {
+  id: string;
+  name: string;
+  cost: number;
+  notes?: string;
+}
+
+export interface TBBuilderPanelProps {
+  traitBudget: number;
+  initialTraits?: Trait[];
+  onUpdate: (traits: Trait[]) => void;
+}
+
+// ============================================================================
+// COMPONENT
+// ============================================================================
+
+export function TBBuilderPanel({ traitBudget, initialTraits = [], onUpdate }: TBBuilderPanelProps) {
+  const [traits, setTraits] = useState<Trait[]>(initialTraits);
   const [showAdd, setShowAdd] = useState(false);
   const [newTraitName, setNewTraitName] = useState('');
   const [newTraitCost, setNewTraitCost] = useState('');
@@ -21,7 +41,7 @@ export function TBBuilderPanel({ traitBudget, initialTraits = [], onUpdate }) {
     }
 
     const cost = toNumberOr(newTraitCost, 0);
-    const newTrait = {
+    const newTrait: Trait = {
       id: crypto.randomUUID(),
       name: newTraitName.trim(),
       cost,
@@ -38,13 +58,13 @@ export function TBBuilderPanel({ traitBudget, initialTraits = [], onUpdate }) {
     setShowAdd(false);
   }
 
-  function removeTrait(id) {
+  function removeTrait(id: string) {
     const updatedTraits = traits.filter(t => t.id !== id);
     setTraits(updatedTraits);
     if (onUpdate) onUpdate(updatedTraits);
   }
 
-  function updateTrait(id, field, value) {
+  function updateTrait(id: string, field: keyof Trait, value: string | number) {
     const updatedTraits = traits.map(t => {
       if (t.id === id) {
         return { ...t, [field]: field === 'cost' ? toNumberOr(value, 0) : value };
@@ -206,13 +226,3 @@ export function TBBuilderPanel({ traitBudget, initialTraits = [], onUpdate }) {
     </div>
   );
 }
-
-TBBuilderPanel.propTypes = {
-  traitBudget: PropTypes.number.isRequired,
-  initialTraits: PropTypes.array,
-  onUpdate: PropTypes.func.isRequired
-};
-
-TBBuilderPanel.defaultProps = {
-  initialTraits: []
-};

@@ -1,30 +1,84 @@
-import React, { useState, memo, useMemo } from 'react';
-import PropTypes from 'prop-types';
+import { useState, memo, useMemo } from 'react';
+import type { AlchemyReagent } from '../../types/views';
+import type { AlchemySettings } from '../../types/campaign';
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface ProcessingLogResult {
+  attempt: number;
+  roll: number;
+  success: boolean;
+}
+
+interface ProcessingLogEntry {
+  timestamp: string;
+  operation: string;
+  inputUnits: number;
+  outputUnits: number;
+  worker: string;
+  lab: string;
+  results?: ProcessingLogResult[];
+}
+
+interface ReagentVisibleInfo {
+  name: string;
+  quantity: number;
+  identificationLevel: number;
+  hasFalseProfile: boolean;
+  physicalRoles?: string[];
+  primaryAspect?: string;
+  secondaryAspect?: string;
+  tertiaryAspect?: string;
+  basePotency?: string;
+  concentrationSteps?: number;
+  refinement?: string;
+  roles?: string[];
+  primaryRole?: string;
+  hazards?: string[];
+  processingNotes?: string;
+}
+
+interface ExtendedReagent extends AlchemyReagent {
+  baseReagentName?: string;
+  identityId?: string;
+  processingLog?: ProcessingLogEntry[];
+}
+
+export interface ReagentsViewProps {
+  reagents: ExtendedReagent[];
+  alchemySettings?: AlchemySettings;
+}
+
+// ============================================================================
+// COMPONENT
+// ============================================================================
+
+const levelNames = ['Unidentified', 'Partial', 'Basic', 'Complete', 'Full'];
+const physicalRoles = ['Solvent', 'Binder', 'Tool'];
 
 /**
  * ReagentsView Component
  * Displays alchemy reagent inventory with identification levels
  * Memoized to prevent unnecessary re-renders when other alchemy tabs change
  */
-function ReagentsViewBase({ reagents, alchemySettings }) {
-  const [expanded, setExpanded] = useState({});
+function ReagentsViewBase({ reagents, alchemySettings }: ReagentsViewProps) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-  const levelNames = ['Unidentified', 'Partial', 'Basic', 'Complete', 'Full'];
   const showObviousRoles = alchemySettings?.showObviousRoles !== false;
-  const physicalRoles = ['Solvent', 'Binder', 'Tool'];
 
   /**
    * Memoize reagent visibility calculations
    * This processes identification levels and determines what info to show
-   * Expensive since it runs for every reagent on every render
    */
   const reagentInfoMap = useMemo(() => {
-    const infoMap = new Map();
+    const infoMap = new Map<string, ReagentVisibleInfo>();
     for (const reagent of reagents) {
       const level = reagent.identificationLevel || 0;
       const profile = reagent.falseProfile || reagent;
 
-      const visible = {
+      const visible: ReagentVisibleInfo = {
         name: reagent.name,
         quantity: reagent.quantity,
         identificationLevel: level,
@@ -67,12 +121,16 @@ function ReagentsViewBase({ reagents, alchemySettings }) {
     return infoMap;
   }, [reagents, showObviousRoles]);
 
-  // Helper function for potency calculation (kept simple, not memoized)
-  function getVisibleInfo(reagent) {
-    return reagentInfoMap.get(reagent.id) || {};
+  function getVisibleInfo(reagent: ExtendedReagent): ReagentVisibleInfo {
+    return reagentInfoMap.get(reagent.id) || {
+      name: reagent.name,
+      quantity: reagent.quantity,
+      identificationLevel: 0,
+      hasFalseProfile: false
+    };
   }
 
-  function getFinalPotency(basePotency, concentrationSteps) {
+  function getFinalPotency(basePotency: string | undefined, concentrationSteps: number | undefined): string {
     const levels = ['P0', 'P1', 'P2', 'P3', 'P4'];
     const baseLevel = levels.indexOf(basePotency || 'P1');
     const final = Math.min(4, Math.max(0, baseLevel) + (concentrationSteps || 0));
@@ -209,7 +267,7 @@ function ReagentsViewBase({ reagents, alchemySettings }) {
                       <div className="text-sm font-semibold mb-2">Potency</div>
                       <div className="text-sm bg-gray-800 p-2 rounded">
                         <span className="text-gray-400">Base:</span> {info.basePotency}
-                        {info.concentrationSteps > 0 && (
+                        {(info.concentrationSteps || 0) > 0 && (
                           <span className="text-purple-400">
                             {' '}+{info.concentrationSteps} → {getFinalPotency(info.basePotency, info.concentrationSteps)}
                           </span>
@@ -362,30 +420,3 @@ function ReagentsViewBase({ reagents, alchemySettings }) {
 }
 
 export const ReagentsView = memo(ReagentsViewBase);
-
-ReagentsView.propTypes = {
-  reagents: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    name: PropTypes.string.isRequired,
-    quantity: PropTypes.number.isRequired,
-    identificationLevel: PropTypes.number,
-    falseProfile: PropTypes.object,
-    aspects: PropTypes.shape({
-      primary: PropTypes.string,
-      secondary: PropTypes.string,
-      tertiary: PropTypes.string
-    }),
-    roles: PropTypes.arrayOf(PropTypes.string),
-    basePotency: PropTypes.string,
-    concentrationSteps: PropTypes.number,
-    refinement: PropTypes.string,
-    primaryRole: PropTypes.string,
-    hazards: PropTypes.arrayOf(PropTypes.object),
-    processingNotes: PropTypes.string
-  })).isRequired,
-  alchemySettings: PropTypes.shape({
-    showObviousRoles: PropTypes.bool,
-    defaultLabRating: PropTypes.number,
-    workBlockMinutes: PropTypes.number
-  })
-};

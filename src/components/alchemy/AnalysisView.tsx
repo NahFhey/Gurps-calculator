@@ -1,9 +1,56 @@
-import React, { useState } from 'react';
-import PropTypes from 'prop-types';
+import { useState } from 'react';
 import { DiceRoller } from '../DiceRoller';
 import { ASPECTS } from '../../constants';
+import type { AlchemyReagent, Worker } from '../../types/views';
+import type { AlchemyLab, AlchemySettings } from '../../types/campaign';
 
-function generateFalseProfile() {
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface FalseProfile {
+  aspects: {
+    primary: string;
+    secondary: string;
+    tertiary: string;
+  };
+  basePotency: string;
+  hazards: string[];
+}
+
+interface AnalysisRecord {
+  id: string;
+  date: string;
+  worker: string;
+  lab: string;
+  skill: number;
+  labBonus: number;
+  effectiveSkill: number;
+  roll: number;
+  mos: number;
+  result: 'Critical Success' | 'Critical Failure' | 'Success' | 'Failure';
+  identificationLevelBefore: number;
+  identificationLevelAfter: number;
+}
+
+interface DiceRollState {
+  dice: number[];
+  total: number;
+}
+
+export interface AnalysisViewProps {
+  reagents: AlchemyReagent[];
+  labs: AlchemyLab[];
+  workers: Worker[];
+  _alchemySettings?: AlchemySettings;
+  saveReagents: (reagents: AlchemyReagent[]) => void;
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+function generateFalseProfile(): FalseProfile {
   const randomAspect = () => ASPECTS[Math.floor(Math.random() * ASPECTS.length)];
   const randomPotency = () => ['P0', 'P1', 'P2', 'P3', 'P4'][Math.floor(Math.random() * 5)];
 
@@ -18,19 +65,25 @@ function generateFalseProfile() {
   };
 }
 
-function getIdentificationResult(mos) {
+function getIdentificationResult(mos: number): number {
   if (mos >= 6) return 4; // Full Profile
   if (mos >= 4) return 3; // Complete Aspect Profile
   if (mos >= 2) return 2; // Basic (Primary + Secondary)
   return 1; // Partial (Primary only)
 }
 
-export function AnalysisView({ reagents, labs, workers, _alchemySettings, saveReagents }) {
-  const [selectedReagent, setSelectedReagent] = useState(null);
+// ============================================================================
+// COMPONENT
+// ============================================================================
+
+const levelNames = ['Unidentified', 'Partial', 'Basic', 'Complete Aspects', 'Full Profile'];
+
+export function AnalysisView({ reagents, labs, workers, saveReagents }: AnalysisViewProps) {
+  const [selectedReagent, setSelectedReagent] = useState<AlchemyReagent | null>(null);
   const [selectedWorker, setSelectedWorker] = useState('');
   const [selectedLabId, setSelectedLabId] = useState(labs?.[0]?.id || 'default');
   const [skill, setSkill] = useState('');
-  const [roll, setRoll] = useState({ dice: [], total: 0 });
+  const [roll, setRoll] = useState<DiceRollState>({ dice: [], total: 0 });
 
   function performAnalysis() {
     if (!selectedReagent || !skill || !roll.total) {
@@ -64,7 +117,7 @@ export function AnalysisView({ reagents, labs, workers, _alchemySettings, saveRe
     const isCritSuccess = rollValue <= 4 || (rollValue === 5 && effectiveSkill >= 15) || (rollValue === 6 && effectiveSkill >= 16);
     const isCritFail = rollValue === 18 || (rollValue === 17 && effectiveSkill <= 15) || (rollValue === 16 && effectiveSkill <= 6);
 
-    let newIdentificationLevel = selectedReagent.identificationLevel;
+    let newIdentificationLevel = selectedReagent.identificationLevel ?? 0;
     let falseProfile = selectedReagent.falseProfile;
 
     if (isCritSuccess) {
@@ -72,19 +125,19 @@ export function AnalysisView({ reagents, labs, workers, _alchemySettings, saveRe
     } else if (isCritFail) {
       // Generate false profile
       falseProfile = generateFalseProfile();
-      newIdentificationLevel = selectedReagent.identificationLevel; // No increase
+      newIdentificationLevel = selectedReagent.identificationLevel ?? 0; // No increase
       alert('Critical Failure! A false profile has been recorded for this reagent. Check the Manager tab to correct it.');
     } else if (mos >= 0) {
       // Success
       const identLevel = getIdentificationResult(mos);
-      newIdentificationLevel = Math.max(selectedReagent.identificationLevel, identLevel);
+      newIdentificationLevel = Math.max(selectedReagent.identificationLevel ?? 0, identLevel);
     } else {
       // Failure - no change
       alert(`Analysis failed (MoS: ${mos}). No new information revealed.`);
     }
 
     // Record analysis in history
-    const analysisRecord = {
+    const analysisRecord: AnalysisRecord = {
       id: crypto.randomUUID(),
       date: new Date().toISOString(),
       worker: selectedWorker,
@@ -95,13 +148,14 @@ export function AnalysisView({ reagents, labs, workers, _alchemySettings, saveRe
       roll: rollValue,
       mos: mos,
       result: isCritSuccess ? 'Critical Success' : isCritFail ? 'Critical Failure' : mos >= 0 ? 'Success' : 'Failure',
-      identificationLevelBefore: selectedReagent.identificationLevel,
+      identificationLevelBefore: selectedReagent.identificationLevel ?? 0,
       identificationLevelAfter: newIdentificationLevel
     };
 
     // Update reagent and all sister reagents sharing the same identityId
-    const targetIdentityId = selectedReagent.identityId || selectedReagent.id;
+    const targetIdentityId = (selectedReagent as AlchemyReagent & { identityId?: string }).identityId || selectedReagent.id;
     const updatedReagents = reagents.map(r => {
+      const reagentWithIdentity = r as AlchemyReagent & { identityId?: string };
       // Check if this is the analyzed reagent
       if (r.id === selectedReagent.id) {
         return {
@@ -113,12 +167,12 @@ export function AnalysisView({ reagents, labs, workers, _alchemySettings, saveRe
         };
       }
       // Check if this is a sister reagent (shares identityId)
-      const reagentIdentityId = r.identityId || r.id;
+      const reagentIdentityId = reagentWithIdentity.identityId || r.id;
       if (reagentIdentityId === targetIdentityId && r.id !== selectedReagent.id) {
         // Update identification level but don't consume quantity or add history
         return {
           ...r,
-          identificationLevel: Math.max(r.identificationLevel, newIdentificationLevel),
+          identificationLevel: Math.max(r.identificationLevel ?? 0, newIdentificationLevel),
           falseProfile: falseProfile // Apply same false profile if crit fail
         };
       }
@@ -129,19 +183,19 @@ export function AnalysisView({ reagents, labs, workers, _alchemySettings, saveRe
 
     // Update local state
     const updated = updatedReagents.find(r => r.id === selectedReagent.id);
-    setSelectedReagent(updated);
+    if (updated) {
+      setSelectedReagent(updated);
+    }
 
     // Clear inputs
     setSkill('');
-    setRoll('');
+    setRoll({ dice: [], total: 0 });
 
-    if (!isCritFail && newIdentificationLevel > selectedReagent.identificationLevel) {
+    if (!isCritFail && newIdentificationLevel > (selectedReagent.identificationLevel ?? 0)) {
       const levels = ['Unidentified', 'Partial', 'Basic', 'Complete', 'Full'];
       alert(`Analysis successful! Identification Level: ${levels[newIdentificationLevel]} (Level ${newIdentificationLevel}/4)`);
     }
   }
-
-  const levelNames = ['Unidentified', 'Partial', 'Basic', 'Complete Aspects', 'Full Profile'];
 
   return (
     <div className="bg-gray-800 rounded-lg p-6">
@@ -173,7 +227,7 @@ export function AnalysisView({ reagents, labs, workers, _alchemySettings, saveRe
               <div>
                 <span className="text-gray-400">Identification Level:</span>{' '}
                 <span className="text-blue-400">
-                  {selectedReagent.identificationLevel}/4 - {levelNames[selectedReagent.identificationLevel]}
+                  {selectedReagent.identificationLevel ?? 0}/4 - {levelNames[selectedReagent.identificationLevel ?? 0]}
                 </span>
               </div>
             </div>
@@ -185,7 +239,7 @@ export function AnalysisView({ reagents, labs, workers, _alchemySettings, saveRe
             )}
           </div>
 
-          {selectedReagent.quantity >= 1 && selectedReagent.identificationLevel < 4 && (
+          {selectedReagent.quantity >= 1 && (selectedReagent.identificationLevel ?? 0) < 4 && (
             <div className="bg-gray-700 p-4 rounded space-y-3">
               <h4 className="font-semibold">Perform Analysis</h4>
               <div className="grid grid-cols-3 gap-3">
@@ -250,6 +304,7 @@ export function AnalysisView({ reagents, labs, workers, _alchemySettings, saveRe
                       dice={roll.dice}
                       total={roll.total}
                       onRoll={(dice, total) => setRoll({ dice, total })}
+                      onTotalChange={(total) => setRoll({ dice: [], total })}
                     />
                   </div>
                   {skill && (
@@ -286,7 +341,7 @@ export function AnalysisView({ reagents, labs, workers, _alchemySettings, saveRe
             </div>
           )}
 
-          {selectedReagent.identificationLevel >= 4 && (
+          {(selectedReagent.identificationLevel ?? 0) >= 4 && (
             <div className="bg-green-900 bg-opacity-30 border border-green-500 p-4 rounded text-center">
               <div className="text-green-400 font-semibold">Fully Identified</div>
               <div className="text-sm text-gray-300 mt-1">
@@ -295,10 +350,10 @@ export function AnalysisView({ reagents, labs, workers, _alchemySettings, saveRe
             </div>
           )}
 
-          {selectedReagent.analysisHistory && selectedReagent.analysisHistory.length > 0 && (
+          {selectedReagent.analysisHistory && (selectedReagent.analysisHistory as AnalysisRecord[]).length > 0 && (
             <div className="space-y-2">
               <h4 className="font-semibold">Analysis History</h4>
-              {selectedReagent.analysisHistory.map((a) => (
+              {(selectedReagent.analysisHistory as AnalysisRecord[]).map((a) => (
                 <div key={a.id} className="bg-gray-700 p-3 rounded text-sm">
                   <div className="flex justify-between">
                     <span>{a.result}</span>
@@ -325,21 +380,21 @@ export function AnalysisView({ reagents, labs, workers, _alchemySettings, saveRe
                 <div className="flex-1">
                   <div className="font-medium">{r.name}</div>
                   <div className="text-xs text-gray-400 mt-1">
-                    Quantity: {r.quantity}U | ID Level: {r.identificationLevel}/4 - {levelNames[r.identificationLevel]}
+                    Quantity: {r.quantity}U | ID Level: {r.identificationLevel ?? 0}/4 - {levelNames[r.identificationLevel ?? 0]}
                     {r.falseProfile && <span className="text-red-400 ml-2">⚠️ False Profile</span>}
                   </div>
                 </div>
                 <div className="text-sm">
                   <div
                     className={`px-2 py-1 rounded ${
-                      r.identificationLevel === 4
+                      (r.identificationLevel ?? 0) === 4
                         ? 'bg-green-600'
-                        : r.identificationLevel >= 2
+                        : (r.identificationLevel ?? 0) >= 2
                         ? 'bg-yellow-600'
                         : 'bg-gray-600'
                     }`}
                   >
-                    {levelNames[r.identificationLevel]}
+                    {levelNames[r.identificationLevel ?? 0]}
                   </div>
                 </div>
               </div>
@@ -353,11 +408,3 @@ export function AnalysisView({ reagents, labs, workers, _alchemySettings, saveRe
     </div>
   );
 }
-
-AnalysisView.propTypes = {
-  reagents: PropTypes.array.isRequired,
-  labs: PropTypes.array.isRequired,
-  workers: PropTypes.array.isRequired,
-  _alchemySettings: PropTypes.object,
-  saveReagents: PropTypes.func.isRequired
-};

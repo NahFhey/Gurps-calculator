@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import PropTypes from 'prop-types';
+import { useState } from 'react';
 import { DiceRoller } from '../DiceRoller';
 import {
   calculateProcessingDifficulty,
@@ -7,17 +6,92 @@ import {
   createDerivedReagentName
 } from '../../utils/alchemy';
 import { POTENCY_LEVELS } from '../../constants';
+import type { AlchemyReagent, Worker } from '../../types/views';
+import type { AlchemyLab } from '../../types/campaign';
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+type RefinementLevel = 'crude' | 'prepared' | 'refined';
+type OperationType = 'refine' | 'concentrate';
+type ProcessingStateType = 'idle' | 'processing' | 'completed' | 'aborted';
+
+interface RefinementLevelInfo {
+  next: RefinementLevel | null;
+  label: string;
+}
+
+interface DiceRollState {
+  dice: number[];
+  total: number;
+}
+
+interface ProcessingDifficulty {
+  alchemySkill: number;
+  labRating: number;
+  processStepDM: number;
+  batchSizePenalty: number;
+  potencyControlPenalty: number;
+  effectiveSkill: number;
+  breakdown: string;
+}
+
+interface UnitResult {
+  attemptNumber: number;
+  roll: number;
+  effectiveSkill: number;
+  batchPenalty: number;
+  success: boolean;
+  critical?: boolean;
+  minor?: boolean;
+  outputProduced: boolean;
+  hazardAdded: string | null;
+  message: string;
+  reclaim?: boolean;
+  complication?: boolean;
+}
+
+interface ProcessingLogEntry {
+  timestamp: string;
+  operation: OperationType;
+  inputUnits: number;
+  outputUnits: number;
+  worker: string;
+  lab: string;
+  aborted: boolean;
+  results: Array<{
+    attempt: number;
+    roll: number;
+    success: boolean;
+    message: string;
+  }>;
+}
+
+export interface ConcentrationRefinementViewProps {
+  reagents: AlchemyReagent[];
+  labs: AlchemyLab[];
+  workers: Worker[];
+  saveReagents: (reagents: AlchemyReagent[]) => void;
+}
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
 
 /**
  * Refinement level progression for reagents
  * crude -> prepared -> refined (terminal state)
- * @type {Object<string, {next: string|null, label: string}>}
  */
-const REFINEMENT_LEVELS = {
+const REFINEMENT_LEVELS: Record<RefinementLevel, RefinementLevelInfo> = {
   crude: { next: 'prepared', label: 'Crude' },
   prepared: { next: 'refined', label: 'Prepared' },
   refined: { next: null, label: 'Refined' }
 };
+
+// ============================================================================
+// COMPONENT
+// ============================================================================
 
 /**
  * ConcentrationRefinementView Component - Manages GURPS alchemy reagent processing
@@ -33,69 +107,55 @@ const REFINEMENT_LEVELS = {
  * - Derived reagent creation with identityId linking for shared identification
  * - Hazard accumulation on minor failures (MoF -1 to -2)
  * - Critical success allows 1U input reclaim
- *
- * Processing workflow:
- * 1. Select reagent, operation type, lab, and worker
- * 2. Set desired output units (determines input consumption)
- * 3. Start processing - enters unit-by-unit roll mode
- * 4. Roll for each unit individually with cumulative penalties
- * 5. Results applied: input consumed, output created or lost
- *
- * @param {Object} props - Component props
- * @param {Array<Object>} props.reagents - Available reagents with quantity, refinement, potency
- * @param {Array<Object>} props.labs - Available labs with id, name, rating bonus
- * @param {Array<Object>} props.workers - Available workers with alchemy skill
- * @param {Function} props.saveReagents - Callback to persist reagent inventory changes
- * @returns {JSX.Element} The processing interface
  */
-export function ConcentrationRefinementView({ reagents, labs, workers, saveReagents }) {
-  const [selectedReagentId, setSelectedReagentId] = useState(null);
-  const [operation, setOperation] = useState('refine'); // 'refine' or 'concentrate'
+export function ConcentrationRefinementView({ reagents, labs, workers, saveReagents }: ConcentrationRefinementViewProps) {
+  const [selectedReagentId, setSelectedReagentId] = useState<string | null>(null);
+  const [operation, setOperation] = useState<OperationType>('refine');
   const [outputUnits, setOutputUnits] = useState(1);
   const [selectedLabId, setSelectedLabId] = useState(labs?.[0]?.id || 'default');
   const [selectedWorkerId, setSelectedWorkerId] = useState(workers?.[0]?.id || '1');
 
   // Processing state
-  const [processingState, setProcessingState] = useState('idle'); // 'idle', 'processing', 'completed', 'aborted'
+  const [processingState, setProcessingState] = useState<ProcessingStateType>('idle');
   const [currentUnitIndex, setCurrentUnitIndex] = useState(0);
-  const [currentRoll, setCurrentRoll] = useState({ dice: [], total: 0 });
-  const [unitResults, setUnitResults] = useState([]);
-  const [processingLog, setProcessingLog] = useState([]);
+  const [currentRoll, setCurrentRoll] = useState<DiceRollState>({ dice: [], total: 0 });
+  const [unitResults, setUnitResults] = useState<UnitResult[]>([]);
+  const [processingLog, setProcessingLog] = useState<UnitResult[]>([]);
   const [showResults, setShowResults] = useState(false);
 
   const selectedReagent = reagents.find(r => r.id === selectedReagentId);
   const selectedLab = labs?.find(l => l.id === selectedLabId) || { id: 'default', name: 'Basic Lab', rating: 0 };
-  const selectedWorker = workers?.find(w => w.id === selectedWorkerId) || { name: 'Worker', skills: { alchemy: 10 } };
+  const selectedWorker = workers?.find(w => w.id === selectedWorkerId) || { id: '1', name: 'Worker', skills: { alchemy: 10 } };
 
   // Calculate input units required (2:1 ratio)
   const inputUnitsRequired = outputUnits * 2;
 
   // Determine target refinement/potency
-  let targetRefinement = null;
-  let targetPotency = null;
+  let targetRefinement: RefinementLevel | null = null;
+  let targetPotency: string | null = null;
   let canProcess = false;
 
   if (selectedReagent) {
-    const currentRefinement = selectedReagent.refinement || 'crude';
+    const currentRefinement = (selectedReagent.refinement || 'crude') as RefinementLevel;
     const currentPotency = selectedReagent.basePotency || 'P1';
     const currentConcentration = selectedReagent.concentrationSteps || 0;
 
     if (operation === 'refine') {
-      targetRefinement = REFINEMENT_LEVELS[currentRefinement]?.next;
-      canProcess = targetRefinement && selectedReagent.quantity >= inputUnitsRequired;
+      targetRefinement = REFINEMENT_LEVELS[currentRefinement]?.next || null;
+      canProcess = Boolean(targetRefinement && selectedReagent.quantity >= inputUnitsRequired);
     } else {
       // Calculate target potency for concentration
       const currentPotencyIndex = POTENCY_LEVELS.indexOf(currentPotency);
       const targetPotencyIndex = Math.min(POTENCY_LEVELS.length - 1, currentPotencyIndex + currentConcentration + 1);
       targetPotency = POTENCY_LEVELS[targetPotencyIndex];
-      canProcess = selectedReagent.quantity >= inputUnitsRequired && targetPotency !== 'P4' || currentPotency !== 'P4';
+      canProcess = selectedReagent.quantity >= inputUnitsRequired && (targetPotency !== 'P4' || currentPotency !== 'P4');
     }
   }
 
   // Calculate difficulty
-  let difficultyCalc = null;
+  let difficultyCalc: ProcessingDifficulty | null = null;
   if (selectedReagent && canProcess) {
-    const currentRefinement = selectedReagent.refinement || 'crude';
+    const currentRefinement = (selectedReagent.refinement || 'crude') as RefinementLevel;
     const currentPotency = selectedReagent.basePotency || 'P1';
 
     difficultyCalc = calculateProcessingDifficulty({
@@ -105,16 +165,13 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
       inputPotency: currentPotency,
       targetPotency: targetPotency,
       outputUnits,
-      alchemySkill: selectedWorker.skills.alchemy,
+      alchemySkill: selectedWorker.skills?.alchemy || 10,
       labRating: selectedLab.rating
-    });
+    }) as ProcessingDifficulty;
   }
 
   /**
    * Initializes a new processing batch
-   * Resets all processing state and enters 'processing' mode for unit-by-unit rolls
-   *
-   * @returns {void}
    */
   function startProcessing() {
     if (!canProcess || !selectedReagent) {
@@ -122,10 +179,9 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
       return;
     }
 
-    // Initialize processing state
     setProcessingState('processing');
     setCurrentUnitIndex(0);
-    setCurrentRoll('');
+    setCurrentRoll({ dice: [], total: 0 });
     setUnitResults([]);
     setProcessingLog([]);
     setShowResults(true);
@@ -133,32 +189,18 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
 
   /**
    * Processes the current unit with the entered roll value
-   *
-   * This function:
-   * 1. Calculates effective skill with cumulative batch penalty for this unit
-   * 2. Evaluates roll result (success, minor failure, failure, critical)
-   * 3. Tracks hazards accumulated from previous successful units
-   * 4. Stores result and either advances to next unit or completes processing
-   *
-   * Cumulative batch penalty: Each unit gets -N penalty where N = unit number
-   * (Unit 1 = -1, Unit 2 = -2, Unit 3 = -3, etc.)
-   *
-   * @returns {void}
    */
   function processCurrentUnit() {
-    if (!currentRoll) {
+    if (!currentRoll.total || !selectedReagent) {
       alert('Please enter or roll a 3d6 result for this unit');
       return;
     }
 
     const rollValue = currentRoll.total;
     const unitNumber = currentUnitIndex + 1;
-
-    // Calculate cumulative batch penalty for this unit
     const cumulativeBatchPenalty = -unitNumber;
 
-    // Recalculate difficulty with cumulative penalty
-    const currentRefinement = selectedReagent.refinement || 'crude';
+    const currentRefinement = (selectedReagent.refinement || 'crude') as RefinementLevel;
     const currentPotency = selectedReagent.basePotency || 'P1';
 
     const unitDifficulty = calculateProcessingDifficulty({
@@ -167,11 +209,11 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
       targetRefinement,
       inputPotency: currentPotency,
       targetPotency: targetPotency,
-      outputUnits: 1, // Calculate for single unit
-      alchemySkill: selectedWorker.skills.alchemy,
+      outputUnits: 1,
+      alchemySkill: selectedWorker.skills?.alchemy || 10,
       labRating: selectedLab.rating,
       cumulativeBatchPenalty
-    });
+    }) as ProcessingDifficulty;
 
     // Get current hazards from all previous successful outputs
     const accumulatedHazards = unitResults
@@ -182,8 +224,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
     // Evaluate result
     const result = evaluateProcessingResult(rollValue, unitDifficulty.effectiveSkill, outputHazards);
 
-    // Store result
-    const unitResult = {
+    const unitResult: UnitResult = {
       attemptNumber: unitNumber,
       roll: rollValue,
       effectiveSkill: unitDifficulty.effectiveSkill,
@@ -195,65 +236,35 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
     setUnitResults(newResults);
     setProcessingLog(prev => [...prev, unitResult]);
 
-    // Check if this was the last unit
     if (currentUnitIndex + 1 >= outputUnits) {
-      // Processing complete
       setProcessingState('completed');
       applyProcessingResults(newResults);
     } else {
-      // Move to next unit
       setCurrentUnitIndex(currentUnitIndex + 1);
-      setCurrentRoll('');
+      setCurrentRoll({ dice: [], total: 0 });
     }
   }
 
   /**
    * Aborts the current processing batch early
-   * Applies partial results for completed units and sets state to aborted
-   *
-   * @returns {void}
    */
   function abortProcessing() {
     setProcessingState('aborted');
-    // Apply partial results and reclaim remaining ingredients
     applyProcessingResults(unitResults, true);
   }
 
   /**
    * Applies processing results to reagent inventory
-   *
-   * This is the core state mutation function that:
-   * 1. Calculates total input consumed (2U per attempt, minus reclaims)
-   * 2. Calculates total output produced (successful units only)
-   * 3. Aggregates hazards from minor failures across all units
-   * 4. Creates or updates derived reagent variant
-   * 5. Links derived reagent via identityId for shared identification
-   *
-   * Derived reagent naming:
-   * - Refinement adds prefix: "Prepared", "Refined"
-   * - Concentration adds suffix: "+1", "+2", etc.
-   * - Example: "Refined Nightshade +2"
-   *
-   * Identity linking:
-   * - All derived variants share identityId with source reagent
-   * - Identification progress on any variant applies to all
-   *
-   * @param {Array<Object>} results - Array of unit processing results
-   * @param {number} results[].attemptNumber - Which unit (1-indexed)
-   * @param {boolean} results[].outputProduced - Whether unit produced output
-   * @param {string} results[].hazardAdded - Hazard tag if minor failure
-   * @param {boolean} results[].reclaim - Whether critical success reclaimed input
-   * @param {boolean} [isAborted=false] - Whether processing was aborted early
-   * @returns {void}
    */
-  function applyProcessingResults(results, isAborted = false) {
-    // Calculate totals from results
+  function applyProcessingResults(results: UnitResult[], isAborted = false) {
+    if (!selectedReagent) return;
+
     let inputConsumed = 0;
     let outputProduced = 0;
     const outputHazards = [...(selectedReagent.hazards || [])];
 
     for (const result of results) {
-      inputConsumed += 2; // Always consume 2U per attempt
+      inputConsumed += 2;
 
       if (result.outputProduced) {
         outputProduced += 1;
@@ -261,13 +272,12 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
           outputHazards.push(result.hazardAdded);
         }
         if (result.reclaim) {
-          inputConsumed -= 1; // Critical success reclaims 1U
+          inputConsumed -= 1;
         }
       }
     }
 
     if (outputProduced === 0) {
-      // No output, just reduce input reagent
       const updatedReagents = reagents.map(r => {
         if (r.id === selectedReagentId) {
           return {
@@ -281,29 +291,26 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
       return;
     }
 
-    // Create or update derived reagent
-    const currentRefinement = selectedReagent.refinement || 'crude';
-    const _currentPotency = selectedReagent.basePotency || 'P1'; // Not used in this context
+    const currentRefinement = (selectedReagent.refinement || 'crude') as RefinementLevel;
     const currentConcentration = selectedReagent.concentrationSteps || 0;
 
-    let newRefinement = currentRefinement;
+    let newRefinement: RefinementLevel = currentRefinement;
     let newConcentration = currentConcentration;
 
-    if (operation === 'refine') {
+    if (operation === 'refine' && targetRefinement) {
       newRefinement = targetRefinement;
     } else {
       newConcentration = currentConcentration + 1;
     }
 
-    // Create derived reagent name
+    const baseReagentName = (selectedReagent as AlchemyReagent & { baseReagentName?: string }).baseReagentName || selectedReagent.name;
     const derivedName = createDerivedReagentName(
-      selectedReagent.baseReagentName || selectedReagent.name,
+      baseReagentName,
       newRefinement,
       newConcentration
     );
 
-    // Prepare processing log entry
-    const logEntry = {
+    const logEntry: ProcessingLogEntry = {
       timestamp: new Date().toISOString(),
       operation,
       inputUnits: inputConsumed,
@@ -319,43 +326,41 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
       }))
     };
 
-    // Find existing derived reagent or create new
-    const existingDerived = reagents.find(r =>
-      r.baseReagentName === (selectedReagent.baseReagentName || selectedReagent.name) &&
-      r.refinement === newRefinement &&
-      (r.concentrationSteps || 0) === newConcentration
-    );
+    const existingDerived = reagents.find(r => {
+      const reagentWithBase = r as AlchemyReagent & { baseReagentName?: string };
+      return reagentWithBase.baseReagentName === baseReagentName &&
+        r.refinement === newRefinement &&
+        (r.concentrationSteps || 0) === newConcentration;
+    });
 
-    let updatedReagents;
+    let updatedReagents: AlchemyReagent[];
 
     if (existingDerived) {
-      // Add to existing derived reagent
       updatedReagents = reagents.map(r => {
         if (r.id === selectedReagentId) {
-          // Reduce input reagent
           return {
             ...r,
             quantity: Math.max(0, r.quantity - inputConsumed)
           };
         } else if (r.id === existingDerived.id) {
-          // Add to existing derived
+          const reagentWithLog = r as AlchemyReagent & { processingLog?: ProcessingLogEntry[] };
           return {
             ...r,
             quantity: r.quantity + outputProduced,
             hazards: [...new Set([...(r.hazards || []), ...outputHazards])],
-            processingLog: [...(r.processingLog || []), logEntry]
-          };
+            processingLog: [...(reagentWithLog.processingLog || []), logEntry]
+          } as AlchemyReagent;
         }
         return r;
       });
     } else {
-      // Create new derived reagent
-      const newDerived = {
+      const selectedWithIdentity = selectedReagent as AlchemyReagent & { identityId?: string; baseReagentName?: string };
+      const newDerived: AlchemyReagent & { baseReagentName: string; identityId: string; processingLog: ProcessingLogEntry[] } = {
         ...selectedReagent,
         id: crypto.randomUUID(),
         name: derivedName,
-        baseReagentName: selectedReagent.baseReagentName || selectedReagent.name,
-        identityId: selectedReagent.identityId || selectedReagent.id,
+        baseReagentName: baseReagentName,
+        identityId: selectedWithIdentity.identityId || selectedReagent.id,
         quantity: outputProduced,
         refinement: newRefinement,
         concentrationSteps: newConcentration,
@@ -373,7 +378,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
           }
           return r;
         }),
-        newDerived
+        newDerived as AlchemyReagent
       ];
     }
 
@@ -401,7 +406,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
               <option value="">-- Choose Reagent --</option>
               {reagents.filter(r => r.quantity > 0).map(r => (
                 <option key={r.id} value={r.id}>
-                  {r.name} ({r.quantity}U, {REFINEMENT_LEVELS[r.refinement || 'crude'].label}, {r.basePotency || 'P1'}{(r.concentrationSteps || 0) > 0 ? ` +${r.concentrationSteps}` : ''})
+                  {r.name} ({r.quantity}U, {REFINEMENT_LEVELS[(r.refinement || 'crude') as RefinementLevel].label}, {r.basePotency || 'P1'}{(r.concentrationSteps || 0) > 0 ? ` +${r.concentrationSteps}` : ''})
                 </option>
               ))}
             </select>
@@ -411,7 +416,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
             <label className="block text-sm text-gray-400 mb-2">Operation</label>
             <select
               value={operation}
-              onChange={(e) => setOperation(e.target.value)}
+              onChange={(e) => setOperation(e.target.value as OperationType)}
               className="w-full bg-gray-700 px-3 py-2 rounded"
               disabled={processingState !== 'idle'}
             >
@@ -449,7 +454,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
             >
               {workers.map(w => (
                 <option key={w.id} value={w.id}>
-                  {w.name} (Alchemy {w.skills.alchemy})
+                  {w.name} (Alchemy {w.skills?.alchemy || 10})
                 </option>
               ))}
             </select>
@@ -488,7 +493,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
               <div>
                 <span className="text-gray-400">Refinement:</span>
                 <span className="ml-2 capitalize font-semibold text-blue-400">
-                  {REFINEMENT_LEVELS[selectedReagent.refinement || 'crude'].label}
+                  {REFINEMENT_LEVELS[(selectedReagent.refinement || 'crude') as RefinementLevel].label}
                 </span>
               </div>
               <div>
@@ -534,18 +539,18 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
         )}
 
         {/* Difficulty Display - Initial Preview */}
-        {difficultyCalc && canProcess && processingState === 'idle' && (() => {
+        {difficultyCalc && canProcess && processingState === 'idle' && selectedReagent && (() => {
           const firstUnitDifficulty = calculateProcessingDifficulty({
             operation,
-            currentRefinement: selectedReagent.refinement || 'crude',
+            currentRefinement: (selectedReagent.refinement || 'crude') as RefinementLevel,
             targetRefinement,
             inputPotency: selectedReagent.basePotency || 'P1',
             targetPotency: targetPotency,
             outputUnits: 1,
-            alchemySkill: selectedWorker.skills.alchemy,
+            alchemySkill: selectedWorker.skills?.alchemy || 10,
             labRating: selectedLab.rating,
             cumulativeBatchPenalty: -1
-          });
+          }) as ProcessingDifficulty;
 
           return (
             <div className="bg-gray-700 p-4 rounded mb-4">
@@ -630,7 +635,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
           <div className="flex gap-2 mb-4 flex-wrap">
             {Array.from({ length: outputUnits }, (_, i) => {
               const result = unitResults[i];
-              let bgColor = 'bg-gray-700'; // Not processed yet
+              let bgColor = 'bg-gray-700';
               let borderColor = 'border-gray-600';
 
               if (result) {
@@ -667,7 +672,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
               onClick={() => {
                 setProcessingState('idle');
                 setCurrentUnitIndex(0);
-                setCurrentRoll('');
+                setCurrentRoll({ dice: [], total: 0 });
                 setUnitResults([]);
                 setProcessingLog([]);
                 setShowResults(false);
@@ -679,7 +684,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
           )}
 
           {/* Current Unit Roll Input */}
-          {processingState === 'processing' && (
+          {processingState === 'processing' && selectedReagent && (
             <div className="bg-gray-700 p-4 rounded mb-4">
               <h5 className="font-semibold mb-2">
                 Unit {currentUnitIndex + 1} of {outputUnits}
@@ -690,15 +695,15 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
               {difficultyCalc && (() => {
                 const unitDifficulty = calculateProcessingDifficulty({
                   operation,
-                  currentRefinement: selectedReagent.refinement || 'crude',
+                  currentRefinement: (selectedReagent.refinement || 'crude') as RefinementLevel,
                   targetRefinement,
                   inputPotency: selectedReagent.basePotency || 'P1',
                   targetPotency: targetPotency,
                   outputUnits: 1,
-                  alchemySkill: selectedWorker.skills.alchemy,
+                  alchemySkill: selectedWorker.skills?.alchemy || 10,
                   labRating: selectedLab.rating,
                   cumulativeBatchPenalty: -(currentUnitIndex + 1)
-                });
+                }) as ProcessingDifficulty;
 
                 return (
                   <div className="mb-3 text-sm">
@@ -737,13 +742,14 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
                   dice={currentRoll.dice}
                   total={currentRoll.total}
                   onRoll={(dice, total) => setCurrentRoll({ dice, total })}
+                  onTotalChange={(total) => setCurrentRoll({ dice: [], total })}
                 />
               </div>
 
               <div className="flex gap-2">
                 <button
                   onClick={processCurrentUnit}
-                  disabled={!currentRoll}
+                  disabled={!currentRoll.total}
                   className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-4 py-2 rounded font-semibold"
                 >
                   Process Unit {currentUnitIndex + 1}
@@ -841,10 +847,3 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
     </div>
   );
 }
-
-ConcentrationRefinementView.propTypes = {
-  reagents: PropTypes.array.isRequired,
-  labs: PropTypes.array.isRequired,
-  workers: PropTypes.array.isRequired,
-  saveReagents: PropTypes.func.isRequired
-};

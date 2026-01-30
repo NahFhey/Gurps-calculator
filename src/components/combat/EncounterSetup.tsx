@@ -6,6 +6,7 @@ import { generateTurnOrder, createNumberedEnemies, generateId, createLogEntry, c
 import type { Character as PartyCharacter } from '../../types/campaign';
 import { DEFAULT_HIT_LOCATION_PROFILE } from '../../types/characterSheet';
 import { COMBAT_CATEGORIES } from '../../constants';
+import { ConfirmDialog, useConfirmDialog, useToast } from '../ui';
 
 interface Attack {
   name: string;
@@ -125,6 +126,17 @@ export default function EncounterSetup() {
   const [turnOrder, setTurnOrder] = useState<string[]>([]);
   const [showTurnOrderPreview, setShowTurnOrderPreview] = useState(false);
 
+  // Toast notifications
+  const { warning: showWarning } = useToast();
+
+  // Confirm dialog for clearing
+  const clearDialog = useConfirmDialog({
+    title: 'Clear Encounter',
+    message: 'Are you sure you want to clear all participants? This cannot be undone.',
+    confirmLabel: 'Clear All',
+    variant: 'danger',
+  });
+
   // Categorize combat library characters
   const characters = combatCharacters as Character[];
   const players = characters.filter(c => c.category === 'player');
@@ -210,12 +222,12 @@ export default function EncounterSetup() {
   // Start combat
   const handleStartCombat = () => {
     if (participants.length === 0) {
-      alert('Add at least one participant to start combat');
+      showWarning('Add at least one participant to start combat');
       return;
     }
 
     if (turnOrder.length === 0) {
-      alert('Generate turn order first');
+      showWarning('Generate turn order first');
       return;
     }
 
@@ -262,8 +274,9 @@ export default function EncounterSetup() {
   };
 
   // Clear encounter
-  const handleClear = () => {
-    if (confirm('Clear all participants?')) {
+  const handleClear = async () => {
+    const confirmed = await clearDialog.confirm();
+    if (confirmed) {
       setParticipants([]);
       setTurnOrder([]);
       setShowTurnOrderPreview(false);
@@ -556,6 +569,9 @@ export default function EncounterSetup() {
           )}
         </div>
       </div>
+
+      {/* Clear Confirmation Dialog */}
+      <ConfirmDialog {...clearDialog.dialogProps} />
     </div>
   );
 }

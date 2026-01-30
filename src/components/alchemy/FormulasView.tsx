@@ -1,19 +1,67 @@
-import React, { memo, useMemo } from 'react';
-import PropTypes from 'prop-types';
+import { memo, useMemo } from 'react';
 import { startBatchFromFormula } from '../../utils/alchemy';
+import type { AlchemyReagent, AlchemyFormula } from '../../types/views';
+import type { AlchemyBatch } from '../../types/campaign';
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface FormulaDisplayData {
+  id: string;
+  name: string;
+  tier: number;
+  traitBudget: number;
+  vector: string;
+  dominantAspect: string | undefined;
+  secondaryAspect: string | undefined;
+  finalPotency: string;
+  baseWR: number | undefined;
+  baseDM: number | undefined;
+  ingredients: Array<{
+    reagentName?: string;
+    role?: string;
+    unitsUsed?: number;
+  }>;
+  traits: Array<{
+    name: string;
+    cost: number;
+  }>;
+}
+
+interface StartBatchResult {
+  ok: boolean;
+  error?: {
+    message: string;
+  };
+  reagents?: AlchemyReagent[];
+  batch?: AlchemyBatch;
+}
+
+export interface FormulasViewProps {
+  reagents: AlchemyReagent[];
+  formulas: AlchemyFormula[];
+  batches: AlchemyBatch[];
+  saveReagents: (reagents: AlchemyReagent[]) => void;
+  saveBatches: (batches: AlchemyBatch[]) => void;
+}
+
+// ============================================================================
+// COMPONENT
+// ============================================================================
 
 /**
  * FormulasView Component
  * Displays available alchemy formulas for brewing
  * Memoized to prevent unnecessary re-renders when other alchemy tabs change
  */
-function FormulasViewBase({ reagents, formulas, batches, saveReagents, saveBatches }) {
+function FormulasViewBase({ reagents, formulas, batches, saveReagents, saveBatches }: FormulasViewProps) {
 
   /**
    * Memoize formula display data
    * Prevents recalculation of formula properties for unchanged formulas
    */
-  const formulaDisplayData = useMemo(() => {
+  const formulaDisplayData = useMemo((): FormulaDisplayData[] => {
     return formulas.map(f => ({
       id: f.id,
       name: f.name,
@@ -30,18 +78,18 @@ function FormulasViewBase({ reagents, formulas, batches, saveReagents, saveBatch
     }));
   }, [formulas]);
 
-  function startBatch(formula) {
-    const result = startBatchFromFormula(formula, reagents, batches);
+  function startBatch(formula: AlchemyFormula) {
+    const result = startBatchFromFormula(formula, reagents, batches) as StartBatchResult;
     if (!result.ok) {
-      // Show structured error message
-      alert(result.error.message);
+      alert(result.error?.message || 'Failed to start batch');
       return;
     }
 
-    // Success - update reagents and batches
-    saveReagents(result.reagents);
-    saveBatches([...batches, result.batch]);
-    alert(`Batch started! ${formula.name}`);
+    if (result.reagents && result.batch) {
+      saveReagents(result.reagents);
+      saveBatches([...batches, result.batch]);
+      alert(`Batch started! ${formula.name}`);
+    }
   }
 
   return (
@@ -60,7 +108,13 @@ function FormulasViewBase({ reagents, formulas, batches, saveReagents, saveBatch
           <div key={f.id} className="bg-gray-700 p-4 rounded">
             <div className="flex justify-between mb-2">
               <h3 className="font-semibold text-lg">{f.name}</h3>
-              <button onClick={() => startBatch(formulas.find(formula => formula.id === f.id))} className="bg-purple-600 px-3 py-1 rounded text-sm">
+              <button
+                onClick={() => {
+                  const formula = formulas.find(formula => formula.id === f.id);
+                  if (formula) startBatch(formula);
+                }}
+                className="bg-purple-600 px-3 py-1 rounded text-sm"
+              >
                 Start Batch
               </button>
             </div>
@@ -80,7 +134,7 @@ function FormulasViewBase({ reagents, formulas, batches, saveReagents, saveBatch
               <div>
                 <span className="text-gray-400">Potency:</span> <span className="text-green-400">{f.finalPotency}</span> |
                 <span className="text-gray-400 ml-2">WR:</span> <span className="text-orange-400">{f.baseWR}</span> |
-                <span className="text-gray-400 ml-2">DM:</span> <span className="text-orange-400">{f.baseDM >= 0 ? '+' : ''}{f.baseDM}</span>
+                <span className="text-gray-400 ml-2">DM:</span> <span className="text-orange-400">{(f.baseDM ?? 0) >= 0 ? '+' : ''}{f.baseDM}</span>
               </div>
               <div className="text-xs text-gray-400 mt-2">
                 {f.ingredients.map(i => `${i.reagentName} (${i.role}, ${i.unitsUsed}U)`).join(', ')}
@@ -105,36 +159,3 @@ function FormulasViewBase({ reagents, formulas, batches, saveReagents, saveBatch
 }
 
 export const FormulasView = memo(FormulasViewBase);
-
-FormulasView.propTypes = {
-  reagents: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    name: PropTypes.string.isRequired,
-    quantity: PropTypes.number.isRequired
-  })).isRequired,
-  formulas: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    name: PropTypes.string.isRequired,
-    tier: PropTypes.number,
-    traitBudget: PropTypes.number,
-    vector: PropTypes.string,
-    dominantAspect: PropTypes.string,
-    secondaryAspect: PropTypes.string,
-    finalPotency: PropTypes.string,
-    potency: PropTypes.string,
-    baseWR: PropTypes.number,
-    baseDM: PropTypes.number,
-    ingredients: PropTypes.arrayOf(PropTypes.shape({
-      reagentName: PropTypes.string,
-      role: PropTypes.string,
-      unitsUsed: PropTypes.number
-    })),
-    traits: PropTypes.arrayOf(PropTypes.shape({
-      name: PropTypes.string,
-      cost: PropTypes.number
-    }))
-  })).isRequired,
-  batches: PropTypes.arrayOf(PropTypes.object).isRequired,
-  saveReagents: PropTypes.func.isRequired,
-  saveBatches: PropTypes.func.isRequired
-};

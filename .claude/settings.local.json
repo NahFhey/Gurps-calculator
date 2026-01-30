@@ -18,7 +18,8 @@
       "Bash(git commit -m \"$\\(cat <<''EOF''\nMigrate CombatContext to centralized store pattern\n\n- Create combat domain module \\(combatActions.ts, combatReducer.ts\\)\n- Add useCombatStore hook to replace CombatContext\n- Update combat components to use new hook\n- Remove CombatContext.jsx and CombatProvider from App\n- Extract combat reducer logic from campaignReducer\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(npm test:*)",
       "Bash(ls:*)",
-      "Bash(sort:*)"
+      "Bash(sort:*)",
+      "Bash(findstr:*)"
     ]
   }
 }

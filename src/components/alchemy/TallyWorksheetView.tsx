@@ -1,61 +1,101 @@
-import React, { useState } from 'react';
-import PropTypes from 'prop-types';
+import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { REFINEMENT_LEVELS } from '../../constants';
 import { computeDominantSecondary } from '../../utils/alchemy';
 import { toNumberOr } from '../../utils/helpers';
+import type { AlchemyReagent } from '../../types/views';
 
-export function TallyWorksheetView({ reagents }) {
-  const [worksheetItems, setWorksheetItems] = useState([]);
+// ============================================================================
+// TYPES
+// ============================================================================
 
-  // Get aspect points respecting identification level
-  function getKnownAspectPoints(reagent, refinement) {
-    if (!reagent.aspects?.primary) return {};
+type RefinementLevel = 'crude' | 'prepared' | 'refined';
 
-    const identificationLevel = reagent.identificationLevel || 0;
-    const activeSlots = REFINEMENT_LEVELS[refinement] || REFINEMENT_LEVELS.crude;
-    const points = {};
+interface WorksheetItem {
+  id: string;
+  reagentId: string;
+  units: number;
+  refinement: RefinementLevel;
+}
 
-    // Use false profile if it exists, otherwise use real data
-    const profile = reagent.falseProfile || reagent;
+interface AspectPoints {
+  [aspect: string]: number;
+}
 
-    // Primary (3pts) - known at level 1+
-    if (identificationLevel >= 1 && activeSlots.includes('primary') && profile.aspects.primary) {
-      points[profile.aspects.primary] = (points[profile.aspects.primary] || 0) + 3;
-    }
+interface AspectTally {
+  [aspect: string]: number;
+}
 
-    // Secondary (2pts) - known at level 2+
-    if (identificationLevel >= 2 && activeSlots.includes('secondary') && profile.aspects.secondary) {
-      points[profile.aspects.secondary] = (points[profile.aspects.secondary] || 0) + 2;
-    }
+export interface TallyWorksheetViewProps {
+  reagents: AlchemyReagent[];
+}
 
-    // Tertiary (1pt) - known at level 3+
-    if (identificationLevel >= 3 && activeSlots.includes('tertiary') && profile.aspects.tertiary) {
-      points[profile.aspects.tertiary] = (points[profile.aspects.tertiary] || 0) + 1;
-    }
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
 
-    return points;
+/**
+ * Get aspect points respecting identification level
+ */
+function getKnownAspectPoints(reagent: AlchemyReagent, refinement: RefinementLevel): AspectPoints {
+  if (!reagent.aspects?.primary) return {};
+
+  const identificationLevel = reagent.identificationLevel || 0;
+  const activeSlots = REFINEMENT_LEVELS[refinement] || REFINEMENT_LEVELS.crude;
+  const points: AspectPoints = {};
+
+  // Use false profile if it exists, otherwise use real data
+  const profile = reagent.falseProfile || reagent;
+  const aspects = profile.aspects;
+
+  if (!aspects) return {};
+
+  // Primary (3pts) - known at level 1+
+  if (identificationLevel >= 1 && activeSlots.includes('primary') && aspects.primary) {
+    points[aspects.primary] = (points[aspects.primary] || 0) + 3;
   }
 
-  // Tally aspects from worksheet items (respecting identification)
-  function tallyKnownAspects(items, reagentsMap) {
-    const tally = {};
+  // Secondary (2pts) - known at level 2+
+  if (identificationLevel >= 2 && activeSlots.includes('secondary') && aspects.secondary) {
+    points[aspects.secondary] = (points[aspects.secondary] || 0) + 2;
+  }
 
-    items.forEach(item => {
-      const reagent = reagentsMap.get(item.reagentId);
-      if (!reagent) return;
+  // Tertiary (1pt) - known at level 3+
+  if (identificationLevel >= 3 && activeSlots.includes('tertiary') && aspects.tertiary) {
+    points[aspects.tertiary] = (points[aspects.tertiary] || 0) + 1;
+  }
 
-      const points = getKnownAspectPoints(reagent, item.refinement);
+  return points;
+}
 
-      Object.keys(points).forEach(aspect => {
-        if (aspect) {
-          tally[aspect] = (tally[aspect] || 0) + (points[aspect] * item.units);
-        }
-      });
+/**
+ * Tally aspects from worksheet items (respecting identification)
+ */
+function tallyKnownAspects(items: WorksheetItem[], reagentsMap: Map<string, AlchemyReagent>): AspectTally {
+  const tally: AspectTally = {};
+
+  items.forEach(item => {
+    const reagent = reagentsMap.get(item.reagentId);
+    if (!reagent) return;
+
+    const points = getKnownAspectPoints(reagent, item.refinement);
+
+    Object.keys(points).forEach(aspect => {
+      if (aspect) {
+        tally[aspect] = (tally[aspect] || 0) + (points[aspect] * item.units);
+      }
     });
+  });
 
-    return tally;
-  }
+  return tally;
+}
+
+// ============================================================================
+// COMPONENT
+// ============================================================================
+
+export function TallyWorksheetView({ reagents }: TallyWorksheetViewProps) {
+  const [worksheetItems, setWorksheetItems] = useState<WorksheetItem[]>([]);
 
   function addItem() {
     if (reagents.length === 0) {
@@ -71,11 +111,11 @@ export function TallyWorksheetView({ reagents }) {
     }]);
   }
 
-  function removeItem(id) {
+  function removeItem(id: string) {
     setWorksheetItems(worksheetItems.filter(i => i.id !== id));
   }
 
-  function updateItem(id, field, value) {
+  function updateItem(id: string, field: keyof WorksheetItem, value: string | number) {
     setWorksheetItems(worksheetItems.map(i => i.id === id ? {...i, [field]: value} : i));
   }
 
@@ -141,7 +181,7 @@ export function TallyWorksheetView({ reagents }) {
 
                     <select
                       value={item.refinement}
-                      onChange={(e) => updateItem(item.id, 'refinement', e.target.value)}
+                      onChange={(e) => updateItem(item.id, 'refinement', e.target.value as RefinementLevel)}
                       className="bg-gray-600 px-3 py-2 rounded text-sm"
                     >
                       <option value="crude">Crude</option>
@@ -259,7 +299,3 @@ export function TallyWorksheetView({ reagents }) {
     </div>
   );
 }
-
-TallyWorksheetView.propTypes = {
-  reagents: PropTypes.array.isRequired
-};
