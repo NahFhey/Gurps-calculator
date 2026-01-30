@@ -10,6 +10,7 @@ import {
   getActiveConditions,
   createConditionInstance
 } from '../../utils/conditionsEngine';
+import { ConfirmDialog, useConfirmDialog, useToast } from '../ui';
 
 interface ConditionInstance {
   instanceId: string;
@@ -56,19 +57,29 @@ export default function ConditionsPanel({
   const [durationValue, setDurationValue] = useState('1');
   const [source, setSource] = useState('');
   const [notes, setNotes] = useState('');
+  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
+
+  const { warning: showWarning, error: showError } = useToast();
+
+  const removeConditionDialog = useConfirmDialog({
+    title: 'Remove Condition',
+    message: 'Are you sure you want to remove this condition?',
+    confirmLabel: 'Remove',
+    variant: 'warning',
+  });
 
   const activeConditions = getActiveConditions(participant) as ConditionInstance[];
   const availableConditions = getAllConditions();
 
   const handleAddCondition = () => {
     if (!selectedConditionId) {
-      alert('Select a condition to add');
+      showWarning('Select a condition to add');
       return;
     }
 
     const definition = getCondition(selectedConditionId);
     if (!definition) {
-      alert('Invalid condition selected');
+      showError('Invalid condition selected');
       return;
     }
 
@@ -77,7 +88,7 @@ export default function ConditionsPanel({
     if (durationType !== DurationType.PERMANENT && durationType !== DurationType.UNTIL_END_OF_COMBAT) {
       const value = parseInt(durationValue, 10);
       if (isNaN(value) || value <= 0) {
-        alert('Enter a valid duration value');
+        showWarning('Enter a valid duration value');
         return;
       }
       duration = { type: durationType, value };
@@ -96,7 +107,7 @@ export default function ConditionsPanel({
     });
 
     if (!conditionInstance) {
-      alert('Failed to create condition');
+      showError('Failed to create condition');
       return;
     }
 
@@ -113,10 +124,13 @@ export default function ConditionsPanel({
     setShowAddForm(false);
   };
 
-  const handleRemoveCondition = (conditionInstanceId: string) => {
-    if (confirm('Remove this condition?')) {
+  const handleRemoveCondition = async (conditionInstanceId: string) => {
+    setPendingRemoveId(conditionInstanceId);
+    const confirmed = await removeConditionDialog.confirm();
+    if (confirmed) {
       onRemoveCondition(conditionInstanceId);
     }
+    setPendingRemoveId(null);
   };
 
   return (
@@ -274,6 +288,9 @@ export default function ConditionsPanel({
           </div>
         </div>
       )}
+
+      {/* Remove Condition Confirmation Dialog */}
+      <ConfirmDialog {...removeConditionDialog.dialogProps} />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { generateId } from '../../utils/combatHelpers';
 import CharacterSheet from './CharacterSheet';
 import CharacterForm from './CharacterForm';
 import GCSImportModal from './GCSImportModal';
+import { useToast } from '../ui';
 import type { Character as PartyCharacter } from '../../types/campaign';
 
 interface Attack {
@@ -54,6 +55,9 @@ type SortByValue = 'name' | 'category' | 'basicSpeed';
  */
 export default function CharacterLibrary() {
   const { combatCharacters, saveCombatCharacters, combatTombstones, saveCombatTombstones, combatHistory, partyCharacters } = useCombatStore();
+
+  // Toast notifications
+  const { success: showSuccess, error: showError } = useToast();
 
   // Count party characters for informational display
   const partyCharacterCount = (partyCharacters as PartyCharacter[] || []).length;
@@ -170,7 +174,7 @@ export default function CharacterLibrary() {
       try {
         const imported = JSON.parse(e.target?.result as string);
         if (!Array.isArray(imported)) {
-          alert('Invalid file format: expected an array of characters');
+          showError('Invalid file format: expected an array of characters');
           return;
         }
 
@@ -184,9 +188,9 @@ export default function CharacterLibrary() {
         }));
 
         saveCombatCharacters([...(combatCharacters as CharacterData[]), ...newChars]);
-        alert(`Imported ${newChars.length} characters`);
+        showSuccess(`Imported ${newChars.length} characters`);
       } catch (error) {
-        alert('Error parsing JSON file: ' + (error as Error).message);
+        showError('Error parsing JSON file: ' + (error as Error).message);
       }
     };
     reader.readAsText(file);

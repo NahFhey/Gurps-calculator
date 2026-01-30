@@ -20,6 +20,7 @@ import {
   DaySummaryPanel,
   TaskDetailPanel
 } from './dayplanner/views';
+import { ConfirmDialog, useConfirmDialog, useToast } from './ui';
 import type {
   TaskAssignment,
   TaskMode,
@@ -47,6 +48,17 @@ function DayPlannerTabBase() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTaskMode, setNewTaskMode] = useState<TaskMode>('Fishing');
+
+  // Toast notifications
+  const { success: showSuccess } = useToast();
+
+  // Confirm dialog for skipping planned work
+  const skipWorkDialog = useConfirmDialog({
+    title: 'Skip Planned Work',
+    message: 'This slot has planned work. Sleeping will skip it. Continue?',
+    confirmLabel: 'Skip & Sleep',
+    variant: 'warning',
+  });
 
   // Derive data from normalized state
   const species = useMemo(() =>
@@ -240,7 +252,7 @@ function DayPlannerTabBase() {
   /**
    * Sleep button handler - advances time when no work is done
    */
-  function handleSleep() {
+  async function handleSleep() {
     const slotTasks = currentSlotTasks;
 
     // If slot has no tasks, advance immediately
@@ -255,9 +267,7 @@ function DayPlannerTabBase() {
     );
 
     if (!hasStartedTasks) {
-      const confirmed = window.confirm(
-        'This slot has planned work. Sleeping will skip it. Continue?'
-      );
+      const confirmed = await skipWorkDialog.confirm();
       if (!confirmed) return;
     }
 
@@ -302,7 +312,7 @@ function DayPlannerTabBase() {
     saveCurrentDay(nextDay);
     saveCurrentSlot(0); // Reset to Morning
 
-    alert(`Day ${currentDay} complete! Inventory committed. Starting Day ${nextDay}.`);
+    showSuccess(`Day ${currentDay} complete! Inventory committed. Starting Day ${nextDay}.`);
   }
 
   return (
@@ -367,6 +377,9 @@ function DayPlannerTabBase() {
 
       {/* Day Summary */}
       <DaySummaryPanel pendingDayLedger={pendingDayLedger} />
+
+      {/* Skip Work Confirmation Dialog */}
+      <ConfirmDialog {...skipWorkDialog.dialogProps} />
     </div>
   );
 }

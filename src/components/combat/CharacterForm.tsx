@@ -2,6 +2,7 @@ import { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import { X, Plus, Trash2, Copy } from 'lucide-react';
 import { COMBAT_CATEGORIES } from '../../constants';
 import { HUMANOID_DR_FIELDS, HIT_LOCATION_PROFILES } from '../../constants/hitLocationConstants';
+import { useToast } from '../ui';
 
 interface Attack {
   name: string;
@@ -53,6 +54,7 @@ interface CharacterFormProps {
  */
 export default function CharacterForm({ character, onSave, onCancel }: CharacterFormProps) {
   const isEditing = !!character;
+  const { warning: showWarning } = useToast();
 
   const [formData, setFormData] = useState<CharacterData>({
     name: '',
@@ -186,7 +188,7 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
     e.preventDefault();
 
     if (!formData.name.trim()) {
-      alert('Character name is required');
+      showWarning('Character name is required');
       return;
     }
 

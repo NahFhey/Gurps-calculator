@@ -34,6 +34,7 @@ import {
   WEATHER_ICONS,
 } from '../../types/location';
 import { TravelPanel } from './TravelPanel';
+import { ConfirmDialog, useConfirmDialog, useToast } from '../ui';
 
 interface LocationManagerProps {
   onClose?: () => void;
@@ -46,6 +47,16 @@ export function LocationManager({ onClose }: LocationManagerProps) {
   const [view, setView] = useState<ManagerView>('list');
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Location>>({});
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  const { warning: showWarning } = useToast();
+
+  const deleteLocationDialog = useConfirmDialog({
+    title: 'Delete Location',
+    message: 'Are you sure you want to delete this location? This cannot be undone.',
+    confirmLabel: 'Delete',
+    variant: 'danger',
+  });
 
   const locations = useMemo(
     () => Object.values(state.locations.locations),
@@ -125,14 +136,17 @@ export function LocationManager({ onClose }: LocationManagerProps) {
   };
 
   // Delete location
-  const handleDeleteLocation = (locationId: string) => {
+  const handleDeleteLocation = async (locationId: string) => {
     if (locations.length <= 1) {
-      alert('Cannot delete the last location. Create another location first.');
+      showWarning('Cannot delete the last location. Create another location first.');
       return;
     }
-    if (window.confirm('Are you sure you want to delete this location?')) {
+    setPendingDeleteId(locationId);
+    const confirmed = await deleteLocationDialog.confirm();
+    if (confirmed) {
       actions.removeLocation(locationId);
     }
+    setPendingDeleteId(null);
   };
 
   // Start editing a location
@@ -452,6 +466,9 @@ export function LocationManager({ onClose }: LocationManagerProps) {
           Close
         </button>
       )}
+
+      {/* Delete Location Confirmation Dialog */}
+      <ConfirmDialog {...deleteLocationDialog.dialogProps} />
     </div>
   );
 }
