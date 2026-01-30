@@ -19,7 +19,10 @@
       "Bash(npm test:*)",
       "Bash(ls:*)",
       "Bash(sort:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(timeout:*)",
+      "Bash(powershell:*)",
+      "Bash(npm run dev)"
     ]
   }
 }

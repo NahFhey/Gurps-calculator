@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useMemo, ReactNode } from 'react';
+import { createContext, useContext, useReducer, useMemo, useEffect, ReactNode } from 'react';
 
 /**
  * Panel Layout Context - Manages panel expand/collapse states and modal overlays
@@ -8,8 +8,32 @@ import { createContext, useContext, useReducer, useMemo, ReactNode } from 'react
 
 export type PanelMode = 'normal' | 'expanded' | 'collapsed';
 
+const LAYOUT_STORAGE_KEY = 'panelLayoutState';
+
+interface PersistedLayoutState {
+  partyColumn?: 'normal' | 'collapsed';
+  railColumn?: 'normal' | 'collapsed';
+}
+
+function loadPersistedLayout(): PersistedLayoutState {
+  try {
+    const stored = localStorage.getItem(LAYOUT_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored) as PersistedLayoutState;
+      return {
+        partyColumn: parsed.partyColumn ?? 'normal',
+        railColumn: parsed.railColumn ?? 'normal',
+      };
+    }
+  } catch (e) {
+    console.error('Failed to load layout state:', e);
+  }
+  return {};
+}
+
 export interface LayoutState {
   partyColumn: 'normal' | 'collapsed';
+  railColumn: 'normal' | 'collapsed';
   centerPanel: PanelMode;
   rightPanel: PanelMode;
   modalContent: ReactNode | null;
@@ -18,6 +42,7 @@ export interface LayoutState {
 
 type LayoutAction =
   | { type: 'SET_PARTY_COLUMN'; mode: 'normal' | 'collapsed' }
+  | { type: 'SET_RAIL_COLUMN'; mode: 'normal' | 'collapsed' }
   | { type: 'SET_CENTER_PANEL'; mode: PanelMode }
   | { type: 'SET_RIGHT_PANEL'; mode: PanelMode }
   | { type: 'EXPAND_CENTER' }
@@ -25,10 +50,12 @@ type LayoutAction =
   | { type: 'COLLAPSE_ALL' }
   | { type: 'OPEN_MODAL'; content: ReactNode; title?: string }
   | { type: 'CLOSE_MODAL' }
-  | { type: 'TOGGLE_PARTY_COLUMN' };
+  | { type: 'TOGGLE_PARTY_COLUMN' }
+  | { type: 'TOGGLE_RAIL_COLUMN' };
 
 const initialState: LayoutState = {
   partyColumn: 'normal',
+  railColumn: 'normal',
   centerPanel: 'normal',
   rightPanel: 'normal',
   modalContent: null,
@@ -76,6 +103,15 @@ function layoutReducer(state: LayoutState, action: LayoutAction): LayoutState {
         partyColumn: state.partyColumn === 'normal' ? 'collapsed' : 'normal'
       };
 
+    case 'SET_RAIL_COLUMN':
+      return { ...state, railColumn: action.mode };
+
+    case 'TOGGLE_RAIL_COLUMN':
+      return {
+        ...state,
+        railColumn: state.railColumn === 'normal' ? 'collapsed' : 'normal'
+      };
+
     case 'OPEN_MODAL':
       return {
         ...state,
@@ -99,12 +135,14 @@ interface PanelLayoutContextValue {
   state: LayoutState;
   actions: {
     setPartyColumn: (mode: 'normal' | 'collapsed') => void;
+    setRailColumn: (mode: 'normal' | 'collapsed') => void;
     setCenterPanel: (mode: PanelMode) => void;
     setRightPanel: (mode: PanelMode) => void;
     expandCenter: () => void;
     expandRight: () => void;
     collapseAll: () => void;
     togglePartyColumn: () => void;
+    toggleRailColumn: () => void;
     openModal: (content: ReactNode, title?: string) => void;
     closeModal: () => void;
   };
@@ -117,7 +155,20 @@ interface PanelLayoutProviderProps {
 }
 
 export function PanelLayoutProvider({ children }: PanelLayoutProviderProps) {
-  const [state, dispatch] = useReducer(layoutReducer, initialState);
+  const persistedLayout = loadPersistedLayout();
+  const [state, dispatch] = useReducer(layoutReducer, {
+    ...initialState,
+    ...persistedLayout,
+  });
+
+  // Persist layout state changes to localStorage
+  useEffect(() => {
+    const toSave: PersistedLayoutState = {
+      partyColumn: state.partyColumn,
+      railColumn: state.railColumn,
+    };
+    localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(toSave));
+  }, [state.partyColumn, state.railColumn]);
 
   const actions = useMemo(() => ({
     setPartyColumn: (mode: 'normal' | 'collapsed') =>
@@ -140,6 +191,12 @@ export function PanelLayoutProvider({ children }: PanelLayoutProviderProps) {
 
     togglePartyColumn: () =>
       dispatch({ type: 'TOGGLE_PARTY_COLUMN' }),
+
+    setRailColumn: (mode: 'normal' | 'collapsed') =>
+      dispatch({ type: 'SET_RAIL_COLUMN', mode }),
+
+    toggleRailColumn: () =>
+      dispatch({ type: 'TOGGLE_RAIL_COLUMN' }),
 
     openModal: (content: ReactNode, title?: string) =>
       dispatch({ type: 'OPEN_MODAL', content, title }),

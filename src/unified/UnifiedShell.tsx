@@ -1,10 +1,9 @@
-import { useMemo, useRef, useCallback, useState, ReactNode, KeyboardEvent, MouseEvent, ChangeEvent } from 'react';
+import { useMemo, useRef, useCallback, useState, useEffect, ReactNode, KeyboardEvent, MouseEvent, ChangeEvent } from 'react';
 import { ChevronLeft, ChevronRight, Plus, MoreVertical } from 'lucide-react';
 import { InventoryTab } from '../components/InventoryTab';
 import { ManagerTab } from '../components/ManagerTab';
 import { RulesTab } from '../components/RulesTab';
 import { ChangelogTab } from '../components/ChangelogTab';
-import { CombatTab } from '../components/CombatTab';
 import { DowntimePanel } from '../components/downtime';
 import { CharacterSheet } from '../components/character-sheet';
 import {
@@ -74,11 +73,10 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
       },
       { id: 'rules', label: 'Rules', content: <RulesTab /> },
       { id: 'changelog', label: 'Changelog', content: <ChangelogTab /> },
-      { id: 'combat', label: 'Combat', content: <CombatTab /> }
     ];
   }, [modules, state.time?.day, state.time?.slot]);
-  const activeModuleId = state.ui.activeModule || availableModules[0]?.id;
-  const activeModule = availableModules.find((moduleItem) => moduleItem.id === activeModuleId);
+  const activeModuleId = state.ui.activeModule;
+  const activeModule = activeModuleId ? availableModules.find((moduleItem) => moduleItem.id === activeModuleId) : null;
   const selectedCharacterId = useSelectedCharacterId();
   const selectedCharacter = useSelectedCharacter();
   const characterPanelView = state.ui.characterPanelView;
@@ -217,25 +215,45 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
 
   // Compute grid columns based on panel states
   const isPartyCollapsed = layoutState.partyColumn === 'collapsed';
+  const isRailCollapsed = layoutState.railColumn === 'collapsed';
   const isCenterExpanded = layoutState.centerPanel === 'expanded';
   const isRightExpanded = layoutState.rightPanel === 'expanded';
 
   // Character panel should hide when no character is selected or party is collapsed
   const shouldHideCharacterPanel = !selectedCharacterId || isPartyCollapsed;
 
-  const gridCols = useMemo(() => {
+  // Module pane should hide when no module is selected or rail is collapsed
+  const shouldHideModulePane = !activeModule || isRailCollapsed;
+
+  const gridTemplateColumns = useMemo(() => {
+    const collapsedWidth = '56px'; // Same width for both collapsed rails (w-8 button + p-2 padding + border)
+    const railWidth = isRailCollapsed ? collapsedWidth : '160px';
+    const partyWidth = isPartyCollapsed ? collapsedWidth : '220px';
+    const modulePaneWidth = shouldHideModulePane ? '0px' : 'minmax(0, 1fr)';
+    // Scroll edge decorative columns - 4px wide lines with 8px dark gap between
+    const scrollEdge = '4px';
+    const scrollGap = '8px';
+
     if (isPartyCollapsed) {
       // Party collapsed - character panel always hidden, give space to right panel
-      return 'grid-cols-[48px_0px_minmax(0,1fr)_160px]';
+      // Grid: party | scrollL1 | gapL | scrollL2 | center | modulepane | scrollR1 | gapR | scrollR2 | rail
+      return `${partyWidth} ${scrollEdge} ${scrollGap} ${scrollEdge} 0px ${modulePaneWidth} ${scrollEdge} ${scrollGap} ${scrollEdge} ${railWidth}`;
     }
     if (shouldHideCharacterPanel) {
       // No character selected - hide center, expand right
-      return 'grid-cols-[220px_0px_minmax(0,1fr)_160px]';
+      return `${partyWidth} ${scrollEdge} ${scrollGap} ${scrollEdge} 0px ${modulePaneWidth} ${scrollEdge} ${scrollGap} ${scrollEdge} ${railWidth}`;
     }
-    if (isCenterExpanded) return 'grid-cols-[220px_minmax(0,2fr)_0px_160px]';
-    if (isRightExpanded) return 'grid-cols-[220px_0px_minmax(0,2fr)_160px]';
-    return 'grid-cols-[220px_minmax(0,1fr)_minmax(0,1fr)_160px]';
-  }, [isPartyCollapsed, isCenterExpanded, isRightExpanded, shouldHideCharacterPanel]);
+    if (isCenterExpanded) return `${partyWidth} ${scrollEdge} ${scrollGap} ${scrollEdge} minmax(0, 2fr) 0px ${scrollEdge} ${scrollGap} ${scrollEdge} ${railWidth}`;
+    if (isRightExpanded) return `${partyWidth} ${scrollEdge} ${scrollGap} ${scrollEdge} 0px minmax(0, 2fr) ${scrollEdge} ${scrollGap} ${scrollEdge} ${railWidth}`;
+    return `${partyWidth} ${scrollEdge} ${scrollGap} ${scrollEdge} minmax(0, 1fr) ${modulePaneWidth} ${scrollEdge} ${scrollGap} ${scrollEdge} ${railWidth}`;
+  }, [isPartyCollapsed, isCenterExpanded, isRightExpanded, shouldHideCharacterPanel, isRailCollapsed, shouldHideModulePane]);
+
+  // Clear active module when rail collapses
+  useEffect(() => {
+    if (isRailCollapsed) {
+      actions.setActiveModule('');
+    }
+  }, [isRailCollapsed, actions]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
@@ -287,14 +305,17 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
       </header>
 
       {/* Main Content Grid */}
-      <div className={`flex-1 grid ${gridCols} gap-4 p-6 transition-all duration-300`}>
+      <div
+        className="flex-1 grid gap-4 p-6 transition-all duration-300"
+        style={{ gridTemplateColumns }}
+      >
         {/* Party Column - Collapsible */}
         <section
           className={`rounded border border-gray-700 bg-gray-800/60 overflow-hidden transition-all duration-300 ${
-            isPartyCollapsed ? 'p-2' : 'p-4'
+            isPartyCollapsed ? 'p-2 min-w-[56px]' : 'p-4'
           }`}
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className={`flex items-center mb-2 ${isPartyCollapsed ? 'justify-center' : 'justify-between'}`}>
             {!isPartyCollapsed && (
               <h2 className="text-sm uppercase tracking-wide text-gray-400">Party</h2>
             )}
@@ -467,6 +488,19 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           )}
         </section>
 
+        {/* Left Scroll Edge 1 - decorative line (inner, next to party) */}
+        <div className="flex items-center justify-center py-3">
+          <div className="w-full h-[calc(100%-1.5rem)] rounded bg-gray-700/40" />
+        </div>
+
+        {/* Left Scroll Gap - dark space between lines */}
+        <div />
+
+        {/* Left Scroll Edge 2 - decorative line (outer, next to content) */}
+        <div className="flex items-center justify-center py-3">
+          <div className="w-full h-[calc(100%-1.5rem)] rounded bg-gray-700/40" />
+        </div>
+
         {/* Center Panel - Character Sheet/Skills/Equipment/Inventory (always in DOM to maintain grid structure) */}
         <section
           className={`overflow-hidden transition-all duration-300 ${
@@ -493,38 +527,107 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
 
         {/* Right Panel - Module Pane */}
         <section
-          className={`rounded border border-gray-700 bg-gray-800/60 p-4 overflow-hidden transition-all duration-300 ${
-            isCenterExpanded ? 'hidden' : ''
+          className={`overflow-hidden transition-all duration-300 ${
+            isCenterExpanded || shouldHideModulePane
+              ? 'invisible'
+              : 'rounded border border-gray-700 bg-gray-800/60 p-4'
           }`}
         >
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm uppercase tracking-wide text-gray-400">
-              {activeModule?.label || 'Module Pane'}
-            </h2>
-          </div>
-          <div className="mt-4">{activeModule?.content}</div>
+          {activeModule && (
+            <>
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-sm uppercase tracking-wide text-gray-400">
+                  {activeModule.label}
+                </h2>
+              </div>
+              <div className="mt-4">{activeModule.content}</div>
+            </>
+          )}
         </section>
 
+        {/* Right Scroll Edge 1 - decorative line (outer, next to content) */}
+        <div className="flex items-center justify-center py-3">
+          <div className="w-full h-[calc(100%-1.5rem)] rounded bg-gray-700/40" />
+        </div>
+
+        {/* Right Scroll Gap - dark space between lines */}
+        <div />
+
+        {/* Right Scroll Edge 2 - decorative line (inner, next to rail) */}
+        <div className="flex items-center justify-center py-3">
+          <div className="w-full h-[calc(100%-1.5rem)] rounded bg-gray-700/40" />
+        </div>
+
         {/* Rail - Module Navigation */}
-        <aside className="rounded border border-gray-700 bg-gray-800/60 p-4">
-          <h2 className="text-sm uppercase tracking-wide text-gray-400">Rail</h2>
-          <div className="mt-3 flex flex-col gap-2">
-            {availableModules.map((moduleItem) => (
-              <button
-                key={moduleItem.id}
-                type="button"
-                data-testid={`rail-module-${moduleItem.id}`}
-                onClick={() => actions.setActiveModule(moduleItem.id)}
-                className={`rounded border px-3 py-2 text-sm transition-colors ${
-                  activeModuleId === moduleItem.id
-                    ? 'border-blue-500 bg-blue-500/20 text-blue-200'
-                    : 'border-gray-700 bg-gray-900 text-gray-200 hover:border-gray-500'
-                }`}
-              >
-                {moduleItem.label}
-              </button>
-            ))}
+        <aside
+          className={`rounded border border-gray-700 bg-gray-800/60 overflow-hidden transition-all duration-300 ${
+            isRailCollapsed ? 'p-2 min-w-[56px]' : 'p-4'
+          }`}
+        >
+          {/* Header with toggle button - matching Party collapsed structure */}
+          <div className={`flex items-center mb-2 ${isRailCollapsed ? 'justify-center' : 'justify-between'}`}>
+            {!isRailCollapsed && (
+              <h2 className="text-sm uppercase tracking-wide text-gray-400">Rail</h2>
+            )}
+            <button
+              type="button"
+              onClick={layoutActions.toggleRailColumn}
+              className="p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-gray-200"
+              title={isRailCollapsed ? 'Expand rail' : 'Collapse rail'}
+            >
+              {isRailCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </button>
           </div>
+
+          {/* Module buttons - expanded view */}
+          {!isRailCollapsed && (
+            <div className="space-y-2">
+              {availableModules.map((moduleItem) => {
+                const isSelected = activeModuleId === moduleItem.id;
+                return (
+                  <button
+                    key={moduleItem.id}
+                    type="button"
+                    data-testid={`rail-module-${moduleItem.id}`}
+                    onClick={() => actions.setActiveModule(isSelected ? '' : moduleItem.id)}
+                    title={moduleItem.label}
+                    className={`rounded border transition-colors px-3 py-2 w-full text-sm ${
+                      isSelected
+                        ? 'border-blue-500 bg-blue-500/20 text-blue-200'
+                        : 'border-gray-700 bg-gray-900 text-gray-200 hover:border-gray-500'
+                    }`}
+                  >
+                    {moduleItem.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Module buttons - collapsed view (matching Party collapsed style exactly) */}
+          {isRailCollapsed && (
+            <div className="flex flex-col gap-1">
+              {availableModules.map((moduleItem) => {
+                const isSelected = activeModuleId === moduleItem.id;
+                return (
+                  <button
+                    key={moduleItem.id}
+                    type="button"
+                    data-testid={`rail-module-${moduleItem.id}`}
+                    onClick={() => actions.setActiveModule(isSelected ? '' : moduleItem.id)}
+                    title={moduleItem.label}
+                    className={`w-8 h-8 rounded text-xs font-bold flex items-center justify-center ${
+                      isSelected
+                        ? 'border border-blue-500 bg-blue-500/20 text-blue-200'
+                        : 'border border-gray-700 bg-gray-900 text-gray-300 hover:border-gray-500'
+                    }`}
+                  >
+                    {moduleItem.label.charAt(0)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </aside>
       </div>
 
