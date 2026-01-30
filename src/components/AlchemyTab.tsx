@@ -9,6 +9,12 @@ import { useCampaignStore } from '../state/campaignStore';
 import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
 import { alchemyLog } from '../utils/activityLogger';
 import { useWeatherModifiers } from '../hooks/useWeatherModifiers';
+import type {
+  AlchemyReagent,
+  AlchemyFormula,
+  AlchemyBatch,
+  AlchemyLab
+} from '../types/campaign';
 
 // ============================================================================
 // Types
@@ -23,30 +29,12 @@ interface Worker {
   st?: number;
 }
 
-interface AlchemyReagent {
-  id: string;
-  [key: string]: unknown;
-}
-
-interface AlchemyFormula {
-  id: string;
-  [key: string]: unknown;
-}
-
-interface AlchemyBatch {
-  id: string;
-  phase: string;
-  [key: string]: unknown;
-}
-
-interface AlchemyLab {
-  id: string;
-  [key: string]: unknown;
-}
-
-interface AlchemySettings {
-  defaultLabRating: number;
-  workBlockMinutes: number;
+// Extended batch type for UI that includes legacy 'phase' field
+// (child components may use 'phase' instead of 'status')
+interface AlchemyBatchUI extends AlchemyBatch {
+  phase?: string;
+  formulaName?: string;
+  quality?: string;
 }
 
 // ============================================================================
@@ -71,7 +59,7 @@ export function AlchemyTab() {
   const [view, setView] = useState<AlchemyView>('reagents');
 
   // Get weather modifiers for alchemy
-  const { modifiers: weatherModifiers, hasEffect, effectDescription, locationName } = useWeatherModifiers('alchemy');
+  const { hasEffect, effectDescription, locationName } = useWeatherModifiers('alchemy');
 
   // Derive data from normalized state
   const reagents = useMemo(() =>
@@ -84,17 +72,22 @@ export function AlchemyTab() {
     [state.entities.alchemyFormulas]
   );
 
-  const batches = useMemo(() =>
-    denormalizeObject(state.entities.alchemyBatches) as AlchemyBatch[],
-    [state.entities.alchemyBatches]
-  );
+  // Map batches to include 'phase' field for backward compatibility with child components
+  const batches = useMemo(() => {
+    const rawBatches = denormalizeObject(state.entities.alchemyBatches) as AlchemyBatch[];
+    return rawBatches.map(batch => ({
+      ...batch,
+      // Map 'status' to 'phase' for legacy components
+      phase: batch.status === 'brewing' ? 'brewing' : batch.status === 'complete' ? 'completed' : batch.status
+    })) as AlchemyBatchUI[];
+  }, [state.entities.alchemyBatches]);
 
   const labs = useMemo(() =>
     denormalizeObject(state.entities.alchemyLabs) as AlchemyLab[],
     [state.entities.alchemyLabs]
   );
 
-  const alchemySettings = state.entities.alchemySettings as AlchemySettings;
+  const alchemySettings = state.entities.alchemySettings;
 
   // Derive workers from characters (same pattern as ConfigContext)
   const workers = useMemo(() =>
@@ -108,25 +101,28 @@ export function AlchemyTab() {
   );
 
   // Track previous batches for change detection
-  const prevBatchesRef = useRef<AlchemyBatch[]>(batches);
+  const prevBatchesRef = useRef<AlchemyBatchUI[]>(batches);
 
   // Save callbacks that normalize arrays back to records
-  const saveReagents = useCallback((reagentsArray: AlchemyReagent[]) => {
-    actions.setAlchemyReagents(normalizeArray(reagentsArray));
+  // Note: These accept 'any' to accommodate the legacy JSX components that may pass
+  // objects with additional properties not in our type definitions
+  const saveReagents = useCallback((reagentsArray: any[]) => {
+    actions.setAlchemyReagents(normalizeArray(reagentsArray) as Record<string, AlchemyReagent>);
   }, [actions]);
 
-  const saveFormulas = useCallback((formulasArray: AlchemyFormula[]) => {
-    actions.setAlchemyFormulas(normalizeArray(formulasArray));
+  const saveFormulas = useCallback((formulasArray: any[]) => {
+    actions.setAlchemyFormulas(normalizeArray(formulasArray) as Record<string, AlchemyFormula>);
   }, [actions]);
 
-  const saveBatches = useCallback((batchesArray: AlchemyBatch[]) => {
+  const saveBatches = useCallback((batchesArray: any[]) => {
     const prevBatches = prevBatchesRef.current;
     const prevBatchIds = new Set(prevBatches.map(b => b.id));
     const prevBatchMap = new Map(prevBatches.map(b => [b.id, b]));
 
     // Detect new batches (started)
     for (const batch of batchesArray) {
-      if (!prevBatchIds.has(batch.id) && batch.phase === 'brewing') {
+      const phase = batch.phase || batch.status;
+      if (!prevBatchIds.has(batch.id) && phase === 'brewing') {
         actions.addLogEntry(alchemyLog.batchStarted(batch.formulaName || 'Unknown'));
       }
     }
@@ -134,24 +130,36 @@ export function AlchemyTab() {
     // Detect completed or failed batches
     for (const batch of batchesArray) {
       const prevBatch = prevBatchMap.get(batch.id);
-      if (prevBatch && prevBatch.phase === 'brewing') {
-        if (batch.phase === 'completed') {
+      const phase = batch.phase || batch.status;
+      const prevPhase = prevBatch?.phase || prevBatch?.status;
+      if (prevBatch && prevPhase === 'brewing') {
+        if (phase === 'completed' || phase === 'complete') {
           actions.addLogEntry(alchemyLog.batchCompleted(
             batch.formulaName || 'Unknown',
-            (batch as any).quality || 'Unknown'
+            batch.quality || 'Unknown'
           ));
-        } else if (batch.phase === 'failed') {
+        } else if (phase === 'failed') {
           actions.addLogEntry(alchemyLog.batchFailed(batch.formulaName || 'Unknown'));
         }
       }
     }
 
+    // Map phase back to status when saving
+    const normalizedBatches = batchesArray.map(batch => {
+      const { phase, ...rest } = batch;
+      // If batch has phase but not status, convert phase to status
+      if (phase && !rest.status) {
+        rest.status = phase === 'completed' ? 'complete' : phase;
+      }
+      return rest;
+    });
+
     prevBatchesRef.current = batchesArray;
-    actions.setAlchemyBatches(normalizeArray(batchesArray));
+    actions.setAlchemyBatches(normalizeArray(normalizedBatches) as Record<string, AlchemyBatch>);
   }, [actions]);
 
   // Count batches currently in brewing phase for badge display
-  const activeCount = batches.filter(b => b.phase === 'brewing').length;
+  const activeCount = batches.filter(b => b.phase === 'brewing' || b.status === 'brewing').length;
 
   return (
     <div>
@@ -206,10 +214,10 @@ export function AlchemyTab() {
       </div>
 
       {view === 'reagents' && <ReagentsView reagents={reagents} alchemySettings={alchemySettings} />}
-      {view === 'analysis' && <AnalysisView reagents={reagents} labs={labs} workers={workers} alchemySettings={alchemySettings} saveReagents={saveReagents} />}
+      {view === 'analysis' && <AnalysisView reagents={reagents} labs={labs} workers={workers} _alchemySettings={alchemySettings} saveReagents={saveReagents} />}
       {view === 'processing' && <ConcentrationRefinementView reagents={reagents} labs={labs} workers={workers} saveReagents={saveReagents} />}
-      {view === 'formulas' && <FormulasView reagents={reagents} formulas={formulas} batches={batches} saveReagents={saveReagents} saveFormulas={saveFormulas} saveBatches={saveBatches} />}
-      {view === 'batches' && <BatchesView batches={batches} workers={workers} formulas={formulas} reagents={reagents} saveBatches={saveBatches} saveFormulas={saveFormulas} saveReagents={saveReagents} />}
+      {view === 'formulas' && <FormulasView reagents={reagents} formulas={formulas} batches={batches} saveReagents={saveReagents} saveBatches={saveBatches} />}
+      {view === 'batches' && <BatchesView batches={batches} workers={workers} formulas={formulas} reagents={reagents} labs={labs} saveBatches={saveBatches} saveFormulas={saveFormulas} saveReagents={saveReagents} />}
       {view === 'tally' && <TallyWorksheetView reagents={reagents} />}
     </div>
   );

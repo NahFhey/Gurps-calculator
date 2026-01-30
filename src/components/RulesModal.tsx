@@ -1,26 +1,32 @@
 import React from 'react';
 import { X, BookOpen } from 'lucide-react';
 
-/**
- * RulesModal Component - Displays a modal popup with rules for a specific game section
- *
- * Provides quick-reference rules summaries for each major system (inventory, cooking,
- * crafting, alchemy, manager). Used as a contextual help popup accessed from various
- * parts of the application.
- *
- * @param {Object} props - Component props
- * @param {string|null} props.section - Section key to display ('inventory', 'cooking', etc.)
- * @param {Function} props.onClose - Callback to close the modal
- * @returns {JSX.Element|null} Modal overlay with rules content, or null if section is falsy
- */
-export function RulesModal({ section, onClose }) {
-  if (!section) return null;
+// ============================================================================
+// Types
+// ============================================================================
 
-  const rulesContent = {
-    inventory: {
-      title: 'Inventory System Rules',
-      icon: '📦',
-      content: `**Raw Materials:**
+export type RulesSection = 'inventory' | 'cooking' | 'crafting' | 'alchemy' | 'manager';
+
+export interface RulesContent {
+  title: string;
+  icon: string;
+  content: string;
+}
+
+export interface RulesModalProps {
+  section: RulesSection | null;
+  onClose: () => void;
+}
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+const rulesContent: Record<RulesSection, RulesContent> = {
+  inventory: {
+    title: 'Inventory System Rules',
+    icon: '📦',
+    content: `**Raw Materials:**
 - Materials have types that determine properties (HT, weight mod, HP mod)
 - Duplicate prevention: Matching name AND type auto-merge
 - Use existing item checkbox for browsing filtered inventory
@@ -36,11 +42,11 @@ export function RulesModal({ section, onClose }) {
 - Required to edit material/food types
 - Prevents exploitation of game mechanics
 - Toggle in Manager tab`
-    },
-    cooking: {
-      title: 'Cooking System Rules',
-      icon: '🍳',
-      content: `**Recipe Creation:**
+  },
+  cooking: {
+    title: 'Cooking System Rules',
+    icon: '🍳',
+    content: `**Recipe Creation:**
 - Ingredients must total weight = number of people
 - Difficulty: -(unique ingredients - 1)
 - Skill rolls: floor(unique/2) + extra types + crit bonus
@@ -58,11 +64,11 @@ export function RulesModal({ section, onClose }) {
 - Kitchens provide 0-4 rating bonus
 - Skills table in Manager (GM locked)
 - Random skill selection available`
-    },
-    crafting: {
-      title: 'Crafting System Rules',
-      icon: '⚒️',
-      content: `**Three Phases:**
+  },
+  crafting: {
+    title: 'Crafting System Rules',
+    icon: '⚒️',
+    content: `**Three Phases:**
 1. Setup: Choose template, quality, materials
 2. Design: Create blueprint (2×HP hours)
 3. Craft: Build item (HP hours)
@@ -82,11 +88,11 @@ export function RulesModal({ section, onClose }) {
 - "New Project" always available
 - Work on multiple simultaneously
 - Progress bars show completion`
-    },
-    alchemy: {
-      title: 'Alchemy System Rules',
-      icon: '⚗️',
-      content: `**Reagent Analysis:**
+  },
+  alchemy: {
+    title: 'Alchemy System Rules',
+    icon: '⚗️',
+    content: `**Reagent Analysis:**
 - Costs 1U per analysis
 - Worker + Lab rating bonus
 - Roll 3d6 vs effective skill
@@ -110,11 +116,11 @@ export function RulesModal({ section, onClose }) {
 - Remove hazards
 - Creates derived reagents
 - Processing history tracked`
-    },
-    manager: {
-      title: 'Manager Tab Rules',
-      icon: '⚙️',
-      content: `**GM Mode:**
+  },
+  manager: {
+    title: 'Manager Tab Rules',
+    icon: '⚙️',
+    content: `**GM Mode:**
 - Password protected
 - Required for sensitive edits
 - Type editing, skills table
@@ -135,8 +141,22 @@ export function RulesModal({ section, onClose }) {
 - Food types: Color-coded
 - Custom templates for crafting
 - Import/Export all data`
-    }
-  };
+  }
+};
+
+// ============================================================================
+// Component
+// ============================================================================
+
+/**
+ * RulesModal Component - Displays a modal popup with rules for a specific game section
+ *
+ * Provides quick-reference rules summaries for each major system (inventory, cooking,
+ * crafting, alchemy, manager). Used as a contextual help popup accessed from various
+ * parts of the application.
+ */
+export function RulesModal({ section, onClose }: RulesModalProps): JSX.Element | null {
+  if (!section) return null;
 
   const content = rulesContent[section];
   if (!content) return null;

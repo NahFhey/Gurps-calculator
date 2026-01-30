@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run test:*)",
+      "Bash(timeout 3 npm run dev:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vitest:*)",
+      "Bash(grep:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nRefactor state management into domain-specific modules\n\nSplit monolithic campaignReducer \\(1,430 lines\\) into domain modules:\n- inventory, gathering, alchemy, crafting, character\n- Added centralized selectors for all domains\n- Deleted 5 unused legacy context files\n- campaignReducer now delegates to domain reducers\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(for file in src/utils/*.js)",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nMigrate CombatContext to centralized store pattern\n\n- Create combat domain module \\(combatActions.ts, combatReducer.ts\\)\n- Add useCombatStore hook to replace CombatContext\n- Update combat components to use new hook\n- Remove CombatContext.jsx and CombatProvider from App\n- Extract combat reducer logic from campaignReducer\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(npm test:*)",
+      "Bash(ls:*)",
+      "Bash(sort:*)"
+    ]
+  }
+}

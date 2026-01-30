@@ -5,6 +5,10 @@
  * Conditions can be applied to combatants and track durations.
  */
 
+// ============================================================================
+// Condition IDs
+// ============================================================================
+
 export const ConditionId = {
   STUNNED: 'stunned',
   PRONE: 'prone',
@@ -18,9 +22,61 @@ export const ConditionId = {
   HASTE: 'haste',
   SHIELDED: 'shielded',
   FATIGUED: 'fatigued'
-};
+} as const;
 
-export const ConditionCatalog = {
+export type ConditionIdType = typeof ConditionId[keyof typeof ConditionId];
+
+// ============================================================================
+// Duration Types
+// ============================================================================
+
+/**
+ * Duration type constants
+ */
+export const DurationType = {
+  TURNS: 'turns',                     // Expires after N actor turns
+  ROUNDS: 'rounds',                   // Expires after N combat rounds
+  UNTIL_END_OF_COMBAT: 'untilEndOfCombat',  // Lasts until combat ends
+  PERMANENT: 'permanent'              // Lasts until manually removed
+} as const;
+
+export type DurationTypeValue = typeof DurationType[keyof typeof DurationType];
+
+// ============================================================================
+// Stacking Rules
+// ============================================================================
+
+/**
+ * Stacking rule constants
+ */
+export const StackingRule = {
+  REPLACE: 'replace',  // New application replaces old
+  STACK: 'stack',      // Multiple instances can coexist
+  MAX: 'max'           // Take longest duration if already present
+} as const;
+
+export type StackingRuleValue = typeof StackingRule[keyof typeof StackingRule];
+
+// ============================================================================
+// Condition Definitions
+// ============================================================================
+
+export interface ConditionDuration {
+  type: DurationTypeValue;
+  value: number | null;
+}
+
+export interface ConditionDefinition {
+  id: ConditionIdType;
+  label: string;
+  description: string;
+  defaultDuration: ConditionDuration;
+  stackingRule: StackingRuleValue;
+  isObvious: boolean;
+  icon: string;
+}
+
+export const ConditionCatalog: Record<ConditionIdType, ConditionDefinition> = {
   [ConditionId.STUNNED]: {
     id: ConditionId.STUNNED,
     label: 'Stunned',
@@ -142,43 +198,28 @@ export const ConditionCatalog = {
   }
 };
 
-/**
- * Duration type constants
- */
-export const DurationType = {
-  TURNS: 'turns',                     // Expires after N actor turns
-  ROUNDS: 'rounds',                   // Expires after N combat rounds
-  UNTIL_END_OF_COMBAT: 'untilEndOfCombat',  // Lasts until combat ends
-  PERMANENT: 'permanent'              // Lasts until manually removed
-};
-
-/**
- * Stacking rule constants
- */
-export const StackingRule = {
-  REPLACE: 'replace',  // New application replaces old
-  STACK: 'stack',      // Multiple instances can coexist
-  MAX: 'max'           // Take longest duration if already present
-};
+// ============================================================================
+// Helper Functions
+// ============================================================================
 
 /**
  * Get condition definition by ID
  */
-export function getCondition(conditionId) {
-  return ConditionCatalog[conditionId] || null;
+export function getCondition(conditionId: string): ConditionDefinition | null {
+  return ConditionCatalog[conditionId as ConditionIdType] || null;
 }
 
 /**
  * Get all condition definitions as array
  */
-export function getAllConditions() {
+export function getAllConditions(): ConditionDefinition[] {
   return Object.values(ConditionCatalog);
 }
 
 /**
  * Check if a condition is obvious (visible in Player View)
  */
-export function isConditionObvious(conditionId) {
+export function isConditionObvious(conditionId: string): boolean {
   const condition = getCondition(conditionId);
   return condition?.isObvious ?? false;
 }
@@ -186,7 +227,7 @@ export function isConditionObvious(conditionId) {
 /**
  * Get condition label
  */
-export function getConditionLabel(conditionId) {
+export function getConditionLabel(conditionId: string): string {
   const condition = getCondition(conditionId);
   return condition?.label || conditionId;
 }
@@ -194,7 +235,7 @@ export function getConditionLabel(conditionId) {
 /**
  * Get condition icon
  */
-export function getConditionIcon(conditionId) {
+export function getConditionIcon(conditionId: string): string {
   const condition = getCondition(conditionId);
   return condition?.icon || '❓';
 }

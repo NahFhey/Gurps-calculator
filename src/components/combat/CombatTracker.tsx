@@ -67,8 +67,16 @@ export default function CombatTracker() {
     combatHistory,
     saveCombatHistory,
     combatRulesPreset,
-    combatReveal
+    combatReveal,
+    saveCombatReveal
   } = useCombatStore();
+
+  // TODO: Remove these stubs after completing combat state migration
+  // These are legacy variables that were removed but still referenced
+  const combatActiveHistory: HistoryState | null = null;
+  const saveCombatActiveHistory = (_history: HistoryState) => {
+    console.warn('saveCombatActiveHistory: not implemented - history is managed internally');
+  };
 
   const [noteText, setNoteText] = useState('');
   const [diceExpression, setDiceExpression] = useState('3d6');

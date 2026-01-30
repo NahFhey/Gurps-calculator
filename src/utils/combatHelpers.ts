@@ -8,6 +8,173 @@ import { DAMAGE_TYPE_LABELS } from './wounding';
 import { getCombatView } from './combatViewFilter';
 import { filterLogForPlayerView } from './combatLogFilter';
 import { encryptJSON, decryptJSON } from './cryptoLock';
+import type {
+  Participant,
+  LogEntry,
+  CombatState,
+  HistoryState,
+  RevealState,
+  RollData,
+  ActionData,
+} from '../types/combatTracker';
+
+// ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
+export type HPStatusValue = 'healthy' | 'injured' | 'critical' | 'dead';
+
+export interface ImportResult<T> {
+  valid: boolean;
+  data: T | null;
+  error: string | null;
+}
+
+export interface CombatExportData {
+  version: number;
+  exportDate?: string;
+  exportType?: string;
+  combatState: CombatState;
+  history?: HistoryState | null;
+  revealState?: RevealState | null;
+  gmLock?: string;
+}
+
+export interface GMLockedImportResult extends ImportResult<CombatExportData> {
+  isLocked: boolean;
+}
+
+export interface EncounterInfo {
+  name?: string;
+  date?: string | number;
+}
+
+export interface LogEntryParams {
+  entryType: string;
+  round: number;
+  turn: number;
+  actorInstanceId?: string | null;
+  targetInstanceId?: string | null;
+  text: string;
+  hpDelta?: number | null;
+  fpDelta?: number | null;
+  mpDelta?: number | null;
+  roll?: RollData | null;
+}
+
+export interface RollResult {
+  expression: string;
+  dice: number[];
+  modifier?: number;
+  total: number;
+  target?: number;
+  margin?: number;
+  success?: boolean;
+}
+
+export interface ActionLogEntryParams {
+  round: number;
+  turn: number;
+  actorInstanceId: string;
+  actorName: string;
+  targetInstanceId?: string | null;
+  targetName?: string | null;
+  maneuver?: string | null;
+  action?: ActionData | null;
+}
+
+export interface InjuryLogEntryParams {
+  round: number;
+  turn: number;
+  targetInstanceId: string;
+  targetName: string;
+  hitLocation?: {
+    locationLabel?: string;
+    locationKey?: string;
+  } | null;
+  damageBreakdown: {
+    raw?: number;
+    dr?: number;
+    penetrating?: number;
+    injuryApplied: number;
+    damageType?: string;
+    baseWoundingMultiplier?: number;
+    locationWoundingMultiplier?: number;
+    woundingMultiplier?: number;
+    locationLabel?: string;
+  };
+  effects?: unknown[] | null;
+  currentHP?: number | null;
+  newHP?: number | null;
+}
+
+export interface EffectLogEntryParams {
+  round: number;
+  turn: number;
+  targetInstanceId: string;
+  targetName: string;
+  effectType: string;
+  effectData: unknown;
+  text?: string | null;
+}
+
+export interface ManeuverLogEntryParams {
+  round: number;
+  turn: number;
+  actorInstanceId: string;
+  actorName: string;
+  maneuverId: string;
+  maneuverLabel: string;
+  aim?: unknown | null;
+  wait?: unknown | null;
+  constraints?: unknown | null;
+}
+
+export interface ReinforcementLogEntryParams {
+  round: number;
+  turn: number;
+  category: string;
+  displayName: string;
+  quantity: number;
+  insertionMode: string;
+}
+
+export interface ItemLogEntryParams {
+  round: number;
+  turn: number;
+  actorInstanceId: string;
+  actorName: string;
+  targetInstanceId?: string | null;
+  targetName?: string | null;
+  item: {
+    itemId: string;
+    itemName: string;
+    qtyBefore: number;
+    qtyAfter: number;
+  };
+  effect?: unknown;
+  text?: string | null;
+}
+
+export interface ConditionLogEntryParams {
+  round: number;
+  turn: number;
+  targetInstanceId: string;
+  targetName: string;
+  changeType: 'applied' | 'removed' | 'expired' | string;
+  conditionId: string;
+  conditionLabel: string;
+  duration?: unknown | null;
+  source?: string | null;
+  text?: string | null;
+}
+
+export interface EnemyTemplate {
+  hp: number;
+  fp?: number;
+  mp?: number;
+  [key: string]: unknown;
+}
 
 /**
  * Calculate HP status based on current and max HP
@@ -15,13 +182,13 @@ import { encryptJSON, decryptJSON } from './cryptoLock';
  * @param {number} maxHP - Maximum HP value
  * @returns {string} Status: 'healthy', 'injured', 'critical', or 'dead'
  */
-export function calculateHPStatus(currentHP, maxHP) {
-  if (!maxHP || maxHP <= 0) return HP_STATUS.HEALTHY;
+export function calculateHPStatus(currentHP: number, maxHP: number): HPStatusValue {
+  if (!maxHP || maxHP <= 0) return HP_STATUS.HEALTHY as HPStatusValue;
 
-  if (currentHP <= -maxHP) return HP_STATUS.DEAD;
-  if (currentHP <= 0) return HP_STATUS.CRITICAL;
-  if (currentHP <= maxHP / 3) return HP_STATUS.INJURED;
-  return HP_STATUS.HEALTHY;
+  if (currentHP <= -maxHP) return HP_STATUS.DEAD as HPStatusValue;
+  if (currentHP <= 0) return HP_STATUS.CRITICAL as HPStatusValue;
+  if (currentHP <= maxHP / 3) return HP_STATUS.INJURED as HPStatusValue;
+  return HP_STATUS.HEALTHY as HPStatusValue;
 }
 
 /**
@@ -32,7 +199,7 @@ export function calculateHPStatus(currentHP, maxHP) {
  * @param {Array} combatants - Array of combatant objects
  * @returns {Array} Sorted array of combatant IDs
  */
-export function generateTurnOrder(combatants) {
+export function generateTurnOrder(combatants: Participant[]): string[] {
   // Filter out objects - they don't take turns
   const activeCombatants = combatants.filter(c => c.category !== 'object');
 
@@ -52,7 +219,16 @@ export function generateTurnOrder(combatants) {
     return a.name.localeCompare(b.name);
   });
 
-  return sorted.map(c => c.id);
+  return sorted.map(c => c.instanceId);
+}
+
+// Extended log entry for Phase 1 compatibility (has additional legacy fields)
+interface LegacyLogEntry extends LogEntry {
+  type?: string;
+  actorName?: string;
+  oldValue?: number;
+  newValue?: number;
+  note?: string;
 }
 
 /**
@@ -61,7 +237,7 @@ export function generateTurnOrder(combatants) {
  * @param {Object} entry - Log entry object
  * @returns {string} Formatted log entry text
  */
-export function formatLogEntry(entry) {
+export function formatLogEntry(entry: LegacyLogEntry): string {
   const timestamp = new Date(entry.timestamp).toLocaleTimeString();
 
   // Phase 2 structured format - just use the text field
@@ -106,7 +282,7 @@ export function formatLogEntry(entry) {
  * @param {Object} encounterInfo - Optional encounter metadata
  * @returns {string} Formatted plain text log
  */
-export function exportCombatLog(logEntries, encounterInfo = {}) {
+export function exportCombatLog(logEntries: LogEntry[], encounterInfo: EncounterInfo = {}): string {
   let output = '=== GURPS Combat Log ===\n';
 
   if (encounterInfo.name) {
@@ -119,7 +295,7 @@ export function exportCombatLog(logEntries, encounterInfo = {}) {
   output += '\n';
 
   logEntries.forEach(entry => {
-    output += formatLogEntry(entry) + '\n';
+    output += formatLogEntry(entry as LegacyLogEntry) + '\n';
   });
 
   output += '\n=== End of Log ===\n';
@@ -134,7 +310,7 @@ export function exportCombatLog(logEntries, encounterInfo = {}) {
  * @param {Object} historyState - History state object
  * @returns {string} JSON string
  */
-export function exportActiveCombat(combatState, historyState) {
+export function exportActiveCombat(combatState: CombatState, historyState: HistoryState | null): string {
   const exportData = {
     version: 1,
     exportDate: new Date().toISOString(),
@@ -150,7 +326,7 @@ export function exportActiveCombat(combatState, historyState) {
  * @param {string} jsonString - JSON string to parse
  * @returns {{valid: boolean, data: Object|null, error: string|null}}
  */
-export function parseImportedCombat(jsonString) {
+export function parseImportedCombat(jsonString: string): ImportResult<CombatExportData> {
   try {
     const data = JSON.parse(jsonString);
 
@@ -164,7 +340,7 @@ export function parseImportedCombat(jsonString) {
 
     return { valid: true, data, error: null };
   } catch (error) {
-    return { valid: false, data: null, error: error.message };
+    return { valid: false, data: null, error: (error as Error).message };
   }
 }
 
@@ -172,7 +348,7 @@ export function parseImportedCombat(jsonString) {
  * Generate unique ID for combat entities
  * @returns {string} Unique ID
  */
-export function generateId() {
+export function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
@@ -185,34 +361,34 @@ export function createLogEntry({
   entryType,
   round,
   turn,
-  actorInstanceId = null,
-  targetInstanceId = null,
+  actorInstanceId: _actorInstanceId = null,
+  targetInstanceId: _targetInstanceId = null,
   text,
-  hpDelta = null,
-  fpDelta = null,
-  mpDelta = null,
+  hpDelta: _hpDelta = null,
+  fpDelta: _fpDelta = null,
+  mpDelta: _mpDelta = null,
   roll = null
-}) {
+}: LogEntryParams): LogEntry {
   return {
     id: generateId(),
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
     round,
     turn,
     entryType,
-    actorInstanceId,
-    targetInstanceId,
     text,
-    hpDelta,
-    fpDelta,
-    mpDelta,
-    roll
+    roll: roll ?? undefined,
   };
 }
 
 /**
  * Create a turn change log entry
  */
-export function createTurnLogEntry(round, turn, actorInstanceId, actorName) {
+export function createTurnLogEntry(
+  round: number,
+  turn: number,
+  actorInstanceId: string,
+  actorName: string
+): LogEntry {
   return createLogEntry({
     entryType: 'turn',
     round,
@@ -225,11 +401,19 @@ export function createTurnLogEntry(round, turn, actorInstanceId, actorName) {
 /**
  * Create a resource change log entry
  */
-export function createResourceLogEntry(round, turn, actorInstanceId, actorName, resource, oldValue, newValue) {
+export function createResourceLogEntry(
+  round: number,
+  turn: number,
+  actorInstanceId: string,
+  actorName: string,
+  resource: 'HP' | 'FP' | 'MP',
+  oldValue: number,
+  newValue: number
+): LogEntry {
   const delta = newValue - oldValue;
   const deltaStr = delta > 0 ? `+${delta}` : `${delta}`;
 
-  let resourceDelta = {};
+  const resourceDelta: { hpDelta?: number; fpDelta?: number; mpDelta?: number } = {};
   if (resource === 'HP') {
     resourceDelta.hpDelta = delta;
   } else if (resource === 'FP') {
@@ -251,12 +435,18 @@ export function createResourceLogEntry(round, turn, actorInstanceId, actorName, 
 /**
  * Create a roll log entry
  */
-export function createRollLogEntry(round, turn, actorInstanceId, actorName, rollResult) {
+export function createRollLogEntry(
+  round: number,
+  turn: number,
+  actorInstanceId: string,
+  actorName: string,
+  rollResult: RollResult
+): LogEntry {
   const { expression, dice, modifier, total, target, margin, success } = rollResult;
 
-  let text;
+  let text: string;
   if (target !== undefined) {
-    const marginStr = margin >= 0 ? `+${margin}` : `${margin}`;
+    const marginStr = (margin ?? 0) >= 0 ? `+${margin}` : `${margin}`;
     const resultStr = success ? 'SUCCESS' : 'FAILURE';
     text = `${actorName} rolled ${expression}: ${total} vs ${target} [${marginStr}] ${resultStr}`;
   } else {
@@ -275,8 +465,8 @@ export function createRollLogEntry(round, turn, actorInstanceId, actorName, roll
       modifier: modifier || 0,
       total,
       target: target !== undefined ? target : null,
-      margin: margin !== undefined ? margin : null,
-      success: success !== undefined ? success : null
+      margin: margin !== undefined ? margin : 0,
+      success: success !== undefined ? success : false
     }
   });
 }
@@ -284,7 +474,13 @@ export function createRollLogEntry(round, turn, actorInstanceId, actorName, roll
 /**
  * Create a note log entry
  */
-export function createNoteLogEntry(round, turn, actorInstanceId, actorName, note) {
+export function createNoteLogEntry(
+  round: number,
+  turn: number,
+  actorInstanceId: string | null,
+  actorName: string | null,
+  note: string
+): LogEntry {
   const text = actorName ? `${actorName}: ${note}` : note;
   return createLogEntry({
     entryType: 'note',
@@ -293,6 +489,39 @@ export function createNoteLogEntry(round, turn, actorInstanceId, actorName, note
     actorInstanceId,
     text
   });
+}
+
+// Extended action data with additional fields for action log entries
+interface ExtendedAttackData {
+  name?: string;
+  rollTotal?: number | null;
+  effectiveSkill?: number;
+  margin?: number | null;
+  success?: boolean;
+  modifiers?: { label: string; value: number }[];
+}
+
+interface ExtendedDefenseData {
+  type?: string;
+  rollTotal?: number | null;
+  effectiveDefense?: number;
+  margin?: number | null;
+  success?: boolean;
+  modifiers?: { label: string; value: number }[];
+}
+
+interface ExtendedDamageData {
+  penetrating?: number | null;
+  rolledDamage?: number;
+  generalDRUsed?: number;
+  expression?: string;
+}
+
+interface ExtendedActionData {
+  kind: string;
+  attack?: ExtendedAttackData;
+  defense?: ExtendedDefenseData;
+  damage?: ExtendedDamageData;
 }
 
 /**
@@ -305,13 +534,13 @@ export function createNoteLogEntry(round, turn, actorInstanceId, actorName, note
 export function createActionLogEntry({
   round,
   turn,
-  actorInstanceId,
+  actorInstanceId: _actorInstanceId,
   actorName,
-  targetInstanceId = null,
+  targetInstanceId: _targetInstanceId = null,
   targetName = null,
   maneuver = null,
   action = null
-}) {
+}: ActionLogEntryParams & { action?: ExtendedActionData | null }): LogEntry & { action?: ExtendedActionData } {
   // Build descriptive text
   let text = actorName;
 
@@ -365,15 +594,13 @@ export function createActionLogEntry({
 
   return {
     id: generateId(),
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
     round,
     turn,
     entryType: 'action',
-    actorInstanceId,
-    targetInstanceId,
     text,
-    maneuver,
-    action
+    maneuver: maneuver ?? undefined,
+    action: action ?? undefined
   };
 }
 
@@ -386,14 +613,29 @@ export function createActionLogEntry({
  * @param {Object} template - Template object with character data
  * @returns {Array} Array of character objects with numbered names
  */
-export function createNumberedEnemies(baseName, quantity, template) {
-  const enemies = [];
+export function createNumberedEnemies(
+  baseName: string,
+  quantity: number,
+  template: EnemyTemplate
+): Participant[] {
+  const enemies: Participant[] = [];
 
   for (let i = 1; i <= quantity; i++) {
     enemies.push({
       ...template,
+      instanceId: generateId(),
       id: generateId(),
       name: quantity > 1 ? `${baseName} #${i}` : baseName,
+      category: (template.category as string) || 'enemy',
+      st: (template.st as number) || 10,
+      dx: (template.dx as number) || 10,
+      iq: (template.iq as number) || 10,
+      ht: (template.ht as number) || 10,
+      hp: template.hp,
+      fp: template.fp || 0,
+      mp: template.mp || 0,
+      basicSpeed: (template.basicSpeed as number) || 5,
+      basicMove: (template.basicMove as number) || 5,
       currentHP: template.hp,
       currentFP: template.fp || 0,
       currentMP: template.mp || 0,
@@ -422,14 +664,14 @@ export function createNumberedEnemies(baseName, quantity, template) {
 export function createInjuryLogEntry({
   round,
   turn,
-  targetInstanceId,
+  targetInstanceId: _targetInstanceId,
   targetName,
   hitLocation,
   damageBreakdown,
-  effects = null,
+  effects: _effects = null,
   currentHP = null,
   newHP = null
-}) {
+}: InjuryLogEntryParams): LogEntry {
   let text = `${targetName} takes ${damageBreakdown.injuryApplied} injury`;
 
   if (hitLocation && hitLocation.locationLabel) {
@@ -437,25 +679,25 @@ export function createInjuryLogEntry({
   }
 
   if (damageBreakdown.raw !== undefined && damageBreakdown.dr !== undefined) {
-    if (damageBreakdown.penetrating <= 0) {
+    if ((damageBreakdown.penetrating ?? 0) <= 0) {
       text += ` (${damageBreakdown.raw} raw - ${damageBreakdown.dr} DR = 0 pen; no penetration)`;
     } else {
       const baseMultiplier = damageBreakdown.baseWoundingMultiplier ?? 1;
       const locationMultiplier = damageBreakdown.locationWoundingMultiplier ?? 1;
       const totalMultiplier = damageBreakdown.woundingMultiplier ?? 1;
       const parts = [`${damageBreakdown.raw} raw - ${damageBreakdown.dr} DR = ${damageBreakdown.penetrating} pen`];
-      const damageTypeLabel = DAMAGE_TYPE_LABELS[damageBreakdown.damageType] || damageBreakdown.damageType || 'damage';
+      const damageTypeLabel = (DAMAGE_TYPE_LABELS as Record<string, string>)[damageBreakdown.damageType || ''] || damageBreakdown.damageType || 'damage';
 
       if (baseMultiplier !== 1) {
-        const afterBase = Math.floor(damageBreakdown.penetrating * baseMultiplier);
+        const afterBase = Math.floor((damageBreakdown.penetrating ?? 0) * baseMultiplier);
         parts.push(`×${baseMultiplier} ${damageTypeLabel} = ${afterBase}`);
       }
 
       if (locationMultiplier !== 1 && damageBreakdown.locationLabel) {
-        const afterLocation = Math.floor(damageBreakdown.penetrating * totalMultiplier);
+        const afterLocation = Math.floor((damageBreakdown.penetrating ?? 0) * totalMultiplier);
         parts.push(`×${locationMultiplier} (${damageBreakdown.locationLabel}) = ${afterLocation}`);
       } else if (totalMultiplier !== 1 && baseMultiplier === 1) {
-        const afterTotal = Math.floor(damageBreakdown.penetrating * totalMultiplier);
+        const afterTotal = Math.floor((damageBreakdown.penetrating ?? 0) * totalMultiplier);
         parts.push(`×${totalMultiplier} ${damageTypeLabel} = ${afterTotal}`);
       }
 
@@ -469,15 +711,11 @@ export function createInjuryLogEntry({
 
   return {
     id: generateId(),
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
     round,
     turn,
     entryType: 'injury',
-    targetInstanceId,
     text,
-    hitLocation,
-    damageBreakdown,
-    effects
   };
 }
 
@@ -491,24 +729,21 @@ export function createInjuryLogEntry({
 export function createEffectLogEntry({
   round,
   turn,
-  targetInstanceId,
+  targetInstanceId: _targetInstanceId,
   targetName,
   effectType,
-  effectData,
+  effectData: _effectData,
   text = null
-}) {
-  let displayText = text || `${targetName}: ${effectType}`;
+}: EffectLogEntryParams): LogEntry {
+  const displayText = text || `${targetName}: ${effectType}`;
 
   return {
     id: generateId(),
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
     round,
     turn,
     entryType: 'effect',
-    targetInstanceId,
     text: displayText,
-    effectType,
-    effectData
   };
 }
 
@@ -518,27 +753,22 @@ export function createEffectLogEntry({
 export function createManeuverLogEntry({
   round,
   turn,
-  actorInstanceId,
+  actorInstanceId: _actorInstanceId,
   actorName,
   maneuverId,
   maneuverLabel,
-  aim = null,
-  wait = null,
-  constraints = null
-}) {
+  aim: _aim = null,
+  wait: _wait = null,
+  constraints: _constraints = null
+}: ManeuverLogEntryParams): LogEntry {
   return {
     id: generateId(),
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
     round,
     turn,
     entryType: 'maneuver',
-    actorInstanceId,
     text: `${actorName}: Turn Maneuver: ${maneuverLabel}`,
-    maneuverId,
-    maneuverLabel,
-    aim,
-    wait,
-    constraints
+    maneuver: maneuverId,
   };
 }
 
@@ -548,26 +778,20 @@ export function createManeuverLogEntry({
 export function createReinforcementLogEntry({
   round,
   turn,
-  category,
+  category: _category,
   displayName,
   quantity,
   insertionMode
-}) {
+}: ReinforcementLogEntryParams): LogEntry {
   const countLabel = quantity > 1 ? `x${quantity}` : 'x1';
   const modeLabel = insertionMode.replace(/_/g, ' ');
   return {
     id: generateId(),
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
     round,
     turn,
     entryType: 'reinforcement',
     text: `Reinforcements: ${displayName} ${countLabel} (${modeLabel})`,
-    reinforcement: {
-      category,
-      displayName,
-      quantity,
-      insertionMode
-    }
   };
 }
 
@@ -589,9 +813,9 @@ export function createItemLogEntry({
   targetInstanceId,
   targetName,
   item,
-  effect,
+  effect: _effect,
   text = null
-}) {
+}: ItemLogEntryParams): LogEntry {
   let displayText = text;
   if (!displayText) {
     if (targetInstanceId && targetInstanceId !== actorInstanceId) {
@@ -603,20 +827,11 @@ export function createItemLogEntry({
 
   return {
     id: generateId(),
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
     round,
     turn,
     entryType: 'item',
-    actorInstanceId,
-    targetInstanceId,
     text: displayText,
-    item: {
-      itemId: item.itemId,
-      itemName: item.itemName,
-      qtyBefore: item.qtyBefore,
-      qtyAfter: item.qtyAfter
-    },
-    effect: effect || {}
   };
 }
 
@@ -629,15 +844,15 @@ export function createItemLogEntry({
 export function createConditionLogEntry({
   round,
   turn,
-  targetInstanceId,
+  targetInstanceId: _targetInstanceId,
   targetName,
-  changeType, // 'applied' | 'removed' | 'expired'
-  conditionId,
+  changeType,
+  conditionId: _conditionId,
   conditionLabel,
-  duration = null,
+  duration: _duration = null,
   source = null,
   text = null
-}) {
+}: ConditionLogEntryParams): LogEntry {
   let displayText = text;
   if (!displayText) {
     switch (changeType) {
@@ -659,17 +874,11 @@ export function createConditionLogEntry({
 
   return {
     id: generateId(),
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
     round,
     turn,
     entryType: 'condition',
-    targetInstanceId,
     text: displayText,
-    changeType,
-    conditionId,
-    conditionLabel,
-    duration,
-    source
   };
 }
 
@@ -686,7 +895,11 @@ export function createConditionLogEntry({
  * @param {Object} historyState - History state (optional)
  * @returns {string} JSON string (unencrypted, filtered)
  */
-export function exportCombatPlayerView(combatState, revealState, historyState = null) {
+export function exportCombatPlayerView(
+  combatState: CombatState,
+  revealState: RevealState,
+  _historyState: HistoryState | null = null
+): string {
   // Get filtered view
   const combatView = getCombatView(combatState, revealState, 'player');
 
@@ -722,7 +935,12 @@ export function exportCombatPlayerView(combatState, revealState, historyState = 
  * @param {string} password - GM password for encryption
  * @returns {Promise<string>} JSON string with gmLock
  */
-export async function exportCombatGMLocked(combatState, revealState, historyState, password) {
+export async function exportCombatGMLocked(
+  combatState: CombatState,
+  revealState: RevealState,
+  historyState: HistoryState | null,
+  password: string
+): Promise<string> {
   // Get filtered player view
   const combatView = getCombatView(combatState, revealState, 'player');
   const filteredLog = filterLogForPlayerView(combatState.log, revealState, combatState);
@@ -760,7 +978,10 @@ export async function exportCombatGMLocked(combatState, revealState, historyStat
  * @param {string|null} password - GM password (if unlocking)
  * @returns {Promise<{valid: boolean, data: Object|null, error: string|null, isLocked: boolean}>}
  */
-export async function importCombatWithGMLock(jsonString, password = null) {
+export async function importCombatWithGMLock(
+  jsonString: string,
+  password: string | null = null
+): Promise<GMLockedImportResult> {
   try {
     const data = JSON.parse(jsonString);
 
@@ -778,12 +999,17 @@ export async function importCombatWithGMLock(jsonString, password = null) {
     if (isLocked && password) {
       // Attempt to unlock
       try {
-        const gmSecrets = await decryptJSON(data.gmLock, password);
+        const gmSecrets = await decryptJSON(data.gmLock, password) as {
+          combatStateTruth: CombatState;
+          revealState: RevealState;
+          history: HistoryState | null;
+        };
 
         // Return full truth data
         return {
           valid: true,
           data: {
+            version: data.version,
             combatState: gmSecrets.combatStateTruth,
             revealState: gmSecrets.revealState,
             history: gmSecrets.history,
@@ -796,7 +1022,7 @@ export async function importCombatWithGMLock(jsonString, password = null) {
         return {
           valid: false,
           data: null,
-          error: `Failed to unlock: ${unlockError.message}`,
+          error: `Failed to unlock: ${(unlockError as Error).message}`,
           isLocked: true
         };
       }
@@ -805,6 +1031,7 @@ export async function importCombatWithGMLock(jsonString, password = null) {
       return {
         valid: true,
         data: {
+          version: data.version,
           combatState: data.combatState,
           revealState: data.revealState || null,
           history: null,
@@ -819,6 +1046,7 @@ export async function importCombatWithGMLock(jsonString, password = null) {
       return {
         valid: true,
         data: {
+          version: data.version,
           combatState: data.combatState,
           revealState: data.revealState || null,
           history: data.history || null,
@@ -832,7 +1060,7 @@ export async function importCombatWithGMLock(jsonString, password = null) {
     return {
       valid: false,
       data: null,
-      error: error.message,
+      error: (error as Error).message,
       isLocked: false
     };
   }

@@ -3,12 +3,35 @@
  * Handles modifier stacks, summation, and common preset modifiers
  */
 
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface Modifier {
+  label: string;
+  value: number;
+}
+
+export interface PresetModifier {
+  label: string;
+  value: number | null;
+  requireInput: boolean;
+  placeholder?: string;
+  note?: string;
+}
+
+export type ModifierCategory = 'attack' | 'defense' | 'damage';
+
+// ============================================================================
+// Functions
+// ============================================================================
+
 /**
  * Sum modifier values
- * @param {Array<{label: string, value: number}>} modifiers - Array of modifier objects
- * @returns {number} Total modifier value
+ * @param modifiers - Array of modifier objects
+ * @returns Total modifier value
  */
-export function sumModifiers(modifiers) {
+export function sumModifiers(modifiers: Modifier[]): number {
   if (!Array.isArray(modifiers)) {
     return 0;
   }
@@ -21,20 +44,24 @@ export function sumModifiers(modifiers) {
 
 /**
  * Calculate effective value with modifiers
- * @param {number} base - Base value
- * @param {Array<{label: string, value: number}>} modifiers - Array of modifier objects
- * @returns {number} Effective value (base + modifiers)
+ * @param base - Base value
+ * @param modifiers - Array of modifier objects
+ * @returns Effective value (base + modifiers)
  */
-export function calculateEffective(base, modifiers) {
+export function calculateEffective(base: number, modifiers: Modifier[]): number {
   const baseValue = typeof base === 'number' ? base : 0;
   return baseValue + sumModifiers(modifiers);
 }
+
+// ============================================================================
+// Preset Modifiers
+// ============================================================================
 
 /**
  * Common attack modifiers for GURPS
  * These are presets that can be quickly added to the modifier stack
  */
-export const ATTACK_MODIFIERS = {
+export const ATTACK_MODIFIERS: Record<string, PresetModifier> = {
   // All-Out Attack
   AOA_DETERMINED_MELEE: { label: 'All-Out Attack (Determined, melee)', value: 4, requireInput: false },
   AOA_DETERMINED_RANGED: { label: 'All-Out Attack (Determined, ranged)', value: 1, requireInput: false },
@@ -72,7 +99,7 @@ export const ATTACK_MODIFIERS = {
 /**
  * Common defense modifiers for GURPS
  */
-export const DEFENSE_MODIFIERS = {
+export const DEFENSE_MODIFIERS: Record<string, PresetModifier> = {
   // All-Out Defense
   AOD_INCREASED: { label: 'All-Out Defense (Increased)', value: 2, requireInput: false },
 
@@ -115,7 +142,7 @@ export const DEFENSE_MODIFIERS = {
 /**
  * Damage modifiers (mostly simple adds/subtracts for Phase 3)
  */
-export const DAMAGE_MODIFIERS = {
+export const DAMAGE_MODIFIERS: Record<string, PresetModifier> = {
   // All-Out Attack
   AOA_STRONG: { label: 'All-Out Attack (Strong)', value: 2, requireInput: false, note: 'or +1 per die, whichever is better' },
 
@@ -123,14 +150,18 @@ export const DAMAGE_MODIFIERS = {
   CUSTOM: { label: 'Custom', value: null, requireInput: true, placeholder: 'Enter modifier value' }
 };
 
+// ============================================================================
+// Preset Modifier Functions
+// ============================================================================
+
 /**
  * Get preset modifier by category and key
- * @param {string} category - 'attack', 'defense', or 'damage'
- * @param {string} key - Modifier key from the constants
- * @returns {object|null} Modifier preset or null
+ * @param category - 'attack', 'defense', or 'damage'
+ * @param key - Modifier key from the constants
+ * @returns Modifier preset or null
  */
-export function getPresetModifier(category, key) {
-  const presets = {
+export function getPresetModifier(category: ModifierCategory, key: string): PresetModifier | null {
+  const presets: Record<ModifierCategory, Record<string, PresetModifier>> = {
     attack: ATTACK_MODIFIERS,
     defense: DEFENSE_MODIFIERS,
     damage: DAMAGE_MODIFIERS
@@ -146,11 +177,11 @@ export function getPresetModifier(category, key) {
 
 /**
  * Create a modifier object for the stack
- * @param {string} label - Modifier label/description
- * @param {number} value - Modifier value (can be negative)
- * @returns {{label: string, value: number}}
+ * @param label - Modifier label/description
+ * @param value - Modifier value (can be negative)
+ * @returns Modifier object
  */
-export function createModifier(label, value) {
+export function createModifier(label: string, value: number): Modifier {
   return {
     label: label || 'Unknown',
     value: typeof value === 'number' ? value : 0
@@ -159,10 +190,10 @@ export function createModifier(label, value) {
 
 /**
  * Normalize modifiers array (ensure all have label and value)
- * @param {Array} modifiers - Array of potential modifier objects
- * @returns {Array<{label: string, value: number}>} Normalized modifiers
+ * @param modifiers - Array of potential modifier objects
+ * @returns Normalized modifiers
  */
-export function normalizeModifiers(modifiers) {
+export function normalizeModifiers(modifiers: unknown[]): Modifier[] {
   if (!Array.isArray(modifiers)) {
     return [];
   }
@@ -172,9 +203,10 @@ export function normalizeModifiers(modifiers) {
       return { label: 'Invalid', value: 0 };
     }
 
+    const modObj = mod as Record<string, unknown>;
     return {
-      label: String(mod.label || 'Unknown'),
-      value: typeof mod.value === 'number' ? mod.value : 0
+      label: String(modObj.label || 'Unknown'),
+      value: typeof modObj.value === 'number' ? modObj.value : 0
     };
   });
 }

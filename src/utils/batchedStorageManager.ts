@@ -20,8 +20,47 @@
  * @module batchedStorageManager
  */
 
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface WriteResult {
+  key: string;
+  success: boolean;
+}
+
+export interface BatchDiagnostics {
+  pendingCount: number;
+  hasScheduledFlush: boolean;
+  pendingKeys: string[];
+  delay: number;
+}
+
+// Extend Window interface for storage API
+declare global {
+  interface Window {
+    storage?: {
+      get: (key: string, migrations?: boolean) => Promise<{ value: string } | null>;
+      set: (key: string, value: string, trackVersion?: boolean) => Promise<void>;
+      remove: (key: string) => Promise<void>;
+      clear: () => Promise<void>;
+      keys: () => Promise<string[]>;
+    };
+  }
+}
+
+// ============================================================================
+// BatchedStorageManager Class
+// ============================================================================
+
 class BatchedStorageManager {
-  constructor(delay = 500) {
+  private delay: number;
+  private pendingData: Map<string, unknown>;
+  private timerId: ReturnType<typeof setTimeout> | null;
+  private flushPromise: Promise<void> | null;
+  private flushResolve: (() => void) | null;
+
+  constructor(delay: number = 500) {
     this.delay = delay;
     this.pendingData = new Map();
     this.timerId = null;
@@ -33,11 +72,10 @@ class BatchedStorageManager {
    * Add data to batch queue
    * Schedules a batch flush if not already scheduled
    *
-   * @param {string} key - Storage key
-   * @param {any} value - Value to store (will be JSON stringified)
-   * @returns {void}
+   * @param key - Storage key
+   * @param value - Value to store (will be JSON stringified)
    */
-  queue(key, value) {
+  queue(key: string, value: unknown): void {
     this.pendingData.set(key, value);
 
     if (!this.timerId) {
@@ -48,12 +86,9 @@ class BatchedStorageManager {
   /**
    * Schedule batch flush after debounce delay
    * Creates a promise to track completion
-   *
-   * @private
-   * @returns {void}
    */
-  scheduleFlush() {
-    this.flushPromise = new Promise((resolve) => {
+  private scheduleFlush(): void {
+    this.flushPromise = new Promise<void>((resolve) => {
       this.flushResolve = resolve;
     });
 
@@ -66,10 +101,8 @@ class BatchedStorageManager {
    * Immediately flush all pending data to storage
    * Writes all queued key-value pairs to localStorage in a single operation
    * Clears pending data and cancels any scheduled flushes
-   *
-   * @returns {Promise<void>}
    */
-  async flush() {
+  async flush(): Promise<void> {
     // Clear timer
     if (this.timerId) {
       clearTimeout(this.timerId);
@@ -87,10 +120,10 @@ class BatchedStorageManager {
     try {
       // Write all pending data to storage
       const writeResults = await Promise.all(
-        Array.from(this.pendingData.entries()).map(async ([key, value]) => {
+        Array.from(this.pendingData.entries()).map(async ([key, value]): Promise<WriteResult> => {
           const jsonValue = JSON.stringify(value);
           try {
-            await window.storage.set(key, jsonValue, true);
+            await window.storage?.set(key, jsonValue, true);
             return { key, success: true };
           } catch (error) {
             console.error(`Error writing ${key} to storage:`, error);
@@ -119,11 +152,14 @@ class BatchedStorageManager {
    * Flush specific key(s) immediately
    * Useful for critical saves that shouldn't wait for batch
    *
-   * @param {string|string[]|null} keys - Specific key(s) to flush, or null for all
-   * @returns {Promise<void>}
+   * @param keys - Specific key(s) to flush, or null for all
    */
-  async flushSpecific(keys = null) {
-    const keysToFlush = keys === null ? Array.from(this.pendingData.keys()) : Array.isArray(keys) ? keys : [keys];
+  async flushSpecific(keys: string | string[] | null = null): Promise<void> {
+    const keysToFlush = keys === null
+      ? Array.from(this.pendingData.keys())
+      : Array.isArray(keys)
+        ? keys
+        : [keys];
 
     if (keysToFlush.length === 0) {
       return;
@@ -137,7 +173,7 @@ class BatchedStorageManager {
       }
     }
 
-    const writePromises = [];
+    const writePromises: Promise<void>[] = [];
 
     for (const key of keysToFlush) {
       if (this.pendingData.has(key)) {
@@ -146,7 +182,7 @@ class BatchedStorageManager {
         writePromises.push(
           (async () => {
             try {
-              await window.storage.set(key, jsonValue, true);
+              await window.storage?.set(key, jsonValue, true);
               this.pendingData.delete(key);
             } catch (error) {
               console.error(`Error writing ${key} to storage:`, error);
@@ -168,30 +204,24 @@ class BatchedStorageManager {
   /**
    * Get current number of pending keys
    * Useful for diagnostics and monitoring
-   *
-   * @returns {number}
    */
-  getPendingCount() {
+  getPendingCount(): number {
     return this.pendingData.size;
   }
 
   /**
    * Wait for current flush to complete
    * Useful for ensuring data is saved before page unload
-   *
-   * @returns {Promise<void>}
    */
-  waitForFlush() {
+  waitForFlush(): Promise<void> {
     return this.flushPromise || Promise.resolve();
   }
 
   /**
    * Reset manager state
    * Clears all pending data and cancels scheduled flush
-   *
-   * @returns {void}
    */
-  reset() {
+  reset(): void {
     if (this.timerId) {
       clearTimeout(this.timerId);
       this.timerId = null;
@@ -206,10 +236,8 @@ class BatchedStorageManager {
   /**
    * Get diagnostic info about current state
    * Useful for debugging storage performance
-   *
-   * @returns {Object}
    */
-  getDiagnostics() {
+  getDiagnostics(): BatchDiagnostics {
     return {
       pendingCount: this.pendingData.size,
       hasScheduledFlush: this.timerId !== null,

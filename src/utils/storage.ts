@@ -14,16 +14,36 @@ import { getStoredSchemaVersion, saveSchemaVersion, CURRENT_SCHEMA_VERSION } fro
 import { migrateData, validateDataForVersion } from './dataMigrations';
 import { logger } from './logger';
 
-const storage = {
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface StorageGetResult {
+  value: string;
+}
+
+export interface Storage {
+  get: (key: string, migrations?: boolean) => Promise<StorageGetResult | null>;
+  set: (key: string, value: string, trackVersion?: boolean) => Promise<void>;
+  remove: (key: string) => Promise<void>;
+  clear: () => Promise<void>;
+  keys: () => Promise<string[]>;
+}
+
+// ============================================================================
+// Storage Implementation
+// ============================================================================
+
+const storage: Storage = {
   /**
    * Get a value from localStorage
    * Automatically handles schema migrations for application state
    *
-   * @param {string} key - Storage key
-   * @param {boolean} migrations - If true, apply schema migrations (default: true)
-   * @returns {Promise<{value: string}|null>}
+   * @param key - Storage key
+   * @param migrations - If true, apply schema migrations (default: true)
+   * @returns Object with value string or null if not found
    */
-  async get(key, migrations = true) {
+  async get(key: string, migrations: boolean = true): Promise<StorageGetResult | null> {
     try {
       const value = localStorage.getItem(key);
       if (value === null) {
@@ -33,7 +53,7 @@ const storage = {
       // Apply migrations for main state keys
       if (migrations && (key === 'appState' || key === 'gmState')) {
         try {
-          const data = JSON.parse(value);
+          const data = JSON.parse(value) as Record<string, unknown>;
           const storedVersion = getStoredSchemaVersion() || '1.0.0';
 
           if (storedVersion !== CURRENT_SCHEMA_VERSION) {
@@ -79,12 +99,11 @@ const storage = {
    * Set a value in localStorage
    * Automatically tracks schema version on state saves
    *
-   * @param {string} key - Storage key
-   * @param {string} value - Value to store (should be JSON string)
-   * @param {boolean} trackVersion - If true, update schema version (default: true)
-   * @returns {Promise<void>}
+   * @param key - Storage key
+   * @param value - Value to store (should be JSON string)
+   * @param trackVersion - If true, update schema version (default: true)
    */
-  async set(key, value, trackVersion = true) {
+  async set(key: string, value: string, trackVersion: boolean = true): Promise<void> {
     try {
       localStorage.setItem(key, value);
 
@@ -94,7 +113,7 @@ const storage = {
       }
     } catch (error) {
       // Handle quota exceeded errors gracefully
-      if (error.name === 'QuotaExceededError') {
+      if (error instanceof Error && error.name === 'QuotaExceededError') {
         console.error('localStorage quota exceeded. Consider clearing old data.');
         alert('Storage quota exceeded. Please export your data and clear old entries.');
       } else {
@@ -106,10 +125,9 @@ const storage = {
 
   /**
    * Remove a value from localStorage
-   * @param {string} key - Storage key
-   * @returns {Promise<void>}
+   * @param key - Storage key
    */
-  async remove(key) {
+  async remove(key: string): Promise<void> {
     try {
       localStorage.removeItem(key);
     } catch (error) {
@@ -120,9 +138,8 @@ const storage = {
 
   /**
    * Clear all localStorage data
-   * @returns {Promise<void>}
    */
-  async clear() {
+  async clear(): Promise<void> {
     try {
       localStorage.clear();
     } catch (error) {
@@ -133,9 +150,9 @@ const storage = {
 
   /**
    * Get all keys in localStorage
-   * @returns {Promise<string[]>}
+   * @returns Array of storage keys
    */
-  async keys() {
+  async keys(): Promise<string[]> {
     try {
       return Object.keys(localStorage);
     } catch (error) {

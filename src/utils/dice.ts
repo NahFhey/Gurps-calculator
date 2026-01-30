@@ -3,14 +3,45 @@
  * Parses and rolls dice expressions like 3d6, 2d+1, etc.
  */
 
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface ParsedDiceExpression {
+  count: number;
+  sides: number;
+  modifier: number;
+  valid: boolean;
+  error?: string;
+}
+
+export interface RollResult {
+  expression: string;
+  dice: number[];
+  modifier: number;
+  total: number;
+  valid: boolean;
+  error?: string;
+}
+
+export interface RollVsTargetResult extends RollResult {
+  target: number;
+  margin: number;
+  success: boolean;
+}
+
+// ============================================================================
+// Functions
+// ============================================================================
+
 /**
  * Parse a dice expression
  * Supports formats: XdY, XdY+Z, XdY-Z, Xd (defaults to d6), X (constant)
  *
- * @param {string} expression - Dice expression like "3d6", "2d+1", "4d-2", "3d", "5"
- * @returns {{count: number, sides: number, modifier: number, valid: boolean, error?: string}}
+ * @param expression - Dice expression like "3d6", "2d+1", "4d-2", "3d", "5"
+ * @returns Parsed dice expression with count, sides, modifier, and validity
  */
-export function parseDiceExpression(expression) {
+export function parseDiceExpression(expression: string): ParsedDiceExpression {
   if (!expression || typeof expression !== 'string') {
     return { count: 0, sides: 0, modifier: 0, valid: false, error: 'Invalid expression' };
   }
@@ -49,20 +80,20 @@ export function parseDiceExpression(expression) {
 
 /**
  * Roll a single die
- * @param {number} sides - Number of sides on the die
- * @returns {number} Result (1 to sides)
+ * @param sides - Number of sides on the die
+ * @returns Result (1 to sides)
  */
-function rollDie(sides) {
+function rollDie(sides: number): number {
   return Math.floor(Math.random() * sides) + 1;
 }
 
 /**
  * Roll dice based on an expression
  *
- * @param {string} expression - Dice expression like "3d6", "2d+1", "4d6-2"
- * @returns {{expression: string, dice: number[], modifier: number, total: number, valid: boolean, error?: string}}
+ * @param expression - Dice expression like "3d6", "2d+1", "4d6-2"
+ * @returns Roll result with dice values, modifier, total, and validity
  */
-export function roll(expression) {
+export function roll(expression: string): RollResult {
   const parsed = parseDiceExpression(expression);
 
   if (!parsed.valid) {
@@ -88,7 +119,7 @@ export function roll(expression) {
   }
 
   // Roll dice
-  const dice = [];
+  const dice: number[] = [];
   for (let i = 0; i < parsed.count; i++) {
     dice.push(rollDie(parsed.sides));
   }
@@ -109,11 +140,11 @@ export function roll(expression) {
  * Roll dice vs a target number
  * Returns margin of success/failure
  *
- * @param {string} expression - Dice expression like "3d6"
- * @param {number} target - Target number to beat (roll must be <= target for GURPS)
- * @returns {{expression: string, dice: number[], modifier: number, total: number, target: number, margin: number, success: boolean, valid: boolean, error?: string}}
+ * @param expression - Dice expression like "3d6"
+ * @param target - Target number to beat (roll must be <= target for GURPS)
+ * @returns Roll result with target, margin, and success status
  */
-export function rollVsTarget(expression, target) {
+export function rollVsTarget(expression: string, target: number): RollVsTargetResult {
   const rollResult = roll(expression);
 
   if (!rollResult.valid) {
@@ -151,10 +182,10 @@ export function rollVsTarget(expression, target) {
 
 /**
  * Format a roll result for display
- * @param {object} rollResult - Result from roll() or rollVsTarget()
- * @returns {string} Formatted string
+ * @param rollResult - Result from roll() or rollVsTarget()
+ * @returns Formatted string
  */
-export function formatRoll(rollResult) {
+export function formatRoll(rollResult: RollResult | RollVsTargetResult): string {
   if (!rollResult.valid) {
     return `Invalid roll: ${rollResult.error}`;
   }
@@ -169,7 +200,8 @@ export function formatRoll(rollResult) {
     ? (rollResult.modifier > 0 ? `+${rollResult.modifier}` : `${rollResult.modifier}`)
     : '';
 
-  if (rollResult.target !== undefined) {
+  // Check if this is a RollVsTargetResult
+  if ('target' in rollResult && rollResult.target !== undefined) {
     const marginStr = rollResult.margin >= 0
       ? `+${rollResult.margin}`
       : `${rollResult.margin}`;

@@ -73,17 +73,19 @@ export function useCombatStore() {
       /**
        * Save active combat session.
        * Supports both direct values and functional updates.
+       * Note: Uses 'any' type to support both CombatSession and internal CombatState types
+       * during the ongoing combat system migration.
        */
-      saveCombatActive: (sessionOrUpdater: CombatSession | null | ((prev: CombatSession | null) => CombatSession | null)) => {
+      saveCombatActive: (sessionOrUpdater: any) => {
         if (typeof sessionOrUpdater === 'function') {
           // Use ref to get the latest session value (avoids stale closure issues)
           const currentSession = sessionRef.current;
           const newSession = sessionOrUpdater(currentSession);
-          actions.setCombatActive(newSession);
+          actions.setCombatActive(newSession as CombatSession | null);
           // Update ref immediately so subsequent calls in same tick get fresh value
           sessionRef.current = newSession;
         } else {
-          actions.setCombatActive(sessionOrUpdater);
+          actions.setCombatActive(sessionOrUpdater as CombatSession | null);
           // Update ref immediately for functional updates that follow
           sessionRef.current = sessionOrUpdater;
         }
@@ -116,6 +118,18 @@ export function useCombatStore() {
        */
       saveCombatItems: (itemsArray: CombatItem[]) => {
         actions.setCombatItems(normalizeArray(itemsArray));
+      },
+
+      /**
+       * Save combat reveal state.
+       * This is stored in state.combat.reveal and updates via setCombatActive with updateCombatActive
+       * Note: The reveal state is part of the campaign state's combat.reveal field.
+       * Currently there's no direct action to update it, so this is a no-op placeholder.
+       * @deprecated Use the reveal state from campaign store directly
+       */
+      saveCombatReveal: (_reveal: any) => {
+        // TODO: Add proper action to update combat.reveal state
+        console.warn('saveCombatReveal: reveal state updates are not yet fully implemented');
       }
     };
   }, [

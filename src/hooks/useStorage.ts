@@ -1,4 +1,4 @@
-import React from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import { logger } from '../utils/logger';
 
 /**
@@ -8,6 +8,24 @@ import { logger } from '../utils/logger';
  * data keys are being saved simultaneously. Includes automatic flush
  * on page unload to prevent data loss.
  */
+
+// Extend Window interface to include optional storage API
+declare global {
+  interface Window {
+    storage?: {
+      set: (key: string, value: string, sync?: boolean) => Promise<void>;
+      get: (key: string) => Promise<string | null>;
+    };
+  }
+}
+
+/**
+ * Type for the debounced save function with flush method
+ */
+export interface DebouncedSaveFunction {
+  (key: string, data: unknown): void;
+  flush: (key?: string) => Promise<void>;
+}
 
 /**
  * Custom hook for keyed, debounced storage saves with flush support
@@ -22,31 +40,29 @@ import { logger } from '../utils/logger';
  * - Cleanup on unmount: Flushes all pending saves when component unmounts
  *
  * Usage:
- * ```jsx
+ * ```tsx
  * const debouncedSave = useKeyedDebouncedStorageSave(500);
  * debouncedSave('myKey', myData);  // Saves after 500ms of no changes
  * debouncedSave.flush('myKey');    // Force immediate save
  * debouncedSave.flush();           // Flush all pending saves
  * ```
  *
- * @param {number} [delay=500] - Debounce delay in milliseconds
- * @returns {Function} Debounced save function with flush method attached
- * @property {Function} flush - Force immediate save of pending data
+ * @param delay - Debounce delay in milliseconds (default: 500)
+ * @returns Debounced save function with flush method attached
  */
-export function useKeyedDebouncedStorageSave(delay = 500) {
-  /** @type {React.MutableRefObject<Map<string, number>>} Map of key -> timeout ID */
-  const timersRef = React.useRef(new Map());
-  /** @type {React.MutableRefObject<Map<string, any>>} Map of key -> pending data */
-  const pendingDataRef = React.useRef(new Map());
+export function useKeyedDebouncedStorageSave(delay: number = 500): DebouncedSaveFunction {
+  /** Map of key -> timeout ID */
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  /** Map of key -> pending data */
+  const pendingDataRef = useRef<Map<string, unknown>>(new Map());
 
   /**
    * Immediately saves pending data for a specific key or all keys
    * Cancels any pending debounced saves for the flushed keys
    *
-   * @param {string} [key] - Specific key to flush, or undefined to flush all
-   * @returns {Promise<void>}
+   * @param key - Specific key to flush, or undefined to flush all
    */
-  const flush = React.useCallback(async (key) => {
+  const flush = useCallback(async (key?: string): Promise<void> => {
     const timers = timersRef.current;
     const pendingData = pendingDataRef.current;
 
@@ -97,15 +113,16 @@ export function useKeyedDebouncedStorageSave(delay = 500) {
    * Debounced save function - queues data for saving after delay
    * If called again for the same key before delay expires, timer is reset
    *
-   * @param {string} key - Storage key to save to
-   * @param {*} data - Data to save (will be JSON stringified)
+   * @param key - Storage key to save to
+   * @param data - Data to save (will be JSON stringified)
    */
-  const debouncedSave = React.useCallback((key, data) => {
+  const debouncedSave = useCallback((key: string, data: unknown): void => {
     const timers = timersRef.current;
     const pendingData = pendingDataRef.current;
 
     // Cancel existing timer
-    if (timers.has(key)) clearTimeout(timers.get(key));
+    const existingTimer = timers.get(key);
+    if (existingTimer) clearTimeout(existingTimer);
 
     // Store pending data
     pendingData.set(key, data);
@@ -129,8 +146,8 @@ export function useKeyedDebouncedStorageSave(delay = 500) {
   }, [delay]);
 
   // Setup beforeunload and unmount handlers
-  React.useEffect(() => {
-    const handleBeforeUnload = (_e) => {
+  useEffect(() => {
+    const handleBeforeUnload = (_e: BeforeUnloadEvent): void => {
       const pendingData = pendingDataRef.current;
       if (pendingData.size > 0) {
         // Flush all pending saves synchronously
@@ -160,7 +177,8 @@ export function useKeyedDebouncedStorageSave(delay = 500) {
     };
   }, [flush]);
 
-  // Return both the debounced save function and flush function
-  debouncedSave.flush = flush;
-  return debouncedSave;
+  // Create the function with flush attached
+  const result = debouncedSave as DebouncedSaveFunction;
+  result.flush = flush;
+  return result;
 }

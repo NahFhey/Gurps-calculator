@@ -4,7 +4,8 @@ import {
   createCampaignState,
   CampaignState,
   LegacyAppState,
-  LogEntry
+  LogEntry,
+  CharacterPanelView
 } from './campaignReducer';
 import { saveCampaignState } from '../persistence/campaignStorage';
 import type {
@@ -58,6 +59,7 @@ type CampaignStoreValue = {
     // UI Actions
     setActiveModule: (moduleId: string) => void;
     selectCharacter: (id: string | null) => void;
+    setCharacterPanelView: (view: CharacterPanelView) => void;
     toggleGmMode: () => void;
     setGmMode: (enabled: boolean) => void;
     setGmUnlocked: (value: boolean) => void;

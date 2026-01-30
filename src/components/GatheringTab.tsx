@@ -1,5 +1,4 @@
 import React, { useState, useMemo, memo } from 'react';
-import PropTypes from 'prop-types';
 import { Fish, Users, Target, Package, CheckCircle, XCircle } from 'lucide-react';
 import { DiceRoller } from './DiceRoller';
 import {
@@ -29,22 +28,270 @@ import {
   getToolYieldBonus
 } from '../utils/gathering';
 
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface GatheringSpecies {
+  id: string;
+  name: string;
+  type?: string;
+  tags?: string[];
+  st?: number;
+  yieldMeatFormula?: string;
+  yieldSecondaryFormula?: string;
+  secondaryMaterialType?: string;
+  secondaryNameOverride?: string;
+}
+
+export interface GatheringTool {
+  id: string;
+  name: string;
+  allowedModes?: string[];
+  bonuses?: Array<{ type: string; skill?: string; value?: number }>;
+}
+
+export interface GatheringTable {
+  id: string;
+  name: string;
+  entries?: unknown[];
+}
+
+export interface GatheringEnvironment {
+  id: string;
+  name: string;
+  supportedModes?: string[];
+  mode?: string;
+  skillMod?: number;
+  defaultsByMode?: Record<string, {
+    randomCatchTableId?: string;
+    mildEventTableId?: string;
+    rareEventTableId?: string;
+  }>;
+  defaultTables?: {
+    randomCatchTableId?: string;
+    mildEventTableId?: string;
+    rareEventTableId?: string;
+  };
+}
+
+export interface GatheringSession {
+  id: string;
+  mode: string;
+  environmentId: string;
+  method: string;
+  leaderCharacterId: string;
+  helperCharacterIds: string[];
+  dateKey?: number;
+  tablesResolved?: {
+    randomCatchTableId?: string;
+    mildEventTableId?: string;
+    rareEventTableId?: string;
+  };
+  modifiers?: EffectiveSkillResult;
+  dailyEvent?: EventResult;
+  resolution?: SessionResolution;
+  committedToInventory?: boolean;
+  completedAt?: string;
+}
+
+export interface SessionResolution {
+  fishingRoll?: FishingResult;
+  fishCaught?: CaughtFish[];
+  yields?: YieldResult[];
+  inventoryDelta?: {
+    foods: Record<string, number>;
+    materials: Record<string, number>;
+  };
+}
+
+export interface GatheringBait {
+  id: string;
+  name: string;
+  quantity?: number;
+  attractsSpeciesIds?: string[];
+  rollBonus?: number;
+}
+
+export interface GatheringCategory {
+  id: string;
+  name: string;
+  description?: string;
+  yieldFormula?: string;
+  inventoryOutput?: {
+    inventoryKind?: 'food' | 'material';
+    typeId?: string;
+  };
+}
+
+export interface GatheringItem {
+  id: string;
+  name: string;
+  categoryId?: string;
+  rarity?: string;
+  description?: string;
+  yieldFormula?: string;
+}
+
+export interface Worker {
+  id: string;
+  name: string;
+  skills?: Record<string, number>;
+  st?: number;
+}
+
+export interface FoodItem {
+  id: string;
+  name: string;
+  types?: string[];
+  quantity?: number;
+  source?: string;
+}
+
+export interface MaterialItem {
+  id: string;
+  name: string;
+  type?: string;
+  quantity?: number;
+  source?: string;
+}
+
+export interface FoodType {
+  name: string;
+  color?: string;
+}
+
+export interface MaterialType {
+  name: string;
+  [key: string]: unknown;
+}
+
+export interface DiceRoll {
+  dice: number[];
+  total: number;
+}
+
+export interface EventResult {
+  rolled: boolean;
+  roll: number;
+  resultType: 'rare' | 'mild' | 'none';
+  eventEntryId?: string;
+  eventText?: string | null;
+}
+
+export interface FishingResult {
+  success: boolean;
+  critSuccess?: boolean;
+  critFailure?: boolean;
+  fish: number;
+  margin: number;
+  description: string;
+}
+
+export interface ForagingResult {
+  success: boolean;
+  critSuccess?: boolean;
+  critFailure?: boolean;
+  margin: number;
+  description: string;
+  yieldMultiplier: number;
+  hazard?: string;
+}
+
+export interface ForageFind {
+  type: 'category' | 'item' | 'nothing' | 'special';
+  categoryId?: string;
+  itemId?: string;
+  text?: string;
+}
+
+export interface CaughtFish {
+  index: number;
+  entry: unknown;
+  species: GatheringSpecies | null;
+  isLarge: boolean;
+  struggled: boolean;
+  struggleSuccess: boolean | null;
+  struggleDetails?: {
+    charRoll: number;
+    charMargin: number;
+    fishRoll: number;
+    fishMargin: number;
+  };
+  yields: FishYields | null;
+  baitRollBonus?: number;
+}
+
+export interface FishYields {
+  meatUnits?: number;
+  meatDice?: number[];
+  secondaryUnits?: number;
+  secondaryDice?: number[];
+  secondaryType?: string;
+  foodType?: string;
+}
+
+export interface ForageYields {
+  units: number;
+  dice?: number[];
+  baseFormula?: string;
+  modifiedFormula?: string;
+  rawTotal?: number;
+  multiplier?: number;
+}
+
+export interface YieldResult {
+  fishIndex?: number;
+  species?: GatheringSpecies;
+  category?: GatheringCategory;
+  item?: GatheringItem;
+  yields: FishYields | ForageYields;
+}
+
+export interface EffectiveSkillResult {
+  effectiveSkill: number;
+  breakdown: {
+    base?: number;
+    tool?: number;
+    bait?: number;
+    largeFish?: number;
+    environment?: number;
+    context?: number;
+    rarity?: number;
+  };
+}
+
+export interface GatheringTabProps {
+  species: GatheringSpecies[];
+  tools: GatheringTool[];
+  tables: GatheringTable[];
+  environments: GatheringEnvironment[];
+  sessions: GatheringSession[];
+  dailyEvents: Record<number, Record<string, EventResult>>;
+  bait: GatheringBait[];
+  categories: GatheringCategory[];
+  items: GatheringItem[];
+  workers: Worker[];
+  foods: FoodItem[];
+  materials: MaterialItem[];
+  foodTypes: FoodType[];
+  materialTypes: MaterialType[];
+  currentDay: number;
+  saveSessions: (sessions: GatheringSession[]) => void;
+  saveDailyEvents: (events: Record<number, Record<string, EventResult>>) => void;
+  saveFoods: (foods: FoodItem[]) => void;
+  saveMaterials: (materials: MaterialItem[]) => void;
+}
+
+type SessionPhase = 'setup' | 'event' | 'fishing' | 'catch' | 'yield' | 'complete';
+
+// ============================================================================
+// Component
+// ============================================================================
+
 /**
  * GatheringTab Component - Manages gathering activities like Fishing
  * Memoized to prevent re-renders from unrelated tab changes
- *
- * This component implements the general gathering system with Fishing as the first mode.
- * Key features:
- * - Mode/Environment/Method selection
- * - Leader and helper selection
- * - Tool and bait selection with filtering
- * - Dynamic event system (once per day per group)
- * - Fishing roll resolution
- * - Random catch with net reroll for large fish
- * - Large fish struggle quick contest
- * - Yield calculation and inventory integration
- *
- * @param {Object} props - Component props
  */
 function GatheringTabBase({
   species,
@@ -59,14 +306,16 @@ function GatheringTabBase({
   workers,
   foods,
   materials,
-  foodTypes,
-  materialTypes,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  foodTypes: _foodTypes,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  materialTypes: _materialTypes,
   currentDay,
   saveSessions,
   saveDailyEvents,
   saveFoods,
   saveMaterials
-}) {
+}: GatheringTabProps): JSX.Element {
   // Mode and environment selection
   const [selectedMode, setSelectedMode] = useState('Fishing');
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState('');
@@ -74,31 +323,31 @@ function GatheringTabBase({
 
   // Party selection
   const [leaderId, setLeaderId] = useState(workers[0]?.id || '');
-  const [helperIds, setHelperIds] = useState([]);
+  const [helperIds, setHelperIds] = useState<string[]>([]);
 
   // Intent
   const [targetedSpeciesId, setTargetedSpeciesId] = useState('');
   const [isRandomCatch, setIsRandomCatch] = useState(true);
 
   // Equipment
-  const [selectedToolIds, setSelectedToolIds] = useState([]);
+  const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
   const [selectedBaitId, setSelectedBaitId] = useState('');
 
   // Session state
-  const [activeSession, setActiveSession] = useState(null);
-  const [sessionPhase, setSessionPhase] = useState('setup'); // setup, event, fishing, catch, yield, complete
+  const [activeSession, setActiveSession] = useState<GatheringSession | null>(null);
+  const [sessionPhase, setSessionPhase] = useState<SessionPhase>('setup');
 
   // Roll inputs
-  const [eventRoll, setEventRoll] = useState({ dice: [], total: 0 });
-  const [fishingRoll, setFishingRoll] = useState({ dice: [], total: 0 });
-  const [catchRolls, setCatchRolls] = useState([]);
+  const [eventRoll, setEventRoll] = useState<DiceRoll>({ dice: [], total: 0 });
+  const [fishingRoll, setFishingRoll] = useState<DiceRoll>({ dice: [], total: 0 });
+  const [_catchRolls, setCatchRolls] = useState<string[]>([]);
   const [struggleRoll, setStruggleRoll] = useState('');
-  const [yieldResults, setYieldResults] = useState([]);
+  const [yieldResults, setYieldResults] = useState<YieldResult[]>([]);
 
   // Results
-  const [eventResult, setEventResult] = useState(null);
-  const [fishingResult, setFishingResult] = useState(null);
-  const [caughtFish, setCaughtFish] = useState([]);
+  const [eventResult, setEventResult] = useState<EventResult | null>(null);
+  const [fishingResult, setFishingResult] = useState<FishingResult | null>(null);
+  const [caughtFish, setCaughtFish] = useState<CaughtFish[]>([]);
   const [retryCount, setRetryCount] = useState(0);
 
   // Foraging-specific state
@@ -112,9 +361,9 @@ function GatheringTabBase({
   const [isPeakSeason, setIsPeakSeason] = useState(false);
   const [isDenseTerrain, setIsDenseTerrain] = useState(false);
   const [isStormDamaged, setIsStormDamaged] = useState(false);
-  const [forageRoll, setForageRoll] = useState({ dice: [], total: 0 });
-  const [forageResult, setForageResult] = useState(null);
-  const [forageFind, setForageFind] = useState(null);
+  const [forageRoll, setForageRoll] = useState<DiceRoll>({ dice: [], total: 0 });
+  const [forageResult, setForageResult] = useState<ForagingResult | null>(null);
+  const [forageFind, setForageFind] = useState<ForageFind | null>(null);
 
   // Get filtered environments for selected mode
   const availableEnvironments = useMemo(() => {
@@ -135,19 +384,18 @@ function GatheringTabBase({
     const defaults = selectedEnvironment.defaultsByMode?.[selectedMode] || selectedEnvironment.defaultTables || {};
 
     return {
-      randomCatch: tables.find(t => t.id === defaults.randomCatchTableId),
-      mildEvent: tables.find(t => t.id === defaults.mildEventTableId),
-      rareEvent: tables.find(t => t.id === defaults.rareEventTableId)
+      randomCatch: tables.find(t => t.id === defaults.randomCatchTableId) || null,
+      mildEvent: tables.find(t => t.id === defaults.mildEventTableId) || null,
+      rareEvent: tables.find(t => t.id === defaults.rareEventTableId) || null
     };
   }, [selectedEnvironment, selectedMode, tables]);
 
   // Get filtered tools for selected method/mode
   const availableTools = useMemo(() => {
     if (selectedMode === 'Foraging') {
-      // Foraging doesn't use methods, just filter by mode
       return tools.filter(tool => tool.allowedModes?.includes('Foraging'));
     }
-    return filterToolsForMethod(tools, selectedMode, selectedMethod);
+    return filterToolsForMethod(tools, selectedMode, selectedMethod) as GatheringTool[];
   }, [tools, selectedMode, selectedMethod]);
 
   // Get leader worker
@@ -180,23 +428,23 @@ function GatheringTabBase({
 
     const attractsTarget = selectedBaitItem.attractsSpeciesIds?.includes(targetedSpeciesId);
     return {
-      correct: attractsTarget,
-      inappropriate: !attractsTarget && targetedSpeciesId
+      correct: !!attractsTarget,
+      inappropriate: !attractsTarget && !!targetedSpeciesId
     };
   }, [selectedBaitItem, targetedSpecies, targetedSpeciesId]);
 
   // Generate group key for daily event tracking
   const groupKey = useMemo(() => {
-    return generateGroupKey(leaderId, helperIds);
+    return generateGroupKey(leaderId, helperIds) as string;
   }, [leaderId, helperIds]);
 
   // Check if daily event already rolled
   const dailyEventRolled = useMemo(() => {
-    return hasDailyEventBeenRolled(dailyEvents, currentDay, groupKey);
+    return hasDailyEventBeenRolled(dailyEvents, currentDay, groupKey) as boolean;
   }, [dailyEvents, currentDay, groupKey]);
 
   // Calculate effective fishing skill
-  const effectiveSkill = useMemo(() => {
+  const effectiveSkill = useMemo((): EffectiveSkillResult => {
     if (!leader) return { effectiveSkill: 10, breakdown: {} };
 
     const isLargeFish = targetedSpecies?.tags?.includes('LargeFish');
@@ -209,11 +457,11 @@ function GatheringTabBase({
       targetingLargeFish: isLargeFish && !isRandomCatch,
       retryPenalty: -retryCount,
       environmentMod: selectedEnvironment?.skillMod || 0
-    });
+    }) as EffectiveSkillResult;
   }, [leader, toolBonus, baitStatus, targetedSpecies, isRandomCatch, retryCount, selectedEnvironment]);
 
   // Calculate effective foraging skill
-  const effectiveForagingSkill = useMemo(() => {
+  const effectiveForagingSkill = useMemo((): EffectiveSkillResult => {
     if (!leader || selectedMode !== 'Foraging') return { effectiveSkill: 10, breakdown: {} };
 
     const baseSkill = leader.skills?.[selectedSkill.toLowerCase()] || 10;
@@ -226,11 +474,11 @@ function GatheringTabBase({
       isPeakSeason,
       targetRarity: !isRandomForage ? targetRarity : null,
       environmentMod: selectedEnvironment?.skillMod || 0
-    });
+    }) as EffectiveSkillResult;
   }, [leader, selectedSkill, toolBonus, hasMapGuide, isUnfamiliar, isPeakSeason, targetRarity, isRandomForage, selectedEnvironment, selectedMode]);
 
   // Start a new gathering session
-  function startSession() {
+  function startSession(): void {
     if (!selectedEnvironmentId || !leaderId) {
       alert('Please select an environment and leader');
       return;
@@ -249,7 +497,7 @@ function GatheringTabBase({
       selectedToolIds,
       selectedConsumableIds: selectedBaitId ? [selectedBaitId] : [],
       currentDay
-    });
+    }) as GatheringSession;
 
     session.tablesResolved = {
       randomCatchTableId: resolvedTables.randomCatch?.id,
@@ -268,27 +516,27 @@ function GatheringTabBase({
   }
 
   // Roll for daily event
-  function rollDailyEvent() {
-    if (!eventRoll) {
+  function rollDailyEvent(): void {
+    if (!eventRoll.total) {
       alert('Please enter or roll 3d6 for the daily event check');
       return;
     }
 
     const roll = eventRoll.total;
-    const eventType = determineDynamicEventType(roll);
+    const eventType = determineDynamicEventType(roll) as 'rare' | 'mild' | 'none';
 
-    let eventEntry = null;
-    let eventText = null;
+    let eventEntry: { id?: string; text?: string } | null = null;
+    let eventText: string | null = null;
 
     if (eventType === 'rare' && resolvedTables.rareEvent) {
-      eventEntry = rollOnCatchTable(resolvedTables.rareEvent);
+      eventEntry = rollOnCatchTable(resolvedTables.rareEvent) as { id?: string; text?: string };
       eventText = eventEntry?.text || 'Rare event occurred!';
     } else if (eventType === 'mild' && resolvedTables.mildEvent) {
-      eventEntry = rollOnCatchTable(resolvedTables.mildEvent);
+      eventEntry = rollOnCatchTable(resolvedTables.mildEvent) as { id?: string; text?: string };
       eventText = eventEntry?.text || 'Mild event occurred!';
     }
 
-    const result = {
+    const result: EventResult = {
       rolled: true,
       roll,
       resultType: eventType,
@@ -309,127 +557,102 @@ function GatheringTabBase({
     saveDailyEvents(updatedDailyEvents);
 
     // Update session
-    setActiveSession(prev => ({
-      ...prev,
-      dailyEvent: result
-    }));
-
+    setActiveSession(prev => prev ? { ...prev, dailyEvent: result } : null);
     setSessionPhase('fishing');
   }
 
   // Roll for fishing
-  function rollFishing() {
-    if (!fishingRoll) {
+  function rollFishing(): void {
+    if (!fishingRoll.total) {
       alert('Please enter or roll 3d6 for the fishing check');
       return;
     }
 
     const roll = fishingRoll.total;
-    const result = evaluateFishingRoll(roll, effectiveSkill.effectiveSkill, selectedMethod);
+    const result = evaluateFishingRoll(roll, effectiveSkill.effectiveSkill, selectedMethod) as FishingResult;
 
     setFishingResult(result);
 
-    // Consume bait on attempt
-    if (selectedBaitId) {
-      const updatedBait = bait.map(b =>
-        b.id === selectedBaitId ? { ...b, quantity: Math.max(0, (b.quantity || 1) - 1) } : b
-      );
-      // Note: bait is managed through gatheringBait, would need saveGatheringBait
-    }
-
     if (result.success && result.fish > 0) {
-      // Move to catch phase
       setCatchRolls(new Array(result.fish).fill(''));
       setSessionPhase('catch');
     } else if (!result.success && !result.critFailure && retryCount < 3) {
-      // Allow retry
       setRetryCount(prev => prev + 1);
-      setFishingRoll('');
+      setFishingRoll({ dice: [], total: 0 });
     } else {
-      // No catch, session complete
       setSessionPhase('complete');
     }
   }
 
   // Roll for foraging
-  function rollForaging() {
-    if (!forageRoll) {
+  function rollForaging(): void {
+    if (!forageRoll.total) {
       alert('Please enter or roll 3d6 for the foraging check');
       return;
     }
 
     const roll = forageRoll.total;
-    const result = evaluateForagingRoll(roll, effectiveForagingSkill.effectiveSkill, !isRandomForage);
+    const result = evaluateForagingRoll(roll, effectiveForagingSkill.effectiveSkill, !isRandomForage) as ForagingResult;
 
     setForageResult(result);
 
-    // Determine what was found
     const targetCategory = targetCategoryId ? categories.find(c => c.id === targetCategoryId) : null;
     const targetItem = targetItemId ? items.find(i => i.id === targetItemId) : null;
 
     const findResult = determineForageFind({
       rollResult: result,
-      findTable: resolvedTables.randomCatch, // Using randomCatch slot for find table
+      findTable: resolvedTables.randomCatch,
       targetCategory,
       targetItem
-    });
+    }) as ForageFind;
 
     setForageFind(findResult);
-
-    // Move to yield phase
     setSessionPhase('yield');
   }
 
   // Roll for random catch
-  function rollCatch(index) {
+  function rollCatch(index: number): void {
     if (!resolvedTables.randomCatch) {
       alert('No catch table configured for this environment');
       return;
     }
 
-    // Calculate bait roll bonus for Line fishing with random catch
     const baitRollBonus = (selectedMethod === 'Line' && isRandomCatch && selectedBaitItem)
       ? (selectedBaitItem.rollBonus || 0)
       : 0;
 
-    let entry;
+    let entry: { resultType?: string; speciesId?: string };
     try {
       if (selectedMethod === 'Net') {
-        entry = rollNetCatch(resolvedTables.randomCatch, species);
+        entry = rollNetCatch(resolvedTables.randomCatch, species) as { resultType?: string; speciesId?: string };
       } else {
-        // Apply bait roll bonus to the catch table roll
-        entry = rollOnCatchTable(resolvedTables.randomCatch, baitRollBonus);
+        entry = rollOnCatchTable(resolvedTables.randomCatch, baitRollBonus) as { resultType?: string; speciesId?: string };
       }
     } catch (error) {
-      alert(error.message);
+      alert(error instanceof Error ? error.message : 'Unknown error');
       return;
     }
 
     const caughtSpecies = entry.resultType === 'species'
-      ? species.find(s => s.id === entry.speciesId)
+      ? species.find(s => s.id === entry.speciesId) || null
       : null;
 
-    const newCatch = {
+    const newCatch: CaughtFish = {
       index,
       entry,
       species: caughtSpecies,
-      isLarge: caughtSpecies?.tags?.includes('LargeFish'),
+      isLarge: caughtSpecies?.tags?.includes('LargeFish') || false,
       struggled: false,
       struggleSuccess: null,
       yields: null,
-      baitRollBonus // Track for display
+      baitRollBonus
     };
 
     setCaughtFish(prev => [...prev, newCatch]);
-
-    // Check if we need struggle for large fish on Line
-    if (newCatch.isLarge && selectedMethod === 'Line') {
-      // Will need struggle roll
-    }
   }
 
   // Roll for large fish struggle
-  function rollStruggle(fishIndex) {
+  function rollStruggle(fishIndex: number): void {
     if (!struggleRoll) {
       alert('Please enter your struggle roll');
       return;
@@ -441,9 +664,8 @@ function GatheringTabBase({
     const characterST = leader?.st || 10;
     const fishST = fish.species?.st || DEFAULT_FISH_ST;
 
-    // Manual roll input - use quick contest logic
     const charRoll = parseInt(struggleRoll);
-    const fishRollResult = roll3d6();
+    const fishRollResult = roll3d6() as { total: number };
 
     const charMargin = characterST - charRoll;
     const fishMargin = fishST - fishRollResult.total;
@@ -460,97 +682,45 @@ function GatheringTabBase({
     setStruggleRoll('');
   }
 
-  // Roll yields for a caught fish
-  function rollYields(fishIndex) {
-    const fish = caughtFish[fishIndex];
-    if (!fish?.species) return;
-
-    // Skip if struggle failed
-    if (fish.isLarge && fish.struggled && !fish.struggleSuccess) {
-      return;
-    }
-
-    const yields = calculateFishYields(fish.species);
-
-    setCaughtFish(prev => prev.map((f, i) =>
-      i === fishIndex ? { ...f, yields } : f
-    ));
-
-    setYieldResults(prev => [...prev, { fishIndex, species: fish.species, yields }]);
-  }
-
-  // Roll yields for foraging
-  function rollForageYields() {
-    if (!forageFind) return;
-
-    const category = categories.find(c => c.id === forageFind.categoryId);
-    const item = items.find(i => i.id === forageFind.itemId);
-
-    if (!category && !item) return;
-
-    // Calculate yield bonuses/penalties
-    const selectedToolObjects = tools.filter(t => selectedToolIds.includes(t.id));
-    const yieldDiceBonus = getToolYieldBonus(selectedToolObjects, category?.id);
-
-    let yieldDicePenalty = 0;
-    if (isStormDamaged) yieldDicePenalty += 1;
-    if (isDenseTerrain && selectedToolIds.length === 0) yieldDicePenalty += 1;
-
-    const yields = calculateForageYields({
-      category,
-      item,
-      yieldMultiplier: forageResult?.yieldMultiplier || 1.0,
-      yieldDiceBonus,
-      yieldDicePenalty
-    });
-
-    setYieldResults([{ category, item, yields }]);
-  }
-
   // Proceed to yield phase
-  function proceedToYields() {
-    // Check all large fish have been struggled
+  function proceedToYields(): void {
     const unresolvedLarge = caughtFish.filter(f => f.isLarge && !f.struggled);
     if (unresolvedLarge.length > 0) {
       alert('Please resolve all large fish struggles first');
       return;
     }
-
     setSessionPhase('yield');
   }
 
   // Commit results to inventory
-  function commitToInventory() {
-    // Calculate totals by species+type combination for proper naming
-    // Format: "Species Name Food/Material Type" (e.g., "Trout Fish" or "Salmon Scales")
-    const foodItems = {}; // { "speciesName|foodType": { speciesName, foodType, units } }
-    const materialItems = {}; // { "name": { name, type, units } }
+  function commitToInventory(): void {
+    const foodItems: Record<string, { speciesName: string; foodType: string; units: number }> = {};
+    const materialItems: Record<string, { name: string; type: string; units: number }> = {};
 
     if (selectedMode === 'Fishing') {
       yieldResults.forEach(({ species: sp, yields }) => {
         if (!yields || !sp) return;
+        const fishYields = yields as FishYields;
 
-        // Add meat - named as "SpeciesName FoodType"
-        const foodType = yields.foodType || 'fish';
+        const foodType = fishYields.foodType || 'fish';
         const foodKey = `${sp.name}|${foodType}`;
         if (!foodItems[foodKey]) {
           foodItems[foodKey] = { speciesName: sp.name, foodType, units: 0 };
         }
-        foodItems[foodKey].units += yields.meatUnits;
+        foodItems[foodKey].units += fishYields.meatUnits || 0;
 
-        // Add secondary material - use secondaryNameOverride if set, else "SpeciesName MaterialType"
-        if (yields.secondaryType && yields.secondaryUnits > 0) {
-          const materialName = sp.secondaryNameOverride || `${sp.name} ${yields.secondaryType}`;
+        if (fishYields.secondaryType && (fishYields.secondaryUnits || 0) > 0) {
+          const materialName = sp.secondaryNameOverride || `${sp.name} ${fishYields.secondaryType}`;
           if (!materialItems[materialName]) {
-            materialItems[materialName] = { name: materialName, type: yields.secondaryType, units: 0 };
+            materialItems[materialName] = { name: materialName, type: fishYields.secondaryType, units: 0 };
           }
-          materialItems[materialName].units += yields.secondaryUnits;
+          materialItems[materialName].units += fishYields.secondaryUnits || 0;
         }
       });
     } else if (selectedMode === 'Foraging') {
-      // Handle foraging yields
       yieldResults.forEach(({ category, item, yields }) => {
-        if (!yields || yields.units === 0) return;
+        const forageYields = yields as ForageYields;
+        if (!forageYields || forageYields.units === 0) return;
 
         const cat = category || categories.find(c => c.id === item?.categoryId);
         if (!cat) return;
@@ -558,7 +728,6 @@ function GatheringTabBase({
         const inventoryKind = cat.inventoryOutput?.inventoryKind || 'food';
         const typeId = cat.inventoryOutput?.typeId || cat.name.toLowerCase().replace(/\s+/g, '_');
 
-        // Get item name or use category name
         const itemName = item?.name || cat.name;
 
         if (inventoryKind === 'food') {
@@ -566,18 +735,16 @@ function GatheringTabBase({
           if (!foodItems[foodKey]) {
             foodItems[foodKey] = { speciesName: itemName, foodType: typeId, units: 0 };
           }
-          foodItems[foodKey].units += yields.units;
+          foodItems[foodKey].units += forageYields.units;
         } else {
-          // Material
           if (!materialItems[itemName]) {
             materialItems[itemName] = { name: itemName, type: typeId, units: 0 };
           }
-          materialItems[itemName].units += yields.units;
+          materialItems[itemName].units += forageYields.units;
         }
       });
     }
 
-    // Update foods inventory with proper naming
     const updatedFoods = [...foods];
     Object.values(foodItems).forEach(({ speciesName, foodType, units }) => {
       const itemName = `${speciesName} ${foodType.charAt(0).toUpperCase() + foodType.slice(1)}`;
@@ -597,7 +764,6 @@ function GatheringTabBase({
     });
     saveFoods(updatedFoods);
 
-    // Update materials inventory with proper naming
     const updatedMaterials = [...materials];
     Object.values(materialItems).forEach(({ name, type, units }) => {
       const existing = updatedMaterials.find(m => m.name === name);
@@ -616,9 +782,8 @@ function GatheringTabBase({
     });
     saveMaterials(updatedMaterials);
 
-    // For session logging, aggregate totals by type
-    const foodTotals = {};
-    const materialTotals = {};
+    const foodTotals: Record<string, number> = {};
+    const materialTotals: Record<string, number> = {};
     Object.values(foodItems).forEach(({ foodType, units }) => {
       foodTotals[foodType] = (foodTotals[foodType] || 0) + units;
     });
@@ -626,11 +791,10 @@ function GatheringTabBase({
       materialTotals[type] = (materialTotals[type] || 0) + units;
     });
 
-    // Save session
-    const completedSession = {
-      ...activeSession,
+    const completedSession: GatheringSession = {
+      ...activeSession!,
       resolution: {
-        fishingRoll: fishingResult,
+        fishingRoll: fishingResult || undefined,
         fishCaught: caughtFish,
         yields: yieldResults,
         inventoryDelta: { foods: foodTotals, materials: materialTotals }
@@ -640,17 +804,16 @@ function GatheringTabBase({
     };
 
     saveSessions([...sessions, completedSession]);
-
     setSessionPhase('complete');
   }
 
   // Reset session
-  function resetSession() {
+  function resetSession(): void {
     setActiveSession(null);
     setSessionPhase('setup');
-    setEventRoll('');
-    setFishingRoll('');
-    setForageRoll('');
+    setEventRoll({ dice: [], total: 0 });
+    setFishingRoll({ dice: [], total: 0 });
+    setForageRoll({ dice: [], total: 0 });
     setCatchRolls([]);
     setStruggleRoll('');
     setEventResult(null);
@@ -720,19 +883,19 @@ function GatheringTabBase({
                         onChange={(e) => {
                           setSelectedMethod(e.target.value);
                           setSelectedToolIds([]);
-                          if (!method.canTarget) {
+                          if (!(method as { canTarget?: boolean }).canTarget) {
                             setIsRandomCatch(true);
                             setTargetedSpeciesId('');
                           }
                         }}
                         className="w-4 h-4"
                       />
-                      <span>{method.label}</span>
+                      <span>{(method as { label: string }).label}</span>
                     </label>
                   ))}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  {FISHING_METHODS[selectedMethod]?.description}
+                  {(FISHING_METHODS[selectedMethod as keyof typeof FISHING_METHODS] as { description?: string })?.description}
                 </p>
               </div>
             )}
@@ -752,7 +915,7 @@ function GatheringTabBase({
                         onChange={(e) => setSelectedSkill(e.target.value)}
                         className="w-4 h-4"
                       />
-                      <span>{skill.label} ({skill.attribute})</span>
+                      <span>{(skill as { label: string; attribute: string }).label} ({(skill as { label: string; attribute: string }).attribute})</span>
                     </label>
                   ))}
                 </div>
@@ -797,7 +960,7 @@ function GatheringTabBase({
             </div>
 
             {/* Intent (Fishing) */}
-            {selectedMode === 'Fishing' && FISHING_METHODS[selectedMethod]?.canTarget && (
+            {selectedMode === 'Fishing' && (FISHING_METHODS[selectedMethod as keyof typeof FISHING_METHODS] as { canTarget?: boolean })?.canTarget && (
               <div className="bg-gray-700 p-3 rounded">
                 <label className="block text-sm text-gray-400 mb-2">
                   <Target size={16} className="inline mr-1" /> Fishing Intent
@@ -913,7 +1076,7 @@ function GatheringTabBase({
                       >
                         {Object.entries(FORAGING_RARITIES).map(([key, rarity]) => (
                           <option key={key} value={key}>
-                            {rarity.label} ({rarity.penalty >= 0 ? '+' : ''}{rarity.penalty})
+                            {(rarity as { label: string; penalty: number }).label} ({(rarity as { label: string; penalty: number }).penalty >= 0 ? '+' : ''}{(rarity as { label: string; penalty: number }).penalty})
                           </option>
                         ))}
                       </select>
@@ -989,7 +1152,7 @@ function GatheringTabBase({
                 >
                   {availableTools.map(tool => (
                     <option key={tool.id} value={tool.id}>
-                      {tool.name} {tool.bonuses?.find(b => b.type === 'skill_bonus')?.value > 0 ? `(+${tool.bonuses.find(b => b.type === 'skill_bonus').value})` : ''}
+                      {tool.name} {tool.bonuses?.find(b => b.type === 'skill_bonus')?.value && tool.bonuses.find(b => b.type === 'skill_bonus')!.value! > 0 ? `(+${tool.bonuses.find(b => b.type === 'skill_bonus')!.value})` : ''}
                     </option>
                   ))}
                 </select>
@@ -1030,13 +1193,13 @@ function GatheringTabBase({
                   <h4 className="font-semibold mb-2">Effective Skill: {effectiveSkill.effectiveSkill}</h4>
                   <div className="text-sm text-gray-400 grid grid-cols-3 gap-2">
                     <span>Base: {effectiveSkill.breakdown.base}</span>
-                    <span>Tool: {effectiveSkill.breakdown.tool >= 0 ? '+' : ''}{effectiveSkill.breakdown.tool}</span>
-                    <span>Bait: {effectiveSkill.breakdown.bait >= 0 ? '+' : ''}{effectiveSkill.breakdown.bait}</span>
+                    <span>Tool: {(effectiveSkill.breakdown.tool || 0) >= 0 ? '+' : ''}{effectiveSkill.breakdown.tool}</span>
+                    <span>Bait: {(effectiveSkill.breakdown.bait || 0) >= 0 ? '+' : ''}{effectiveSkill.breakdown.bait}</span>
                     {effectiveSkill.breakdown.largeFish !== 0 && (
                       <span>Large Fish: {effectiveSkill.breakdown.largeFish}</span>
                     )}
                     {effectiveSkill.breakdown.environment !== 0 && (
-                      <span>Environment: {effectiveSkill.breakdown.environment >= 0 ? '+' : ''}{effectiveSkill.breakdown.environment}</span>
+                      <span>Environment: {(effectiveSkill.breakdown.environment || 0) >= 0 ? '+' : ''}{effectiveSkill.breakdown.environment}</span>
                     )}
                   </div>
                 </>
@@ -1046,13 +1209,13 @@ function GatheringTabBase({
                   <h4 className="font-semibold mb-2">Effective Skill: {effectiveForagingSkill.effectiveSkill} ({selectedSkill})</h4>
                   <div className="text-sm text-gray-400 grid grid-cols-3 gap-2">
                     <span>Base: {effectiveForagingSkill.breakdown.base}</span>
-                    <span>Tool: {effectiveForagingSkill.breakdown.tool >= 0 ? '+' : ''}{effectiveForagingSkill.breakdown.tool}</span>
-                    <span>Context: {effectiveForagingSkill.breakdown.context >= 0 ? '+' : ''}{effectiveForagingSkill.breakdown.context}</span>
+                    <span>Tool: {(effectiveForagingSkill.breakdown.tool || 0) >= 0 ? '+' : ''}{effectiveForagingSkill.breakdown.tool}</span>
+                    <span>Context: {(effectiveForagingSkill.breakdown.context || 0) >= 0 ? '+' : ''}{effectiveForagingSkill.breakdown.context}</span>
                     {effectiveForagingSkill.breakdown.rarity !== 0 && (
-                      <span>Rarity: {effectiveForagingSkill.breakdown.rarity >= 0 ? '+' : ''}{effectiveForagingSkill.breakdown.rarity}</span>
+                      <span>Rarity: {(effectiveForagingSkill.breakdown.rarity || 0) >= 0 ? '+' : ''}{effectiveForagingSkill.breakdown.rarity}</span>
                     )}
                     {effectiveForagingSkill.breakdown.environment !== 0 && (
-                      <span>Environment: {effectiveForagingSkill.breakdown.environment >= 0 ? '+' : ''}{effectiveForagingSkill.breakdown.environment}</span>
+                      <span>Environment: {(effectiveForagingSkill.breakdown.environment || 0) >= 0 ? '+' : ''}{effectiveForagingSkill.breakdown.environment}</span>
                     )}
                   </div>
                 </>
@@ -1108,6 +1271,7 @@ function GatheringTabBase({
                   dice={eventRoll.dice}
                   total={eventRoll.total}
                   onRoll={(dice, total) => setEventRoll({ dice, total })}
+                  onTotalChange={(total) => setEventRoll({ dice: [], total })}
                 />
               </div>
 
@@ -1161,6 +1325,7 @@ function GatheringTabBase({
                   dice={fishingRoll.dice}
                   total={fishingRoll.total}
                   onRoll={(dice, total) => setFishingRoll({ dice, total })}
+                  onTotalChange={(total) => setFishingRoll({ dice: [], total })}
                 />
               </div>
 
@@ -1180,7 +1345,7 @@ function GatheringTabBase({
                   {fishingResult.description}
                 </h4>
                 <p className="text-sm mt-1">
-                  Roll: {fishingRoll} vs {effectiveSkill.effectiveSkill} (Margin: {fishingResult.margin})
+                  Roll: {fishingRoll.total} vs {effectiveSkill.effectiveSkill} (Margin: {fishingResult.margin})
                 </p>
                 {!fishingResult.success && !fishingResult.critFailure && retryCount < 3 && (
                   <p className="text-sm text-yellow-400 mt-2">
@@ -1215,6 +1380,7 @@ function GatheringTabBase({
                   dice={forageRoll.dice}
                   total={forageRoll.total}
                   onRoll={(dice, total) => setForageRoll({ dice, total })}
+                  onTotalChange={(total) => setForageRoll({ dice: [], total })}
                 />
               </div>
 
@@ -1234,7 +1400,7 @@ function GatheringTabBase({
                   {forageResult.description}
                 </h4>
                 <p className="text-sm mt-1">
-                  Roll: {forageRoll} vs {effectiveForagingSkill.effectiveSkill} (Margin: {forageResult.margin})
+                  Roll: {forageRoll.total} vs {effectiveForagingSkill.effectiveSkill} (Margin: {forageResult.margin})
                 </p>
                 {forageResult.hazard && (
                   <p className="text-sm text-orange-400 mt-2">
@@ -1290,7 +1456,7 @@ function GatheringTabBase({
                             className="flex-1 bg-gray-700 px-2 py-1 rounded"
                           />
                           <button
-                            onClick={() => rollStruggle(i)}
+                            onClick={() => rollStruggle(caughtFish.indexOf(caught))}
                             className="bg-orange-600 px-3 py-1 rounded text-sm"
                           >
                             Struggle
@@ -1326,25 +1492,22 @@ function GatheringTabBase({
             <div className="bg-purple-900 p-4 rounded">
               <h3 className="text-lg font-semibold mb-2">Calculate Yields</h3>
 
-              {caughtFish.filter(f => !f.isLarge || f.struggleSuccess).map((fish, fishIdx) => {
+              {caughtFish.filter(f => !f.isLarge || f.struggleSuccess).map((fish) => {
                 if (!fish.species) return null;
 
-                // Parse meat yield formula
                 const meatFormula = fish.species.yieldMeatFormula || '1d';
-                const meatParsed = parseDiceFormula(meatFormula);
+                const meatParsed = parseDiceFormula(meatFormula) as { count?: number; sides?: number; modifier?: number };
 
-                // Parse secondary yield formula if exists
                 const hasSecondary = fish.species.yieldSecondaryFormula && fish.species.secondaryMaterialType;
-                let secondaryParsed;
+                let secondaryParsed: { count?: number; sides?: number; modifier?: number } | undefined;
                 if (hasSecondary) {
-                  secondaryParsed = parseDiceFormula(fish.species.yieldSecondaryFormula);
+                  secondaryParsed = parseDiceFormula(fish.species.yieldSecondaryFormula!) as { count?: number; sides?: number; modifier?: number };
                 }
 
                 return (
-                  <div key={fishIdx} className="bg-gray-800 p-3 rounded mb-3 space-y-3">
+                  <div key={fish.index} className="bg-gray-800 p-3 rounded mb-3 space-y-3">
                     <div className="font-medium text-blue-200">{fish.species.name}</div>
 
-                    {/* Meat Yield Roller */}
                     <div>
                       <div className="text-xs text-gray-400 mb-2">
                         Meat Yield: {meatFormula}
@@ -1357,7 +1520,6 @@ function GatheringTabBase({
                         dice={fish.yields?.meatDice || []}
                         total={fish.yields?.meatUnits || 0}
                         onRoll={(dice, total) => {
-                          // Update fish with new meat yield
                           setCaughtFish(prev => prev.map((f, i) =>
                             i === fish.index ? {
                               ...f,
@@ -1384,14 +1546,13 @@ function GatheringTabBase({
                       />
                     </div>
 
-                    {/* Secondary Material Yield Roller */}
-                    {hasSecondary && (
+                    {hasSecondary && secondaryParsed && (
                       <div>
                         <div className="text-xs text-gray-400 mb-2">
                           {fish.species.secondaryMaterialType}: {fish.species.yieldSecondaryFormula}
                         </div>
                         <DiceRoller
-                          label={fish.species.secondaryMaterialType}
+                          label={fish.species.secondaryMaterialType || 'Secondary'}
                           diceCount={secondaryParsed.count || 1}
                           diceSides={secondaryParsed.sides || 6}
                           modifier={secondaryParsed.modifier || 0}
@@ -1405,7 +1566,7 @@ function GatheringTabBase({
                                   ...(f.yields || {}),
                                   secondaryUnits: total,
                                   secondaryDice: dice,
-                                  secondaryType: fish.species.secondaryMaterialType
+                                  secondaryType: fish.species!.secondaryMaterialType
                                 }
                               } : f
                             ));
@@ -1418,7 +1579,7 @@ function GatheringTabBase({
                                   ...(f.yields || {}),
                                   secondaryUnits: total,
                                   secondaryDice: [],
-                                  secondaryType: fish.species.secondaryMaterialType
+                                  secondaryType: fish.species!.secondaryMaterialType
                                 }
                               } : f
                             ));
@@ -1434,13 +1595,12 @@ function GatheringTabBase({
                caughtFish.filter(f => !f.isLarge || f.struggleSuccess).length > 0 && (
                 <button
                   onClick={() => {
-                    // Update yield results with current fish yields
                     const results = caughtFish
                       .filter(f => (!f.isLarge || f.struggleSuccess) && f.yields)
                       .map(f => ({
                         fishIndex: f.index,
-                        species: f.species,
-                        yields: f.yields
+                        species: f.species!,
+                        yields: f.yields!
                       }));
                     setYieldResults(results);
                     commitToInventory();
@@ -1461,7 +1621,6 @@ function GatheringTabBase({
             <div className="bg-purple-900 p-4 rounded">
               <h3 className="text-lg font-semibold mb-2">Foraging Results</h3>
 
-              {/* Find Result */}
               <div className="bg-gray-800 p-3 rounded mb-3">
                 <h4 className="font-semibold mb-2">What You Found:</h4>
                 {forageFind?.type === 'category' && (
@@ -1492,20 +1651,17 @@ function GatheringTabBase({
                 )}
               </div>
 
-              {/* Yield Calculation */}
               {(forageFind?.type === 'category' || forageFind?.type === 'item') && (() => {
                 const category = categories.find(c => c.id === forageFind.categoryId);
                 const item = items.find(i => i.id === forageFind.itemId);
 
                 if (!category && !item) return null;
 
-                // Get yield formula
                 const yieldFormula = item?.yieldFormula || category?.yieldFormula || '1d';
-                const parsed = parseDiceFormula(yieldFormula);
+                const parsed = parseDiceFormula(yieldFormula) as { count?: number; sides?: number; modifier?: number };
 
-                // Get current yield from results if already rolled
-                const currentYield = yieldResults[0]?.yields?.units || 0;
-                const currentDice = yieldResults[0]?.yields?.dice || [];
+                const currentYield = (yieldResults[0]?.yields as ForageYields)?.units || 0;
+                const currentDice = (yieldResults[0]?.yields as ForageYields)?.dice || [];
 
                 return (
                   <div className="bg-gray-800 p-3 rounded mb-3">
@@ -1521,11 +1677,10 @@ function GatheringTabBase({
                       dice={currentDice}
                       total={currentYield}
                       onRoll={(dice, total) => {
-                        // Apply yield multiplier
                         const finalUnits = Math.floor(total * (forageResult?.yieldMultiplier || 1.0));
                         setYieldResults([{
-                          category,
-                          item,
+                          category: category || undefined,
+                          item: item || undefined,
                           yields: {
                             units: finalUnits,
                             dice,
@@ -1537,11 +1692,10 @@ function GatheringTabBase({
                         }]);
                       }}
                       onTotalChange={(total) => {
-                        // Apply yield multiplier
                         const finalUnits = Math.floor(total * (forageResult?.yieldMultiplier || 1.0));
                         setYieldResults([{
-                          category,
-                          item,
+                          category: category || undefined,
+                          item: item || undefined,
                           yields: {
                             units: finalUnits,
                             dice: [],
@@ -1587,12 +1741,15 @@ function GatheringTabBase({
               {selectedMode === 'Fishing' && yieldResults.length > 0 && (
                 <div className="mb-4">
                   <h4 className="font-semibold mb-2">Catches:</h4>
-                  {yieldResults.map((result, i) => (
-                    <div key={i} className="text-sm">
-                      {result.species?.name}: {result.yields?.meatUnits}U meat
-                      {result.yields?.secondaryUnits > 0 && `, ${result.yields.secondaryUnits}U ${result.yields.secondaryType}`}
-                    </div>
-                  ))}
+                  {yieldResults.map((result, i) => {
+                    const fishYields = result.yields as FishYields;
+                    return (
+                      <div key={i} className="text-sm">
+                        {result.species?.name}: {fishYields?.meatUnits}U meat
+                        {(fishYields?.secondaryUnits || 0) > 0 && `, ${fishYields.secondaryUnits}U ${fishYields.secondaryType}`}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -1600,10 +1757,11 @@ function GatheringTabBase({
                 <div className="mb-4">
                   <h4 className="font-semibold mb-2">Foraged:</h4>
                   {yieldResults.map((result, i) => {
+                    const forageYields = result.yields as ForageYields;
                     const itemName = result.item?.name || result.category?.name || 'Unknown';
                     return (
                       <div key={i} className="text-sm">
-                        {itemName}: {result.yields?.units}U
+                        {itemName}: {forageYields?.units}U
                       </div>
                     );
                   })}
@@ -1654,32 +1812,3 @@ function GatheringTabBase({
 }
 
 export const GatheringTab = memo(GatheringTabBase);
-
-GatheringTab.propTypes = {
-  species: PropTypes.arrayOf(PropTypes.object).isRequired,
-  tools: PropTypes.arrayOf(PropTypes.object).isRequired,
-  tables: PropTypes.arrayOf(PropTypes.object).isRequired,
-  environments: PropTypes.arrayOf(PropTypes.object).isRequired,
-  sessions: PropTypes.arrayOf(PropTypes.object).isRequired,
-  dailyEvents: PropTypes.object.isRequired,
-  bait: PropTypes.arrayOf(PropTypes.object).isRequired,
-  categories: PropTypes.arrayOf(PropTypes.object).isRequired,
-  items: PropTypes.arrayOf(PropTypes.object).isRequired,
-  workers: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    name: PropTypes.string.isRequired,
-    skills: PropTypes.object
-  })).isRequired,
-  foods: PropTypes.arrayOf(PropTypes.object).isRequired,
-  materials: PropTypes.arrayOf(PropTypes.object).isRequired,
-  foodTypes: PropTypes.arrayOf(PropTypes.shape({
-    name: PropTypes.string,
-    color: PropTypes.string
-  })).isRequired,
-  materialTypes: PropTypes.arrayOf(PropTypes.object).isRequired,
-  currentDay: PropTypes.number.isRequired,
-  saveSessions: PropTypes.func.isRequired,
-  saveDailyEvents: PropTypes.func.isRequired,
-  saveFoods: PropTypes.func.isRequired,
-  saveMaterials: PropTypes.func.isRequired
-};

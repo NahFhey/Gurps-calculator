@@ -1,6 +1,14 @@
-import React from 'react';
+import { useCallback, useEffect } from 'react';
 import { batchedStorageManager } from '../utils/batchedStorageManager';
 import { logger } from '../utils/logger';
+
+/**
+ * Type for the batched save function with flush method
+ */
+export interface BatchedSaveFunction {
+  (key: string, value: unknown): void;
+  flush: (key?: string | null) => Promise<void>;
+}
 
 /**
  * Hook that provides batched storage saving functionality
@@ -15,23 +23,22 @@ import { logger } from '../utils/logger';
  * - Improvement: ~30% reduction in storage I/O operations
  *
  * Usage (identical to old hook):
- * ```jsx
+ * ```tsx
  * const debouncedSave = useBatchedStorageSave();
  * debouncedSave('myKey', myData);  // Queued for batch flush
  * debouncedSave.flush('myKey');    // Force immediate save of specific key
  * debouncedSave.flush();           // Force immediate save of all pending keys
  * ```
  *
- * @returns {Function} Save function with flush method attached
- * @property {Function} flush - Force immediate flush of pending data
+ * @returns Save function with flush method attached
  */
-export function useBatchedStorageSave() {
+export function useBatchedStorageSave(): BatchedSaveFunction {
   /**
    * Main save function - queues data for batched flush
-   * @param {string} key - Storage key
-   * @param {any} value - Value to store
+   * @param key - Storage key
+   * @param value - Value to store
    */
-  const save = React.useCallback((key, value) => {
+  const save = useCallback((key: string, value: unknown): void => {
     if (!window?.storage?.set) {
       logger.warn('Storage not available');
       return;
@@ -43,13 +50,13 @@ export function useBatchedStorageSave() {
     } catch (error) {
       logger.error(`Error queuing storage for key "${key}":`, error);
     }
-  }, []);
+  }, []) as BatchedSaveFunction;
 
   /**
    * Flush method - force immediate save
    * Can flush specific keys or all pending data
    */
-  save.flush = React.useCallback(async (key) => {
+  save.flush = useCallback(async (key?: string | null): Promise<void> => {
     try {
       if (key === undefined || key === null) {
         // Flush all pending data
@@ -67,10 +74,10 @@ export function useBatchedStorageSave() {
    * Cleanup on unmount - flush any pending saves
    * Prevents data loss when component unmounts
    */
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       // Flush on unmount
-      batchedStorageManager.flush().catch((error) => {
+      batchedStorageManager.flush().catch((error: unknown) => {
         logger.error('Error flushing on unmount:', error);
       });
     };
@@ -80,8 +87,8 @@ export function useBatchedStorageSave() {
    * Page unload handler - force flush all pending data
    * Critical for preventing data loss when page closes
    */
-  React.useEffect(() => {
-    const handleBeforeUnload = (event) => {
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent): void => {
       // Get pending count
       const pendingCount = batchedStorageManager.getPendingCount();
       if (pendingCount > 0) {
@@ -90,7 +97,7 @@ export function useBatchedStorageSave() {
         event.returnValue = `You have ${pendingCount} unsaved changes`;
 
         // Try to flush (won't work reliably in beforeunload, but try anyway)
-        batchedStorageManager.flush().catch((error) => {
+        batchedStorageManager.flush().catch((error: unknown) => {
           logger.error('Error flushing on page unload:', error);
         });
       }

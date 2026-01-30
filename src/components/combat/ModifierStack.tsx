@@ -9,7 +9,7 @@ interface Modifier {
 
 interface PresetModifier {
   label: string;
-  value?: number;
+  value?: number | null;  // null allowed for presets that require input
   requireInput?: boolean;
   placeholder?: string;
   note?: string;

@@ -1,22 +1,73 @@
 /**
  * @fileoverview Performance Dashboard Component
- * 
+ *
  * Real-time visualization of application performance metrics
  * Shows current session stats, daily trends, and top slow operations
- * 
- * @component
  */
 
 import React, { useState, useEffect } from 'react';
-import PropTypes from 'prop-types';
 import { performanceMonitor } from '../utils/performanceMonitor';
-import { usePerformanceReporting, useMemoryTracking } from '../hooks/usePerformanceMonitoring';
-import { BarChart3, TrendingUp, AlertTriangle, Zap, HardDrive, Activity } from 'lucide-react';
+import { usePerformanceReporting, useMemoryTracking, MemoryStats } from '../hooks/usePerformanceMonitoring';
+import { BarChart3, TrendingUp, Zap, HardDrive, Activity, LucideIcon } from 'lucide-react';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface MetricCardProps {
+  title: string;
+  value: number | string;
+  unit?: string;
+  icon: LucideIcon;
+  trend?: number;
+  warning?: boolean;
+}
+
+interface MetricStatsType {
+  count: number;
+  avg: string | number;
+  min: string | number;
+  max: string | number;
+  total: string | number;
+  exceeded?: number;
+}
+
+interface StatsTableProps {
+  stats: MetricStatsType | null | undefined;
+  title: string;
+}
+
+interface SlowOperation {
+  type: string;
+  duration: number;
+  timestamp: number;
+  component?: string;
+  label?: string;
+}
+
+interface PerformanceReport {
+  session?: {
+    sessionDuration?: number;
+    metricsCount?: number;
+    renders?: MetricStatsType;
+    storageOps?: MetricStatsType;
+    stateUpdates?: MetricStatsType;
+    apiCalls?: MetricStatsType;
+  };
+}
+
+interface PerformanceDashboardProps {
+  defaultOpen?: boolean;
+}
+
+// ============================================================================
+// Sub-Components
+// ============================================================================
 
 /**
  * Performance metric card component
  */
-function MetricCard({ title, value, unit, icon: Icon, trend, warning }) {
+function MetricCard({ title, value, unit, icon: Icon, trend, warning }: MetricCardProps): JSX.Element {
   return (
     <div className={`bg-white rounded-lg p-4 shadow ${warning ? 'border-l-4 border-red-500' : 'border-l-4 border-blue-500'}`}>
       <div className="flex items-center justify-between mb-2">
@@ -29,7 +80,7 @@ function MetricCard({ title, value, unit, icon: Icon, trend, warning }) {
         </span>
         <span className="text-sm text-gray-600">{unit}</span>
       </div>
-      {trend && (
+      {trend !== undefined && (
         <div className={`mt-2 text-sm ${trend > 0 ? 'text-red-600' : 'text-green-600'}`}>
           {trend > 0 ? '▲' : '▼'} {Math.abs(trend).toFixed(1)}%
         </div>
@@ -38,19 +89,10 @@ function MetricCard({ title, value, unit, icon: Icon, trend, warning }) {
   );
 }
 
-MetricCard.propTypes = {
-  title: PropTypes.string.isRequired,
-  value: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
-  unit: PropTypes.string,
-  icon: PropTypes.elementType,
-  trend: PropTypes.number,
-  warning: PropTypes.bool
-};
-
 /**
  * Performance stats table component
  */
-function StatsTable({ stats, title }) {
+function StatsTable({ stats, title }: StatsTableProps): JSX.Element {
   if (!stats || stats.count === 0) {
     return (
       <div className="bg-white rounded-lg p-4 shadow">
@@ -105,27 +147,15 @@ function StatsTable({ stats, title }) {
   );
 }
 
-StatsTable.propTypes = {
-  stats: PropTypes.shape({
-    count: PropTypes.number,
-    avg: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-    min: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-    max: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-    total: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-    exceeded: PropTypes.number
-  }),
-  title: PropTypes.string.isRequired
-};
-
 /**
  * Slow operations list component
  */
-function SlowOperationsList() {
-  const [slowOps, setSlowOps] = useState([]);
+function SlowOperationsList(): JSX.Element {
+  const [slowOps, setSlowOps] = useState<SlowOperation[]>([]);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setSlowOps(performanceMonitor.getSlowOperations(5));
+      setSlowOps(performanceMonitor.getSlowOperations(5) as SlowOperation[]);
     }, 5000);
 
     return () => clearInterval(interval);
@@ -163,21 +193,25 @@ function SlowOperationsList() {
   );
 }
 
+// ============================================================================
+// Main Component
+// ============================================================================
+
 /**
  * Main Performance Dashboard Component
  */
-export default function PerformanceDashboard({ defaultOpen = false }) {
+export default function PerformanceDashboard({ defaultOpen = false }: PerformanceDashboardProps): JSX.Element {
   const [isOpen, setIsOpen] = useState(defaultOpen);
-  const [report, setReport] = useState(null);
+  const [report, setReport] = useState<PerformanceReport | null>(null);
   const memory = useMemoryTracking(5000);
 
   usePerformanceReporting(30000, (newReport) => {
-    setReport(newReport);
+    setReport(newReport as PerformanceReport);
   });
 
   // Initial report
   useEffect(() => {
-    setReport(performanceMonitor.getPerformanceReport());
+    setReport(performanceMonitor.getPerformanceReport() as PerformanceReport);
   }, []);
 
   if (!isOpen) {
@@ -196,7 +230,14 @@ export default function PerformanceDashboard({ defaultOpen = false }) {
 
   const sessionDuration = report?.session?.sessionDuration
     ? (report.session.sessionDuration / 1000).toFixed(1)
-    : 0;
+    : '0';
+
+  // Convert MemoryStats to display format
+  const memoryDisplay: { usedMB: string; limitMB: string; percent: string } | null = memory ? {
+    usedMB: memory.usedJSHeapSize ? (memory.usedJSHeapSize / 1024 / 1024).toFixed(2) : '0',
+    limitMB: memory.jsHeapSizeLimit ? (memory.jsHeapSizeLimit / 1024 / 1024).toFixed(2) : '0',
+    percent: memory.percent ? String(memory.percent) : '0'
+  } : null;
 
   return (
     <div className="fixed bottom-4 right-4 z-50 bg-gray-100 rounded-lg shadow-2xl w-96 max-h-screen overflow-y-auto">
@@ -232,13 +273,13 @@ export default function PerformanceDashboard({ defaultOpen = false }) {
             unit="count"
             icon={BarChart3}
           />
-          {memory && (
+          {memoryDisplay && (
             <MetricCard
               title="Memory Usage"
-              value={memory.percent}
+              value={memoryDisplay.percent}
               unit="%"
               icon={HardDrive}
-              warning={parseFloat(memory.percent) > 80}
+              warning={parseFloat(memoryDisplay.percent) > 80}
             />
           )}
           <MetricCard
@@ -250,7 +291,7 @@ export default function PerformanceDashboard({ defaultOpen = false }) {
         </div>
 
         {/* Render Performance */}
-        {report?.session?.renders?.count > 0 && (
+        {report?.session?.renders && report.session.renders.count > 0 && (
           <StatsTable
             stats={report.session.renders}
             title="Render Performance"
@@ -258,7 +299,7 @@ export default function PerformanceDashboard({ defaultOpen = false }) {
         )}
 
         {/* Storage Operations */}
-        {report?.session?.storageOps?.count > 0 && (
+        {report?.session?.storageOps && report.session.storageOps.count > 0 && (
           <StatsTable
             stats={report.session.storageOps}
             title="Storage Operations"
@@ -266,7 +307,7 @@ export default function PerformanceDashboard({ defaultOpen = false }) {
         )}
 
         {/* State Updates */}
-        {report?.session?.stateUpdates?.count > 0 && (
+        {report?.session?.stateUpdates && report.session.stateUpdates.count > 0 && (
           <StatsTable
             stats={report.session.stateUpdates}
             title="State Updates"
@@ -274,7 +315,7 @@ export default function PerformanceDashboard({ defaultOpen = false }) {
         )}
 
         {/* API Calls */}
-        {report?.session?.apiCalls?.count > 0 && (
+        {report?.session?.apiCalls && report.session.apiCalls.count > 0 && (
           <StatsTable
             stats={report.session.apiCalls}
             title="API Calls"
@@ -285,28 +326,28 @@ export default function PerformanceDashboard({ defaultOpen = false }) {
         <SlowOperationsList />
 
         {/* Memory Info */}
-        {memory && (
+        {memoryDisplay && (
           <div className="bg-white rounded-lg p-4 shadow">
             <h3 className="font-semibold text-gray-700 mb-3">Memory Details</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span>Used:</span>
-                <span className="font-semibold">{memory.usedMB} MB</span>
+                <span className="font-semibold">{memoryDisplay.usedMB} MB</span>
               </div>
               <div className="flex justify-between">
                 <span>Limit:</span>
-                <span className="font-semibold">{memory.limitMB} MB</span>
+                <span className="font-semibold">{memoryDisplay.limitMB} MB</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className={`h-2 rounded-full transition ${
-                    parseFloat(memory.percent) > 80
+                    parseFloat(memoryDisplay.percent) > 80
                       ? 'bg-red-500'
-                      : parseFloat(memory.percent) > 60
+                      : parseFloat(memoryDisplay.percent) > 60
                       ? 'bg-yellow-500'
                       : 'bg-green-500'
                   }`}
-                  style={{ width: `${memory.percent}%` }}
+                  style={{ width: `${memoryDisplay.percent}%` }}
                 />
               </div>
             </div>
@@ -345,7 +386,3 @@ export default function PerformanceDashboard({ defaultOpen = false }) {
     </div>
   );
 }
-
-PerformanceDashboard.propTypes = {
-  defaultOpen: PropTypes.bool
-};

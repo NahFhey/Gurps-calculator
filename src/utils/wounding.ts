@@ -3,27 +3,64 @@
  * Handles damage types and wounding multipliers based on location and damage type
  */
 
+// ============================================================================
+// Types
+// ============================================================================
+
+export type DamageTypeValue =
+  | 'cr'
+  | 'cut'
+  | 'imp'
+  | 'pi-'
+  | 'pi'
+  | 'pi+'
+  | 'pi++'
+  | 'burn'
+  | 'tox'
+  | 'cor'
+  | 'fat';
+
+export interface DamageTypeOption {
+  value: DamageTypeValue;
+  label: string;
+}
+
+export interface HitLocation {
+  key: string;
+  label: string;
+  isVital?: boolean;
+  isExtremity?: boolean;
+  isLimb?: boolean;
+  rollRange?: number[];
+  drKey?: string;
+  toHitPenalty?: number;
+}
+
+// ============================================================================
+// Constants
+// ============================================================================
+
 /**
  * Damage types supported
  */
 export const DAMAGE_TYPES = {
-  CR: 'cr',        // Crushing
-  CUT: 'cut',      // Cutting
-  IMP: 'imp',      // Impaling
-  PI_MINUS: 'pi-', // Small piercing
-  PI: 'pi',        // Piercing
-  PI_PLUS: 'pi+',  // Large piercing
-  PI_PLUSPLUS: 'pi++', // Huge piercing
-  BURN: 'burn',    // Burning
-  TOX: 'tox',      // Toxic
-  COR: 'cor',      // Corrosion
-  FAT: 'fat'       // Fatigue
-};
+  CR: 'cr',
+  CUT: 'cut',
+  IMP: 'imp',
+  PI_MINUS: 'pi-',
+  PI: 'pi',
+  PI_PLUS: 'pi+',
+  PI_PLUSPLUS: 'pi++',
+  BURN: 'burn',
+  TOX: 'tox',
+  COR: 'cor',
+  FAT: 'fat'
+} as const;
 
 /**
  * Damage type display labels
  */
-export const DAMAGE_TYPE_LABELS = {
+export const DAMAGE_TYPE_LABELS: Record<DamageTypeValue, string> = {
   [DAMAGE_TYPES.CR]: 'Crushing',
   [DAMAGE_TYPES.CUT]: 'Cutting',
   [DAMAGE_TYPES.IMP]: 'Impaling',
@@ -41,7 +78,7 @@ export const DAMAGE_TYPE_LABELS = {
  * Base wounding multipliers by damage type
  * These are the default multipliers before location modifiers
  */
-const BASE_WOUNDING_MULTIPLIERS = {
+const BASE_WOUNDING_MULTIPLIERS: Record<DamageTypeValue, number> = {
   [DAMAGE_TYPES.CR]: 1,
   [DAMAGE_TYPES.CUT]: 1.5,
   [DAMAGE_TYPES.IMP]: 2,
@@ -55,23 +92,27 @@ const BASE_WOUNDING_MULTIPLIERS = {
   [DAMAGE_TYPES.FAT]: 1
 };
 
+// ============================================================================
+// Functions
+// ============================================================================
+
 /**
  * Get base wounding multiplier for damage type
- * @param {string} damageType
- * @returns {number}
+ * @param damageType - The damage type
+ * @returns The base wounding multiplier
  */
-export function getBaseWoundingMultiplier(damageType) {
-  return BASE_WOUNDING_MULTIPLIERS[damageType] || 1;
+export function getBaseWoundingMultiplier(damageType: string): number {
+  return BASE_WOUNDING_MULTIPLIERS[damageType as DamageTypeValue] || 1;
 }
 
 /**
  * Get wounding multiplier for damage type and location
- * @param {string} damageType - Damage type (e.g., 'cr', 'cut', 'imp')
- * @param {Object} location - Location object with flags (isVital, isExtremity, etc.)
- * @returns {number} Wounding multiplier
+ * @param damageType - Damage type (e.g., 'cr', 'cut', 'imp')
+ * @param location - Location object with flags (isVital, isExtremity, etc.)
+ * @returns Wounding multiplier
  */
-export function getWoundingMultiplier(damageType, location) {
-  const baseMultiplier = BASE_WOUNDING_MULTIPLIERS[damageType] || 1;
+export function getWoundingMultiplier(damageType: string, location?: HitLocation | null): number {
+  const baseMultiplier = BASE_WOUNDING_MULTIPLIERS[damageType as DamageTypeValue] || 1;
 
   // Special cases for location modifiers
 
@@ -136,12 +177,16 @@ export function getWoundingMultiplier(damageType, location) {
 
 /**
  * Calculate injury from penetrating damage
- * @param {number} penetrating - Penetrating damage (after DR)
- * @param {string} damageType - Damage type
- * @param {Object} location - Location object
- * @returns {number} Injury applied to HP
+ * @param penetrating - Penetrating damage (after DR)
+ * @param damageType - Damage type
+ * @param location - Location object
+ * @returns Injury applied to HP
  */
-export function calculateInjury(penetrating, damageType, location) {
+export function calculateInjury(
+  penetrating: number,
+  damageType: string,
+  location?: HitLocation | null
+): number {
   if (penetrating <= 0) return 0;
 
   const multiplier = getWoundingMultiplier(damageType, location);
@@ -150,20 +195,20 @@ export function calculateInjury(penetrating, damageType, location) {
 
 /**
  * Get all damage types as options for UI
- * @returns {Array} Array of {value, label} objects
+ * @returns Array of {value, label} objects
  */
-export function getDamageTypeOptions() {
+export function getDamageTypeOptions(): DamageTypeOption[] {
   return Object.entries(DAMAGE_TYPE_LABELS).map(([value, label]) => ({
-    value,
+    value: value as DamageTypeValue,
     label
   }));
 }
 
 /**
  * Validate damage type
- * @param {string} damageType - Damage type to validate
- * @returns {boolean} True if valid
+ * @param damageType - Damage type to validate
+ * @returns True if valid
  */
-export function isValidDamageType(damageType) {
-  return Object.values(DAMAGE_TYPES).includes(damageType);
+export function isValidDamageType(damageType: string): damageType is DamageTypeValue {
+  return Object.values(DAMAGE_TYPES).includes(damageType as DamageTypeValue);
 }

@@ -440,6 +440,7 @@ export const initialCampaignState: CampaignState = createCampaignState();
 export type CampaignAction =
   | { type: 'setActiveModule'; payload: string }
   | { type: 'selectCharacter'; payload: string | null }
+  | { type: 'setCharacterPanelView'; payload: CharacterPanelView }
   | { type: 'toggleGmMode' }
   | { type: 'setGmMode'; payload: boolean }
   | { type: 'setGmUnlocked'; payload: boolean }

@@ -3,7 +3,62 @@
  * Structured list of supported combat maneuvers with constraints and prompts.
  */
 
-export const ManeuverCatalog = [
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface ManeuverModifier {
+  label: string;
+  value: number;
+}
+
+export interface ManeuverWorkflow {
+  attack?: {
+    modifiers: ManeuverModifier[];
+  };
+  defense?: {
+    modifiers: ManeuverModifier[];
+  };
+  damage?: {
+    modifiers: ManeuverModifier[];
+  };
+  restrictions?: {
+    attackerActiveDefensesDisabled?: boolean;
+  };
+}
+
+export interface ManeuverRequirements {
+  notUnconscious?: boolean;
+}
+
+export interface ManeuverForbids {
+  stunned?: boolean;
+}
+
+export interface ManeuverPrompts {
+  needsTarget?: boolean;
+  allowsAttackPanel?: boolean;
+  allowsDefensePanel?: boolean;
+  allowsAimPanel?: boolean;
+  allowsWaitPanel?: boolean;
+}
+
+export interface Maneuver {
+  id: string;
+  label: string;
+  group: string;
+  requires: ManeuverRequirements;
+  forbids: ManeuverForbids;
+  prompts: ManeuverPrompts;
+  notes: string;
+  workflow?: ManeuverWorkflow;
+}
+
+// ============================================================================
+// Maneuver Catalog
+// ============================================================================
+
+export const ManeuverCatalog: Maneuver[] = [
   {
     id: 'do_nothing',
     label: 'Do Nothing',
@@ -151,7 +206,11 @@ export const ManeuverCatalog = [
   }
 ];
 
-export const ManeuverIds = ManeuverCatalog.reduce((acc, maneuver) => {
+// ============================================================================
+// Maneuver ID Lookup
+// ============================================================================
+
+export const ManeuverIds: Record<string, string> = ManeuverCatalog.reduce((acc, maneuver) => {
   acc[maneuver.id] = maneuver.id;
   return acc;
-}, {});
+}, {} as Record<string, string>);

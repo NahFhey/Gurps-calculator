@@ -3,13 +3,65 @@
  * Manages hit location profiles, random rolling, and location properties
  */
 
-import { roll } from './dice';
+import { roll, RollResult } from './dice';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface HitLocation {
+  key: string;
+  label: string;
+  rollRange: number[];
+  drKey: string;
+  isVital: boolean;
+  isLimb: boolean;
+  isExtremity: boolean;
+  toHitPenalty: number;
+}
+
+export interface HitLocationProfile {
+  id: string;
+  name: string;
+  locations: HitLocation[];
+}
+
+export interface HitLocationRollResult {
+  valid: boolean;
+  location?: HitLocation;
+  roll?: RollResult;
+  profileId?: string;
+  error?: string;
+}
+
+/** Phase 5 filtered DR structure */
+export interface FilteredDRValue {
+  mode: 'exact' | 'minKnown' | 'unknown';
+  value?: number;
+  min?: number;
+}
+
+/** Phase 5 DR structure with byLocation support */
+export interface FilteredDR {
+  general?: FilteredDRValue | number;
+  byLocation?: Record<string, FilteredDRValue | number>;
+}
+
+/** Character with DR (supports both legacy and Phase 5 formats) */
+export interface CharacterWithDR {
+  dr?: number | FilteredDR;
+  drByLocation?: Record<string, number>;
+}
+
+// ============================================================================
+// Hit Location Profiles
+// ============================================================================
 
 /**
  * Humanoid Hit Location Profile
  * Based on GURPS Basic Set hit location table (3d6)
  */
-const HUMANOID_PROFILE = {
+const HUMANOID_PROFILE: HitLocationProfile = {
   id: 'humanoid',
   name: 'Humanoid',
   locations: [
@@ -129,33 +181,37 @@ const HUMANOID_PROFILE = {
 /**
  * Profile registry
  */
-const PROFILES = {
+const PROFILES: Record<string, HitLocationProfile> = {
   humanoid: HUMANOID_PROFILE
 };
 
+// ============================================================================
+// Functions
+// ============================================================================
+
 /**
  * Get a hit location profile by ID
- * @param {string} profileId - Profile ID
- * @returns {Object|null} Profile object or null if not found
+ * @param profileId - Profile ID
+ * @returns Profile object or null if not found
  */
-export function getHitLocationProfile(profileId) {
+export function getHitLocationProfile(profileId: string): HitLocationProfile | null {
   return PROFILES[profileId] || null;
 }
 
 /**
  * Get all available profiles
- * @returns {Object} Map of profile ID to profile object
+ * @returns Map of profile ID to profile object
  */
-export function getAllProfiles() {
+export function getAllProfiles(): Record<string, HitLocationProfile> {
   return { ...PROFILES };
 }
 
 /**
  * Roll for random hit location using 3d6
- * @param {string} profileId - Profile ID (default 'humanoid')
- * @returns {Object} Result with location and roll data
+ * @param profileId - Profile ID (default 'humanoid')
+ * @returns Result with location and roll data
  */
-export function rollHitLocation(profileId = 'humanoid') {
+export function rollHitLocation(profileId: string = 'humanoid'): HitLocationRollResult {
   const profile = getHitLocationProfile(profileId);
   if (!profile) {
     return {
@@ -192,11 +248,11 @@ export function rollHitLocation(profileId = 'humanoid') {
 
 /**
  * Get location by 3d6 roll total
- * @param {Object} profile - Hit location profile
- * @param {number} rollTotal - 3d6 roll total
- * @returns {Object|null} Location object or null
+ * @param profile - Hit location profile
+ * @param rollTotal - 3d6 roll total
+ * @returns Location object or null
  */
-function getLocationByRoll(profile, rollTotal) {
+function getLocationByRoll(profile: HitLocationProfile, rollTotal: number): HitLocation | null {
   for (const location of profile.locations) {
     if (location.rollRange.includes(rollTotal)) {
       return location;
@@ -207,11 +263,11 @@ function getLocationByRoll(profile, rollTotal) {
 
 /**
  * Get location by key
- * @param {string} profileId - Profile ID
- * @param {string} locationKey - Location key
- * @returns {Object|null} Location object or null
+ * @param profileId - Profile ID
+ * @param locationKey - Location key
+ * @returns Location object or null
  */
-export function getLocationByKey(profileId, locationKey) {
+export function getLocationByKey(profileId: string, locationKey: string): HitLocation | null {
   const profile = getHitLocationProfile(profileId);
   if (!profile) return null;
 
@@ -220,10 +276,10 @@ export function getLocationByKey(profileId, locationKey) {
 
 /**
  * Extract DR value from either filtered (Phase 5) or legacy structure
- * @param {*} drValue - DR value (could be number or Phase 5 object)
- * @returns {number} Actual DR number
+ * @param drValue - DR value (could be number or Phase 5 object)
+ * @returns Actual DR number
  */
-function extractDRValue(drValue) {
+function extractDRValue(drValue: number | FilteredDRValue | undefined | null): number {
   if (drValue === null || drValue === undefined) return 0;
 
   // Phase 5 filtered structure: {mode: 'exact', value: 4} or {mode: 'minKnown', min: 3}
@@ -246,19 +302,20 @@ function extractDRValue(drValue) {
  * Get DR for a specific location on a character
  * Falls back to general DR if location DR is not set
  * Phase 5 compatible: handles both filtered and legacy DR structures
- * @param {Object} character - Character object
- * @param {string} locationKey - Location key
- * @returns {number} DR value
+ * @param character - Character object
+ * @param locationKey - Location key
+ * @returns DR value
  */
-export function getLocationDR(character, locationKey) {
+export function getLocationDR(character: CharacterWithDR, locationKey: string): number {
   // Phase 5: Check for filtered structure first
-  if (character.dr && typeof character.dr === 'object' && character.dr.byLocation) {
-    const locationDR = character.dr.byLocation[locationKey];
-    if (locationDR) {
-      return extractDRValue(locationDR);
+  if (character.dr && typeof character.dr === 'object' && 'byLocation' in character.dr) {
+    const filteredDR = character.dr as FilteredDR;
+    const locationDR = filteredDR.byLocation?.[locationKey];
+    if (locationDR !== undefined) {
+      return extractDRValue(locationDR as FilteredDRValue | number);
     }
     // No specific location DR, use general
-    return extractDRValue(character.dr.general);
+    return extractDRValue(filteredDR.general as FilteredDRValue | number);
   }
 
   // Legacy: Check if character has drByLocation and this specific location
@@ -267,15 +324,19 @@ export function getLocationDR(character, locationKey) {
   }
 
   // Fall back to general DR (could be number or Phase 5 object)
-  return extractDRValue(character.dr);
+  if (typeof character.dr === 'number') {
+    return character.dr;
+  }
+
+  return extractDRValue(character.dr as FilteredDRValue | undefined);
 }
 
 /**
  * Get all locations for a profile (sorted for display)
- * @param {string} profileId - Profile ID
- * @returns {Array} Array of location objects
+ * @param profileId - Profile ID
+ * @returns Array of location objects
  */
-export function getProfileLocations(profileId) {
+export function getProfileLocations(profileId: string): HitLocation[] {
   const profile = getHitLocationProfile(profileId);
   if (!profile) return [];
 

@@ -3,17 +3,44 @@
  * Handles damage expression parsing, rolling, and DR application
  */
 
-import { parseDiceExpression, roll } from './dice';
+import { parseDiceExpression, roll, RollResult } from './dice';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface ParsedDamageExpression {
+  parseable: boolean;
+  expression: string;
+  needsLookup: boolean;
+  lookupType?: 'swing' | 'thrust';
+}
+
+export interface DRApplicationResult {
+  raw: number;
+  dr: number;
+  penetrating: number;
+}
+
+export interface ResolvedDamageExpression {
+  expression: string;
+  resolved: string;
+  valid: boolean;
+}
+
+// ============================================================================
+// Functions
+// ============================================================================
 
 /**
  * Parse a damage expression
  * Supports formats: XdY, XdY+Z, XdY-Z, constant numbers
  * Also supports "sw" and "thr" as placeholders (to be calculated externally)
  *
- * @param {string} expression - Damage expression like "2d+1", "1d6-1", "sw+2", "5"
- * @returns {{parseable: boolean, expression: string, needsLookup: boolean, lookupType?: string}}
+ * @param expression - Damage expression like "2d+1", "1d6-1", "sw+2", "5"
+ * @returns Parsed damage expression with parseable flag and lookup info
  */
-export function parseDamageExpression(expression) {
+export function parseDamageExpression(expression: string): ParsedDamageExpression {
   if (!expression || typeof expression !== 'string') {
     return { parseable: false, expression: '', needsLookup: false };
   }
@@ -45,10 +72,10 @@ export function parseDamageExpression(expression) {
  * Roll damage from an expression
  * Returns roll result with individual dice and total
  *
- * @param {string} expression - Damage expression like "2d+1"
- * @returns {{valid: boolean, expression: string, dice: number[], modifier: number, total: number, error?: string}}
+ * @param expression - Damage expression like "2d+1"
+ * @returns Roll result with dice values, modifier, total, and validity
  */
-export function rollDamage(expression) {
+export function rollDamage(expression: string): RollResult {
   return roll(expression);
 }
 
@@ -57,11 +84,11 @@ export function rollDamage(expression) {
  * GURPS basic DR: penetrating = max(0, damage - DR)
  * No wound multipliers or damage type effects in Phase 3
  *
- * @param {number} damage - Rolled damage amount
- * @param {number} dr - Damage Resistance value (general DR only)
- * @returns {{raw: number, dr: number, penetrating: number}}
+ * @param damage - Rolled damage amount
+ * @param dr - Damage Resistance value (general DR only)
+ * @returns Object with raw damage, DR, and penetrating damage
  */
-export function applyDR(damage, dr = 0) {
+export function applyDR(damage: number, dr: number = 0): DRApplicationResult {
   if (typeof damage !== 'number' || typeof dr !== 'number') {
     throw new Error('applyDR requires numeric damage and dr values');
   }
@@ -79,10 +106,10 @@ export function applyDR(damage, dr = 0) {
  * Calculate swing damage from ST
  * GURPS Basic Set swing damage table
  *
- * @param {number} st - Strength value
- * @returns {string} Damage expression like "1d-1"
+ * @param st - Strength value
+ * @returns Damage expression like "1d-1"
  */
-export function getSwingDamage(st) {
+export function getSwingDamage(st: number): string {
   if (st <= 8) return '1d-2';
   if (st === 9) return '1d-1';
   if (st <= 12) return '1d';
@@ -105,10 +132,10 @@ export function getSwingDamage(st) {
  * Calculate thrust damage from ST
  * GURPS Basic Set thrust damage table
  *
- * @param {number} st - Strength value
- * @returns {string} Damage expression like "1d-2"
+ * @param st - Strength value
+ * @returns Damage expression like "1d-2"
  */
-export function getThrustDamage(st) {
+export function getThrustDamage(st: number): string {
   if (st <= 10) return '1d-2';
   if (st <= 12) return '1d-1';
   if (st <= 14) return '1d';
@@ -129,11 +156,11 @@ export function getThrustDamage(st) {
  * Resolve damage expression with ST lookup if needed
  * Converts "sw+2" or "thr-1" into concrete dice expressions
  *
- * @param {string} expression - Damage expression possibly with sw/thr
- * @param {number} st - Character's ST value
- * @returns {{expression: string, resolved: string, valid: boolean}}
+ * @param expression - Damage expression possibly with sw/thr
+ * @param st - Character's ST value
+ * @returns Object with original expression, resolved expression, and validity
  */
-export function resolveDamageExpression(expression, st = 10) {
+export function resolveDamageExpression(expression: string, st: number = 10): ResolvedDamageExpression {
   const parsed = parseDamageExpression(expression);
 
   if (!parsed.parseable) {
