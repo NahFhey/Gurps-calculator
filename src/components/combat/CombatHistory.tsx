@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { History, Download, Trash2, Eye, EyeOff } from 'lucide-react';
-import { useCombat } from '../../contexts/CombatContext';
+import { useCombatStore } from '../../hooks/useCombatStore';
 import { exportCombatLog } from '../../utils/combatHelpers';
 
 interface LogEntry {
@@ -65,7 +65,7 @@ function formatLogEntry(entry: LogEntry): string {
  * View past combat sessions with logs
  */
 export default function CombatHistory() {
-  const { combatHistory, saveCombatHistory } = useCombat();
+  const { combatHistory, saveCombatHistory } = useCombatStore();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const toggleExpand = (id: string) => {

@@ -62,6 +62,7 @@ import { isGatheringAction, handleGatheringAction } from './gathering';
 import { isAlchemyAction, handleAlchemyAction } from './alchemy';
 import { isCraftingAction, handleCraftingAction } from './crafting';
 import { isCharacterAction, handleCharacterAction } from './character';
+import { isCombatAction, handleCombatAction } from './combat';
 
 export const CAMPAIGN_META = {
   rulesVersion: '1.0.0',
@@ -617,6 +618,10 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
       handleCharacterAction(draft, action);
       return;
     }
+    if (isCombatAction(action)) {
+      handleCombatAction(draft, action);
+      return;
+    }
 
     switch (action.type) {
       case 'setActiveModule':
@@ -900,50 +905,8 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
 
       // ========================================================================
       // COMBAT ACTIONS
+      // Delegated to combat reducer (see isCombatAction check above)
       // ========================================================================
-      case 'addCombatCharacter':
-        draft.entities.combatCharacters[action.payload.id] = action.payload;
-        return;
-      case 'updateCombatCharacter':
-        if (draft.entities.combatCharacters[action.payload.id]) {
-          draft.entities.combatCharacters[action.payload.id] = {
-            ...draft.entities.combatCharacters[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'removeCombatCharacter':
-        delete draft.entities.combatCharacters[action.payload];
-        return;
-      case 'setCombatCharacters':
-        draft.entities.combatCharacters = action.payload;
-        return;
-      case 'setCombatActive':
-        draft.combat.activeSession = action.payload;
-        return;
-      case 'updateCombatActive':
-        if (draft.combat.activeSession) {
-          draft.combat.activeSession = {
-            ...draft.combat.activeSession,
-            ...action.payload
-          };
-        }
-        return;
-      case 'setCombatHistory':
-        draft.entities.combatHistory = action.payload;
-        return;
-      case 'setCombatTombstones':
-        draft.entities.combatTombstones = action.payload;
-        return;
-      case 'setCombatRulesPreset':
-        draft.combat.rulesPreset = action.payload;
-        return;
-      case 'setCombatItems':
-        draft.entities.combatItems = action.payload;
-        return;
-      case 'addCombatItem':
-        draft.entities.combatItems[action.payload.id] = action.payload;
-        return;
 
       // ========================================================================
       // CONFIG ACTIONS (Kitchens, Cooking Skills, Effect Family Map)

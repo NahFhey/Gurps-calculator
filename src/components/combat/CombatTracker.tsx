@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useCombat } from '../../contexts/CombatContext';
+import { useCombatStore } from '../../hooks/useCombatStore';
 import { exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, createActionLogEntry, createInjuryLogEntry, createEffectLogEntry, createConditionLogEntry, createManeuverLogEntry, createReinforcementLogEntry, generateId, exportActiveCombat, parseImportedCombat, exportCombatPlayerView, exportCombatGMLocked, importCombatWithGMLock } from '../../utils/combatHelpers';
 import { MAX_COMBAT_HISTORY } from '../../constants';
 import { roll, rollVsTarget } from '../../utils/dice';
@@ -64,16 +64,11 @@ export default function CombatTracker() {
     combatCharacters,
     combatActive,
     saveCombatActive,
-    combatActiveHistory,
-    saveCombatActiveHistory,
     combatHistory,
     saveCombatHistory,
     combatRulesPreset,
-    combatReveal,
-    saveCombatReveal,
-    gmMode,
-    setGmMode
-  } = useCombat();
+    combatReveal
+  } = useCombatStore();
 
   const [noteText, setNoteText] = useState('');
   const [diceExpression, setDiceExpression] = useState('3d6');
@@ -82,12 +77,13 @@ export default function CombatTracker() {
   const [showActionPanel, setShowActionPanel] = useState(true);
   const [showReinforcementsModal, setShowReinforcementsModal] = useState(false);
 
-  // Phase 5: View mode (session-only, defaults to Player View)
+  // Phase 5: View mode and GM mode (session-only state)
   const [viewMode, setViewMode] = useState(ViewMode.PLAYER);
+  const [gmMode, setGmMode] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
 
   const combat = combatActive as CombatState | null;
-  const history = (combatActiveHistory || createHistoryState()) as HistoryState;
+  const history = createHistoryState() as HistoryState;
   const reveal = combatReveal as RevealState | null;
 
   // Migrate Phase 1 combat on load if needed

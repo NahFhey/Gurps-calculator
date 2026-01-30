@@ -1,6 +1,6 @@
 import { useState, useMemo, ChangeEvent } from 'react';
 import { Plus, Search, Download, Upload, FileText, Users, Info } from 'lucide-react';
-import { useCombat } from '../../contexts/CombatContext';
+import { useCombatStore } from '../../hooks/useCombatStore';
 import { COMBAT_CATEGORIES } from '../../constants';
 import { generateId } from '../../utils/combatHelpers';
 import CharacterSheet from './CharacterSheet';
@@ -53,7 +53,7 @@ type SortByValue = 'name' | 'category' | 'basicSpeed';
  * Handles create, read, update, delete, duplicate, search, filter, sort, import/export
  */
 export default function CharacterLibrary() {
-  const { combatCharacters, saveCombatCharacters, combatTombstones, saveCombatTombstones, combatHistory, partyCharacters } = useCombat();
+  const { combatCharacters, saveCombatCharacters, combatTombstones, saveCombatTombstones, combatHistory, partyCharacters } = useCombatStore();
 
   // Count party characters for informational display
   const partyCharacterCount = (partyCharacters as PartyCharacter[] || []).length;

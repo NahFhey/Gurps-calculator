@@ -1,9 +1,8 @@
 import { useState, ChangeEvent } from 'react';
 import { Plus, Play, ChevronUp, ChevronDown, X, Users, Lock, AlertTriangle } from 'lucide-react';
-import { useCombat } from '../../contexts/CombatContext';
+import { useCombatStore } from '../../hooks/useCombatStore';
 import { useCampaignStore } from '../../state/campaignStore';
 import { generateTurnOrder, createNumberedEnemies, generateId, createLogEntry, createTurnLogEntry } from '../../utils/combatHelpers';
-import { createHistoryState } from '../../utils/combatHistory';
 import type { Character as PartyCharacter } from '../../types/campaign';
 import { DEFAULT_HIT_LOCATION_PROFILE } from '../../types/characterSheet';
 import { COMBAT_CATEGORIES } from '../../constants';
@@ -113,10 +112,9 @@ export default function EncounterSetup() {
     combatCharacters,
     partyCharacters,
     saveCombatActive,
-    saveCombatActiveHistory,
     combatHistory,
     saveCombatHistory
-  } = useCombat();
+  } = useCombatStore();
 
   // Access GM mode from campaign store
   const { state } = useCampaignStore();
@@ -260,11 +258,7 @@ export default function EncounterSetup() {
       ]
     };
 
-    // Create empty history state for Phase 2
-    const history = createHistoryState();
-
     saveCombatActive(combat);
-    saveCombatActiveHistory(history);
   };
 
   // Clear encounter
