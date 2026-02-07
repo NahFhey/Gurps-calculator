@@ -52,8 +52,8 @@ export function useCombatStore() {
       /** Combat rules preset */
       combatRulesPreset: state.combat.rulesPreset,
 
-      /** Reveal state for GM mode */
-      combatReveal: state.combat.reveal,
+      /** Reveal state for GM mode (Phase 5 structure) */
+      combatReveal: state.combat.revealState,
 
       /** Combat items inventory as array */
       combatItems,
@@ -121,15 +121,11 @@ export function useCombatStore() {
       },
 
       /**
-       * Save combat reveal state.
-       * This is stored in state.combat.reveal and updates via setCombatActive with updateCombatActive
-       * Note: The reveal state is part of the campaign state's combat.reveal field.
-       * Currently there's no direct action to update it, so this is a no-op placeholder.
-       * @deprecated Use the reveal state from campaign store directly
+       * Save combat reveal state (Phase 5 structure).
+       * This is stored in state.combat.revealState.
        */
-      saveCombatReveal: (_reveal: any) => {
-        // TODO: Add proper action to update combat.reveal state
-        console.warn('saveCombatReveal: reveal state updates are not yet fully implemented');
+      saveCombatReveal: (revealState: { version?: number; combatId?: string; byInstanceId: Record<string, unknown> } | null) => {
+        actions.setCombatRevealState(revealState);
       }
     };
   }, [
@@ -139,7 +135,7 @@ export function useCombatStore() {
     state.entities.combatHistory,
     state.entities.combatTombstones,
     state.combat.rulesPreset,
-    state.combat.reveal,
+    state.combat.revealState,
     state.entities.combatItems,
     actions
   ]);

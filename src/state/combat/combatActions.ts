@@ -32,6 +32,9 @@ export const COMBAT_RULES_PRESET_SET = 'setCombatRulesPreset' as const;
 export const COMBAT_ITEMS_SET = 'setCombatItems' as const;
 export const COMBAT_ITEM_ADD = 'addCombatItem' as const;
 
+// Combat reveal state action (Phase 5)
+export const COMBAT_REVEAL_STATE_SET = 'setCombatRevealState' as const;
+
 // ============================================================================
 // ACTION TYPES
 // ============================================================================
@@ -90,6 +93,17 @@ export type AddCombatItemAction = {
   payload: CombatItem;
 };
 
+// Combat reveal state action type (Phase 5)
+export type RevealStatePayload = {
+  version?: number;
+  combatId?: string;
+  byInstanceId: Record<string, unknown>;
+} | null;
+export type SetCombatRevealStateAction = {
+  type: typeof COMBAT_REVEAL_STATE_SET;
+  payload: RevealStatePayload;
+};
+
 // ============================================================================
 // UNION TYPE
 // ============================================================================
@@ -110,7 +124,9 @@ export type CombatAction =
   | SetCombatRulesPresetAction
   // Item actions
   | SetCombatItemsAction
-  | AddCombatItemAction;
+  | AddCombatItemAction
+  // Reveal state action
+  | SetCombatRevealStateAction;
 
 // ============================================================================
 // TYPE GUARD
@@ -127,7 +143,8 @@ const COMBAT_ACTION_TYPES = new Set([
   COMBAT_TOMBSTONES_SET,
   COMBAT_RULES_PRESET_SET,
   COMBAT_ITEMS_SET,
-  COMBAT_ITEM_ADD
+  COMBAT_ITEM_ADD,
+  COMBAT_REVEAL_STATE_SET
 ]);
 
 /**

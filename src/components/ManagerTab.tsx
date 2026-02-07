@@ -185,7 +185,7 @@ export function ManagerTab() {
   }, [campaignActions]);
 
   const saveAlchemySettings = useCallback((settings: typeof alchemySettings) => {
-    campaignActions.setAlchemySettings(settings);
+    campaignActions.updateAlchemySettings(settings);
   }, [campaignActions]);
 
   const saveAlchemyReagents = useCallback((reagents: AlchemyReagent[]) => {

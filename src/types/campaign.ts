@@ -221,36 +221,208 @@ export interface AlchemyReagent {
   potency?: number;
   source?: string;
   notes?: string;
+
+  // Extended properties for alchemy engine
+  aspects?: {
+    primary?: string;
+    secondary?: string;
+    tertiary?: string;
+  };
+  refinement?: 'crude' | 'prepared' | 'refined';
+  basePotency?: string;
+  concentrationSteps?: number;
+  roles?: string[];
+  primaryRole?: string;
+  hazards?: string[];
+  processingNotes?: string;
+  identificationLevel?: number;
+  analysisHistory?: unknown[];
+  falseProfile?: {
+    aspects?: {
+      primary?: string;
+      secondary?: string;
+      tertiary?: string;
+    };
+    basePotency?: string;
+    concentrationSteps?: number;
+    refinement?: string;
+    roles?: string[];
+    primaryRole?: string;
+    hazards?: string[];
+    processingNotes?: string;
+  } | null;
+  baseReagentName?: string;
+  identityId?: string;
+  processingLog?: Array<{
+    timestamp: string;
+    operation: string;
+    inputUnits: number;
+    outputUnits: number;
+    worker: string;
+    lab: string;
+    aborted?: boolean;
+    results?: Array<{
+      attempt: number;
+      roll: number;
+      success: boolean;
+      message?: string;
+    }>;
+  }>;
+}
+
+export interface FormulaIngredient {
+  reagentId: Id;
+  reagentName: string;
+  role: string;
+  unitsUsed: number;
+  refinement: 'crude' | 'prepared' | 'refined';
+  aspects?: {
+    primary?: string;
+    secondary?: string;
+    tertiary?: string;
+  };
 }
 
 export interface AlchemyFormula {
   id: Id;
   name: string;
-  reagents: Array<{
+  // Legacy simple reagent list
+  reagents?: Array<{
     reagentId: Id;
     amount: number;
   }>;
-  skill: string;
-  difficulty: number;
-  brewTime: number;  // In minutes
-  effects: string;
-  potency?: number;
+  // Rich ingredient list from alchemy engine
+  ingredients?: FormulaIngredient[];
+  skill?: string;
+  difficulty?: number;
+  brewTime?: number;  // In minutes
+  effects?: string;
+  potency?: number | string;
   notes?: string;
+
+  // Formula stats (from calculateFormulaStats)
+  tier?: number;
+  calculatedTier?: number;
+  potencyLoad?: number;
+  vector?: string;
+  baseWR?: number;
+  baseDM?: number;
+  dominantAspect?: string;
+  secondaryAspect?: string;
+  basePotency?: string;
+  finalPotency?: string;
+  concentrationSteps?: number;
+  totalConcentrationSteps?: number;
+  traitBudget?: number;
+  hasMatchingStabilizer?: boolean;
+  traits?: Array<{ name: string; cost: number }>;
+  roleCoverage?: unknown;
+  hazards?: string[];
 }
 
 export interface AlchemyBatch {
   id: Id;
   formulaId: Id;
+  formulaName?: string;
   status: 'brewing' | 'complete' | 'failed';
+  phase?: 'brewing' | 'completed' | 'failed';
   worker: string;
-  labId: Id;
+  labId?: Id;
+  labName?: string;
+  labRating?: number;
   startDate: string;
   startDay: number;
   completionDate?: string;
+  completedDate?: string | null;
   skillRoll?: number;
   effectiveSkill?: number;
   resultingPotions?: number;
   notes?: string;
+
+  // Brewing mechanics
+  PP?: number;
+  WR?: number;
+  CP?: number;
+  DM?: number;
+  tier?: number;
+  calculatedTier?: number;
+  potencyLoad?: number;
+  vector?: string;
+  dominantAspect?: string | null;
+  secondaryAspect?: string | null;
+  basePotency?: string;
+  finalPotency?: string;
+  concentrationSteps?: number;
+  totalConcentrationSteps?: number;
+  traitBudget?: number;
+  traits?: Array<{ name: string; cost: number }>;
+  hasMatchingStabilizer?: boolean;
+  quality?: string | null;
+  amount?: number;
+  potency?: string;
+
+  // Hazards
+  hazards?: string[];
+  hazardDetails?: unknown[];
+  hazardsPublic?: unknown[];
+  gmHazards?: unknown[];
+
+  // Analysis
+  forecast?: {
+    performedAt: string;
+    currentCP: number;
+    predictedQuality: string;
+    dmBonus: number;
+  } | null;
+  microAssay?: {
+    performedAt: string;
+    dominantAspect: string | null;
+    secondaryAspect: string | null;
+    revealed: boolean;
+  } | null;
+
+  // Consumed ingredients
+  consumedIngredients?: Array<{
+    reagentId: string;
+    reagentName: string;
+    role: string;
+    unitsUsed: number;
+    refinement: string;
+    aspects: Record<string, string | undefined>;
+    potency?: string;
+    concentrationSteps?: number;
+  }>;
+
+  // Work shift history
+  shifts?: Array<{
+    id: string;
+    date: string;
+    worker: string;
+    skill: number;
+    roll: number;
+    effectiveSkill: number;
+    result: string;
+    ppAdded: number;
+    cpChange: number;
+    labName?: string;
+    labRating?: number;
+    hazardEvents?: Array<{
+      hazard: string;
+      effect: string;
+      severity: string;
+      trigger?: string;
+    }>;
+  }>;
+
+  // Completion hazard events
+  completionHazards?: Array<{
+    hazard: string;
+    effect: string;
+    severity: string;
+    trigger: string;
+  }>;
+
+  // Legacy workSessions
   workSessions?: Array<{
     date: string;
     day: number;
@@ -268,6 +440,8 @@ export interface AlchemyLab {
 export interface AlchemySettings {
   defaultLabRating: number;
   workBlockMinutes: number;
+  showObviousRoles?: boolean;
+  autoSaveRecipes?: boolean;
 }
 
 // ============================================================================

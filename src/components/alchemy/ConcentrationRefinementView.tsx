@@ -145,7 +145,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
       canProcess = Boolean(targetRefinement && selectedReagent.quantity >= inputUnitsRequired);
     } else {
       // Calculate target potency for concentration
-      const currentPotencyIndex = POTENCY_LEVELS.indexOf(currentPotency);
+      const currentPotencyIndex = (POTENCY_LEVELS as readonly string[]).indexOf(currentPotency);
       const targetPotencyIndex = Math.min(POTENCY_LEVELS.length - 1, currentPotencyIndex + currentConcentration + 1);
       targetPotency = POTENCY_LEVELS[targetPotencyIndex];
       canProcess = selectedReagent.quantity >= inputUnitsRequired && (targetPotency !== 'P4' || currentPotency !== 'P4');

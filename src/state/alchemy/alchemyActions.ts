@@ -136,7 +136,7 @@ export type AlchemyAction =
 // TYPE GUARD
 // ============================================================================
 
-const ALCHEMY_ACTION_TYPES = new Set([
+const ALCHEMY_ACTION_TYPES: Set<string> = new Set([
   ALCHEMY_REAGENT_ADD,
   ALCHEMY_REAGENT_UPDATE,
   ALCHEMY_REAGENT_REMOVE,

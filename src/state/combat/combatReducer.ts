@@ -19,7 +19,8 @@ import {
   COMBAT_TOMBSTONES_SET,
   COMBAT_RULES_PRESET_SET,
   COMBAT_ITEMS_SET,
-  COMBAT_ITEM_ADD
+  COMBAT_ITEM_ADD,
+  COMBAT_REVEAL_STATE_SET
 } from './combatActions';
 
 /**
@@ -102,6 +103,13 @@ export function handleCombatAction(
 
     case COMBAT_ITEM_ADD:
       draft.entities.combatItems[action.payload.id] = action.payload;
+      return true;
+
+    // ========================================================================
+    // COMBAT REVEAL STATE ACTIONS (Phase 5)
+    // ========================================================================
+    case COMBAT_REVEAL_STATE_SET:
+      draft.combat.revealState = action.payload;
       return true;
 
     default:

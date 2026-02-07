@@ -76,9 +76,9 @@ export function AlchemyTaskCard({
 
   // Lookup batch details
   const batch = batches.find((b) => b.id === data.formulaId);
-  const batchName = (batch as any)?.formulaName ?? 'Unknown Batch';
-  const batchProgress = batch ? `${(batch as any).PP ?? 0}/${(batch as any).WR ?? '?'} PP` : 'N/A';
-  const batchCP = (batch as any)?.CP ?? 0;
+  const batchName = batch?.formulaName ?? 'Unknown Batch';
+  const batchProgress = batch ? `${batch.PP ?? 0}/${batch.WR ?? '?'} PP` : 'N/A';
+  const batchCP = batch?.CP ?? 0;
 
   // Lookup leader name
   const leaderData = characters.find((c) => c.id === task.leaderId);

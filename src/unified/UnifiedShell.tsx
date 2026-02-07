@@ -21,6 +21,7 @@ import { duplicateCharacter, downloadCharacterJSON } from '../utils/characterMan
 import { parseCharacterText } from '../utils/characterImport';
 import { WeatherWidget, TimeDisplay, TimeControls } from '../components/header';
 import { CombatTile } from '../components/combat/CombatTile';
+import { CombatTab } from '../components/CombatTab';
 import { PanelLayoutProvider, usePanelLayout } from '../contexts/PanelLayoutContext';
 import {
   useCampaignCharacters,
@@ -66,6 +67,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           />
         ),
       },
+      { id: 'combat', label: 'Combat', content: <CombatTab /> },
       {
         id: 'manager',
         label: 'Manager',
@@ -223,7 +225,8 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
   const shouldHideCharacterPanel = !selectedCharacterId || isPartyCollapsed;
 
   // Module pane should hide when no module is selected or rail is collapsed
-  const shouldHideModulePane = !activeModule || isRailCollapsed;
+  // Exception: Combat module can be shown even when rail is collapsed (accessed via CombatTile)
+  const shouldHideModulePane = !activeModule || (isRailCollapsed && activeModuleId !== 'combat');
 
   const gridTemplateColumns = useMemo(() => {
     const collapsedWidth = '56px'; // Same width for both collapsed rails (w-8 button + p-2 padding + border)
@@ -248,12 +251,12 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
     return `${partyWidth} ${scrollEdge} ${scrollGap} ${scrollEdge} minmax(0, 1fr) ${modulePaneWidth} ${scrollEdge} ${scrollGap} ${scrollEdge} ${railWidth}`;
   }, [isPartyCollapsed, isCenterExpanded, isRightExpanded, shouldHideCharacterPanel, isRailCollapsed, shouldHideModulePane]);
 
-  // Clear active module when rail collapses
+  // Clear active module when rail collapses (except for combat, which has its own tile)
   useEffect(() => {
-    if (isRailCollapsed) {
+    if (isRailCollapsed && activeModuleId !== 'combat') {
       actions.setActiveModule('');
     }
-  }, [isRailCollapsed, actions]);
+  }, [isRailCollapsed, activeModuleId, actions]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
@@ -580,9 +583,10 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           </div>
 
           {/* Module buttons - expanded view */}
+          {/* Note: 'combat' is excluded from rail - it has a dedicated CombatTile at the bottom */}
           {!isRailCollapsed && (
             <div className="space-y-2">
-              {availableModules.map((moduleItem) => {
+              {availableModules.filter(m => m.id !== 'combat').map((moduleItem) => {
                 const isSelected = activeModuleId === moduleItem.id;
                 return (
                   <button
@@ -605,9 +609,10 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           )}
 
           {/* Module buttons - collapsed view (matching Party collapsed style exactly) */}
+          {/* Note: 'combat' is excluded from rail - it has a dedicated CombatTile at the bottom */}
           {isRailCollapsed && (
             <div className="flex flex-col gap-1">
-              {availableModules.map((moduleItem) => {
+              {availableModules.filter(m => m.id !== 'combat').map((moduleItem) => {
                 const isSelected = activeModuleId === moduleItem.id;
                 return (
                   <button

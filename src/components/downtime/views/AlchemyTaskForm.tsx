@@ -270,9 +270,9 @@ export function AlchemyTaskForm({
         >
           <option value="">Select batch...</option>
           {batches.map((batch) => {
-            const batchName = (batch as any).formulaName ?? batch.id;
-            const pp = (batch as any).PP ?? 0;
-            const wr = (batch as any).WR ?? '?';
+            const batchName = batch.formulaName ?? batch.id;
+            const pp = batch.PP ?? 0;
+            const wr = batch.WR ?? '?';
             return (
               <option key={batch.id} value={batch.id}>
                 {batchName} ({pp}/{wr} PP)
@@ -315,22 +315,22 @@ export function AlchemyTaskForm({
           <div className="text-sm text-purple-200/80 space-y-1">
             <p>
               <span className="font-medium">Progress:</span>{' '}
-              {(selectedBatch as any).PP ?? 0}/{(selectedBatch as any).WR ?? '?'} PP
+              {selectedBatch.PP ?? 0}/{selectedBatch.WR ?? '?'} PP
             </p>
             <p>
               <span className="font-medium">Contamination:</span>{' '}
-              {(selectedBatch as any).CP ?? 0} CP
+              {selectedBatch.CP ?? 0} CP
             </p>
-            {(selectedBatch as any).dominantAspect && (
+            {selectedBatch.dominantAspect && (
               <p>
                 <span className="font-medium">Aspects:</span>{' '}
-                {(selectedBatch as any).dominantAspect}
-                {(selectedBatch as any).secondaryAspect && ` / ${(selectedBatch as any).secondaryAspect}`}
+                {selectedBatch.dominantAspect}
+                {selectedBatch.secondaryAspect && ` / ${selectedBatch.secondaryAspect}`}
               </p>
             )}
-            {(selectedBatch as any).tier && (
+            {selectedBatch.tier && (
               <p>
-                <span className="font-medium">Tier:</span> {(selectedBatch as any).tier}
+                <span className="font-medium">Tier:</span> {selectedBatch.tier}
               </p>
             )}
           </div>

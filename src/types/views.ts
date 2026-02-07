@@ -69,6 +69,7 @@ export interface Worker {
     survival?: number;
     naturalist?: number;
     herbLore?: number;
+    fishing?: number;
   };
 }
 
@@ -101,6 +102,12 @@ export interface AlchemyReagent {
       tertiary?: string;
     };
     basePotency?: string;
+    concentrationSteps?: number;
+    refinement?: string;
+    roles?: string[];
+    primaryRole?: string;
+    hazards?: string[];
+    processingNotes?: string;
   } | null;
 }
 
@@ -129,7 +136,7 @@ export interface FormulaTrait {
 export interface AlchemyFormula {
   id: Id;
   name: string;
-  ingredients: FormulaIngredient[];
+  ingredients?: FormulaIngredient[];
   tier?: number;
   calculatedTier?: number;
   potencyLoad?: number;
@@ -147,7 +154,7 @@ export interface AlchemyFormula {
   traits?: FormulaTrait[];
   roleCoverage?: unknown;
   hazards?: string[];
-  potency?: string; // Legacy field
+  potency?: number | string; // Legacy field
 }
 
 // ============================================================================

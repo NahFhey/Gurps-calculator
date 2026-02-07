@@ -269,13 +269,13 @@ function migrateEntities(state: CampaignState, legacy: Record<string, any>): voi
 
   // Alchemy
   const alchemyReagents = ensureIds(legacy.alchemyReagents || []);
-  state.entities.alchemyReagents = normalizeArray(alchemyReagents);
+  state.entities.alchemyReagents = normalizeArray(alchemyReagents) as any;
   const alchemyFormulas = ensureIds(legacy.alchemyFormulas || []);
-  state.entities.alchemyFormulas = normalizeArray(alchemyFormulas);
+  state.entities.alchemyFormulas = normalizeArray(alchemyFormulas) as any;
   const alchemyBatches = ensureIds(legacy.alchemyBatches || []);
-  state.entities.alchemyBatches = normalizeArray(alchemyBatches);
+  state.entities.alchemyBatches = normalizeArray(alchemyBatches) as any;
   const alchemyLabs = ensureIds(legacy.alchemyLabs || []);
-  state.entities.alchemyLabs = normalizeArray(alchemyLabs);
+  state.entities.alchemyLabs = normalizeArray(alchemyLabs) as any;
   state.entities.alchemySettings = legacy.alchemySettings || getDefaultValue('alchemySettings');
   console.log(`[Migration] Migrated alchemy: ${alchemyReagents.length} reagents, ${alchemyFormulas.length} formulas, ${alchemyBatches.length} batches`);
 

@@ -215,6 +215,12 @@ export type CampaignState = {
       revealedHP: Set<string>;
       revealedDefenseValues: Record<string, { dodge?: number }>;
     };
+    // New Phase 5 reveal state (per-instance reveal configuration)
+    revealState: {
+      version?: number;
+      combatId?: string;
+      byInstanceId: Record<string, unknown>;
+    } | null;
   };
   locations: LocationState;
   downtime: DowntimeState;
@@ -429,7 +435,8 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
       revealedTargets: new Set(),
       revealedHP: new Set(),
       revealedDefenseValues: {}
-    }
+    },
+    revealState: null
   },
   locations: createInitialLocationState({ day: 1, slot: 0 }),
   downtime: downtimeInitialState,
@@ -569,6 +576,8 @@ export type CampaignAction =
   // Combat Item actions
   | { type: 'setCombatItems'; payload: Record<Id, CombatItem> }
   | { type: 'addCombatItem'; payload: CombatItem }
+  // Combat Reveal State action (Phase 5)
+  | { type: 'setCombatRevealState'; payload: { version?: number; combatId?: string; byInstanceId: Record<string, unknown> } | null }
   // Kitchen actions
   | { type: 'setKitchens'; payload: Record<Id, Kitchen> }
   | { type: 'addKitchen'; payload: Kitchen }

@@ -193,6 +193,7 @@ type CampaignStoreValue = {
     setCombatRulesPreset: (preset: string) => void;
     setCombatItems: (items: Record<Id, CombatItem>) => void;
     addCombatItem: (item: CombatItem) => void;
+    setCombatRevealState: (revealState: { version?: number; combatId?: string; byInstanceId: Record<string, unknown> } | null) => void;
 
     // Config Actions
     setKitchens: (kitchens: Record<Id, Kitchen>) => void;
@@ -433,6 +434,8 @@ export function CampaignStoreProvider({
       setCombatRulesPreset: (preset: string) => dispatch({ type: 'setCombatRulesPreset', payload: preset }),
       setCombatItems: (items: Record<Id, CombatItem>) => dispatch({ type: 'setCombatItems', payload: items }),
       addCombatItem: (item: CombatItem) => dispatch({ type: 'addCombatItem', payload: item }),
+      setCombatRevealState: (revealState: { version?: number; combatId?: string; byInstanceId: Record<string, unknown> } | null) =>
+        dispatch({ type: 'setCombatRevealState', payload: revealState }),
 
       // Config Actions
       setKitchens: (kitchens: Record<Id, Kitchen>) => dispatch({ type: 'setKitchens', payload: kitchens }),

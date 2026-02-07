@@ -63,39 +63,12 @@ interface WorkShift {
   labRating?: number;
 }
 
-interface ExtendedBatch extends Omit<AlchemyBatch, 'workSessions'> {
-  formulaName?: string;
+interface ExtendedBatch extends Omit<AlchemyBatch, 'workSessions' | 'phase'> {
   phase: 'brewing' | 'completed' | 'failed';
   consumedIngredients?: FormulaIngredientSnapshot[];
-  tier?: number;
-  calculatedTier?: number;
-  potencyLoad?: number;
-  vector?: string;
-  WR?: number;
-  DM?: number;
-  PP?: number;
-  CP?: number;
-  dominantAspect?: string | null;
-  secondaryAspect?: string | null;
-  basePotency?: string;
-  finalPotency?: string;
-  concentrationSteps?: number;
-  totalConcentrationSteps?: number;
-  traitBudget?: number;
-  traits?: Array<{ name: string; cost: number }>;
   forecast?: Forecast | null;
   microAssay?: MicroAssay | null;
-  hasMatchingStabilizer?: boolean;
   shifts?: WorkShift[];
-  quality?: string | null;
-  completedDate?: string | null;
-  hazards?: string[];
-  hazardDetails?: unknown[];
-  labId?: string;
-  labName?: string;
-  labRating?: number;
-  amount?: number;
-  potency?: string;
 }
 
 interface Trait {
@@ -400,7 +373,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
     saveBatches(newBatches);
 
     if (updated.phase === 'completed') {
-      if (updated.quality !== 'Mishap' && saveFormulas) {
+      if (updated.quality !== 'Mishap') {
         setCompletedBatch(updated);
         setSaveAsName(updated.formulaName || '');
         setShowSavePrompt(true);

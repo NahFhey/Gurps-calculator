@@ -70,7 +70,7 @@ function FormulasViewBase({ reagents, formulas, batches, saveReagents, saveBatch
       vector: f.vector || 'Potion',
       dominantAspect: f.dominantAspect,
       secondaryAspect: f.secondaryAspect,
-      finalPotency: f.finalPotency || f.potency || 'P1',
+      finalPotency: f.finalPotency || String(f.potency || 'P1'),
       baseWR: f.baseWR,
       baseDM: f.baseDM,
       ingredients: f.ingredients || [],

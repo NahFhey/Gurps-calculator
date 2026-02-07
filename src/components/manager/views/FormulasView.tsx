@@ -418,7 +418,7 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
                 <span className="text-gray-400 ml-2">DM:</span> <span className="text-orange-400">{(f.baseDM ?? 0) >= 0 ? '+' : ''}{f.baseDM}</span>
               </div>
               <div className="text-xs text-gray-400 mt-2">
-                {f.ingredients.map(i => `${i.reagentName} (${i.role}, ${i.unitsUsed}U)`).join(', ')}
+                {(f.ingredients || []).map(i => `${i.reagentName} (${i.role}, ${i.unitsUsed}U)`).join(', ')}
               </div>
 
               {f.traits && f.traits.length > 0 && (
