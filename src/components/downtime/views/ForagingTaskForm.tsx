@@ -1,51 +1,79 @@
 /**
- * Foraging Task Form
+ * Foraging Task Form (Revamped)
  *
- * Form component for creating new foraging tasks.
- * Handles leader/helper selection, biome, node, table, and tool selection
- * with validation for character assignment and tool availability.
+ * Three-mode foraging form:
+ * - General: No target needed, system selects from zone weights
+ * - Category: Target a specific category (e.g., Mushrooms, Herbs)
+ * - Specific: Target a specific item with rarity penalties
  */
 
-import { useState, useMemo, useEffect } from 'react';
-import { X } from 'lucide-react';
-import {
-  selectAvailableCharacterIdsForSlot,
-  selectReservedToolIdsForSlot,
-} from '../../../state/downtime';
-import { characterHasAnySkill, getCharacterSkills, ACTIVITY_SKILL_REQUIREMENTS } from '../../../types/characterSheet';
-import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
+import { useState, useMemo, useCallback } from 'react';
+import { Leaf, Search, Target, Crosshair, X } from 'lucide-react';
 import type { DowntimeState, ForagingData } from '../../../types/downtime';
-import type { Character, GatheringSpecies, GatheringTool, GatheringEnvironment, GatheringTable } from '../../../types/campaign';
+import type { Character, GatheringTool } from '../../../types/campaign';
+import type { ForageZoneProfile, ForageItem, ForagingConfig, ForageMode, ForageCategoryId, ForageSkill } from '../../../types/foraging';
+import { FORAGE_CATEGORY_META, FORAGE_CATEGORY_IDS, FORAGE_SKILL_LABELS, FORAGE_SPECIFIC_PENALTIES } from '../../../constants/foraging';
+import {
+  selectCharacterFatigueStatus,
+  getFatiguePenalty,
+  selectAvailableCharacterIdsForSlot,
+} from '../../../state/downtime/downtimeSelectors';
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
 interface ForagingTaskFormProps {
-  /** Available characters to assign */
   characters: Character[];
-  /** Available foraging biomes */
-  biomes: GatheringEnvironment[];
-  /** Available foraging nodes */
-  nodes: GatheringSpecies[];
-  /** Available gathering tables */
-  tables: GatheringTable[];
-  /** Available tools */
+  zones: ForageZoneProfile[];
+  forageItems: ForageItem[];
   tools: GatheringTool[];
-  /** Current downtime state for validation */
+  foragingConfig: ForagingConfig;
   state: DowntimeState;
-  /** Current day key */
   currentDayKey: number;
-  /** Current time slot */
   currentSlot: number;
-  /** Called when form is submitted with valid data */
   onSubmit: (data: {
     leaderId: string;
     helperIds: string[];
     activityData: ForagingData;
   }) => void;
-  /** Called when form is cancelled */
   onCancel: () => void;
+}
+
+// ============================================================================
+// SKILL EXTRACTION HELPERS
+// ============================================================================
+
+const FORAGE_SKILL_NAMES: Record<ForageSkill, string[]> = {
+  survival: ['Survival'],
+  naturalist: ['Naturalist'],
+  herbLore: ['Herb Lore'],
+};
+
+function getCharacterForageSkills(character: Character): { skill: ForageSkill; level: number }[] {
+  const skills: { skill: ForageSkill; level: number }[] = [];
+  const charSkills = (character as any).skills ?? (character as any).characterSheet?.skills ?? [];
+
+  for (const [skillKey, skillNames] of Object.entries(FORAGE_SKILL_NAMES) as [ForageSkill, string[]][]) {
+    for (const name of skillNames) {
+      const found = charSkills.find?.((s: any) =>
+        typeof s === 'string'
+          ? s.toLowerCase().includes(name.toLowerCase())
+          : (s.name ?? '').toLowerCase().includes(name.toLowerCase())
+      );
+      if (found) {
+        const level = typeof found === 'string' ? 10 : (found.level ?? found.points ?? 10);
+        skills.push({ skill: skillKey, level });
+      }
+    }
+  }
+
+  // If no matching skills found, provide a default
+  if (skills.length === 0) {
+    skills.push({ skill: 'survival', level: 10 });
+  }
+
+  return skills;
 }
 
 // ============================================================================
@@ -54,10 +82,10 @@ interface ForagingTaskFormProps {
 
 export function ForagingTaskForm({
   characters,
-  biomes,
-  nodes,
-  tables,
+  zones,
+  forageItems,
   tools,
+  foragingConfig: _foragingConfig,
   state,
   currentDayKey,
   currentSlot,
@@ -65,144 +93,125 @@ export function ForagingTaskForm({
   onCancel,
 }: ForagingTaskFormProps) {
   // Form state
+  const [mode, setMode] = useState<ForageMode>('general');
   const [leaderId, setLeaderId] = useState('');
   const [helperIds, setHelperIds] = useState<string[]>([]);
-  const [biomeId, setBiomeId] = useState('');
-  const [nodeId, setNodeId] = useState('');
-  const [tableId, setTableId] = useState('');
+  const [zoneId, setZoneId] = useState(zones.length > 0 ? zones[0].id : '');
+  const [skillUsed, setSkillUsed] = useState<ForageSkill>('survival');
+  const [targetCategory, setTargetCategory] = useState<ForageCategoryId | ''>('');
+  const [targetItemId, setTargetItemId] = useState('');
   const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
 
-  // Auto-select biome when only one is available
-  useEffect(() => {
-    if (biomes.length === 1 && !biomeId) {
-      setBiomeId(biomes[0].id);
-    }
-  }, [biomes, biomeId]);
+  // Context flags
+  const [hasMapOrGuide, setHasMapOrGuide] = useState(false);
+  const [isUnfamiliarOrHostile, setIsUnfamiliarOrHostile] = useState(false);
+  const [isPeakSeason, setIsPeakSeason] = useState(false);
+  const [isOffSeason, setIsOffSeason] = useState(false);
+  const [hasProperTools, setHasProperTools] = useState(false);
+  const [isDenseOrDangerousTerrain, setIsDenseOrDangerousTerrain] = useState(false);
 
-  // Get available (unassigned) character IDs
-  const allCharacterIds = useMemo(
-    () => characters.map((c) => c.id),
-    [characters]
-  );
-
-  const availableCharacterIds = useMemo(
-    () =>
-      selectAvailableCharacterIdsForSlot(
-        state,
-        currentDayKey,
-        currentSlot,
-        allCharacterIds
-      ),
+  // Available characters (not assigned to other tasks in this slot)
+  const allCharacterIds = useMemo(() => characters.map((c) => c.id), [characters]);
+  const availableIds = useMemo(
+    () => selectAvailableCharacterIdsForSlot(state, currentDayKey, currentSlot, allCharacterIds),
     [state, currentDayKey, currentSlot, allCharacterIds]
   );
-
-  // Get reserved tool IDs
-  const reservedToolIds = useMemo(
-    () => selectReservedToolIdsForSlot(state, currentDayKey, currentSlot),
-    [state, currentDayKey, currentSlot]
-  );
-
-  // Filter available characters for selection (not already assigned this slot)
-  const availableUnassigned = useMemo(
-    () => characters.filter((c) => availableCharacterIds.includes(c.id)),
-    [characters, availableCharacterIds]
-  );
-
-  // Filter leaders to only characters with a relevant foraging skill
   const availableCharacters = useMemo(
-    () => availableUnassigned.filter((c) => characterHasAnySkill(c, ACTIVITY_SKILL_REQUIREMENTS.foraging)),
-    [availableUnassigned]
+    () => characters.filter((c) => availableIds.includes(c.id)),
+    [characters, availableIds]
   );
 
-  // Helpers can be anyone available (no skill requirement), excluding selected leader
-  const availableHelpers = useMemo(
-    () => availableUnassigned.filter((c) => c.id !== leaderId),
-    [availableUnassigned, leaderId]
+  // Leader's skills
+  const leaderCharacter = useMemo(
+    () => characters.find((c) => c.id === leaderId),
+    [characters, leaderId]
   );
+  const leaderSkills = useMemo(
+    () => (leaderCharacter ? getCharacterForageSkills(leaderCharacter) : []),
+    [leaderCharacter]
+  );
+  const selectedSkillLevel = useMemo(() => {
+    const found = leaderSkills.find((s) => s.skill === skillUsed);
+    return found?.level ?? 10;
+  }, [leaderSkills, skillUsed]);
 
-  // Filter nodes by selected biome (if biome has species list)
-  const availableNodes = useMemo(() => {
-    if (!biomeId) return nodes;
-    const selectedBiome = biomes.find((b) => b.id === biomeId);
-    if (!selectedBiome?.species?.length) return nodes;
-    return nodes.filter((n) => selectedBiome.species.includes(n.id));
-  }, [nodes, biomeId, biomes]);
-
-  // Extract the leader's base foraging skill (Survival, Naturalist, or Herb Lore)
-  const leaderForagingSkill = useMemo(() => {
-    if (!leaderId) return 10;
-    const leader = characters.find((c) => c.id === leaderId);
-    if (!leader) return 10;
-    const allSkills = getCharacterSkills(leader);
-    return allSkills.survival ?? allSkills.naturalist ?? allSkills.herbLore ?? 10;
-  }, [leaderId, characters]);
-
-  // Get leader's fatigue status and penalty
-  const { fatigueStatus: leaderFatigueStatus, fatiguePenalty: leaderFatiguePenalty } = useMemo(() => {
-    if (!leaderId) return { fatigueStatus: 'rested' as const, fatiguePenalty: 0 };
-    const status = selectCharacterFatigueStatus(state, leaderId, currentDayKey, currentSlot);
-    return { fatigueStatus: status, fatiguePenalty: getFatiguePenalty(status) };
+  // Fatigue penalty for leader
+  const fatiguePenalty = useMemo(() => {
+    if (!leaderId) return 0;
+    const fatigueStatus = selectCharacterFatigueStatus(state, leaderId, currentDayKey, currentSlot);
+    return getFatiguePenalty(fatigueStatus);
   }, [state, leaderId, currentDayKey, currentSlot]);
 
-  // Calculate additional skill modifier from tools and helpers (excludes base skill)
-  const skillModifier = useMemo(() => {
-    let modifier = 0;
+  // Available helpers (all available minus leader)
+  const availableHelpers = useMemo(
+    () => availableCharacters.filter((c) => c.id !== leaderId),
+    [availableCharacters, leaderId]
+  );
 
-    // Add tool bonuses
-    for (const toolId of selectedToolIds) {
+  // Items filtered for specific mode
+  const filteredItems = useMemo(() => {
+    let items = forageItems;
+    if (targetCategory) {
+      items = items.filter((i) => i.categoryId === targetCategory);
+    }
+    if (zoneId) {
+      items = items.filter((i) => {
+        if (!i.zoneRestrictions || i.zoneRestrictions.length === 0) return true;
+        return i.zoneRestrictions.includes(zoneId);
+      });
+    }
+    return items;
+  }, [forageItems, targetCategory, zoneId]);
+
+  // Calculate total skill modifier (tools + fatigue)
+  const toolBonus = useMemo(() => {
+    return selectedToolIds.reduce((sum, toolId) => {
       const tool = tools.find((t) => t.id === toolId);
-      // Check direct skillBonus property
-      if ((tool as any)?.skillBonus) {
-        modifier += (tool as any).skillBonus;
-      }
-      // Also check bonuses array (matching fishing pattern)
-      const bonuses = (tool as any)?.bonuses;
-      if (Array.isArray(bonuses)) {
-        const bonus = bonuses.find((b: any) => b.type === 'skill_bonus');
-        if (bonus?.value) modifier += bonus.value;
-      }
-    }
+      if (!tool) return sum;
+      return sum + (tool.skillBonus ?? 0);
+    }, 0);
+  }, [selectedToolIds, tools]);
 
-    // Add helper bonus (+1 per helper)
-    modifier += helperIds.length;
+  const totalSkillModifier = toolBonus + fatiguePenalty;
 
-    return modifier;
-  }, [helperIds, selectedToolIds, tools]);
+  // Form validation
+  const isFormValid = useMemo(() => {
+    if (!leaderId || !zoneId) return false;
+    if (mode === 'category' && !targetCategory) return false;
+    if (mode === 'specific' && !targetItemId) return false;
+    return true;
+  }, [leaderId, zoneId, mode, targetCategory, targetItemId]);
 
-  // Handle helper toggle
-  const toggleHelper = (helperId: string) => {
-    setHelperIds((prev) =>
-      prev.includes(helperId)
-        ? prev.filter((id) => id !== helperId)
-        : [...prev, helperId]
-    );
-  };
+  // Handle mode change
+  const handleModeChange = useCallback((newMode: ForageMode) => {
+    setMode(newMode);
+    // Reset target fields when switching modes
+    setTargetCategory('');
+    setTargetItemId('');
+  }, []);
 
-  // Handle tool toggle
-  const toggleTool = (toolId: string) => {
-    setSelectedToolIds((prev) =>
-      prev.includes(toolId)
-        ? prev.filter((id) => id !== toolId)
-        : [...prev, toolId]
-    );
-  };
-
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!leaderId || !biomeId || !nodeId) {
-      return; // Required fields not filled
-    }
+  // Handle submit
+  const handleSubmit = useCallback(() => {
+    if (!isFormValid) return;
 
     const activityData: ForagingData = {
       type: 'foraging',
-      biomeId,
-      nodeId,
-      tableId: tableId || '',
+      zoneId,
+      mode,
+      targetCategory: mode === 'category' ? (targetCategory as string) : undefined,
+      targetItemId: mode === 'specific' ? targetItemId : undefined,
+      skillUsed,
       toolIds: selectedToolIds,
-      leaderSkill: leaderForagingSkill,
-      skillModifier,
+      leaderSkill: selectedSkillLevel,
+      skillModifier: totalSkillModifier,
+      contextFlags: {
+        hasMapOrGuide,
+        isUnfamiliarOrHostile,
+        isPeakSeason,
+        isOffSeason,
+        hasProperTools,
+        isDenseOrDangerousTerrain,
+      },
     };
 
     onSubmit({
@@ -210,233 +219,384 @@ export function ForagingTaskForm({
       helperIds,
       activityData,
     });
-  };
+  }, [
+    isFormValid, zoneId, mode, targetCategory, targetItemId, skillUsed,
+    selectedToolIds, selectedSkillLevel, totalSkillModifier,
+    hasMapOrGuide, isUnfamiliarOrHostile, isPeakSeason, isOffSeason,
+    hasProperTools, isDenseOrDangerousTerrain, leaderId, helperIds, onSubmit,
+  ]);
 
-  // Check if form is valid
-  const isFormValid = leaderId && biomeId && nodeId;
+  // Toggle helper
+  const toggleHelper = useCallback((helperId: string) => {
+    setHelperIds((prev) =>
+      prev.includes(helperId)
+        ? prev.filter((id) => id !== helperId)
+        : [...prev, helperId]
+    );
+  }, []);
+
+  // Toggle tool
+  const toggleTool = useCallback((toolId: string) => {
+    setSelectedToolIds((prev) =>
+      prev.includes(toolId)
+        ? prev.filter((id) => id !== toolId)
+        : [...prev, toolId]
+    );
+  }, []);
+
+  // Get target item for penalty display
+  const targetItem = useMemo(
+    () => (targetItemId ? forageItems.find((i) => i.id === targetItemId) : undefined),
+    [targetItemId, forageItems]
+  );
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="foraging-task-form bg-gray-800/60 border border-gray-700 rounded-lg p-4 mb-4"
-      data-testid="foraging-task-form"
-    >
-      {/* Form Header */}
-      <div className="flex justify-between items-center mb-4">
-        <h4 className="font-medium text-gray-100">New Foraging Task</h4>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="text-gray-400 hover:text-gray-200"
-          aria-label="Close form"
-        >
+    <div className="foraging-task-form bg-gray-800/60 border border-gray-700 rounded-lg p-4 mb-4" data-testid="foraging-task-form">
+      <div className="flex justify-between items-center mb-3">
+        <h4 className="font-medium text-gray-100 flex items-center gap-2">
+          <Leaf className="w-4 h-4 text-green-400" />
+          New Foraging Task
+        </h4>
+        <button type="button" onClick={onCancel} className="text-gray-400 hover:text-gray-200">
           <X className="w-5 h-5" />
         </button>
       </div>
 
+      {/* Mode Selector */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-300 mb-1">Mode</label>
+        <div className="flex gap-1" data-testid="mode-selector">
+          <button
+            type="button"
+            onClick={() => handleModeChange('general')}
+            className={`flex items-center gap-1 px-3 py-1.5 text-sm rounded-l-lg border transition-colors ${
+              mode === 'general'
+                ? 'bg-green-600 text-white border-green-600'
+                : 'bg-gray-800 text-gray-300 border-gray-600 hover:bg-gray-700'
+            }`}
+            data-testid="mode-general"
+          >
+            <Search className="w-3.5 h-3.5" />
+            General
+          </button>
+          <button
+            type="button"
+            onClick={() => handleModeChange('category')}
+            className={`flex items-center gap-1 px-3 py-1.5 text-sm border-y transition-colors ${
+              mode === 'category'
+                ? 'bg-green-600 text-white border-green-600'
+                : 'bg-gray-800 text-gray-300 border-gray-600 hover:bg-gray-700'
+            }`}
+            data-testid="mode-category"
+          >
+            <Target className="w-3.5 h-3.5" />
+            Category
+          </button>
+          <button
+            type="button"
+            onClick={() => handleModeChange('specific')}
+            className={`flex items-center gap-1 px-3 py-1.5 text-sm rounded-r-lg border transition-colors ${
+              mode === 'specific'
+                ? 'bg-green-600 text-white border-green-600'
+                : 'bg-gray-800 text-gray-300 border-gray-600 hover:bg-gray-700'
+            }`}
+            data-testid="mode-specific"
+          >
+            <Crosshair className="w-3.5 h-3.5" />
+            Specific
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 mt-1">
+          {mode === 'general' && 'Gather whatever the zone provides. No targeting penalty.'}
+          {mode === 'category' && 'Target a specific category of items (e.g., Mushrooms, Herbs).'}
+          {mode === 'specific' && 'Target a specific item. Rarity penalty applies.'}
+        </p>
+      </div>
+
       {/* Leader Selection */}
-      <div className="form-group mb-4">
+      <div className="mb-3">
         <label htmlFor="leader-select" className="block text-sm font-medium text-gray-300 mb-1">
-          Leader <span className="text-red-400">*</span>
+          Leader
         </label>
         <select
           id="leader-select"
           value={leaderId}
-          onChange={(e) => setLeaderId(e.target.value)}
-          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-          required
+          onChange={(e) => {
+            setLeaderId(e.target.value);
+            setHelperIds([]);
+          }}
+          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
           data-testid="leader-select"
         >
-          <option value="">Select character...</option>
+          <option value="">Select a leader...</option>
           {availableCharacters.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
             </option>
           ))}
         </select>
-        {availableCharacters.length === 0 && (
-          <p className="text-sm text-yellow-400 mt-1">
-            All characters are already assigned to tasks in this slot
-          </p>
-        )}
       </div>
 
-      {/* Helper Selection */}
-      <div className="form-group mb-4">
-        <label className="block text-sm font-medium text-gray-300 mb-1">
-          Helpers (optional)
-        </label>
-        {availableHelpers.length === 0 ? (
-          <p className="text-sm text-gray-500 italic">No available helpers</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
+      {/* Skill Selection */}
+      {leaderId && (
+        <div className="mb-3">
+          <label htmlFor="skill-select" className="block text-sm font-medium text-gray-300 mb-1">
+            Skill
+          </label>
+          <select
+            id="skill-select"
+            value={skillUsed}
+            onChange={(e) => setSkillUsed(e.target.value as ForageSkill)}
+            className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            data-testid="skill-select"
+          >
+            {leaderSkills.map((s) => (
+              <option key={s.skill} value={s.skill}>
+                {FORAGE_SKILL_LABELS[s.skill]} — Level {s.level}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Helpers */}
+      {leaderId && availableHelpers.length > 0 && (
+        <div className="mb-3">
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            Helpers ({helperIds.length})
+          </label>
+          <div className="flex flex-wrap gap-1">
             {availableHelpers.map((c) => (
-              <label
+              <button
                 key={c.id}
-                className={`flex items-center gap-1 px-2 py-1 rounded border cursor-pointer transition-colors ${
+                type="button"
+                onClick={() => toggleHelper(c.id)}
+                className={`px-2 py-1 text-xs rounded border transition-colors ${
                   helperIds.includes(c.id)
                     ? 'bg-green-900/50 border-green-500 text-green-200'
                     : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
                 }`}
               >
-                <input
-                  type="checkbox"
-                  checked={helperIds.includes(c.id)}
-                  onChange={() => toggleHelper(c.id)}
-                  className="sr-only"
-                />
-                <span className="text-sm">{c.name}</span>
-              </label>
+                {c.name}
+              </button>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Biome Selection */}
-      <div className="form-group mb-4">
-        <label htmlFor="biome-select" className="block text-sm font-medium text-gray-300 mb-1">
-          Biome <span className="text-red-400">*</span>
+      {/* Zone Selection */}
+      <div className="mb-3">
+        <label htmlFor="zone-select" className="block text-sm font-medium text-gray-300 mb-1">
+          Zone
         </label>
-        {biomes.length === 0 ? (
-          <p className="text-sm text-yellow-400 italic" data-testid="no-biomes-message">
-            No foraging areas at current location
-          </p>
-        ) : biomes.length === 1 ? (
-          <div
-            className="w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded text-gray-100"
-            data-testid="biome-select"
-          >
-            {biomes[0].name} <span className="text-xs text-gray-400">— current location</span>
-          </div>
-        ) : (
+        {zones.length > 0 ? (
           <select
-            id="biome-select"
-            value={biomeId}
-            onChange={(e) => {
-              setBiomeId(e.target.value);
-              setNodeId(''); // Reset node when biome changes
-            }}
-            className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-            required
-            data-testid="biome-select"
+            id="zone-select"
+            value={zoneId}
+            onChange={(e) => setZoneId(e.target.value)}
+            className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            data-testid="zone-select"
           >
-            <option value="">Select biome...</option>
-            {biomes.map((biome) => (
-              <option key={biome.id} value={biome.id}>
-                {biome.name}
+            {zones.map((z) => (
+              <option key={z.id} value={z.id}>
+                {z.name}
               </option>
             ))}
           </select>
-        )}
-      </div>
-
-      {/* Node Selection */}
-      <div className="form-group mb-4">
-        <label htmlFor="node-select" className="block text-sm font-medium text-gray-300 mb-1">
-          Target Node <span className="text-red-400">*</span>
-        </label>
-        <select
-          id="node-select"
-          value={nodeId}
-          onChange={(e) => setNodeId(e.target.value)}
-          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-          required
-          data-testid="node-select"
-        >
-          <option value="">Select node...</option>
-          {availableNodes.map((node) => (
-            <option key={node.id} value={node.id}>
-              {node.name} ({node.category})
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Table Selection (Optional) */}
-      <div className="form-group mb-4">
-        <label htmlFor="table-select" className="block text-sm font-medium text-gray-300 mb-1">
-          Loot Table (optional)
-        </label>
-        <select
-          id="table-select"
-          value={tableId}
-          onChange={(e) => setTableId(e.target.value)}
-          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-          data-testid="table-select"
-        >
-          <option value="">Default table</option>
-          {tables.map((table) => (
-            <option key={table.id} value={table.id}>
-              {table.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Tool Selection */}
-      <div className="form-group mb-4">
-        <label className="block text-sm font-medium text-gray-300 mb-1">
-          Equipment (optional)
-        </label>
-        {tools.length === 0 ? (
-          <p className="text-sm text-gray-500 italic">No foraging tools available</p>
         ) : (
-          <div className="flex flex-wrap gap-2">
-            {tools.map((tool) => {
-              const isReserved = reservedToolIds.has(tool.id);
-              const isSelected = selectedToolIds.includes(tool.id);
-
-              return (
-                <label
-                  key={tool.id}
-                  className={`flex items-center gap-1 px-2 py-1 rounded border transition-colors ${
-                    isReserved
-                      ? 'bg-gray-900/50 border-gray-700 text-gray-500 cursor-not-allowed'
-                      : isSelected
-                      ? 'bg-green-900/50 border-green-500 text-green-200 cursor-pointer'
-                      : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700 cursor-pointer'
-                  }`}
-                  title={isReserved ? 'Tool already in use' : undefined}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => !isReserved && toggleTool(tool.id)}
-                    disabled={isReserved}
-                    className="sr-only"
-                  />
-                  <span className="text-sm">{tool.name}</span>
-                  {isReserved && (
-                    <span className="text-xs text-gray-500">(in use)</span>
-                  )}
-                </label>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Skill Modifier Summary */}
-      <div className="bg-gray-900/50 border border-gray-700 rounded p-2 mb-4">
-        <p className="text-sm text-gray-300">
-          Total Skill Modifier:{' '}
-          <span className={`font-medium ${(skillModifier + leaderFatiguePenalty) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {(skillModifier + leaderFatiguePenalty) >= 0 ? '+' : ''}{skillModifier + leaderFatiguePenalty}
-          </span>
-        </p>
-        {leaderFatiguePenalty !== 0 && (
-          <p className="text-xs text-red-400 mt-1">
-            Fatigue ({leaderFatigueStatus}): {leaderFatiguePenalty}
+          <p className="text-sm text-yellow-400 italic">
+            No foraging zones at this location. Configure zone profiles in the Gathering Manager Environments tab.
           </p>
         )}
       </div>
 
-      {/* Form Actions */}
-      <div className="form-actions flex gap-2">
+      {/* Category Selection (Category and Specific modes) */}
+      {(mode === 'category' || mode === 'specific') && (
+        <div className="mb-3">
+          <label htmlFor="category-select" className="block text-sm font-medium text-gray-300 mb-1">
+            Category
+          </label>
+          <select
+            id="category-select"
+            value={targetCategory}
+            onChange={(e) => {
+              setTargetCategory(e.target.value as ForageCategoryId);
+              setTargetItemId('');
+            }}
+            className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            data-testid="category-select"
+          >
+            <option value="">Select a category...</option>
+            {FORAGE_CATEGORY_IDS.map((catId) => (
+              <option key={catId} value={catId}>
+                {FORAGE_CATEGORY_META[catId].label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Item Selection (Specific mode only) */}
+      {mode === 'specific' && targetCategory && (
+        <div className="mb-3">
+          <label htmlFor="item-select" className="block text-sm font-medium text-gray-300 mb-1">
+            Target Item
+          </label>
+          {filteredItems.length > 0 ? (
+            <select
+              id="item-select"
+              value={targetItemId}
+              onChange={(e) => setTargetItemId(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              data-testid="item-select"
+            >
+              <option value="">Select an item...</option>
+              {filteredItems.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name} ({item.tier}) — Penalty: {FORAGE_SPECIFIC_PENALTIES[item.tier]}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="text-sm text-yellow-400 italic">
+              No items available for this category/zone combination.
+            </p>
+          )}
+          {targetItem && (
+            <p className="text-xs text-gray-400 mt-1">
+              Targeting penalty: {FORAGE_SPECIFIC_PENALTIES[targetItem.tier]} (tier: {targetItem.tier})
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Tools */}
+      {tools.length > 0 && (
+        <div className="mb-3">
+          <label className="block text-sm font-medium text-gray-300 mb-1">
+            Tools
+          </label>
+          <div className="flex flex-wrap gap-1">
+            {tools.map((tool) => (
+              <button
+                key={tool.id}
+                type="button"
+                onClick={() => toggleTool(tool.id)}
+                className={`px-2 py-1 text-xs rounded border transition-colors ${
+                  selectedToolIds.includes(tool.id)
+                    ? 'bg-blue-900/50 border-blue-500 text-blue-200'
+                    : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                {tool.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Context Flags */}
+      <div className="mb-3">
+        <label className="block text-sm font-medium text-gray-300 mb-1">Context Modifiers</label>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="flex items-center gap-1.5 text-xs text-gray-300">
+            <input
+              type="checkbox"
+              checked={hasMapOrGuide}
+              onChange={(e) => setHasMapOrGuide(e.target.checked)}
+              className="rounded"
+            />
+            Map/Local Guide (+1)
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-gray-300">
+            <input
+              type="checkbox"
+              checked={isUnfamiliarOrHostile}
+              onChange={(e) => setIsUnfamiliarOrHostile(e.target.checked)}
+              className="rounded"
+            />
+            Unfamiliar/Hostile (-2)
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-gray-300">
+            <input
+              type="checkbox"
+              checked={isPeakSeason}
+              onChange={(e) => {
+                setIsPeakSeason(e.target.checked);
+                if (e.target.checked) setIsOffSeason(false);
+              }}
+              className="rounded"
+            />
+            Peak Season (+2)
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-gray-300">
+            <input
+              type="checkbox"
+              checked={isOffSeason}
+              onChange={(e) => {
+                setIsOffSeason(e.target.checked);
+                if (e.target.checked) setIsPeakSeason(false);
+              }}
+              className="rounded"
+            />
+            Off Season (-2)
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-gray-300">
+            <input
+              type="checkbox"
+              checked={hasProperTools}
+              onChange={(e) => setHasProperTools(e.target.checked)}
+              className="rounded"
+            />
+            Proper Tools (+2)
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-gray-300">
+            <input
+              type="checkbox"
+              checked={isDenseOrDangerousTerrain}
+              onChange={(e) => setIsDenseOrDangerousTerrain(e.target.checked)}
+              className="rounded"
+            />
+            Dense/Dangerous Terrain (-2)
+          </label>
+        </div>
+      </div>
+
+      {/* Skill Summary */}
+      {leaderId && (
+        <div className="mb-4 bg-gray-900/50 border border-gray-700 rounded p-3 text-sm">
+          <p className="text-gray-200">
+            <span className="font-medium">Base Skill:</span> {selectedSkillLevel}
+            {toolBonus !== 0 && (
+              <span className={toolBonus >= 0 ? 'text-green-400' : 'text-red-400'}>
+                {' '}| Tools: {toolBonus >= 0 ? '+' : ''}{toolBonus}
+              </span>
+            )}
+            {fatiguePenalty !== 0 && (
+              <span className="text-red-400">
+                {' '}| Fatigue: {fatiguePenalty}
+              </span>
+            )}
+          </p>
+          <p className="text-gray-400">
+            Total Modifier: <span className={totalSkillModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
+              {totalSkillModifier >= 0 ? '+' : ''}{totalSkillModifier}
+            </span>
+          </p>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex gap-2">
         <button
-          type="submit"
+          type="button"
+          onClick={handleSubmit}
           disabled={!isFormValid}
-          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed"
+          className={`px-4 py-2 text-sm rounded font-medium transition-colors ${
+            isFormValid
+              ? 'bg-green-600 text-white hover:bg-green-700'
+              : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+          }`}
           data-testid="submit-button"
         >
           Create Task
@@ -444,12 +604,12 @@ export function ForagingTaskForm({
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 border border-gray-600 text-gray-300 rounded hover:bg-gray-700 transition-colors"
+          className="px-4 py-2 text-sm rounded border border-gray-600 text-gray-300 hover:bg-gray-700 transition-colors"
           data-testid="cancel-button"
         >
           Cancel
         </button>
       </div>
-    </form>
+    </div>
   );
 }

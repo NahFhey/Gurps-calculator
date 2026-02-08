@@ -18,6 +18,8 @@ import type {
   GatheringItem,
   GatheringDailyEvents
 } from '../../types/campaign';
+import type { ForageZoneProfile, ForageItem, ForagingConfig, ForageTier, ForageCategoryId } from '../../types/foraging';
+import { DEFAULT_FORAGING_CONFIG } from '../../constants/foraging';
 
 // ============================================================================
 // SPECIES SELECTORS
@@ -240,3 +242,97 @@ export const selectGatheringItemById = (
  */
 export const selectGatheringDailyEvents = (state: CampaignState): GatheringDailyEvents =>
   state.entities.gatheringDailyEvents;
+
+// ============================================================================
+// FORAGE ZONE PROFILE SELECTORS
+// ============================================================================
+
+/**
+ * Select all forage zone profiles as a record
+ */
+export const selectForageZoneProfilesRecord = (
+  state: CampaignState
+): Record<Id, ForageZoneProfile> => state.entities.forageZoneProfiles ?? {};
+
+/**
+ * Select all forage zone profiles as an array
+ */
+export const selectAllForageZoneProfiles = (state: CampaignState): ForageZoneProfile[] =>
+  Object.values(state.entities.forageZoneProfiles ?? {});
+
+/**
+ * Select forage zone profiles for a specific location
+ */
+export const selectForageZoneProfilesForLocation = (
+  state: CampaignState,
+  locationId: string
+): ForageZoneProfile[] =>
+  Object.values(state.entities.forageZoneProfiles ?? {}).filter(
+    (z) => z.locationId === locationId
+  );
+
+/**
+ * Select a forage zone profile by ID
+ */
+export const selectForageZoneProfileById = (
+  state: CampaignState,
+  id: Id
+): ForageZoneProfile | undefined => (state.entities.forageZoneProfiles ?? {})[id];
+
+// ============================================================================
+// FORAGE ITEM SELECTORS
+// ============================================================================
+
+/**
+ * Select all forage items as a record
+ */
+export const selectForageItemsRecord = (
+  state: CampaignState
+): Record<Id, ForageItem> => state.entities.forageItems ?? {};
+
+/**
+ * Select all forage items as an array
+ */
+export const selectAllForageItems = (state: CampaignState): ForageItem[] =>
+  Object.values(state.entities.forageItems ?? {});
+
+/**
+ * Select forage items filtered by category
+ */
+export const selectForageItemsByCategory = (
+  state: CampaignState,
+  categoryId: ForageCategoryId
+): ForageItem[] =>
+  Object.values(state.entities.forageItems ?? {}).filter(
+    (i) => i.categoryId === categoryId
+  );
+
+/**
+ * Select forage items filtered by tier and category
+ */
+export const selectForageItemsByTierAndCategory = (
+  state: CampaignState,
+  tier: ForageTier,
+  categoryId: ForageCategoryId
+): ForageItem[] =>
+  Object.values(state.entities.forageItems ?? {}).filter(
+    (i) => i.tier === tier && i.categoryId === categoryId
+  );
+
+/**
+ * Select a forage item by ID
+ */
+export const selectForageItemById = (
+  state: CampaignState,
+  id: Id
+): ForageItem | undefined => (state.entities.forageItems ?? {})[id];
+
+// ============================================================================
+// FORAGING CONFIG SELECTOR
+// ============================================================================
+
+/**
+ * Select the foraging configuration
+ */
+export const selectForagingConfig = (state: CampaignState): ForagingConfig =>
+  state.entities.foragingConfig ?? DEFAULT_FORAGING_CONFIG;

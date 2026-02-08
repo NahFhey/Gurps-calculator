@@ -11,6 +11,7 @@ import type {
   GatheringBaitExtended,
   GatheringItemExtended
 } from '../types/gathering';
+import type { ForageZoneProfile } from '../types/foraging';
 
 import {
   CampaignDayView,
@@ -76,6 +77,11 @@ function GatheringManagerBase() {
     [state.entities.gatheringItems]
   );
 
+  const forageZoneProfiles = useMemo(() =>
+    Object.values(state.entities.forageZoneProfiles || {}) as ForageZoneProfile[],
+    [state.entities.forageZoneProfiles]
+  );
+
   const currentDay = state.time.day;
 
   // Extract locations for environment editor (linking environments to locations)
@@ -126,6 +132,15 @@ function GatheringManagerBase() {
 
   const saveItems = useCallback((itemsArray: GatheringItemExtended[]) => {
     actions.setGatheringItems(normalizeArray(itemsArray as any));
+  }, [actions]);
+
+  const saveForageZoneProfile = useCallback((profile: ForageZoneProfile) => {
+    // Upsert: add or update a forage zone profile
+    actions.addForageZoneProfile(profile);
+  }, [actions]);
+
+  const removeForageZoneProfile = useCallback((id: string) => {
+    actions.removeForageZoneProfile(id);
   }, [actions]);
 
   const saveCurrentDay = useCallback((_day: number) => {
@@ -235,8 +250,12 @@ function GatheringManagerBase() {
         <EnvironmentsView
           environments={environments}
           tables={tables}
+          items={items}
           locations={locations}
+          forageZoneProfiles={forageZoneProfiles}
           saveEnvironments={saveEnvironments}
+          saveForageZoneProfile={saveForageZoneProfile}
+          removeForageZoneProfile={removeForageZoneProfile}
           onDelete={handleDelete}
         />
       )}

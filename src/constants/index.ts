@@ -838,3 +838,24 @@ export type LogEntryType = typeof LOG_ENTRY_TYPES[number];
  * Maximum number of combat history entries to keep
  */
 export const MAX_COMBAT_HISTORY = 50;
+
+// ============================================================================
+// REVAMPED FORAGING SYSTEM (re-exported from dedicated module)
+// ============================================================================
+
+export {
+  FORAGE_CATEGORY_META,
+  FORAGE_CATEGORY_IDS,
+  FORAGE_TIER_MULTIPLIERS,
+  FORAGE_MOS_TIER_THRESHOLDS,
+  FORAGE_SPECIFIC_PENALTIES,
+  FORAGE_CONTEXT_MODIFIERS,
+  getHelperBonus,
+  FORAGE_SUPERVISOR_BONUS,
+  FORAGE_EVENT_THRESHOLDS,
+  FORAGE_HAZARDS,
+  FORAGE_EVENTS_MILD,
+  FORAGE_EVENTS_RARE,
+  DEFAULT_FORAGING_CONFIG,
+  FORAGE_SKILL_LABELS,
+} from './foraging';

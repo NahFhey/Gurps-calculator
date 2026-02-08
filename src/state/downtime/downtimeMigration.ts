@@ -200,11 +200,17 @@ function createActivityData(
     case 'foraging':
       return {
         type: 'foraging',
-        biomeId: legacy.environmentId ?? 'unknown',
-        nodeId: legacy.targetSpeciesId ?? 'unknown',
-        tableId: 'default',
+        zoneId: legacy.environmentId ?? 'unknown',
+        mode: legacy.targetSpeciesId ? 'specific' : 'general',
+        targetItemId: legacy.targetSpeciesId ?? undefined,
+        skillUsed: 'survival',
         toolIds,
+        leaderSkill: 10,
         skillModifier: 0,
+        // Keep legacy fields for traceability
+        biomeId: legacy.environmentId ?? 'unknown',
+        nodeId: legacy.targetSpeciesId ?? undefined,
+        tableId: 'default',
       } as ForagingData;
 
     case 'alchemy':
@@ -428,6 +434,70 @@ export function migrateV0ToV1(legacy: unknown): MigrationResult {
 }
 
 // ============================================================================
+// V1 TO V2 MIGRATION (Foraging Revamp)
+// ============================================================================
+
+/**
+ * Migrate ForagingData tasks from V1 (biomeId/nodeId) to V2 (zoneId/mode/targetItemId).
+ * Non-foraging tasks pass through unchanged.
+ */
+export function migrateV1ToV2(state: DowntimeState): MigrationResult {
+  const result: MigrationResult = {
+    success: true,
+    state: { ...state, tasksById: { ...state.tasksById } },
+    warnings: [],
+    errors: [],
+    tasksConverted: 0,
+    tasksFailed: 0,
+  };
+
+  for (const taskId of state.taskOrder) {
+    const task = state.tasksById[taskId];
+    if (!task || task.activityType !== 'foraging') continue;
+
+    const data = task.activityData as ForagingData;
+
+    // Already migrated (has mode field)
+    if (data.mode) {
+      continue;
+    }
+
+    try {
+      const legacyBiomeId = (data as any).biomeId ?? '';
+      const legacyNodeId = (data as any).nodeId ?? '';
+
+      const migratedData: ForagingData = {
+        type: 'foraging',
+        zoneId: legacyBiomeId,
+        mode: legacyNodeId ? 'specific' : 'general',
+        targetItemId: legacyNodeId || undefined,
+        skillUsed: (data as any).skillUsed ?? 'survival',
+        toolIds: data.toolIds ?? [],
+        leaderSkill: data.leaderSkill ?? 10,
+        skillModifier: data.skillModifier ?? 0,
+        // Preserve legacy fields
+        biomeId: legacyBiomeId,
+        nodeId: legacyNodeId || undefined,
+        tableId: (data as any).tableId,
+      };
+
+      result.state.tasksById[taskId] = {
+        ...task,
+        activityData: migratedData,
+      };
+      result.tasksConverted++;
+    } catch (error) {
+      result.tasksFailed++;
+      result.warnings.push(
+        `Failed to migrate foraging task ${taskId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  return result;
+}
+
+// ============================================================================
 // MAIN MIGRATION FUNCTION
 // ============================================================================
 
@@ -455,25 +525,45 @@ export function migrateToDowntimeState(
   }
 
   try {
-    // Currently only V0 -> V1 migration exists
     const targetVersion = savedVersion ?? 0;
+    let currentResult: MigrationResult;
 
     if (targetVersion < 1) {
-      return migrateV0ToV1(legacyDayPlanner);
+      currentResult = migrateV0ToV1(legacyDayPlanner);
+    } else if (isValidDowntimeState(legacyDayPlanner)) {
+      currentResult = {
+        success: true,
+        state: legacyDayPlanner as DowntimeState,
+        warnings: [],
+        errors: [],
+        tasksConverted: 0,
+        tasksFailed: 0,
+      };
+    } else {
+      currentResult = {
+        success: true,
+        state: downtimeInitialState,
+        warnings: ['Unknown version, using initial state'],
+        errors: [],
+        tasksConverted: 0,
+        tasksFailed: 0,
+      };
     }
 
-    // Future migrations would chain here:
-    // if (targetVersion < 2) { result = migrateV1ToV2(result.state); }
+    // Chain V1 → V2 migration if needed
+    if (targetVersion < 2 && currentResult.success) {
+      const v2Result = migrateV1ToV2(currentResult.state);
+      currentResult = {
+        success: v2Result.success,
+        state: v2Result.state,
+        warnings: [...currentResult.warnings, ...v2Result.warnings],
+        errors: [...currentResult.errors, ...v2Result.errors],
+        tasksConverted: currentResult.tasksConverted + v2Result.tasksConverted,
+        tasksFailed: currentResult.tasksFailed + v2Result.tasksFailed,
+      };
+    }
 
-    // If version is current or newer, return as-is
-    return {
-      success: true,
-      state: downtimeInitialState,
-      warnings: ['Unknown version, using initial state'],
-      errors: [],
-      tasksConverted: 0,
-      tasksFailed: 0,
-    };
+    return currentResult;
   } catch (error) {
     // Catastrophic failure - return safe initial state
     return {

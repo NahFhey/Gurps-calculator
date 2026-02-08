@@ -32,6 +32,9 @@ import type {
   Material,
   Facility,
 } from '../../types/campaign';
+import type { ForageZoneProfile, ForageItem, ForagingConfig } from '../../types/foraging';
+import type { GatheringItemExtended } from '../../types/gathering';
+import { DEFAULT_FORAGING_CONFIG } from '../../constants/foraging';
 
 // ============================================================================
 // CONTEXT TYPE DEFINITIONS
@@ -54,10 +57,18 @@ interface DowntimeContextValue {
   fishingBait: GatheringBait[];
   /** Available foraging biomes (environments at current location with Foraging mode) */
   foragingBiomes: GatheringEnvironment[];
-  /** Foraging nodes (plant and game species) */
+  /** Foraging nodes (plant and game species) - legacy */
   foragingNodes: GatheringSpecies[];
   /** Gathering tables for loot resolution */
   gatheringTables: GatheringTable[];
+  /** Forage zone profiles at current location (revamped foraging) */
+  forageZones: ForageZoneProfile[];
+  /** All forage items (revamped foraging) */
+  forageItems: ForageItem[];
+  /** Foraging configuration flags */
+  foragingConfig: ForagingConfig;
+  /** Gathering items from the Items tab for per-item zone profile selection */
+  gatheringItems: GatheringItemExtended[];
   /** Alchemy reagents */
   alchemyReagents: AlchemyReagent[];
   /** Alchemy formulas (saved recipes) */
@@ -88,6 +99,12 @@ interface DowntimeContextValue {
   resolve: (taskId: string, results: TaskResults) => void;
   /** Convenience action: cancel a task */
   cancel: (taskId: string) => void;
+  /** Add a forage zone profile */
+  addForageZoneProfile: (zone: ForageZoneProfile) => void;
+  /** Update a forage zone profile */
+  updateForageZoneProfile: (id: string, changes: Partial<ForageZoneProfile>) => void;
+  /** Remove a forage zone profile */
+  removeForageZoneProfile: (id: string) => void;
 }
 
 const DowntimeContext = createContext<DowntimeContextValue | undefined>(undefined);
@@ -212,6 +229,32 @@ export function DowntimeProvider({
     [campaignState.entities?.gatheringTables]
   );
 
+  // Extract forage zone profiles at current location (revamped foraging)
+  const forageZones = useMemo(() => {
+    if (!currentLocationId) return [];
+    return Object.values(campaignState.entities?.forageZoneProfiles ?? {}).filter(
+      (z) => z.locationId === currentLocationId
+    );
+  }, [campaignState.entities?.forageZoneProfiles, currentLocationId]);
+
+  // Extract all forage items (revamped foraging)
+  const forageItems = useMemo(
+    () => Object.values(campaignState.entities?.forageItems ?? {}),
+    [campaignState.entities?.forageItems]
+  );
+
+  // Extract foraging config
+  const foragingConfig = useMemo(
+    () => campaignState.entities?.foragingConfig ?? DEFAULT_FORAGING_CONFIG,
+    [campaignState.entities?.foragingConfig]
+  );
+
+  // Extract gathering items (from Items tab) for per-item zone profile selection
+  const gatheringItems = useMemo(
+    () => Object.values(campaignState.entities?.gatheringItems ?? {}) as unknown as GatheringItemExtended[],
+    [campaignState.entities?.gatheringItems]
+  );
+
   // Extract alchemy reagents
   const alchemyReagents = useMemo(
     () => Object.values(campaignState.entities?.alchemyReagents ?? {}),
@@ -275,6 +318,18 @@ export function DowntimeProvider({
     dispatch(cancelTask(taskId));
   };
 
+  const addForageZoneProfile = (zone: ForageZoneProfile) => {
+    campaignActions.addForageZoneProfile(zone);
+  };
+
+  const updateForageZoneProfile = (id: string, changes: Partial<ForageZoneProfile>) => {
+    campaignActions.updateForageZoneProfile(id, changes);
+  };
+
+  const removeForageZoneProfile = (id: string) => {
+    campaignActions.removeForageZoneProfile(id);
+  };
+
   const value = useMemo(
     () => ({
       state,
@@ -287,6 +342,10 @@ export function DowntimeProvider({
       foragingBiomes,
       foragingNodes,
       gatheringTables,
+      forageZones,
+      forageItems,
+      foragingConfig,
+      gatheringItems,
       alchemyReagents,
       alchemyFormulas,
       alchemyBatches,
@@ -302,6 +361,9 @@ export function DowntimeProvider({
       beginResolve,
       resolve,
       cancel,
+      addForageZoneProfile,
+      updateForageZoneProfile,
+      removeForageZoneProfile,
     }),
     [
       state,
@@ -313,6 +375,10 @@ export function DowntimeProvider({
       foragingBiomes,
       foragingNodes,
       gatheringTables,
+      forageZones,
+      forageItems,
+      foragingConfig,
+      gatheringItems,
       alchemyReagents,
       alchemyFormulas,
       alchemyBatches,

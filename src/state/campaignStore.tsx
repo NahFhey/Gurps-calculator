@@ -53,6 +53,7 @@ import type {
   ActiveWeather
 } from '../types/location';
 import type { DowntimeState } from '../types/downtime';
+import type { ForageZoneProfile } from '../types/foraging';
 
 type CampaignStoreValue = {
   state: CampaignState;
@@ -172,6 +173,11 @@ type CampaignStoreValue = {
     addGatheringCategory: (category: GatheringCategory) => void;
     setGatheringItems: (items: Record<Id, GatheringItem>) => void;
     addGatheringItem: (item: GatheringItem) => void;
+
+    // Forage Zone Profile Actions
+    addForageZoneProfile: (zone: ForageZoneProfile) => void;
+    updateForageZoneProfile: (id: Id, changes: Partial<ForageZoneProfile>) => void;
+    removeForageZoneProfile: (id: Id) => void;
 
     // Downtime Actions
     setDowntime: (downtime: DowntimeState) => void;
@@ -413,6 +419,14 @@ export function CampaignStoreProvider({
       setGatheringItems: (items: Record<Id, GatheringItem>) =>
         dispatch({ type: 'setGatheringItems', payload: items }),
       addGatheringItem: (item: GatheringItem) => dispatch({ type: 'addGatheringItem', payload: item }),
+
+      // Forage Zone Profile Actions
+      addForageZoneProfile: (zone: ForageZoneProfile) =>
+        dispatch({ type: 'addForageZoneProfile', payload: zone }),
+      updateForageZoneProfile: (id: Id, changes: Partial<ForageZoneProfile>) =>
+        dispatch({ type: 'updateForageZoneProfile', payload: { id, changes } }),
+      removeForageZoneProfile: (id: Id) =>
+        dispatch({ type: 'removeForageZoneProfile', payload: id }),
 
       // Downtime Actions
       setDowntime: (downtime: DowntimeState) => dispatch({ type: 'setDowntime', payload: downtime }),

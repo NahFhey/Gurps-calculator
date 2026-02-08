@@ -25,8 +25,19 @@ import {
   GATHERING_CATEGORIES_SET,
   GATHERING_CATEGORY_ADD,
   GATHERING_ITEMS_SET,
-  GATHERING_ITEM_ADD
+  GATHERING_ITEM_ADD,
+  FORAGE_ZONE_PROFILES_SET,
+  FORAGE_ZONE_PROFILE_ADD,
+  FORAGE_ZONE_PROFILE_UPDATE,
+  FORAGE_ZONE_PROFILE_REMOVE,
+  FORAGE_ITEMS_SET,
+  FORAGE_ITEM_ADD,
+  FORAGE_ITEM_UPDATE,
+  FORAGE_ITEM_REMOVE,
+  FORAGING_CONFIG_SET,
+  FORAGING_CONFIG_UPDATE,
 } from './gatheringActions';
+import { DEFAULT_FORAGING_CONFIG } from '../../constants/foraging';
 
 /**
  * Process gathering actions on the campaign state draft.
@@ -138,6 +149,68 @@ export function handleGatheringAction(
 
     case GATHERING_ITEM_ADD:
       draft.entities.gatheringItems[action.payload.id] = action.payload;
+      return true;
+
+    // ========================================================================
+    // FORAGE ZONE PROFILE ACTIONS
+    // ========================================================================
+    case FORAGE_ZONE_PROFILES_SET:
+      draft.entities.forageZoneProfiles = action.payload;
+      return true;
+
+    case FORAGE_ZONE_PROFILE_ADD:
+      draft.entities.forageZoneProfiles[action.payload.id] = action.payload;
+      return true;
+
+    case FORAGE_ZONE_PROFILE_UPDATE:
+      if (draft.entities.forageZoneProfiles[action.payload.id]) {
+        draft.entities.forageZoneProfiles[action.payload.id] = {
+          ...draft.entities.forageZoneProfiles[action.payload.id],
+          ...action.payload.changes,
+        };
+      }
+      return true;
+
+    case FORAGE_ZONE_PROFILE_REMOVE:
+      delete draft.entities.forageZoneProfiles[action.payload];
+      return true;
+
+    // ========================================================================
+    // FORAGE ITEM ACTIONS
+    // ========================================================================
+    case FORAGE_ITEMS_SET:
+      draft.entities.forageItems = action.payload;
+      return true;
+
+    case FORAGE_ITEM_ADD:
+      draft.entities.forageItems[action.payload.id] = action.payload;
+      return true;
+
+    case FORAGE_ITEM_UPDATE:
+      if (draft.entities.forageItems[action.payload.id]) {
+        draft.entities.forageItems[action.payload.id] = {
+          ...draft.entities.forageItems[action.payload.id],
+          ...action.payload.changes,
+        };
+      }
+      return true;
+
+    case FORAGE_ITEM_REMOVE:
+      delete draft.entities.forageItems[action.payload];
+      return true;
+
+    // ========================================================================
+    // FORAGING CONFIG ACTIONS
+    // ========================================================================
+    case FORAGING_CONFIG_SET:
+      draft.entities.foragingConfig = action.payload;
+      return true;
+
+    case FORAGING_CONFIG_UPDATE:
+      draft.entities.foragingConfig = {
+        ...(draft.entities.foragingConfig ?? DEFAULT_FORAGING_CONFIG),
+        ...action.payload,
+      };
       return true;
 
     default:

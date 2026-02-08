@@ -94,23 +94,44 @@ export interface FishingData {
 
 /**
  * Configuration data for foraging activities.
- * Includes biome, node, and gathering table information.
+ * Supports three modes: general, category, and specific item targeting.
  */
 export interface ForagingData {
   /** Discriminator field for the discriminated union */
   type: 'foraging';
-  /** Environment/biome where foraging occurs */
-  biomeId: string;
-  /** Specific gathering node within the biome */
-  nodeId: string;
-  /** Random encounter/loot table for results */
-  tableId: string;
+  /** Zone profile ID where foraging occurs */
+  zoneId: string;
+  /** Foraging mode: general (no target), category, or specific item */
+  mode: 'general' | 'category' | 'specific';
+  /** Target category when mode='category' (e.g., 'mushrooms', 'herbs_spices') */
+  targetCategory?: string;
+  /** Target item ID when mode='specific' */
+  targetItemId?: string;
+  /** Skill used for this forage (survival, naturalist, herbLore) */
+  skillUsed: string;
   /** Equipment being used (baskets, knives, etc.) */
   toolIds: string[];
   /** Leader's base foraging skill level (Survival, Naturalist, or Herb Lore) */
   leaderSkill: number;
   /** Cumulative skill modifier from tools, helpers, weather, etc. (not including base skill) */
   skillModifier: number;
+  /** Context flags snapshot from task creation */
+  contextFlags?: {
+    hasMapOrGuide: boolean;
+    isUnfamiliarOrHostile: boolean;
+    isPeakSeason: boolean;
+    isOffSeason: boolean;
+    hasProperTools: boolean;
+    isDenseOrDangerousTerrain: boolean;
+  };
+
+  // --- Legacy fields (kept for backward compatibility with existing saved data) ---
+  /** @deprecated Use zoneId instead */
+  biomeId?: string;
+  /** @deprecated Use targetItemId with mode='specific' instead */
+  nodeId?: string;
+  /** @deprecated No longer used in the revamped system */
+  tableId?: string;
 }
 
 /**

@@ -2,28 +2,36 @@
  * Foraging Task Card
  *
  * Displays a single foraging task with its details and status.
+ * Supports the revamped three-mode foraging system (General/Category/Specific).
  * Provides actions for resolving and cancelling pending tasks.
+ * Includes a manual/auto resolution toggle matching fishing's pattern.
  */
 
-import { Leaf, Check, X, Clock, Loader, Ban } from 'lucide-react';
-import type { DowntimeTask, ForagingData, TaskStatus } from '../../../types/downtime';
-import type { Character, GatheringSpecies, GatheringEnvironment } from '../../../types/campaign';
+import { useState } from 'react';
+import { Leaf, Search, Target, Crosshair, Zap, Dices } from 'lucide-react';
+import { StatusBadge, getStatusBorderColor } from './shared/StatusBadge';
+import type { DowntimeTask, ForagingData } from '../../../types/downtime';
+import type { Character } from '../../../types/campaign';
+import type { ForageZoneProfile, ForageItem } from '../../../types/foraging';
+import { FORAGE_CATEGORY_META } from '../../../constants/foraging';
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
+export type ResolutionMode = 'auto' | 'manual';
+
 interface ForagingTaskCardProps {
   /** The foraging task to display */
   task: DowntimeTask;
-  /** Foraging nodes data for name lookup */
-  nodes: GatheringSpecies[];
-  /** Foraging biomes data for name lookup */
-  biomes: GatheringEnvironment[];
+  /** Forage zone profiles for name lookup */
+  zones: ForageZoneProfile[];
+  /** Forage items for name lookup */
+  forageItems: ForageItem[];
   /** Characters data for name lookup */
   characters: Character[];
-  /** Called when the resolve button is clicked */
-  onResolve?: () => void;
+  /** Called when the resolve button is clicked with selected mode */
+  onResolve?: (mode: ResolutionMode) => void;
   /** Called when the cancel button is clicked */
   onCancel?: () => void;
   /** When true, hides action buttons (for completed tasks) */
@@ -31,31 +39,66 @@ interface ForagingTaskCardProps {
 }
 
 // ============================================================================
-// HELPER COMPONENTS
+// MODE DISPLAY HELPERS
 // ============================================================================
 
-interface StatusBadgeProps {
-  status: TaskStatus;
+function getModeLabel(data: ForagingData, forageItems: ForageItem[]): { icon: React.ElementType; label: string } {
+  const mode = data.mode ?? 'general';
+
+  if (mode === 'specific' && data.targetItemId) {
+    const item = forageItems.find((i) => i.id === data.targetItemId);
+    const itemName = item?.name ?? data.targetItemId;
+    return { icon: Crosshair, label: `Specific: ${itemName}` };
+  }
+
+  if (mode === 'category' && data.targetCategory) {
+    const catMeta = FORAGE_CATEGORY_META[data.targetCategory as keyof typeof FORAGE_CATEGORY_META];
+    const catLabel = catMeta?.label ?? data.targetCategory;
+    return { icon: Target, label: `Category: ${catLabel}` };
+  }
+
+  return { icon: Search, label: 'General Forage' };
 }
 
-function StatusBadge({ status }: StatusBadgeProps) {
-  const config: Record<TaskStatus, { bg: string; text: string; icon: React.ElementType; label: string }> = {
-    pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: Clock, label: 'Pending' },
-    in_progress: { bg: 'bg-blue-100', text: 'text-blue-800', icon: Loader, label: 'In Progress' },
-    resolved: { bg: 'bg-green-100', text: 'text-green-800', icon: Check, label: 'Resolved' },
-    cancelled: { bg: 'bg-gray-100', text: 'text-gray-600', icon: Ban, label: 'Cancelled' },
-  };
+// ============================================================================
+// RESOLUTION MODE TOGGLE
+// ============================================================================
 
-  const { bg, text, icon: Icon, label } = config[status];
+interface ResolutionModeToggleProps {
+  mode: ResolutionMode;
+  onChange: (mode: ResolutionMode) => void;
+}
 
+function ResolutionModeToggle({ mode, onChange }: ResolutionModeToggleProps) {
   return (
-    <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${bg} ${text}`}
-      data-testid="status-badge"
-    >
-      <Icon className="w-3 h-3" />
-      {label}
-    </span>
+    <div className="flex items-center gap-1 bg-gray-900/50 rounded p-0.5">
+      <button
+        type="button"
+        onClick={() => onChange('auto')}
+        className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+          mode === 'auto'
+            ? 'bg-purple-600 text-white'
+            : 'text-gray-400 hover:text-gray-200'
+        }`}
+        title="Auto-roll all dice"
+      >
+        <Zap className="w-3 h-3" />
+        Auto
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('manual')}
+        className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+          mode === 'manual'
+            ? 'bg-purple-600 text-white'
+            : 'text-gray-400 hover:text-gray-200'
+        }`}
+        title="Roll dice manually"
+      >
+        <Dices className="w-3 h-3" />
+        Manual
+      </button>
+    </div>
   );
 }
 
@@ -65,21 +108,22 @@ function StatusBadge({ status }: StatusBadgeProps) {
 
 export function ForagingTaskCard({
   task,
-  nodes,
-  biomes,
+  zones,
+  forageItems,
   characters,
   onResolve,
   onCancel,
   readonly = false,
 }: ForagingTaskCardProps) {
+  const [resolutionMode, setResolutionMode] = useState<ResolutionMode>('manual');
   const data = task.activityData as ForagingData;
 
-  // Lookup display names
-  const nodeData = nodes.find((n) => n.id === data.nodeId);
-  const nodeName = nodeData?.name ?? data.nodeId;
+  // Mode display
+  const { icon: ModeIcon, label: modeLabel } = getModeLabel(data, forageItems);
 
-  const biomeData = biomes.find((b) => b.id === data.biomeId);
-  const biomeName = biomeData?.name ?? data.biomeId;
+  // Lookup display names
+  const zoneData = zones.find((z) => z.id === data.zoneId);
+  const zoneName = zoneData?.name ?? data.zoneId ?? (data as any).biomeId ?? 'Unknown zone';
 
   const leaderData = characters.find((c) => c.id === task.leaderId);
   const leaderName = leaderData?.name ?? task.leaderId;
@@ -88,57 +132,85 @@ export function ForagingTaskCard({
     .map((id) => characters.find((c) => c.id === id)?.name ?? id)
     .join(', ');
 
-  // Determine card border color based on status
-  const statusBorders: Record<TaskStatus, string> = {
-    pending: 'border-yellow-300',
-    in_progress: 'border-blue-300',
-    resolved: 'border-green-300',
-    cancelled: 'border-gray-300',
-  };
+  // Skill display
+  const skillLabel = data.skillUsed === 'herbLore' ? 'Herb Lore'
+    : data.skillUsed === 'naturalist' ? 'Naturalist'
+    : 'Survival';
 
   const isActionable = !readonly && (task.status === 'pending' || task.status === 'in_progress');
 
+  const handleResolve = () => {
+    onResolve?.(resolutionMode);
+  };
+
   return (
     <div
-      className={`foraging-task-card p-3 rounded-lg border-2 bg-white ${statusBorders[task.status]}`}
+      className={`foraging-task-card p-3 rounded-lg border-2 bg-gray-800/60 ${getStatusBorderColor(task.status)}`}
       data-testid="foraging-task-card"
       data-task-id={task.id}
     >
       {/* Card Header */}
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center gap-2">
-          <Leaf className="w-4 h-4 text-green-600" />
-          <span className="font-medium">Foraging: {nodeName}</span>
+          <Leaf className="w-4 h-4 text-green-400" />
+          <ModeIcon className="w-3.5 h-3.5 text-green-500" />
+          <span className="font-medium text-gray-100">{modeLabel}</span>
         </div>
         <StatusBadge status={task.status} />
       </div>
 
       {/* Task Details */}
-      <div className="task-details text-sm text-gray-600 space-y-1 mb-3">
+      <div className="task-details text-sm text-gray-300 space-y-1 mb-3">
         <p>
-          <span className="font-medium">Leader:</span> {leaderName}
+          <span className="font-medium text-gray-200">Leader:</span> {leaderName}
         </p>
         {task.helperIds.length > 0 && (
           <p>
-            <span className="font-medium">Helpers:</span> {helperNames}
+            <span className="font-medium text-gray-200">Helpers:</span> {helperNames}
           </p>
         )}
         <p>
-          <span className="font-medium">Biome:</span> {biomeName}
+          <span className="font-medium text-gray-200">Zone:</span> {zoneName}
         </p>
         <p>
-          <span className="font-medium">Modifier:</span>{' '}
-          <span className={data.skillModifier >= 0 ? 'text-green-600' : 'text-red-600'}>
+          <span className="font-medium text-gray-200">Skill:</span> {skillLabel} ({data.leaderSkill ?? '?'})
+        </p>
+        <p>
+          <span className="font-medium text-gray-200">Modifier:</span>{' '}
+          <span className={data.skillModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
             {data.skillModifier >= 0 ? '+' : ''}{data.skillModifier}
           </span>
         </p>
+        {/* Context flags summary with modifier values */}
+        {data.contextFlags && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {data.contextFlags.hasMapOrGuide && (
+              <span className="text-xs px-1.5 py-0.5 bg-blue-900/50 text-blue-300 rounded">Map/Guide (+1)</span>
+            )}
+            {data.contextFlags.isUnfamiliarOrHostile && (
+              <span className="text-xs px-1.5 py-0.5 bg-red-900/50 text-red-300 rounded">Unfamiliar (-2)</span>
+            )}
+            {data.contextFlags.isPeakSeason && (
+              <span className="text-xs px-1.5 py-0.5 bg-green-900/50 text-green-300 rounded">Peak Season (+2)</span>
+            )}
+            {data.contextFlags.isOffSeason && (
+              <span className="text-xs px-1.5 py-0.5 bg-amber-900/50 text-amber-300 rounded">Off Season (-2)</span>
+            )}
+            {data.contextFlags.hasProperTools && (
+              <span className="text-xs px-1.5 py-0.5 bg-blue-900/50 text-blue-300 rounded">Proper Tools (+2)</span>
+            )}
+            {data.contextFlags.isDenseOrDangerousTerrain && (
+              <span className="text-xs px-1.5 py-0.5 bg-red-900/50 text-red-300 rounded">Dense Terrain (-2)</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Results (for resolved tasks) */}
       {task.results && (
         <div
           className={`task-results p-2 rounded text-sm ${
-            task.results.success ? 'bg-green-50 text-green-800' : 'bg-gray-50 text-gray-700'
+            task.results.success ? 'bg-green-900/30 text-green-200' : 'bg-gray-900/50 text-gray-300'
           }`}
           data-testid="task-results"
         >
@@ -147,7 +219,7 @@ export function ForagingTaskCard({
             <ul className="list-disc list-inside">
               {task.results.inventoryChanges.map((change, i) => (
                 <li key={i}>
-                  <span className={change.quantity > 0 ? 'text-green-600' : 'text-red-600'}>
+                  <span className={change.quantity > 0 ? 'text-green-400' : 'text-red-400'}>
                     {change.quantity > 0 ? '+' : ''}{change.quantity}
                   </span>{' '}
                   {change.itemName}
@@ -156,41 +228,59 @@ export function ForagingTaskCard({
             </ul>
           )}
           {task.results.experienceGained !== undefined && task.results.experienceGained > 0 && (
-            <p className="text-blue-600 mt-1">+{task.results.experienceGained} XP</p>
+            <p className="text-blue-400 mt-1">+{task.results.experienceGained} XP</p>
           )}
         </div>
       )}
 
       {/* Cancelled Message */}
       {task.status === 'cancelled' && (
-        <div className="task-cancelled p-2 rounded bg-gray-50 text-gray-600 text-sm italic">
+        <div className="task-cancelled p-2 rounded bg-gray-900/50 text-gray-400 text-sm italic">
           Task was cancelled
         </div>
       )}
 
-      {/* Action Buttons */}
+      {/* Action Buttons (with resolution mode toggle) */}
       {isActionable && (
-        <div className="task-actions mt-3 flex gap-2">
-          <button
-            type="button"
-            onClick={onResolve}
-            className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
-            disabled={task.status === 'in_progress'}
-            data-testid="resolve-button"
-          >
-            <Check className="w-3 h-3" />
-            {task.status === 'in_progress' ? 'Resolving...' : 'Resolve'}
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="flex items-center gap-1 px-3 py-1.5 border border-red-300 text-red-600 text-sm rounded hover:bg-red-50 transition-colors"
-            disabled={task.status === 'in_progress'}
-            data-testid="cancel-button"
-          >
-            <X className="w-3 h-3" />
-            Cancel
-          </button>
+        <div className="mt-3 space-y-2">
+          {/* Resolution Mode Toggle */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-400">Resolution Mode:</span>
+            <ResolutionModeToggle mode={resolutionMode} onChange={setResolutionMode} />
+          </div>
+
+          {/* Buttons */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleResolve}
+              className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm font-medium"
+              disabled={task.status === 'in_progress'}
+              data-testid="resolve-button"
+            >
+              {resolutionMode === 'manual' ? (
+                <>
+                  <Dices className="w-3 h-3" />
+                  Resolve (Manual)
+                </>
+              ) : (
+                <>
+                  <Zap className="w-3 h-3" />
+                  Resolve (Auto)
+                </>
+              )}
+            </button>
+            {onCancel && (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="px-3 py-1.5 border border-red-500/50 text-red-400 rounded hover:bg-red-900/30 transition-colors text-sm font-medium"
+                data-testid="cancel-button"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

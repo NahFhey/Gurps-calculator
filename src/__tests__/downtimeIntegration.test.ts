@@ -61,10 +61,11 @@ function createFishingData(overrides?: Partial<FishingData>): FishingData {
 function createForagingData(overrides?: Partial<ForagingData>): ForagingData {
   return {
     type: 'foraging',
-    biomeId: 'biome-forest',
-    nodeId: 'node-mushrooms',
-    tableId: 'table-forest-common',
+    zoneId: 'zone-forest',
+    mode: 'general',
+    skillUsed: 'survival',
     toolIds: [],
+    leaderSkill: 12,
     skillModifier: 0,
     ...overrides,
   };
@@ -167,7 +168,7 @@ describe('Downtime System Integration', () => {
             dayKey,
             slot,
             leaderId: 'char-2',
-            activityData: createForagingData({ nodeId: 'mushrooms' }),
+            activityData: createForagingData({ mode: 'specific', targetItemId: 'mushrooms' }),
           })
         )
       );
@@ -340,7 +341,7 @@ describe('Downtime System Integration', () => {
             dayKey,
             slot,
             leaderId: 'char-2',
-            activityData: createForagingData({ nodeId: 'herbs' }),
+            activityData: createForagingData({ mode: 'specific', targetItemId: 'herbs' }),
           })
         )
       );
@@ -779,7 +780,7 @@ describe('Downtime System Integration', () => {
             dayKey,
             slot,
             leaderId: 'ranger',
-            activityData: createForagingData({ nodeId: 'herbs' }),
+            activityData: createForagingData({ mode: 'specific', targetItemId: 'herbs' }),
           })
         )
       );

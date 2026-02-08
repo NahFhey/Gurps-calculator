@@ -12,6 +12,7 @@ import type {
   TaskStatus,
   ActivityData,
   TaskLockKey,
+  ForagingData,
 } from '../../types/downtime';
 
 // ============================================================================
@@ -348,8 +349,15 @@ export function getTargetKeyFromActivityData(
   switch (activityType) {
     case 'fishing':
       return `species:${(activityData as { speciesId: string }).speciesId}`;
-    case 'foraging':
-      return `node:${(activityData as { nodeId: string }).nodeId}`;
+    case 'foraging': {
+      const fd = activityData as ForagingData;
+      // Support new three-mode system
+      if (fd.mode === 'general') return 'forage:general';
+      if (fd.mode === 'category') return `forage:cat:${fd.targetCategory ?? 'unknown'}`;
+      if (fd.mode === 'specific') return `forage:item:${fd.targetItemId ?? fd.nodeId ?? 'unknown'}`;
+      // Legacy fallback
+      return `node:${(fd as any).nodeId ?? 'unknown'}`;
+    }
     case 'alchemy':
       return `recipe:${(activityData as { recipeId: string }).recipeId}`;
     case 'crafting':

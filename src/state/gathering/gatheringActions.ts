@@ -16,6 +16,7 @@ import type {
   GatheringItem,
   GatheringDailyEvents
 } from '../../types/campaign';
+import type { ForageZoneProfile, ForageItem, ForagingConfig } from '../../types/foraging';
 
 // ============================================================================
 // ACTION TYPE CONSTANTS
@@ -56,6 +57,22 @@ export const GATHERING_CATEGORY_ADD = 'addGatheringCategory' as const;
 // Item actions
 export const GATHERING_ITEMS_SET = 'setGatheringItems' as const;
 export const GATHERING_ITEM_ADD = 'addGatheringItem' as const;
+
+// Forage Zone Profile actions
+export const FORAGE_ZONE_PROFILES_SET = 'setForageZoneProfiles' as const;
+export const FORAGE_ZONE_PROFILE_ADD = 'addForageZoneProfile' as const;
+export const FORAGE_ZONE_PROFILE_UPDATE = 'updateForageZoneProfile' as const;
+export const FORAGE_ZONE_PROFILE_REMOVE = 'removeForageZoneProfile' as const;
+
+// Forage Item actions
+export const FORAGE_ITEMS_SET = 'setForageItems' as const;
+export const FORAGE_ITEM_ADD = 'addForageItem' as const;
+export const FORAGE_ITEM_UPDATE = 'updateForageItem' as const;
+export const FORAGE_ITEM_REMOVE = 'removeForageItem' as const;
+
+// Foraging Config actions
+export const FORAGING_CONFIG_SET = 'setForagingConfig' as const;
+export const FORAGING_CONFIG_UPDATE = 'updateForagingConfig' as const;
 
 // ============================================================================
 // ACTION TYPES
@@ -142,6 +159,52 @@ export type AddGatheringItemAction = {
   payload: GatheringItem;
 };
 
+// Forage Zone Profile action types
+export type SetForageZoneProfilesAction = {
+  type: typeof FORAGE_ZONE_PROFILES_SET;
+  payload: Record<Id, ForageZoneProfile>;
+};
+export type AddForageZoneProfileAction = {
+  type: typeof FORAGE_ZONE_PROFILE_ADD;
+  payload: ForageZoneProfile;
+};
+export type UpdateForageZoneProfileAction = {
+  type: typeof FORAGE_ZONE_PROFILE_UPDATE;
+  payload: { id: Id; changes: Partial<ForageZoneProfile> };
+};
+export type RemoveForageZoneProfileAction = {
+  type: typeof FORAGE_ZONE_PROFILE_REMOVE;
+  payload: Id;
+};
+
+// Forage Item action types
+export type SetForageItemsAction = {
+  type: typeof FORAGE_ITEMS_SET;
+  payload: Record<Id, ForageItem>;
+};
+export type AddForageItemAction = {
+  type: typeof FORAGE_ITEM_ADD;
+  payload: ForageItem;
+};
+export type UpdateForageItemAction = {
+  type: typeof FORAGE_ITEM_UPDATE;
+  payload: { id: Id; changes: Partial<ForageItem> };
+};
+export type RemoveForageItemAction = {
+  type: typeof FORAGE_ITEM_REMOVE;
+  payload: Id;
+};
+
+// Foraging Config action types
+export type SetForagingConfigAction = {
+  type: typeof FORAGING_CONFIG_SET;
+  payload: ForagingConfig;
+};
+export type UpdateForagingConfigAction = {
+  type: typeof FORAGING_CONFIG_UPDATE;
+  payload: Partial<ForagingConfig>;
+};
+
 // ============================================================================
 // UNION TYPE
 // ============================================================================
@@ -164,7 +227,17 @@ export type GatheringAction =
   | SetGatheringCategoriesAction
   | AddGatheringCategoryAction
   | SetGatheringItemsAction
-  | AddGatheringItemAction;
+  | AddGatheringItemAction
+  | SetForageZoneProfilesAction
+  | AddForageZoneProfileAction
+  | UpdateForageZoneProfileAction
+  | RemoveForageZoneProfileAction
+  | SetForageItemsAction
+  | AddForageItemAction
+  | UpdateForageItemAction
+  | RemoveForageItemAction
+  | SetForagingConfigAction
+  | UpdateForagingConfigAction;
 
 // ============================================================================
 // TYPE GUARD
@@ -188,9 +261,19 @@ const GATHERING_ACTION_TYPES = new Set([
   GATHERING_CATEGORIES_SET,
   GATHERING_CATEGORY_ADD,
   GATHERING_ITEMS_SET,
-  GATHERING_ITEM_ADD
+  GATHERING_ITEM_ADD,
+  FORAGE_ZONE_PROFILES_SET,
+  FORAGE_ZONE_PROFILE_ADD,
+  FORAGE_ZONE_PROFILE_UPDATE,
+  FORAGE_ZONE_PROFILE_REMOVE,
+  FORAGE_ITEMS_SET,
+  FORAGE_ITEM_ADD,
+  FORAGE_ITEM_UPDATE,
+  FORAGE_ITEM_REMOVE,
+  FORAGING_CONFIG_SET,
+  FORAGING_CONFIG_UPDATE,
 ]);
 
 export function isGatheringAction(action: { type: string }): action is GatheringAction {
-  return GATHERING_ACTION_TYPES.has(action.type);
+  return GATHERING_ACTION_TYPES.has(action.type as any);
 }

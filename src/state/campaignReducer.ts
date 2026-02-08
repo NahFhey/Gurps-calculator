@@ -50,6 +50,8 @@ import type {
   ActiveWeather
 } from '../types/location';
 import type { DowntimeState } from '../types/downtime';
+import type { ForageZoneProfile, ForageItem, ForagingConfig } from '../types/foraging';
+import { DEFAULT_FORAGING_CONFIG } from '../constants/foraging';
 import {
   createInitialLocationState,
   generateWeather,
@@ -129,6 +131,11 @@ export type CampaignState = {
     gatheringBait: Record<Id, GatheringBait>;
     gatheringCategories: Record<Id, GatheringCategory>;
     gatheringItems: Record<Id, GatheringItem>;
+
+    // Foraging system (revamped)
+    forageZoneProfiles: Record<Id, ForageZoneProfile>;
+    forageItems: Record<Id, ForageItem>;
+    foragingConfig: ForagingConfig;
 
     // Combat system
     combatCharacters: Record<Id, CombatCharacter>;
@@ -353,6 +360,11 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
     gatheringCategories: {},
     gatheringItems: {},
 
+    // Foraging system (revamped)
+    forageZoneProfiles: {},
+    forageItems: {},
+    foragingConfig: { ...DEFAULT_FORAGING_CONFIG },
+
     // Combat system
     combatCharacters: {},
     combatItems: {},
@@ -556,6 +568,19 @@ export type CampaignAction =
   // Gathering Item actions
   | { type: 'setGatheringItems'; payload: Record<Id, GatheringItem> }
   | { type: 'addGatheringItem'; payload: GatheringItem }
+  // Forage Zone Profile actions
+  | { type: 'setForageZoneProfiles'; payload: Record<Id, ForageZoneProfile> }
+  | { type: 'addForageZoneProfile'; payload: ForageZoneProfile }
+  | { type: 'updateForageZoneProfile'; payload: { id: Id; changes: Partial<ForageZoneProfile> } }
+  | { type: 'removeForageZoneProfile'; payload: Id }
+  // Forage Item actions
+  | { type: 'setForageItems'; payload: Record<Id, ForageItem> }
+  | { type: 'addForageItem'; payload: ForageItem }
+  | { type: 'updateForageItem'; payload: { id: Id; changes: Partial<ForageItem> } }
+  | { type: 'removeForageItem'; payload: Id }
+  // Foraging Config actions
+  | { type: 'setForagingConfig'; payload: ForagingConfig }
+  | { type: 'updateForagingConfig'; payload: Partial<ForagingConfig> }
   // Day Planner actions
   | { type: 'setTimeSlots'; payload: TimeSlot[] }
   | { type: 'addTaskAssignment'; payload: TaskAssignment }

@@ -4,29 +4,33 @@
  * Main view for the foraging downtime activity.
  * Displays pending and completed foraging tasks and allows
  * creation, resolution, and cancellation of tasks.
+ *
+ * Uses the revamped foraging resolution engine with three modes:
+ * General, Category, and Specific.
+ *
+ * Zone profile management is now in the Gathering Manager → Environments tab.
+ * Resolved items are added to inventory (food/material).
+ * No XP is awarded for foraging.
  */
 
 import { useState, useCallback, useMemo } from 'react';
 import { Leaf, Plus, AlertCircle } from 'lucide-react';
 import { useDowntimeContext } from '../DowntimeContext';
+import { useCampaignStore } from '../../../state/campaignStore';
 import { ForagingTaskForm } from './ForagingTaskForm';
-import { ForagingTaskCard } from './ForagingTaskCard';
+import { ForagingTaskCard, type ResolutionMode } from './ForagingTaskCard';
+import { ForagingResolutionPanel } from './ForagingResolutionPanel';
 import {
   selectTasksByActivityType,
   validateTaskCreation,
 } from '../../../state/downtime';
 import { DowntimeValidationError } from '../../../state/downtime/downtimeErrors';
-import {
-  roll3d6,
-  calculateEffectiveForagingSkill,
-  evaluateForagingRoll,
-  determineForageFind,
-  calculateForageYields,
-} from '../../../utils/gathering';
+import { resolveForage } from '../../../utils/foraging';
 import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
-import type { DowntimeState, DowntimeTask, ForagingData, TaskResults } from '../../../types/downtime';
+import type { DowntimeTask, ForagingData, TaskResults } from '../../../types/downtime';
 import type { CreateTaskPayload } from '../../../state/downtime/downtimeActions';
-import type { GatheringSpecies, GatheringEnvironment } from '../../../types/campaign';
+import type { ForageActionInput, ForageContextFlags } from '../../../types/foraging';
+import type { Food, Material } from '../../../types/campaign';
 
 // ============================================================================
 // TYPES
@@ -44,122 +48,151 @@ interface ForagingActivityProps {
 // ============================================================================
 
 /**
- * Calculate foraging results using full GURPS 3d6 mechanics.
- * Uses the gathering.js utility functions for proper skill checks,
- * table-based loot, and yield calculations.
+ * Bridge function: converts a DowntimeTask into a ForageActionInput,
+ * calls the new resolution engine, and converts the result to TaskResults.
+ * Also adds found items to inventory via campaignActions.
  */
-function calculateForagingResultsAuto(
+function resolveForagingTask(
   task: DowntimeTask,
-  targetNode: GatheringSpecies | undefined,
-  biome: GatheringEnvironment | undefined,
-  gatheringTables: any[],
-  weatherGatheringMod: number,
-  downtimeState?: DowntimeState
+  ctx: ReturnType<typeof useDowntimeContext>,
+  campaignActions: { addFood: (food: Food) => void; addMaterial: (material: Material) => void }
 ): TaskResults {
   const data = task.activityData as ForagingData;
-  const nodeName = targetNode?.name ?? 'materials';
-  const biomeName = biome?.name ?? 'the area';
 
-  // Get leader's base skill (captured at task creation) or fallback
-  const baseSkill = data.leaderSkill ?? 10;
+  // Lookup zone
+  const zone = ctx.forageZones.find((z) => z.id === data.zoneId);
 
-  // Get environment modifier from biome
-  const environmentMod = (biome as any)?.skillMod ?? 0;
+  // Lookup leader name
+  const leader = ctx.characters.find((c) => c.id === task.leaderId);
+  const leaderName = leader?.name ?? 'Worker';
 
   // Calculate fatigue penalty for the leader
   let fatiguePenalty = 0;
-  let fatigueLabel = '';
-  if (downtimeState) {
-    const fatigueStatus = selectCharacterFatigueStatus(
-      downtimeState,
-      task.leaderId,
-      task.dayKey,
-      task.slot
-    );
-    fatiguePenalty = getFatiguePenalty(fatigueStatus);
-    if (fatiguePenalty !== 0) {
-      fatigueLabel = `Fatigue(${fatigueStatus}): ${fatiguePenalty}. `;
+  const fatigueStatus = selectCharacterFatigueStatus(
+    ctx.state,
+    task.leaderId,
+    task.dayKey,
+    task.slot
+  );
+  fatiguePenalty = getFatiguePenalty(fatigueStatus);
+
+  // Compute tool bonuses
+  let toolSkillBonus = 0;
+  let toolYieldBonus = 0;
+  const toolIds = data.toolIds ?? [];
+  for (const toolId of toolIds) {
+    const tool = ctx.tools.find((t) => t.id === toolId);
+    if (!tool) continue;
+    toolSkillBonus += tool.skillBonus ?? 0;
+    toolYieldBonus += tool.yieldBonus ?? 0;
+  }
+
+  // Check for supervisor (helper with skill 15+)
+  let supervisorSkill15Plus = false;
+  for (const helperId of task.helperIds) {
+    const helper = ctx.characters.find((c) => c.id === helperId);
+    if (helper) {
+      const helperSkills = (helper as any).skills ?? (helper as any).characterSheet?.skills ?? [];
+      const found = helperSkills.find?.((s: any) => {
+        const name = typeof s === 'string' ? s : (s.name ?? '');
+        return name.toLowerCase().includes('survival') ||
+               name.toLowerCase().includes('naturalist') ||
+               name.toLowerCase().includes('herb lore');
+      });
+      if (found) {
+        const level = typeof found === 'string' ? 10 : (found.level ?? found.points ?? 10);
+        if (level >= 15) {
+          supervisorSkill15Plus = true;
+          break;
+        }
+      }
     }
   }
 
-  // Calculate effective skill with all modifiers (including fatigue)
-  const { effectiveSkill, breakdown } = calculateEffectiveForagingSkill({
-    baseForagingSkill: baseSkill,
-    toolBonus: data.skillModifier + fatiguePenalty,
-    environmentMod: environmentMod + weatherGatheringMod,
-  });
+  // Build context flags
+  const flags: ForageContextFlags = data.contextFlags ?? {
+    hasMapOrGuide: false,
+    isUnfamiliarOrHostile: false,
+    isPeakSeason: false,
+    isOffSeason: false,
+    hasProperTools: false,
+    isDenseOrDangerousTerrain: false,
+  };
 
-  // Roll 3d6 for foraging check
-  const { total: roll } = roll3d6();
+  // Build the engine input
+  const input: ForageActionInput = {
+    actorId: task.leaderId,
+    zoneId: data.zoneId,
+    mode: data.mode ?? 'general',
+    targetCategory: data.targetCategory as any,
+    targetItemId: data.targetItemId,
+    skillUsed: (data.skillUsed as any) ?? 'survival',
+    baseSkillLevel: data.leaderSkill ?? 10,
+    contextFlags: flags,
+    toolIds,
+    helperCount: task.helperIds.length,
+    supervisorSkill15Plus,
+    toolSkillBonus: toolSkillBonus + fatiguePenalty,
+    toolYieldBonus,
+    weatherModifier: 0, // Weather integration in future phase
+  };
 
-  // Evaluate the roll result
-  const rollResult = evaluateForagingRoll(roll, effectiveSkill, !!data.nodeId);
+  // Resolve using the engine — pass gatheringItems for per-item selection
+  const result = resolveForage(
+    input,
+    zone,
+    ctx.forageItems,
+    ctx.foragingConfig,
+    leaderName,
+    ctx.gatheringItems
+  );
 
-  // Build skill breakdown string
-  const breakdownParts: string[] = [`Base ${breakdown.base}`];
-  if (breakdown.tool !== 0) breakdownParts.push(`Tools/Helpers ${breakdown.tool >= 0 ? '+' : ''}${breakdown.tool}`);
-  if (breakdown.environment !== 0) breakdownParts.push(`Env ${breakdown.environment >= 0 ? '+' : ''}${breakdown.environment}`);
-  const breakdownStr = breakdownParts.join(', ');
+  // Convert ForageActionResult → TaskResults
+  const success = result.tierOutcome !== 'nothing' && result.tierOutcome !== 'scraps' && result.found.length > 0;
 
-  // Handle failure
-  if (!rollResult.success) {
-    const hazardNote = rollResult.hazard ? ` Hazard: ${rollResult.hazard}` : '';
-    return {
-      success: false,
-      message: rollResult.critFailure
-        ? `${fatigueLabel}Critical Failure! Rolled ${roll} vs ${effectiveSkill} (${breakdownStr}). ${rollResult.description}${hazardNote}`
-        : `${fatigueLabel}Failure. Rolled ${roll} vs ${effectiveSkill} (${breakdownStr}), MoF: ${Math.abs(rollResult.margin)}. ${rollResult.description}`,
-      inventoryChanges: [],
-      experienceGained: 3,
-    };
+  const inventoryChanges = result.found.map((stack) => ({
+    itemId: stack.itemId,
+    quantity: stack.quantity,
+    itemName: stack.itemName,
+  }));
+
+  // Add found items to inventory
+  const zoneName = zone?.name ?? 'unknown zone';
+  for (const stack of result.found) {
+    const itemId = `forage-${stack.itemId}-${Date.now()}`;
+    if (stack.inventoryKind === 'food') {
+      campaignActions.addFood({
+        id: itemId,
+        name: stack.itemName,
+        type: stack.typeId,
+        quantity: stack.quantity,
+        source: `Foraging at ${zoneName}`,
+      } as Food);
+    } else {
+      campaignActions.addMaterial({
+        id: itemId,
+        name: stack.itemName,
+        type: stack.typeId,
+        quantity: stack.quantity,
+        source: `Foraging at ${zoneName}`,
+      } as Material);
+    }
   }
 
-  // Determine what was found using biome's foraging find table
-  const biomeDefaults = (biome as any)?.defaultsByMode?.Foraging;
-  const findTableId = biomeDefaults?.randomCatchTableId ?? (data.tableId || null);
-  const findTable = findTableId ? gatheringTables.find((t: any) => t.id === findTableId) : null;
+  // No XP awarded for foraging
+  const experienceGained = 0;
 
-  const findResult = determineForageFind({
-    rollResult,
-    findTable,
-    targetItem: targetNode,
-  });
-
-  // Determine the found item for yield calculation
-  const foundItem = findResult.item ?? targetNode;
-  const foundName = foundItem?.name ?? nodeName;
-
-  // Calculate yields
-  const yieldResult = calculateForageYields({
-    category: null,
-    item: foundItem,
-    yieldMultiplier: rollResult.yieldMultiplier ?? 1.0,
-  });
-
-  const yieldAmount = yieldResult.units;
-
-  if (yieldAmount <= 0) {
-    return {
-      success: true,
-      message: `${fatigueLabel}Rolled ${roll} vs ${effectiveSkill} (${breakdownStr}), MoS: ${rollResult.margin}. Found traces of ${foundName} but nothing harvestable.`,
-      inventoryChanges: [],
-      experienceGained: 5,
-    };
+  // Build message
+  let message = result.logText;
+  if (result.event?.notes) {
+    message += ` Event: ${result.event.notes}`;
   }
 
   return {
-    success: true,
-    message: rollResult.critSuccess
-      ? `${fatigueLabel}Critical Success! Rolled ${roll} vs ${effectiveSkill} (${breakdownStr}). Found ${yieldAmount} ${foundName} in ${biomeName}!`
-      : `${fatigueLabel}Success! Rolled ${roll} vs ${effectiveSkill} (${breakdownStr}), MoS: ${rollResult.margin}. Found ${yieldAmount} ${foundName} in ${biomeName}.`,
-    inventoryChanges: [
-      {
-        itemId: foundItem?.id ?? data.nodeId,
-        quantity: yieldAmount,
-        itemName: foundName,
-      },
-    ],
-    experienceGained: yieldAmount * 8,
+    success,
+    message,
+    inventoryChanges: inventoryChanges.length > 0 ? inventoryChanges : [],
+    experienceGained,
   };
 }
 
@@ -168,21 +201,24 @@ function calculateForagingResultsAuto(
 // ============================================================================
 
 export function ForagingActivity({ currentDayKey, currentSlot }: ForagingActivityProps) {
+  const ctx = useDowntimeContext();
+  const { actions: campaignActions } = useCampaignStore();
   const {
     state,
     characters,
-    foragingBiomes,
-    foragingNodes,
-    gatheringTables,
     tools,
+    forageZones,
+    forageItems,
+    foragingConfig,
     createDowntimeTask,
     beginResolve,
     resolve,
     cancel,
-  } = useDowntimeContext();
+  } = ctx;
 
   const [isCreating, setIsCreating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [resolvingTask, setResolvingTask] = useState<DowntimeTask | null>(null);
 
   // Get foraging tasks for current slot
   const foragingTasks = useMemo(() => {
@@ -241,23 +277,38 @@ export function ForagingActivity({ currentDayKey, currentSlot }: ForagingActivit
     [state, currentDayKey, currentSlot, createDowntimeTask]
   );
 
-  // Handle task resolution
+  // Handle task resolution using the new foraging engine
   const handleResolve = useCallback(
-    (task: DowntimeTask) => {
-      const data = task.activityData as ForagingData;
-      const node = foragingNodes.find((n: any) => n.id === data.nodeId);
-      const biome = foragingBiomes.find((b: any) => b.id === data.biomeId);
-
-      // Begin resolution (mark as in_progress)
-      beginResolve(task.id);
-
-      // Calculate and apply results using full 3d6 GURPS mechanics
-      // Weather modifier is 0 here — will be integrated in Phase 5
-      const results = calculateForagingResultsAuto(task, node as any, biome as any, gatheringTables, 0, state);
-      resolve(task.id, results);
+    (task: DowntimeTask, mode: ResolutionMode) => {
+      if (mode === 'manual') {
+        // Open manual resolution panel
+        setResolvingTask(task);
+      } else {
+        // Auto-resolve
+        beginResolve(task.id);
+        const results = resolveForagingTask(task, ctx, campaignActions);
+        resolve(task.id, results);
+      }
     },
-    [foragingNodes, foragingBiomes, gatheringTables, beginResolve, resolve, state]
+    [ctx, campaignActions, beginResolve, resolve]
   );
+
+  // Handle manual resolution finalize
+  const handleManualFinalize = useCallback(
+    (results: TaskResults) => {
+      if (resolvingTask) {
+        beginResolve(resolvingTask.id);
+        resolve(resolvingTask.id, results);
+        setResolvingTask(null);
+      }
+    },
+    [resolvingTask, beginResolve, resolve]
+  );
+
+  // Handle manual resolution cancel
+  const handleManualCancel = useCallback(() => {
+    setResolvingTask(null);
+  }, []);
 
   // Handle task cancellation
   const handleCancel = useCallback(
@@ -273,15 +324,20 @@ export function ForagingActivity({ currentDayKey, currentSlot }: ForagingActivit
     setValidationError(null);
   }, []);
 
+  // Get leader for resolution panel
+  const resolvingLeader = resolvingTask
+    ? characters.find(c => c.id === resolvingTask.leaderId)
+    : undefined;
+
   return (
     <div className="foraging-activity" data-testid="foraging-activity">
       {/* Header */}
       <header className="activity-header flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">
-          <Leaf className="w-5 h-5 text-green-600" />
-          <h3 className="text-lg font-semibold">Foraging</h3>
+          <Leaf className="w-5 h-5 text-green-400" />
+          <h3 className="text-lg font-semibold text-gray-100">Foraging</h3>
         </div>
-        {!isCreating && (
+        {!isCreating && !resolvingTask && (
           <button
             type="button"
             onClick={() => setIsCreating(true)}
@@ -297,7 +353,7 @@ export function ForagingActivity({ currentDayKey, currentSlot }: ForagingActivit
       {/* Validation Error */}
       {validationError && (
         <div
-          className="flex items-center gap-2 bg-red-100 border border-red-300 text-red-700 px-3 py-2 rounded mb-4"
+          className="flex items-center gap-2 bg-red-900/30 border border-red-500 text-red-300 px-3 py-2 rounded mb-4"
           role="alert"
           data-testid="validation-error"
         >
@@ -306,7 +362,7 @@ export function ForagingActivity({ currentDayKey, currentSlot }: ForagingActivit
           <button
             type="button"
             onClick={() => setValidationError(null)}
-            className="ml-auto text-red-700 hover:text-red-900"
+            className="ml-auto text-red-300 hover:text-red-100"
             aria-label="Dismiss error"
           >
             &times;
@@ -314,14 +370,26 @@ export function ForagingActivity({ currentDayKey, currentSlot }: ForagingActivit
         </div>
       )}
 
+      {/* Manual Resolution Panel */}
+      {resolvingTask && (
+        <div className="mb-4">
+          <ForagingResolutionPanel
+            task={resolvingTask}
+            leader={resolvingLeader}
+            onFinalize={handleManualFinalize}
+            onCancel={handleManualCancel}
+          />
+        </div>
+      )}
+
       {/* Creation Form */}
-      {isCreating && (
+      {isCreating && !resolvingTask && (
         <ForagingTaskForm
           characters={characters}
-          biomes={foragingBiomes}
-          nodes={foragingNodes}
-          tables={gatheringTables}
+          zones={forageZones}
+          forageItems={forageItems}
           tools={foragingTools}
+          foragingConfig={foragingConfig}
           state={state}
           currentDayKey={currentDayKey}
           currentSlot={currentSlot}
@@ -331,51 +399,55 @@ export function ForagingActivity({ currentDayKey, currentSlot }: ForagingActivit
       )}
 
       {/* Pending Tasks */}
-      <section className="pending-tasks mb-6" data-testid="pending-tasks-section">
-        <h4 className="font-medium mb-2 text-gray-700">
-          Pending ({pendingTasks.length})
-        </h4>
-        {pendingTasks.length === 0 ? (
-          <p className="text-gray-500 text-sm italic">No pending foraging tasks</p>
-        ) : (
-          <div className="space-y-2">
-            {pendingTasks.map((task) => (
-              <ForagingTaskCard
-                key={task.id}
-                task={task}
-                nodes={foragingNodes}
-                biomes={foragingBiomes}
-                characters={characters}
-                onResolve={() => handleResolve(task)}
-                onCancel={() => handleCancel(task.id)}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+      {!resolvingTask && (
+        <section className="pending-tasks mb-6" data-testid="pending-tasks-section">
+          <h4 className="font-medium mb-2 text-gray-200">
+            Pending ({pendingTasks.length})
+          </h4>
+          {pendingTasks.length === 0 ? (
+            <p className="text-gray-400 text-sm italic">No pending foraging tasks</p>
+          ) : (
+            <div className="space-y-2">
+              {pendingTasks.map((task) => (
+                <ForagingTaskCard
+                  key={task.id}
+                  task={task}
+                  zones={forageZones}
+                  forageItems={forageItems}
+                  characters={characters}
+                  onResolve={(mode) => handleResolve(task, mode)}
+                  onCancel={() => handleCancel(task.id)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Completed Tasks */}
-      <section className="completed-tasks" data-testid="completed-tasks-section">
-        <h4 className="font-medium mb-2 text-gray-700">
-          Completed ({completedTasks.length})
-        </h4>
-        {completedTasks.length === 0 ? (
-          <p className="text-gray-500 text-sm italic">No completed foraging tasks</p>
-        ) : (
-          <div className="space-y-2">
-            {completedTasks.map((task) => (
-              <ForagingTaskCard
-                key={task.id}
-                task={task}
-                nodes={foragingNodes}
-                biomes={foragingBiomes}
-                characters={characters}
-                readonly
-              />
-            ))}
-          </div>
-        )}
-      </section>
+      {!resolvingTask && (
+        <section className="completed-tasks" data-testid="completed-tasks-section">
+          <h4 className="font-medium mb-2 text-gray-200">
+            Completed ({completedTasks.length})
+          </h4>
+          {completedTasks.length === 0 ? (
+            <p className="text-gray-400 text-sm italic">No completed foraging tasks</p>
+          ) : (
+            <div className="space-y-2">
+              {completedTasks.map((task) => (
+                <ForagingTaskCard
+                  key={task.id}
+                  task={task}
+                  zones={forageZones}
+                  forageItems={forageItems}
+                  characters={characters}
+                  readonly
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }

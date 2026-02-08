@@ -280,10 +280,11 @@ describe('selectTasksByActivityType', () => {
       activityType: 'foraging',
       activityData: {
         type: 'foraging',
-        biomeId: 'forest',
-        nodeId: 'node-1',
-        tableId: 'table-1',
+        zoneId: 'zone-forest',
+        mode: 'general',
+        skillUsed: 'survival',
         toolIds: [],
+        leaderSkill: 12,
         skillModifier: 0,
       },
     });
@@ -700,19 +701,37 @@ describe('getTargetKeyFromActivityData', () => {
     expect(result).toBe('species:trout');
   });
 
-  it('extracts foraging target key', () => {
+  it('extracts foraging target key for general mode', () => {
     const activityData = {
       type: 'foraging' as const,
-      biomeId: 'forest',
-      nodeId: 'berry-bush',
-      tableId: 'table-1',
+      zoneId: 'zone-forest',
+      mode: 'general' as const,
+      skillUsed: 'survival',
       toolIds: [],
+      leaderSkill: 12,
       skillModifier: 0,
     };
 
     const result = getTargetKeyFromActivityData('foraging', activityData);
 
-    expect(result).toBe('node:berry-bush');
+    expect(result).toBe('forage:general');
+  });
+
+  it('extracts foraging target key for specific mode', () => {
+    const activityData = {
+      type: 'foraging' as const,
+      zoneId: 'zone-forest',
+      mode: 'specific' as const,
+      targetItemId: 'berry-bush',
+      skillUsed: 'survival',
+      toolIds: [],
+      leaderSkill: 12,
+      skillModifier: 0,
+    };
+
+    const result = getTargetKeyFromActivityData('foraging', activityData);
+
+    expect(result).toBe('forage:item:berry-bush');
   });
 
   it('extracts alchemy target key', () => {

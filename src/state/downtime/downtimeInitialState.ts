@@ -21,4 +21,4 @@ export const downtimeInitialState: DowntimeState = {
  * Schema version for downtime state migrations.
  * Increment when making breaking changes to the state shape.
  */
-export const DOWNTIME_SCHEMA_VERSION = 1;
+export const DOWNTIME_SCHEMA_VERSION = 2;

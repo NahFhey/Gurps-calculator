@@ -79,7 +79,7 @@ export function TaskActions({
       <button
         type="button"
         onClick={onCancel}
-        className="flex items-center gap-1 px-3 py-1.5 border border-red-300 text-red-600 text-sm rounded hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex items-center gap-1 px-3 py-1.5 border border-red-500/50 text-red-400 text-sm rounded hover:bg-red-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         disabled={isInProgress}
         data-testid="cancel-button"
       >

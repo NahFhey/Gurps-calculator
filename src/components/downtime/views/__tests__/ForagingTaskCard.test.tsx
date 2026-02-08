@@ -3,7 +3,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ForagingTaskCard } from '../ForagingTaskCard';
 import type { DowntimeTask, ForagingData, TaskResults } from '../../../../types/downtime';
-import type { Character, GatheringSpecies, GatheringEnvironment } from '../../../../types/campaign';
+import type { Character } from '../../../../types/campaign';
+import type { ForageZoneProfile, ForageItem } from '../../../../types/foraging';
 
 // Helper to create a foraging task
 function createForagingTask(
@@ -20,10 +21,11 @@ function createForagingTask(
     status: 'pending',
     activityData: {
       type: 'foraging',
-      nodeId: 'node-berries',
-      biomeId: 'biome-forest',
-      tableId: '',
+      zoneId: 'zone-forest',
+      mode: 'general',
+      skillUsed: 'survival',
       toolIds: ['tool-basket'],
+      leaderSkill: 12,
       skillModifier: 2,
     } as ForagingData,
     createdAt: now,
@@ -36,69 +38,88 @@ const mockCharacters: Character[] = [
   {
     id: 'char-1',
     name: 'Aldric',
-    hp: { current: 10, max: 10 },
-    fp: { current: 10, max: 10 },
-    speed: 5,
-    st: 10,
-    dx: 10,
-    iq: 10,
-    ht: 10,
-    skills: {},
-    advantages: [],
-    disadvantages: [],
-    equipment: [],
-  },
+    hitLocationProfileId: 'humanoid',
+  } as Character,
   {
     id: 'char-2',
     name: 'Brina',
-    hp: { current: 12, max: 12 },
-    fp: { current: 12, max: 12 },
-    speed: 5,
-    st: 12,
-    dx: 10,
-    iq: 10,
-    ht: 12,
-    skills: {},
-    advantages: [],
-    disadvantages: [],
-    equipment: [],
-  },
+    hitLocationProfileId: 'humanoid',
+  } as Character,
 ];
 
-const mockBiomes: GatheringEnvironment[] = [
+const mockZones: ForageZoneProfile[] = [
   {
-    id: 'biome-forest',
+    id: 'zone-forest',
     name: 'Forest',
-    description: 'Dense woodland',
-    species: ['node-berries'],
+    locationId: 'loc-1',
+    commonCategories: [{ categoryId: 'fruits', weight: 1, items: [] }],
+    uncommonCategories: [{ categoryId: 'mushrooms', weight: 1, items: [] }],
+    rareCategories: [{ categoryId: 'herbs_spices', weight: 1, items: [] }],
+    tags: ['woodland'],
   },
 ];
 
-const mockNodes: GatheringSpecies[] = [
+const mockForageItems: ForageItem[] = [
   {
-    id: 'node-berries',
+    id: 'item-berries',
     name: 'Wild Berries',
-    category: 'plant',
-    baseYield: 5,
-    skill: 'Naturalist',
-    difficulty: 0,
-    environments: ['biome-forest'],
+    categoryId: 'fruits',
+    tier: 'common',
+    yieldFormula: '2d+1',
+    inventoryKind: 'food',
+    typeId: 'berries',
   },
 ];
 
 const defaultProps = {
-  nodes: mockNodes,
-  biomes: mockBiomes,
+  zones: mockZones,
+  forageItems: mockForageItems,
   characters: mockCharacters,
 };
 
 describe('ForagingTaskCard', () => {
   describe('rendering', () => {
-    it('renders task with node name', () => {
+    it('renders task with mode label for general mode', () => {
       const task = createForagingTask();
       render(<ForagingTaskCard task={task} {...defaultProps} />);
 
-      expect(screen.getByText(/Foraging: Wild Berries/)).toBeInTheDocument();
+      expect(screen.getByText('General Forage')).toBeInTheDocument();
+    });
+
+    it('renders task with mode label for category mode', () => {
+      const task = createForagingTask({
+        activityData: {
+          type: 'foraging',
+          zoneId: 'zone-forest',
+          mode: 'category',
+          targetCategory: 'mushrooms',
+          skillUsed: 'survival',
+          toolIds: [],
+          leaderSkill: 12,
+          skillModifier: 0,
+        } as ForagingData,
+      });
+      render(<ForagingTaskCard task={task} {...defaultProps} />);
+
+      expect(screen.getByText(/Category: Mushrooms/)).toBeInTheDocument();
+    });
+
+    it('renders task with mode label for specific mode', () => {
+      const task = createForagingTask({
+        activityData: {
+          type: 'foraging',
+          zoneId: 'zone-forest',
+          mode: 'specific',
+          targetItemId: 'item-berries',
+          skillUsed: 'survival',
+          toolIds: [],
+          leaderSkill: 12,
+          skillModifier: 0,
+        } as ForagingData,
+      });
+      render(<ForagingTaskCard task={task} {...defaultProps} />);
+
+      expect(screen.getByText(/Specific: Wild Berries/)).toBeInTheDocument();
     });
 
     it('renders leader name', () => {
@@ -125,7 +146,7 @@ describe('ForagingTaskCard', () => {
       expect(screen.queryByText(/Helpers:/)).not.toBeInTheDocument();
     });
 
-    it('renders biome name', () => {
+    it('renders zone name', () => {
       const task = createForagingTask();
       render(<ForagingTaskCard task={task} {...defaultProps} />);
 
@@ -137,6 +158,13 @@ describe('ForagingTaskCard', () => {
       render(<ForagingTaskCard task={task} {...defaultProps} />);
 
       expect(screen.getByText(/\+2/)).toBeInTheDocument();
+    });
+
+    it('renders skill label', () => {
+      const task = createForagingTask();
+      render(<ForagingTaskCard task={task} {...defaultProps} />);
+
+      expect(screen.getByText(/Survival/)).toBeInTheDocument();
     });
   });
 
@@ -183,7 +211,7 @@ describe('ForagingTaskCard', () => {
   describe('action buttons', () => {
     it('shows resolve and cancel buttons for pending task', () => {
       const task = createForagingTask({ status: 'pending' });
-      render(<ForagingTaskCard task={task} {...defaultProps} />);
+      render(<ForagingTaskCard task={task} {...defaultProps} onResolve={vi.fn()} onCancel={vi.fn()} />);
 
       expect(screen.getByTestId('resolve-button')).toBeInTheDocument();
       expect(screen.getByTestId('cancel-button')).toBeInTheDocument();
@@ -243,7 +271,7 @@ describe('ForagingTaskCard', () => {
         success: true,
         message: 'Gathered 8 berries!',
         inventoryChanges: [
-          { itemId: 'node-berries', quantity: 8, itemName: 'Wild Berries' },
+          { itemId: 'item-berries', quantity: 8, itemName: 'Wild Berries' },
         ],
         experienceGained: 30,
       };
