@@ -285,7 +285,7 @@ function calculateFishingResultsAuto(
       campaignActions.addFood({
         id: foodId,
         name: foodName,
-        type: foodType,
+        types: [foodType],
         quantity: meatYield,
         source: `Fishing at ${spot?.name ?? 'unknown'}`,
       } as Food);

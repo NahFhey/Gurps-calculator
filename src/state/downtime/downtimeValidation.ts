@@ -155,6 +155,8 @@ export function getToolIdsFromActivityData(activityData: ActivityData): string[]
       return activityData.toolIds ?? [];
     case 'foraging':
       return activityData.toolIds ?? [];
+    case 'mining':
+      return activityData.toolIds ?? [];
     case 'alchemy':
       return activityData.toolIds ?? [];
     case 'crafting':

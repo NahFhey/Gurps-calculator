@@ -36,6 +36,7 @@ export type ActivityTargetKey = string;
 export type DowntimeActivityType =
   | 'fishing'
   | 'foraging'
+  | 'mining'
   | 'alchemy'
   | 'crafting'
   | 'rest';
@@ -135,6 +136,91 @@ export interface ForagingData {
 }
 
 /**
+ * Mining method type - determines action cost and risk level.
+ * - Surface Prospecting: 1 slot (locate + harvest combined), low yield, low danger
+ * - Deep Mining: requires mapped site, 1 slot per extraction, higher yield, higher danger
+ */
+export type MiningMethod = 'Surface Prospecting' | 'Deep Mining';
+
+/**
+ * Deposit size categories.
+ */
+export type DepositSize = 'Small' | 'Medium' | 'Large' | 'Massive';
+
+/**
+ * Mining skill that can be used for locate or extraction rolls.
+ */
+export type MiningSkill = 'prospecting' | 'geology' | 'engineerMining' | 'mining';
+
+/**
+ * A persistent mining site that has been discovered/mapped.
+ */
+export interface MiningSite {
+  /** Unique identifier */
+  id: string;
+  /** Display name */
+  name: string;
+  /** Zone/location identifier */
+  zoneId: string;
+  /** Material IDs available at this site */
+  materials: string[];
+  /** Deposit size category */
+  depositSize: DepositSize;
+  /** Total units when discovered */
+  totalUnits: number;
+  /** Remaining extractable units */
+  remainingUnits: number;
+  /** Whether this site has been mapped (always true once discovered) */
+  mapped: boolean;
+  /** Whether the deposit is depleted */
+  depleted: boolean;
+  /** Quality flag */
+  quality: 'normal' | 'high';
+  /** Timestamp when discovered */
+  discoveredAt: number;
+}
+
+/**
+ * Configuration data for mining activities.
+ * Supports two methods: Surface Prospecting and Deep Mining.
+ */
+export interface MiningData {
+  /** Discriminator field for the discriminated union */
+  type: 'mining';
+  /** Mining method: Surface Prospecting or Deep Mining */
+  method: MiningMethod;
+  /** Zone/location where mining occurs */
+  zoneId: string;
+  /** Mapped site ID (required for Deep Mining extraction, optional for Surface) */
+  siteId?: string;
+  /** Whether searching for a specific resource */
+  targetResourceId?: string;
+  /** Skill used for the locate roll */
+  locateSkill: MiningSkill;
+  /** Skill used for the extraction roll */
+  extractionSkill: MiningSkill;
+  /** Leader's base locate skill level */
+  leaderLocateSkill: number;
+  /** Leader's base extraction skill level */
+  leaderExtractionSkill: number;
+  /** Equipment being used (picks, chisels, supports, etc.) */
+  toolIds: string[];
+  /** Cumulative skill modifier from tools, helpers, fatigue, etc. */
+  skillModifier: number;
+  /** Whether danger mode is on (roll events on every extraction) */
+  dangerMode: 'full' | 'lite';
+  /** Context flags for locate modifiers */
+  contextFlags?: {
+    hasDetailedMaps: boolean;
+    knownRichDeposit: boolean;
+    randomUnexplored: boolean;
+    hasSupervisor: boolean;
+    hasProperTools: boolean;
+    isImprovisedTools: boolean;
+  };
+}
+
+/**
  * Configuration data for alchemy activities.
  * Includes recipe, reagents, and batch configuration.
  */
@@ -207,6 +293,7 @@ export interface RestData {
 export type ActivityData =
   | FishingData
   | ForagingData
+  | MiningData
   | AlchemyData
   | CraftingData
   | RestData;
@@ -318,6 +405,16 @@ export function isForagingTask(
   task: DowntimeTask
 ): task is DowntimeTask & { activityData: ForagingData } {
   return task.activityData.type === 'foraging';
+}
+
+/**
+ * Type guard to check if a task is a mining task.
+ * Narrows the activityData type to MiningData.
+ */
+export function isMiningTask(
+  task: DowntimeTask
+): task is DowntimeTask & { activityData: MiningData } {
+  return task.activityData.type === 'mining';
 }
 
 /**

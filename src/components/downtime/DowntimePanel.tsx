@@ -3,6 +3,7 @@ import { Moon, ArrowLeft } from 'lucide-react';
 import { TileGrid } from './views/TileGrid';
 import { FishingActivity } from './views/FishingActivity';
 import { ForagingActivity } from './views/ForagingActivity';
+import { MiningActivity } from './views/MiningActivity';
 import { AlchemyActivity } from './views/AlchemyActivity';
 import { CraftingActivity } from './views/CraftingActivity';
 import { CookingTab } from '../CookingTab';
@@ -10,7 +11,7 @@ import { DowntimeProvider } from './DowntimeContext';
 import { useCampaignCharacters } from '../../state/campaignStore';
 import { characterHasAnySkill, ACTIVITY_SKILL_REQUIREMENTS } from '../../types/characterSheet';
 
-type NavigableView = 'fishing' | 'foraging' | 'alchemy' | 'crafting' | 'cooking';
+type NavigableView = 'fishing' | 'foraging' | 'mining' | 'alchemy' | 'crafting' | 'cooking';
 type DowntimeView = 'tiles' | NavigableView;
 
 interface DowntimePanelProps {
@@ -69,6 +70,12 @@ export function DowntimePanel({ currentDayKey, currentSlot }: DowntimePanelProps
           )}
           {activeView === 'foraging' && (
             <ForagingActivity
+              currentDayKey={currentDayKey}
+              currentSlot={currentSlot}
+            />
+          )}
+          {activeView === 'mining' && (
+            <MiningActivity
               currentDayKey={currentDayKey}
               currentSlot={currentSlot}
             />

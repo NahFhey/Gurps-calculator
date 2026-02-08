@@ -792,7 +792,7 @@ export function FishingResolutionPanel({
         campaignActions.addFood({
           id: foodId,
           name: foodName,
-          type: foodType,
+          types: [foodType],
           quantity: meatUnits,
           source: `Fishing at ${spot?.name ?? 'unknown'}`,
         } as Food);

@@ -48,9 +48,19 @@ export function handleInventoryAction(
     // ========================================================================
     // MATERIAL ACTIONS
     // ========================================================================
-    case MATERIAL_ADD:
-      draft.entities.materials[action.payload.id] = action.payload;
+    case MATERIAL_ADD: {
+      // Stack with existing material that has the same name and type
+      const newMat = action.payload;
+      const existingMat = Object.values(draft.entities.materials).find(
+        (m) => m.name === newMat.name && m.type === newMat.type
+      );
+      if (existingMat) {
+        existingMat.quantity += newMat.quantity;
+      } else {
+        draft.entities.materials[newMat.id] = newMat;
+      }
       return true;
+    }
 
     case MATERIAL_UPDATE:
       if (draft.entities.materials[action.payload.id]) {
@@ -83,9 +93,21 @@ export function handleInventoryAction(
     // ========================================================================
     // FOOD ACTIONS
     // ========================================================================
-    case FOOD_ADD:
-      draft.entities.foods[action.payload.id] = action.payload;
+    case FOOD_ADD: {
+      // Stack with existing food that has the same name and type(s)
+      const newFood = action.payload;
+      const newFoodType = newFood.type ?? newFood.types?.join(',') ?? '';
+      const existingFood = Object.values(draft.entities.foods).find((f) => {
+        const fType = f.type ?? f.types?.join(',') ?? '';
+        return f.name === newFood.name && fType === newFoodType;
+      });
+      if (existingFood) {
+        existingFood.quantity += newFood.quantity;
+      } else {
+        draft.entities.foods[newFood.id] = newFood;
+      }
       return true;
+    }
 
     case FOOD_UPDATE:
       if (draft.entities.foods[action.payload.id]) {

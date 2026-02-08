@@ -164,7 +164,7 @@ function resolveForagingTask(
       campaignActions.addFood({
         id: itemId,
         name: stack.itemName,
-        type: stack.typeId,
+        types: [stack.typeId],
         quantity: stack.quantity,
         source: `Foraging at ${zoneName}`,
       } as Food);

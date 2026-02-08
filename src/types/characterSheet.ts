@@ -496,7 +496,7 @@ export function syncWorkSkillsFromGCS(gcsData: GCSCharacterData | undefined): Re
 // ============================================================================
 
 /** Activity types used in the downtime system */
-export type DowntimeActivityId = 'fishing' | 'foraging' | 'alchemy' | 'crafting' | 'cooking';
+export type DowntimeActivityId = 'fishing' | 'foraging' | 'mining' | 'alchemy' | 'crafting' | 'cooking';
 
 /**
  * Mapping from activity ID to the skill keys that qualify a character for that activity.
@@ -505,6 +505,7 @@ export type DowntimeActivityId = 'fishing' | 'foraging' | 'alchemy' | 'crafting'
 export const ACTIVITY_SKILL_REQUIREMENTS: Record<DowntimeActivityId, string[]> = {
   fishing: ['fishing', 'spear'],
   foraging: ['survival', 'naturalist', 'herbLore'],
+  mining: ['prospecting', 'geology', 'engineerMining', 'mining'],
   alchemy: ['alchemy'],
   crafting: ['crafting', 'designing'],
   cooking: ['cooking'],

@@ -1,4 +1,4 @@
-import { Fish, Leaf, FlaskConical, Hammer, ChefHat } from 'lucide-react';
+import { Fish, Leaf, HardHat, FlaskConical, Hammer, ChefHat } from 'lucide-react';
 import type { DowntimeActivityId } from '../../../types/characterSheet';
 export { ACTIVITY_SKILL_REQUIREMENTS } from '../../../types/characterSheet';
 
@@ -32,6 +32,13 @@ const TILES: TileConfig[] = [
     description: 'Herbs & Materials',
     icon: Leaf,
     color: 'bg-green-900/50 hover:bg-green-800/60 border-green-700/50',
+  },
+  {
+    id: 'mining',
+    label: 'Mining',
+    description: 'Ore & Minerals',
+    icon: HardHat,
+    color: 'bg-stone-900/50 hover:bg-stone-800/60 border-stone-700/50',
   },
   {
     id: 'alchemy',

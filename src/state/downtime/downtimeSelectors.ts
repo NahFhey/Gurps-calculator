@@ -358,6 +358,12 @@ export function getTargetKeyFromActivityData(
       // Legacy fallback
       return `node:${(fd as any).nodeId ?? 'unknown'}`;
     }
+    case 'mining': {
+      const md = activityData as import('../../types/downtime').MiningData;
+      if (md.siteId) return `mine:site:${md.siteId}`;
+      if (md.targetResourceId) return `mine:target:${md.targetResourceId}`;
+      return 'mine:general';
+    }
     case 'alchemy':
       return `recipe:${(activityData as { recipeId: string }).recipeId}`;
     case 'crafting':
@@ -693,6 +699,7 @@ export interface CharacterSlotSummary {
 const ACTIVITY_DISPLAY_NAMES: Record<DowntimeActivityType, string> = {
   fishing: 'Fishing',
   foraging: 'Foraging',
+  mining: 'Mining',
   alchemy: 'Alchemy',
   crafting: 'Crafting',
   rest: 'Resting',
