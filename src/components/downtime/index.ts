@@ -27,6 +27,4 @@ export {
   AlchemyTaskForm,
   AlchemyTaskCard,
   CraftingActivity,
-  CraftingTaskForm,
-  CraftingTaskCard,
 } from './views';

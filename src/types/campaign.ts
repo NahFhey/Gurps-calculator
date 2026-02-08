@@ -95,16 +95,42 @@ export interface Recipe {
 export type CraftPhase = 'setup' | 'design' | 'craft' | 'complete';
 export type CraftQuality = 'cheap' | 'good' | 'fine' | 'very fine' | 'legendary';
 
+export interface CraftShift {
+  id?: string;
+  date: string;
+  day: number;
+  worker: string;
+  skill?: number;        // Raw skill level
+  skillRoll?: number;    // Alias for roll (legacy)
+  roll?: number;         // Dice roll result
+  effectiveSkill: number;
+  result?: string;       // Human-readable result description
+  hoursAdded: number;
+  qualityShift?: number;
+  qualityChange?: number; // Alias for qualityShift
+  phase?: string;        // Which phase this shift was in
+}
+
+export interface CraftConsumedMaterial {
+  id?: Id;
+  materialId?: string;
+  amount: number;
+  name?: string;
+  type?: string;
+}
+
 export interface Craft {
   id: Id;
   phase: CraftPhase;
   templateType: 'weapons' | 'armor' | 'ranged' | 'explosives';
   template: string;  // Template name
-  quality: CraftQuality;
-  currentQuality: CraftQuality;
+  quality: CraftQuality | string;
+  currentQuality: CraftQuality | string;
+  name?: string;     // Custom display name
   mods: Array<{
-    name: string;
-    difficulty: number;
+    name?: string;
+    difficulty?: number;
+    [key: string]: unknown;
   }>;
   selectedMaterials: Array<{
     requirementIndex: number;
@@ -112,23 +138,15 @@ export interface Craft {
     requiredAmount: number;
     selectedMaterialId: Id | null;
   }>;
-  consumedMaterials?: Array<{
-    id: Id;
-    amount: number;
-  }>;
-  shifts: Array<{
-    date: string;
-    day: number;
-    worker: string;
-    skillRoll: number;
-    effectiveSkill: number;
-    hoursAdded: number;
-    qualityShift?: number;
-  }>;
-  designShifts?: Array<typeof Craft.prototype.shifts[0]>;
+  consumedMaterials?: CraftConsumedMaterial[];
+  shifts: CraftShift[];
+  designShifts?: CraftShift[];
   startDate: string;
   startDay: number;
-  completionDate?: string;
+  completed?: boolean;
+  completedDate?: string;
+  completedDay?: number;
+  completionDate?: string;  // Legacy alias
   finalStats?: {
     weight: number;
     hp: number;
@@ -143,11 +161,11 @@ export interface CraftDesign {
   name: string;
   templateType: string;
   template: string;
-  quality: CraftQuality;
+  quality: CraftQuality | string;
   mods: Craft['mods'];
   selectedMaterials: Craft['selectedMaterials'];
   consumedMaterials?: Craft['consumedMaterials'];
-  designShifts: Craft['shifts'];
+  designShifts?: Craft['shifts'];
   savedDate: string;
 }
 
@@ -156,6 +174,7 @@ export interface CustomTemplates {
   armor: Record<string, ArmorTemplate>;
   ranged: Record<string, RangedTemplate>;
   explosives: Record<string, ExplosiveTemplate>;
+  [key: string]: Record<string, any>;
 }
 
 export interface WeaponTemplate {
@@ -164,22 +183,32 @@ export interface WeaponTemplate {
   hp: number;
   damage: string;
   reach: string;
+  parry?: string;
+  cost?: number;
+  ST?: number;
+  notes?: string;
   materials: Array<{
     type: string;
     amount: number;
   }>;
+  [key: string]: unknown;
 }
 
 export interface ArmorTemplate {
   name: string;
   weight: number;
   hp: number;
-  dr: number;
-  location: string;
+  dr?: number;
+  DR?: number;
+  location?: string;
+  cost?: number;
+  LC?: number;
+  notes?: string;
   materials: Array<{
     type: string;
     amount: number;
   }>;
+  [key: string]: unknown;
 }
 
 export interface RangedTemplate {
@@ -187,26 +216,41 @@ export interface RangedTemplate {
   weight: number;
   hp: number;
   damage: string;
-  accuracy: number;
+  accuracy?: number;
+  Acc?: number;
   range: string;
-  rateOfFire: number;
-  shots: number;
+  rateOfFire?: number;
+  RoF?: string;
+  shots?: number | string;
+  cost?: number;
+  ST?: number;
+  bulk?: number;
+  RCl?: number;
+  LC?: number;
+  notes?: string;
   materials: Array<{
     type: string;
     amount: number;
   }>;
+  [key: string]: unknown;
 }
 
 export interface ExplosiveTemplate {
   name: string;
   weight: number;
+  hp?: number;
   damage: string;
   fragmentationDamage?: string;
-  blastRadius: number;
+  blastRadius?: number;
+  fuse?: string;
+  cost?: number;
+  LC?: number;
+  notes?: string;
   materials: Array<{
     type: string;
     amount: number;
   }>;
+  [key: string]: unknown;
 }
 
 // ============================================================================
