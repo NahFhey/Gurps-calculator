@@ -10,6 +10,7 @@
 
 import { useState, useCallback } from 'react';
 import { Hammer } from 'lucide-react';
+import { useDowntimeContext } from '../DowntimeContext';
 import { useCraftingData } from '../../../hooks/useCraftingData';
 import { CraftingProjectList } from '../../crafting/CraftingProjectList';
 import { CraftingWorkbench } from '../../crafting/CraftingWorkbench';
@@ -44,8 +45,9 @@ const TABS: { key: CraftingSubView; label: string; getBadge?: (ctx: { projectCou
 // COMPONENT
 // ============================================================================
 
-export function CraftingActivity({ currentDayKey: _currentDayKey, currentSlot: _currentSlot }: CraftingActivityProps) {
-  void _currentDayKey; void _currentSlot; // reserved for future slot integration
+export function CraftingActivity({ currentDayKey, currentSlot }: CraftingActivityProps) {
+  // Downtime context for time slot tracking
+  const { state: downtimeState, dispatch: downtimeDispatch } = useDowntimeContext();
 
   // Crafting data hook for sub-views (with save callbacks)
   const {
@@ -184,6 +186,10 @@ export function CraftingActivity({ currentDayKey: _currentDayKey, currentSlot: _
             setSaveDesignPrompt(craft);
           }}
           onCraftUpdated={setCurrentCraft}
+          downtimeState={downtimeState}
+          downtimeDispatch={downtimeDispatch}
+          currentDayKey={currentDayKey}
+          currentSlot={currentSlot}
         />
       )}
 

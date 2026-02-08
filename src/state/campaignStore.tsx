@@ -52,6 +52,7 @@ import type {
   TravelAction,
   ActiveWeather
 } from '../types/location';
+import type { DowntimeState } from '../types/downtime';
 
 type CampaignStoreValue = {
   state: CampaignState;
@@ -172,6 +173,9 @@ type CampaignStoreValue = {
     setGatheringItems: (items: Record<Id, GatheringItem>) => void;
     addGatheringItem: (item: GatheringItem) => void;
 
+    // Downtime Actions
+    setDowntime: (downtime: DowntimeState) => void;
+
     // Day Planner Actions
     setTimeSlots: (slots: TimeSlot[]) => void;
     addTaskAssignment: (task: TaskAssignment) => void;
@@ -222,6 +226,11 @@ type CampaignStoreValue = {
     updateTravel: (id: Id, changes: Partial<TravelAction>) => void;
     completeTravel: (id: Id) => void;
     cancelTravel: (id: Id) => void;
+    // Custom climate/terrain
+    addCustomClimate: (key: string, label: string) => void;
+    removeCustomClimate: (key: string) => void;
+    addCustomTerrain: (key: string, label: string) => void;
+    removeCustomTerrain: (key: string) => void;
   };
 };
 
@@ -405,6 +414,9 @@ export function CampaignStoreProvider({
         dispatch({ type: 'setGatheringItems', payload: items }),
       addGatheringItem: (item: GatheringItem) => dispatch({ type: 'addGatheringItem', payload: item }),
 
+      // Downtime Actions
+      setDowntime: (downtime: DowntimeState) => dispatch({ type: 'setDowntime', payload: downtime }),
+
       // Day Planner Actions
       setTimeSlots: (slots: TimeSlot[]) => dispatch({ type: 'setTimeSlots', payload: slots }),
       addTaskAssignment: (task: TaskAssignment) => dispatch({ type: 'addTaskAssignment', payload: task }),
@@ -470,7 +482,16 @@ export function CampaignStoreProvider({
       updateTravel: (id: Id, changes: Partial<TravelAction>) =>
         dispatch({ type: 'updateTravel', payload: { id, changes } }),
       completeTravel: (id: Id) => dispatch({ type: 'completeTravel', payload: id }),
-      cancelTravel: (id: Id) => dispatch({ type: 'cancelTravel', payload: id })
+      cancelTravel: (id: Id) => dispatch({ type: 'cancelTravel', payload: id }),
+      // Custom climate/terrain
+      addCustomClimate: (key: string, label: string) =>
+        dispatch({ type: 'addCustomClimate', payload: { key, label } }),
+      removeCustomClimate: (key: string) =>
+        dispatch({ type: 'removeCustomClimate', payload: key }),
+      addCustomTerrain: (key: string, label: string) =>
+        dispatch({ type: 'addCustomTerrain', payload: { key, label } }),
+      removeCustomTerrain: (key: string) =>
+        dispatch({ type: 'removeCustomTerrain', payload: key }),
     }),
     []
   );

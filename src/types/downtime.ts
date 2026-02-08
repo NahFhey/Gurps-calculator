@@ -107,7 +107,9 @@ export interface ForagingData {
   tableId: string;
   /** Equipment being used (baskets, knives, etc.) */
   toolIds: string[];
-  /** Cumulative skill modifier from conditions, equipment, etc. */
+  /** Leader's base foraging skill level (Survival, Naturalist, or Herb Lore) */
+  leaderSkill: number;
+  /** Cumulative skill modifier from tools, helpers, weather, etc. (not including base skill) */
   skillModifier: number;
 }
 

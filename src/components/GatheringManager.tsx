@@ -78,6 +78,13 @@ function GatheringManagerBase() {
 
   const currentDay = state.time.day;
 
+  // Extract locations for environment editor (linking environments to locations)
+  const locations = useMemo(() => {
+    const locs = state.locations?.locations;
+    if (!locs) return [];
+    return Object.values(locs).map((loc: any) => ({ id: loc.id, name: loc.name }));
+  }, [state.locations?.locations]);
+
   // Get food and material types from state
   const foodTypes = state.entities.foodTypes || [];
   const materialTypes = state.entities.materialTypes || [];
@@ -228,6 +235,7 @@ function GatheringManagerBase() {
         <EnvironmentsView
           environments={environments}
           tables={tables}
+          locations={locations}
           saveEnvironments={saveEnvironments}
           onDelete={handleDelete}
         />

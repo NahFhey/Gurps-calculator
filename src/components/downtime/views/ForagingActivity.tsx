@@ -16,8 +16,17 @@ import {
   validateTaskCreation,
 } from '../../../state/downtime';
 import { DowntimeValidationError } from '../../../state/downtime/downtimeErrors';
-import type { DowntimeTask, ForagingData, TaskResults } from '../../../types/downtime';
+import {
+  roll3d6,
+  calculateEffectiveForagingSkill,
+  evaluateForagingRoll,
+  determineForageFind,
+  calculateForageYields,
+} from '../../../utils/gathering';
+import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
+import type { DowntimeState, DowntimeTask, ForagingData, TaskResults } from '../../../types/downtime';
 import type { CreateTaskPayload } from '../../../state/downtime/downtimeActions';
+import type { GatheringSpecies, GatheringEnvironment } from '../../../types/campaign';
 
 // ============================================================================
 // TYPES
@@ -35,44 +44,122 @@ interface ForagingActivityProps {
 // ============================================================================
 
 /**
- * Calculate foraging results based on task data.
- * Uses a simplified foraging mechanics calculation.
+ * Calculate foraging results using full GURPS 3d6 mechanics.
+ * Uses the gathering.js utility functions for proper skill checks,
+ * table-based loot, and yield calculations.
  */
-function calculateForagingResults(
+function calculateForagingResultsAuto(
   task: DowntimeTask,
-  nodeName: string,
-  biomeName: string
+  targetNode: GatheringSpecies | undefined,
+  biome: GatheringEnvironment | undefined,
+  gatheringTables: any[],
+  weatherGatheringMod: number,
+  downtimeState?: DowntimeState
 ): TaskResults {
   const data = task.activityData as ForagingData;
+  const nodeName = targetNode?.name ?? 'materials';
+  const biomeName = biome?.name ?? 'the area';
 
-  // Simple roll simulation - in production this would use proper dice mechanics
-  const baseRoll = Math.floor(Math.random() * 6) + 1;
-  const modifiedRoll = baseRoll + data.skillModifier;
+  // Get leader's base skill (captured at task creation) or fallback
+  const baseSkill = data.leaderSkill ?? 10;
 
-  // Determine success and yield
-  const success = modifiedRoll >= 3;
-  const yieldAmount = success ? Math.max(1, Math.floor((modifiedRoll - 2) / 2) + 1) : 0;
+  // Get environment modifier from biome
+  const environmentMod = (biome as any)?.skillMod ?? 0;
 
-  if (success) {
+  // Calculate fatigue penalty for the leader
+  let fatiguePenalty = 0;
+  let fatigueLabel = '';
+  if (downtimeState) {
+    const fatigueStatus = selectCharacterFatigueStatus(
+      downtimeState,
+      task.leaderId,
+      task.dayKey,
+      task.slot
+    );
+    fatiguePenalty = getFatiguePenalty(fatigueStatus);
+    if (fatiguePenalty !== 0) {
+      fatigueLabel = `Fatigue(${fatigueStatus}): ${fatiguePenalty}. `;
+    }
+  }
+
+  // Calculate effective skill with all modifiers (including fatigue)
+  const { effectiveSkill, breakdown } = calculateEffectiveForagingSkill({
+    baseForagingSkill: baseSkill,
+    toolBonus: data.skillModifier + fatiguePenalty,
+    environmentMod: environmentMod + weatherGatheringMod,
+  });
+
+  // Roll 3d6 for foraging check
+  const { total: roll } = roll3d6();
+
+  // Evaluate the roll result
+  const rollResult = evaluateForagingRoll(roll, effectiveSkill, !!data.nodeId);
+
+  // Build skill breakdown string
+  const breakdownParts: string[] = [`Base ${breakdown.base}`];
+  if (breakdown.tool !== 0) breakdownParts.push(`Tools/Helpers ${breakdown.tool >= 0 ? '+' : ''}${breakdown.tool}`);
+  if (breakdown.environment !== 0) breakdownParts.push(`Env ${breakdown.environment >= 0 ? '+' : ''}${breakdown.environment}`);
+  const breakdownStr = breakdownParts.join(', ');
+
+  // Handle failure
+  if (!rollResult.success) {
+    const hazardNote = rollResult.hazard ? ` Hazard: ${rollResult.hazard}` : '';
+    return {
+      success: false,
+      message: rollResult.critFailure
+        ? `${fatigueLabel}Critical Failure! Rolled ${roll} vs ${effectiveSkill} (${breakdownStr}). ${rollResult.description}${hazardNote}`
+        : `${fatigueLabel}Failure. Rolled ${roll} vs ${effectiveSkill} (${breakdownStr}), MoF: ${Math.abs(rollResult.margin)}. ${rollResult.description}`,
+      inventoryChanges: [],
+      experienceGained: 3,
+    };
+  }
+
+  // Determine what was found using biome's foraging find table
+  const biomeDefaults = (biome as any)?.defaultsByMode?.Foraging;
+  const findTableId = biomeDefaults?.randomCatchTableId ?? (data.tableId || null);
+  const findTable = findTableId ? gatheringTables.find((t: any) => t.id === findTableId) : null;
+
+  const findResult = determineForageFind({
+    rollResult,
+    findTable,
+    targetItem: targetNode,
+  });
+
+  // Determine the found item for yield calculation
+  const foundItem = findResult.item ?? targetNode;
+  const foundName = foundItem?.name ?? nodeName;
+
+  // Calculate yields
+  const yieldResult = calculateForageYields({
+    category: null,
+    item: foundItem,
+    yieldMultiplier: rollResult.yieldMultiplier ?? 1.0,
+  });
+
+  const yieldAmount = yieldResult.units;
+
+  if (yieldAmount <= 0) {
     return {
       success: true,
-      message: `Found ${yieldAmount} ${nodeName} in ${biomeName}!`,
-      inventoryChanges: [
-        {
-          itemId: data.nodeId,
-          quantity: yieldAmount,
-          itemName: nodeName,
-        },
-      ],
-      experienceGained: yieldAmount * 8,
+      message: `${fatigueLabel}Rolled ${roll} vs ${effectiveSkill} (${breakdownStr}), MoS: ${rollResult.margin}. Found traces of ${foundName} but nothing harvestable.`,
+      inventoryChanges: [],
+      experienceGained: 5,
     };
   }
 
   return {
-    success: false,
-    message: `Found nothing useful in ${biomeName}. The search continues...`,
-    inventoryChanges: [],
-    experienceGained: 3, // Small consolation XP
+    success: true,
+    message: rollResult.critSuccess
+      ? `${fatigueLabel}Critical Success! Rolled ${roll} vs ${effectiveSkill} (${breakdownStr}). Found ${yieldAmount} ${foundName} in ${biomeName}!`
+      : `${fatigueLabel}Success! Rolled ${roll} vs ${effectiveSkill} (${breakdownStr}), MoS: ${rollResult.margin}. Found ${yieldAmount} ${foundName} in ${biomeName}.`,
+    inventoryChanges: [
+      {
+        itemId: foundItem?.id ?? data.nodeId,
+        quantity: yieldAmount,
+        itemName: foundName,
+      },
+    ],
+    experienceGained: yieldAmount * 8,
   };
 }
 
@@ -157,21 +244,19 @@ export function ForagingActivity({ currentDayKey, currentSlot }: ForagingActivit
   // Handle task resolution
   const handleResolve = useCallback(
     (task: DowntimeTask) => {
-      // Get node and biome names for the result message
       const data = task.activityData as ForagingData;
-      const node = foragingNodes.find((n) => n.id === data.nodeId);
-      const biome = foragingBiomes.find((b) => b.id === data.biomeId);
-      const nodeName = node?.name ?? 'materials';
-      const biomeName = biome?.name ?? 'the area';
+      const node = foragingNodes.find((n: any) => n.id === data.nodeId);
+      const biome = foragingBiomes.find((b: any) => b.id === data.biomeId);
 
       // Begin resolution (mark as in_progress)
       beginResolve(task.id);
 
-      // Calculate and apply results
-      const results = calculateForagingResults(task, nodeName, biomeName);
+      // Calculate and apply results using full 3d6 GURPS mechanics
+      // Weather modifier is 0 here — will be integrated in Phase 5
+      const results = calculateForagingResultsAuto(task, node as any, biome as any, gatheringTables, 0, state);
       resolve(task.id, results);
     },
-    [foragingNodes, foragingBiomes, beginResolve, resolve]
+    [foragingNodes, foragingBiomes, gatheringTables, beginResolve, resolve, state]
   );
 
   // Handle task cancellation

@@ -5,7 +5,7 @@
  * for all downtime activity components.
  */
 
-import React, { createContext, useContext, useReducer, useMemo } from 'react';
+import React, { createContext, useContext, useReducer, useMemo, useEffect, useRef } from 'react';
 import { useCampaignStore } from '../../state/campaignStore';
 import {
   downtimeReducer,
@@ -44,7 +44,7 @@ interface DowntimeContextValue {
   dispatch: React.Dispatch<DowntimeAction>;
   /** All party characters */
   characters: Character[];
-  /** Available fishing spots (environments with Fishing mode) */
+  /** Available fishing spots (environments at current location with Fishing mode) */
   fishingSpots: GatheringEnvironment[];
   /** All fish species */
   fishSpecies: GatheringSpecies[];
@@ -52,7 +52,7 @@ interface DowntimeContextValue {
   tools: GatheringTool[];
   /** Available fishing bait */
   fishingBait: GatheringBait[];
-  /** Available foraging biomes (all environments) */
+  /** Available foraging biomes (environments at current location with Foraging mode) */
   foragingBiomes: GatheringEnvironment[];
   /** Foraging nodes (plant and game species) */
   foragingNodes: GatheringSpecies[];
@@ -72,6 +72,10 @@ interface DowntimeContextValue {
   craftingMaterials: Material[];
   /** Crafting workshops */
   craftingWorkshops: Facility[];
+  /** Current location ID from weather/location system */
+  currentLocationId: string | null;
+  /** Current location name for display */
+  currentLocationName: string | null;
   /** Current day key */
   currentDayKey: number;
   /** Current time slot */
@@ -111,7 +115,7 @@ export function DowntimeProvider({
   currentDayKey: dayKeyOverride,
   currentSlot: slotOverride,
 }: DowntimeProviderProps) {
-  const { state: campaignState } = useCampaignStore();
+  const { state: campaignState, actions: campaignActions } = useCampaignStore();
 
   // Use local reducer for downtime state
   // Initial state comes from campaign store
@@ -120,17 +124,41 @@ export function DowntimeProvider({
     campaignState.downtime
   );
 
+  // Sync local downtime state back to campaign store
+  // so that the party panel (which reads from campaign store) sees task assignments.
+  // Use a ref guard to skip no-op dispatches (e.g., during StrictMode double-renders).
+  const prevDowntimeStateRef = useRef(state);
+  useEffect(() => {
+    if (prevDowntimeStateRef.current !== state) {
+      prevDowntimeStateRef.current = state;
+      campaignActions.setDowntime(state);
+    }
+  }, [state, campaignActions]);
+
   // Extract characters from campaign state (with null safety)
   const characters = useMemo(
     () => Object.values(campaignState.entities?.characters ?? {}),
     [campaignState.entities?.characters]
   );
 
-  // Extract fishing spots (all environments for now - can add filtering later)
-  const fishingSpots = useMemo(
-    () => Object.values(campaignState.entities?.gatheringEnvironments ?? {}),
-    [campaignState.entities?.gatheringEnvironments]
-  );
+  // Get current location from weather/location system
+  const currentLocationId = campaignState.locations?.currentLocationId ?? null;
+  const currentLocationName = useMemo(() => {
+    if (!currentLocationId) return null;
+    const loc = campaignState.locations?.locations?.[currentLocationId];
+    return loc?.name ?? null;
+  }, [currentLocationId, campaignState.locations?.locations]);
+
+  // Extract fishing spots: only environments linked to current location with Fishing mode
+  const fishingSpots = useMemo(() => {
+    if (!currentLocationId) return [];
+    const allEnvs = Object.values(campaignState.entities?.gatheringEnvironments ?? {});
+    return allEnvs.filter(
+      (e) =>
+        (e as any).locationId === currentLocationId &&
+        (e.supportedModes?.includes('Fishing') ?? false)
+    );
+  }, [campaignState.entities?.gatheringEnvironments, currentLocationId]);
 
   // Extract fish species (filter by fish-related types)
   // Note: GatheringSpeciesExtended uses 'type' field, not 'category'
@@ -161,11 +189,16 @@ export function DowntimeProvider({
     return bait.filter((b) => (b.quantity ?? 0) > 0);
   }, [campaignState.entities?.gatheringBait]);
 
-  // Extract foraging biomes (all environments)
-  const foragingBiomes = useMemo(
-    () => Object.values(campaignState.entities?.gatheringEnvironments ?? {}),
-    [campaignState.entities?.gatheringEnvironments]
-  );
+  // Extract foraging biomes: only environments linked to current location with Foraging mode
+  const foragingBiomes = useMemo(() => {
+    if (!currentLocationId) return [];
+    const allEnvs = Object.values(campaignState.entities?.gatheringEnvironments ?? {});
+    return allEnvs.filter(
+      (e) =>
+        (e as any).locationId === currentLocationId &&
+        (e.supportedModes?.includes('Foraging') ?? false)
+    );
+  }, [campaignState.entities?.gatheringEnvironments, currentLocationId]);
 
   // Extract foraging nodes (plant and game species)
   const foragingNodes = useMemo(() => {
@@ -261,6 +294,8 @@ export function DowntimeProvider({
       craftingRecipes,
       craftingMaterials,
       craftingWorkshops,
+      currentLocationId,
+      currentLocationName,
       currentDayKey,
       currentSlot,
       createDowntimeTask,
@@ -285,6 +320,8 @@ export function DowntimeProvider({
       craftingRecipes,
       craftingMaterials,
       craftingWorkshops,
+      currentLocationId,
+      currentLocationName,
       currentDayKey,
       currentSlot,
     ]

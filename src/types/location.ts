@@ -16,10 +16,9 @@ export type Id = string;
 // ============================================================================
 
 /**
- * Climate types determine base weather probabilities
- * GMs can customize weather tables per location
+ * Preset climate types with known weather probabilities
  */
-export type ClimateType =
+export type PresetClimateType =
   | 'temperate'      // Balanced, all weather types possible
   | 'tropical'       // Hot, rainy, no snow
   | 'arid'           // Hot, dry, minimal rain
@@ -29,9 +28,15 @@ export type ClimateType =
   | 'oceanic';       // Mild, frequent rain
 
 /**
- * Terrain types affect travel and activities
+ * Climate types — includes presets + GM-defined custom types
+ * Custom types use a weatherTableId on the location for weather generation
  */
-export type TerrainType =
+export type ClimateType = PresetClimateType | (string & {});
+
+/**
+ * Preset terrain types
+ */
+export type PresetTerrainType =
   | 'forest'
   | 'plains'
   | 'mountains'
@@ -40,6 +45,11 @@ export type TerrainType =
   | 'coastal'
   | 'urban'
   | 'underground';
+
+/**
+ * Terrain types — includes presets + GM-defined custom types
+ */
+export type TerrainType = PresetTerrainType | (string & {});
 
 // ============================================================================
 // WEATHER TYPES
@@ -295,6 +305,10 @@ export interface LocationState {
   locations: Record<Id, Location>;
   weatherTables: Record<Id, WeatherTable>;
   activeTravels: TravelAction[];
+  /** GM-defined custom climate types beyond the 7 presets */
+  customClimates?: Array<{ key: string; label: string }>;
+  /** GM-defined custom terrain types beyond the 8 presets */
+  customTerrains?: Array<{ key: string; label: string }>;
 }
 
 // ============================================================================

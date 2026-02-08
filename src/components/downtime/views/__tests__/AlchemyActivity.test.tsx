@@ -31,53 +31,32 @@ describe('AlchemyActivity', () => {
       expect(screen.getByText('Alchemy')).toBeInTheDocument();
     });
 
-    it('shows new work session button', () => {
+    it('renders with alchemy-activity test id', () => {
       renderWithProviders(<AlchemyActivity {...defaultProps} />);
-      expect(screen.getByTestId('new-alchemy-task-button')).toBeInTheDocument();
-      expect(screen.getByText('New Work Session')).toBeInTheDocument();
+      expect(screen.getByTestId('alchemy-activity')).toBeInTheDocument();
     });
 
-    it('shows pending tasks section', () => {
+    it('shows sub-view tabs', () => {
       renderWithProviders(<AlchemyActivity {...defaultProps} />);
-      expect(screen.getByTestId('pending-tasks-section')).toBeInTheDocument();
+      // Some tab labels also appear in content, so use getAllByText where needed
+      expect(screen.getByText('Reagents')).toBeInTheDocument();
+      expect(screen.getAllByText('Analysis').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText('Processing')).toBeInTheDocument();
+      expect(screen.getByText('Formulas')).toBeInTheDocument();
+      expect(screen.getByText('Batches')).toBeInTheDocument();
+      expect(screen.getByText('Tally')).toBeInTheDocument();
     });
 
-    it('shows completed tasks section', () => {
+    it('does not show a Work Sessions tab', () => {
       renderWithProviders(<AlchemyActivity {...defaultProps} />);
-      expect(screen.getByTestId('completed-tasks-section')).toBeInTheDocument();
+      expect(screen.queryByText('Work Sessions')).not.toBeInTheDocument();
     });
 
-    it('shows empty state for pending tasks', () => {
+    it('defaults to Reagents tab', () => {
       renderWithProviders(<AlchemyActivity {...defaultProps} />);
-      expect(screen.getByText('No pending alchemy tasks')).toBeInTheDocument();
-    });
-
-    it('shows empty state for completed tasks', () => {
-      renderWithProviders(<AlchemyActivity {...defaultProps} />);
-      expect(screen.getByText('No completed alchemy tasks')).toBeInTheDocument();
-    });
-
-    it('shows no batches message when no active batches', () => {
-      renderWithProviders(<AlchemyActivity {...defaultProps} />);
-      expect(screen.getByText(/No active batches/)).toBeInTheDocument();
-    });
-  });
-
-  describe('task creation form', () => {
-    it('new work session button is disabled when no batches exist', () => {
-      renderWithProviders(<AlchemyActivity {...defaultProps} />);
-
-      const button = screen.getByTestId('new-alchemy-task-button');
-      expect(button).toBeDisabled();
-    });
-  });
-
-  describe('task count display', () => {
-    it('shows zero count when no tasks exist', () => {
-      renderWithProviders(<AlchemyActivity {...defaultProps} />);
-
-      expect(screen.getByText('Pending (0)')).toBeInTheDocument();
-      expect(screen.getByText('Completed (0)')).toBeInTheDocument();
+      // Reagents tab should be active (has purple border class)
+      const reagentsButton = screen.getByText('Reagents');
+      expect(reagentsButton.closest('button')).toHaveClass('border-purple-500');
     });
   });
 });

@@ -6,12 +6,14 @@
  * with validation for character assignment and tool availability.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { X } from 'lucide-react';
 import {
   selectAvailableCharacterIdsForSlot,
   selectReservedToolIdsForSlot,
 } from '../../../state/downtime';
+import { characterHasAnySkill, getCharacterSkills, ACTIVITY_SKILL_REQUIREMENTS } from '../../../types/characterSheet';
+import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
 import type { DowntimeState, ForagingData } from '../../../types/downtime';
 import type { Character, GatheringSpecies, GatheringTool, GatheringEnvironment, GatheringTable } from '../../../types/campaign';
 
@@ -70,6 +72,13 @@ export function ForagingTaskForm({
   const [tableId, setTableId] = useState('');
   const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
 
+  // Auto-select biome when only one is available
+  useEffect(() => {
+    if (biomes.length === 1 && !biomeId) {
+      setBiomeId(biomes[0].id);
+    }
+  }, [biomes, biomeId]);
+
   // Get available (unassigned) character IDs
   const allCharacterIds = useMemo(
     () => characters.map((c) => c.id),
@@ -93,16 +102,22 @@ export function ForagingTaskForm({
     [state, currentDayKey, currentSlot]
   );
 
-  // Filter available characters for selection
-  const availableCharacters = useMemo(
+  // Filter available characters for selection (not already assigned this slot)
+  const availableUnassigned = useMemo(
     () => characters.filter((c) => availableCharacterIds.includes(c.id)),
     [characters, availableCharacterIds]
   );
 
-  // Filter available characters for helpers (excluding selected leader)
+  // Filter leaders to only characters with a relevant foraging skill
+  const availableCharacters = useMemo(
+    () => availableUnassigned.filter((c) => characterHasAnySkill(c, ACTIVITY_SKILL_REQUIREMENTS.foraging)),
+    [availableUnassigned]
+  );
+
+  // Helpers can be anyone available (no skill requirement), excluding selected leader
   const availableHelpers = useMemo(
-    () => availableCharacters.filter((c) => c.id !== leaderId),
-    [availableCharacters, leaderId]
+    () => availableUnassigned.filter((c) => c.id !== leaderId),
+    [availableUnassigned, leaderId]
   );
 
   // Filter nodes by selected biome (if biome has species list)
@@ -113,30 +128,46 @@ export function ForagingTaskForm({
     return nodes.filter((n) => selectedBiome.species.includes(n.id));
   }, [nodes, biomeId, biomes]);
 
-  // Calculate skill modifier based on character skills and tools
+  // Extract the leader's base foraging skill (Survival, Naturalist, or Herb Lore)
+  const leaderForagingSkill = useMemo(() => {
+    if (!leaderId) return 10;
+    const leader = characters.find((c) => c.id === leaderId);
+    if (!leader) return 10;
+    const allSkills = getCharacterSkills(leader);
+    return allSkills.survival ?? allSkills.naturalist ?? allSkills.herbLore ?? 10;
+  }, [leaderId, characters]);
+
+  // Get leader's fatigue status and penalty
+  const { fatigueStatus: leaderFatigueStatus, fatiguePenalty: leaderFatiguePenalty } = useMemo(() => {
+    if (!leaderId) return { fatigueStatus: 'rested' as const, fatiguePenalty: 0 };
+    const status = selectCharacterFatigueStatus(state, leaderId, currentDayKey, currentSlot);
+    return { fatigueStatus: status, fatiguePenalty: getFatiguePenalty(status) };
+  }, [state, leaderId, currentDayKey, currentSlot]);
+
+  // Calculate additional skill modifier from tools and helpers (excludes base skill)
   const skillModifier = useMemo(() => {
     let modifier = 0;
 
-    // Get leader's foraging skill (simplified - would need proper skill lookup)
-    const leader = characters.find((c) => c.id === leaderId);
-    if (leader) {
-      // Assume a default foraging skill level exists
-      modifier += 0; // Base modifier from character
-    }
-
-    // Add tool bonuses (use skillBonus from GatheringTool)
+    // Add tool bonuses
     for (const toolId of selectedToolIds) {
       const tool = tools.find((t) => t.id === toolId);
-      if (tool?.skillBonus) {
-        modifier += tool.skillBonus;
+      // Check direct skillBonus property
+      if ((tool as any)?.skillBonus) {
+        modifier += (tool as any).skillBonus;
+      }
+      // Also check bonuses array (matching fishing pattern)
+      const bonuses = (tool as any)?.bonuses;
+      if (Array.isArray(bonuses)) {
+        const bonus = bonuses.find((b: any) => b.type === 'skill_bonus');
+        if (bonus?.value) modifier += bonus.value;
       }
     }
 
-    // Add helper bonus
-    modifier += helperIds.length; // +1 per helper
+    // Add helper bonus (+1 per helper)
+    modifier += helperIds.length;
 
     return modifier;
-  }, [leaderId, helperIds, selectedToolIds, characters, tools]);
+  }, [helperIds, selectedToolIds, tools]);
 
   // Handle helper toggle
   const toggleHelper = (helperId: string) => {
@@ -170,6 +201,7 @@ export function ForagingTaskForm({
       nodeId,
       tableId: tableId || '',
       toolIds: selectedToolIds,
+      leaderSkill: leaderForagingSkill,
       skillModifier,
     };
 
@@ -265,24 +297,37 @@ export function ForagingTaskForm({
         <label htmlFor="biome-select" className="block text-sm font-medium text-gray-300 mb-1">
           Biome <span className="text-red-400">*</span>
         </label>
-        <select
-          id="biome-select"
-          value={biomeId}
-          onChange={(e) => {
-            setBiomeId(e.target.value);
-            setNodeId(''); // Reset node when biome changes
-          }}
-          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-          required
-          data-testid="biome-select"
-        >
-          <option value="">Select biome...</option>
-          {biomes.map((biome) => (
-            <option key={biome.id} value={biome.id}>
-              {biome.name}
-            </option>
-          ))}
-        </select>
+        {biomes.length === 0 ? (
+          <p className="text-sm text-yellow-400 italic" data-testid="no-biomes-message">
+            No foraging areas at current location
+          </p>
+        ) : biomes.length === 1 ? (
+          <div
+            className="w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded text-gray-100"
+            data-testid="biome-select"
+          >
+            {biomes[0].name} <span className="text-xs text-gray-400">— current location</span>
+          </div>
+        ) : (
+          <select
+            id="biome-select"
+            value={biomeId}
+            onChange={(e) => {
+              setBiomeId(e.target.value);
+              setNodeId(''); // Reset node when biome changes
+            }}
+            className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            required
+            data-testid="biome-select"
+          >
+            <option value="">Select biome...</option>
+            {biomes.map((biome) => (
+              <option key={biome.id} value={biome.id}>
+                {biome.name}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Node Selection */}
@@ -375,10 +420,15 @@ export function ForagingTaskForm({
       <div className="bg-gray-900/50 border border-gray-700 rounded p-2 mb-4">
         <p className="text-sm text-gray-300">
           Total Skill Modifier:{' '}
-          <span className={`font-medium ${skillModifier >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {skillModifier >= 0 ? '+' : ''}{skillModifier}
+          <span className={`font-medium ${(skillModifier + leaderFatiguePenalty) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {(skillModifier + leaderFatiguePenalty) >= 0 ? '+' : ''}{skillModifier + leaderFatiguePenalty}
           </span>
         </p>
+        {leaderFatiguePenalty !== 0 && (
+          <p className="text-xs text-red-400 mt-1">
+            Fatigue ({leaderFatigueStatus}): {leaderFatiguePenalty}
+          </p>
+        )}
       </div>
 
       {/* Form Actions */}

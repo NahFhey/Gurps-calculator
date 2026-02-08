@@ -38,7 +38,9 @@ import {
 import {
   DEFAULT_FISH_ST,
 } from '../../../constants';
-import type { DowntimeTask, FishingData, TaskResults, InventoryDelta } from '../../../types/downtime';
+import { getCharacterSkills } from '../../../types/characterSheet';
+import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
+import type { DowntimeState, DowntimeTask, FishingData, TaskResults, InventoryDelta } from '../../../types/downtime';
 import type { CreateTaskPayload } from '../../../state/downtime/downtimeActions';
 import type { GatheringSpecies, GatheringEnvironment, GatheringTable, GatheringBait, Food, Material } from '../../../types/campaign';
 
@@ -73,27 +75,31 @@ interface CaughtFish {
  */
 function calculateFishingResultsAuto(
   task: DowntimeTask,
-  leader: { st?: number; skills?: { fishing?: number; spear?: number; stealth?: number; survival?: number } } | undefined,
+  leader: any | undefined,
   species: GatheringSpecies[],
   bait: GatheringBait[],
   gatheringTables: GatheringTable[],
   spot: GatheringEnvironment | undefined,
-  campaignActions: { addFood: (food: Food) => void; addMaterial: (material: Material) => void }
+  campaignActions: { addFood: (food: Food) => void; addMaterial: (material: Material) => void; addGatheringBait: (bait: GatheringBait) => void },
+  downtimeState?: DowntimeState
 ): TaskResults {
   const data = task.activityData as FishingData;
   const method = data.method || 'Line';
   const isRandomCatch = data.isRandomCatch ?? true;
 
+  // Get merged skills from all sources (GCS, work.skills, direct skills)
+  const leaderSkills = leader ? getCharacterSkills(leader) : {};
+
   // Get base skill (Fishing for Line/Net, Spear for spear fishing)
   const baseSkill = method === 'Spear'
-    ? (leader?.skills?.spear ?? leader?.skills?.fishing ?? 10)
-    : (leader?.skills?.fishing ?? 10);
+    ? (leaderSkills.spear ?? leaderSkills.fishing ?? 10)
+    : (leaderSkills.fishing ?? 10);
 
   // Spear Fishing: Stealth approach roll first
   let stealthPenalty = 0;
   let stealthMessage = '';
   if (method === 'Spear') {
-    const stealthSkill = leader?.skills?.stealth ?? leader?.skills?.survival ?? 10;
+    const stealthSkill = leaderSkills.stealth ?? leaderSkills.survival ?? 10;
     const stealthRoll = roll3d6();
     const stealthSuccess = stealthRoll.total <= stealthSkill;
 
@@ -128,10 +134,26 @@ function calculateFishingResultsAuto(
     : false;
   const targetingLargeFish = !isRandomCatch && targetIsLarge;
 
-  // Calculate effective skill (include stealth penalty for spear fishing)
+  // Calculate fatigue penalty for the leader
+  let fatiguePenalty = 0;
+  let fatigueLabel = '';
+  if (downtimeState && leader) {
+    const fatigueStatus = selectCharacterFatigueStatus(
+      downtimeState,
+      leader.id ?? task.leaderId,
+      task.dayKey,
+      task.slot
+    );
+    fatiguePenalty = getFatiguePenalty(fatigueStatus);
+    if (fatiguePenalty !== 0) {
+      fatigueLabel = ` Fatigue(${fatigueStatus}): ${fatiguePenalty}.`;
+    }
+  }
+
+  // Calculate effective skill (include stealth penalty for spear fishing + fatigue)
   const effectiveSkillResult = calculateEffectiveFishingSkill({
     baseFishingSkill: baseSkill,
-    toolBonus: data.skillModifier + stealthPenalty,
+    toolBonus: data.skillModifier + stealthPenalty + fatiguePenalty,
     hasCorrectBait,
     hasInappropriateBait,
     targetingLargeFish,
@@ -154,8 +176,8 @@ function calculateFishingResultsAuto(
   if (!rollResult.success) {
     const canRetry = !rollResult.critFailure && (data.retryAttempt ?? 0) < 2;
     const message = rollResult.critFailure
-      ? `${stealthMessage}Critical Failure! (Rolled ${roll} vs ${effectiveSkill}) - ${rollResult.description}`
-      : `${stealthMessage}Failure (Rolled ${roll} vs ${effectiveSkill}) - ${rollResult.description}${canRetry ? ` You may retry.` : ''}`;
+      ? `${stealthMessage}${fatigueLabel ? fatigueLabel + ' ' : ''}Critical Failure! (Rolled ${roll} vs ${effectiveSkill}) - ${rollResult.description}`
+      : `${stealthMessage}${fatigueLabel ? fatigueLabel + ' ' : ''}Failure (Rolled ${roll} vs ${effectiveSkill}) - ${rollResult.description}${canRetry ? ` You may retry.` : ''}`;
 
     return {
       success: false,
@@ -299,7 +321,7 @@ function calculateFishingResultsAuto(
   const successfulCatches = caughtFish.filter(f => f.struggleSuccess);
   const escapedLarge = caughtFish.filter(f => f.isLarge && !f.struggleSuccess);
 
-  let message = stealthMessage + (rollResult.critSuccess
+  let message = stealthMessage + (fatigueLabel ? fatigueLabel + ' ' : '') + (rollResult.critSuccess
     ? `Critical Success! (Rolled ${roll} vs ${effectiveSkill})`
     : `Success! (Rolled ${roll} vs ${effectiveSkill}, MoS: ${rollResult.margin})`);
 
@@ -320,6 +342,13 @@ function calculateFishingResultsAuto(
 
   if (escapedLarge.length > 0) {
     message += ` ${escapedLarge.length} large fish escaped during struggle.`;
+  }
+
+  // Consume bait (decrement quantity by 1 per fishing attempt)
+  if (baitItem && (baitItem as any).quantity > 0) {
+    const updatedBait = { ...baitItem, quantity: (baitItem as any).quantity - 1 } as GatheringBait;
+    campaignActions.addGatheringBait(updatedBait);
+    message += ` (1 ${baitItem.name} consumed)`;
   }
 
   return {
@@ -448,12 +477,13 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
           fishingBait as any[],
           gatheringTables as any[],
           spot,
-          campaignActions
+          campaignActions,
+          state
         );
         resolve(task.id, results);
       }
     },
-    [characters, fishSpecies, fishingBait, fishingSpots, gatheringTables, campaignActions, beginResolve, resolve]
+    [characters, fishSpecies, fishingBait, fishingSpots, gatheringTables, campaignActions, beginResolve, resolve, state]
   );
 
   // Handle manual resolution finalize

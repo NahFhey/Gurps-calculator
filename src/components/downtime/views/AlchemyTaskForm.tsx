@@ -11,6 +11,7 @@ import { X } from 'lucide-react';
 import {
   selectAvailableCharacterIdsForSlot,
 } from '../../../state/downtime';
+import { characterHasAnySkill, ACTIVITY_SKILL_REQUIREMENTS } from '../../../types/characterSheet';
 import type { DowntimeState, AlchemyData } from '../../../types/downtime';
 import type {
   Character,
@@ -94,16 +95,22 @@ export function AlchemyTaskForm({
     [state, currentDayKey, currentSlot, allCharacterIds]
   );
 
-  // Filter available characters for selection
-  const availableCharacters = useMemo(
+  // Filter available characters for selection (not already assigned this slot)
+  const availableUnassigned = useMemo(
     () => characters.filter((c) => availableCharacterIds.includes(c.id)),
     [characters, availableCharacterIds]
   );
 
-  // Filter available characters for helpers (excluding selected leader)
+  // Filter leaders to only characters with the alchemy skill
+  const availableCharacters = useMemo(
+    () => availableUnassigned.filter((c) => characterHasAnySkill(c, ACTIVITY_SKILL_REQUIREMENTS.alchemy)),
+    [availableUnassigned]
+  );
+
+  // Helpers can be anyone available (no skill requirement), excluding selected leader
   const availableHelpers = useMemo(
-    () => availableCharacters.filter((c) => c.id !== leaderId),
-    [availableCharacters, leaderId]
+    () => availableUnassigned.filter((c) => c.id !== leaderId),
+    [availableUnassigned, leaderId]
   );
 
   // Get selected batch details

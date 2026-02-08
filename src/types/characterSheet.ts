@@ -430,8 +430,33 @@ export function createDefaultGCSData(): GCSCharacterData {
 }
 
 /**
+ * Mapping from GURPS skill names to the lowercase activity-system keys
+ * used by downtime activities (crafting, alchemy, fishing, foraging, cooking).
+ *
+ * When multiple GURPS skills map to the same activity key (e.g., "Smith" and
+ * "Armoury" both map to "crafting"), the highest skill level wins.
+ */
+const GURPS_TO_ACTIVITY_KEY: Record<string, string> = {
+  'Alchemy': 'alchemy',
+  'Smith': 'crafting',
+  'Armoury': 'crafting',
+  'Engineer': 'designing',
+  'Cooking': 'cooking',
+  'Fishing': 'fishing',
+  'Survival': 'survival',
+  'Naturalist': 'naturalist',
+  'Herb Lore': 'herbLore',
+  'Spear': 'spear',
+  'Stealth': 'stealth',
+};
+
+/**
  * Sync work.skills from gcsData.skills for activity compatibility
  * Note: This takes GCSCharacterData directly to avoid circular dependency with campaign.ts
+ *
+ * Produces two kinds of keys:
+ * 1. Original GCS skill names (e.g., "Alchemy", "Smith (Iron)")
+ * 2. Lowercase activity keys (e.g., "alchemy", "crafting") for downtime system lookups
  */
 export function syncWorkSkillsFromGCS(gcsData: GCSCharacterData | undefined): Record<string, number> {
   if (!gcsData) {
@@ -453,5 +478,54 @@ export function syncWorkSkillsFromGCS(gcsData: GCSCharacterData | undefined): Re
     }
   }
 
+  // Map known GURPS skill names to lowercase activity-system keys
+  // so activities can look up skills.alchemy, skills.crafting, etc.
+  for (const skill of gcsData.skills) {
+    const activityKey = GURPS_TO_ACTIVITY_KEY[skill.name];
+    if (activityKey) {
+      // Take the higher value if multiple GURPS skills map to the same key
+      workSkills[activityKey] = Math.max(workSkills[activityKey] ?? 0, skill.level);
+    }
+  }
+
   return workSkills;
+}
+
+// ============================================================================
+// ACTIVITY SKILL UTILITIES
+// ============================================================================
+
+/** Activity types used in the downtime system */
+export type DowntimeActivityId = 'fishing' | 'foraging' | 'alchemy' | 'crafting' | 'cooking';
+
+/**
+ * Mapping from activity ID to the skill keys that qualify a character for that activity.
+ * If ANY character in the party has at least one of these skills, the activity is enabled.
+ */
+export const ACTIVITY_SKILL_REQUIREMENTS: Record<DowntimeActivityId, string[]> = {
+  fishing: ['fishing', 'spear'],
+  foraging: ['survival', 'naturalist', 'herbLore'],
+  alchemy: ['alchemy'],
+  crafting: ['crafting', 'designing'],
+  cooking: ['cooking'],
+};
+
+/**
+ * Merge all skill sources for a character into a single Record.
+ * Combines GCS-derived skills, work.skills, and direct character.skills.
+ * Later sources override earlier ones for the same key.
+ */
+export function getCharacterSkills(character: any): Record<string, number> {
+  const gcsSkills = character.gcsData ? syncWorkSkillsFromGCS(character.gcsData) : {};
+  const workSkills = character.work?.skills || {};
+  const directSkills = character.skills && typeof character.skills === 'object' ? character.skills : {};
+  return { ...gcsSkills, ...workSkills, ...directSkills };
+}
+
+/**
+ * Check if a character has at least one of the required skills with level > 0.
+ */
+export function characterHasAnySkill(character: any, requiredSkills: string[]): boolean {
+  const skills = getCharacterSkills(character);
+  return requiredSkills.some(sk => skills[sk] !== undefined && skills[sk] > 0);
 }

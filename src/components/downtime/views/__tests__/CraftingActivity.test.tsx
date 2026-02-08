@@ -31,53 +31,23 @@ describe('CraftingActivity', () => {
       expect(screen.getByText('Crafting')).toBeInTheDocument();
     });
 
-    it('shows new crafting task button', () => {
+    it('renders with crafting-activity test id', () => {
       renderWithProviders(<CraftingActivity {...defaultProps} />);
-      expect(screen.getByTestId('new-crafting-task-button')).toBeInTheDocument();
-      expect(screen.getByText('New Crafting Task')).toBeInTheDocument();
+      expect(screen.getByTestId('crafting-activity')).toBeInTheDocument();
     });
 
-    it('shows pending tasks section', () => {
+    it('shows sub-view tabs', () => {
       renderWithProviders(<CraftingActivity {...defaultProps} />);
-      expect(screen.getByTestId('pending-tasks-section')).toBeInTheDocument();
+      expect(screen.getByText('Projects')).toBeInTheDocument();
+      expect(screen.getByText('Workbench')).toBeInTheDocument();
+      expect(screen.getByText('Designs')).toBeInTheDocument();
     });
 
-    it('shows completed tasks section', () => {
+    it('defaults to Projects tab', () => {
       renderWithProviders(<CraftingActivity {...defaultProps} />);
-      expect(screen.getByTestId('completed-tasks-section')).toBeInTheDocument();
-    });
-
-    it('shows empty state for pending tasks', () => {
-      renderWithProviders(<CraftingActivity {...defaultProps} />);
-      expect(screen.getByText('No pending crafting tasks')).toBeInTheDocument();
-    });
-
-    it('shows empty state for completed tasks', () => {
-      renderWithProviders(<CraftingActivity {...defaultProps} />);
-      expect(screen.getByText('No completed crafting tasks')).toBeInTheDocument();
-    });
-
-    it('shows no recipes message when no recipes available', () => {
-      renderWithProviders(<CraftingActivity {...defaultProps} />);
-      expect(screen.getByText(/No crafting recipes available/)).toBeInTheDocument();
-    });
-  });
-
-  describe('task creation form', () => {
-    it('new crafting task button is disabled when no recipes exist', () => {
-      renderWithProviders(<CraftingActivity {...defaultProps} />);
-
-      const button = screen.getByTestId('new-crafting-task-button');
-      expect(button).toBeDisabled();
-    });
-  });
-
-  describe('task count display', () => {
-    it('shows zero count when no tasks exist', () => {
-      renderWithProviders(<CraftingActivity {...defaultProps} />);
-
-      expect(screen.getByText('Pending (0)')).toBeInTheDocument();
-      expect(screen.getByText('Completed (0)')).toBeInTheDocument();
+      // Projects tab should be active (has orange border class)
+      const projectsButton = screen.getByText('Projects');
+      expect(projectsButton.closest('button')).toHaveClass('border-orange-500');
     });
   });
 });

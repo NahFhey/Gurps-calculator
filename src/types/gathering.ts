@@ -89,6 +89,8 @@ export interface GatheringEnvironmentExtended {
     Foraging?: ModeDefaults;
   };
   skillMod: number;
+  /** Links this environment to a Location. Environments without a locationId are hidden from activities. */
+  locationId?: string;
 }
 
 // ============================================================================
@@ -176,6 +178,8 @@ export interface TablesViewProps {
 export interface EnvironmentsViewProps {
   environments: GatheringEnvironmentExtended[];
   tables: GatheringTableExtended[];
+  /** Available locations for linking environments */
+  locations: Array<{ id: string; name: string }>;
   saveEnvironments: (environments: GatheringEnvironmentExtended[]) => void;
   onDelete: OnDeleteHandler;
 }

@@ -19,6 +19,9 @@ import {
   FISHING_METHODS,
   DEFAULT_FISH_ST,
 } from '../../../constants';
+import { getCharacterSkills } from '../../../types/characterSheet';
+import { useDowntimeContext } from '../DowntimeContext';
+import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
 import type { DowntimeTask, FishingData, TaskResults } from '../../../types/downtime';
 import type { GatheringSpecies, GatheringEnvironment, GatheringTable, GatheringBait, Character, Food, Material } from '../../../types/campaign';
 
@@ -365,6 +368,7 @@ export function FishingResolutionPanel({
   onCancel,
 }: FishingResolutionPanelProps) {
   const { state: campaignState, actions: campaignActions } = useCampaignStore();
+  const { state: downtimeState } = useDowntimeContext();
   const gmMode = campaignState?.ui?.gmModeEnabled ?? false;
   const data = task.activityData as FishingData;
   const method = data.method || 'Line';
@@ -381,13 +385,19 @@ export function FishingResolutionPanel({
   // Get bait
   const baitItem = data.baitId ? bait.find(b => b.id === data.baitId) : null;
 
-  // Calculate skills
-  const leaderSkills = (leader as any)?.skills ?? {};
+  // Calculate skills (merged from all skill sources)
+  const leaderSkills = leader ? getCharacterSkills(leader) : {};
   const baseSkill = isSpear
     ? (leaderSkills.spear ?? leaderSkills.fishing ?? 10)
     : (leaderSkills.fishing ?? 10);
   const stealthSkill = leaderSkills.stealth ?? leaderSkills.survival ?? 10;
   const leaderST = (leader as any)?.st ?? 10;
+
+  // Calculate fatigue penalty for the leader
+  const fatigueStatus = leader
+    ? selectCharacterFatigueStatus(downtimeState, leader.id, task.dayKey, task.slot)
+    : 'rested' as const;
+  const fatiguePenalty = getFatiguePenalty(fatigueStatus);
 
   // Check bait compatibility
   const hasCorrectBait = baitItem && targetSpecies && !isRandomCatch
@@ -417,11 +427,11 @@ export function FishingResolutionPanel({
   const [fishingSuccess, setFishingSuccess] = useState<boolean | null>(null);
   const [fishingCritSuccess, setFishingCritSuccess] = useState(false);
 
-  // Calculate effective skill (after stealth roll if applicable)
+  // Calculate effective skill (after stealth roll if applicable, includes fatigue)
   const effectiveSkill = useMemo(() => {
     const result = calculateEffectiveFishingSkill({
       baseFishingSkill: baseSkill,
-      toolBonus: data.skillModifier + stealthPenalty,
+      toolBonus: data.skillModifier + stealthPenalty + fatiguePenalty,
       hasCorrectBait,
       hasInappropriateBait: hasInappropriateBait ?? false,
       targetingLargeFish: !isRandomCatch && targetIsLarge,
@@ -429,7 +439,7 @@ export function FishingResolutionPanel({
       environmentMod: spot?.skillMod ?? 0,
     });
     return typeof result === 'number' ? result : result.effectiveSkill;
-  }, [baseSkill, data.skillModifier, stealthPenalty, hasCorrectBait, hasInappropriateBait, isRandomCatch, targetIsLarge, data.retryAttempt, spot?.skillMod]);
+  }, [baseSkill, data.skillModifier, stealthPenalty, fatiguePenalty, hasCorrectBait, hasInappropriateBait, isRandomCatch, targetIsLarge, data.retryAttempt, spot?.skillMod]);
 
   // Roll functions
   const rollDice = (count: number): { dice: number[]; total: number } => {
@@ -819,6 +829,13 @@ export function FishingResolutionPanel({
       }
     }
 
+    // Consume bait (decrement quantity by 1 per fishing attempt)
+    if (baitItem && (baitItem as any).quantity > 0) {
+      const updatedBait = { ...baitItem, quantity: (baitItem as any).quantity - 1 } as GatheringBait;
+      campaignActions.addGatheringBait(updatedBait);
+      message += ` (1 ${baitItem.name} consumed)`;
+    }
+
     const results: TaskResults = {
       success: fishingSuccess ?? false,
       message,
@@ -853,6 +870,54 @@ export function FishingResolutionPanel({
         >
           <X className="w-5 h-5" />
         </button>
+      </div>
+
+      {/* Skill Breakdown */}
+      <div className="bg-gray-800/50 border border-gray-700 rounded p-2 mb-3 text-xs space-y-0.5">
+        <div className="flex justify-between">
+          <span className="text-gray-400">Base {isSpear ? 'Spear' : 'Fishing'} Skill:</span>
+          <span className="text-blue-400">{baseSkill}</span>
+        </div>
+        {data.skillModifier !== 0 && (
+          <div className="flex justify-between">
+            <span className="text-gray-400">Tools/Helpers:</span>
+            <span className={data.skillModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
+              {data.skillModifier >= 0 ? '+' : ''}{data.skillModifier}
+            </span>
+          </div>
+        )}
+        {stealthPenalty !== 0 && (
+          <div className="flex justify-between">
+            <span className="text-gray-400">Stealth penalty:</span>
+            <span className="text-red-400">{stealthPenalty}</span>
+          </div>
+        )}
+        {fatiguePenalty !== 0 && (
+          <div className="flex justify-between">
+            <span className="text-gray-400">Fatigue ({fatigueStatus}):</span>
+            <span className="text-red-400">{fatiguePenalty}</span>
+          </div>
+        )}
+        {(hasCorrectBait || hasInappropriateBait) && (
+          <div className="flex justify-between">
+            <span className="text-gray-400">Bait:</span>
+            <span className={hasCorrectBait ? 'text-green-400' : 'text-red-400'}>
+              {hasCorrectBait ? '+1' : '-2'}
+            </span>
+          </div>
+        )}
+        {((spot as any)?.skillMod ?? 0) !== 0 && (
+          <div className="flex justify-between">
+            <span className="text-gray-400">Environment ({spot?.name}):</span>
+            <span className={((spot as any)?.skillMod ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}>
+              {(spot as any)?.skillMod >= 0 ? '+' : ''}{(spot as any)?.skillMod}
+            </span>
+          </div>
+        )}
+        <div className="flex justify-between border-t border-gray-600 pt-1 mt-1">
+          <span className="text-gray-200 font-medium">Effective Skill:</span>
+          <span className="text-green-400 font-bold">{effectiveSkill}</span>
+        </div>
       </div>
 
       {/* Stealth Roll (Spear only) */}

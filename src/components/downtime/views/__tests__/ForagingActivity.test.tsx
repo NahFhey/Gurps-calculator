@@ -92,7 +92,11 @@ describe('ForagingActivity', () => {
       fireEvent.click(screen.getByTestId('new-foraging-task-button'));
 
       expect(screen.getByTestId('leader-select')).toBeInTheDocument();
-      expect(screen.getByTestId('biome-select')).toBeInTheDocument();
+      // Biome shows empty state when no location is set (environments filtered by location)
+      // Either a biome-select dropdown or a "no biomes" message will be present
+      const biomeSelect = screen.queryByTestId('biome-select');
+      const noBiomesMessage = screen.queryByTestId('no-biomes-message');
+      expect(biomeSelect ?? noBiomesMessage).toBeTruthy();
       expect(screen.getByTestId('node-select')).toBeInTheDocument();
     });
   });

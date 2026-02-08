@@ -1,10 +1,13 @@
 import { Fish, Leaf, FlaskConical, Hammer, ChefHat } from 'lucide-react';
+import type { DowntimeActivityId } from '../../../types/characterSheet';
+export { ACTIVITY_SKILL_REQUIREMENTS } from '../../../types/characterSheet';
 
-type NavigableView = 'fishing' | 'foraging' | 'alchemy' | 'crafting' | 'cooking';
+export type NavigableView = DowntimeActivityId;
 
 interface TileGridProps {
   onNavigate: (view: NavigableView) => void;
-  // Future: pass task counts per activity for badges
+  /** Set of activity IDs that should be darkened/disabled (no character has the skill) */
+  disabledActivities?: Set<NavigableView>;
 }
 
 interface TileConfig {
@@ -53,16 +56,22 @@ const TILES: TileConfig[] = [
   },
 ];
 
-export function TileGrid({ onNavigate }: TileGridProps) {
+export function TileGrid({ onNavigate, disabledActivities }: TileGridProps) {
   return (
     <div className="tile-grid grid grid-cols-2 gap-4">
-      {TILES.map((tile) => (
-        <ActivityTile
-          key={tile.id}
-          config={tile}
-          onClick={() => onNavigate(tile.id)}
-        />
-      ))}
+      {TILES.map((tile) => {
+        const isDisabled = disabledActivities?.has(tile.id) ?? false;
+        return (
+          <ActivityTile
+            key={tile.id}
+            config={tile}
+            disabled={isDisabled}
+            onClick={() => {
+              if (!isDisabled) onNavigate(tile.id);
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -70,21 +79,28 @@ export function TileGrid({ onNavigate }: TileGridProps) {
 interface ActivityTileProps {
   config: TileConfig;
   onClick: () => void;
+  disabled?: boolean;
   taskCount?: number; // Future: badge for pending tasks
 }
 
-function ActivityTile({ config, onClick, taskCount }: ActivityTileProps) {
+function ActivityTile({ config, onClick, disabled, taskCount }: ActivityTileProps) {
   const Icon = config.icon;
 
   return (
     <button
-      className={`activity-tile relative p-4 rounded-lg border ${config.color} transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+      className={`activity-tile relative p-4 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+        disabled
+          ? 'bg-gray-800/50 border-gray-700/50 opacity-40 cursor-not-allowed'
+          : config.color
+      }`}
       onClick={onClick}
+      disabled={disabled}
       aria-label={`Open ${config.label} activity`}
+      title={disabled ? `No characters have ${config.label.toLowerCase()} skills` : undefined}
     >
-      <Icon className="w-8 h-8 mb-2 text-gray-200" />
-      <h3 className="font-semibold text-gray-100">{config.label}</h3>
-      <p className="text-sm text-gray-400">{config.description}</p>
+      <Icon className={`w-8 h-8 mb-2 ${disabled ? 'text-gray-500' : 'text-gray-200'}`} />
+      <h3 className={`font-semibold ${disabled ? 'text-gray-500' : 'text-gray-100'}`}>{config.label}</h3>
+      <p className={`text-sm ${disabled ? 'text-gray-600' : 'text-gray-400'}`}>{config.description}</p>
       {taskCount !== undefined && taskCount > 0 && (
         <span className="task-badge absolute top-2 right-2 bg-red-500 text-white text-xs rounded-full px-2 py-1">
           {taskCount}

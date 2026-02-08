@@ -6,6 +6,10 @@ import { VECTORS } from '../../constants';
 import { toNumberOr } from '../../utils/helpers';
 import type { AlchemyReagent, AlchemyFormula, Worker } from '../../types/views';
 import type { AlchemyBatch, AlchemyLab } from '../../types/campaign';
+import type { DowntimeState } from '../../types/downtime';
+import type { DowntimeAction } from '../../state/downtime/downtimeActions';
+import { createAndResolveTask } from '../../utils/createAutoResolvedTask';
+import { selectCharacterAssignmentForSlot } from '../../state/downtime/downtimeSelectors';
 
 // ============================================================================
 // TYPES
@@ -85,13 +89,21 @@ export interface BatchesViewProps {
   saveBatches: (batches: ExtendedBatch[]) => void;
   saveFormulas: (formulas: AlchemyFormula[]) => void;
   saveReagents: (reagents: AlchemyReagent[]) => void;
+  /** Downtime state for time slot tracking */
+  downtimeState?: DowntimeState;
+  /** Dispatch function for downtime actions */
+  downtimeDispatch?: React.Dispatch<DowntimeAction>;
+  /** Current day key */
+  currentDayKey?: number;
+  /** Current time slot */
+  currentSlot?: number;
 }
 
 // ============================================================================
 // COMPONENT
 // ============================================================================
 
-function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatches, saveFormulas, saveReagents }: BatchesViewProps) {
+function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatches, saveFormulas, saveReagents, downtimeState, downtimeDispatch, currentDayKey, currentSlot }: BatchesViewProps) {
   const [selectedBatch, setSelectedBatch] = useState<ExtendedBatch | null>(null);
   const [workerName, setWorkerName] = useState('');
   const [skill, setSkill] = useState('');
@@ -102,6 +114,12 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
   const [showSavePrompt, setShowSavePrompt] = useState(false);
   const [completedBatch, setCompletedBatch] = useState<ExtendedBatch | null>(null);
   const [saveAsName, setSaveAsName] = useState('');
+
+  // Filter out workers who are unavailable (already assigned this time slot)
+  const availableWorkers = useMemo(() => {
+    if (!downtimeState || currentDayKey === undefined || currentSlot === undefined) return workers;
+    return workers.filter(w => !selectCharacterAssignmentForSlot(downtimeState, w.id, currentDayKey, currentSlot));
+  }, [workers, downtimeState, currentDayKey, currentSlot]);
 
   // New batch creation state
   const [showNewBatch, setShowNewBatch] = useState(false);
@@ -357,6 +375,35 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
       return;
     }
 
+    // Check time slot availability and mark character as busy
+    if (downtimeState && downtimeDispatch && currentDayKey !== undefined && currentSlot !== undefined) {
+      const worker = workers.find(w => w.name === workerName);
+      if (!worker) {
+        alert('Please select a valid worker');
+        return;
+      }
+      const result = createAndResolveTask(downtimeState, downtimeDispatch, {
+        activityType: 'alchemy',
+        dayKey: currentDayKey,
+        slot: currentSlot,
+        leaderId: worker.id,
+        activityData: {
+          type: 'alchemy',
+          recipeId: selectedBatch.id,
+          formulaId: selectedBatch.formulaId || '',
+          reagentIds: [],
+          toolIds: [],
+          batchSize: 1,
+          aspectModifiers: {},
+        },
+        resultMessage: `Added work block to batch: ${selectedBatch.formulaName || 'unknown'}`,
+      });
+      if (!result.success) {
+        alert(result.error);
+        return;
+      }
+    }
+
     const updated = applyWorkBlockResult(
       selectedBatch,
       parseInt(skill),
@@ -561,7 +608,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                 <select
                   value={workerName}
                   onChange={(e) => {
-                    const selectedWorker = workers.find(w => w.name === e.target.value);
+                    const selectedWorker = availableWorkers.find(w => w.name === e.target.value);
                     setWorkerName(e.target.value);
                     if (selectedWorker && selectedWorker.skills) {
                       setSkill(String(selectedWorker.skills.alchemy || 10));
@@ -570,7 +617,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                   className="w-full bg-gray-600 px-3 py-2 rounded"
                 >
                   <option value="">Select worker...</option>
-                  {workers.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}
+                  {availableWorkers.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}
                 </select>
               </div>
               <div>

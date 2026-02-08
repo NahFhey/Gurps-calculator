@@ -3,7 +3,7 @@
  * Extracted from CraftingTab lines 213-667.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { QUALITIES } from '../../constants';
 import { toNumberOr, upsertCraft, removeCraft, refundMaterialsFromProject } from '../../utils/helpers';
 import { DiceRoller } from '../DiceRoller';
@@ -17,6 +17,10 @@ import type {
   CustomTemplates,
 } from '../../types/campaign';
 import type { CraftingWorker } from '../../hooks/useCraftingData';
+import type { DowntimeState } from '../../types/downtime';
+import type { DowntimeAction } from '../../state/downtime/downtimeActions';
+import { createAndResolveTask } from '../../utils/createAutoResolvedTask';
+import { selectCharacterAssignmentForSlot } from '../../state/downtime/downtimeSelectors';
 
 // ============================================================================
 // Types
@@ -39,6 +43,14 @@ interface CraftingWorkbenchProps {
   onProjectAbandoned: () => void;
   onDesignPhaseComplete: (craft: Craft) => void;
   onCraftUpdated: (craft: Craft | null) => void;
+  /** Downtime state for time slot tracking */
+  downtimeState?: DowntimeState;
+  /** Dispatch function for downtime actions */
+  downtimeDispatch?: React.Dispatch<DowntimeAction>;
+  /** Current day key */
+  currentDayKey?: number;
+  /** Current time slot */
+  currentSlot?: number;
 }
 
 interface DiceRoll {
@@ -111,6 +123,10 @@ export function CraftingWorkbench({
   onProjectAbandoned,
   onDesignPhaseComplete,
   onCraftUpdated,
+  downtimeState,
+  downtimeDispatch,
+  currentDayKey,
+  currentSlot,
 }: CraftingWorkbenchProps) {
   void _craftDesigns; void _saveCraftDesigns; void _weatherSkillBonus; // reserved for future use
   const [current, setCurrent] = useState<Craft | null>(externalCraft);
@@ -121,21 +137,67 @@ export function CraftingWorkbench({
   const [selectedWorker, setSelectedWorker] = useState('');
   const [abandonConfirm, setAbandonConfirm] = useState(false);
 
+  /**
+   * Try to reserve the current time slot for the selected worker.
+   * Returns true if successful (or if downtime tracking is not active).
+   * Returns false and shows an alert if the character is already busy.
+   */
+  function tryReserveSlot(message: string, qualityTarget?: string): boolean {
+    if (!downtimeState || !downtimeDispatch || currentDayKey === undefined || currentSlot === undefined) return true;
+    const workerObj = workers.find(w => w.name === selectedWorker);
+    const workerId = workerObj?.id || selectedWorker;
+    const result = createAndResolveTask(downtimeState, downtimeDispatch, {
+      activityType: 'crafting',
+      dayKey: currentDayKey,
+      slot: currentSlot,
+      leaderId: workerId,
+      activityData: {
+        type: 'crafting',
+        recipeId: current?.template || '',
+        materialInstanceIds: [],
+        toolInstanceIds: [],
+        qualityTarget: (qualityTarget as any) || 'standard',
+        skillModifier: 0,
+      },
+      resultMessage: message,
+    });
+    if (!result.success) {
+      alert(result.error);
+      return false;
+    }
+    return true;
+  }
+
+  // Filter out workers who are unavailable (already assigned this time slot)
+  const availableWorkers = useMemo(() => {
+    if (!downtimeState || currentDayKey === undefined || currentSlot === undefined) return workers;
+    return workers.filter(w => !selectCharacterAssignmentForSlot(downtimeState, w.id, currentDayKey, currentSlot));
+  }, [workers, downtimeState, currentDayKey, currentSlot]);
+
   // Sync with external craft prop changes
   useEffect(() => {
     setCurrent(externalCraft);
     if (externalCraft && externalCraft.shifts && externalCraft.shifts.length > 0) {
       const lastShift = externalCraft.shifts[externalCraft.shifts.length - 1];
-      setSelectedWorker(lastShift.worker || workers[0]?.name || '');
+      setSelectedWorker(lastShift.worker || '');
       setCurrentDay(lastShift.day || externalCraft.startDay || 1);
     } else if (externalCraft) {
-      setSelectedWorker(workers[0]?.name || '');
+      setSelectedWorker('');
       setCurrentDay(externalCraft.startDay || 1);
     }
     setCurrentDate(new Date().toISOString().split('T')[0]);
     setSkill('');
     setRoll({ dice: [], total: 0 });
   }, [externalCraft?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-fill skill when worker selection or craft phase changes
+  useEffect(() => {
+    if (!selectedWorker || !current) return;
+    const worker = availableWorkers.find(w => w.name === selectedWorker);
+    if (worker?.skills) {
+      setSkill(String(current.phase === 'design' ? (worker.skills.designing ?? 10) : (worker.skills.crafting ?? 10)));
+    }
+  }, [selectedWorker, current?.phase, availableWorkers]);
 
   function startNew() {
     const weaponKeys = Object.keys(customTemplates.weapons || {});
@@ -211,7 +273,12 @@ export function CraftingWorkbench({
           return;
         }
       }
+    }
 
+    // Check time slot availability and mark character as busy (before either branch)
+    if (!tryReserveSlot(`Started design phase: ${current.template || 'Unknown'}`)) return;
+
+    if (current.selectedMaterials && current.selectedMaterials.length > 0) {
       const consumedMaterials = current.selectedMaterials.map(req => {
         const mat = materials.find(m => m.id === req.selectedMaterialId || String(m.id) === req.selectedMaterialId);
         return {
@@ -255,6 +322,11 @@ export function CraftingWorkbench({
     if (!current) return;
     const s = parseInt(skill), r = roll.total;
     if (isNaN(s) || !r || !selectedWorker || !currentDate || isNaN(currentDay)) { alert('Fill all fields'); return; }
+
+    // Check time slot availability and mark character as busy
+    const shiftMessage = `Craft shift: ${current.phase === 'design' ? 'Design' : 'Craft'} on ${current.template || 'Unknown'}`;
+    if (!tryReserveSlot(shiftMessage, current.currentQuality as string)) return;
+
     const eff = s + stats.totalDifficulty;
     let hrs = 0, qc = 0, res = '';
 
@@ -529,7 +601,7 @@ export function CraftingWorkbench({
             <div className="bg-gray-700 p-4 rounded grid grid-cols-2 gap-4">
               <div><label className="block mb-2 text-sm">Date</label><input type="date" value={currentDate} onChange={(e) => setCurrentDate(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded" /></div>
               <div><label className="block mb-2 text-sm">Day (In-Universe)</label><input type="number" min="1" value={currentDay} onChange={(e) => setCurrentDay(Math.max(1, toNumberOr(e.target.value, 1)))} className="w-full bg-gray-600 px-3 py-2 rounded" /></div>
-              <div><label className="block mb-2 text-sm">Worker</label><select value={selectedWorker} onChange={(e) => { const worker = workers.find(w => w.name === e.target.value); setSelectedWorker(e.target.value); if (worker?.skills) setSkill(String(current.phase === 'design' ? (worker.skills.designing ?? 10) : (worker.skills.crafting ?? 10))); }} className="w-full bg-gray-600 px-3 py-2 rounded">{workers.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}</select></div>
+              <div><label className="block mb-2 text-sm">Worker</label><select value={selectedWorker} onChange={(e) => setSelectedWorker(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded"><option value="">Select worker...</option>{availableWorkers.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}</select></div>
               <div><label className="block mb-2 text-sm">Skill</label><input type="number" value={skill} onChange={(e) => setSkill(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded" /></div>
               <div className="col-span-2">
                 <label className="block mb-2 text-sm">Roll (3d6)</label>

@@ -603,7 +603,14 @@ export type CampaignAction =
   | { type: 'addTravel'; payload: TravelAction }
   | { type: 'updateTravel'; payload: { id: Id; changes: Partial<TravelAction> } }
   | { type: 'completeTravel'; payload: Id }
-  | { type: 'cancelTravel'; payload: Id };
+  | { type: 'cancelTravel'; payload: Id }
+  // Custom climate/terrain actions
+  | { type: 'addCustomClimate'; payload: { key: string; label: string } }
+  | { type: 'removeCustomClimate'; payload: string }
+  | { type: 'addCustomTerrain'; payload: { key: string; label: string } }
+  | { type: 'removeCustomTerrain'; payload: string }
+  // Downtime actions
+  | { type: 'setDowntime'; payload: DowntimeState };
 
 export function campaignReducer(state: CampaignState, action: CampaignAction) {
   return produce(state, (draft) => {
@@ -1100,6 +1107,56 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         }
         return;
       }
+
+      // ========================================================================
+      // CUSTOM CLIMATE/TERRAIN ACTIONS
+      // ========================================================================
+      case 'addCustomClimate': {
+        if (!draft.locations.customClimates) {
+          draft.locations.customClimates = [];
+        }
+        // Prevent duplicates
+        if (!draft.locations.customClimates.some(c => c.key === action.payload.key)) {
+          draft.locations.customClimates.push(action.payload);
+        }
+        return;
+      }
+
+      case 'removeCustomClimate': {
+        if (draft.locations.customClimates) {
+          draft.locations.customClimates = draft.locations.customClimates.filter(
+            c => c.key !== action.payload
+          );
+        }
+        return;
+      }
+
+      case 'addCustomTerrain': {
+        if (!draft.locations.customTerrains) {
+          draft.locations.customTerrains = [];
+        }
+        // Prevent duplicates
+        if (!draft.locations.customTerrains.some(t => t.key === action.payload.key)) {
+          draft.locations.customTerrains.push(action.payload);
+        }
+        return;
+      }
+
+      case 'removeCustomTerrain': {
+        if (draft.locations.customTerrains) {
+          draft.locations.customTerrains = draft.locations.customTerrains.filter(
+            t => t.key !== action.payload
+          );
+        }
+        return;
+      }
+
+      // ========================================================================
+      // DOWNTIME ACTIONS
+      // ========================================================================
+      case 'setDowntime':
+        draft.downtime = action.payload;
+        return;
 
       default:
         return;

@@ -12,7 +12,6 @@ import { FoodTypesView } from './manager/views/FoodTypesView';
 import { SkillsView } from './manager/views/SkillsView';
 import { ProjectsView } from './manager/views/ProjectsView';
 import { AlchemySettingsView } from './manager/views/AlchemySettingsView';
-import { WorkersView } from './manager/views/WorkersView';
 import { LabsView } from './manager/views/LabsView';
 import { KitchensView } from './manager/views/KitchensView';
 import { MaterialTypesView } from './manager/views/MaterialTypesView';
@@ -34,7 +33,6 @@ type ManagerView =
   | 'importExport'
   | 'foodTypes'
   | 'materialTypes'
-  | 'workers'
   | 'labs'
   | 'kitchens'
   | 'skills'
@@ -79,12 +77,6 @@ export function ManagerTab() {
   // Food & Material types
   const foodTypes = campaignState.entities.foodTypes as FoodType[];
   const materialTypes = campaignState.entities.materialTypes as MaterialType[];
-
-  // Workers (characters that can work)
-  const workers = useMemo(() => {
-    const chars = denormalizeObject(campaignState.entities.characters) as Character[];
-    return chars.filter(c => c.work?.enabled);
-  }, [campaignState.entities.characters]);
 
   // Crafting
   const crafts = useMemo(() =>
@@ -161,12 +153,6 @@ export function ManagerTab() {
     campaignActions.setMaterialTypes(types);
   }, [campaignActions]);
 
-  const saveWorkers = useCallback((workersList: Character[]) => {
-    // Workers are characters, so we need to update them individually
-    workersList.forEach(worker => {
-      campaignActions.updateCharacter(worker.id, worker);
-    });
-  }, [campaignActions]);
 
   const saveMaterials = useCallback((mats: unknown[]) => {
     campaignActions.setMaterials(normalizeArray(mats));
@@ -443,8 +429,6 @@ export function ManagerTab() {
                     }));
                   } else if (deleteConfirm.type === 'materialType') {
                     saveMaterialTypes(materialTypes.filter(t => t.name !== deleteConfirm.value));
-                  } else if (deleteConfirm.type === 'worker') {
-                    saveWorkers(workers.filter(w => w.id !== deleteConfirm.id));
                   } else if (deleteConfirm.type === 'lab') {
                     saveAlchemyLabs(alchemyLabs.filter(l => l.id !== deleteConfirm.id));
                   } else if (deleteConfirm.type === 'kitchen') {
@@ -492,9 +476,6 @@ export function ManagerTab() {
         </button>
         <button onClick={() => setView('materialTypes')} className={`px-4 py-2 ${view === 'materialTypes' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
           Material Types
-        </button>
-        <button onClick={() => setView('workers')} className={`px-4 py-2 ${view === 'workers' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
-          Workers
         </button>
         <button onClick={() => setView('labs')} className={`px-4 py-2 ${view === 'labs' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
           Labs
@@ -570,14 +551,6 @@ export function ManagerTab() {
           materialTypes={materialTypes}
           saveMaterialTypes={saveMaterialTypes}
           renameMaterialType={renameMaterialType}
-          onDelete={handleDelete}
-        />
-      )}
-
-      {view === 'workers' && (
-        <WorkersView
-          workers={workers}
-          saveWorkers={saveWorkers}
           onDelete={handleDelete}
         />
       )}

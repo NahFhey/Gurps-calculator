@@ -6,13 +6,15 @@
  * with validation for character assignment and tool availability.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { X, Target, Shuffle } from 'lucide-react';
 import {
   selectAvailableCharacterIdsForSlot,
   selectReservedToolIdsForSlot,
 } from '../../../state/downtime';
 import { FISHING_METHODS } from '../../../constants';
+import { characterHasAnySkill, getCharacterSkills, ACTIVITY_SKILL_REQUIREMENTS } from '../../../types/characterSheet';
+import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
 import type { DowntimeState, FishingData, FishingMethod } from '../../../types/downtime';
 import type { Character, GatheringSpecies, GatheringTool, GatheringEnvironment, GatheringBait } from '../../../types/campaign';
 
@@ -76,6 +78,13 @@ export function FishingTaskForm({
   const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
   const [baitId, setBaitId] = useState<string | null>(null);
 
+  // Auto-select spot when only one is available
+  useEffect(() => {
+    if (spots.length === 1 && !spotId) {
+      setSpotId(spots[0].id);
+    }
+  }, [spots, spotId]);
+
   // Get method configuration
   const methodConfig = FISHING_METHODS[method];
   const canTarget = methodConfig?.canTarget ?? false;
@@ -103,16 +112,22 @@ export function FishingTaskForm({
     [state, currentDayKey, currentSlot]
   );
 
-  // Filter available characters for selection
-  const availableCharacters = useMemo(
+  // Filter available characters for selection (not already assigned this slot)
+  const availableUnassigned = useMemo(
     () => characters.filter((c) => availableCharacterIds.includes(c.id)),
     [characters, availableCharacterIds]
   );
 
-  // Filter available characters for helpers (excluding selected leader)
+  // Filter leaders to only characters with a relevant fishing skill
+  const availableCharacters = useMemo(
+    () => availableUnassigned.filter((c) => characterHasAnySkill(c, ACTIVITY_SKILL_REQUIREMENTS.fishing)),
+    [availableUnassigned]
+  );
+
+  // Helpers can be anyone available (no skill requirement), excluding selected leader
   const availableHelpers = useMemo(
-    () => availableCharacters.filter((c) => c.id !== leaderId),
-    [availableCharacters, leaderId]
+    () => availableUnassigned.filter((c) => c.id !== leaderId),
+    [availableUnassigned, leaderId]
   );
 
   // Filter tools for the selected method
@@ -172,15 +187,28 @@ export function FishingTaskForm({
     [characters, leaderId]
   );
 
-  // Get leader's fishing skill
+  // Get leader's fishing skill (merged from all skill sources)
   const leaderFishingSkill = useMemo(() => {
     if (!selectedLeader) return null;
-    const skills = (selectedLeader as any).skills ?? {};
+    const skills = getCharacterSkills(selectedLeader);
     if (method === 'Spear') {
       return skills.spear ?? skills.fishing ?? 10;
     }
     return skills.fishing ?? 10;
   }, [selectedLeader, method]);
+
+  // Get leader's fatigue status and penalty
+  const { fatigueStatus: leaderFatigueStatus, fatiguePenalty: leaderFatiguePenalty } = useMemo(() => {
+    if (!leaderId) return { fatigueStatus: 'rested' as const, fatiguePenalty: 0 };
+    const status = selectCharacterFatigueStatus(state, leaderId, currentDayKey, currentSlot);
+    return { fatigueStatus: status, fatiguePenalty: getFatiguePenalty(status) };
+  }, [state, leaderId, currentDayKey, currentSlot]);
+
+  // Get selected spot's environment modifier
+  const environmentMod = useMemo(() => {
+    if (!selectedSpot) return 0;
+    return (selectedSpot as any).skillMod ?? 0;
+  }, [selectedSpot]);
 
   // Get selected species
   const selectedSpecies = useMemo(
@@ -317,6 +345,19 @@ export function FishingTaskForm({
       targetYield: 1, // Deprecated, but keeping for compatibility
     };
 
+    // Diagnostic: log stored skillModifier to verify it matches displayed value
+    if (process.env.NODE_ENV === 'development') {
+      console.debug('[FishingTaskForm] Submitting task:', {
+        skillModifier,
+        toolModifier,
+        helperModifier,
+        baitModifier,
+        leaderFishingSkill,
+        helperIds,
+        selectedToolIds,
+      });
+    }
+
     onSubmit({
       leaderId,
       helperIds,
@@ -439,21 +480,34 @@ export function FishingTaskForm({
         <label htmlFor="spot-select" className="block text-sm font-medium text-gray-300 mb-1">
           Fishing Spot <span className="text-red-400">*</span>
         </label>
-        <select
-          id="spot-select"
-          value={spotId}
-          onChange={(e) => setSpotId(e.target.value)}
-          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          required
-          data-testid="spot-select"
-        >
-          <option value="">Select spot...</option>
-          {spots.map((spot) => (
-            <option key={spot.id} value={spot.id}>
-              {spot.name}
-            </option>
-          ))}
-        </select>
+        {spots.length === 0 ? (
+          <p className="text-sm text-yellow-400 italic" data-testid="no-spots-message">
+            No fishing spots at current location
+          </p>
+        ) : spots.length === 1 ? (
+          <div
+            className="w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded text-gray-100"
+            data-testid="spot-select"
+          >
+            {spots[0].name} <span className="text-xs text-gray-400">— current location</span>
+          </div>
+        ) : (
+          <select
+            id="spot-select"
+            value={spotId}
+            onChange={(e) => setSpotId(e.target.value)}
+            className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            required
+            data-testid="spot-select"
+          >
+            <option value="">Select spot...</option>
+            {spots.map((spot) => (
+              <option key={spot.id} value={spot.id}>
+                {spot.name}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Targeted vs Random Catch - Only for methods that can target */}
@@ -658,6 +712,20 @@ export function FishingTaskForm({
               </span>
             </div>
           )}
+          {leaderFatiguePenalty !== 0 && (
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-400">Fatigue ({leaderFatigueStatus}):</span>
+              <span className="text-red-400">{leaderFatiguePenalty}</span>
+            </div>
+          )}
+          {environmentMod !== 0 && (
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-400">Environment ({selectedSpot?.name}):</span>
+              <span className={environmentMod >= 0 ? 'text-green-400' : 'text-red-400'}>
+                {environmentMod >= 0 ? '+' : ''}{environmentMod}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Total effective skill */}
@@ -665,7 +733,7 @@ export function FishingTaskForm({
           <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-600">
             <span className="text-sm text-gray-200 font-medium">Effective Skill:</span>
             <span className="text-sm font-bold text-green-400">
-              {(leaderFishingSkill ?? 10) + skillModifier + baitModifier}
+              {(leaderFishingSkill ?? 10) + skillModifier + baitModifier + leaderFatiguePenalty + environmentMod}
             </span>
           </div>
         )}

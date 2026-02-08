@@ -53,7 +53,7 @@ export function downtimeReducer(
 
         const { activityType, dayKey, slot, leaderId, helperIds, activityData } = action.payload;
         const now = Date.now();
-        const id = generateTaskId();
+        const id = action.payload.id ?? generateTaskId();
 
         const newTask: DowntimeTask = {
           id,

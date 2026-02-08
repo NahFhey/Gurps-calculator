@@ -520,6 +520,18 @@ export function canUseTools(
 export type FatigueStatus = 'rested' | 'tired' | 'exhausted';
 
 /**
+ * Get the skill penalty for a given fatigue status.
+ * Applied to all activity skill rolls during resolution.
+ */
+export function getFatiguePenalty(status: FatigueStatus): number {
+  switch (status) {
+    case 'tired': return -1;
+    case 'exhausted': return -3;
+    default: return 0;
+  }
+}
+
+/**
  * Check if a character worked in a specific slot (resolved non-rest task).
  * A character "works" if they participated in a resolved task that is not rest,
  * either as a leader or as a helper.

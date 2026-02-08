@@ -93,7 +93,11 @@ describe('FishingActivity', () => {
 
       // Basic required fields always visible
       expect(screen.getByTestId('leader-select')).toBeInTheDocument();
-      expect(screen.getByTestId('spot-select')).toBeInTheDocument();
+      // Spot shows empty state when no location is set (environments filtered by location)
+      // Either a spot-select dropdown or a "no spots" message will be present
+      const spotSelect = screen.queryByTestId('spot-select');
+      const noSpotsMessage = screen.queryByTestId('no-spots-message');
+      expect(spotSelect ?? noSpotsMessage).toBeTruthy();
       // Note: species-select only visible in targeted mode (not random catch default)
     });
   });

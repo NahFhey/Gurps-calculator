@@ -15,6 +15,7 @@ import { useMemo, useCallback } from 'react';
 import { useCampaignStore } from '../state/campaignStore';
 import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
 import { useWeatherModifiers } from './useWeatherModifiers';
+import { getCharacterSkills, ACTIVITY_SKILL_REQUIREMENTS } from '../types/characterSheet';
 import type {
   Craft,
   CraftDesign,
@@ -70,13 +71,18 @@ export function useCraftingData() {
   }) as CustomTemplates;
 
   // Derive workers from characters (same pattern as CraftingTab / AlchemyTab)
+  // Merge GCS-derived activity keys so character sheet skills auto-fill in activity views
+  // Only include characters with crafting or designing skill
+  const craftingSkills = ACTIVITY_SKILL_REQUIREMENTS.crafting;
   const workers = useMemo(() =>
-    Object.values(state.entities.characters).map((character: any) => ({
-      id: character.id,
-      name: character.name,
-      skills: character.work?.skills || {},
-      st: character.st
-    })) as CraftingWorker[],
+    Object.values(state.entities.characters)
+      .map((character: any) => ({
+        id: character.id,
+        name: character.name,
+        skills: getCharacterSkills(character),
+        st: character.st,
+      }))
+      .filter(w => craftingSkills.some(sk => w.skills[sk] !== undefined && w.skills[sk] > 0)) as CraftingWorker[],
     [state.entities.characters]
   );
 

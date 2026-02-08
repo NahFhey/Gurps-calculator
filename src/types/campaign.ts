@@ -533,6 +533,8 @@ export interface GatheringEnvironment {
   description: string;
   species: Id[];  // Species IDs
   hazards?: string[];
+  /** Links this environment to a Location for auto-selection in downtime activities */
+  locationId?: string;
 }
 
 export interface GatheringSession {

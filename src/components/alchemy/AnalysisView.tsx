@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { DiceRoller } from '../DiceRoller';
 import { ASPECTS } from '../../constants';
 import type { AlchemyReagent, Worker } from '../../types/views';
 import type { AlchemyLab, AlchemySettings } from '../../types/campaign';
+import type { DowntimeState } from '../../types/downtime';
+import type { DowntimeAction } from '../../state/downtime/downtimeActions';
+import { createAndResolveTask } from '../../utils/createAutoResolvedTask';
+import { selectCharacterAssignmentForSlot } from '../../state/downtime/downtimeSelectors';
 
 // ============================================================================
 // TYPES
@@ -44,6 +48,14 @@ export interface AnalysisViewProps {
   workers: Worker[];
   _alchemySettings?: AlchemySettings;
   saveReagents: (reagents: AlchemyReagent[]) => void;
+  /** Downtime state for time slot tracking */
+  downtimeState?: DowntimeState;
+  /** Dispatch function for downtime actions */
+  downtimeDispatch?: React.Dispatch<DowntimeAction>;
+  /** Current day key */
+  currentDayKey?: number;
+  /** Current time slot */
+  currentSlot?: number;
 }
 
 // ============================================================================
@@ -78,12 +90,18 @@ function getIdentificationResult(mos: number): number {
 
 const levelNames = ['Unidentified', 'Partial', 'Basic', 'Complete Aspects', 'Full Profile'];
 
-export function AnalysisView({ reagents, labs, workers, saveReagents }: AnalysisViewProps) {
+export function AnalysisView({ reagents, labs, workers, saveReagents, downtimeState, downtimeDispatch, currentDayKey, currentSlot }: AnalysisViewProps) {
   const [selectedReagent, setSelectedReagent] = useState<AlchemyReagent | null>(null);
   const [selectedWorker, setSelectedWorker] = useState('');
   const [selectedLabId, setSelectedLabId] = useState(labs?.[0]?.id || 'default');
   const [skill, setSkill] = useState('');
   const [roll, setRoll] = useState<DiceRollState>({ dice: [], total: 0 });
+
+  // Filter out workers who are unavailable (already assigned this time slot)
+  const availableWorkers = useMemo(() => {
+    if (!downtimeState || currentDayKey === undefined || currentSlot === undefined) return workers;
+    return workers.filter(w => !selectCharacterAssignmentForSlot(downtimeState, w.id, currentDayKey, currentSlot));
+  }, [workers, downtimeState, currentDayKey, currentSlot]);
 
   function performAnalysis() {
     if (!selectedReagent || !skill || !roll.total) {
@@ -103,6 +121,35 @@ export function AnalysisView({ reagents, labs, workers, saveReagents }: Analysis
     if (selectedReagent.quantity < 1) {
       alert('Not enough reagent quantity for analysis (requires 1U)');
       return;
+    }
+
+    // Check time slot availability and mark character as busy
+    if (downtimeState && downtimeDispatch && currentDayKey !== undefined && currentSlot !== undefined) {
+      const worker = workers.find(w => w.name === selectedWorker);
+      if (!worker) {
+        alert('Please select a worker');
+        return;
+      }
+      const result = createAndResolveTask(downtimeState, downtimeDispatch, {
+        activityType: 'alchemy',
+        dayKey: currentDayKey,
+        slot: currentSlot,
+        leaderId: worker.id,
+        activityData: {
+          type: 'alchemy',
+          recipeId: selectedReagent.id,
+          formulaId: 'analysis',
+          reagentIds: [selectedReagent.id],
+          toolIds: [],
+          batchSize: 0,
+          aspectModifiers: {},
+        },
+        resultMessage: `Analyzed reagent: ${selectedReagent.name}`,
+      });
+      if (!result.success) {
+        alert(result.error);
+        return;
+      }
     }
 
     // Get lab and apply lab rating bonus
@@ -248,7 +295,7 @@ export function AnalysisView({ reagents, labs, workers, saveReagents }: Analysis
                   <select
                     value={selectedWorker}
                     onChange={(e) => {
-                      const worker = workers.find(w => w.name === e.target.value);
+                      const worker = availableWorkers.find(w => w.name === e.target.value);
                       setSelectedWorker(e.target.value);
                       if (worker?.skills) {
                         setSkill(String(worker.skills.alchemy || 10));
@@ -257,7 +304,7 @@ export function AnalysisView({ reagents, labs, workers, saveReagents }: Analysis
                     className="w-full bg-gray-600 px-3 py-2 rounded"
                   >
                     <option value="">Select worker...</option>
-                    {workers.map(w => (
+                    {availableWorkers.map(w => (
                       <option key={w.id} value={w.name}>
                         {w.name}
                       </option>

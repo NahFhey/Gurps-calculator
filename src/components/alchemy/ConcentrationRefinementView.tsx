@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { DiceRoller } from '../DiceRoller';
 import {
   calculateProcessingDifficulty,
@@ -8,6 +8,10 @@ import {
 import { POTENCY_LEVELS } from '../../constants';
 import type { AlchemyReagent, Worker } from '../../types/views';
 import type { AlchemyLab } from '../../types/campaign';
+import type { DowntimeState } from '../../types/downtime';
+import type { DowntimeAction } from '../../state/downtime/downtimeActions';
+import { createAndResolveTask } from '../../utils/createAutoResolvedTask';
+import { selectCharacterAssignmentForSlot } from '../../state/downtime/downtimeSelectors';
 
 // ============================================================================
 // TYPES
@@ -73,6 +77,14 @@ export interface ConcentrationRefinementViewProps {
   labs: AlchemyLab[];
   workers: Worker[];
   saveReagents: (reagents: AlchemyReagent[]) => void;
+  /** Downtime state for time slot tracking */
+  downtimeState?: DowntimeState;
+  /** Dispatch function for downtime actions */
+  downtimeDispatch?: React.Dispatch<DowntimeAction>;
+  /** Current day key */
+  currentDayKey?: number;
+  /** Current time slot */
+  currentSlot?: number;
 }
 
 // ============================================================================
@@ -108,7 +120,7 @@ const REFINEMENT_LEVELS: Record<RefinementLevel, RefinementLevelInfo> = {
  * - Hazard accumulation on minor failures (MoF -1 to -2)
  * - Critical success allows 1U input reclaim
  */
-export function ConcentrationRefinementView({ reagents, labs, workers, saveReagents }: ConcentrationRefinementViewProps) {
+export function ConcentrationRefinementView({ reagents, labs, workers, saveReagents, downtimeState, downtimeDispatch, currentDayKey, currentSlot }: ConcentrationRefinementViewProps) {
   const [selectedReagentId, setSelectedReagentId] = useState<string | null>(null);
   const [operation, setOperation] = useState<OperationType>('refine');
   const [outputUnits, setOutputUnits] = useState(1);
@@ -122,6 +134,12 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
   const [unitResults, setUnitResults] = useState<UnitResult[]>([]);
   const [processingLog, setProcessingLog] = useState<UnitResult[]>([]);
   const [showResults, setShowResults] = useState(false);
+
+  // Filter out workers who are unavailable (already assigned this time slot)
+  const availableWorkers = useMemo(() => {
+    if (!downtimeState || currentDayKey === undefined || currentSlot === undefined) return workers;
+    return workers.filter(w => !selectCharacterAssignmentForSlot(downtimeState, w.id, currentDayKey, currentSlot));
+  }, [workers, downtimeState, currentDayKey, currentSlot]);
 
   const selectedReagent = reagents.find(r => r.id === selectedReagentId);
   const selectedLab = labs?.find(l => l.id === selectedLabId) || { id: 'default', name: 'Basic Lab', rating: 0 };
@@ -177,6 +195,30 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
     if (!canProcess || !selectedReagent) {
       alert('Cannot process: check reagent selection and availability');
       return;
+    }
+
+    // Check time slot availability and mark character as busy
+    if (downtimeState && downtimeDispatch && currentDayKey !== undefined && currentSlot !== undefined) {
+      const result = createAndResolveTask(downtimeState, downtimeDispatch, {
+        activityType: 'alchemy',
+        dayKey: currentDayKey,
+        slot: currentSlot,
+        leaderId: selectedWorkerId,
+        activityData: {
+          type: 'alchemy',
+          recipeId: selectedReagentId || '',
+          formulaId: 'processing',
+          reagentIds: selectedReagentId ? [selectedReagentId] : [],
+          toolIds: [],
+          batchSize: outputUnits,
+          aspectModifiers: {},
+        },
+        resultMessage: `Processed reagent: ${selectedReagent.name} (${operation})`,
+      });
+      if (!result.success) {
+        alert(result.error);
+        return;
+      }
     }
 
     setProcessingState('processing');
@@ -452,7 +494,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
               className="w-full bg-gray-700 px-3 py-2 rounded"
               disabled={processingState !== 'idle'}
             >
-              {workers.map(w => (
+              {availableWorkers.map(w => (
                 <option key={w.id} value={w.id}>
                   {w.name} (Alchemy {w.skills?.alchemy || 10})
                 </option>

@@ -25,7 +25,8 @@
       "Bash(npm run dev)",
       "Bash(npm run typecheck:*)",
       "Bash(npx vite build)",
-      "Bash(del \"C:\\\\Users\\\\devin\\\\Documents\\\\GitHub\\\\Gurps-calculator\\\\src\\\\components\\\\AlchemyTab.tsx\")"
+      "Bash(del \"C:\\\\Users\\\\devin\\\\Documents\\\\GitHub\\\\Gurps-calculator\\\\src\\\\components\\\\AlchemyTab.tsx\")",
+      "Bash(git stash:*)"
     ]
   }
 }

@@ -8,8 +8,9 @@ import type { EnvironmentsViewProps, GatheringEnvironmentExtended, ModeDefaults 
  *
  * Allows creating, editing, and deleting environments that link
  * to catch tables, event tables, and specify skill modifiers.
+ * Environments can be linked to a Location for auto-selection in downtime activities.
  */
-export function EnvironmentsView({ environments, tables, saveEnvironments, onDelete }: EnvironmentsViewProps) {
+export function EnvironmentsView({ environments, tables, locations, saveEnvironments, onDelete }: EnvironmentsViewProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -23,6 +24,7 @@ export function EnvironmentsView({ environments, tables, saveEnvironments, onDel
   const [newEnvForagingMildTableId, setNewEnvForagingMildTableId] = useState('');
   const [newEnvForagingRareTableId, setNewEnvForagingRareTableId] = useState('');
   const [newEnvSkillMod, setNewEnvSkillMod] = useState('0');
+  const [newEnvLocationId, setNewEnvLocationId] = useState('');
 
   function addEnvironment() {
     if (!newEnvName.trim()) {
@@ -61,7 +63,8 @@ export function EnvironmentsView({ environments, tables, saveEnvironments, onDel
       name: newEnvName.trim(),
       supportedModes: newEnvModes,
       defaultsByMode,
-      skillMod: parseInt(newEnvSkillMod) || 0
+      skillMod: parseInt(newEnvSkillMod) || 0,
+      locationId: newEnvLocationId || undefined
     };
 
     if (editingId) {
@@ -88,6 +91,7 @@ export function EnvironmentsView({ environments, tables, saveEnvironments, onDel
     setNewEnvForagingRareTableId(foragingDefaults.rareEventTableId || '');
 
     setNewEnvSkillMod(String(e.skillMod || 0));
+    setNewEnvLocationId(e.locationId || '');
     setShowAdd(true);
   }
 
@@ -102,8 +106,15 @@ export function EnvironmentsView({ environments, tables, saveEnvironments, onDel
     setNewEnvForagingMildTableId('');
     setNewEnvForagingRareTableId('');
     setNewEnvSkillMod('0');
+    setNewEnvLocationId('');
     setShowAdd(false);
   }
+
+  // Helper to find location name by ID
+  const getLocationName = (locationId?: string) => {
+    if (!locationId) return null;
+    return locations.find(l => l.id === locationId)?.name ?? null;
+  };
 
   return (
     <div>
@@ -124,6 +135,23 @@ export function EnvironmentsView({ environments, tables, saveEnvironments, onDel
               placeholder="e.g., Tuto Coastal Waters"
               className="w-full bg-gray-600 px-3 py-2 rounded"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Location</label>
+            <select
+              value={newEnvLocationId}
+              onChange={(e) => setNewEnvLocationId(e.target.value)}
+              className="w-full bg-gray-600 px-3 py-2 rounded"
+            >
+              <option value="">-- No Location (hidden from activities) --</option>
+              {locations.map(loc => (
+                <option key={loc.id} value={loc.id}>{loc.name}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Environments must be linked to a location to appear in downtime activities.
+            </p>
           </div>
 
           <div>
@@ -285,6 +313,11 @@ export function EnvironmentsView({ environments, tables, saveEnvironments, onDel
               <div className="text-sm text-gray-400 mt-1">
                 Modes: {e.supportedModes?.join(', ') || 'All'}
                 {e.skillMod !== 0 && <span className="ml-2">Skill: {e.skillMod >= 0 ? '+' : ''}{e.skillMod}</span>}
+                {e.locationId ? (
+                  <span className="ml-2 text-blue-400">@ {getLocationName(e.locationId) ?? 'Unknown location'}</span>
+                ) : (
+                  <span className="ml-2 text-yellow-500">No location (hidden from activities)</span>
+                )}
               </div>
             </div>
           ))
