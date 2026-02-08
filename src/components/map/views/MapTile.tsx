@@ -1,0 +1,129 @@
+/**
+ * MapTile — renders a single tile in the map grid.
+ */
+
+import React, { memo } from 'react';
+import type { TerrainModel, MarkerModel } from '../../../types/map';
+import { TILE_SIZE_PX } from '../../../constants/map';
+import { MapPin, LinkIcon } from 'lucide-react';
+
+interface MapTileProps {
+  terrain: TerrainModel | null;
+  isRevealed: boolean;
+  isPartyHere: boolean;
+  isGmMode: boolean;
+  markers: MarkerModel[];
+  hasLinks: boolean;
+  onClick?: () => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
+  onMouseDown?: (e: React.MouseEvent) => void;
+  onMouseEnter?: (e: React.MouseEvent) => void;
+  isSelected?: boolean;
+  isRouteHighlight?: boolean;
+  isReachable?: boolean;
+  row: number;
+  col: number;
+}
+
+export const MapTile = memo(function MapTile({
+  terrain,
+  isRevealed,
+  isPartyHere,
+  isGmMode,
+  markers,
+  hasLinks,
+  onClick,
+  onContextMenu,
+  onMouseDown,
+  onMouseEnter,
+  isSelected,
+  isRouteHighlight,
+  isReachable,
+  row,
+  col,
+}: MapTileProps) {
+  // Player view: unrevealed tiles are void
+  if (!isGmMode && !isRevealed) {
+    return (
+      <div
+        className="border border-gray-900/20"
+        style={{
+          width: TILE_SIZE_PX,
+          height: TILE_SIZE_PX,
+          backgroundColor: '#0a0a0a',
+        }}
+      />
+    );
+  }
+
+  // Determine background color
+  let bgColor = '#1f2937'; // gray-800 for null terrain
+  if (terrain) {
+    bgColor = terrain.color;
+  }
+
+  // Opacity for unrevealed tiles in GM mode
+  const opacity = !isRevealed && isGmMode ? 0.4 : 1;
+
+  // Visible markers (GM sees all, players see player-visible only)
+  const visibleMarkers = isGmMode
+    ? markers
+    : markers.filter((m) => m.visibility === 'player');
+
+  return (
+    <div
+      className={[
+        'relative border border-gray-700/30 cursor-pointer transition-all duration-75',
+        isSelected ? 'ring-2 ring-yellow-400 z-10' : '',
+        isRouteHighlight ? 'ring-2 ring-blue-400 z-10' : '',
+        isReachable && !isRouteHighlight ? 'ring-1 ring-green-500/40' : '',
+        isPartyHere ? 'ring-2 ring-white z-20' : '',
+      ].join(' ')}
+      style={{
+        width: TILE_SIZE_PX,
+        height: TILE_SIZE_PX,
+        backgroundColor: bgColor,
+        opacity,
+      }}
+      onClick={onClick}
+      onContextMenu={onContextMenu}
+      onMouseDown={onMouseDown}
+      onMouseEnter={onMouseEnter}
+      title={[
+        terrain ? terrain.name : 'Unassigned',
+        `(${row}, ${col})`,
+        isPartyHere ? '- Party here' : '',
+        visibleMarkers.length > 0 ? `- ${visibleMarkers.length} marker(s)` : '',
+        hasLinks ? '- Has links' : '',
+      ].filter(Boolean).join(' ')}
+    >
+      {/* Party indicator */}
+      {isPartyHere && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-3 h-3 rounded-full bg-white shadow-lg shadow-white/50" />
+        </div>
+      )}
+
+      {/* Marker indicator */}
+      {visibleMarkers.length > 0 && !isPartyHere && (
+        <div className="absolute top-0.5 right-0.5">
+          <MapPin className="w-2.5 h-2.5 text-white drop-shadow" />
+        </div>
+      )}
+
+      {/* Link indicator */}
+      {hasLinks && (
+        <div className="absolute bottom-0.5 right-0.5">
+          <LinkIcon className="w-2.5 h-2.5 text-cyan-300 drop-shadow" />
+        </div>
+      )}
+
+      {/* Null terrain indicator for GM */}
+      {isGmMode && !terrain && (
+        <div className="absolute inset-0 flex items-center justify-center opacity-30">
+          <span className="text-[8px] text-gray-400">?</span>
+        </div>
+      )}
+    </div>
+  );
+});

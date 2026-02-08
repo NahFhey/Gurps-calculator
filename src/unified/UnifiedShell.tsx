@@ -22,6 +22,7 @@ import { parseCharacterText } from '../utils/characterImport';
 import { WeatherWidget, TimeDisplay, TimeControls } from '../components/header';
 import { CombatTile } from '../components/combat/CombatTile';
 import { CombatTab } from '../components/CombatTab';
+import { MapPanel } from '../components/map';
 import { PanelLayoutProvider, usePanelLayout } from '../contexts/PanelLayoutContext';
 import {
   useCampaignCharacters,
@@ -68,6 +69,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
         ),
       },
       { id: 'combat', label: 'Combat', content: <CombatTab /> },
+      { id: 'map', label: 'Map', content: <MapPanel /> },
       {
         id: 'manager',
         label: 'Manager',

@@ -50,6 +50,8 @@ import type {
   ActiveWeather
 } from '../types/location';
 import type { DowntimeState } from '../types/downtime';
+import type { MapState } from '../types/map';
+import { initialMapState } from '../types/map';
 import type { ForageZoneProfile, ForageItem, ForagingConfig } from '../types/foraging';
 import { DEFAULT_FORAGING_CONFIG } from '../constants/foraging';
 import {
@@ -65,6 +67,7 @@ import { isAlchemyAction, handleAlchemyAction } from './alchemy';
 import { isCraftingAction, handleCraftingAction } from './crafting';
 import { isCharacterAction, handleCharacterAction } from './character';
 import { isCombatAction, handleCombatAction } from './combat';
+import { isMapAction, handleMapAction, type MapAction } from './map';
 
 export const CAMPAIGN_META = {
   rulesVersion: '1.0.0',
@@ -231,6 +234,7 @@ export type CampaignState = {
   };
   locations: LocationState;
   downtime: DowntimeState;
+  maps: MapState;
 };
 
 export const initialLegacyAppState: LegacyAppState = {};
@@ -452,6 +456,7 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
   },
   locations: createInitialLocationState({ day: 1, slot: 0 }),
   downtime: downtimeInitialState,
+  maps: initialMapState,
 });
 
 export const initialCampaignState: CampaignState = createCampaignState();
@@ -635,7 +640,10 @@ export type CampaignAction =
   | { type: 'addCustomTerrain'; payload: { key: string; label: string } }
   | { type: 'removeCustomTerrain'; payload: string }
   // Downtime actions
-  | { type: 'setDowntime'; payload: DowntimeState };
+  | { type: 'setDowntime'; payload: DowntimeState }
+  // Map actions (bulk setter + delegated map/ prefixed actions)
+  | { type: 'setMaps'; payload: MapState }
+  | MapAction;
 
 export function campaignReducer(state: CampaignState, action: CampaignAction) {
   return produce(state, (draft) => {
@@ -662,6 +670,28 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
     }
     if (isCombatAction(action)) {
       handleCombatAction(draft, action);
+      return;
+    }
+    if (isMapAction(action)) {
+      handleMapAction(draft, action);
+      // After travel execution, advance time by one slot (cross-slice operation)
+      if (action.type === 'map/executeTravel') {
+        const { slot, slotsPerDay, slotLabels, day } = draft.time;
+        const { nextSlot, logEntry } = advanceTimeSlot(
+          slot,
+          { clearAllReservations() {} },
+          { totalSlots: slotsPerDay, slotLabels }
+        );
+        const nextDay = nextSlot < slot ? day + 1 : day;
+        draft.time.slot = nextSlot;
+        draft.time.day = nextDay;
+        draft.time.history.push({ ...logEntry, day: nextDay });
+        draft.logs.entries.unshift(
+          logEvent('time.advance', 'player', {
+            message: `Travel completed — advanced to Day ${nextDay}, Slot ${nextSlot + 1} (${slotLabels[nextSlot]})`
+          })
+        );
+      }
       return;
     }
 
@@ -748,6 +778,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.combat = normalizeCombatReveal(nextState.combat);
         draft.locations = nextState.locations || createInitialLocationState(nextState.time || { day: 1, slot: 0 });
         draft.downtime = nextState.downtime || downtimeInitialState;
+        draft.maps = (nextState as CampaignState).maps || initialMapState;
         draft.checkpoints = preservedCheckpoints;
         return;
       }
@@ -812,6 +843,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.combat = normalizeCombatReveal(nextState.combat);
         draft.locations = nextState.locations || createInitialLocationState(nextState.time || { day: 1, slot: 0 });
         draft.downtime = nextState.downtime || downtimeInitialState;
+        draft.maps = nextState.maps || initialMapState;
         return;
       }
       case 'restoreCheckpoint': {
@@ -840,6 +872,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.combat = restoredSnapshot.combat;
         draft.locations = (restoredSnapshot as CampaignState).locations || createInitialLocationState(restoredSnapshot.time || { day: 1, slot: 0 });
         draft.downtime = (restoredSnapshot as CampaignState).downtime || downtimeInitialState;
+        draft.maps = (restoredSnapshot as CampaignState).maps || initialMapState;
         return;
       }
       case 'advanceTime': {
@@ -1181,6 +1214,13 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
       // ========================================================================
       case 'setDowntime':
         draft.downtime = action.payload;
+        return;
+
+      // ========================================================================
+      // MAP ACTIONS
+      // ========================================================================
+      case 'setMaps':
+        draft.maps = action.payload;
         return;
 
       default:

@@ -54,6 +54,20 @@ import type {
 } from '../types/location';
 import type { DowntimeState } from '../types/downtime';
 import type { ForageZoneProfile } from '../types/foraging';
+import type {
+  MapState,
+  MapId,
+  TileId,
+  TerrainId,
+  MarkerId,
+  LinkId,
+  MapScale,
+  TerrainModel,
+  MarkerModel,
+  LinkModel,
+  TravelWizardState,
+  TravelMode,
+} from '../types/map';
 
 type CampaignStoreValue = {
   state: CampaignState;
@@ -237,6 +251,30 @@ type CampaignStoreValue = {
     removeCustomClimate: (key: string) => void;
     addCustomTerrain: (key: string, label: string) => void;
     removeCustomTerrain: (key: string) => void;
+
+    // Map Actions
+    setMaps: (maps: MapState) => void;
+    mapCreateMap: (params: { name: string; description?: string; scaleMilesPerTile: MapScale; startTerrainId: TerrainId }) => void;
+    mapDeleteMap: (mapId: MapId) => void;
+    mapUpdateMap: (mapId: MapId, changes: { name?: string; description?: string }) => void;
+    mapSetActiveMap: (mapId: MapId | null) => void;
+    mapSetTileTerrain: (mapId: MapId, tileId: TileId, terrainId: TerrainId) => void;
+    mapStampTerrain: (mapId: MapId, tileIds: TileId[], terrainId: TerrainId) => void;
+    mapAddTerrain: (mapId: MapId, terrain: TerrainModel) => void;
+    mapUpdateTerrain: (mapId: MapId, terrainId: TerrainId, changes: Partial<TerrainModel>) => void;
+    mapRemoveTerrain: (mapId: MapId, terrainId: TerrainId) => void;
+    mapAddMarker: (mapId: MapId, marker: MarkerModel) => void;
+    mapUpdateMarker: (mapId: MapId, markerId: MarkerId, changes: Partial<MarkerModel>) => void;
+    mapRemoveMarker: (mapId: MapId, markerId: MarkerId) => void;
+    mapAddLink: (link: LinkModel) => void;
+    mapRemoveLink: (mapId: MapId, linkId: LinkId) => void;
+    mapRevealTiles: (mapId: MapId, tileIds: TileId[]) => void;
+    mapSetPartyTile: (mapId: MapId, tileId: TileId | null) => void;
+    mapSetTravelWizard: (wizard: TravelWizardState) => void;
+    mapClearTravelWizard: () => void;
+    mapExecuteTravel: (params: { mapId: MapId; routeTileIds: TileId[]; destinationTileId: TileId; mode: TravelMode; gmOverride: boolean }) => void;
+    mapSetPendingTerrain: (tileIds: TileId[]) => void;
+    mapClearPendingTerrain: () => void;
   };
 };
 
@@ -506,6 +544,46 @@ export function CampaignStoreProvider({
         dispatch({ type: 'addCustomTerrain', payload: { key, label } }),
       removeCustomTerrain: (key: string) =>
         dispatch({ type: 'removeCustomTerrain', payload: key }),
+
+      // Map Actions
+      setMaps: (maps: MapState) => dispatch({ type: 'setMaps', payload: maps }),
+      mapCreateMap: (params: { name: string; description?: string; scaleMilesPerTile: MapScale; startTerrainId: TerrainId }) =>
+        dispatch({ type: 'map/createMap', payload: params }),
+      mapDeleteMap: (mapId: MapId) => dispatch({ type: 'map/deleteMap', payload: mapId }),
+      mapUpdateMap: (mapId: MapId, changes: { name?: string; description?: string }) =>
+        dispatch({ type: 'map/updateMap', payload: { mapId, changes } }),
+      mapSetActiveMap: (mapId: MapId | null) => dispatch({ type: 'map/setActiveMap', payload: mapId }),
+      mapSetTileTerrain: (mapId: MapId, tileId: TileId, terrainId: TerrainId) =>
+        dispatch({ type: 'map/setTileTerrain', payload: { mapId, tileId, terrainId } }),
+      mapStampTerrain: (mapId: MapId, tileIds: TileId[], terrainId: TerrainId) =>
+        dispatch({ type: 'map/stampTerrain', payload: { mapId, tileIds, terrainId } }),
+      mapAddTerrain: (mapId: MapId, terrain: TerrainModel) =>
+        dispatch({ type: 'map/addTerrain', payload: { mapId, terrain } }),
+      mapUpdateTerrain: (mapId: MapId, terrainId: TerrainId, changes: Partial<TerrainModel>) =>
+        dispatch({ type: 'map/updateTerrain', payload: { mapId, terrainId, changes } }),
+      mapRemoveTerrain: (mapId: MapId, terrainId: TerrainId) =>
+        dispatch({ type: 'map/removeTerrain', payload: { mapId, terrainId } }),
+      mapAddMarker: (mapId: MapId, marker: MarkerModel) =>
+        dispatch({ type: 'map/addMarker', payload: { mapId, marker } }),
+      mapUpdateMarker: (mapId: MapId, markerId: MarkerId, changes: Partial<MarkerModel>) =>
+        dispatch({ type: 'map/updateMarker', payload: { mapId, markerId, changes } }),
+      mapRemoveMarker: (mapId: MapId, markerId: MarkerId) =>
+        dispatch({ type: 'map/removeMarker', payload: { mapId, markerId } }),
+      mapAddLink: (link: LinkModel) => dispatch({ type: 'map/addLink', payload: { link } }),
+      mapRemoveLink: (mapId: MapId, linkId: LinkId) =>
+        dispatch({ type: 'map/removeLink', payload: { mapId, linkId } }),
+      mapRevealTiles: (mapId: MapId, tileIds: TileId[]) =>
+        dispatch({ type: 'map/revealTiles', payload: { mapId, tileIds } }),
+      mapSetPartyTile: (mapId: MapId, tileId: TileId | null) =>
+        dispatch({ type: 'map/setPartyTile', payload: { mapId, tileId } }),
+      mapSetTravelWizard: (wizard: TravelWizardState) =>
+        dispatch({ type: 'map/setTravelWizard', payload: wizard }),
+      mapClearTravelWizard: () => dispatch({ type: 'map/clearTravelWizard' }),
+      mapExecuteTravel: (params: { mapId: MapId; routeTileIds: TileId[]; destinationTileId: TileId; mode: TravelMode; gmOverride: boolean }) =>
+        dispatch({ type: 'map/executeTravel', payload: params }),
+      mapSetPendingTerrain: (tileIds: TileId[]) =>
+        dispatch({ type: 'map/setPendingTerrain', payload: tileIds }),
+      mapClearPendingTerrain: () => dispatch({ type: 'map/clearPendingTerrain' }),
     }),
     []
   );

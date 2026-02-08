@@ -1,8 +1,23 @@
 import storage from '../utils/storage';
 import { createCampaignState, type CampaignState } from '../state/campaignReducer';
 import { generateAllTestSampleData, isStateEmpty } from '../utils/testSampleData';
+import { initialMapState } from '../types/map';
 
 const CAMPAIGN_STORAGE_KEY = 'campaignState';
+
+const serializeMapState = (maps: CampaignState['maps']) => {
+  const serializedMaps: Record<string, unknown> = {};
+  for (const [mapId, map] of Object.entries(maps.mapsById)) {
+    serializedMaps[mapId] = {
+      ...map,
+      revealedTileIds: Array.from(map.revealedTileIds || []),
+    };
+  }
+  return {
+    ...maps,
+    mapsById: serializedMaps,
+  };
+};
 
 const serializeCampaignState = (state: CampaignState) => ({
   ...state,
@@ -17,8 +32,27 @@ const serializeCampaignState = (state: CampaignState) => ({
       revealedTargets: Array.from(state.combat.reveal.revealedTargets || []),
       revealedHP: Array.from(state.combat.reveal.revealedHP || [])
     }
-  }
+  },
+  maps: serializeMapState(state.maps),
 });
+
+const hydrateMapState = (maps: any): CampaignState['maps'] => {
+  if (!maps || !maps.mapsById) {
+    return initialMapState;
+  }
+  const hydratedMaps: Record<string, any> = {};
+  for (const [mapId, map] of Object.entries(maps.mapsById as Record<string, any>)) {
+    hydratedMaps[mapId] = {
+      ...map,
+      revealedTileIds: new Set(map.revealedTileIds || []),
+    };
+  }
+  return {
+    ...initialMapState,
+    ...maps,
+    mapsById: hydratedMaps,
+  };
+};
 
 const hydrateCampaignState = (payload: CampaignState): CampaignState => {
   const base = createCampaignState();
@@ -50,7 +84,8 @@ const hydrateCampaignState = (payload: CampaignState): CampaignState => {
         revealedTargets: new Set(reveal.revealedTargets || []),
         revealedHP: new Set(reveal.revealedHP || [])
       }
-    }
+    },
+    maps: hydrateMapState((payload as any).maps),
   };
 };
 
