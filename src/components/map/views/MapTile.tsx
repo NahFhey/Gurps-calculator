@@ -24,6 +24,8 @@ interface MapTileProps {
   isReachable?: boolean;
   row: number;
   col: number;
+  /** Dynamic tile size in pixels (defaults to TILE_SIZE_PX) */
+  tileSizePx?: number;
 }
 
 export const MapTile = memo(function MapTile({
@@ -43,15 +45,18 @@ export const MapTile = memo(function MapTile({
   isReachable,
   row,
   col,
+  tileSizePx: dynamicTileSizePx,
 }: MapTileProps) {
+  const size = dynamicTileSizePx ?? TILE_SIZE_PX;
+
   // Player view: unrevealed and not visible tiles are void
   if (!isGmMode && !isRevealed && !isVisible) {
     return (
       <div
         className="border border-gray-900/20"
         style={{
-          width: TILE_SIZE_PX,
-          height: TILE_SIZE_PX,
+          width: size,
+          height: size,
           backgroundColor: '#0a0a0a',
         }}
       />
@@ -83,8 +88,8 @@ export const MapTile = memo(function MapTile({
         isPartyHere ? 'ring-2 ring-white z-20' : '',
       ].join(' ')}
       style={{
-        width: TILE_SIZE_PX,
-        height: TILE_SIZE_PX,
+        width: size,
+        height: size,
         backgroundColor: bgColor,
         opacity,
         filter: isVisibleUnexplored ? 'grayscale(0.7)' : undefined,

@@ -219,7 +219,7 @@ export function generateTurnOrder(combatants: Participant[]): string[] {
     return a.name.localeCompare(b.name);
   });
 
-  return sorted.map(c => c.instanceId);
+  return sorted.map(c => c.instanceId || c.id || '');
 }
 
 // Extended log entry for Phase 1 compatibility (has additional legacy fields)

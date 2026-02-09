@@ -5,7 +5,7 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import { useCampaignStore } from '../../state/campaignStore';
-import type { MapScale, TerrainId, TileId, MarkerModel, LinkModel, TravelMode } from '../../types/map';
+import type { MapScale, TerrainId, TerrainModel, TileId, MarkerModel, LinkModel, TravelMode } from '../../types/map';
 import { SCALE_TO_MODES } from '../../constants/map';
 import { findRoute, getReachableTiles } from '../../utils/mapRouter';
 import { getVisibleTileIds } from '../../utils/mapUtils';
@@ -13,13 +13,14 @@ import { MapGrid } from './views/MapGrid';
 import { MapHeader } from './views/MapHeader';
 import { MapCreateDialog } from './views/MapCreateDialog';
 import { TerrainPalette } from './views/TerrainPalette';
+import { TerrainEditor } from './views/TerrainEditor';
 import { MapContextMenu, type ContextMenuState } from './views/MapContextMenu';
 import { MarkerEditor } from './views/MarkerEditor';
 import { LinkEditor } from './views/LinkEditor';
 import { LinksMenu } from './views/LinksMenu';
 import { TravelWizard } from './views/TravelWizard';
 import { TerrainAssignmentModal } from './views/TerrainAssignmentModal';
-import { Map as MapIcon, ExternalLink, Navigation } from 'lucide-react';
+import { Map as MapIcon, ExternalLink } from 'lucide-react';
 
 /** Interaction mode for the map */
 export type MapInteractionMode = 'view' | 'paint' | 'select';
@@ -42,6 +43,12 @@ export function MapPanel() {
   const [markerEditorTileId, setMarkerEditorTileId] = useState<TileId | null>(null);
   const [linkEditorTileId, setLinkEditorTileId] = useState<TileId | null>(null);
   const [showLinksMenu, setShowLinksMenu] = useState(false);
+
+  // Terrain editor state
+  const [showTerrainEditor, setShowTerrainEditor] = useState(false);
+
+  // Party placement state (when party is not yet on this map)
+  const [isPlacingParty, setIsPlacingParty] = useState(false);
 
   // Travel wizard state
   const [showTravelWizard, setShowTravelWizard] = useState(false);
@@ -102,6 +109,14 @@ export function MapPanel() {
     (tileId: TileId, _row: number, _col: number) => {
       if (!activeMap || !maps.activeMapId) return;
 
+      // Party placement mode: click a tile to place the party
+      if (isPlacingParty) {
+        actions.mapSetPartyTile(maps.activeMapId, tileId);
+        actions.mapRevealTiles(maps.activeMapId, [tileId]);
+        setIsPlacingParty(false);
+        return;
+      }
+
       // Travel wizard step 2: click to set destination
       if (showTravelWizard && travelStep === 2 && travelMode && activeMap.partyTileId) {
         if (tileId === activeMap.partyTileId) return; // Can't route to self
@@ -126,7 +141,7 @@ export function MapPanel() {
         });
       }
     },
-    [activeMap, maps.activeMapId, interactionMode, selectedTerrainId, isGmMode, actions, showTravelWizard, travelStep, travelMode]
+    [activeMap, maps.activeMapId, interactionMode, selectedTerrainId, isGmMode, actions, showTravelWizard, travelStep, travelMode, isPlacingParty]
   );
 
   // Tile mouse down (start painting)
@@ -190,6 +205,17 @@ export function MapPanel() {
   const handleSelectTerrain = useCallback((terrainId: TerrainId) => {
     setSelectedTerrainId(terrainId);
   }, []);
+
+  // Add custom terrain
+  const handleAddCustomTerrain = useCallback(
+    (terrain: TerrainModel) => {
+      if (!maps.activeMapId) return;
+      actions.mapAddTerrain(maps.activeMapId, terrain);
+      setSelectedTerrainId(terrain.id);
+      setShowTerrainEditor(false);
+    },
+    [maps.activeMapId, actions]
+  );
 
   // Add marker
   const handleAddMarker = useCallback((tileId: TileId) => {
@@ -282,6 +308,8 @@ export function MapPanel() {
           isGmMode={isGmMode}
           onSelectMap={handleSelectMap}
           onCreateMap={() => setShowCreateDialog(true)}
+          hasPartyOnMap={false}
+          showTravelWizard={false}
         />
         <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-4">
           <MapIcon className="w-12 h-12 opacity-30" />
@@ -313,6 +341,12 @@ export function MapPanel() {
         isGmMode={isGmMode}
         onSelectMap={handleSelectMap}
         onCreateMap={() => setShowCreateDialog(true)}
+        hasPartyOnMap={!!activeMap.partyTileId}
+        showTravelWizard={showTravelWizard}
+        onTravel={handleOpenTravel}
+        onPlaceParty={() => setIsPlacingParty(true)}
+        isPlacingParty={isPlacingParty}
+        onCancelPlaceParty={() => setIsPlacingParty(false)}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -324,6 +358,7 @@ export function MapPanel() {
             interactionMode={interactionMode}
             onSelectTerrain={handleSelectTerrain}
             onSetMode={setInteractionMode}
+            onAddTerrain={() => setShowTerrainEditor(true)}
           />
         )}
 
@@ -361,17 +396,6 @@ export function MapPanel() {
           />
         )}
       </div>
-
-      {/* Travel button */}
-      {activeMap.partyTileId && !showTravelWizard && (
-        <button
-          className="absolute bottom-4 left-4 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-green-700 hover:bg-green-600 text-sm font-medium text-white shadow-lg transition-colors z-30"
-          onClick={handleOpenTravel}
-        >
-          <Navigation className="w-4 h-4" />
-          Travel
-        </button>
-      )}
 
       {/* Links button (when party tile has links) */}
       {partyTileLinks.length > 0 && !showTravelWizard && (
@@ -433,6 +457,14 @@ export function MapPanel() {
         <MapCreateDialog
           onConfirm={handleCreateMap}
           onCancel={() => setShowCreateDialog(false)}
+        />
+      )}
+
+      {/* Terrain editor dialog */}
+      {showTerrainEditor && (
+        <TerrainEditor
+          onConfirm={handleAddCustomTerrain}
+          onCancel={() => setShowTerrainEditor(false)}
         />
       )}
 
