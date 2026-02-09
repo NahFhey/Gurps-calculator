@@ -648,7 +648,7 @@ export function useLegacyAppState() {
 
 export function useCampaignCharacters() {
   const { state } = useCampaignStore();
-  return Object.values(state.entities.characters);
+  return useMemo(() => Object.values(state.entities.characters), [state.entities.characters]);
 }
 
 export function useSelectedCharacterId() {

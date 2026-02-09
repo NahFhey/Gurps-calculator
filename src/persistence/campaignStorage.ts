@@ -2,6 +2,7 @@ import storage from '../utils/storage';
 import { createCampaignState, type CampaignState } from '../state/campaignReducer';
 import { generateAllTestSampleData, isStateEmpty } from '../utils/testSampleData';
 import { initialMapState } from '../types/map';
+import { logger } from '../utils/logger';
 
 const CAMPAIGN_STORAGE_KEY = 'campaignState';
 
@@ -107,7 +108,7 @@ function injectTestSampleData(state: CampaignState): CampaignState {
     return state;
   }
 
-  console.log('[CampaignStorage] Empty state detected - loading test sample data...');
+  logger.log('[CampaignStorage] Empty state detected - loading test sample data...');
   const sampleData = generateAllTestSampleData();
 
   return {
@@ -145,7 +146,7 @@ export async function loadCampaignState(): Promise<CampaignState> {
     const hydratedState = hydrateCampaignState(parsed);
     return injectTestSampleData(hydratedState);
   } catch (error) {
-    console.error('Failed to parse campaign state, using defaults.', error);
+    logger.error('Failed to parse campaign state, using defaults.', error);
     const freshState = createCampaignState();
     return injectTestSampleData(freshState);
   }

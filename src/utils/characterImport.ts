@@ -77,7 +77,7 @@ export function parseCharacterText(text: string): Character {
   const workSkills = syncWorkSkillsFromGCS(gcsData);
 
   return {
-    id: `char-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    id: `char-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
     name,
     isPlayer: true,
     work: {
@@ -276,7 +276,7 @@ function parseTraits(
       }
 
       traits.push({
-        id: `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: `${type}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
         type,
         name,
         specialization,
@@ -338,7 +338,7 @@ function parseSkills(
       }
 
       skills.push({
-        id: `skill-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: `skill-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
         name: fullName,
         specialization,
         techLevel,
@@ -385,7 +385,7 @@ function parseSpells(line: string, _iq: number): Spell[] {
       const duration = match[9].trim();
 
       spells.push({
-        id: `spell-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: `spell-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
         name,
         level,
         attribute: 'IQ',
@@ -428,7 +428,7 @@ function parseEquipment(line: string): Equipment[] {
       const weight = parseFloat(match[4]);
 
       equipment.push({
-        id: `equip-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: `equip-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
         name,
         quantity,
         cost,

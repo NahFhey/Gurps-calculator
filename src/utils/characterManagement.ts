@@ -11,7 +11,7 @@ import { createDefaultGCSData, syncWorkSkillsFromGCS } from '../types/characterS
  * Generate a unique character ID
  */
 function generateCharacterId(): string {
-  return `char-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return `char-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 }
 
 /**
@@ -125,7 +125,7 @@ export function createCharacterFromTemplate(templateType: CharacterTemplateType)
  */
 export function duplicateCharacter(character: Character): Character {
   // Deep clone the character
-  const cloned = JSON.parse(JSON.stringify(character)) as Character;
+  const cloned = structuredClone(character);
 
   // Generate new ID
   cloned.id = generateCharacterId();
@@ -146,7 +146,7 @@ export function duplicateCharacter(character: Character): Character {
  */
 function regenerateGCSDataIds(gcsData: GCSCharacterData): void {
   const generateId = (prefix: string) =>
-    `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
   // Regenerate trait IDs
   for (const advantage of gcsData.advantages) {

@@ -276,6 +276,9 @@ export const logEvent = (
 
 const createCheckpointSnapshot = (state: CampaignState): CampaignSnapshot => {
   const { checkpoints, ...rest } = state;
+  // Note: JSON round-trip is used here instead of structuredClone because this
+  // function is called inside Immer's produce(), where objects are Proxy-wrapped
+  // drafts that structuredClone cannot handle.
   return JSON.parse(JSON.stringify(rest)) as CampaignSnapshot;
 };
 
@@ -891,6 +894,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         if (!checkpoint) {
           return;
         }
+        // JSON round-trip needed because checkpoint.snapshot is Proxy-wrapped by Immer
         const restoredSnapshot = JSON.parse(JSON.stringify(checkpoint.snapshot)) as CampaignSnapshot;
         const rollbackEntry = logEvent('campaign.rollback', 'player', {
           message: 'Rollback occurred.'
@@ -1083,11 +1087,6 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         if (draft.locations.currentLocationId === locationId) {
           const remainingIds = Object.keys(draft.locations.locations);
           draft.locations.currentLocationId = remainingIds.length > 0 ? remainingIds[0] : null;
-        }
-        // Remove any weather tables associated with this location
-        for (const tableId of Object.keys(draft.locations.weatherTables)) {
-          const table = draft.locations.weatherTables[tableId];
-          // Note: weather tables don't have locationId, they're referenced by location.weatherTableId
         }
         return;
       }
