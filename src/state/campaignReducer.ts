@@ -49,12 +49,28 @@ import type {
   TravelAction,
   ActiveWeather
 } from '../types/location';
+import { TERRAIN_LABELS } from '../types/location';
+import type { LocationModifiers, WeatherEffects } from '../types/location';
+import type { DowntimeState } from '../types/downtime';
+import type { MapState } from '../types/map';
+import { initialMapState } from '../types/map';
+import type { ForageZoneProfile, ForageItem, ForagingConfig } from '../types/foraging';
+import { DEFAULT_FORAGING_CONFIG } from '../constants/foraging';
 import {
   createInitialLocationState,
   generateWeather,
   isWeatherExpired,
-  getCurrentLocation
+  getTerrainModifiers
 } from '../utils/weatherSystem';
+import { downtimeInitialState, DOWNTIME_SCHEMA_VERSION } from './downtime';
+import { isInventoryAction, handleInventoryAction } from './inventory';
+import { isGatheringAction, handleGatheringAction } from './gathering';
+import { isAlchemyAction, handleAlchemyAction } from './alchemy';
+import { isCraftingAction, handleCraftingAction } from './crafting';
+import { isCharacterAction, handleCharacterAction } from './character';
+import { isCombatAction, handleCombatAction } from './combat';
+import { isMapAction, handleMapAction, type MapAction } from './map';
+import { resolveLocationTerrain } from '../utils/mapUtils';
 
 export const CAMPAIGN_META = {
   rulesVersion: '1.0.0',
@@ -65,10 +81,13 @@ enableMapSet();
 
 export type LegacyAppState = Record<string, unknown>;
 
+export type CharacterPanelView = 'sheet' | 'skills' | 'equipment' | 'inventory';
+
 export type CampaignState = {
   ui: {
     activeModule: string;
     selectedCharacterId: string | null;
+    characterPanelView: CharacterPanelView;
     gmModeEnabled: boolean;
     gmSessionUnlocked: boolean;
     debugMode: boolean;
@@ -83,6 +102,7 @@ export type CampaignState = {
   meta: {
     rulesVersion: string;
     schemaVersion: string;
+    downtimeSchemaVersion: number;
   };
   entities: {
     // Shared characters (merged workers + party characters)
@@ -117,6 +137,11 @@ export type CampaignState = {
     gatheringBait: Record<Id, GatheringBait>;
     gatheringCategories: Record<Id, GatheringCategory>;
     gatheringItems: Record<Id, GatheringItem>;
+
+    // Foraging system (revamped)
+    forageZoneProfiles: Record<Id, ForageZoneProfile>;
+    forageItems: Record<Id, ForageItem>;
+    foragingConfig: ForagingConfig;
 
     // Combat system
     combatCharacters: Record<Id, CombatCharacter>;
@@ -203,8 +228,16 @@ export type CampaignState = {
       revealedHP: Set<string>;
       revealedDefenseValues: Record<string, { dodge?: number }>;
     };
+    // New Phase 5 reveal state (per-instance reveal configuration)
+    revealState: {
+      version?: number;
+      combatId?: string;
+      byInstanceId: Record<string, unknown>;
+    } | null;
   };
   locations: LocationState;
+  downtime: DowntimeState;
+  maps: MapState;
 };
 
 export const initialLegacyAppState: LegacyAppState = {};
@@ -274,6 +307,7 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
   ui: {
     activeModule: 'inventory',
     selectedCharacterId: null,
+    characterPanelView: 'sheet',
     gmModeEnabled: false,
     gmSessionUnlocked: false,
     debugMode: false,
@@ -282,7 +316,8 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
   },
   meta: {
     rulesVersion: CAMPAIGN_META.rulesVersion,
-    schemaVersion: CAMPAIGN_META.schemaVersion
+    schemaVersion: CAMPAIGN_META.schemaVersion,
+    downtimeSchemaVersion: DOWNTIME_SCHEMA_VERSION,
   },
   entities: {
     // Characters (from Party Tool initially)
@@ -331,6 +366,11 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
     gatheringBait: {},
     gatheringCategories: {},
     gatheringItems: {},
+
+    // Foraging system (revamped)
+    forageZoneProfiles: {},
+    forageItems: {},
+    foragingConfig: { ...DEFAULT_FORAGING_CONFIG },
 
     // Combat system
     combatCharacters: {},
@@ -414,9 +454,12 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
       revealedTargets: new Set(),
       revealedHP: new Set(),
       revealedDefenseValues: {}
-    }
+    },
+    revealState: null
   },
-  locations: createInitialLocationState({ day: 1, slot: 0 })
+  locations: createInitialLocationState({ day: 1, slot: 0 }),
+  downtime: downtimeInitialState,
+  maps: initialMapState,
 });
 
 export const initialCampaignState: CampaignState = createCampaignState();
@@ -424,6 +467,7 @@ export const initialCampaignState: CampaignState = createCampaignState();
 export type CampaignAction =
   | { type: 'setActiveModule'; payload: string }
   | { type: 'selectCharacter'; payload: string | null }
+  | { type: 'setCharacterPanelView'; payload: CharacterPanelView }
   | { type: 'toggleGmMode' }
   | { type: 'setGmMode'; payload: boolean }
   | { type: 'setGmUnlocked'; payload: boolean }
@@ -532,6 +576,19 @@ export type CampaignAction =
   // Gathering Item actions
   | { type: 'setGatheringItems'; payload: Record<Id, GatheringItem> }
   | { type: 'addGatheringItem'; payload: GatheringItem }
+  // Forage Zone Profile actions
+  | { type: 'setForageZoneProfiles'; payload: Record<Id, ForageZoneProfile> }
+  | { type: 'addForageZoneProfile'; payload: ForageZoneProfile }
+  | { type: 'updateForageZoneProfile'; payload: { id: Id; changes: Partial<ForageZoneProfile> } }
+  | { type: 'removeForageZoneProfile'; payload: Id }
+  // Forage Item actions
+  | { type: 'setForageItems'; payload: Record<Id, ForageItem> }
+  | { type: 'addForageItem'; payload: ForageItem }
+  | { type: 'updateForageItem'; payload: { id: Id; changes: Partial<ForageItem> } }
+  | { type: 'removeForageItem'; payload: Id }
+  // Foraging Config actions
+  | { type: 'setForagingConfig'; payload: ForagingConfig }
+  | { type: 'updateForagingConfig'; payload: Partial<ForagingConfig> }
   // Day Planner actions
   | { type: 'setTimeSlots'; payload: TimeSlot[] }
   | { type: 'addTaskAssignment'; payload: TaskAssignment }
@@ -552,6 +609,8 @@ export type CampaignAction =
   // Combat Item actions
   | { type: 'setCombatItems'; payload: Record<Id, CombatItem> }
   | { type: 'addCombatItem'; payload: CombatItem }
+  // Combat Reveal State action (Phase 5)
+  | { type: 'setCombatRevealState'; payload: { version?: number; combatId?: string; byInstanceId: Record<string, unknown> } | null }
   // Kitchen actions
   | { type: 'setKitchens'; payload: Record<Id, Kitchen> }
   | { type: 'addKitchen'; payload: Kitchen }
@@ -577,16 +636,116 @@ export type CampaignAction =
   | { type: 'addTravel'; payload: TravelAction }
   | { type: 'updateTravel'; payload: { id: Id; changes: Partial<TravelAction> } }
   | { type: 'completeTravel'; payload: Id }
-  | { type: 'cancelTravel'; payload: Id };
+  | { type: 'cancelTravel'; payload: Id }
+  // Custom climate/terrain actions
+  | { type: 'addCustomClimate'; payload: { key: string; label: string } }
+  | { type: 'removeCustomClimate'; payload: string }
+  | { type: 'addCustomTerrain'; payload: { key: string; label: string } }
+  | { type: 'removeCustomTerrain'; payload: string }
+  // Downtime actions
+  | { type: 'setDowntime'; payload: DowntimeState }
+  // Map actions (bulk setter + delegated map/ prefixed actions)
+  | { type: 'setMaps'; payload: MapState }
+  | { type: 'setTerrainModifierOverrides'; payload: Record<string, Partial<LocationModifiers>> }
+  | { type: 'setWeatherEffectOverrides'; payload: Record<string, Partial<WeatherEffects>> }
+  | MapAction;
 
 export function campaignReducer(state: CampaignState, action: CampaignAction) {
   return produce(state, (draft) => {
+    // Delegate to domain-specific reducers first
+    if (isInventoryAction(action)) {
+      handleInventoryAction(draft, action);
+      return;
+    }
+    if (isGatheringAction(action)) {
+      handleGatheringAction(draft, action);
+      return;
+    }
+    if (isAlchemyAction(action)) {
+      handleAlchemyAction(draft, action);
+      return;
+    }
+    if (isCraftingAction(action)) {
+      handleCraftingAction(draft, action);
+      return;
+    }
+    if (isCharacterAction(action)) {
+      handleCharacterAction(draft, action);
+      return;
+    }
+    if (isCombatAction(action)) {
+      handleCombatAction(draft, action);
+      return;
+    }
+    if (isMapAction(action)) {
+      handleMapAction(draft, action);
+
+      // Sync location terrain from map tile after party movement (cross-slice)
+      if (action.type === 'map/executeTravel' || action.type === 'map/setPartyTile') {
+        const destinationTileId = action.type === 'map/executeTravel'
+          ? action.payload.destinationTileId
+          : action.payload.tileId;
+        const mapId = action.payload.mapId;
+        const map = draft.maps.mapsById[mapId];
+        const currentLocId = draft.locations.currentLocationId;
+
+        if (map && destinationTileId && currentLocId) {
+          const location = draft.locations.locations[currentLocId];
+          if (location) {
+            const newTerrain = resolveLocationTerrain(map as any, destinationTileId);
+            if (newTerrain !== location.terrain) {
+              const oldLabel = TERRAIN_LABELS[location.terrain] ?? location.terrain;
+              const newLabel = TERRAIN_LABELS[newTerrain] ?? newTerrain;
+              location.terrain = newTerrain;
+              // Auto-set location modifiers from terrain defaults (or GM overrides)
+              const terrainMods = getTerrainModifiers(
+                newTerrain,
+                draft.locations.terrainModifierOverrides
+              );
+              location.modifiers = terrainMods;
+              location.modifiedAt = Date.now();
+              draft.logs.entries.unshift(
+                logEvent('terrain.changed', 'player', {
+                  message: `Terrain changed from ${oldLabel} to ${newLabel}`
+                })
+              );
+            }
+          }
+        }
+      }
+
+      // After travel execution, advance time by one slot (cross-slice operation)
+      if (action.type === 'map/executeTravel') {
+        const { slot, slotsPerDay, slotLabels, day } = draft.time;
+        const { nextSlot, logEntry } = advanceTimeSlot(
+          slot,
+          { clearAllReservations() {} },
+          { totalSlots: slotsPerDay, slotLabels }
+        );
+        const nextDay = nextSlot < slot ? day + 1 : day;
+        draft.time.slot = nextSlot;
+        draft.time.day = nextDay;
+        draft.time.history.push({ ...logEntry, day: nextDay });
+        draft.logs.entries.unshift(
+          logEvent('time.advance', 'player', {
+            message: `Travel completed — advanced to Day ${nextDay}, Slot ${nextSlot + 1} (${slotLabels[nextSlot]})`
+          })
+        );
+      }
+      return;
+    }
+
     switch (action.type) {
       case 'setActiveModule':
         draft.ui.activeModule = action.payload;
         return;
       case 'selectCharacter':
         draft.ui.selectedCharacterId = action.payload;
+        // Reset to sheet view when selecting a different character
+        draft.ui.characterPanelView = 'sheet';
+        return;
+      case 'setCharacterPanelView':
+        draft.ui.characterPanelView = action.payload;
         return;
       case 'toggleGmMode':
         draft.ui.gmModeEnabled = !draft.ui.gmModeEnabled;
@@ -658,6 +817,8 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.logs = nextState.logs;
         draft.combat = normalizeCombatReveal(nextState.combat);
         draft.locations = nextState.locations || createInitialLocationState(nextState.time || { day: 1, slot: 0 });
+        draft.downtime = nextState.downtime || downtimeInitialState;
+        draft.maps = (nextState as CampaignState).maps || initialMapState;
         draft.checkpoints = preservedCheckpoints;
         return;
       }
@@ -721,6 +882,8 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.checkpoints = nextState.checkpoints;
         draft.combat = normalizeCombatReveal(nextState.combat);
         draft.locations = nextState.locations || createInitialLocationState(nextState.time || { day: 1, slot: 0 });
+        draft.downtime = nextState.downtime || downtimeInitialState;
+        draft.maps = nextState.maps || initialMapState;
         return;
       }
       case 'restoreCheckpoint': {
@@ -748,6 +911,8 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         };
         draft.combat = restoredSnapshot.combat;
         draft.locations = (restoredSnapshot as CampaignState).locations || createInitialLocationState(restoredSnapshot.time || { day: 1, slot: 0 });
+        draft.downtime = (restoredSnapshot as CampaignState).downtime || downtimeInitialState;
+        draft.maps = (restoredSnapshot as CampaignState).maps || initialMapState;
         return;
       }
       case 'advanceTime': {
@@ -798,7 +963,8 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
             const result = generateWeather({
               location: location as Location,
               weatherTable,
-              currentTime: newTime
+              currentTime: newTime,
+              weatherEffectOverrides: draft.locations.weatherEffectOverrides,
             });
             location.currentWeather = result.weather;
             location.modifiedAt = Date.now();
@@ -817,312 +983,9 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
       }
 
       // ========================================================================
-      // CHARACTER ACTIONS
+      // CHARACTER, INVENTORY, GATHERING, ALCHEMY, CRAFTING ACTIONS
+      // Delegated to domain-specific reducers (see isXxxAction checks above)
       // ========================================================================
-      case 'addCharacter':
-        draft.entities.characters[action.payload.id] = action.payload;
-        return;
-      case 'updateCharacter':
-        if (draft.entities.characters[action.payload.id]) {
-          draft.entities.characters[action.payload.id] = {
-            ...draft.entities.characters[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'removeCharacter':
-        delete draft.entities.characters[action.payload];
-        return;
-      case 'setCharacters':
-        draft.entities.characters = action.payload;
-        return;
-
-      // ========================================================================
-      // MATERIAL ACTIONS
-      // ========================================================================
-      case 'addMaterial':
-        draft.entities.materials[action.payload.id] = action.payload;
-        return;
-      case 'updateMaterial':
-        if (draft.entities.materials[action.payload.id]) {
-          draft.entities.materials[action.payload.id] = {
-            ...draft.entities.materials[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'removeMaterial':
-        delete draft.entities.materials[action.payload];
-        return;
-      case 'consumeMaterials':
-        action.payload.forEach(({ id, amount }) => {
-          if (draft.entities.materials[id]) {
-            draft.entities.materials[id].quantity -= amount;
-            if (draft.entities.materials[id].quantity <= 0) {
-              delete draft.entities.materials[id];
-            }
-          }
-        });
-        return;
-      case 'setMaterials':
-        draft.entities.materials = action.payload;
-        return;
-
-      // ========================================================================
-      // FOOD ACTIONS
-      // ========================================================================
-      case 'addFood':
-        draft.entities.foods[action.payload.id] = action.payload;
-        return;
-      case 'updateFood':
-        if (draft.entities.foods[action.payload.id]) {
-          draft.entities.foods[action.payload.id] = {
-            ...draft.entities.foods[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'removeFood':
-        delete draft.entities.foods[action.payload];
-        return;
-      case 'consumeFoods':
-        action.payload.forEach(({ id, amount }) => {
-          if (draft.entities.foods[id]) {
-            draft.entities.foods[id].quantity -= amount;
-            if (draft.entities.foods[id].quantity <= 0) {
-              delete draft.entities.foods[id];
-            }
-          }
-        });
-        return;
-      case 'setFoods':
-        draft.entities.foods = action.payload;
-        return;
-
-      // ========================================================================
-      // RECIPE ACTIONS
-      // ========================================================================
-      case 'addRecipe':
-        draft.entities.recipes[action.payload.id] = action.payload;
-        return;
-      case 'updateRecipe':
-        if (draft.entities.recipes[action.payload.id]) {
-          draft.entities.recipes[action.payload.id] = {
-            ...draft.entities.recipes[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'removeRecipe':
-        delete draft.entities.recipes[action.payload];
-        return;
-      case 'setRecipes':
-        draft.entities.recipes = action.payload;
-        return;
-
-      // ========================================================================
-      // FOOD TYPE & MATERIAL TYPE ACTIONS
-      // ========================================================================
-      case 'setFoodTypes':
-        draft.entities.foodTypes = action.payload;
-        return;
-      case 'addFoodType':
-        draft.entities.foodTypes.push(action.payload);
-        return;
-      case 'setMaterialTypes':
-        draft.entities.materialTypes = action.payload;
-        return;
-      case 'addMaterialType':
-        draft.entities.materialTypes.push(action.payload);
-        return;
-
-      // ========================================================================
-      // CRAFT ACTIONS
-      // ========================================================================
-      case 'addCraft':
-        draft.entities.crafts[action.payload.id] = action.payload;
-        return;
-      case 'updateCraft':
-        if (draft.entities.crafts[action.payload.id]) {
-          draft.entities.crafts[action.payload.id] = {
-            ...draft.entities.crafts[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'removeCraft':
-        delete draft.entities.crafts[action.payload];
-        return;
-      case 'completeCraft':
-        if (draft.entities.crafts[action.payload.id]) {
-          draft.entities.crafts[action.payload.id].phase = 'complete';
-          draft.entities.crafts[action.payload.id].finalStats = action.payload.finalStats;
-        }
-        return;
-      case 'setCrafts':
-        draft.entities.crafts = action.payload;
-        return;
-
-      // ========================================================================
-      // CRAFT DESIGN ACTIONS
-      // ========================================================================
-      case 'addCraftDesign':
-        draft.entities.craftDesigns[action.payload.id] = action.payload;
-        return;
-      case 'updateCraftDesign':
-        if (draft.entities.craftDesigns[action.payload.id]) {
-          draft.entities.craftDesigns[action.payload.id] = {
-            ...draft.entities.craftDesigns[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'removeCraftDesign':
-        delete draft.entities.craftDesigns[action.payload];
-        return;
-      case 'setCraftDesigns':
-        draft.entities.craftDesigns = action.payload;
-        return;
-
-      // ========================================================================
-      // CUSTOM TEMPLATES ACTIONS
-      // ========================================================================
-      case 'setCustomTemplates':
-        draft.entities.customTemplates = action.payload;
-        return;
-      case 'addCustomTemplate':
-        draft.entities.customTemplates[action.payload.category][action.payload.templateName] = action.payload.template;
-        return;
-
-      // ========================================================================
-      // ALCHEMY ACTIONS
-      // ========================================================================
-      case 'addAlchemyReagent':
-        draft.entities.alchemyReagents[action.payload.id] = action.payload;
-        return;
-      case 'updateAlchemyReagent':
-        if (draft.entities.alchemyReagents[action.payload.id]) {
-          draft.entities.alchemyReagents[action.payload.id] = {
-            ...draft.entities.alchemyReagents[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'removeAlchemyReagent':
-        delete draft.entities.alchemyReagents[action.payload];
-        return;
-      case 'setAlchemyReagents':
-        draft.entities.alchemyReagents = action.payload;
-        return;
-      case 'addAlchemyFormula':
-        draft.entities.alchemyFormulas[action.payload.id] = action.payload;
-        return;
-      case 'updateAlchemyFormula':
-        if (draft.entities.alchemyFormulas[action.payload.id]) {
-          draft.entities.alchemyFormulas[action.payload.id] = {
-            ...draft.entities.alchemyFormulas[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'removeAlchemyFormula':
-        delete draft.entities.alchemyFormulas[action.payload];
-        return;
-      case 'setAlchemyFormulas':
-        draft.entities.alchemyFormulas = action.payload;
-        return;
-      case 'addAlchemyBatch':
-        draft.entities.alchemyBatches[action.payload.id] = action.payload;
-        return;
-      case 'updateAlchemyBatch':
-        if (draft.entities.alchemyBatches[action.payload.id]) {
-          draft.entities.alchemyBatches[action.payload.id] = {
-            ...draft.entities.alchemyBatches[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'removeAlchemyBatch':
-        delete draft.entities.alchemyBatches[action.payload];
-        return;
-      case 'setAlchemyBatches':
-        draft.entities.alchemyBatches = action.payload;
-        return;
-      case 'setAlchemyLabs':
-        draft.entities.alchemyLabs = action.payload;
-        return;
-      case 'addAlchemyLab':
-        draft.entities.alchemyLabs[action.payload.id] = action.payload;
-        return;
-      case 'updateAlchemySettings':
-        draft.entities.alchemySettings = {
-          ...draft.entities.alchemySettings,
-          ...action.payload
-        };
-        return;
-
-      // ========================================================================
-      // GATHERING ACTIONS
-      // ========================================================================
-      case 'setGatheringSpecies':
-        draft.entities.gatheringSpecies = action.payload;
-        return;
-      case 'addGatheringSpecies':
-        draft.entities.gatheringSpecies[action.payload.id] = action.payload;
-        return;
-      case 'setGatheringTools':
-        draft.entities.gatheringTools = action.payload;
-        return;
-      case 'addGatheringTool':
-        draft.entities.gatheringTools[action.payload.id] = action.payload;
-        return;
-      case 'setGatheringTables':
-        draft.entities.gatheringTables = action.payload;
-        return;
-      case 'addGatheringTable':
-        draft.entities.gatheringTables[action.payload.id] = action.payload;
-        return;
-      case 'setGatheringEnvironments':
-        draft.entities.gatheringEnvironments = action.payload;
-        return;
-      case 'addGatheringEnvironment':
-        draft.entities.gatheringEnvironments[action.payload.id] = action.payload;
-        return;
-      case 'addGatheringSession':
-        draft.entities.gatheringSessions[action.payload.id] = action.payload;
-        return;
-      case 'updateGatheringSession':
-        if (draft.entities.gatheringSessions[action.payload.id]) {
-          draft.entities.gatheringSessions[action.payload.id] = {
-            ...draft.entities.gatheringSessions[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'setGatheringSessions':
-        draft.entities.gatheringSessions = action.payload;
-        return;
-      case 'setGatheringDailyEvents':
-        draft.entities.gatheringDailyEvents = action.payload;
-        return;
-      case 'setGatheringBait':
-        draft.entities.gatheringBait = action.payload;
-        return;
-      case 'addGatheringBait':
-        draft.entities.gatheringBait[action.payload.id] = action.payload;
-        return;
-      case 'setGatheringCategories':
-        draft.entities.gatheringCategories = action.payload;
-        return;
-      case 'addGatheringCategory':
-        draft.entities.gatheringCategories[action.payload.id] = action.payload;
-        return;
-      case 'setGatheringItems':
-        draft.entities.gatheringItems = action.payload;
-        return;
-      case 'addGatheringItem':
-        draft.entities.gatheringItems[action.payload.id] = action.payload;
-        return;
 
       // ========================================================================
       // DAY PLANNER ACTIONS
@@ -1149,53 +1012,17 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
       case 'setPendingDayLedger':
         draft.dayPlanner.pendingDayLedger = action.payload;
         return;
+      case 'setDayPlannerSlot':
+        draft.dayPlanner.currentSlot = action.payload;
+        return;
+      case 'setTimeDay':
+        draft.time.day = action.payload;
+        return;
 
       // ========================================================================
       // COMBAT ACTIONS
+      // Delegated to combat reducer (see isCombatAction check above)
       // ========================================================================
-      case 'addCombatCharacter':
-        draft.entities.combatCharacters[action.payload.id] = action.payload;
-        return;
-      case 'updateCombatCharacter':
-        if (draft.entities.combatCharacters[action.payload.id]) {
-          draft.entities.combatCharacters[action.payload.id] = {
-            ...draft.entities.combatCharacters[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'removeCombatCharacter':
-        delete draft.entities.combatCharacters[action.payload];
-        return;
-      case 'setCombatCharacters':
-        draft.entities.combatCharacters = action.payload;
-        return;
-      case 'setCombatActive':
-        draft.combat.activeSession = action.payload;
-        return;
-      case 'updateCombatActive':
-        if (draft.combat.activeSession) {
-          draft.combat.activeSession = {
-            ...draft.combat.activeSession,
-            ...action.payload
-          };
-        }
-        return;
-      case 'setCombatHistory':
-        draft.entities.combatHistory = action.payload;
-        return;
-      case 'setCombatTombstones':
-        draft.entities.combatTombstones = action.payload;
-        return;
-      case 'setCombatRulesPreset':
-        draft.combat.rulesPreset = action.payload;
-        return;
-      case 'setCombatItems':
-        draft.entities.combatItems = action.payload;
-        return;
-      case 'addCombatItem':
-        draft.entities.combatItems[action.payload.id] = action.payload;
-        return;
 
       // ========================================================================
       // CONFIG ACTIONS (Kitchens, Cooking Skills, Effect Family Map)
@@ -1206,6 +1033,9 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
       case 'addKitchen':
         draft.entities.kitchens[action.payload.id] = action.payload;
         return;
+      case 'setFacilities':
+        draft.entities.facilities = action.payload;
+        return;
       case 'setCookingSkills':
         draft.entities.cookingSkills = action.payload;
         return;
@@ -1215,21 +1045,8 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
 
       // ========================================================================
       // INVENTORY ACTIONS
+      // Delegated to inventory reducer (see isInventoryAction check above)
       // ========================================================================
-      case 'addInventory':
-        draft.entities.inventories[action.payload.id] = action.payload;
-        return;
-      case 'updateInventory':
-        if (draft.entities.inventories[action.payload.id]) {
-          draft.entities.inventories[action.payload.id] = {
-            ...draft.entities.inventories[action.payload.id],
-            ...action.payload.changes
-          };
-        }
-        return;
-      case 'setInventories':
-        draft.entities.inventories = action.payload;
-        return;
 
       // ========================================================================
       // LOCATION & WEATHER ACTIONS
@@ -1306,7 +1123,8 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
           const result = generateWeather({
             location: location as Location,
             weatherTable,
-            currentTime
+            currentTime,
+            weatherEffectOverrides: draft.locations.weatherEffectOverrides,
           });
           location.currentWeather = result.weather;
           location.modifiedAt = Date.now();
@@ -1389,6 +1207,71 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         }
         return;
       }
+
+      // ========================================================================
+      // CUSTOM CLIMATE/TERRAIN ACTIONS
+      // ========================================================================
+      case 'addCustomClimate': {
+        if (!draft.locations.customClimates) {
+          draft.locations.customClimates = [];
+        }
+        // Prevent duplicates
+        if (!draft.locations.customClimates.some(c => c.key === action.payload.key)) {
+          draft.locations.customClimates.push(action.payload);
+        }
+        return;
+      }
+
+      case 'removeCustomClimate': {
+        if (draft.locations.customClimates) {
+          draft.locations.customClimates = draft.locations.customClimates.filter(
+            c => c.key !== action.payload
+          );
+        }
+        return;
+      }
+
+      case 'addCustomTerrain': {
+        if (!draft.locations.customTerrains) {
+          draft.locations.customTerrains = [];
+        }
+        // Prevent duplicates
+        if (!draft.locations.customTerrains.some(t => t.key === action.payload.key)) {
+          draft.locations.customTerrains.push(action.payload);
+        }
+        return;
+      }
+
+      case 'removeCustomTerrain': {
+        if (draft.locations.customTerrains) {
+          draft.locations.customTerrains = draft.locations.customTerrains.filter(
+            t => t.key !== action.payload
+          );
+        }
+        return;
+      }
+
+      case 'setTerrainModifierOverrides':
+        draft.locations.terrainModifierOverrides = action.payload;
+        return;
+
+      case 'setWeatherEffectOverrides':
+        draft.locations.weatherEffectOverrides = action.payload;
+        return;
+
+      // ========================================================================
+      // DOWNTIME ACTIONS
+      // ========================================================================
+      case 'setDowntime':
+        draft.downtime = action.payload;
+        return;
+
+      // ========================================================================
+      // MAP ACTIONS
+      // ========================================================================
+      case 'setMaps':
+        draft.maps = action.payload;
+        return;
 
       default:
         return;

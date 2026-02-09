@@ -40,10 +40,12 @@ interface Defense {
 
 interface Participant {
   instanceId: string;
+  id?: string;  // Alias for instanceId (some components use 'id')
   name: string;
   category: string;
   currentHP?: number;
   hp?: number;
+  st?: number;  // Strength attribute for damage calculations
   isDead?: boolean;
   isUnconscious?: boolean;
   isStunned?: boolean;
@@ -55,6 +57,7 @@ interface Participant {
   dodge?: number | { mode: string; value?: number };
   parry?: number | { mode: string; value?: number };
   block?: number | { mode: string; value?: number };
+  conditions?: ConditionInstance[];
 }
 
 interface ConditionInstance {
@@ -89,9 +92,20 @@ interface TurnDecision {
   wait?: { triggerText?: string };
 }
 
+// AttackData from AttackAssist (different from local Attack interface)
 interface AttackData {
-  targetInstanceId?: string | null;
-  attack?: Attack;
+  name: string;
+  baseSkill: number;
+  modifiers: Modifier[];
+  injectedModifiers: Modifier[];
+  effectiveSkill: number;
+  rollTotal: number | null;
+  margin: number | null;
+  success: boolean | null;
+  damage?: string;
+  notes?: string;
+  hitLocation: HitLocation | null;
+  hitLocationRoll: LocationRoll | null;
 }
 
 interface DefenseData {
@@ -131,7 +145,9 @@ interface ActionPanelProps {
   turnDecision?: TurnDecision | null;
   currentRound?: number;
   currentTurn?: number;
-  onAddCondition?: (condition: ConditionInstance) => void;
+  // Note: ConditionInstance type differs between ActionPanel and ConditionsPanel
+  // ActionPanel uses duration: { type, value }, ConditionsPanel uses expiresAt
+  onAddCondition?: (condition: any) => void;
   onRemoveCondition?: (conditionInstanceId: string) => void;
   onUpdateCondition?: (conditionInstanceId: string, newDuration: { type: string; value?: number }) => void;
 }
@@ -206,26 +222,36 @@ export default function ActionPanel({
     return defenseValues.some(value => value !== null && value !== undefined);
   };
 
-  const handleAttackComplete = (attackData: AttackData) => {
-    setBoundTargetId(attackData.targetInstanceId || null);
-    setBoundHitLocation(attackData.attack?.hitLocation || null);
-    setBoundHitLocationRoll(attackData.attack?.hitLocationRoll || null);
-    setBoundDamageExpression(attackData.attack?.damage || null);
+  const handleAttackComplete = (data: { targetInstanceId: string | null; attack: AttackData }) => {
+    const { targetInstanceId, attack } = data;
+    setBoundTargetId(targetInstanceId || null);
+    setBoundHitLocation(attack?.hitLocation || null);
+    setBoundHitLocationRoll(attack?.hitLocationRoll || null);
+    setBoundDamageExpression(attack?.damage || null);
     setForceTargetSelection(false);
-    if (attackData.targetInstanceId) {
-      setSelectedTargetId(attackData.targetInstanceId);
+    if (targetInstanceId) {
+      setSelectedTargetId(targetInstanceId);
     }
+
+    // Map the AttackAssist's AttackData format to ActionPanel's Attack format
+    const attackForAction: Attack | undefined = attack ? {
+      name: attack.name,
+      skill: attack.baseSkill,
+      damage: attack.damage,
+      hitLocation: attack.hitLocation,
+      hitLocationRoll: attack.hitLocationRoll,
+      success: attack.success ?? undefined
+    } : undefined;
 
     onActionComplete({
       maneuver: selectedManeuver,
       kind: 'attack',
-      attack: attackData.attack,
-      targetInstanceId: attackData.targetInstanceId
+      attack: attackForAction,
+      targetInstanceId
     });
 
-    const attackHit = attackData.attack?.success === true;
-    const defenseTargetId = attackData.targetInstanceId || null;
-    const canDefend = defenseTargetId && canTargetDefend(defenseTargetId);
+    const attackHit = attack?.success === true;
+    const canDefend = targetInstanceId && canTargetDefend(targetInstanceId);
 
     if (attackHit && canDefend) {
       setActiveWorkflow('defense');
@@ -530,7 +556,7 @@ export default function ActionPanel({
           )}
           {targets.length > 0 && (
             <InjuryResolutionPanel
-              attacker={currentActor}
+              attacker={{ st: currentActor.st ?? 10, name: currentActor.name }}
               target={(boundTargetTruth || getTruthParticipant(selectedTargetId!) || truthTargets[0]) as any}
               combatRulesPreset={combatRulesPreset}
               damageExpression={boundDamageExpression || ''}
@@ -577,15 +603,15 @@ export default function ActionPanel({
       )}
 
       {/* Phase 6: Conditions Workflow */}
-      {activeWorkflow === 'conditions' && (
+      {activeWorkflow === 'conditions' && onAddCondition && onRemoveCondition && (
         <div className="border-t border-gray-700 pt-4">
           <ConditionsPanel
-            participant={currentActor}
+            participant={{ ...currentActor, id: currentActor.instanceId }}
             currentRound={currentRound}
             currentTurn={currentTurn}
             onAddCondition={onAddCondition}
             onRemoveCondition={onRemoveCondition}
-            onUpdateCondition={onUpdateCondition}
+            onUpdateCondition={onUpdateCondition ? (id: string, dur: number) => onUpdateCondition(id, { type: 'rounds', value: dur }) : undefined}
           />
           <div className="mt-4">
             <button

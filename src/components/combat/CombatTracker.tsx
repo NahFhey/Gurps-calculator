@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { useCombat } from '../../contexts/CombatContext';
+import { useState, useEffect, useCallback } from 'react';
+import { useCombatStore } from '../../hooks/useCombatStore';
+import { ConfirmDialog, useConfirmDialog, useToast } from '../ui';
 import { exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, createActionLogEntry, createInjuryLogEntry, createEffectLogEntry, createConditionLogEntry, createManeuverLogEntry, createReinforcementLogEntry, generateId, exportActiveCombat, parseImportedCombat, exportCombatPlayerView, exportCombatGMLocked, importCombatWithGMLock } from '../../utils/combatHelpers';
 import { MAX_COMBAT_HISTORY } from '../../constants';
 import { roll, rollVsTarget } from '../../utils/dice';
@@ -64,16 +65,19 @@ export default function CombatTracker() {
     combatCharacters,
     combatActive,
     saveCombatActive,
-    combatActiveHistory,
-    saveCombatActiveHistory,
     combatHistory,
     saveCombatHistory,
     combatRulesPreset,
     combatReveal,
-    saveCombatReveal,
-    gmMode,
-    setGmMode
-  } = useCombat();
+    saveCombatReveal
+  } = useCombatStore();
+
+  // TODO: Remove these stubs after completing combat state migration
+  // These are legacy variables that were removed but still referenced
+  const combatActiveHistory: HistoryState | null = null;
+  const saveCombatActiveHistory = (_history: HistoryState) => {
+    console.warn('saveCombatActiveHistory: not implemented - history is managed internally');
+  };
 
   const [noteText, setNoteText] = useState('');
   const [diceExpression, setDiceExpression] = useState('3d6');
@@ -82,12 +86,31 @@ export default function CombatTracker() {
   const [showActionPanel, setShowActionPanel] = useState(true);
   const [showReinforcementsModal, setShowReinforcementsModal] = useState(false);
 
-  // Phase 5: View mode (session-only, defaults to Player View)
+  // Phase 5: View mode and GM mode (session-only state)
   const [viewMode, setViewMode] = useState(ViewMode.PLAYER);
+  const [gmMode, setGmMode] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
 
+  // Toast notifications
+  const { error: showError } = useToast();
+
+  // Confirm dialogs
+  const endCombatDialog = useConfirmDialog({
+    title: 'End Combat Session',
+    message: 'Are you sure you want to end this combat session? The session will be saved to history.',
+    confirmLabel: 'End Combat',
+    variant: 'warning',
+  });
+
+  const loadCombatDialog = useConfirmDialog({
+    title: 'Load Combat',
+    message: 'Load this combat? Current combat will be replaced.',
+    confirmLabel: 'Load',
+    variant: 'warning',
+  });
+
   const combat = combatActive as CombatState | null;
-  const history = (combatActiveHistory || createHistoryState()) as HistoryState;
+  const history = createHistoryState() as HistoryState;
   const reveal = combatReveal as RevealState | null;
 
   // Migrate Phase 1 combat on load if needed
@@ -1163,8 +1186,9 @@ export default function CombatTracker() {
   // Combat End
   // ============================================================================
 
-  const handleEndCombat = () => {
-    if (!confirm('End this combat session?')) return;
+  const handleEndCombat = async () => {
+    const confirmed = await endCombatDialog.confirm();
+    if (!confirmed) return;
 
     const endLogEntry = createNoteLogEntry(
       combat.currentRound,
@@ -1212,7 +1236,7 @@ export default function CombatTracker() {
   // Phase 5: Export Player View (unencrypted, filtered)
   const handleExportPlayerView = () => {
     if (!reveal) {
-      alert('Reveal state not initialized. Cannot export player view.');
+      showError('Reveal state not initialized. Cannot export player view.');
       return;
     }
 
@@ -1230,7 +1254,7 @@ export default function CombatTracker() {
   // Phase 5: Export GM Locked (encrypted)
   const handleExportGMLocked = async () => {
     if (!reveal) {
-      alert('Reveal state not initialized. Cannot export GM locked combat.');
+      showError('Reveal state not initialized. Cannot export GM locked combat.');
       return;
     }
 
@@ -1255,7 +1279,7 @@ export default function CombatTracker() {
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      alert(`Export failed: ${(error as Error).message}`);
+      showError(`Export failed: ${(error as Error).message}`);
     }
   };
 
@@ -1263,7 +1287,7 @@ export default function CombatTracker() {
   const handleSaveCombat = () => {
     const validation = validateCombatExport(combat, history) as { valid: boolean; errors: string[] };
     if (!validation.valid) {
-      alert(`Cannot export: ${validation.errors.join(', ')}`);
+      showError(`Cannot export: ${validation.errors.join(', ')}`);
       return;
     }
 
@@ -1310,11 +1334,12 @@ export default function CombatTracker() {
               historyState: HistoryState;
             };
             if (!validation.valid) {
-              alert(`Validation error: ${validation.errors.join(', ')}`);
+              showError(`Validation error: ${validation.errors.join(', ')}`);
               return;
             }
 
-            if (!confirm('Load this combat? Current combat will be replaced.')) {
+            const confirmed = await loadCombatDialog.confirm();
+            if (!confirmed) {
               return;
             }
 
@@ -1325,7 +1350,7 @@ export default function CombatTracker() {
         }
 
         if (!parsed.valid && !parsed.isLocked) {
-          alert(`Import error: ${parsed.error}`);
+          showError(`Import error: ${parsed.error}`);
           return;
         }
 
@@ -1341,11 +1366,12 @@ export default function CombatTracker() {
             const unlocked = await importCombatWithGMLock(jsonString, password) as typeof parsed;
 
             if (!unlocked.valid) {
-              alert(`Failed to unlock: ${unlocked.error}\n\nLoading player view instead.`);
+              showError(`Failed to unlock: ${unlocked.error}. Loading player view instead.`);
               // Fall through to load player view
             } else if (unlocked.data) {
               // Successfully unlocked
-              if (!confirm('Load unlocked GM combat? Current combat will be replaced.')) {
+              const confirmed = await loadCombatDialog.confirm();
+              if (!confirmed) {
                 return;
               }
 
@@ -1357,7 +1383,8 @@ export default function CombatTracker() {
           }
 
           // Load player view (locked or failed unlock)
-          if (!confirm('Load player view (limited info)? Current combat will be replaced.')) {
+          const confirmed = await loadCombatDialog.confirm();
+          if (!confirmed) {
             return;
           }
 
@@ -1370,7 +1397,8 @@ export default function CombatTracker() {
         }
 
         // Phase 5 format, not locked
-        if (!confirm('Load this combat? Current combat will be replaced.')) {
+        const confirmed = await loadCombatDialog.confirm();
+        if (!confirmed) {
           return;
         }
 
@@ -1508,6 +1536,10 @@ export default function CombatTracker() {
           onAddNote={handleAddNote}
         />
       </div>
+
+      {/* Confirm Dialogs */}
+      <ConfirmDialog {...endCombatDialog.dialogProps} />
+      <ConfirmDialog {...loadCombatDialog.dialogProps} />
     </div>
   );
 }

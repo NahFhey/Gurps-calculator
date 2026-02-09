@@ -94,8 +94,13 @@ export function CombatTile({ onExpand, compact = false }: CombatTileProps) {
   };
 
   const handleStartCombat = () => {
-    actions.startCombat();
-    actions.setActiveModule('combat');
+    // If combat module is already open, close it (toggle behavior)
+    if (state.ui.activeModule === 'combat') {
+      actions.setActiveModule('');
+    } else {
+      actions.startCombat();
+      actions.setActiveModule('combat');
+    }
   };
 
   // Inactive combat state

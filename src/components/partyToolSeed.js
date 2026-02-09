@@ -63,7 +63,7 @@ export const createPartyToolState = () => {
         isPlayer: true,
         work: {
           enabled: true,
-          skills: { crafting: 13, alchemy: 10, survival: 9, cooking: 11 },
+          skills: { crafting: 13, designing: 11, alchemy: 10, survival: 9, cooking: 11, fishing: 10 },
         },
       },
       'char-soren': {
@@ -72,7 +72,7 @@ export const createPartyToolState = () => {
         isPlayer: true,
         work: {
           enabled: true,
-          skills: { crafting: 12, engineering: 11, survival: 10 },
+          skills: { crafting: 12, designing: 13, survival: 10, naturalist: 11, fishing: 12 },
         },
       },
       'char-mira': {
@@ -81,7 +81,7 @@ export const createPartyToolState = () => {
         isPlayer: true,
         work: {
           enabled: true,
-          skills: { alchemy: 12, cooking: 12, survival: 8 },
+          skills: { alchemy: 12, cooking: 12, survival: 8, herbLore: 11 },
         },
       },
       'char-npc': {
@@ -90,7 +90,7 @@ export const createPartyToolState = () => {
         isPlayer: false,
         work: {
           enabled: true,
-          skills: { crafting: 14 },
+          skills: { crafting: 14, designing: 12 },
         },
       },
     },

@@ -3,6 +3,13 @@ import type { PointPools, PrimaryAttributes } from '../../types/characterSheet';
 import { DEFAULT_HIT_LOCATION_PROFILE } from '../../types/characterSheet';
 import { getAllProfiles } from '../../utils/hitLocations';
 
+// Type for hit location profiles from the JS module
+interface HitLocationProfile {
+  id: string;
+  name: string;
+  locations?: Array<{ key: string; label: string }>;
+}
+
 interface PointPoolsSectionProps {
   pools: PointPools;
   attributes: PrimaryAttributes;
@@ -21,7 +28,7 @@ export function PointPoolsSection({
   onHitLocationProfileChange,
 }: PointPoolsSectionProps) {
   // Get available hit location profiles
-  const profiles = getAllProfiles();
+  const profiles = getAllProfiles() as Record<string, HitLocationProfile>;
   const profileOptions = Object.values(profiles);
   const currentProfileId = hitLocationProfileId || DEFAULT_HIT_LOCATION_PROFILE;
   const currentProfile = profiles[currentProfileId];

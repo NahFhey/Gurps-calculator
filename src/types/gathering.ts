@@ -6,6 +6,7 @@
  */
 
 import type { Id } from './campaign';
+import type { ForageZoneProfile } from './foraging';
 
 // ============================================================================
 // SPECIES TYPES
@@ -89,6 +90,8 @@ export interface GatheringEnvironmentExtended {
     Foraging?: ModeDefaults;
   };
   skillMod: number;
+  /** Links this environment to a Location. Environments without a locationId are hidden from activities. */
+  locationId?: string;
 }
 
 // ============================================================================
@@ -176,7 +179,17 @@ export interface TablesViewProps {
 export interface EnvironmentsViewProps {
   environments: GatheringEnvironmentExtended[];
   tables: GatheringTableExtended[];
+  /** Items from the Items tab for zone profile item selection */
+  items: GatheringItemExtended[];
+  /** Available locations for linking environments */
+  locations: Array<{ id: string; name: string }>;
+  /** Forage zone profiles linked to environments */
+  forageZoneProfiles: ForageZoneProfile[];
   saveEnvironments: (environments: GatheringEnvironmentExtended[]) => void;
+  /** Save (add or update) a forage zone profile */
+  saveForageZoneProfile: (profile: ForageZoneProfile) => void;
+  /** Remove a forage zone profile by ID */
+  removeForageZoneProfile: (id: string) => void;
   onDelete: OnDeleteHandler;
 }
 

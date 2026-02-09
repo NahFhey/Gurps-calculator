@@ -625,6 +625,12 @@ function PartyStashView({
   setTransferState,
   actions,
 }: PartyStashViewProps) {
+  // Filter to only show party-owned inventories (not character packs)
+  const partyInventories = useMemo(
+    () => inventories.filter((inv) => inv.ownerType === 'party'),
+    [inventories]
+  );
+
   /**
    * Handle transfer between inventories
    */
@@ -731,7 +737,7 @@ function PartyStashView({
     <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
       {/* Inventories List */}
       <div className="space-y-6">
-        {inventories.map((inventory) => (
+        {partyInventories.map((inventory) => (
           <div
             key={inventory.id}
             className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6"
@@ -849,9 +855,9 @@ function PartyStashView({
             </div>
           </div>
         ))}
-        {inventories.length === 0 && (
+        {partyInventories.length === 0 && (
           <div className="text-center text-slate-400 py-8">
-            No inventories found. Create a party or add characters to see inventories.
+            No party stash found.
           </div>
         )}
       </div>
@@ -895,7 +901,7 @@ function PartyStashView({
                 className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
               >
                 <option value="">Select destination</option>
-                {inventories
+                {partyInventories
                   .filter((inv) => inv.id !== transferState.sourceInventoryId)
                   .map((inv) => (
                     <option key={inv.id} value={inv.id}>

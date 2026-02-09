@@ -16,10 +16,9 @@ export type Id = string;
 // ============================================================================
 
 /**
- * Climate types determine base weather probabilities
- * GMs can customize weather tables per location
+ * Preset climate types with known weather probabilities
  */
-export type ClimateType =
+export type PresetClimateType =
   | 'temperate'      // Balanced, all weather types possible
   | 'tropical'       // Hot, rainy, no snow
   | 'arid'           // Hot, dry, minimal rain
@@ -29,9 +28,15 @@ export type ClimateType =
   | 'oceanic';       // Mild, frequent rain
 
 /**
- * Terrain types affect travel and activities
+ * Climate types — includes presets + GM-defined custom types
+ * Custom types use a weatherTableId on the location for weather generation
  */
-export type TerrainType =
+export type ClimateType = PresetClimateType | (string & {});
+
+/**
+ * Preset terrain types
+ */
+export type PresetTerrainType =
   | 'forest'
   | 'plains'
   | 'mountains'
@@ -39,7 +44,13 @@ export type TerrainType =
   | 'swamp'
   | 'coastal'
   | 'urban'
-  | 'underground';
+  | 'underground'
+  | 'river';
+
+/**
+ * Terrain types — includes presets + GM-defined custom types
+ */
+export type TerrainType = PresetTerrainType | (string & {});
 
 // ============================================================================
 // WEATHER TYPES
@@ -295,6 +306,14 @@ export interface LocationState {
   locations: Record<Id, Location>;
   weatherTables: Record<Id, WeatherTable>;
   activeTravels: TravelAction[];
+  /** GM-defined custom climate types beyond the 7 presets */
+  customClimates?: Array<{ key: string; label: string }>;
+  /** GM-defined custom terrain types beyond the 8 presets */
+  customTerrains?: Array<{ key: string; label: string }>;
+  /** GM overrides for default terrain modifiers (per terrain type) */
+  terrainModifierOverrides?: Record<string, Partial<LocationModifiers>>;
+  /** GM overrides for base weather effects (per weather type) */
+  weatherEffectOverrides?: Record<string, Partial<WeatherEffects>>;
 }
 
 // ============================================================================
@@ -308,6 +327,8 @@ export interface WeatherGenerationInput {
   location: Location;
   weatherTable?: WeatherTable;
   currentTime: { day: number; slot: number };
+  /** GM overrides for base weather effects (applied before intensity scaling) */
+  weatherEffectOverrides?: Record<string, Partial<WeatherEffects>>;
 }
 
 /**
@@ -338,6 +359,28 @@ export const WEATHER_ICONS: Record<WeatherType, string> = {
   wind: '💨',
   heatwave: '🔥',
   coldSnap: '🥶',
+};
+
+/**
+ * Weather type display labels
+ */
+export const WEATHER_LABELS: Record<WeatherType, string> = {
+  clear: 'Clear',
+  partlyCloudy: 'Partly Cloudy',
+  overcast: 'Overcast',
+  lightRain: 'Light Rain',
+  rain: 'Rain',
+  heavyRain: 'Heavy Rain',
+  thunderstorm: 'Thunderstorm',
+  fog: 'Fog',
+  mist: 'Mist',
+  snow: 'Snow',
+  blizzard: 'Blizzard',
+  hail: 'Hail',
+  sandstorm: 'Sandstorm',
+  wind: 'Wind',
+  heatwave: 'Heatwave',
+  coldSnap: 'Cold Snap',
 };
 
 /**
@@ -379,4 +422,5 @@ export const TERRAIN_LABELS: Record<TerrainType, string> = {
   coastal: 'Coastal',
   urban: 'Urban',
   underground: 'Underground',
+  river: 'River',
 };

@@ -32,7 +32,9 @@ describe('campaignReducer', () => {
 
     expect(nextState.time.slot).toBe(1);
     expect(nextState.time.day).toBe(1);
-    expect(nextState.logs.entries).toHaveLength(1);
+    // At least 1 log for time advance, may have additional weather log
+    expect(nextState.logs.entries.length).toBeGreaterThanOrEqual(1);
+    expect(nextState.logs.entries.some(e => e.type === 'time.advance')).toBe(true);
   });
 
   it('advanceTime rolls over and increments day', () => {

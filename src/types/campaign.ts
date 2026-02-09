@@ -47,7 +47,8 @@ export interface Material {
 export interface Food {
   id: Id;
   name: string;
-  type: string;  // References FoodType.name
+  type?: string;  // Legacy single type - References FoodType.name
+  types?: string[];  // Multi-type support - Array of FoodType.name
   quantity: number;
   calories?: number;
   quality?: string;
@@ -94,16 +95,42 @@ export interface Recipe {
 export type CraftPhase = 'setup' | 'design' | 'craft' | 'complete';
 export type CraftQuality = 'cheap' | 'good' | 'fine' | 'very fine' | 'legendary';
 
+export interface CraftShift {
+  id?: string;
+  date: string;
+  day: number;
+  worker: string;
+  skill?: number;        // Raw skill level
+  skillRoll?: number;    // Alias for roll (legacy)
+  roll?: number;         // Dice roll result
+  effectiveSkill: number;
+  result?: string;       // Human-readable result description
+  hoursAdded: number;
+  qualityShift?: number;
+  qualityChange?: number; // Alias for qualityShift
+  phase?: string;        // Which phase this shift was in
+}
+
+export interface CraftConsumedMaterial {
+  id?: Id;
+  materialId?: string;
+  amount: number;
+  name?: string;
+  type?: string;
+}
+
 export interface Craft {
   id: Id;
   phase: CraftPhase;
   templateType: 'weapons' | 'armor' | 'ranged' | 'explosives';
   template: string;  // Template name
-  quality: CraftQuality;
-  currentQuality: CraftQuality;
+  quality: CraftQuality | string;
+  currentQuality: CraftQuality | string;
+  name?: string;     // Custom display name
   mods: Array<{
-    name: string;
-    difficulty: number;
+    name?: string;
+    difficulty?: number;
+    [key: string]: unknown;
   }>;
   selectedMaterials: Array<{
     requirementIndex: number;
@@ -111,23 +138,15 @@ export interface Craft {
     requiredAmount: number;
     selectedMaterialId: Id | null;
   }>;
-  consumedMaterials?: Array<{
-    id: Id;
-    amount: number;
-  }>;
-  shifts: Array<{
-    date: string;
-    day: number;
-    worker: string;
-    skillRoll: number;
-    effectiveSkill: number;
-    hoursAdded: number;
-    qualityShift?: number;
-  }>;
-  designShifts?: Array<typeof Craft.prototype.shifts[0]>;
+  consumedMaterials?: CraftConsumedMaterial[];
+  shifts: CraftShift[];
+  designShifts?: CraftShift[];
   startDate: string;
   startDay: number;
-  completionDate?: string;
+  completed?: boolean;
+  completedDate?: string;
+  completedDay?: number;
+  completionDate?: string;  // Legacy alias
   finalStats?: {
     weight: number;
     hp: number;
@@ -142,11 +161,11 @@ export interface CraftDesign {
   name: string;
   templateType: string;
   template: string;
-  quality: CraftQuality;
+  quality: CraftQuality | string;
   mods: Craft['mods'];
   selectedMaterials: Craft['selectedMaterials'];
   consumedMaterials?: Craft['consumedMaterials'];
-  designShifts: Craft['shifts'];
+  designShifts?: Craft['shifts'];
   savedDate: string;
 }
 
@@ -155,6 +174,7 @@ export interface CustomTemplates {
   armor: Record<string, ArmorTemplate>;
   ranged: Record<string, RangedTemplate>;
   explosives: Record<string, ExplosiveTemplate>;
+  [key: string]: Record<string, any>;
 }
 
 export interface WeaponTemplate {
@@ -163,22 +183,32 @@ export interface WeaponTemplate {
   hp: number;
   damage: string;
   reach: string;
+  parry?: string;
+  cost?: number;
+  ST?: number;
+  notes?: string;
   materials: Array<{
     type: string;
     amount: number;
   }>;
+  [key: string]: unknown;
 }
 
 export interface ArmorTemplate {
   name: string;
   weight: number;
   hp: number;
-  dr: number;
-  location: string;
+  dr?: number;
+  DR?: number;
+  location?: string;
+  cost?: number;
+  LC?: number;
+  notes?: string;
   materials: Array<{
     type: string;
     amount: number;
   }>;
+  [key: string]: unknown;
 }
 
 export interface RangedTemplate {
@@ -186,26 +216,41 @@ export interface RangedTemplate {
   weight: number;
   hp: number;
   damage: string;
-  accuracy: number;
+  accuracy?: number;
+  Acc?: number;
   range: string;
-  rateOfFire: number;
-  shots: number;
+  rateOfFire?: number;
+  RoF?: string;
+  shots?: number | string;
+  cost?: number;
+  ST?: number;
+  bulk?: number;
+  RCl?: number;
+  LC?: number;
+  notes?: string;
   materials: Array<{
     type: string;
     amount: number;
   }>;
+  [key: string]: unknown;
 }
 
 export interface ExplosiveTemplate {
   name: string;
   weight: number;
+  hp?: number;
   damage: string;
   fragmentationDamage?: string;
-  blastRadius: number;
+  blastRadius?: number;
+  fuse?: string;
+  cost?: number;
+  LC?: number;
+  notes?: string;
   materials: Array<{
     type: string;
     amount: number;
   }>;
+  [key: string]: unknown;
 }
 
 // ============================================================================
@@ -220,36 +265,208 @@ export interface AlchemyReagent {
   potency?: number;
   source?: string;
   notes?: string;
+
+  // Extended properties for alchemy engine
+  aspects?: {
+    primary?: string;
+    secondary?: string;
+    tertiary?: string;
+  };
+  refinement?: 'crude' | 'prepared' | 'refined';
+  basePotency?: string;
+  concentrationSteps?: number;
+  roles?: string[];
+  primaryRole?: string;
+  hazards?: string[];
+  processingNotes?: string;
+  identificationLevel?: number;
+  analysisHistory?: unknown[];
+  falseProfile?: {
+    aspects?: {
+      primary?: string;
+      secondary?: string;
+      tertiary?: string;
+    };
+    basePotency?: string;
+    concentrationSteps?: number;
+    refinement?: string;
+    roles?: string[];
+    primaryRole?: string;
+    hazards?: string[];
+    processingNotes?: string;
+  } | null;
+  baseReagentName?: string;
+  identityId?: string;
+  processingLog?: Array<{
+    timestamp: string;
+    operation: string;
+    inputUnits: number;
+    outputUnits: number;
+    worker: string;
+    lab: string;
+    aborted?: boolean;
+    results?: Array<{
+      attempt: number;
+      roll: number;
+      success: boolean;
+      message?: string;
+    }>;
+  }>;
+}
+
+export interface FormulaIngredient {
+  reagentId: Id;
+  reagentName: string;
+  role: string;
+  unitsUsed: number;
+  refinement: 'crude' | 'prepared' | 'refined';
+  aspects?: {
+    primary?: string;
+    secondary?: string;
+    tertiary?: string;
+  };
 }
 
 export interface AlchemyFormula {
   id: Id;
   name: string;
-  reagents: Array<{
+  // Legacy simple reagent list
+  reagents?: Array<{
     reagentId: Id;
     amount: number;
   }>;
-  skill: string;
-  difficulty: number;
-  brewTime: number;  // In minutes
-  effects: string;
-  potency?: number;
+  // Rich ingredient list from alchemy engine
+  ingredients?: FormulaIngredient[];
+  skill?: string;
+  difficulty?: number;
+  brewTime?: number;  // In minutes
+  effects?: string;
+  potency?: number | string;
   notes?: string;
+
+  // Formula stats (from calculateFormulaStats)
+  tier?: number;
+  calculatedTier?: number;
+  potencyLoad?: number;
+  vector?: string;
+  baseWR?: number;
+  baseDM?: number;
+  dominantAspect?: string;
+  secondaryAspect?: string;
+  basePotency?: string;
+  finalPotency?: string;
+  concentrationSteps?: number;
+  totalConcentrationSteps?: number;
+  traitBudget?: number;
+  hasMatchingStabilizer?: boolean;
+  traits?: Array<{ name: string; cost: number }>;
+  roleCoverage?: unknown;
+  hazards?: string[];
 }
 
 export interface AlchemyBatch {
   id: Id;
   formulaId: Id;
+  formulaName?: string;
   status: 'brewing' | 'complete' | 'failed';
+  phase?: 'brewing' | 'completed' | 'failed';
   worker: string;
-  labId: Id;
+  labId?: Id;
+  labName?: string;
+  labRating?: number;
   startDate: string;
   startDay: number;
   completionDate?: string;
+  completedDate?: string | null;
   skillRoll?: number;
   effectiveSkill?: number;
   resultingPotions?: number;
   notes?: string;
+
+  // Brewing mechanics
+  PP?: number;
+  WR?: number;
+  CP?: number;
+  DM?: number;
+  tier?: number;
+  calculatedTier?: number;
+  potencyLoad?: number;
+  vector?: string;
+  dominantAspect?: string | null;
+  secondaryAspect?: string | null;
+  basePotency?: string;
+  finalPotency?: string;
+  concentrationSteps?: number;
+  totalConcentrationSteps?: number;
+  traitBudget?: number;
+  traits?: Array<{ name: string; cost: number }>;
+  hasMatchingStabilizer?: boolean;
+  quality?: string | null;
+  amount?: number;
+  potency?: string;
+
+  // Hazards
+  hazards?: string[];
+  hazardDetails?: unknown[];
+  hazardsPublic?: unknown[];
+  gmHazards?: unknown[];
+
+  // Analysis
+  forecast?: {
+    performedAt: string;
+    currentCP: number;
+    predictedQuality: string;
+    dmBonus: number;
+  } | null;
+  microAssay?: {
+    performedAt: string;
+    dominantAspect: string | null;
+    secondaryAspect: string | null;
+    revealed: boolean;
+  } | null;
+
+  // Consumed ingredients
+  consumedIngredients?: Array<{
+    reagentId: string;
+    reagentName: string;
+    role: string;
+    unitsUsed: number;
+    refinement: string;
+    aspects: Record<string, string | undefined>;
+    potency?: string;
+    concentrationSteps?: number;
+  }>;
+
+  // Work shift history
+  shifts?: Array<{
+    id: string;
+    date: string;
+    worker: string;
+    skill: number;
+    roll: number;
+    effectiveSkill: number;
+    result: string;
+    ppAdded: number;
+    cpChange: number;
+    labName?: string;
+    labRating?: number;
+    hazardEvents?: Array<{
+      hazard: string;
+      effect: string;
+      severity: string;
+      trigger?: string;
+    }>;
+  }>;
+
+  // Completion hazard events
+  completionHazards?: Array<{
+    hazard: string;
+    effect: string;
+    severity: string;
+    trigger: string;
+  }>;
+
+  // Legacy workSessions
   workSessions?: Array<{
     date: string;
     day: number;
@@ -267,6 +484,8 @@ export interface AlchemyLab {
 export interface AlchemySettings {
   defaultLabRating: number;
   workBlockMinutes: number;
+  showObviousRoles?: boolean;
+  autoSaveRecipes?: boolean;
 }
 
 // ============================================================================
@@ -314,6 +533,8 @@ export interface GatheringEnvironment {
   description: string;
   species: Id[];  // Species IDs
   hazards?: string[];
+  /** Links this environment to a Location for auto-selection in downtime activities */
+  locationId?: string;
 }
 
 export interface GatheringSession {
@@ -515,11 +736,29 @@ export interface ToolInstance {
   ownerId?: Id;  // Character or 'party'
 }
 
+/**
+ * Unified Facility type - supports both simple (rating-based) and complex
+ * (activity category-based) facilities like kitchens, labs, workshops.
+ *
+ * Activity types: 'cooking', 'alchemy', 'crafting', 'gathering', 'hunting'
+ */
+export type FacilityType = 'kitchen' | 'lab' | 'workshop' | 'general';
+
 export interface Facility {
   id: Id;
   name: string;
-  conditionId: Id;
-  activityCategories: Record<string, ToolModifierSet>;
+  facilityType: FacilityType;
+  /** Simple rating (0-4) for backwards compatibility with kitchens/labs */
+  rating: number;
+  /** Optional description */
+  description?: string;
+  /** Condition tracking (good, worn, damaged, etc.) */
+  conditionId?: Id;
+  /**
+   * Activity-specific modifiers. Keys are activity types like 'cooking', 'alchemy'.
+   * If not provided, `rating` is used as `skillBonus` for the facility's primary activity.
+   */
+  activityCategories?: Record<string, ToolModifierSet>;
 }
 
 export interface ItemInstance {

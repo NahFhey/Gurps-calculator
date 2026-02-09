@@ -41,26 +41,6 @@ export function CombatTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between rounded-lg border border-gray-700 bg-gray-800 px-4 py-3">
-        <div>
-          <h3 className="text-sm font-semibold text-gray-100">Unified Combat Session</h3>
-          <p className="text-xs text-gray-400">
-            {state.combat.active ? 'Combat active in unified state.' : 'No active unified combat session.'}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => actions.startCombat()}
-          disabled={state.combat.active}
-          className={`rounded px-3 py-2 text-xs font-semibold ${
-            state.combat.active
-              ? 'cursor-not-allowed bg-gray-700 text-gray-400'
-              : 'bg-red-600 text-white hover:bg-red-500'
-          }`}
-        >
-          Start Combat
-        </button>
-      </div>
       <div className="flex gap-2 border-b border-gray-700 pb-2">
         <button
           onClick={() => setView('library')}

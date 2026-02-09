@@ -39,10 +39,13 @@ export function denormalizeObject<T>(obj: Record<Id, T>): T[] {
 }
 
 /**
- * Ensure all items in an array have unique IDs, generating new IDs if missing
+ * Ensure all items in an array have unique IDs, generating new IDs if missing.
+ * Also handles object input by converting to array first.
  */
-export function ensureIds<T extends { id?: Id }>(arr: T[]): Array<T & { id: Id }> {
-  return arr.map((item, index) => ({
+export function ensureIds<T extends { id?: Id }>(arr: T[] | Record<string, T>): Array<T & { id: Id }> {
+  // Handle object input by converting to array
+  const items = Array.isArray(arr) ? arr : Object.values(arr || {});
+  return items.map((item, index) => ({
     ...item,
     id: item.id || `generated-${Date.now()}-${index}`
   })) as Array<T & { id: Id }>;

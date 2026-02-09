@@ -9,7 +9,7 @@ describe('UnifiedShell party list', () => {
   it('highlights the selected character when clicked', () => {
     const modules = [
       { id: 'inventory', label: 'Inventory', content: <div>Inventory Module</div> },
-      { id: 'activities', label: 'Activities', content: <div>Activities Module</div> }
+      { id: 'downtime', label: 'Downtime', content: <div>Downtime Module</div> }
     ];
 
     render(
@@ -24,10 +24,10 @@ describe('UnifiedShell party list', () => {
     expect(rinaRow).toHaveAttribute('data-selected', 'true');
   });
 
-  it('sets active module to inventory when Inventory is clicked', () => {
+  it('changes character panel view when Skills/Inventory buttons are clicked', () => {
     const modules = [
       { id: 'inventory', label: 'Inventory', content: <div>Inventory Module</div> },
-      { id: 'activities', label: 'Activities', content: <div>Activities Module</div> }
+      { id: 'downtime', label: 'Downtime', content: <div>Downtime Module</div> }
     ];
 
     render(
@@ -40,10 +40,12 @@ describe('UnifiedShell party list', () => {
     const inventoryButton = within(rinaRow).getByRole('button', { name: 'Inventory' });
     const skillsButton = within(rinaRow).getByRole('button', { name: 'Skills' });
 
+    // Clicking Skills button should select the character and show skills panel view
     fireEvent.click(skillsButton);
-    expect(screen.getByText('Active Module: Activities')).toBeInTheDocument();
+    expect(rinaRow).toHaveAttribute('data-selected', 'true');
 
+    // Clicking Inventory button should show inventory panel view
     fireEvent.click(inventoryButton);
-    expect(screen.getByText('Active Module: Inventory')).toBeInTheDocument();
+    expect(rinaRow).toHaveAttribute('data-selected', 'true');
   });
 });

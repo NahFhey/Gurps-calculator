@@ -4,7 +4,8 @@ import {
   createCampaignState,
   CampaignState,
   LegacyAppState,
-  LogEntry
+  LogEntry,
+  CharacterPanelView
 } from './campaignReducer';
 import { saveCampaignState } from '../persistence/campaignStorage';
 import type {
@@ -41,15 +42,34 @@ import type {
   Kitchen,
   CookingSkill,
   EffectFamilyMap,
-  Inventory
+  Inventory,
+  Facility
 } from '../types/campaign';
 import type {
   Location,
   LocationState,
+  LocationModifiers,
   WeatherTable,
+  WeatherEffects,
   TravelAction,
   ActiveWeather
 } from '../types/location';
+import type { DowntimeState } from '../types/downtime';
+import type { ForageZoneProfile } from '../types/foraging';
+import type {
+  MapState,
+  MapId,
+  TileId,
+  TerrainId,
+  MarkerId,
+  LinkId,
+  MapScale,
+  TerrainModel,
+  MarkerModel,
+  LinkModel,
+  TravelWizardState,
+  TravelMode,
+} from '../types/map';
 
 type CampaignStoreValue = {
   state: CampaignState;
@@ -57,6 +77,7 @@ type CampaignStoreValue = {
     // UI Actions
     setActiveModule: (moduleId: string) => void;
     selectCharacter: (id: string | null) => void;
+    setCharacterPanelView: (view: CharacterPanelView) => void;
     toggleGmMode: () => void;
     setGmMode: (enabled: boolean) => void;
     setGmUnlocked: (value: boolean) => void;
@@ -169,12 +190,22 @@ type CampaignStoreValue = {
     setGatheringItems: (items: Record<Id, GatheringItem>) => void;
     addGatheringItem: (item: GatheringItem) => void;
 
+    // Forage Zone Profile Actions
+    addForageZoneProfile: (zone: ForageZoneProfile) => void;
+    updateForageZoneProfile: (id: Id, changes: Partial<ForageZoneProfile>) => void;
+    removeForageZoneProfile: (id: Id) => void;
+
+    // Downtime Actions
+    setDowntime: (downtime: DowntimeState) => void;
+
     // Day Planner Actions
     setTimeSlots: (slots: TimeSlot[]) => void;
     addTaskAssignment: (task: TaskAssignment) => void;
     updateTaskAssignment: (id: Id, changes: Partial<TaskAssignment>) => void;
     setTaskAssignments: (tasks: TaskAssignment[]) => void;
     setPendingDayLedger: (ledger: DayLedger | null) => void;
+    setDayPlannerSlot: (slot: number) => void;
+    setTimeDay: (day: number) => void;
 
     // Combat Actions
     addCombatCharacter: (character: CombatCharacter) => void;
@@ -188,10 +219,12 @@ type CampaignStoreValue = {
     setCombatRulesPreset: (preset: string) => void;
     setCombatItems: (items: Record<Id, CombatItem>) => void;
     addCombatItem: (item: CombatItem) => void;
+    setCombatRevealState: (revealState: { version?: number; combatId?: string; byInstanceId: Record<string, unknown> } | null) => void;
 
     // Config Actions
     setKitchens: (kitchens: Record<Id, Kitchen>) => void;
     addKitchen: (kitchen: Kitchen) => void;
+    setFacilities: (facilities: Record<Id, Facility>) => void;
     setCookingSkills: (skills: CookingSkill[]) => void;
     setEffectFamilyMap: (map: EffectFamilyMap) => void;
 
@@ -215,6 +248,37 @@ type CampaignStoreValue = {
     updateTravel: (id: Id, changes: Partial<TravelAction>) => void;
     completeTravel: (id: Id) => void;
     cancelTravel: (id: Id) => void;
+    // Custom climate/terrain
+    addCustomClimate: (key: string, label: string) => void;
+    removeCustomClimate: (key: string) => void;
+    addCustomTerrain: (key: string, label: string) => void;
+    removeCustomTerrain: (key: string) => void;
+    setTerrainModifierOverrides: (overrides: Record<string, Partial<LocationModifiers>>) => void;
+    setWeatherEffectOverrides: (overrides: Record<string, Partial<WeatherEffects>>) => void;
+
+    // Map Actions
+    setMaps: (maps: MapState) => void;
+    mapCreateMap: (params: { name: string; description?: string; scaleMilesPerTile: MapScale; startTerrainId: TerrainId }) => void;
+    mapDeleteMap: (mapId: MapId) => void;
+    mapUpdateMap: (mapId: MapId, changes: { name?: string; description?: string }) => void;
+    mapSetActiveMap: (mapId: MapId | null) => void;
+    mapSetTileTerrain: (mapId: MapId, tileId: TileId, terrainId: TerrainId) => void;
+    mapStampTerrain: (mapId: MapId, tileIds: TileId[], terrainId: TerrainId) => void;
+    mapAddTerrain: (mapId: MapId, terrain: TerrainModel) => void;
+    mapUpdateTerrain: (mapId: MapId, terrainId: TerrainId, changes: Partial<TerrainModel>) => void;
+    mapRemoveTerrain: (mapId: MapId, terrainId: TerrainId) => void;
+    mapAddMarker: (mapId: MapId, marker: MarkerModel) => void;
+    mapUpdateMarker: (mapId: MapId, markerId: MarkerId, changes: Partial<MarkerModel>) => void;
+    mapRemoveMarker: (mapId: MapId, markerId: MarkerId) => void;
+    mapAddLink: (link: LinkModel) => void;
+    mapRemoveLink: (mapId: MapId, linkId: LinkId) => void;
+    mapRevealTiles: (mapId: MapId, tileIds: TileId[]) => void;
+    mapSetPartyTile: (mapId: MapId, tileId: TileId | null) => void;
+    mapSetTravelWizard: (wizard: TravelWizardState) => void;
+    mapClearTravelWizard: () => void;
+    mapExecuteTravel: (params: { mapId: MapId; routeTileIds: TileId[]; destinationTileId: TileId; mode: TravelMode; gmOverride: boolean }) => void;
+    mapSetPendingTerrain: (tileIds: TileId[]) => void;
+    mapClearPendingTerrain: () => void;
   };
 };
 
@@ -248,6 +312,7 @@ export function CampaignStoreProvider({
     () => ({
       setActiveModule: (moduleId: string) => dispatch({ type: 'setActiveModule', payload: moduleId }),
       selectCharacter: (id: string | null) => dispatch({ type: 'selectCharacter', payload: id }),
+      setCharacterPanelView: (view: 'sheet' | 'skills' | 'equipment' | 'inventory') => dispatch({ type: 'setCharacterPanelView', payload: view }),
       toggleGmMode: () => dispatch({ type: 'toggleGmMode' }),
       setGmMode: (enabled: boolean) => dispatch({ type: 'setGmMode', payload: enabled }),
       setGmUnlocked: (value: boolean) => dispatch({ type: 'setGmUnlocked', payload: value }),
@@ -397,6 +462,17 @@ export function CampaignStoreProvider({
         dispatch({ type: 'setGatheringItems', payload: items }),
       addGatheringItem: (item: GatheringItem) => dispatch({ type: 'addGatheringItem', payload: item }),
 
+      // Forage Zone Profile Actions
+      addForageZoneProfile: (zone: ForageZoneProfile) =>
+        dispatch({ type: 'addForageZoneProfile', payload: zone }),
+      updateForageZoneProfile: (id: Id, changes: Partial<ForageZoneProfile>) =>
+        dispatch({ type: 'updateForageZoneProfile', payload: { id, changes } }),
+      removeForageZoneProfile: (id: Id) =>
+        dispatch({ type: 'removeForageZoneProfile', payload: id }),
+
+      // Downtime Actions
+      setDowntime: (downtime: DowntimeState) => dispatch({ type: 'setDowntime', payload: downtime }),
+
       // Day Planner Actions
       setTimeSlots: (slots: TimeSlot[]) => dispatch({ type: 'setTimeSlots', payload: slots }),
       addTaskAssignment: (task: TaskAssignment) => dispatch({ type: 'addTaskAssignment', payload: task }),
@@ -405,6 +481,8 @@ export function CampaignStoreProvider({
       setTaskAssignments: (tasks: TaskAssignment[]) => dispatch({ type: 'setTaskAssignments', payload: tasks }),
       setPendingDayLedger: (ledger: DayLedger | null) =>
         dispatch({ type: 'setPendingDayLedger', payload: ledger }),
+      setDayPlannerSlot: (slot: number) => dispatch({ type: 'setDayPlannerSlot', payload: slot }),
+      setTimeDay: (day: number) => dispatch({ type: 'setTimeDay', payload: day }),
 
       // Combat Actions
       addCombatCharacter: (character: CombatCharacter) =>
@@ -424,10 +502,13 @@ export function CampaignStoreProvider({
       setCombatRulesPreset: (preset: string) => dispatch({ type: 'setCombatRulesPreset', payload: preset }),
       setCombatItems: (items: Record<Id, CombatItem>) => dispatch({ type: 'setCombatItems', payload: items }),
       addCombatItem: (item: CombatItem) => dispatch({ type: 'addCombatItem', payload: item }),
+      setCombatRevealState: (revealState: { version?: number; combatId?: string; byInstanceId: Record<string, unknown> } | null) =>
+        dispatch({ type: 'setCombatRevealState', payload: revealState }),
 
       // Config Actions
       setKitchens: (kitchens: Record<Id, Kitchen>) => dispatch({ type: 'setKitchens', payload: kitchens }),
       addKitchen: (kitchen: Kitchen) => dispatch({ type: 'addKitchen', payload: kitchen }),
+      setFacilities: (facilities: Record<Id, Facility>) => dispatch({ type: 'setFacilities', payload: facilities }),
       setCookingSkills: (skills: CookingSkill[]) => dispatch({ type: 'setCookingSkills', payload: skills }),
       setEffectFamilyMap: (map: EffectFamilyMap) => dispatch({ type: 'setEffectFamilyMap', payload: map }),
 
@@ -457,7 +538,60 @@ export function CampaignStoreProvider({
       updateTravel: (id: Id, changes: Partial<TravelAction>) =>
         dispatch({ type: 'updateTravel', payload: { id, changes } }),
       completeTravel: (id: Id) => dispatch({ type: 'completeTravel', payload: id }),
-      cancelTravel: (id: Id) => dispatch({ type: 'cancelTravel', payload: id })
+      cancelTravel: (id: Id) => dispatch({ type: 'cancelTravel', payload: id }),
+      // Custom climate/terrain
+      addCustomClimate: (key: string, label: string) =>
+        dispatch({ type: 'addCustomClimate', payload: { key, label } }),
+      removeCustomClimate: (key: string) =>
+        dispatch({ type: 'removeCustomClimate', payload: key }),
+      addCustomTerrain: (key: string, label: string) =>
+        dispatch({ type: 'addCustomTerrain', payload: { key, label } }),
+      removeCustomTerrain: (key: string) =>
+        dispatch({ type: 'removeCustomTerrain', payload: key }),
+      setTerrainModifierOverrides: (overrides: Record<string, Partial<LocationModifiers>>) =>
+        dispatch({ type: 'setTerrainModifierOverrides', payload: overrides }),
+      setWeatherEffectOverrides: (overrides: Record<string, Partial<WeatherEffects>>) =>
+        dispatch({ type: 'setWeatherEffectOverrides', payload: overrides }),
+
+      // Map Actions
+      setMaps: (maps: MapState) => dispatch({ type: 'setMaps', payload: maps }),
+      mapCreateMap: (params: { name: string; description?: string; scaleMilesPerTile: MapScale; startTerrainId: TerrainId }) =>
+        dispatch({ type: 'map/createMap', payload: params }),
+      mapDeleteMap: (mapId: MapId) => dispatch({ type: 'map/deleteMap', payload: mapId }),
+      mapUpdateMap: (mapId: MapId, changes: { name?: string; description?: string }) =>
+        dispatch({ type: 'map/updateMap', payload: { mapId, changes } }),
+      mapSetActiveMap: (mapId: MapId | null) => dispatch({ type: 'map/setActiveMap', payload: mapId }),
+      mapSetTileTerrain: (mapId: MapId, tileId: TileId, terrainId: TerrainId) =>
+        dispatch({ type: 'map/setTileTerrain', payload: { mapId, tileId, terrainId } }),
+      mapStampTerrain: (mapId: MapId, tileIds: TileId[], terrainId: TerrainId) =>
+        dispatch({ type: 'map/stampTerrain', payload: { mapId, tileIds, terrainId } }),
+      mapAddTerrain: (mapId: MapId, terrain: TerrainModel) =>
+        dispatch({ type: 'map/addTerrain', payload: { mapId, terrain } }),
+      mapUpdateTerrain: (mapId: MapId, terrainId: TerrainId, changes: Partial<TerrainModel>) =>
+        dispatch({ type: 'map/updateTerrain', payload: { mapId, terrainId, changes } }),
+      mapRemoveTerrain: (mapId: MapId, terrainId: TerrainId) =>
+        dispatch({ type: 'map/removeTerrain', payload: { mapId, terrainId } }),
+      mapAddMarker: (mapId: MapId, marker: MarkerModel) =>
+        dispatch({ type: 'map/addMarker', payload: { mapId, marker } }),
+      mapUpdateMarker: (mapId: MapId, markerId: MarkerId, changes: Partial<MarkerModel>) =>
+        dispatch({ type: 'map/updateMarker', payload: { mapId, markerId, changes } }),
+      mapRemoveMarker: (mapId: MapId, markerId: MarkerId) =>
+        dispatch({ type: 'map/removeMarker', payload: { mapId, markerId } }),
+      mapAddLink: (link: LinkModel) => dispatch({ type: 'map/addLink', payload: { link } }),
+      mapRemoveLink: (mapId: MapId, linkId: LinkId) =>
+        dispatch({ type: 'map/removeLink', payload: { mapId, linkId } }),
+      mapRevealTiles: (mapId: MapId, tileIds: TileId[]) =>
+        dispatch({ type: 'map/revealTiles', payload: { mapId, tileIds } }),
+      mapSetPartyTile: (mapId: MapId, tileId: TileId | null) =>
+        dispatch({ type: 'map/setPartyTile', payload: { mapId, tileId } }),
+      mapSetTravelWizard: (wizard: TravelWizardState) =>
+        dispatch({ type: 'map/setTravelWizard', payload: wizard }),
+      mapClearTravelWizard: () => dispatch({ type: 'map/clearTravelWizard' }),
+      mapExecuteTravel: (params: { mapId: MapId; routeTileIds: TileId[]; destinationTileId: TileId; mode: TravelMode; gmOverride: boolean }) =>
+        dispatch({ type: 'map/executeTravel', payload: params }),
+      mapSetPendingTerrain: (tileIds: TileId[]) =>
+        dispatch({ type: 'map/setPendingTerrain', payload: tileIds }),
+      mapClearPendingTerrain: () => dispatch({ type: 'map/clearPendingTerrain' }),
     }),
     []
   );

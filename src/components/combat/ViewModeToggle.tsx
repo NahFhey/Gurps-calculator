@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Eye, EyeOff, Lock, Shield } from 'lucide-react';
 import { ViewMode } from '../../utils/combatViewFilter';
+import { ConfirmDialog, useConfirmDialog } from '../ui';
 
 type ViewModeType = typeof ViewMode[keyof typeof ViewMode];
 
@@ -26,16 +28,29 @@ export default function ViewModeToggle({
   const isGMView = viewMode === ViewMode.GM;
   const isPlayerView = viewMode === ViewMode.PLAYER;
 
-  const handleToggle = () => {
+  const gmModeDialog = useConfirmDialog({
+    title: 'Enable GM Mode',
+    message: (
+      <div className="space-y-2">
+        <p>Enable GM Mode to access GM View?</p>
+        <p className="text-sm text-gray-400">
+          GM View shows all secret information (enemy HP, DR, defenses, etc.).
+          This should only be used by the Game Master.
+        </p>
+        <p className="text-xs text-yellow-400 mt-2">
+          Note: This is a casual lock for preventing accidental spoilers, not cryptographic security.
+        </p>
+      </div>
+    ),
+    confirmLabel: 'Enable GM Mode',
+    variant: 'warning',
+  });
+
+  const handleToggle = async () => {
     if (isPlayerView) {
       // Switching to GM View - requires GM Mode
       if (!gmMode) {
-        const confirmed = window.confirm(
-          'Enable GM Mode to access GM View?\n\n' +
-          'GM View shows all secret information (enemy HP, DR, defenses, etc.).\n' +
-          'This should only be used by the Game Master.\n\n' +
-          'Note: This is a casual lock for preventing accidental spoilers, not cryptographic security.'
-        );
+        const confirmed = await gmModeDialog.confirm();
         if (confirmed) {
           setGmMode(true);
           setViewMode(ViewMode.GM);
@@ -105,6 +120,9 @@ export default function ViewModeToggle({
           <span>Showing all secrets - not safe for player viewing</span>
         </div>
       )}
+
+      {/* GM Mode Confirmation Dialog */}
+      <ConfirmDialog {...gmModeDialog.dialogProps} />
     </div>
   );
 }

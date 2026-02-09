@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, ChangeEvent } from 'react';
 import { useCampaignStore } from '../state/campaignStore';
+import { ConfirmDialog, useConfirmDialog } from './ui';
 import type { CampaignState } from '../state/campaignReducer';
 
 const serializeCampaignState = (state: CampaignState): string =>
@@ -23,11 +24,18 @@ export function DebugPanel() {
   const [error, setError] = useState<string | null>(null);
   const serializedState = useMemo(() => serializeCampaignState(state), [state]);
 
+  const applyDialog = useConfirmDialog({
+    title: 'Apply Debug State',
+    message: 'Overwrite campaign state with this JSON? This will replace all current data.',
+    confirmLabel: 'Apply',
+    variant: 'warning',
+  });
+
   useEffect(() => {
     setJsonText(serializedState);
   }, [serializedState]);
 
-  const handleApply = () => {
+  const handleApply = async () => {
     setError(null);
     let parsed: CampaignState;
     try {
@@ -42,7 +50,7 @@ export function DebugPanel() {
       return;
     }
 
-    const confirmed = window.confirm('Overwrite campaign state with this JSON?');
+    const confirmed = await applyDialog.confirm();
     if (!confirmed) {
       return;
     }
@@ -77,6 +85,9 @@ export function DebugPanel() {
         onChange={(event: ChangeEvent<HTMLTextAreaElement>) => setJsonText(event.target.value)}
         data-testid="debug-json"
       />
+
+      {/* Apply Confirmation Dialog */}
+      <ConfirmDialog {...applyDialog.dialogProps} />
     </div>
   );
 }

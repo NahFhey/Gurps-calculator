@@ -18,6 +18,7 @@ import type {
   WeatherTable,
   Location,
   ClimateType,
+  TerrainType,
   WeatherGenerationInput,
   WeatherGenerationResult,
   LocationState,
@@ -34,7 +35,7 @@ import { WEATHER_ICONS, TEMPERATURE_LABELS } from '../types/location';
  * Base weather effects for each weather type
  * These are modified by intensity
  */
-const BASE_WEATHER_EFFECTS: Record<WeatherType, Partial<WeatherEffects>> = {
+export const BASE_WEATHER_EFFECTS: Record<WeatherType, Partial<WeatherEffects>> = {
   clear: {
     gathering: 1,
     hunting: 0,
@@ -630,7 +631,7 @@ function generateWeatherDescription(
  * Generate new weather for a location
  */
 export function generateWeather(input: WeatherGenerationInput): WeatherGenerationResult {
-  const { location, weatherTable, currentTime } = input;
+  const { location, weatherTable, currentTime, weatherEffectOverrides } = input;
 
   // Get weather entries from custom table or climate defaults
   const entries = weatherTable?.entries ?? DEFAULT_CLIMATE_TABLES[location.climate] ?? DEFAULT_CLIMATE_TABLES.temperate;
@@ -643,8 +644,10 @@ export function generateWeather(input: WeatherGenerationInput): WeatherGeneratio
   const intensity = randomIntensity(selected.intensityWeights);
   const duration = randomDuration(selected.durationRange);
 
-  // Calculate effects
-  const baseEffects = BASE_WEATHER_EFFECTS[selected.weather] ?? {};
+  // Calculate effects (merge GM overrides with defaults before intensity scaling)
+  const defaults = BASE_WEATHER_EFFECTS[selected.weather] ?? {};
+  const overrides = weatherEffectOverrides?.[selected.weather];
+  const baseEffects = overrides ? { ...defaults, ...overrides } : defaults;
   const effects = applyIntensityModifier(baseEffects, intensity);
 
   // Generate description
@@ -775,6 +778,49 @@ export function createDefaultLocationModifiers(): LocationModifiers {
     foraging: 0,
     travel: 0,
   };
+}
+
+// ============================================================================
+// TERRAIN-BASED MODIFIERS
+// ============================================================================
+
+/**
+ * Default activity modifiers for each terrain type.
+ * These auto-apply to LocationModifiers when the party's terrain changes.
+ * GMs can override via terrainModifierOverrides in LocationState.
+ */
+export const DEFAULT_TERRAIN_MODIFIERS: Record<string, LocationModifiers> = {
+  forest:      { gathering: 1,  hunting: 2,  foraging: 2,  travel: -1 },
+  plains:      { gathering: 0,  hunting: 1,  foraging: 0,  travel: 1 },
+  mountains:   { gathering: -1, hunting: 0,  foraging: -1, travel: -3 },
+  desert:      { gathering: -2, hunting: -1, foraging: -2, travel: -1 },
+  swamp:       { gathering: 1,  hunting: 1,  foraging: 1,  travel: -2 },
+  coastal:     { gathering: 1,  hunting: 0,  foraging: 1,  travel: 0 },
+  urban:       { gathering: -1, hunting: -2, foraging: -1, travel: 2 },
+  underground: { gathering: 0,  hunting: -1, foraging: -1, travel: -1 },
+  river:       { gathering: 2,  hunting: 0,  foraging: 1,  travel: -1 },
+};
+
+/**
+ * Get the effective terrain modifiers for a terrain type.
+ * Checks GM overrides first, then falls back to defaults.
+ */
+export function getTerrainModifiers(
+  terrain: TerrainType,
+  overrides?: Record<string, Partial<LocationModifiers>>
+): LocationModifiers {
+  const defaults = DEFAULT_TERRAIN_MODIFIERS[terrain] ?? createDefaultLocationModifiers();
+
+  if (overrides && overrides[terrain]) {
+    return {
+      gathering: overrides[terrain].gathering ?? defaults.gathering,
+      hunting: overrides[terrain].hunting ?? defaults.hunting,
+      foraging: overrides[terrain].foraging ?? defaults.foraging,
+      travel: overrides[terrain].travel ?? defaults.travel,
+    };
+  }
+
+  return { ...defaults };
 }
 
 /**
