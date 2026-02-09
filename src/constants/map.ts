@@ -98,6 +98,7 @@ export function createPresetTerrains(): TerrainModel[] {
       id: 'terrain-plains',
       name: 'Plains',
       color: '#4ade80',
+      locationTerrain: 'plains',
       perMode: {
         foot: { passable: true, speedModifier: 1.0 },
         boat: { passable: false, speedModifier: 1.0 },
@@ -108,6 +109,7 @@ export function createPresetTerrains(): TerrainModel[] {
       id: 'terrain-forest',
       name: 'Forest',
       color: '#166534',
+      locationTerrain: 'forest',
       perMode: {
         foot: { passable: true, speedModifier: 0.8 },
         boat: { passable: false, speedModifier: 1.0 },
@@ -118,6 +120,7 @@ export function createPresetTerrains(): TerrainModel[] {
       id: 'terrain-hills',
       name: 'Hills',
       color: '#a3a23a',
+      locationTerrain: 'plains',
       perMode: {
         foot: { passable: true, speedModifier: 0.7 },
         boat: { passable: false, speedModifier: 1.0 },
@@ -128,6 +131,7 @@ export function createPresetTerrains(): TerrainModel[] {
       id: 'terrain-mountains',
       name: 'Mountains',
       color: '#6b7280',
+      locationTerrain: 'mountains',
       perMode: {
         foot: { passable: false, speedModifier: 1.0 },
         boat: { passable: false, speedModifier: 1.0 },
@@ -138,6 +142,7 @@ export function createPresetTerrains(): TerrainModel[] {
       id: 'terrain-swamp',
       name: 'Swamp',
       color: '#7e22ce',
+      locationTerrain: 'swamp',
       perMode: {
         foot: { passable: true, speedModifier: 0.5 },
         boat: { passable: false, speedModifier: 1.0 },
@@ -148,6 +153,7 @@ export function createPresetTerrains(): TerrainModel[] {
       id: 'terrain-desert',
       name: 'Desert',
       color: '#eab308',
+      locationTerrain: 'desert',
       perMode: {
         foot: { passable: true, speedModifier: 0.7 },
         boat: { passable: false, speedModifier: 1.0 },
@@ -168,6 +174,7 @@ export function createPresetTerrains(): TerrainModel[] {
       id: 'terrain-urban',
       name: 'Urban',
       color: '#92400e',
+      locationTerrain: 'urban',
       perMode: {
         foot: { passable: true, speedModifier: 1.0 },
         boat: { passable: false, speedModifier: 1.0 },

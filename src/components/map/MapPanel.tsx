@@ -8,6 +8,7 @@ import { useCampaignStore } from '../../state/campaignStore';
 import type { MapScale, TerrainId, TileId, MarkerModel, LinkModel, TravelMode } from '../../types/map';
 import { SCALE_TO_MODES } from '../../constants/map';
 import { findRoute, getReachableTiles } from '../../utils/mapRouter';
+import { getVisibleTileIds } from '../../utils/mapUtils';
 import { MapGrid } from './views/MapGrid';
 import { MapHeader } from './views/MapHeader';
 import { MapCreateDialog } from './views/MapCreateDialog';
@@ -71,6 +72,15 @@ export function MapPanel() {
     const reachable = getReachableTiles(activeMap, activeMap.partyTileId, travelMode, isGmMode);
     return reachable.size > 0 ? reachable : undefined;
   }, [showTravelWizard, travelStep, travelMode, activeMap, isGmMode]);
+
+  // Visible-but-unexplored tiles for player vision (computed from party position)
+  // When travel wizard is active with a mode, expands vision to that mode's range + 2
+  const activeTravelModeForVision = showTravelWizard && travelStep >= 2 && travelMode ? travelMode : undefined;
+  const visibleTileIds = useMemo(() => {
+    if (!activeMap || isGmMode) return undefined;
+    const visible = getVisibleTileIds(activeMap, activeTravelModeForVision);
+    return visible.size > 0 ? visible : undefined;
+  }, [activeMap, isGmMode, activeTravelModeForVision]);
 
   // Select map
   const handleSelectMap = useCallback(
@@ -324,6 +334,7 @@ export function MapPanel() {
           selectedTileIds={selectedTileIds.size > 0 ? selectedTileIds : undefined}
           routeTileIds={travelRoute.length > 1 ? travelRoute : undefined}
           reachableTileIds={reachableTileIds}
+          visibleTileIds={visibleTileIds}
           onTileClick={handleTileClick}
           onTileContextMenu={handleTileContextMenu}
           onTileMouseDown={handleTileMouseDown}

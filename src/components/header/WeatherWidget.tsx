@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useCampaignStore } from '../../state/campaignStore';
-import { getWeatherIcon, getRemainingWeatherSlots } from '../../utils/weatherSystem';
+import { getWeatherIcon, getRemainingWeatherSlots, BASE_WEATHER_EFFECTS } from '../../utils/weatherSystem';
 import { LocationManager } from '../location/LocationManager';
-import type { Weather } from '../../types/location';
+import type { Weather, WeatherEffects } from '../../types/location';
 import { TEMPERATURE_LABELS, CLIMATE_LABELS } from '../../types/location';
 
 /**
@@ -14,6 +14,7 @@ import { TEMPERATURE_LABELS, CLIMATE_LABELS } from '../../types/location';
  * - Displays current location and weather
  * - Shows weather effects on activities
  * - GM can click to manage locations and weather
+ * - GM can edit weather effect templates inline
  * - Weather auto-updates when time advances
  */
 
@@ -30,6 +31,8 @@ export function WeatherWidget({
 }: WeatherWidgetProps) {
   const { state, actions } = useCampaignStore();
   const [showManager, setShowManager] = useState(false);
+  const [editingEffects, setEditingEffects] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   // Get current location and weather from state
   const currentLocation = state.locations.currentLocationId
@@ -45,28 +48,25 @@ export function WeatherWidget({
     return getRemainingWeatherSlots(activeWeather, state.time, state.time.slotsPerDay);
   }, [activeWeather, state.time]);
 
-  // Format effects for display
-  const effectsDisplay = useMemo(() => {
+  // Format effects summary (compact one-line)
+  const effectsSummary = useMemo(() => {
     if (!weather) return 'No weather data';
 
     const effects: string[] = [];
     if (weather.effects.gathering !== 0) {
-      effects.push(`Gathering ${weather.effects.gathering > 0 ? '+' : ''}${weather.effects.gathering}`);
+      effects.push(`Gather ${weather.effects.gathering > 0 ? '+' : ''}${weather.effects.gathering}`);
     }
     if (weather.effects.hunting !== 0) {
-      effects.push(`Hunting ${weather.effects.hunting > 0 ? '+' : ''}${weather.effects.hunting}`);
+      effects.push(`Hunt ${weather.effects.hunting > 0 ? '+' : ''}${weather.effects.hunting}`);
     }
     if (weather.effects.travel !== 0) {
       effects.push(`Travel ${weather.effects.travel > 0 ? '+' : ''}${weather.effects.travel}`);
     }
     if (weather.effects.crafting !== 0) {
-      effects.push(`Crafting ${weather.effects.crafting > 0 ? '+' : ''}${weather.effects.crafting}`);
+      effects.push(`Craft ${weather.effects.crafting > 0 ? '+' : ''}${weather.effects.crafting}`);
     }
-    if (weather.effects.alchemy !== 0) {
-      effects.push(`Alchemy ${weather.effects.alchemy > 0 ? '+' : ''}${weather.effects.alchemy}`);
-    }
-    if (weather.effects.cooking !== 0) {
-      effects.push(`Cooking ${weather.effects.cooking > 0 ? '+' : ''}${weather.effects.cooking}`);
+    if (weather.effects.combat !== 0) {
+      effects.push(`Combat ${weather.effects.combat > 0 ? '+' : ''}${weather.effects.combat}`);
     }
     if (weather.effects.visibility !== 0) {
       effects.push(`Vision ${weather.effects.visibility > 0 ? '+' : ''}${weather.effects.visibility}`);
@@ -124,7 +124,7 @@ export function WeatherWidget({
       <>
         <div
           className="flex items-center gap-2 rounded border border-gray-600 bg-gray-700/50 px-3 py-1.5 cursor-pointer hover:bg-gray-700"
-          title={`${currentLocation.name}: ${weather?.description ?? 'Unknown'}\n${effectsDisplay}`}
+          title={`${currentLocation.name}: ${weather?.description ?? 'Unknown'}\n${effectsSummary}`}
           onClick={() => setShowManager(true)}
           data-testid="weather-widget-compact"
         >
@@ -149,13 +149,16 @@ export function WeatherWidget({
   return (
     <>
       <div
-        className="rounded border border-gray-600 bg-gray-700/50 px-4 py-2 cursor-pointer hover:bg-gray-700"
-        onClick={() => setShowManager(true)}
+        className="rounded border border-gray-600 bg-gray-700/50 px-4 py-2"
         data-testid="weather-widget"
       >
-        <div className="flex items-start gap-3">
+        {/* Main clickable row — opens location manager */}
+        <div
+          className="flex items-start gap-3 cursor-pointer hover:bg-gray-700/50 rounded -mx-1 px-1 py-0.5"
+          onClick={() => setShowManager(true)}
+        >
           {/* Weather Icon */}
-          <div className="flex h-10 w-10 items-center justify-center rounded bg-gray-600/50 text-2xl">
+          <div className="flex h-10 w-10 items-center justify-center rounded bg-gray-600/50 text-2xl flex-shrink-0">
             {weather ? getWeatherIcon(weather.type) : '🌡️'}
           </div>
 
@@ -181,30 +184,66 @@ export function WeatherWidget({
               {durationDisplay}
             </div>
 
-            {/* Effects */}
-            {showEffects && (
+            {/* Effects summary (collapsed) */}
+            {showEffects && !expanded && (
               <div className="text-xs text-gray-400 mt-0.5">
-                {effectsDisplay}
+                {effectsSummary}
               </div>
             )}
           </div>
-
-          {/* GM Controls */}
-          {state.ui.gmModeEnabled && (
-            <div className="flex flex-col gap-1">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRollWeather();
-                }}
-                className="px-2 py-1 text-xs bg-gray-600 hover:bg-gray-500 text-gray-200 rounded"
-                title="Roll new weather"
-              >
-                🎲
-              </button>
-            </div>
-          )}
         </div>
+
+        {/* GM Controls — outside the clickable area */}
+        {state.ui.gmModeEnabled && (
+          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-600/50">
+            <button
+              onClick={handleRollWeather}
+              className="px-2 py-1 text-xs bg-gray-600 hover:bg-gray-500 text-gray-200 rounded"
+              title="Roll new weather"
+            >
+              🎲 Reroll
+            </button>
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className={`px-2 py-1 text-xs rounded ${
+                expanded
+                  ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                  : 'bg-gray-600 hover:bg-gray-500 text-gray-200'
+              }`}
+              title="Show weather effects details"
+            >
+              {expanded ? 'Hide Effects' : 'Show Effects'}
+            </button>
+            {weather && (
+              <button
+                onClick={() => {
+                  if (!expanded) setExpanded(true);
+                  setEditingEffects(!editingEffects);
+                }}
+                className={`px-2 py-1 text-xs rounded ${
+                  editingEffects
+                    ? 'bg-amber-600 hover:bg-amber-500 text-white'
+                    : 'bg-gray-600 hover:bg-gray-500 text-gray-200'
+                }`}
+                title="Edit weather effect values for this weather type"
+              >
+                {editingEffects ? 'Done Editing' : 'Edit Effects'}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Expanded effects display */}
+        {expanded && weather && (
+          <div className="mt-2 pt-2 border-t border-gray-600/50">
+            <WeatherEffectsDisplay
+              weather={weather}
+              editing={editingEffects}
+              currentOverrides={state.locations.weatherEffectOverrides ?? {}}
+              onSave={(overrides) => actions.setWeatherEffectOverrides(overrides)}
+            />
+          </div>
+        )}
       </div>
 
       {/* Location Manager Modal */}
@@ -216,6 +255,162 @@ export function WeatherWidget({
         </div>
       )}
     </>
+  );
+}
+
+// ============================================================================
+// WEATHER EFFECTS DISPLAY / EDITOR
+// ============================================================================
+
+const EFFECT_KEYS: { key: keyof WeatherEffects; label: string }[] = [
+  { key: 'gathering', label: 'Gathering' },
+  { key: 'hunting', label: 'Hunting' },
+  { key: 'travel', label: 'Travel' },
+  { key: 'crafting', label: 'Crafting' },
+  { key: 'alchemy', label: 'Alchemy' },
+  { key: 'cooking', label: 'Cooking' },
+  { key: 'combat', label: 'Combat' },
+  { key: 'visibility', label: 'Vision' },
+  { key: 'hearing', label: 'Hearing' },
+  { key: 'fireRisk', label: 'Fire Risk' },
+  { key: 'trackingMod', label: 'Tracking' },
+];
+
+/** Base weather effects for reference — sourced from the canonical BASE_WEATHER_EFFECTS */
+
+function WeatherEffectsDisplay({
+  weather,
+  editing,
+  currentOverrides,
+  onSave,
+}: {
+  weather: Weather;
+  editing: boolean;
+  currentOverrides: Record<string, Partial<WeatherEffects>>;
+  onSave: (overrides: Record<string, Partial<WeatherEffects>>) => void;
+}) {
+  const baseDefaults = BASE_WEATHER_EFFECTS[weather.type] ?? {};
+  const typeOverrides = currentOverrides[weather.type] ?? {};
+
+  const getBaseValue = (key: string): number => {
+    return (baseDefaults[key as keyof WeatherEffects] as number) ?? 0;
+  };
+
+  const getOverrideValue = (key: string): number | undefined => {
+    return typeOverrides[key as keyof WeatherEffects] as number | undefined;
+  };
+
+  const isOverridden = (key: string): boolean => {
+    return getOverrideValue(key) !== undefined;
+  };
+
+  const getEffectiveValue = (key: string): number => {
+    const override = getOverrideValue(key);
+    if (override !== undefined) return override;
+    return getBaseValue(key);
+  };
+
+  // Get the actual live value from the weather (after intensity scaling)
+  const getLiveValue = (key: string): number => {
+    return (weather.effects[key as keyof WeatherEffects] as number) ?? 0;
+  };
+
+  const handleChange = (key: string, value: number) => {
+    const defaultVal = getBaseValue(key);
+    const next = { ...currentOverrides };
+
+    if (value === defaultVal) {
+      // Remove override if matches default
+      if (next[weather.type]) {
+        const { [key]: _, ...rest } = next[weather.type] as Record<string, unknown>;
+        if (Object.keys(rest).length === 0) {
+          delete next[weather.type];
+        } else {
+          next[weather.type] = rest as Partial<WeatherEffects>;
+        }
+      }
+    } else {
+      next[weather.type] = { ...next[weather.type], [key]: value };
+    }
+    onSave(next);
+  };
+
+  const handleResetAll = () => {
+    const next = { ...currentOverrides };
+    delete next[weather.type];
+    onSave(next);
+  };
+
+  const hasOverrides = Object.keys(typeOverrides).length > 0;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-medium text-gray-300">
+          Weather Effects: {weather.type}
+          {weather.intensity && weather.intensity !== 'moderate' && (
+            <span className="text-gray-500 ml-1">({weather.intensity})</span>
+          )}
+        </span>
+        {editing && hasOverrides && (
+          <button
+            onClick={handleResetAll}
+            className="text-xs text-gray-500 hover:text-gray-300"
+          >
+            Reset all
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-3 gap-x-3 gap-y-1">
+        {EFFECT_KEYS.map(({ key, label }) => {
+          const liveVal = getLiveValue(key);
+          const baseVal = getEffectiveValue(key);
+          const overridden = isOverridden(key);
+
+          // In view mode, skip effects that are zero (unless overridden)
+          if (!editing && liveVal === 0 && !overridden) return null;
+
+          return (
+            <div key={key} className="flex items-center justify-between gap-1">
+              <span className="text-xs text-gray-400 truncate" title={label}>
+                {label}
+              </span>
+              {editing ? (
+                <input
+                  type="number"
+                  value={baseVal}
+                  onChange={(e) => handleChange(key, parseInt(e.target.value) || 0)}
+                  className={`w-12 px-1 py-0.5 text-center text-xs rounded border ${
+                    overridden
+                      ? 'bg-amber-900/30 border-amber-600 text-amber-200'
+                      : 'bg-gray-700 border-gray-600 text-gray-100'
+                  }`}
+                />
+              ) : (
+                <span className={`text-xs font-mono ${
+                  liveVal > 0 ? 'text-green-400' : liveVal < 0 ? 'text-red-400' : 'text-gray-500'
+                }`}>
+                  {liveVal > 0 ? '+' : ''}{liveVal}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Show all-zero message in view mode */}
+      {!editing && EFFECT_KEYS.every(({ key }) => getLiveValue(key) === 0) && (
+        <p className="text-xs text-gray-500 italic">No active weather modifiers</p>
+      )}
+
+      {editing && (
+        <p className="text-xs text-gray-500 mt-2">
+          Edit base values for &ldquo;{weather.type}&rdquo;. Changes apply to all future rolls (before intensity scaling).
+          {hasOverrides && <span className="text-amber-400 ml-1">Amber = overridden</span>}
+        </p>
+      )}
+    </div>
   );
 }
 

@@ -255,8 +255,8 @@ function getSpeedModifier(map: MapModel, tileId: TileId, mode: TravelMode): numb
   const tile = map.tilesById[tileId];
   if (!tile || !tile.terrainId) return 1.0; // null terrain = normal speed
   const terrain = map.terrainById[tile.terrainId];
-  if (!terrain) return 1.0;
-  return terrain.perMode[mode]?.speedModifier ?? 1.0;
+  if (!terrain || !terrain.perMode) return 1.0;
+  return terrain.perMode[mode]?.speedModifier || 1.0;
 }
 
 /** Reconstruct path from A* cameFrom map */

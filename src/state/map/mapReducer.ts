@@ -34,6 +34,7 @@ import {
 import {
   createNewMap,
   expandMapIfNeeded,
+  expandMapIfNeededForPaint,
 } from '../../utils/mapUtils';
 
 /**
@@ -121,6 +122,11 @@ export function handleMapAction(
         if (tile) {
           tile.terrainId = terrainId;
           map.lastPlacedTerrainId = terrainId;
+        }
+        // Expand map if painting near edge
+        const expanded = expandMapIfNeededForPaint(map as any);
+        if (expanded !== (map as any)) {
+          maps.mapsById[mapId] = expanded as any;
         }
       }
       return;

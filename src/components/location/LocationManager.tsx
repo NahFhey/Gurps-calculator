@@ -16,20 +16,26 @@ import {
   generateWeather,
   createDefaultLocationModifiers,
   getWeatherIcon,
+  DEFAULT_TERRAIN_MODIFIERS,
+  BASE_WEATHER_EFFECTS,
 } from '../../utils/weatherSystem';
 import type {
   Location,
   ClimateType,
   TerrainType,
+  LocationModifiers,
   WeatherTable,
+  WeatherEffects,
+  WeatherType,
 } from '../../types/location';
 import {
   CLIMATE_LABELS,
   TERRAIN_LABELS,
+  WEATHER_LABELS,
 } from '../../types/location';
 import { TravelPanel } from './TravelPanel';
 import { WeatherTableEditor } from './WeatherTableEditor';
-import { ClimateTerrainEditor } from './ClimateTerrainEditor';
+import { ClimateEditor, TerrainEditor } from './ClimateTerrainEditor';
 import { ConfirmDialog, useConfirmDialog, useToast } from '../ui';
 
 // ============================================================================
@@ -47,7 +53,265 @@ type ManagerView =
   | 'travel'
   | 'weatherTables'
   | 'editWeatherTable'
-  | 'climatesTerrain';
+  | 'climates'
+  | 'terrain'
+  | 'terrainModifiers'
+  | 'weatherModifiers';
+
+// ============================================================================
+// TERRAIN MODIFIERS EDITOR
+// ============================================================================
+
+const MODIFIER_KEYS: (keyof LocationModifiers)[] = ['gathering', 'hunting', 'foraging', 'travel'];
+
+function TerrainModifiersEditor({
+  overrides,
+  allTerrainLabels,
+  onSave,
+}: {
+  overrides: Record<string, Partial<LocationModifiers>>;
+  allTerrainLabels: Record<string, string>;
+  onSave: (overrides: Record<string, Partial<LocationModifiers>>) => void;
+}) {
+  const [local, setLocal] = useState<Record<string, Partial<LocationModifiers>>>({ ...overrides });
+
+  const terrainKeys = Object.keys(allTerrainLabels);
+
+  const getValue = (terrain: string, key: keyof LocationModifiers): number => {
+    if (local[terrain] && local[terrain][key] !== undefined) {
+      return local[terrain][key]!;
+    }
+    const defaults = DEFAULT_TERRAIN_MODIFIERS[terrain];
+    return defaults?.[key] ?? 0;
+  };
+
+  const isOverridden = (terrain: string, key: keyof LocationModifiers): boolean => {
+    return local[terrain]?.[key] !== undefined;
+  };
+
+  const handleChange = (terrain: string, key: keyof LocationModifiers, value: number) => {
+    const defaults = DEFAULT_TERRAIN_MODIFIERS[terrain];
+    const defaultVal = defaults?.[key] ?? 0;
+
+    const next = { ...local };
+    if (value === defaultVal) {
+      // Remove override if it matches default
+      if (next[terrain]) {
+        const { [key]: _, ...rest } = next[terrain];
+        if (Object.keys(rest).length === 0) {
+          delete next[terrain];
+        } else {
+          next[terrain] = rest;
+        }
+      }
+    } else {
+      next[terrain] = { ...next[terrain], [key]: value };
+    }
+    setLocal(next);
+    onSave(next);
+  };
+
+  const handleReset = (terrain: string) => {
+    const next = { ...local };
+    delete next[terrain];
+    setLocal(next);
+    onSave(next);
+  };
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-lg font-semibold text-gray-100">Terrain Modifiers</h3>
+      <p className="text-xs text-gray-400">
+        Default activity modifiers per terrain type. These auto-apply when the party enters a terrain.
+        Edited values are highlighted.
+      </p>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-gray-400 text-xs">
+              <th className="text-left py-1 px-2">Terrain</th>
+              {MODIFIER_KEYS.map((key) => (
+                <th key={key} className="text-center py-1 px-2 capitalize">{key}</th>
+              ))}
+              <th className="text-center py-1 px-1"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {terrainKeys.map((terrain) => (
+              <tr key={terrain} className="border-t border-gray-700">
+                <td className="py-1 px-2 text-gray-200">{allTerrainLabels[terrain]}</td>
+                {MODIFIER_KEYS.map((key) => (
+                  <td key={key} className="py-1 px-1 text-center">
+                    <input
+                      type="number"
+                      value={getValue(terrain, key)}
+                      onChange={(e) => handleChange(terrain, key, parseInt(e.target.value) || 0)}
+                      className={`w-14 px-1 py-0.5 text-center text-sm rounded border ${
+                        isOverridden(terrain, key)
+                          ? 'bg-amber-900/30 border-amber-600 text-amber-200'
+                          : 'bg-gray-700 border-gray-600 text-gray-100'
+                      }`}
+                    />
+                  </td>
+                ))}
+                <td className="py-1 px-1 text-center">
+                  {local[terrain] && (
+                    <button
+                      onClick={() => handleReset(terrain)}
+                      className="text-xs text-gray-500 hover:text-gray-300"
+                      title="Reset to defaults"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// WEATHER MODIFIERS EDITOR
+// ============================================================================
+
+const WEATHER_EFFECT_KEYS: { key: keyof WeatherEffects; label: string }[] = [
+  { key: 'gathering', label: 'Gather' },
+  { key: 'hunting', label: 'Hunt' },
+  { key: 'travel', label: 'Travel' },
+  { key: 'crafting', label: 'Craft' },
+  { key: 'alchemy', label: 'Alch' },
+  { key: 'cooking', label: 'Cook' },
+  { key: 'combat', label: 'Combat' },
+  { key: 'visibility', label: 'Vision' },
+  { key: 'hearing', label: 'Hear' },
+  { key: 'fireRisk', label: 'Fire' },
+  { key: 'trackingMod', label: 'Track' },
+];
+
+const ALL_WEATHER_TYPES: WeatherType[] = [
+  'clear', 'partlyCloudy', 'overcast',
+  'lightRain', 'rain', 'heavyRain', 'thunderstorm',
+  'fog', 'mist',
+  'snow', 'blizzard', 'hail',
+  'sandstorm', 'wind', 'heatwave', 'coldSnap',
+];
+
+function WeatherModifiersEditor({
+  overrides,
+  onSave,
+}: {
+  overrides: Record<string, Partial<WeatherEffects>>;
+  onSave: (overrides: Record<string, Partial<WeatherEffects>>) => void;
+}) {
+  const [local, setLocal] = useState<Record<string, Partial<WeatherEffects>>>({ ...overrides });
+
+  const getDefaultValue = (weatherType: string, key: keyof WeatherEffects): number => {
+    const defaults = BASE_WEATHER_EFFECTS[weatherType as WeatherType];
+    return (defaults?.[key] as number) ?? 0;
+  };
+
+  const getValue = (weatherType: string, key: keyof WeatherEffects): number => {
+    if (local[weatherType] && local[weatherType][key] !== undefined) {
+      return local[weatherType][key] as number;
+    }
+    return getDefaultValue(weatherType, key);
+  };
+
+  const isOverridden = (weatherType: string, key: keyof WeatherEffects): boolean => {
+    return local[weatherType]?.[key] !== undefined;
+  };
+
+  const handleChange = (weatherType: string, key: keyof WeatherEffects, value: number) => {
+    const defaultVal = getDefaultValue(weatherType, key);
+
+    const next = { ...local };
+    if (value === defaultVal) {
+      // Remove override if it matches default
+      if (next[weatherType]) {
+        const { [key]: _, ...rest } = next[weatherType];
+        if (Object.keys(rest).length === 0) {
+          delete next[weatherType];
+        } else {
+          next[weatherType] = rest;
+        }
+      }
+    } else {
+      next[weatherType] = { ...next[weatherType], [key]: value };
+    }
+    setLocal(next);
+    onSave(next);
+  };
+
+  const handleReset = (weatherType: string) => {
+    const next = { ...local };
+    delete next[weatherType];
+    setLocal(next);
+    onSave(next);
+  };
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-lg font-semibold text-gray-100">Weather Modifiers</h3>
+      <p className="text-xs text-gray-400">
+        Base effect modifiers per weather type (before intensity scaling).
+        Edited values are highlighted. These apply when weather is rolled.
+      </p>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-gray-400 text-xs">
+              <th className="text-left py-1 px-2 sticky left-0 bg-gray-800 z-10">Weather</th>
+              {WEATHER_EFFECT_KEYS.map(({ key, label }) => (
+                <th key={key} className="text-center py-1 px-1 whitespace-nowrap">{label}</th>
+              ))}
+              <th className="text-center py-1 px-1"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {ALL_WEATHER_TYPES.map((wt) => (
+              <tr key={wt} className="border-t border-gray-700">
+                <td className="py-1 px-2 text-gray-200 sticky left-0 bg-gray-800 z-10 whitespace-nowrap">
+                  {WEATHER_LABELS[wt]}
+                </td>
+                {WEATHER_EFFECT_KEYS.map(({ key }) => (
+                  <td key={key} className="py-1 px-0.5 text-center">
+                    <input
+                      type="number"
+                      value={getValue(wt, key)}
+                      onChange={(e) => handleChange(wt, key, parseInt(e.target.value) || 0)}
+                      className={`w-12 px-0.5 py-0.5 text-center text-xs rounded border ${
+                        isOverridden(wt, key)
+                          ? 'bg-amber-900/30 border-amber-600 text-amber-200'
+                          : 'bg-gray-700 border-gray-600 text-gray-100'
+                      }`}
+                    />
+                  </td>
+                ))}
+                <td className="py-1 px-1 text-center">
+                  {local[wt] && (
+                    <button
+                      onClick={() => handleReset(wt)}
+                      className="text-xs text-gray-500 hover:text-gray-300"
+                      title="Reset to defaults"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 // ============================================================================
 // COMPONENT
@@ -267,11 +531,11 @@ export function LocationManager({ onClose }: LocationManagerProps) {
   // ========================================================================
 
   const renderNavTabs = () => {
-    const isOnSubView = view === 'list' || view === 'weatherTables' || view === 'climatesTerrain';
-    if (!isOnSubView) return null;
+    const tabViews: ManagerView[] = ['list', 'weatherTables', 'climates', 'terrain', 'terrainModifiers', 'weatherModifiers'];
+    if (!tabViews.includes(view)) return null;
 
     return (
-      <div className="flex gap-1 mb-4 border-b border-gray-600 pb-2">
+      <div className="flex flex-wrap gap-1 mb-4 border-b border-gray-600 pb-2">
         <button
           onClick={() => setView('list')}
           className={`px-3 py-1.5 text-sm rounded-t ${
@@ -290,17 +554,47 @@ export function LocationManager({ onClose }: LocationManagerProps) {
               : 'text-gray-400 hover:text-gray-200'
           }`}
         >
-          Weather Tables
+          Weather
         </button>
         <button
-          onClick={() => setView('climatesTerrain')}
+          onClick={() => setView('climates')}
           className={`px-3 py-1.5 text-sm rounded-t ${
-            view === 'climatesTerrain'
+            view === 'climates'
               ? 'bg-gray-700 text-green-400 border-b-2 border-green-400'
               : 'text-gray-400 hover:text-gray-200'
           }`}
         >
-          Climates & Terrain
+          Climates
+        </button>
+        <button
+          onClick={() => setView('terrain')}
+          className={`px-3 py-1.5 text-sm rounded-t ${
+            view === 'terrain'
+              ? 'bg-gray-700 text-emerald-400 border-b-2 border-emerald-400'
+              : 'text-gray-400 hover:text-gray-200'
+          }`}
+        >
+          Terrain
+        </button>
+        <button
+          onClick={() => setView('terrainModifiers')}
+          className={`px-3 py-1.5 text-sm rounded-t ${
+            view === 'terrainModifiers'
+              ? 'bg-gray-700 text-amber-400 border-b-2 border-amber-400'
+              : 'text-gray-400 hover:text-gray-200'
+          }`}
+        >
+          Terrain Mods
+        </button>
+        <button
+          onClick={() => setView('weatherModifiers')}
+          className={`px-3 py-1.5 text-sm rounded-t ${
+            view === 'weatherModifiers'
+              ? 'bg-gray-700 text-orange-400 border-b-2 border-orange-400'
+              : 'text-gray-400 hover:text-gray-200'
+          }`}
+        >
+          Weather Mods
         </button>
       </div>
     );
@@ -740,17 +1034,40 @@ export function LocationManager({ onClose }: LocationManagerProps) {
         />
       )}
 
-      {/* Climate & Terrain editor */}
-      {view === 'climatesTerrain' && (
-        <ClimateTerrainEditor
+      {/* Climate editor */}
+      {view === 'climates' && (
+        <ClimateEditor
           customClimates={customClimates}
-          customTerrains={customTerrains}
           locations={locations}
           onAddClimate={(key, label) => actions.addCustomClimate(key, label)}
           onRemoveClimate={(key) => actions.removeCustomClimate(key)}
+        />
+      )}
+
+      {/* Terrain types editor */}
+      {view === 'terrain' && (
+        <TerrainEditor
+          customTerrains={customTerrains}
+          locations={locations}
           onAddTerrain={(key, label) => actions.addCustomTerrain(key, label)}
           onRemoveTerrain={(key) => actions.removeCustomTerrain(key)}
-          onBack={() => setView('list')}
+        />
+      )}
+
+      {/* Terrain Modifiers editor */}
+      {view === 'terrainModifiers' && (
+        <TerrainModifiersEditor
+          overrides={state.locations.terrainModifierOverrides ?? {}}
+          allTerrainLabels={allTerrainLabels}
+          onSave={(overrides) => actions.setTerrainModifierOverrides(overrides)}
+        />
+      )}
+
+      {/* Weather Modifiers editor */}
+      {view === 'weatherModifiers' && (
+        <WeatherModifiersEditor
+          overrides={state.locations.weatherEffectOverrides ?? {}}
+          onSave={(overrides) => actions.setWeatherEffectOverrides(overrides)}
         />
       )}
 

@@ -16,6 +16,7 @@ interface MapGridProps {
   selectedTileIds?: Set<TileId>;
   routeTileIds?: TileId[];
   reachableTileIds?: Set<TileId>;
+  visibleTileIds?: Set<TileId>;
   onTileClick?: (tileId: TileId, row: number, col: number) => void;
   onTileContextMenu?: (tileId: TileId, row: number, col: number, e: React.MouseEvent) => void;
   onTileMouseDown?: (tileId: TileId, row: number, col: number, e: React.MouseEvent) => void;
@@ -28,6 +29,7 @@ export function MapGrid({
   selectedTileIds,
   routeTileIds,
   reachableTileIds,
+  visibleTileIds,
   onTileClick,
   onTileContextMenu,
   onTileMouseDown,
@@ -114,6 +116,7 @@ export function MapGrid({
           <MapTile
             terrain={terrain}
             isRevealed={isRevealed}
+            isVisible={visibleTileIds?.has(tileId) ?? false}
             isPartyHere={isPartyHere}
             isGmMode={isGmMode}
             markers={markers}

@@ -49,6 +49,8 @@ import type {
   TravelAction,
   ActiveWeather
 } from '../types/location';
+import { TERRAIN_LABELS } from '../types/location';
+import type { LocationModifiers, WeatherEffects } from '../types/location';
 import type { DowntimeState } from '../types/downtime';
 import type { MapState } from '../types/map';
 import { initialMapState } from '../types/map';
@@ -58,7 +60,7 @@ import {
   createInitialLocationState,
   generateWeather,
   isWeatherExpired,
-  getCurrentLocation
+  getTerrainModifiers
 } from '../utils/weatherSystem';
 import { downtimeInitialState, DOWNTIME_SCHEMA_VERSION } from './downtime';
 import { isInventoryAction, handleInventoryAction } from './inventory';
@@ -68,6 +70,7 @@ import { isCraftingAction, handleCraftingAction } from './crafting';
 import { isCharacterAction, handleCharacterAction } from './character';
 import { isCombatAction, handleCombatAction } from './combat';
 import { isMapAction, handleMapAction, type MapAction } from './map';
+import { resolveLocationTerrain } from '../utils/mapUtils';
 
 export const CAMPAIGN_META = {
   rulesVersion: '1.0.0',
@@ -643,6 +646,8 @@ export type CampaignAction =
   | { type: 'setDowntime'; payload: DowntimeState }
   // Map actions (bulk setter + delegated map/ prefixed actions)
   | { type: 'setMaps'; payload: MapState }
+  | { type: 'setTerrainModifierOverrides'; payload: Record<string, Partial<LocationModifiers>> }
+  | { type: 'setWeatherEffectOverrides'; payload: Record<string, Partial<WeatherEffects>> }
   | MapAction;
 
 export function campaignReducer(state: CampaignState, action: CampaignAction) {
@@ -674,6 +679,41 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
     }
     if (isMapAction(action)) {
       handleMapAction(draft, action);
+
+      // Sync location terrain from map tile after party movement (cross-slice)
+      if (action.type === 'map/executeTravel' || action.type === 'map/setPartyTile') {
+        const destinationTileId = action.type === 'map/executeTravel'
+          ? action.payload.destinationTileId
+          : action.payload.tileId;
+        const mapId = action.payload.mapId;
+        const map = draft.maps.mapsById[mapId];
+        const currentLocId = draft.locations.currentLocationId;
+
+        if (map && destinationTileId && currentLocId) {
+          const location = draft.locations.locations[currentLocId];
+          if (location) {
+            const newTerrain = resolveLocationTerrain(map as any, destinationTileId);
+            if (newTerrain !== location.terrain) {
+              const oldLabel = TERRAIN_LABELS[location.terrain] ?? location.terrain;
+              const newLabel = TERRAIN_LABELS[newTerrain] ?? newTerrain;
+              location.terrain = newTerrain;
+              // Auto-set location modifiers from terrain defaults (or GM overrides)
+              const terrainMods = getTerrainModifiers(
+                newTerrain,
+                draft.locations.terrainModifierOverrides
+              );
+              location.modifiers = terrainMods;
+              location.modifiedAt = Date.now();
+              draft.logs.entries.unshift(
+                logEvent('terrain.changed', 'player', {
+                  message: `Terrain changed from ${oldLabel} to ${newLabel}`
+                })
+              );
+            }
+          }
+        }
+      }
+
       // After travel execution, advance time by one slot (cross-slice operation)
       if (action.type === 'map/executeTravel') {
         const { slot, slotsPerDay, slotLabels, day } = draft.time;
@@ -923,7 +963,8 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
             const result = generateWeather({
               location: location as Location,
               weatherTable,
-              currentTime: newTime
+              currentTime: newTime,
+              weatherEffectOverrides: draft.locations.weatherEffectOverrides,
             });
             location.currentWeather = result.weather;
             location.modifiedAt = Date.now();
@@ -1082,7 +1123,8 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
           const result = generateWeather({
             location: location as Location,
             weatherTable,
-            currentTime
+            currentTime,
+            weatherEffectOverrides: draft.locations.weatherEffectOverrides,
           });
           location.currentWeather = result.weather;
           location.modifiedAt = Date.now();
@@ -1208,6 +1250,14 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         }
         return;
       }
+
+      case 'setTerrainModifierOverrides':
+        draft.locations.terrainModifierOverrides = action.payload;
+        return;
+
+      case 'setWeatherEffectOverrides':
+        draft.locations.weatherEffectOverrides = action.payload;
+        return;
 
       // ========================================================================
       // DOWNTIME ACTIONS

@@ -27,6 +27,7 @@ import {
 import { DowntimeValidationError } from '../../../state/downtime/downtimeErrors';
 import { resolveForage } from '../../../utils/foraging';
 import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
+import { useWeatherModifiers } from '../../../hooks/useWeatherModifiers';
 import type { DowntimeTask, ForagingData, TaskResults } from '../../../types/downtime';
 import type { CreateTaskPayload } from '../../../state/downtime/downtimeActions';
 import type { ForageActionInput, ForageContextFlags } from '../../../types/foraging';
@@ -55,7 +56,8 @@ interface ForagingActivityProps {
 function resolveForagingTask(
   task: DowntimeTask,
   ctx: ReturnType<typeof useDowntimeContext>,
-  campaignActions: { addFood: (food: Food) => void; addMaterial: (material: Material) => void }
+  campaignActions: { addFood: (food: Food) => void; addMaterial: (material: Material) => void },
+  weatherModifier: number
 ): TaskResults {
   const data = task.activityData as ForagingData;
 
@@ -134,7 +136,7 @@ function resolveForagingTask(
     supervisorSkill15Plus,
     toolSkillBonus: toolSkillBonus + fatiguePenalty,
     toolYieldBonus,
-    weatherModifier: 0, // Weather integration in future phase
+    weatherModifier,
   };
 
   // Resolve using the engine — pass gatheringItems for per-item selection
@@ -203,6 +205,7 @@ function resolveForagingTask(
 export function ForagingActivity({ currentDayKey, currentSlot }: ForagingActivityProps) {
   const ctx = useDowntimeContext();
   const { actions: campaignActions } = useCampaignStore();
+  const { skillBonus: gatheringWeatherMod } = useWeatherModifiers('gathering');
   const {
     state,
     characters,
@@ -286,11 +289,11 @@ export function ForagingActivity({ currentDayKey, currentSlot }: ForagingActivit
       } else {
         // Auto-resolve
         beginResolve(task.id);
-        const results = resolveForagingTask(task, ctx, campaignActions);
+        const results = resolveForagingTask(task, ctx, campaignActions, gatheringWeatherMod);
         resolve(task.id, results);
       }
     },
-    [ctx, campaignActions, beginResolve, resolve]
+    [ctx, campaignActions, beginResolve, resolve, gatheringWeatherMod]
   );
 
   // Handle manual resolution finalize

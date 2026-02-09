@@ -74,6 +74,10 @@ export interface TerrainModel {
   color: string;
   /** Travel properties per mode */
   perMode: Record<TravelMode, TerrainModeProps>;
+  /** Location terrain type for weather system mapping (e.g., 'forest', 'plains').
+   *  Used to sync map terrain with the location/weather system.
+   *  Context-dependent terrains like Water and Road omit this and use adjacency logic instead. */
+  locationTerrain?: string;
 }
 
 // ============================================================================

@@ -40,6 +40,7 @@ import {
 } from '../../../constants';
 import { getCharacterSkills } from '../../../types/characterSheet';
 import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
+import { useWeatherModifiers } from '../../../hooks/useWeatherModifiers';
 import type { DowntimeState, DowntimeTask, FishingData, TaskResults, InventoryDelta } from '../../../types/downtime';
 import type { CreateTaskPayload } from '../../../state/downtime/downtimeActions';
 import type { GatheringSpecies, GatheringEnvironment, GatheringTable, GatheringBait, Food, Material } from '../../../types/campaign';
@@ -81,7 +82,8 @@ function calculateFishingResultsAuto(
   gatheringTables: GatheringTable[],
   spot: GatheringEnvironment | undefined,
   campaignActions: { addFood: (food: Food) => void; addMaterial: (material: Material) => void; addGatheringBait: (bait: GatheringBait) => void },
-  downtimeState?: DowntimeState
+  downtimeState?: DowntimeState,
+  weatherModifier: number = 0
 ): TaskResults {
   const data = task.activityData as FishingData;
   const method = data.method || 'Line';
@@ -153,7 +155,7 @@ function calculateFishingResultsAuto(
   // Calculate effective skill (include stealth penalty for spear fishing + fatigue)
   const effectiveSkillResult = calculateEffectiveFishingSkill({
     baseFishingSkill: baseSkill,
-    toolBonus: data.skillModifier + stealthPenalty + fatiguePenalty,
+    toolBonus: data.skillModifier + stealthPenalty + fatiguePenalty + weatherModifier,
     hasCorrectBait,
     hasInappropriateBait,
     targetingLargeFish,
@@ -395,6 +397,7 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
   } = useDowntimeContext();
 
   const { actions: campaignActions } = useCampaignStore();
+  const { skillBonus: gatheringWeatherMod } = useWeatherModifiers('gathering');
 
   const [isCreating, setIsCreating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -478,12 +481,13 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
           gatheringTables as any[],
           spot,
           campaignActions,
-          state
+          state,
+          gatheringWeatherMod
         );
         resolve(task.id, results);
       }
     },
-    [characters, fishSpecies, fishingBait, fishingSpots, gatheringTables, campaignActions, beginResolve, resolve, state]
+    [characters, fishSpecies, fishingBait, fishingSpots, gatheringTables, campaignActions, beginResolve, resolve, state, gatheringWeatherMod]
   );
 
   // Handle manual resolution finalize

@@ -17,6 +17,7 @@ interface TravelStep2RouteProps {
   routeTileIds: TileId[];
   startTileId: TileId | null;
   onClearRoute: () => void;
+  weatherTravelModifier?: number;
 }
 
 export function TravelStep2Route({
@@ -25,9 +26,10 @@ export function TravelStep2Route({
   routeTileIds,
   startTileId,
   onClearRoute,
+  weatherTravelModifier = 0,
 }: TravelStep2RouteProps) {
   const hasRoute = routeTileIds.length > 1;
-  const stats = hasRoute ? getRouteStats(map, routeTileIds, mode) : null;
+  const stats = hasRoute ? getRouteStats(map, routeTileIds, mode, weatherTravelModifier) : null;
 
   const startPos = startTileId ? findTileGridPos(map, startTileId) : null;
   const destTileId = hasRoute ? routeTileIds[routeTileIds.length - 1] : null;
@@ -72,7 +74,7 @@ export function TravelStep2Route({
             <div className="text-[10px] text-gray-400">
               <Ruler className="w-2.5 h-2.5 inline mr-0.5" />
               <span className={stats.withinBudget ? 'text-green-300' : 'text-red-300'}>
-                {stats.totalMiles.toFixed(0)} / {stats.budgetMiles} mi
+                {(stats.totalMiles ?? 0).toFixed(0)} / {Math.round(stats.budgetMiles)} mi
               </span>
             </div>
           </div>

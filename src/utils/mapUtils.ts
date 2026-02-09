@@ -12,12 +12,16 @@ import type {
   TerrainId,
   TerrainModel,
   MapScale,
+  TravelMode,
 } from '../types/map';
+import type { TerrainType } from '../types/location';
 import {
   INITIAL_GRID_SIZE,
   INITIAL_CENTER,
   EXPANSION_BUFFER,
   createPresetTerrains,
+  SCALE_TO_MODES,
+  getTravelModeDefinition,
 } from '../constants/map';
 
 // ============================================================================
@@ -322,6 +326,94 @@ export function expandMapIfNeeded(map: MapModel): MapModel {
   return expandMap(map, sides);
 }
 
+/**
+ * Check how many rows/cols need to be added on each side
+ * based on the bounding box of painted (non-null terrain) tiles.
+ * Used to expand the map when the DM paints near the edge.
+ */
+export function checkPaintExpansionNeeded(
+  map: Pick<MapModel, 'grid' | 'rows' | 'cols' | 'tilesById'>
+): { top: number; bottom: number; left: number; right: number } {
+  let minR = Infinity;
+  let maxR = -Infinity;
+  let minC = Infinity;
+  let maxC = -Infinity;
+
+  for (let r = 0; r < map.rows; r++) {
+    for (let c = 0; c < map.cols; c++) {
+      const tileId = map.grid[r][c];
+      const tile = map.tilesById[tileId];
+      if (tile && tile.terrainId !== null) {
+        minR = Math.min(minR, r);
+        maxR = Math.max(maxR, r);
+        minC = Math.min(minC, c);
+        maxC = Math.max(maxC, c);
+      }
+    }
+  }
+
+  if (minR === Infinity) {
+    return { top: 0, bottom: 0, left: 0, right: 0 };
+  }
+
+  return {
+    top: Math.max(0, EXPANSION_BUFFER - minR),
+    bottom: Math.max(0, EXPANSION_BUFFER - (map.rows - 1 - maxR)),
+    left: Math.max(0, EXPANSION_BUFFER - minC),
+    right: Math.max(0, EXPANSION_BUFFER - (map.cols - 1 - maxC)),
+  };
+}
+
+/**
+ * Expand the map if painted tiles are near the edge.
+ * Returns the same map if no expansion is needed.
+ */
+export function expandMapIfNeededForPaint(map: MapModel): MapModel {
+  const sides = checkPaintExpansionNeeded(map);
+  return expandMap(map, sides);
+}
+
+/**
+ * Get tile IDs visible to the party but not yet explored.
+ * Vision radius = ceil(milesPerSlot / scaleMilesPerTile) + 2 tiles
+ * using Chebyshev distance (8-directional).
+ *
+ * When activeMode is provided (e.g., during travel wizard), uses that mode's
+ * milesPerSlot for the radius. Otherwise defaults to the slowest available mode.
+ *
+ * Returns only tiles that are NOT in revealedTileIds (i.e., visible but unexplored).
+ */
+export function getVisibleTileIds(map: MapModel, activeMode?: TravelMode): Set<TileId> {
+  if (!map.partyTileId) return new Set();
+
+  const partyPos = findTileGridPos(map, map.partyTileId);
+  if (!partyPos) return new Set();
+
+  // Compute vision radius: use active mode if provided, otherwise slowest mode
+  let milesForVision: number;
+  if (activeMode) {
+    milesForVision = getTravelModeDefinition(activeMode).milesPerSlot;
+  } else {
+    const modes = SCALE_TO_MODES[map.scaleMilesPerTile];
+    milesForVision = Math.min(
+      ...modes.map((m) => getTravelModeDefinition(m).milesPerSlot)
+    );
+  }
+  const visionRadiusTiles = Math.ceil(milesForVision / map.scaleMilesPerTile) + 2;
+
+  const visible = new Set<TileId>();
+  for (let r = partyPos.row - visionRadiusTiles; r <= partyPos.row + visionRadiusTiles; r++) {
+    for (let c = partyPos.col - visionRadiusTiles; c <= partyPos.col + visionRadiusTiles; c++) {
+      const tileId = getTileIdAt(map, r, c);
+      if (tileId && !map.revealedTileIds.has(tileId)) {
+        visible.add(tileId);
+      }
+    }
+  }
+
+  return visible;
+}
+
 // ============================================================================
 // MAP CREATION HELPER
 // ============================================================================
@@ -357,4 +449,140 @@ export function createNewMap(params: {
     lastSelectedTerrainId: params.startTerrainId,
     lastPlacedTerrainId: params.startTerrainId,
   };
+}
+
+// ============================================================================
+// LOCATION TERRAIN RESOLUTION
+// ============================================================================
+
+/** Opposite-side pairs for river detection (indices into DIRECTIONS array).
+ *  DIRECTIONS order: NW(0) N(1) NE(2) W(3) E(4) SW(5) S(6) SE(7) */
+const OPPOSITE_PAIRS: [number, number][] = [
+  [1, 6],  // N <-> S
+  [3, 4],  // W <-> E
+  [0, 7],  // NW <-> SE
+  [2, 5],  // NE <-> SW
+];
+
+/**
+ * Resolve the location terrain type for the weather system based on a map tile.
+ *
+ * - Preset terrains with `locationTerrain` use that value directly.
+ * - Water tiles use adjacency analysis: all-water = coastal, corridor = river, else coastal.
+ * - Road tiles inherit from nearest non-road neighbor, defaulting to plains.
+ * - Custom terrains use `locationTerrain` if set, otherwise default to plains.
+ */
+export function resolveLocationTerrain(
+  map: Pick<MapModel, 'grid' | 'rows' | 'cols' | 'tilesById' | 'terrainById'>,
+  tileId: TileId
+): TerrainType {
+  const tile = map.tilesById[tileId];
+  if (!tile || !tile.terrainId) return 'plains';
+
+  const terrain = map.terrainById[tile.terrainId];
+  if (!terrain) return 'plains';
+
+  // Water: context-dependent
+  if (terrain.id === 'terrain-water' || terrain.name === 'Water') {
+    return resolveWaterTerrain(map, tileId);
+  }
+
+  // Road: inherit from neighbors
+  if (terrain.id === 'terrain-road' || terrain.name === 'Road') {
+    return resolveRoadTerrain(map, tileId);
+  }
+
+  // Direct mapping via locationTerrain field
+  if (terrain.locationTerrain) {
+    return terrain.locationTerrain as TerrainType;
+  }
+
+  // Fallback for custom terrains without locationTerrain
+  return 'plains';
+}
+
+/**
+ * Determine water context from adjacent tiles.
+ * - All neighbors water -> coastal (open ocean)
+ * - Water on opposite sides with land between -> river
+ * - Mixed -> coastal
+ */
+function resolveWaterTerrain(
+  map: Pick<MapModel, 'grid' | 'rows' | 'cols' | 'tilesById' | 'terrainById'>,
+  tileId: TileId
+): TerrainType {
+  const adjacentIds = getAdjacentTileIds(map, tileId);
+  if (adjacentIds.length === 0) return 'coastal';
+
+  const neighborTerrains = adjacentIds.map((id) => {
+    const t = map.tilesById[id];
+    if (!t || !t.terrainId) return null;
+    return map.terrainById[t.terrainId] ?? null;
+  });
+
+  const isWater = (t: TerrainModel | null): boolean =>
+    t !== null && (t.id === 'terrain-water' || t.name === 'Water');
+
+  const waterCount = neighborTerrains.filter(isWater).length;
+
+  // All neighbors are water -> open ocean -> coastal
+  if (waterCount === adjacentIds.length) return 'coastal';
+
+  // Check for river pattern: water on opposite sides with non-water between.
+  // Get the 8-direction neighbor info in order to check opposite pairs.
+  const pos = findTileGridPos(map, tileId);
+  if (pos) {
+    const dirNeighbors = DIRECTIONS.map(([dr, dc]) => {
+      const nr = pos.row + dr;
+      const nc = pos.col + dc;
+      const nId = getTileIdAt(map, nr, nc);
+      if (!nId) return null;
+      const t = map.tilesById[nId];
+      if (!t || !t.terrainId) return null;
+      return map.terrainById[t.terrainId] ?? null;
+    });
+
+    // River: at least one pair of opposite directions both have non-water,
+    // while there are exactly 2-3 water neighbors forming a corridor.
+    if (waterCount >= 2 && waterCount <= 3) {
+      for (const [a, b] of OPPOSITE_PAIRS) {
+        const terrainA = dirNeighbors[a];
+        const terrainB = dirNeighbors[b];
+        if (terrainA && terrainB && !isWater(terrainA) && !isWater(terrainB)) {
+          return 'river';
+        }
+      }
+    }
+  }
+
+  return 'coastal';
+}
+
+/**
+ * Road tiles inherit location terrain from the nearest non-road neighbor.
+ * Falls back to plains if all neighbors are roads or unassigned.
+ */
+function resolveRoadTerrain(
+  map: Pick<MapModel, 'grid' | 'rows' | 'cols' | 'tilesById' | 'terrainById'>,
+  tileId: TileId
+): TerrainType {
+  const adjacentIds = getAdjacentTileIds(map, tileId);
+
+  for (const adjId of adjacentIds) {
+    const adjTile = map.tilesById[adjId];
+    if (!adjTile || !adjTile.terrainId) continue;
+    const adjTerrain = map.terrainById[adjTile.terrainId];
+    if (!adjTerrain) continue;
+    // Skip other roads
+    if (adjTerrain.id === 'terrain-road' || adjTerrain.name === 'Road') continue;
+    // Skip water (road next to water shouldn't inherit coastal)
+    if (adjTerrain.id === 'terrain-water' || adjTerrain.name === 'Water') continue;
+
+    // Use this neighbor's location terrain
+    if (adjTerrain.locationTerrain) {
+      return adjTerrain.locationTerrain as TerrainType;
+    }
+  }
+
+  return 'plains';
 }

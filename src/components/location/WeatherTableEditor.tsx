@@ -9,6 +9,7 @@ import { useState, useMemo } from 'react';
 import { Trash2, Plus } from 'lucide-react';
 import {
   WEATHER_ICONS,
+  WEATHER_LABELS,
   TEMPERATURE_LABELS,
 } from '../../types/location';
 import type {
@@ -31,26 +32,6 @@ const WEATHER_TYPES: WeatherType[] = [
   'snow', 'blizzard', 'hail',
   'sandstorm', 'wind', 'heatwave', 'coldSnap',
 ];
-
-/** Human-readable weather labels */
-const WEATHER_LABELS: Record<WeatherType, string> = {
-  clear: 'Clear',
-  partlyCloudy: 'Partly Cloudy',
-  overcast: 'Overcast',
-  lightRain: 'Light Rain',
-  rain: 'Rain',
-  heavyRain: 'Heavy Rain',
-  thunderstorm: 'Thunderstorm',
-  fog: 'Fog',
-  mist: 'Mist',
-  snow: 'Snow',
-  blizzard: 'Blizzard',
-  hail: 'Hail',
-  sandstorm: 'Sandstorm',
-  wind: 'Wind',
-  heatwave: 'Heatwave',
-  coldSnap: 'Cold Snap',
-};
 
 /** Temperature ordering (coldest to hottest) */
 const TEMPERATURE_ORDER: Temperature[] = [

@@ -36,7 +36,8 @@ export function validateTravelRoute(
   day: number,
   slot: number,
   downtimeState: DowntimeState,
-  isGmMode: boolean
+  isGmMode: boolean,
+  weatherTravelModifier: number = 0
 ): TravelBlocker[] {
   const blockers: TravelBlocker[] = [];
   const modeDef = getTravelModeDefinition(mode);
@@ -131,15 +132,20 @@ export function validateTravelRoute(
     }
   }
 
-  // 7. Route within distance budget (miles per slot)
+  // 7. Route within distance budget (miles per slot), adjusted for weather
   if (routeTileIds.length > 1) {
     const totalMiles = computeRouteMiles(map, routeTileIds, mode);
-    const budget = modeDef.milesPerSlot;
+    const baseBudget = modeDef.milesPerSlot;
+    // Weather travel modifier adjusts budget: -2 = 20% slower, +1 = 10% faster
+    const budget = Math.max(1, baseBudget + baseBudget * (weatherTravelModifier / 10));
     if (totalMiles > budget) {
+      const weatherNote = weatherTravelModifier !== 0
+        ? ` Weather modifier: ${weatherTravelModifier > 0 ? '+' : ''}${weatherTravelModifier} (${budget.toFixed(0)} mi effective range).`
+        : '';
       blockers.push({
         code: TRAVEL_BLOCKER_CODES.EXCEEDS_TIME_BUDGET,
-        message: `Route is ${totalMiles.toFixed(0)} mi, exceeding the ${budget} mi/${mode} range.`,
-        details: [`${mode} can travel ${budget} miles per slot. Terrain modifiers affect effective range.`],
+        message: `Route is ${(totalMiles ?? 0).toFixed(0)} mi, exceeding the ${budget.toFixed(0)} mi/${mode} range.`,
+        details: [`${mode} base range: ${baseBudget} miles per slot.${weatherNote}`],
       });
     }
   }
@@ -153,7 +159,8 @@ export function validateTravelRoute(
 export function getRouteStats(
   map: MapModel,
   routeTileIds: TileId[],
-  mode: TravelMode
+  mode: TravelMode,
+  weatherTravelModifier: number = 0
 ): {
   tileCount: number;
   totalMiles: number;
@@ -162,11 +169,14 @@ export function getRouteStats(
   terrainBreakdown: { name: string; count: number }[];
 } {
   const modeDef = getTravelModeDefinition(mode);
-  const budgetMiles = modeDef.milesPerSlot;
-  const totalMiles =
+  const baseBudget = modeDef.milesPerSlot;
+  // Apply weather modifier to budget
+  const budgetMiles = Math.max(1, baseBudget + baseBudget * (weatherTravelModifier / 10));
+  const rawMiles =
     routeTileIds.length > 1
       ? computeRouteMiles(map, routeTileIds, mode)
       : 0;
+  const totalMiles = Number.isFinite(rawMiles) ? rawMiles : 0;
 
   // Build terrain breakdown
   const terrainCounts = new Map<string, number>();

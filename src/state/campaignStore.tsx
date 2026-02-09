@@ -48,7 +48,9 @@ import type {
 import type {
   Location,
   LocationState,
+  LocationModifiers,
   WeatherTable,
+  WeatherEffects,
   TravelAction,
   ActiveWeather
 } from '../types/location';
@@ -251,6 +253,8 @@ type CampaignStoreValue = {
     removeCustomClimate: (key: string) => void;
     addCustomTerrain: (key: string, label: string) => void;
     removeCustomTerrain: (key: string) => void;
+    setTerrainModifierOverrides: (overrides: Record<string, Partial<LocationModifiers>>) => void;
+    setWeatherEffectOverrides: (overrides: Record<string, Partial<WeatherEffects>>) => void;
 
     // Map Actions
     setMaps: (maps: MapState) => void;
@@ -544,6 +548,10 @@ export function CampaignStoreProvider({
         dispatch({ type: 'addCustomTerrain', payload: { key, label } }),
       removeCustomTerrain: (key: string) =>
         dispatch({ type: 'removeCustomTerrain', payload: key }),
+      setTerrainModifierOverrides: (overrides: Record<string, Partial<LocationModifiers>>) =>
+        dispatch({ type: 'setTerrainModifierOverrides', payload: overrides }),
+      setWeatherEffectOverrides: (overrides: Record<string, Partial<WeatherEffects>>) =>
+        dispatch({ type: 'setWeatherEffectOverrides', payload: overrides }),
 
       // Map Actions
       setMaps: (maps: MapState) => dispatch({ type: 'setMaps', payload: maps }),

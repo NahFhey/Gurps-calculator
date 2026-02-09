@@ -10,6 +10,7 @@ import { MapPin, LinkIcon } from 'lucide-react';
 interface MapTileProps {
   terrain: TerrainModel | null;
   isRevealed: boolean;
+  isVisible: boolean;
   isPartyHere: boolean;
   isGmMode: boolean;
   markers: MarkerModel[];
@@ -28,6 +29,7 @@ interface MapTileProps {
 export const MapTile = memo(function MapTile({
   terrain,
   isRevealed,
+  isVisible,
   isPartyHere,
   isGmMode,
   markers,
@@ -42,8 +44,8 @@ export const MapTile = memo(function MapTile({
   row,
   col,
 }: MapTileProps) {
-  // Player view: unrevealed tiles are void
-  if (!isGmMode && !isRevealed) {
+  // Player view: unrevealed and not visible tiles are void
+  if (!isGmMode && !isRevealed && !isVisible) {
     return (
       <div
         className="border border-gray-900/20"
@@ -62,8 +64,9 @@ export const MapTile = memo(function MapTile({
     bgColor = terrain.color;
   }
 
-  // Opacity for unrevealed tiles in GM mode
-  const opacity = !isRevealed && isGmMode ? 0.4 : 1;
+  // Opacity: visible-but-unexplored in player mode = dimmed, unrevealed in GM mode = dimmed
+  const isVisibleUnexplored = !isGmMode && !isRevealed && isVisible;
+  const opacity = isVisibleUnexplored ? 0.35 : (!isRevealed && isGmMode ? 0.4 : 1);
 
   // Visible markers (GM sees all, players see player-visible only)
   const visibleMarkers = isGmMode
@@ -84,6 +87,7 @@ export const MapTile = memo(function MapTile({
         height: TILE_SIZE_PX,
         backgroundColor: bgColor,
         opacity,
+        filter: isVisibleUnexplored ? 'grayscale(0.7)' : undefined,
       }}
       onClick={onClick}
       onContextMenu={onContextMenu}

@@ -11,6 +11,7 @@ import type { TileId, TravelMode, MapModel } from '../../../types/map';
 import type { TravelBlocker } from '../../../types/map';
 import type { DowntimeState } from '../../../types/downtime';
 import { validateTravelRoute } from '../../../utils/mapTravelValidation';
+import { useWeatherModifiers } from '../../../hooks/useWeatherModifiers';
 import { TravelStep1Mode } from './TravelStep1Mode';
 import { TravelStep2Route } from './TravelStep2Route';
 import { TravelStep3Confirm } from './TravelStep3Confirm';
@@ -51,6 +52,8 @@ export function TravelWizard({
   onConfirm,
   onClose,
 }: TravelWizardProps) {
+  const { skillBonus: weatherTravelMod } = useWeatherModifiers('travel');
+
   // Compute blockers for step 3
   const blockers: TravelBlocker[] = useMemo(() => {
     if (!selectedMode || routeTileIds.length < 2) return [];
@@ -62,9 +65,10 @@ export function TravelWizard({
       day,
       slot,
       downtimeState,
-      isGmMode
+      isGmMode,
+      weatherTravelMod
     );
-  }, [map, routeTileIds, selectedMode, partyCharacterIds, day, slot, downtimeState, isGmMode]);
+  }, [map, routeTileIds, selectedMode, partyCharacterIds, day, slot, downtimeState, isGmMode, weatherTravelMod]);
 
   // Check if route has null terrain tiles
   const hasNullTerrain = useMemo(() => {
@@ -140,6 +144,7 @@ export function TravelWizard({
             routeTileIds={routeTileIds}
             startTileId={map.partyTileId}
             onClearRoute={onClearRoute}
+            weatherTravelModifier={weatherTravelMod}
           />
         )}
         {step === 3 && selectedMode && (
