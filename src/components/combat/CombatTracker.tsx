@@ -198,6 +198,11 @@ export default function CombatTracker() {
 
   const isEnemyInPlayerView = viewMode === ViewMode.PLAYER && currentActor?.category === 'enemy';
 
+  // Available tactical maps for retroactive linking
+  const tacticalMaps = useMemo(() => {
+    return Object.values(campaignState.maps.mapsById).filter(m => m.scaleUnit === 'yards');
+  }, [campaignState.maps.mapsById]);
+
   // Movement budget for current turn (Phase D: VTT movement)
   const hasLinkedMap = !!combat.mapId;
   // Phase F: Shared linked map reference for LoS and movement
@@ -1318,6 +1323,22 @@ export default function CombatTracker() {
   // Combat End
   // ============================================================================
 
+  // Retroactively link a tactical map to the active combat
+  const handleLinkMap = useCallback((mapId: string) => {
+    saveCombatActive({
+      ...combat,
+      mapId,
+      mapScale: 1,
+      gridType: 'square' as const,
+    });
+  }, [combat, saveCombatActive]);
+
+  // Unlink the tactical map from the active combat
+  const handleUnlinkMap = useCallback(() => {
+    const { mapId: _, mapScale: _s, gridType: _g, ...rest } = combat;
+    saveCombatActive(rest);
+  }, [combat, saveCombatActive]);
+
   const handleEndCombat = async () => {
     const confirmed = await endCombatDialog.confirm();
     if (!confirmed) return;
@@ -1573,6 +1594,40 @@ export default function CombatTracker() {
         gmMode={gmMode}
         setGmMode={setGmMode}
       />
+
+      {/* Tactical Map Link (GM only, when no map linked) */}
+      {gmMode && !hasLinkedMap && tacticalMaps.length > 0 && (
+        <div className="flex items-center gap-2 bg-gray-800/50 rounded-lg px-3 py-2 text-sm">
+          <span className="text-gray-400">Tactical Map:</span>
+          <select
+            value=""
+            onChange={(e) => {
+              if (e.target.value) handleLinkMap(e.target.value);
+            }}
+            className="flex-1 px-2 py-1 bg-gray-700 rounded text-sm text-gray-200"
+          >
+            <option value="">None (abstract)</option>
+            {tacticalMaps.map(m => (
+              <option key={m.id} value={m.id}>
+                {m.name} ({m.rows}×{m.cols})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Linked map indicator with unlink option (GM only) */}
+      {gmMode && hasLinkedMap && (
+        <div className="flex items-center gap-2 bg-cyan-900/30 rounded-lg px-3 py-2 text-sm border border-cyan-800/50">
+          <span className="text-cyan-400">🗺️ Map: {linkedMap?.name || combat.mapId}</span>
+          <button
+            onClick={handleUnlinkMap}
+            className="ml-auto text-xs text-gray-400 hover:text-red-400 transition-colors"
+          >
+            Unlink
+          </button>
+        </div>
+      )}
 
       {/* Current Turn */}
       <TurnControlsView
