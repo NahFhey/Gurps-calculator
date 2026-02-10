@@ -4,7 +4,9 @@
 
 import React, { memo } from 'react';
 import type { TerrainModel, MarkerModel } from '../../../types/map';
+import type { TokenData } from '../../../types/combatToken';
 import { TILE_SIZE_PX } from '../../../constants/map';
+import { CombatToken } from '../../combat/CombatToken';
 import { MapPin, LinkIcon } from 'lucide-react';
 
 interface MapTileProps {
@@ -26,6 +28,14 @@ interface MapTileProps {
   col: number;
   /** Dynamic tile size in pixels (defaults to TILE_SIZE_PX) */
   tileSizePx?: number;
+  /** Combat tokens on this tile */
+  tokens?: TokenData[];
+  /** Currently selected participant instanceId */
+  selectedParticipantId?: string | null;
+  /** Callback when a token is clicked */
+  onTokenClick?: (instanceId: string) => void;
+  /** Phase F: Whether this tile is part of a LoS line overlay */
+  isLoSHighlight?: boolean;
 }
 
 export const MapTile = memo(function MapTile({
@@ -46,6 +56,10 @@ export const MapTile = memo(function MapTile({
   row,
   col,
   tileSizePx: dynamicTileSizePx,
+  tokens,
+  selectedParticipantId,
+  onTokenClick,
+  isLoSHighlight,
 }: MapTileProps) {
   const size = dynamicTileSizePx ?? TILE_SIZE_PX;
 
@@ -85,6 +99,7 @@ export const MapTile = memo(function MapTile({
         isSelected ? 'ring-2 ring-yellow-400 z-10' : '',
         isRouteHighlight ? 'ring-2 ring-blue-400 z-10' : '',
         isReachable && !isRouteHighlight ? 'ring-1 ring-green-500/40' : '',
+        isLoSHighlight && !isRouteHighlight && !isReachable && !isSelected ? 'ring-1 ring-red-400/60 z-10' : '',
         isPartyHere ? 'ring-2 ring-white z-20' : '',
       ].join(' ')}
       style={{
@@ -131,6 +146,55 @@ export const MapTile = memo(function MapTile({
       {isGmMode && !terrain && (
         <div className="absolute inset-0 flex items-center justify-center opacity-30">
           <span className="text-[8px] text-gray-400">?</span>
+        </div>
+      )}
+
+      {/* Combat token overlay */}
+      {tokens && tokens.length === 1 && (
+        <CombatToken
+          initial={tokens[0].initial}
+          category={tokens[0].category}
+          isCurrentActor={tokens[0].isCurrentActor}
+          isDead={tokens[0].isDead}
+          isUnconscious={tokens[0].isUnconscious}
+          isSelected={tokens[0].instanceId === selectedParticipantId}
+          tileSizePx={size}
+          onClick={(e) => {
+            e.stopPropagation();
+            onTokenClick?.(tokens[0].instanceId);
+          }}
+          displayName={tokens[0].displayName}
+        />
+      )}
+      {tokens && tokens.length > 1 && (
+        <div className="absolute inset-0 z-10">
+          {tokens.slice(0, 4).map((token, idx) => (
+            <div
+              key={token.instanceId}
+              className="absolute"
+              style={{
+                top: `${idx < 2 ? 0 : 50}%`,
+                left: `${idx % 2 === 0 ? 0 : 50}%`,
+                width: '50%',
+                height: '50%',
+              }}
+            >
+              <CombatToken
+                initial={token.initial}
+                category={token.category}
+                isCurrentActor={token.isCurrentActor}
+                isDead={token.isDead}
+                isUnconscious={token.isUnconscious}
+                isSelected={token.instanceId === selectedParticipantId}
+                tileSizePx={Math.round(size / 2)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTokenClick?.(token.instanceId);
+                }}
+                displayName={token.displayName}
+              />
+            </div>
+          ))}
         </div>
       )}
     </div>

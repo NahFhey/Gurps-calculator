@@ -4,7 +4,7 @@
  * Preset terrain definitions, travel mode definitions, and scale constants.
  */
 
-import type { TerrainModel, TravelMode, TravelModeDefinition, MapScale } from '../types/map';
+import type { TerrainModel, TerrainModeProps, TravelMode, TravelModeDefinition, MapScale } from '../types/map';
 
 // ============================================================================
 // SCALE CONSTANTS
@@ -205,4 +205,93 @@ export const PRESET_TERRAIN_IDS = [
   'terrain-water',
   'terrain-urban',
   'terrain-road',
+] as const;
+
+// ============================================================================
+// TACTICAL TERRAIN PRESETS
+// ============================================================================
+
+/** Stub perMode for tactical terrains (required by TerrainModel but unused for combat maps) */
+const TACTICAL_STUB_PERMODE: Record<TravelMode, TerrainModeProps> = {
+  foot: { passable: true, speedModifier: 1.0 },
+  boat: { passable: true, speedModifier: 1.0 },
+  airship: { passable: true, speedModifier: 1.0 },
+};
+
+/**
+ * Generate tactical-scale terrain presets for combat maps.
+ * These terrains have tactical movement/LoS properties instead of
+ * the overland perMode system.
+ */
+export function createTacticalTerrainPresets(): TerrainModel[] {
+  return [
+    {
+      id: 'tactical-open',
+      name: 'Open',
+      color: '#d1d5db',
+      perMode: TACTICAL_STUB_PERMODE,
+      tactical: { movementCost: 1, blocksLoS: false, blocksMovement: false },
+    },
+    {
+      id: 'tactical-difficult',
+      name: 'Difficult',
+      color: '#92400e',
+      perMode: TACTICAL_STUB_PERMODE,
+      tactical: { movementCost: 2, blocksLoS: false, blocksMovement: false },
+    },
+    {
+      id: 'tactical-wall',
+      name: 'Wall',
+      color: '#4b5563',
+      perMode: TACTICAL_STUB_PERMODE,
+      tactical: { movementCost: Infinity, blocksLoS: true, blocksMovement: true },
+    },
+    {
+      id: 'tactical-water-shallow',
+      name: 'Water (Shallow)',
+      color: '#93c5fd',
+      perMode: TACTICAL_STUB_PERMODE,
+      tactical: { movementCost: 2, blocksLoS: false, blocksMovement: false },
+    },
+    {
+      id: 'tactical-water-deep',
+      name: 'Water (Deep)',
+      color: '#3b82f6',
+      perMode: TACTICAL_STUB_PERMODE,
+      tactical: { movementCost: Infinity, blocksLoS: false, blocksMovement: true },
+    },
+    {
+      id: 'tactical-elevation',
+      name: 'Elevation',
+      color: '#d4a574',
+      perMode: TACTICAL_STUB_PERMODE,
+      tactical: { movementCost: 1, blocksLoS: false, blocksMovement: false, coverLevel: 1 },
+    },
+    {
+      id: 'tactical-door',
+      name: 'Door',
+      color: '#a16207',
+      perMode: TACTICAL_STUB_PERMODE,
+      tactical: { movementCost: 1, blocksLoS: false, blocksMovement: false },
+    },
+    {
+      id: 'tactical-barricade',
+      name: 'Barricade',
+      color: '#78716c',
+      perMode: TACTICAL_STUB_PERMODE,
+      tactical: { movementCost: Infinity, blocksLoS: false, blocksMovement: true, coverLevel: 2 },
+    },
+  ];
+}
+
+/** Tactical terrain preset IDs for lookup */
+export const TACTICAL_TERRAIN_IDS = [
+  'tactical-open',
+  'tactical-difficult',
+  'tactical-wall',
+  'tactical-water-shallow',
+  'tactical-water-deep',
+  'tactical-elevation',
+  'tactical-door',
+  'tactical-barricade',
 ] as const;

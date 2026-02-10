@@ -10,6 +10,7 @@ import type { CampaignState } from '../campaignReducer';
 import {
   type MapAction,
   MAP_CREATE,
+  MAP_CREATE_TACTICAL,
   MAP_DELETE,
   MAP_UPDATE,
   MAP_SET_ACTIVE,
@@ -33,6 +34,7 @@ import {
 } from './mapActions';
 import {
   createNewMap,
+  createTacticalMap,
   expandMapIfNeeded,
   expandMapIfNeededForPaint,
 } from '../../utils/mapUtils';
@@ -56,6 +58,15 @@ export function handleMapAction(
       const newMap = createNewMap(action.payload);
       maps.mapsById[newMap.id] = newMap as any;
       // Set as active if first map
+      if (!maps.activeMapId) {
+        maps.activeMapId = newMap.id;
+      }
+      return;
+    }
+
+    case MAP_CREATE_TACTICAL: {
+      const newMap = createTacticalMap(action.payload);
+      maps.mapsById[newMap.id] = newMap as any;
       if (!maps.activeMapId) {
         maps.activeMapId = newMap.id;
       }

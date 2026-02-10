@@ -96,6 +96,12 @@ function filterParticipant(participant, revealState) {
   filtered.maxFP = participant.maxFP || participant.fp;
   filtered.maxMP = participant.maxMP || participant.mp;
 
+  // Spatial data (always visible — tokens are on the map)
+  filtered.position = participant.position;
+  filtered.size = participant.size;
+  filtered.elevation = participant.elevation;
+  filtered.facing = participant.facing;
+
   // Name
   filtered.name = filterName(participant.name, participant.instanceId, reveal.name);
 

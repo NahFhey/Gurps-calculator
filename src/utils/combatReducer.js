@@ -50,6 +50,10 @@ export function applyAction(state, action) {
     case ACTION_TYPES.ADD_REINFORCEMENTS:
       return applyAddReinforcements(state, action.payload);
 
+    // Phase D (VTT) actions
+    case ACTION_TYPES.MOVE_PARTICIPANT:
+      return applyMoveParticipant(state, action.payload);
+
     // Phase 6 actions
     case ACTION_TYPES.ADD_CONDITION:
       return applyAddCondition(state, action.payload);
@@ -114,6 +118,10 @@ export function applyInverse(state, action) {
 
     case ACTION_TYPES.ADD_REINFORCEMENTS:
       return applyRemoveReinforcements(state, action.inverse, action);
+
+    // Phase D (VTT) inverses
+    case ACTION_TYPES.MOVE_PARTICIPANT:
+      return applyMoveParticipant(state, action.inverse);
 
     // Phase 6 inverses
     case ACTION_TYPES.ADD_CONDITION:
@@ -394,6 +402,26 @@ function applyLoadCombatState(state, payload) {
   return {
     ...toSnapshot
   };
+}
+
+// ============================================================================
+// Phase D (VTT) Action Appliers
+// ============================================================================
+
+/**
+ * Apply MOVE_PARTICIPANT
+ * Updates a participant's grid position. Works for both forward and inverse
+ * since both just set a new position.
+ */
+function applyMoveParticipant(state, payload) {
+  const { instanceId, toPosition } = payload || {};
+
+  return produce(state, draft => {
+    const participant = draft.participants.find(p => p.instanceId === instanceId);
+    if (participant && toPosition) {
+      participant.position = { q: toPosition.q, r: toPosition.r };
+    }
+  });
 }
 
 // ============================================================================

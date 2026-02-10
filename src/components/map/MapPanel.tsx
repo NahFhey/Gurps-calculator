@@ -95,10 +95,19 @@ export function MapPanel() {
     [actions]
   );
 
-  // Create map
+  // Create map (overland)
   const handleCreateMap = useCallback(
     (params: { name: string; description?: string; scaleMilesPerTile: MapScale; startTerrainId: TerrainId }) => {
       actions.mapCreateMap(params);
+      setShowCreateDialog(false);
+    },
+    [actions]
+  );
+
+  // Create map (tactical)
+  const handleCreateTacticalMap = useCallback(
+    (params: { name: string; description?: string; rows: number; cols: number; startTerrainId?: string }) => {
+      actions.mapCreateTacticalMap(params);
       setShowCreateDialog(false);
     },
     [actions]
@@ -257,7 +266,9 @@ export function MapPanel() {
   // Travel wizard handlers
   const handleOpenTravel = useCallback(() => {
     if (!activeMap) return;
-    const defaultMode = SCALE_TO_MODES[activeMap.scaleMilesPerTile][0];
+    // Tactical maps do not support overland travel
+    if (activeMap.scaleUnit === 'yards') return;
+    const defaultMode = SCALE_TO_MODES[activeMap.scaleMilesPerTile as MapScale][0];
     setTravelMode(defaultMode);
     setTravelStep(1);
     setTravelRoute([]);
@@ -326,6 +337,7 @@ export function MapPanel() {
         {showCreateDialog && (
           <MapCreateDialog
             onConfirm={handleCreateMap}
+            onConfirmTactical={handleCreateTacticalMap}
             onCancel={() => setShowCreateDialog(false)}
           />
         )}

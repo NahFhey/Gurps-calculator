@@ -1,5 +1,5 @@
-import { useState, ChangeEvent } from 'react';
-import { Plus, Play, ChevronUp, ChevronDown, X, Users, Lock, AlertTriangle } from 'lucide-react';
+import { useState, useMemo, useEffect, useRef, ChangeEvent } from 'react';
+import { Plus, Play, ChevronUp, ChevronDown, X, Users, Lock, AlertTriangle, Map } from 'lucide-react';
 import { useCombatStore } from '../../hooks/useCombatStore';
 import { useCampaignStore } from '../../state/campaignStore';
 import { generateTurnOrder, createNumberedEnemies, generateId, createLogEntry, createTurnLogEntry } from '../../utils/combatHelpers';
@@ -117,14 +117,35 @@ export default function EncounterSetup() {
     saveCombatHistory
   } = useCombatStore();
 
-  // Access GM mode from campaign store
-  const { state } = useCampaignStore();
+  // Access GM mode and maps from campaign store
+  const { state, actions } = useCampaignStore();
   const gmModeEnabled = state.ui.gmModeEnabled;
 
   const [encounterName, setEncounterName] = useState('');
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [turnOrder, setTurnOrder] = useState<string[]>([]);
   const [showTurnOrderPreview, setShowTurnOrderPreview] = useState(false);
+
+  // Map linking state
+  const [selectedMapId, setSelectedMapId] = useState<string | null>(null);
+  const [showInlineMapCreate, setShowInlineMapCreate] = useState(false);
+  const [newMapName, setNewMapName] = useState('');
+  const [newMapSize, setNewMapSize] = useState<'small' | 'medium' | 'large'>('medium');
+
+  // Tactical maps available for linking
+  const tacticalMaps = useMemo(() => {
+    return Object.values(state.maps.mapsById).filter(m => m.scaleUnit === 'yards');
+  }, [state.maps.mapsById]);
+
+  // Auto-select a newly created tactical map
+  const pendingAutoSelect = useRef(false);
+  useEffect(() => {
+    if (pendingAutoSelect.current && tacticalMaps.length > 0) {
+      // Select the last tactical map (most recently created)
+      setSelectedMapId(tacticalMaps[tacticalMaps.length - 1].id);
+      pendingAutoSelect.current = false;
+    }
+  }, [tacticalMaps]);
 
   // Toast notifications
   const { warning: showWarning } = useToast();
@@ -267,7 +288,13 @@ export default function EncounterSetup() {
           text: `=== Round 1 ===`
         }),
         createTurnLogEntry(1, 0, firstActorInstanceId, firstActor?.name)
-      ]
+      ],
+      // Map linking (Phase VTT)
+      ...(selectedMapId ? {
+        mapId: selectedMapId,
+        mapScale: 1,
+        gridType: 'square' as const,
+      } : {}),
     };
 
     saveCombatActive(combat);
@@ -509,6 +536,106 @@ export default function EncounterSetup() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Map Linking */}
+          {participants.length > 0 && (
+            <div className="bg-gray-800 rounded p-4">
+              <h4 className="font-semibold text-gray-300 mb-2 flex items-center gap-2">
+                <Map size={16} className="text-cyan-400" />
+                Tactical Map (optional)
+              </h4>
+              <select
+                value={selectedMapId ?? ''}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+                  const val = e.target.value;
+                  if (val === '__create__') {
+                    setShowInlineMapCreate(true);
+                  } else {
+                    setSelectedMapId(val || null);
+                  }
+                }}
+                className="w-full px-3 py-2 bg-gray-700 rounded text-sm text-gray-200"
+              >
+                <option value="">No Map (Abstract Combat)</option>
+                {tacticalMaps.map(m => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} ({m.rows}x{m.cols})
+                  </option>
+                ))}
+                <option value="__create__">+ Create New Tactical Map</option>
+              </select>
+
+              {selectedMapId && (
+                <div className="mt-2 text-xs text-gray-400">
+                  Combat will use a 50/50 split layout with the map panel. Enable GM mode to place tokens.
+                </div>
+              )}
+
+              {/* Inline tactical map creation */}
+              {showInlineMapCreate && (
+                <div className="mt-3 p-3 bg-gray-700 rounded space-y-2">
+                  <input
+                    type="text"
+                    value={newMapName}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setNewMapName(e.target.value)}
+                    placeholder="Map name"
+                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-sm text-gray-200 placeholder-gray-500"
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    {(['small', 'medium', 'large'] as const).map(size => (
+                      <button
+                        key={size}
+                        type="button"
+                        className={[
+                          'flex-1 px-2 py-1.5 rounded text-xs font-medium border transition-colors',
+                          newMapSize === size
+                            ? 'bg-blue-600 border-blue-500 text-white'
+                            : 'bg-gray-600 border-gray-500 text-gray-300 hover:bg-gray-500',
+                        ].join(' ')}
+                        onClick={() => setNewMapSize(size)}
+                      >
+                        {size === 'small' ? 'Small (15x15)' : size === 'medium' ? 'Medium (20x20)' : 'Large (30x30)'}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => { setShowInlineMapCreate(false); setNewMapName(''); }}
+                      className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-200"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!newMapName.trim()}
+                      onClick={() => {
+                        const sizeMap = { small: { rows: 15, cols: 15 }, medium: { rows: 20, cols: 20 }, large: { rows: 30, cols: 30 } };
+                        const dims = sizeMap[newMapSize];
+                        pendingAutoSelect.current = true;
+                        actions.mapCreateTacticalMap({
+                          name: newMapName.trim(),
+                          rows: dims.rows,
+                          cols: dims.cols,
+                        });
+                        setShowInlineMapCreate(false);
+                        setNewMapName('');
+                      }}
+                      className={[
+                        'px-3 py-1.5 text-xs font-medium rounded transition-colors',
+                        newMapName.trim()
+                          ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                          : 'bg-gray-600 text-gray-500 cursor-not-allowed',
+                      ].join(' ')}
+                    >
+                      Create & Select
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

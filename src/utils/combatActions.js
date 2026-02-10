@@ -18,6 +18,8 @@ export const ACTION_TYPES = {
   LOAD_COMBAT_STATE: 'LOAD_COMBAT_STATE',
   SET_TURN_DECISION: 'SET_TURN_DECISION',
   ADD_REINFORCEMENTS: 'ADD_REINFORCEMENTS',
+  // Phase D (VTT) actions
+  MOVE_PARTICIPANT: 'MOVE_PARTICIPANT',
   // Phase 6 actions
   ADD_CONDITION: 'ADD_CONDITION',
   REMOVE_CONDITION: 'REMOVE_CONDITION',
@@ -412,6 +414,36 @@ export function createUseItemAction({
       })),
       conditionsAdded: conditionsRemoved,
       conditionsRemoved: conditionsAdded
+    }
+  };
+}
+
+/**
+ * Phase D (VTT): Create a MOVE_PARTICIPANT action
+ * Records moving a combatant's position on the tactical grid
+ *
+ * @param {string} instanceId - Combatant instance ID
+ * @param {{ q: number, r: number }} fromPosition - Previous grid position
+ * @param {{ q: number, r: number }} toPosition - New grid position
+ * @param {string[]} path - Ordered tile IDs from start to destination
+ * @param {number} costYards - Movement cost in yards
+ * @returns {object} Action object
+ */
+export function createMoveParticipantAction(instanceId, fromPosition, toPosition, path, costYards) {
+  return {
+    id: generateId(),
+    ts: new Date().toISOString(),
+    type: ACTION_TYPES.MOVE_PARTICIPANT,
+    label: `Move (${costYards} yard${costYards !== 1 ? 's' : ''})`,
+    payload: {
+      instanceId,
+      toPosition,
+      path,
+      costYards
+    },
+    inverse: {
+      instanceId,
+      toPosition: fromPosition
     }
   };
 }

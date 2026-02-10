@@ -240,6 +240,170 @@ export function getReachableTiles(
 }
 
 // ============================================================================
+// TACTICAL COMBAT PATHFINDING
+// ============================================================================
+
+/**
+ * Get the movement cost for stepping onto a tile in tactical (combat) mode.
+ * Uses terrain.tactical properties instead of overland perMode.
+ *
+ * @param map - The tactical map
+ * @param tileId - Tile being stepped onto
+ * @param distFactor - 1.0 for orthogonal, 1.414 for diagonal
+ * @returns Cost in yards (Infinity if impassable)
+ */
+function getTacticalStepCost(map: MapModel, tileId: TileId, distFactor: number): number {
+  const tile = map.tilesById[tileId];
+  if (!tile || tile.terrainId === null) return distFactor; // null terrain = normal cost
+  const terrain = map.terrainById[tile.terrainId];
+  if (!terrain?.tactical) return distFactor; // no tactical data = normal cost
+  if (terrain.tactical.blocksMovement) return Infinity;
+  const movementCost = terrain.tactical.movementCost;
+  if (movementCost === Infinity) return Infinity;
+  return distFactor * movementCost;
+}
+
+/**
+ * Find the shortest path between two tiles on a tactical (combat-scale) map.
+ * Uses A* with terrain.tactical costs instead of overland TravelMode costs.
+ *
+ * Cost is measured in yards: each step costs distFactor * terrain.tactical.movementCost.
+ *
+ * @param map - The tactical map
+ * @param startTileId - Starting tile ID
+ * @param destTileId - Destination tile ID
+ * @returns RouteResult with path, cost (yards), and validity
+ */
+export function findTacticalRoute(
+  map: MapModel,
+  startTileId: TileId,
+  destTileId: TileId
+): RouteResult {
+  const startPos = findTileGridPos(map, startTileId);
+  const destPos = findTileGridPos(map, destTileId);
+
+  if (!startPos || !destPos) {
+    return { path: [], totalCost: Infinity, valid: false };
+  }
+
+  if (startTileId === destTileId) {
+    return { path: [startTileId], totalCost: 0, valid: true };
+  }
+
+  const openSet = new MinHeap<{ tileId: TileId; row: number; col: number }>();
+  const gScore = new Map<TileId, number>();
+  const fScore = new Map<TileId, number>();
+  const cameFrom = new Map<TileId, TileId>();
+
+  gScore.set(startTileId, 0);
+  fScore.set(startTileId, heuristic(startPos.row, startPos.col, destPos.row, destPos.col));
+  openSet.push(
+    { tileId: startTileId, row: startPos.row, col: startPos.col },
+    fScore.get(startTileId)!
+  );
+
+  while (openSet.size > 0) {
+    const current = openSet.pop()!;
+
+    if (current.tileId === destTileId) {
+      const path = reconstructPath(cameFrom, destTileId);
+      return { path, totalCost: gScore.get(destTileId)!, valid: true };
+    }
+
+    const currentG = gScore.get(current.tileId) ?? Infinity;
+
+    for (const [dr, dc, distFactor] of DIRECTIONS) {
+      const nr = current.row + dr;
+      const nc = current.col + dc;
+      const neighborId = getTileIdAt(map, nr, nc);
+      if (!neighborId) continue;
+
+      const stepCost = getTacticalStepCost(map, neighborId, distFactor);
+      if (stepCost === Infinity) continue;
+
+      const tentativeG = currentG + stepCost;
+      const prevG = gScore.get(neighborId) ?? Infinity;
+
+      if (tentativeG < prevG) {
+        cameFrom.set(neighborId, current.tileId);
+        gScore.set(neighborId, tentativeG);
+        const f = tentativeG + heuristic(nr, nc, destPos.row, destPos.col);
+        fScore.set(neighborId, f);
+        openSet.push({ tileId: neighborId, row: nr, col: nc }, f);
+      }
+    }
+  }
+
+  return { path: [], totalCost: Infinity, valid: false };
+}
+
+/**
+ * Get all tiles reachable within a movement budget on a tactical map.
+ * Uses Dijkstra's algorithm with terrain.tactical costs.
+ *
+ * @param map - The tactical map
+ * @param startTileId - Starting tile ID
+ * @param budgetYards - Maximum movement in yards
+ * @param occupiedTileIds - Tiles occupied by other combatants (excluded from result, but traversable)
+ * @returns Set of reachable tile IDs (including start tile)
+ */
+export function getTacticalReachableTiles(
+  map: MapModel,
+  startTileId: TileId,
+  budgetYards: number,
+  occupiedTileIds?: Set<TileId>
+): Set<TileId> {
+  const startPos = findTileGridPos(map, startTileId);
+  if (!startPos) return new Set();
+
+  const reachable = new Set<TileId>();
+  const cost = new Map<TileId, number>();
+  const queue = new MinHeap<{ tileId: TileId; row: number; col: number }>();
+
+  cost.set(startTileId, 0);
+  queue.push({ tileId: startTileId, row: startPos.row, col: startPos.col }, 0);
+
+  while (queue.size > 0) {
+    const current = queue.pop()!;
+    const currentCost = cost.get(current.tileId) ?? Infinity;
+
+    if (reachable.has(current.tileId)) continue;
+    reachable.add(current.tileId);
+
+    for (const [dr, dc, distFactor] of DIRECTIONS) {
+      const nr = current.row + dr;
+      const nc = current.col + dc;
+      const neighborId = getTileIdAt(map, nr, nc);
+      if (!neighborId || reachable.has(neighborId)) continue;
+
+      const stepCost = getTacticalStepCost(map, neighborId, distFactor);
+      if (stepCost === Infinity) continue;
+
+      const totalCost = currentCost + stepCost;
+
+      if (totalCost <= budgetYards) {
+        const prevCost = cost.get(neighborId) ?? Infinity;
+        if (totalCost < prevCost) {
+          cost.set(neighborId, totalCost);
+          queue.push({ tileId: neighborId, row: nr, col: nc }, totalCost);
+        }
+      }
+    }
+  }
+
+  // Remove occupied tiles from result (can't end movement there) but keep start tile
+  if (occupiedTileIds) {
+    for (const tileId of occupiedTileIds) {
+      if (tileId !== startTileId) {
+        reachable.delete(tileId);
+      }
+    }
+  }
+
+  return reachable;
+}
+
+// ============================================================================
 // HELPERS
 // ============================================================================
 

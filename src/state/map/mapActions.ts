@@ -24,6 +24,7 @@ import type {
 
 // Map CRUD
 export const MAP_CREATE = 'map/createMap' as const;
+export const MAP_CREATE_TACTICAL = 'map/createTacticalMap' as const;
 export const MAP_DELETE = 'map/deleteMap' as const;
 export const MAP_UPDATE = 'map/updateMap' as const;
 export const MAP_SET_ACTIVE = 'map/setActiveMap' as const;
@@ -72,6 +73,18 @@ export type CreateMapAction = {
     description?: string;
     scaleMilesPerTile: MapScale;
     startTerrainId: TerrainId;
+  };
+};
+
+export type CreateTacticalMapAction = {
+  type: typeof MAP_CREATE_TACTICAL;
+  payload: {
+    name: string;
+    description?: string;
+    rows?: number;
+    cols?: number;
+    startTerrainId?: TerrainId;
+    gridType?: 'square' | 'hex';
   };
 };
 
@@ -185,6 +198,7 @@ export type ClearPendingTerrainAction = {
 
 export type MapAction =
   | CreateMapAction
+  | CreateTacticalMapAction
   | DeleteMapAction
   | UpdateMapAction
   | SetActiveMapAction
@@ -212,6 +226,7 @@ export type MapAction =
 
 const MAP_ACTION_TYPES = new Set<string>([
   MAP_CREATE,
+  MAP_CREATE_TACTICAL,
   MAP_DELETE,
   MAP_UPDATE,
   MAP_SET_ACTIVE,

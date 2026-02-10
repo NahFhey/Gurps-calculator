@@ -42,12 +42,35 @@ export type TravelMode = 'foot' | 'boat' | 'airship';
 // ============================================================================
 
 /**
- * Fixed scale options for maps (miles per tile).
+ * Fixed scale options for overland maps (miles per tile).
  * - 12: Local scale (foot travel)
  * - 50: Regional scale (boat travel)
  * - 457: World scale (airship travel)
  */
 export type MapScale = 12 | 50 | 457;
+
+/**
+ * Extended scale value that includes tactical (yard-based) maps.
+ * - 1: Tactical scale (1 yard per tile, for combat maps)
+ * - 12/50/457: Overland scales (miles per tile)
+ * For backward compatibility, MapScale remains the overland-only subset.
+ */
+export type MapScaleValue = 1 | MapScale;
+
+/**
+ * Scale unit discriminator.
+ * - 'miles': Overland maps (12/50/457 miles per tile)
+ * - 'yards': Tactical combat maps (1 yard per tile)
+ * Existing maps without this field default to 'miles'.
+ */
+export type ScaleUnit = 'miles' | 'yards';
+
+/**
+ * Grid geometry type.
+ * - 'square': Standard 4/8-directional grid (current default)
+ * - 'hex': Hexagonal grid with 6 directions (future)
+ */
+export type GridType = 'square' | 'hex';
 
 // ============================================================================
 // TERRAIN
@@ -61,6 +84,21 @@ export interface TerrainModeProps {
   passable: boolean;
   /** Speed modifier (1.0 = normal, >1 = faster, <1 = slower) */
   speedModifier: number;
+}
+
+/**
+ * Tactical-scale terrain properties.
+ * Used for combat maps (1 yard/tile) instead of the overland perMode system.
+ */
+export interface TacticalTerrainProps {
+  /** Movement cost multiplier (1 = normal, 2 = difficult, Infinity = impassable) */
+  movementCost: number;
+  /** Whether this terrain blocks line-of-sight */
+  blocksLoS: boolean;
+  /** Whether this terrain blocks movement entirely */
+  blocksMovement: boolean;
+  /** Optional cover level: 0 = none, 1 = light (-2 to hit), 2 = heavy (-4 to hit) */
+  coverLevel?: number;
 }
 
 /**
@@ -78,6 +116,8 @@ export interface TerrainModel {
    *  Used to sync map terrain with the location/weather system.
    *  Context-dependent terrains like Water and Road omit this and use adjacency logic instead. */
   locationTerrain?: string;
+  /** Tactical-scale terrain properties (for combat maps only) */
+  tactical?: TacticalTerrainProps;
 }
 
 // ============================================================================
@@ -96,6 +136,10 @@ export interface TileModel {
   markerIds: MarkerId[];
   /** Link IDs attached to this tile */
   linkIds: LinkId[];
+  /** Elevation in yards (for tactical maps with height variation) */
+  elevation?: number;
+  /** Whether this tile blocks line-of-sight (tactical shortcut) */
+  isBlocking?: boolean;
 }
 
 // ============================================================================
@@ -178,8 +222,14 @@ export interface MapModel {
   /** Optional description */
   description?: string;
 
-  /** Fixed scale: miles per tile */
-  scaleMilesPerTile: MapScale;
+  /** Scale value per tile. For overland maps: miles (12/50/457). For tactical maps: yards (1). */
+  scaleMilesPerTile: MapScaleValue;
+
+  /** Scale unit: 'miles' for overland, 'yards' for tactical. Defaults to 'miles' when absent. */
+  scaleUnit?: ScaleUnit;
+
+  /** Grid geometry. Defaults to 'square' when absent. */
+  gridType?: GridType;
 
   /** Grid dimensions */
   rows: number;

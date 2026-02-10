@@ -24,7 +24,9 @@ function ParticipantListViewBase({
   participants,
   currentActorInstanceId,
   viewMode,
-  onUpdateResource
+  onUpdateResource,
+  selectedParticipantId,
+  onSelectParticipant,
 }: ParticipantListViewProps) {
   return (
     <div className="space-y-2">
@@ -37,6 +39,10 @@ function ParticipantListViewBase({
             viewMode={viewMode}
             isCurrent={p.instanceId === currentActorInstanceId}
             onUpdateResource={onUpdateResource}
+            isSelected={p.instanceId === selectedParticipantId}
+            onClick={() => onSelectParticipant?.(
+              p.instanceId === selectedParticipantId ? null : p.instanceId
+            )}
           />
         ))}
       </div>
@@ -56,7 +62,7 @@ export const ParticipantListView = memo(ParticipantListViewBase);
  * Handles both truth state (GM View) and filtered state (Player View)
  * Memoized to prevent re-renders when sibling participants change
  */
-function ParticipantCardBase({ participant, isCurrent, onUpdateResource, viewMode }: ParticipantCardProps) {
+function ParticipantCardBase({ participant, isCurrent, onUpdateResource, viewMode, isSelected, onClick }: ParticipantCardProps) {
   const [editing, setEditing] = useState<string | null>(null); // 'HP', 'FP', or 'MP'
   const [editValue, setEditValue] = useState('');
 
@@ -159,7 +165,10 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, viewMod
   };
 
   return (
-    <div className={`bg-gray-800 rounded p-3 ${isCurrent ? 'border-2 border-blue-500' : ''}`}>
+    <div
+      className={`bg-gray-800 rounded p-3 ${isCurrent ? 'border-2 border-blue-500' : ''} ${isSelected ? 'ring-2 ring-white' : ''}`}
+      onClick={onClick}
+    >
       <div className="flex justify-between items-start mb-2">
         <div>
           <h4 className="font-semibold">{participant.name}</h4>
@@ -326,7 +335,8 @@ const areParticipantPropsEqual = (prevProps: ParticipantCardProps, nextProps: Pa
     prev.currentMP === next.currentMP &&
     prevProps.isCurrent === nextProps.isCurrent &&
     prevProps.viewMode === nextProps.viewMode &&
-    prevProps.onUpdateResource === nextProps.onUpdateResource
+    prevProps.onUpdateResource === nextProps.onUpdateResource &&
+    prevProps.isSelected === nextProps.isSelected
   );
 };
 

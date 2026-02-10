@@ -15,7 +15,7 @@
  * 7. Route within mile budget for the mode
  */
 
-import type { MapModel, TileId, TravelMode, TravelBlocker } from '../types/map';
+import type { MapModel, MapScale, TileId, TravelMode, TravelBlocker } from '../types/map';
 import type { DowntimeState } from '../types/downtime';
 import { TRAVEL_BLOCKER_CODES } from '../types/map';
 import { SCALE_TO_MODES } from '../constants/map';
@@ -40,10 +40,20 @@ export function validateTravelRoute(
   weatherTravelModifier: number = 0
 ): TravelBlocker[] {
   const blockers: TravelBlocker[] = [];
+
+  // Tactical maps do not support overland travel
+  if (map.scaleUnit === 'yards') {
+    blockers.push({
+      code: TRAVEL_BLOCKER_CODES.MODE_INCOMPATIBLE,
+      message: 'Travel mode is not available on tactical combat maps.',
+    });
+    return blockers;
+  }
+
   const modeDef = getTravelModeDefinition(mode);
 
   // 1. Mode compatible with map scale
-  const allowedModes = SCALE_TO_MODES[map.scaleMilesPerTile];
+  const allowedModes = SCALE_TO_MODES[map.scaleMilesPerTile as MapScale];
   if (!allowedModes.includes(mode)) {
     blockers.push({
       code: TRAVEL_BLOCKER_CODES.MODE_INCOMPATIBLE,

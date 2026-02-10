@@ -58,6 +58,8 @@ interface Participant {
   parry?: number | { mode: string; value?: number };
   block?: number | { mode: string; value?: number };
   conditions?: ConditionInstance[];
+  position?: { q: number; r: number };
+  size?: number;
 }
 
 interface ConditionInstance {
@@ -150,6 +152,9 @@ interface ActionPanelProps {
   onAddCondition?: (condition: any) => void;
   onRemoveCondition?: (conditionInstanceId: string) => void;
   onUpdateCondition?: (conditionInstanceId: string, newDuration: { type: string; value?: number }) => void;
+  gridType?: 'square' | 'hex';
+  /** Tactical map data for LoS/cover calculation (Phase F) */
+  map?: { grid: string[][]; rows: number; cols: number; tilesById: Record<string, any>; terrainById: Record<string, any> };
 }
 
 /**
@@ -175,7 +180,9 @@ export default function ActionPanel({
   currentTurn = 0,
   onAddCondition,
   onRemoveCondition,
-  onUpdateCondition
+  onUpdateCondition,
+  gridType = 'square',
+  map
 }: ActionPanelProps) {
   const [activeWorkflow, setActiveWorkflow] = useState<WorkflowType>(null);
   const [noteText, setNoteText] = useState('');
@@ -490,6 +497,9 @@ export default function ActionPanel({
             injectedModifiers={maneuverWorkflow?.attack?.modifiers || []}
             onComplete={handleAttackComplete}
             onCancel={handleCancelWorkflow}
+            actorPosition={currentActor.position}
+            gridType={gridType}
+            map={map}
           />
         </div>
       )}

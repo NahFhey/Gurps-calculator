@@ -4,6 +4,7 @@
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import type { MapModel, TileId } from '../../../types/map';
+import type { TokenData } from '../../../types/combatToken';
 import { TILE_SIZE_PX } from '../../../constants/map';
 import { MapTile } from './MapTile';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
@@ -28,6 +29,14 @@ interface MapGridProps {
   onTileContextMenu?: (tileId: TileId, row: number, col: number, e: React.MouseEvent) => void;
   onTileMouseDown?: (tileId: TileId, row: number, col: number, e: React.MouseEvent) => void;
   onTileMouseEnter?: (tileId: TileId, row: number, col: number, e: React.MouseEvent) => void;
+  /** Combat token data keyed by tileId */
+  tokens?: Map<string, TokenData[]>;
+  /** Currently selected participant instanceId */
+  selectedParticipantId?: string | null;
+  /** Callback when a combat token is clicked */
+  onTokenClick?: (instanceId: string) => void;
+  /** Phase F: Tile IDs forming the LoS line overlay */
+  losTileIds?: TileId[];
 }
 
 export function MapGrid({
@@ -41,6 +50,10 @@ export function MapGrid({
   onTileContextMenu,
   onTileMouseDown,
   onTileMouseEnter,
+  tokens,
+  selectedParticipantId,
+  onTokenClick,
+  losTileIds,
 }: MapGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollPos, setScrollPos] = useState({ top: 0, left: 0 });
@@ -54,6 +67,12 @@ export function MapGrid({
   const routeSet = useMemo(
     () => new Set(routeTileIds ?? []),
     [routeTileIds]
+  );
+
+  // Phase F: LoS tile set for quick lookup
+  const losSet = useMemo(
+    () => new Set(losTileIds ?? []),
+    [losTileIds]
   );
 
   // Zoom helpers
@@ -153,6 +172,7 @@ export function MapGrid({
         .map((mId) => map.markersById[mId])
         .filter(Boolean);
       const hasLinks = tile.linkIds.length > 0;
+      const tileTokens = tokens?.get(tileId);
 
       tiles.push(
         <div
@@ -174,9 +194,13 @@ export function MapGrid({
             isSelected={selectedTileIds?.has(tileId)}
             isRouteHighlight={routeSet.has(tileId)}
             isReachable={reachableTileIds?.has(tileId)}
+            isLoSHighlight={losSet.has(tileId)}
             row={r}
             col={c}
             tileSizePx={tileSizePx}
+            tokens={tileTokens}
+            selectedParticipantId={selectedParticipantId}
+            onTokenClick={onTokenClick}
             onClick={() => onTileClick?.(tileId, r, c)}
             onContextMenu={(e) => onTileContextMenu?.(tileId, r, c, e)}
             onMouseDown={(e) => onTileMouseDown?.(tileId, r, c, e)}

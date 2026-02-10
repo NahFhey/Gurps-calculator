@@ -98,10 +98,12 @@ The two systems are fully independent. The map has no concept of individual comb
 ```typescript
 // Add to Participant interface
 position?: {
-  row: number;
-  col: number;
+  q: number;  // Axial coordinate (hex-compatible from the start)
+  r: number;  // Axial coordinate
 };
-facing?: number; // 0-5 for hex, 0-7 for square (defer decision)
+facing?: number;      // 0-5 for hex, 0-7 for square
+elevation?: number;   // Height in yards (for flying/climbing)
+size?: number;        // GURPS Size Modifier (0 = 1 hex, default)
 ```
 
 **Changes to `EncounterSetup`** (`src/components/combat/EncounterSetup.tsx`):
@@ -112,8 +114,9 @@ facing?: number; // 0-5 for hex, 0-7 for square (defer decision)
 **Changes to `CombatState`** (`src/types/combatTracker.ts`):
 ```typescript
 // Add to CombatState
-mapId?: string;        // Link to a MapModel
-mapScale?: number;     // Yards per tile for this combat
+mapId?: string;            // Link to a MapModel
+mapScale?: number;         // Yards per tile for this combat
+gridType?: 'square' | 'hex'; // Grid geometry (square for now, hex later)
 ```
 
 **Migration:** Fully backward-compatible. Existing combats without position data continue to work in abstract mode. No changes to current combat flow.
@@ -311,28 +314,35 @@ Start with square grid for all phases. The underlying data model (row/col positi
 // src/types/combatTracker.ts -- Additions to Participant
 interface Participant {
   // ... existing fields ...
-  position?: { row: number; col: number };
-  facing?: number;
+  position?: {
+    q: number;  // Axial coordinate (column in square mode, hex q in hex mode)
+    r: number;  // Axial coordinate (row in square mode, hex r in hex mode)
+  };
+  facing?: number;      // 0-5 for hex, 0-7 for square
+  elevation?: number;   // Height in yards (flying, climbing, multi-story)
+  size?: number;        // GURPS Size Modifier (0 = 1 hex, 1 = 2 hexes, 2 = 3 hexes, etc.)
 }
 
 // src/types/combatTracker.ts -- Additions to CombatState
 interface CombatState {
   // ... existing fields ...
-  mapId?: string;
-  mapScale?: number; // yards per tile
+  mapId?: string;        // Link to a MapModel
+  mapScale?: number;     // Yards per tile for this combat
+  gridType?: 'square' | 'hex'; // Grid geometry for this combat
 }
 
 // src/types/map.ts -- Addition to TileModel
 interface TileModel {
   // ... existing fields ...
-  elevation?: number;
-  isBlocking?: boolean;
+  elevation?: number;    // Height in yards
+  isBlocking?: boolean;  // Blocks line-of-sight
 }
 
 // src/types/map.ts -- Scale unit support
 interface MapModel {
   // ... existing fields ...
   scaleUnit?: 'miles' | 'yards';
+  gridType?: 'square' | 'hex';
 }
 ```
 
@@ -394,14 +404,14 @@ These existing systems can be reused directly or with minor adaptation:
 
 ---
 
-## Open Questions
+## Open Questions (Resolved)
 
-1. **Hex vs Square grid** -- Start square, but should we plan hex data structures now?
-2. **Combat map creation** -- Separate "New Tactical Map" flow, or reuse existing map creation with a new scale option?
-3. **Abstract mode coexistence** -- Should every combat require a map, or should abstract (no-map) combat remain as an option?
-4. **Multi-hex creatures** -- GURPS has size modifiers. Do large creatures occupy multiple tiles? (Defer for MVP)
-5. **Vertical space** -- Track elevation for flying/climbing? (Data field now, visual later)
-6. **Map persistence** -- Are tactical maps saved permanently like overland maps, or ephemeral per combat?
+1. **Hex vs Square grid** -- Start square, but plan hex-compatible data structures now. Position data should use axial coordinates (q, r) that work for both square and hex grids. This avoids a painful migration later when hex rendering is added.
+2. **Combat map creation** -- Separate "New Tactical Map" flow. Tactical maps are saved permanently and can be reused across multiple combats (e.g., a tavern map used for different encounters).
+3. **Abstract mode coexistence** -- Abstract (no-map) combat remains as an option. Linking a map is optional during encounter setup. All existing combat flows continue to work without spatial data.
+4. **Multi-hex creatures** -- Yes, large creatures occupy multiple tiles based on GURPS Size Modifier. A `size` field on participants will determine how many tiles they occupy (e.g., SM+1 = 2 hexes, SM+2 = 3 hexes). Implementation deferred past Phase A but data structures should accommodate it.
+5. **Vertical space** -- Yes, track elevation for flying/climbing. An `elevation` field (in yards) on both participants and tiles. Visual rendering of elevation is deferred, but the data is present from the start.
+6. **Map persistence** -- Tactical maps are saved permanently like overland maps. They appear in the map list and can be loaded, edited, and linked to any combat encounter.
 
 ---
 
@@ -417,3 +427,121 @@ These existing systems can be reused directly or with minor adaptation:
 | F -- Line of sight | LoS algorithm + cover modifiers | Large | A, B, E |
 
 Phases A and B are structural groundwork. C and D are where it starts feeling like a VTT. E is high value for low effort once positions exist. F is the most complex and can ship last or be deferred.
+
+---
+
+## Completion Log
+
+### Phase A: Position Data -- COMPLETE
+- `GridPosition` (q, r) on `Participant`, `mapId`/`mapScale`/`gridType` on `CombatState`
+- `facing`, `elevation`, `size` fields on `Participant`
+- Fully backward-compatible with abstract combat
+
+### Phase B: Tactical Map Scale -- COMPLETE
+- Tactical scale (1 yard/tile) in `MapScaleValue`, `ScaleUnit`, `GridType` types
+- 7 tactical terrain presets with `TacticalTerrainProps` (movementCost, blocksLoS, blocksMovement)
+- `elevation` and `isBlocking` on `TileModel`; `scaleUnit` and `gridType` on `MapModel`
+
+### Phase C: Token Rendering -- COMPLETE
+- `CombatToken` component with team colors, initials, current-turn pulse, dead/unconscious indicators
+- `CombatMapPanel` bridge component connecting combat state to MapGrid
+- Multi-token quadrant stacking on MapTile
+- 50/50 split layout in CombatTracker when map is linked
+- Token selection syncs with participant list
+
+### Phase D: Movement on Grid -- COMPLETE
+**Implemented:** Turn-based movement with GURPS maneuver budgets, tactical pathfinding, and full undo/redo support.
+
+**Files modified (8 files, 0 new):**
+- `src/constants/maneuvers.ts` -- Added `movementBudget` field to all 13 maneuvers + `getMovementBudgetYards()` helper
+- `src/types/combatTracker.ts` -- Added `movement` to `TurnDecision` interface
+- `src/utils/mapRouter.ts` -- Added `findTacticalRoute()` and `getTacticalReachableTiles()` using terrain.tactical costs
+- `src/utils/combatActions.js` -- Added `MOVE_PARTICIPANT` action type and creator
+- `src/utils/combatReducer.js` -- Added `applyMoveParticipant()` for forward and inverse
+- `src/utils/combatHelpers.ts` -- Added `createMovementLogEntry()`
+- `src/components/combat/CombatMapPanel.tsx` -- Added movement interaction (reachable tiles, path preview, click-to-move)
+- `src/components/combat/CombatTracker.tsx` -- Added `handleMoveTo`, `handleGmPlaceToken`, movement budget display, maneuver-change position revert
+
+**Movement budget per maneuver:**
+| Budget | Maneuvers |
+|--------|-----------|
+| Full (basicMove) | Move |
+| Step (1 yard) | Attack, All-Out Attack (both), All-Out Defense (both), Aim, Evaluate, Feint, Ready, Concentrate |
+| None (0) | Do Nothing, Change Posture, Wait |
+
+**Key behaviors:**
+- Reachable tiles shown as green rings when maneuver allows movement
+- Path preview (blue rings) on hover over reachable tile
+- Cost tooltip shows yards consumed
+- Position reverts if player changes maneuver after moving
+- GM can place any selected token on any tile (ignores budget)
+- Occupied tiles (non-dead combatants) blocked as movement endpoints
+- Full undo/redo via MOVE_PARTICIPANT action
+- Movement logged to combat log
+
+### Phase E: Range and Modifiers -- COMPLETE
+**Implemented:** Auto-calculated range between combatants with GURPS Speed/Range table modifiers injected into the attack workflow.
+
+**Files modified (4 existing + 1 new):**
+- `src/utils/rangeUtils.ts` -- **NEW** Grid distance (Chebyshev for square, axial for hex), GURPS Speed/Range table lookup (B550), `rangeModifierLabel()`, `isAdjacentPosition()`
+- `src/utils/combatViewFilter.js` -- Added `position`, `size`, `elevation`, `facing` to Player view `filterParticipant()` output (spatial data is non-secret)
+- `src/components/combat/AttackAssist.tsx` -- Extended `Target` with position/size, extended props with `actorPosition`/`gridType`, added range + SM auto-modifier injection as locked modifiers, added range display UI
+- `src/components/combat/ActionPanel.tsx` -- Extended `Participant` interface with position/size, added `gridType` prop, pipes position data and gridType to AttackAssist
+- `src/components/combat/CombatTracker.tsx` -- Passes `combat.gridType` to ActionPanel
+
+**GURPS Speed/Range Table (B550):**
+| Range (yards) | Modifier |
+|---------------|----------|
+| ≤2 | 0 |
+| 3 | -1 |
+| 5 | -2 |
+| 7 | -3 |
+| 10 | -4 |
+| 15 | -5 |
+| 20 | -6 |
+| 30 | -7 |
+| 50 | -8 |
+| 70 | -9 |
+| 100 | -10 |
+| (extended to 5000 yds / -20) | |
+
+**Key behaviors:**
+- Range auto-calculates when both attacker and target have grid positions
+- Range modifier appears as a locked (non-removable) modifier in the attack modifier stack
+- Target Size Modifier (SM) also auto-injected when non-zero
+- "Melee range" indicator shown for adjacent targets (≤1 yard, no penalty)
+- No range display or modifiers in abstract (non-map) combat
+- Player view now preserves position data through the view filter
+- All modifiers flow into `calculateEffective()` and appear in logged `AttackData.injectedModifiers`
+
+### Phase F: Line of Sight -- COMPLETE
+**Implemented:** LoS calculation between grid positions with Bresenham line tracing, cover modifiers injected into the attack workflow, and visual LoS overlay on the tactical map.
+
+**Files modified (7 existing + 1 new):**
+- `src/utils/losUtils.ts` -- **NEW** Supercover Bresenham line algorithm, `getLineOfSight()` with blocking/cover analysis, `getLoSForTargets()` batch computation, `coverModifierLabel()` helper
+- `src/components/combat/AttackAssist.tsx` -- Added `map` prop, LoS/cover auto-calculation via `useMemo`, cover modifier injection into locked modifiers, LoS indicator in target dropdown, cover/LoS status display UI
+- `src/components/combat/ActionPanel.tsx` -- Added `map` prop passthrough to AttackAssist
+- `src/components/combat/CombatTracker.tsx` -- Extracted shared `linkedMap` reference, passes `map` to ActionPanel, computes LoS overlay tile IDs via `useMemo`, passes `losTileIds` to CombatMapPanel
+- `src/components/combat/CombatMapPanel.tsx` -- Added `losTileIds` prop, forwards to MapGrid
+- `src/components/map/views/MapGrid.tsx` -- Added `losTileIds` prop with `losSet` memo, passes `isLoSHighlight` to MapTile
+- `src/components/map/views/MapTile.tsx` -- Added `isLoSHighlight` prop, renders red ring overlay for LoS line tiles
+- `src/constants/map.ts` -- Added `tactical-barricade` terrain preset (heavy cover -4, blocks movement, doesn't block LoS)
+
+**Cover levels (GURPS):**
+| Level | Modifier | Condition |
+|-------|----------|-----------|
+| None | 0 | Clear line of sight |
+| Light | -2 | Partial obstruction (e.g., elevation terrain) |
+| Heavy | -4 | Mostly obscured (e.g., barricade) |
+| Full | blocked | No line of sight (e.g., wall) |
+
+**Key behaviors:**
+- LoS auto-calculated when both attacker and target have grid positions
+- Cover modifier appears as a locked (non-removable) modifier in the attack modifier stack
+- Target dropdown shows "(No LoS)" indicator for targets behind walls
+- Red ring overlay on map tiles shows the LoS line between current actor and selected participant
+- Same-tile and adjacent-tile combatants always have clear LoS
+- Terrain `blocksLoS` and tile `isBlocking` both checked along the line
+- Worst cover level along the path determines the modifier
+- GM override: targets behind cover remain selectable (GM adjudicates)
+- No LoS calculations in abstract (non-map) combat

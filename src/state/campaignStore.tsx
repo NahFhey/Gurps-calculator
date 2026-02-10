@@ -259,6 +259,7 @@ type CampaignStoreValue = {
     // Map Actions
     setMaps: (maps: MapState) => void;
     mapCreateMap: (params: { name: string; description?: string; scaleMilesPerTile: MapScale; startTerrainId: TerrainId }) => void;
+    mapCreateTacticalMap: (params: { name: string; description?: string; rows?: number; cols?: number; startTerrainId?: string; gridType?: 'square' | 'hex' }) => void;
     mapDeleteMap: (mapId: MapId) => void;
     mapUpdateMap: (mapId: MapId, changes: { name?: string; description?: string }) => void;
     mapSetActiveMap: (mapId: MapId | null) => void;
@@ -557,6 +558,8 @@ export function CampaignStoreProvider({
       setMaps: (maps: MapState) => dispatch({ type: 'setMaps', payload: maps }),
       mapCreateMap: (params: { name: string; description?: string; scaleMilesPerTile: MapScale; startTerrainId: TerrainId }) =>
         dispatch({ type: 'map/createMap', payload: params }),
+      mapCreateTacticalMap: (params: { name: string; description?: string; rows?: number; cols?: number; startTerrainId?: string; gridType?: 'square' | 'hex' }) =>
+        dispatch({ type: 'map/createTacticalMap', payload: params }),
       mapDeleteMap: (mapId: MapId) => dispatch({ type: 'map/deleteMap', payload: mapId }),
       mapUpdateMap: (mapId: MapId, changes: { name?: string; description?: string }) =>
         dispatch({ type: 'map/updateMap', payload: { mapId, changes } }),

@@ -1,10 +1,13 @@
-import { useState, useEffect, ChangeEvent } from 'react';
+import { useState, useEffect, useMemo, ChangeEvent } from 'react';
 import { Swords, Dices } from 'lucide-react';
 import ModifierStack from './ModifierStack';
 import HitLocationPicker from './HitLocationPicker';
 import { ATTACK_MODIFIERS, calculateEffective, sumModifiers } from '../../utils/modifiers';
 import { rollVsTarget } from '../../utils/dice';
 import { getProfileLocations } from '../../utils/hitLocations';
+import { gridDistance, speedRangeModifier, rangeModifierLabel } from '../../utils/rangeUtils';
+import { getLineOfSight, getLoSForTargets, coverModifierLabel } from '../../utils/losUtils';
+import type { LoSMapData, LoSResult } from '../../utils/losUtils';
 
 interface Modifier {
   label: string;
@@ -41,6 +44,8 @@ interface Target {
   instanceId: string;
   name: string;
   hitLocationProfileId?: string;
+  position?: { q: number; r: number };
+  size?: number;
 }
 
 interface Actor {
@@ -70,6 +75,10 @@ interface AttackAssistProps {
   injectedModifiers?: Modifier[];
   onComplete: (data: { targetInstanceId: string | null; attack: AttackData }) => void;
   onCancel: () => void;
+  actorPosition?: { q: number; r: number };
+  gridType?: 'square' | 'hex';
+  /** Tactical map data for LoS/cover calculation (Phase F) */
+  map?: LoSMapData;
 }
 
 interface CustomAttack {
@@ -89,7 +98,10 @@ export default function AttackAssist({
   targets = [],
   injectedModifiers = [],
   onComplete,
-  onCancel
+  onCancel,
+  actorPosition,
+  gridType = 'square',
+  map
 }: AttackAssistProps) {
   const [selectedAttack, setSelectedAttack] = useState<Attack | null>(null);
   const [customAttack, setCustomAttack] = useState<CustomAttack>({ name: '', skill: '', damage: '', notes: '' });
@@ -120,7 +132,39 @@ export default function AttackAssist({
   const locationModifiers: Modifier[] = locationModifierValue !== 0
     ? [{ label: `Hit Location (${selectedLocation?.label})`, value: locationModifierValue }]
     : [];
-  const lockedModifiers = [...injectedModifiers, ...locationModifiers];
+
+  // Phase E: Range modifier — auto-calculated from grid positions
+  const rangeYards = (actorPosition && selectedTarget?.position)
+    ? gridDistance(actorPosition, selectedTarget.position, gridType)
+    : null;
+  const rangeModValue = rangeYards !== null ? speedRangeModifier(rangeYards) : 0;
+  const rangeModifiers: Modifier[] = (rangeYards !== null && rangeModValue !== 0)
+    ? [{ label: rangeModifierLabel(rangeYards, rangeModValue), value: rangeModValue }]
+    : [];
+
+  // Phase E: Target Size Modifier (SM) — auto-injected when non-zero
+  const sizeModValue = selectedTarget?.size ?? 0;
+  const sizeModifiers: Modifier[] = sizeModValue !== 0
+    ? [{ label: `Target SM ${sizeModValue >= 0 ? '+' : ''}${sizeModValue}`, value: sizeModValue }]
+    : [];
+
+  // Phase F: LoS / Cover modifier — auto-calculated from grid positions + map terrain
+  const losResult: LoSResult | null = useMemo(() => {
+    if (!actorPosition || !selectedTarget?.position || !map) return null;
+    return getLineOfSight(actorPosition, selectedTarget.position, map, gridType);
+  }, [actorPosition, selectedTarget?.position, map, gridType]);
+
+  const coverModifiers: Modifier[] = (losResult && losResult.hasLoS && losResult.coverModifier !== 0)
+    ? [{ label: coverModifierLabel(losResult.coverLevel), value: losResult.coverModifier }]
+    : [];
+
+  // Phase F: Pre-compute LoS for all targets (for dropdown indicators)
+  const targetLoSMap = useMemo(() => {
+    if (!actorPosition || !map) return null;
+    return getLoSForTargets(actorPosition, targets, map, gridType);
+  }, [actorPosition, targets, map, gridType]);
+
+  const lockedModifiers = [...injectedModifiers, ...locationModifiers, ...rangeModifiers, ...sizeModifiers, ...coverModifiers];
   const injectedTotal = sumModifiers(lockedModifiers);
 
   const handleSelectAttack = (attack: Attack) => {
@@ -140,7 +184,7 @@ export default function AttackAssist({
       ? selectedAttack.skill
       : parseInt(customAttack.skill) || 0;
 
-    const effectiveSkill = calculateEffective(baseSkill, [...injectedModifiers, ...locationModifiers, ...modifiers]);
+    const effectiveSkill = calculateEffective(baseSkill, [...lockedModifiers, ...modifiers]);
 
     const result = rollVsTarget('3d6', effectiveSkill) as RollResult;
     setRollResult(result);
@@ -155,13 +199,13 @@ export default function AttackAssist({
     };
 
     const baseSkill = selectedAttack ? selectedAttack.skill : parseInt(customAttack.skill) || 0;
-    const effectiveSkill = calculateEffective(baseSkill, [...injectedModifiers, ...locationModifiers, ...modifiers]);
+    const effectiveSkill = calculateEffective(baseSkill, [...lockedModifiers, ...modifiers]);
 
     const attackData: AttackData = {
       name: attack.name,
       baseSkill,
       modifiers: [...modifiers],
-      injectedModifiers: [...injectedModifiers, ...locationModifiers],
+      injectedModifiers: [...lockedModifiers],
       effectiveSkill,
       rollTotal: rollResult ? rollResult.total : null,
       margin: rollResult ? rollResult.margin : null,
@@ -291,14 +335,48 @@ export default function AttackAssist({
                 className="w-full px-3 py-2 bg-gray-700 rounded"
               >
                 <option value="">No target selected</option>
-                {targets.map((target) => (
-                  <option key={target.instanceId} value={target.instanceId}>
-                    {target.name}
-                  </option>
-                ))}
+                {targets.map((target) => {
+                  const tLos = targetLoSMap?.get(target.instanceId);
+                  const noLos = tLos && !tLos.hasLoS;
+                  return (
+                    <option key={target.instanceId} value={target.instanceId}>
+                      {target.name}{noLos ? ' (No LoS)' : ''}
+                    </option>
+                  );
+                })}
               </select>
             ) : (
               <div className="text-sm text-gray-400">No valid targets available</div>
+            )}
+
+            {/* Phase E: Range display */}
+            {rangeYards !== null && selectedTargetId && (
+              <div className="mt-2 text-sm text-gray-300 bg-gray-700/50 rounded px-3 py-1.5">
+                <span className="text-gray-400">Range:</span>{' '}
+                <span className="font-semibold">{rangeYards} yard{rangeYards !== 1 ? 's' : ''}</span>
+                {rangeModValue !== 0 && (
+                  <span className="text-red-400 ml-2">({rangeModValue})</span>
+                )}
+                {rangeYards <= 1 && (
+                  <span className="text-green-400 ml-2">Melee range</span>
+                )}
+              </div>
+            )}
+
+            {/* Phase F: LoS / Cover display */}
+            {losResult && selectedTargetId && (
+              <div className="mt-1 text-sm text-gray-300 bg-gray-700/50 rounded px-3 py-1.5">
+                {losResult.hasLoS ? (
+                  <>
+                    <span className="text-gray-400">Cover:</span>{' '}
+                    <span className={losResult.coverLevel === 0 ? 'text-green-400' : 'text-yellow-400'}>
+                      {losResult.coverLevel === 0 ? 'None (clear)' : coverModifierLabel(losResult.coverLevel)}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-red-400">No Line of Sight</span>
+                )}
+              </div>
             )}
           </div>
 

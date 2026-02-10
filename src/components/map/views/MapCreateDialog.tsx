@@ -1,11 +1,14 @@
 /**
  * MapCreateDialog — modal for creating a new map.
+ * Supports both Overland and Tactical map creation modes.
  */
 
 import React, { useState } from 'react';
 import type { MapScale, TerrainId } from '../../../types/map';
-import { MAP_SCALES, createPresetTerrains } from '../../../constants/map';
+import { MAP_SCALES, createPresetTerrains, createTacticalTerrainPresets } from '../../../constants/map';
 import { X } from 'lucide-react';
+
+type MapMode = 'overland' | 'tactical';
 
 interface MapCreateDialogProps {
   onConfirm: (params: {
@@ -14,28 +17,61 @@ interface MapCreateDialogProps {
     scaleMilesPerTile: MapScale;
     startTerrainId: TerrainId;
   }) => void;
+  onConfirmTactical?: (params: {
+    name: string;
+    description?: string;
+    rows: number;
+    cols: number;
+    startTerrainId?: string;
+  }) => void;
   onCancel: () => void;
 }
 
 const presetTerrains = createPresetTerrains();
+const tacticalTerrains = createTacticalTerrainPresets();
 
-export function MapCreateDialog({ onConfirm, onCancel }: MapCreateDialogProps) {
+const TACTICAL_SIZES = [
+  { label: 'Small', rows: 15, cols: 15, description: '15×15' },
+  { label: 'Medium', rows: 20, cols: 20, description: '20×20' },
+  { label: 'Large', rows: 30, cols: 30, description: '30×30' },
+] as const;
+
+export function MapCreateDialog({ onConfirm, onConfirmTactical, onCancel }: MapCreateDialogProps) {
+  const [mode, setMode] = useState<MapMode>(onConfirmTactical ? 'tactical' : 'overland');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+
+  // Overland state
   const [scale, setScale] = useState<MapScale>(12);
   const [startTerrainId, setStartTerrainId] = useState<TerrainId>(presetTerrains[0].id);
+
+  // Tactical state
+  const [tacticalSize, setTacticalSize] = useState<number>(1); // index into TACTICAL_SIZES
+  const [tacticalTerrainId, setTacticalTerrainId] = useState<string>('tactical-open');
 
   const canConfirm = name.trim().length > 0;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!canConfirm) return;
-    onConfirm({
-      name: name.trim(),
-      description: description.trim() || undefined,
-      scaleMilesPerTile: scale,
-      startTerrainId,
-    });
+
+    if (mode === 'tactical' && onConfirmTactical) {
+      const size = TACTICAL_SIZES[tacticalSize];
+      onConfirmTactical({
+        name: name.trim(),
+        description: description.trim() || undefined,
+        rows: size.rows,
+        cols: size.cols,
+        startTerrainId: tacticalTerrainId,
+      });
+    } else {
+      onConfirm({
+        name: name.trim(),
+        description: description.trim() || undefined,
+        scaleMilesPerTile: scale,
+        startTerrainId,
+      });
+    }
   };
 
   return (
@@ -54,6 +90,36 @@ export function MapCreateDialog({ onConfirm, onCancel }: MapCreateDialogProps) {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="px-4 py-4 space-y-4">
+          {/* Mode toggle — only show if tactical is available */}
+          {onConfirmTactical && (
+            <div className="flex rounded-lg overflow-hidden border border-gray-600">
+              <button
+                type="button"
+                className={[
+                  'flex-1 px-3 py-2 text-sm font-medium transition-colors',
+                  mode === 'overland'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-700/50 text-gray-400 hover:text-gray-200',
+                ].join(' ')}
+                onClick={() => setMode('overland')}
+              >
+                Overland
+              </button>
+              <button
+                type="button"
+                className={[
+                  'flex-1 px-3 py-2 text-sm font-medium transition-colors',
+                  mode === 'tactical'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-700/50 text-gray-400 hover:text-gray-200',
+                ].join(' ')}
+                onClick={() => setMode('tactical')}
+              >
+                Tactical (1 yd/tile)
+              </button>
+            </div>
+          )}
+
           {/* Name */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -63,7 +129,7 @@ export function MapCreateDialog({ onConfirm, onCancel }: MapCreateDialogProps) {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Thornwood Region"
+              placeholder={mode === 'tactical' ? 'e.g., Dungeon Room 1' : 'e.g., Thornwood Region'}
               className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
               autoFocus
             />
@@ -83,58 +149,117 @@ export function MapCreateDialog({ onConfirm, onCancel }: MapCreateDialogProps) {
             />
           </div>
 
-          {/* Scale */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Scale
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {MAP_SCALES.map((s) => (
-                <button
-                  key={s.value}
-                  type="button"
-                  className={[
-                    'px-3 py-2 rounded text-xs font-medium border transition-colors',
-                    scale === s.value
-                      ? 'bg-blue-600 border-blue-500 text-white'
-                      : 'bg-gray-700/50 border-gray-600 text-gray-300 hover:bg-gray-600/50',
-                  ].join(' ')}
-                  onClick={() => setScale(s.value)}
-                >
-                  <div>{s.value} mi/tile</div>
-                  <div className="text-gray-400 mt-0.5">{s.description}</div>
-                </button>
-              ))}
-            </div>
-          </div>
+          {mode === 'overland' ? (
+            <>
+              {/* Scale */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Scale
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {MAP_SCALES.map((s) => (
+                    <button
+                      key={s.value}
+                      type="button"
+                      className={[
+                        'px-3 py-2 rounded text-xs font-medium border transition-colors',
+                        scale === s.value
+                          ? 'bg-blue-600 border-blue-500 text-white'
+                          : 'bg-gray-700/50 border-gray-600 text-gray-300 hover:bg-gray-600/50',
+                      ].join(' ')}
+                      onClick={() => setScale(s.value)}
+                    >
+                      <div>{s.value} mi/tile</div>
+                      <div className="text-gray-400 mt-0.5">{s.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-          {/* Starting Terrain */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Starting Terrain
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {presetTerrains.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  className={[
-                    'flex items-center gap-2 px-2 py-1.5 rounded text-xs border transition-colors',
-                    startTerrainId === t.id
-                      ? 'bg-gray-600 border-white/50 text-white'
-                      : 'bg-gray-700/30 border-gray-600 text-gray-300 hover:bg-gray-600/30',
-                  ].join(' ')}
-                  onClick={() => setStartTerrainId(t.id)}
-                >
-                  <div
-                    className="w-3 h-3 rounded-sm border border-white/20"
-                    style={{ backgroundColor: t.color }}
-                  />
-                  <span>{t.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+              {/* Starting Terrain */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Starting Terrain
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {presetTerrains.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      className={[
+                        'flex items-center gap-2 px-2 py-1.5 rounded text-xs border transition-colors',
+                        startTerrainId === t.id
+                          ? 'bg-gray-600 border-white/50 text-white'
+                          : 'bg-gray-700/30 border-gray-600 text-gray-300 hover:bg-gray-600/30',
+                      ].join(' ')}
+                      onClick={() => setStartTerrainId(t.id)}
+                    >
+                      <div
+                        className="w-3 h-3 rounded-sm border border-white/20"
+                        style={{ backgroundColor: t.color }}
+                      />
+                      <span>{t.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Grid Size */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Grid Size
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {TACTICAL_SIZES.map((s, i) => (
+                    <button
+                      key={s.label}
+                      type="button"
+                      className={[
+                        'px-3 py-2 rounded text-xs font-medium border transition-colors',
+                        tacticalSize === i
+                          ? 'bg-blue-600 border-blue-500 text-white'
+                          : 'bg-gray-700/50 border-gray-600 text-gray-300 hover:bg-gray-600/50',
+                      ].join(' ')}
+                      onClick={() => setTacticalSize(i)}
+                    >
+                      <div>{s.label}</div>
+                      <div className="text-gray-400 mt-0.5">{s.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Starting Terrain (Tactical) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Default Terrain
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {tacticalTerrains.slice(0, 6).map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      className={[
+                        'flex items-center gap-2 px-2 py-1.5 rounded text-xs border transition-colors',
+                        tacticalTerrainId === t.id
+                          ? 'bg-gray-600 border-white/50 text-white'
+                          : 'bg-gray-700/30 border-gray-600 text-gray-300 hover:bg-gray-600/30',
+                      ].join(' ')}
+                      onClick={() => setTacticalTerrainId(t.id)}
+                    >
+                      <div
+                        className="w-3 h-3 rounded-sm border border-white/20"
+                        style={{ backgroundColor: t.color }}
+                      />
+                      <span>{t.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Actions */}
           <div className="flex justify-end gap-2 pt-2">

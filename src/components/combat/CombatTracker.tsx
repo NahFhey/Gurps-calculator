@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useCombatStore } from '../../hooks/useCombatStore';
+import { useCampaignStore } from '../../state/campaignStore';
 import { ConfirmDialog, useConfirmDialog, useToast } from '../ui';
-import { exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, createActionLogEntry, createInjuryLogEntry, createEffectLogEntry, createConditionLogEntry, createManeuverLogEntry, createReinforcementLogEntry, generateId, exportActiveCombat, parseImportedCombat, exportCombatPlayerView, exportCombatGMLocked, importCombatWithGMLock } from '../../utils/combatHelpers';
+import { exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, createActionLogEntry, createInjuryLogEntry, createEffectLogEntry, createConditionLogEntry, createManeuverLogEntry, createReinforcementLogEntry, createMovementLogEntry, generateId, exportActiveCombat, parseImportedCombat, exportCombatPlayerView, exportCombatGMLocked, importCombatWithGMLock } from '../../utils/combatHelpers';
 import { MAX_COMBAT_HISTORY } from '../../constants';
 import { roll, rollVsTarget } from '../../utils/dice';
-import { createTurnAdvanceAction, createSetResourceAction, createAddLogEntryAction, createAddConditionAction, createRemoveConditionAction, createUpdateConditionAction, createSetTurnDecisionAction, createAddReinforcementsAction } from '../../utils/combatActions';
+import { createTurnAdvanceAction, createSetResourceAction, createAddLogEntryAction, createAddConditionAction, createRemoveConditionAction, createUpdateConditionAction, createSetTurnDecisionAction, createAddReinforcementsAction, createMoveParticipantAction } from '../../utils/combatActions';
 import { addAction, canUndo, canRedo, undo, redo, createHistoryState, createSnapshot } from '../../utils/combatHistory';
 import { validateCombatState, validateCombatExport, validateCombatImport } from '../../utils/combatValidation';
 import { clearShock, applyEffect } from '../../utils/effectsEngine';
@@ -19,7 +20,8 @@ import {
 } from '../../utils/combatReveal';
 import { filterLogForPlayerView } from '../../utils/combatLogFilter';
 import { tickConditionsTurn, tickConditionsRound } from '../../utils/conditionsEngine';
-import { ManeuverCatalog } from '../../constants/maneuvers';
+import { ManeuverCatalog, getMovementBudgetYards } from '../../constants/maneuvers';
+import { findTileGridPos } from '../../utils/mapUtils';
 import { deriveTurnContext } from '../../utils/turnContext';
 import { filterManeuvers } from '../../utils/maneuverFilter';
 import ActionPanel from './ActionPanel';
@@ -27,6 +29,8 @@ import ViewModeToggle from './ViewModeToggle';
 import RevealPanel from './RevealPanel';
 import ManeuverSelector from './ManeuverSelector';
 import ReinforcementsModal from './ReinforcementsModal';
+import { CombatMapPanel } from './CombatMapPanel';
+import { getLineOfSight } from '../../utils/losUtils';
 import {
   CombatHeaderView,
   TurnControlsView,
@@ -71,6 +75,7 @@ export default function CombatTracker() {
     combatReveal,
     saveCombatReveal
   } = useCombatStore();
+  const { state: campaignState } = useCampaignStore();
 
   // TODO: Remove these stubs after completing combat state migration
   // These are legacy variables that were removed but still referenced
@@ -90,6 +95,9 @@ export default function CombatTracker() {
   const [viewMode, setViewMode] = useState(ViewMode.PLAYER);
   const [gmMode, setGmMode] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+
+  // Phase C: Selected participant for token↔card sync
+  const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
 
   // Toast notifications
   const { error: showError } = useToast();
@@ -189,6 +197,28 @@ export default function CombatTracker() {
     : { selectedId: null, prompts: {}, workflow: {} };
 
   const isEnemyInPlayerView = viewMode === ViewMode.PLAYER && currentActor?.category === 'enemy';
+
+  // Movement budget for current turn (Phase D: VTT movement)
+  const hasLinkedMap = !!combat.mapId;
+  // Phase F: Shared linked map reference for LoS and movement
+  const linkedMap = hasLinkedMap ? campaignState.maps.mapsById[combat.mapId!] : null;
+  const movementBudgetYards = (hasLinkedMap && selectedManeuverId && currentActorTruth)
+    ? getMovementBudgetYards(selectedManeuverId, currentActorTruth.basicMove, true)
+    : 0;
+  const hasMovedThisTurn = !!(currentTurnDecision as TurnDecision)?.movement;
+
+  // Phase F: LoS overlay — show line tiles between current actor and selected participant
+  const losOverlayTileIds = useMemo(() => {
+    if (!linkedMap || !currentActorTruth?.position || !selectedParticipantId) return undefined;
+    const target = combat.participants.find((p: any) => p.instanceId === selectedParticipantId);
+    if (!target?.position) return undefined;
+    // Don't show LoS line to self
+    if (selectedParticipantId === currentActorInstanceId) return undefined;
+    const result = getLineOfSight(currentActorTruth.position, target.position, linkedMap, (combat.gridType as any) || 'square');
+    return result.lineTiles
+      .map(pos => linkedMap.grid[pos.r]?.[pos.q])
+      .filter(Boolean);
+  }, [linkedMap, currentActorTruth, selectedParticipantId, combat.participants, combat.gridType, currentActorInstanceId]);
 
   // ============================================================================
   // Action Helpers
@@ -641,9 +671,26 @@ export default function CombatTracker() {
     if (!currentActorTruth || !turnDecisionKey) return;
 
     const previousDecision = turnDecisions[turnDecisionKey] || null;
+
+    // Phase D: If actor already moved this turn, revert position before changing maneuver
+    const prevMovement = (previousDecision as TurnDecision | null)?.movement;
+    if (prevMovement) {
+      const updatedParticipants = combat.participants.map(p =>
+        p.instanceId === currentActorTruth.instanceId
+          ? { ...p, position: prevMovement.fromPosition }
+          : p
+      );
+      saveCombatActive({ ...combat, participants: updatedParticipants });
+      recordAction(createMoveParticipantAction(
+        currentActorTruth.instanceId, prevMovement.toPosition, prevMovement.fromPosition, [], 0
+      ));
+    }
+
+    // Clear movement from decision when changing maneuver
     const nextDecision: TurnDecision = {
       ...(previousDecision || {}),
-      maneuverId: maneuverId || undefined
+      maneuverId: maneuverId || undefined,
+      movement: undefined
     };
 
     updateTurnDecisionState(previousDecision, nextDecision);
@@ -701,6 +748,91 @@ export default function CombatTracker() {
     }
 
     updateTurnDecisionState(previousDecision, nextDecision);
+  };
+
+  // ============================================================================
+  // Phase D (VTT): Movement Handlers
+  // ============================================================================
+
+  /**
+   * Handle movement of the current actor to a destination tile.
+   * Called from CombatMapPanel when a reachable tile is clicked.
+   */
+  const handleMoveTo = (tileId: string, path: string[], costYards: number) => {
+    if (!currentActorTruth || !turnDecisionKey || hasMovedThisTurn) return;
+    if (costYards > movementBudgetYards) return;
+    if (!linkedMap) return;
+
+    const fromPosition = currentActorTruth.position;
+    if (!fromPosition) return;
+
+    const destPos = findTileGridPos(linkedMap, tileId);
+    if (!destPos) return;
+    const toPosition = { q: destPos.col, r: destPos.row };
+
+    // 1. Update participant position
+    const updatedParticipants = combat.participants.map(p =>
+      p.instanceId === currentActorTruth.instanceId
+        ? { ...p, position: toPosition }
+        : p
+    );
+
+    // 2. Update turn decision with movement
+    const previousDecision = turnDecisions[turnDecisionKey] || null;
+    const fromTileId = linkedMap.grid[fromPosition.r]?.[fromPosition.q] ?? '';
+    const nextDecision: TurnDecision = {
+      ...(previousDecision || {}),
+      movement: { fromPosition, toPosition, path, costYards },
+    };
+
+    const updatedTurnDecisions = { ...turnDecisions };
+    updatedTurnDecisions[turnDecisionKey] = nextDecision;
+
+    // 3. Create log entry
+    const logEntry = createMovementLogEntry({
+      round: combat.currentRound,
+      turn: combat.currentTurnIndex,
+      actorInstanceId: currentActorTruth.instanceId,
+      actorName: currentActorTruth.name,
+      yardsSpent: costYards,
+    });
+
+    // 4. Save state
+    const newCombat: CombatState = {
+      ...combat,
+      participants: updatedParticipants,
+      turnDecisions: updatedTurnDecisions,
+      log: [...combat.log, logEntry],
+    };
+    saveCombatActive(newCombat);
+
+    // 5. Record actions for undo/redo
+    recordAction(createMoveParticipantAction(
+      currentActorTruth.instanceId, fromPosition, toPosition, path, costYards
+    ));
+    recordAction(createSetTurnDecisionAction(turnDecisionKey, previousDecision, nextDecision));
+    recordAction(createAddLogEntryAction(logEntry));
+  };
+
+  /**
+   * Handle GM direct placement of any selected token onto a tile.
+   * Ignores movement budget — GM can place tokens anywhere.
+   */
+  const handleGmPlaceToken = (instanceId: string, tileId: string, row: number, col: number) => {
+    if (!linkedMap) return;
+
+    const participant = combat.participants.find(p => p.instanceId === instanceId);
+    if (!participant) return;
+
+    const fromPosition = participant.position ?? { q: 0, r: 0 };
+    const toPosition = { q: col, r: row };
+
+    const updatedParticipants = combat.participants.map(p =>
+      p.instanceId === instanceId ? { ...p, position: toPosition } : p
+    );
+
+    saveCombatActive({ ...combat, participants: updatedParticipants });
+    recordAction(createMoveParticipantAction(instanceId, fromPosition, toPosition, [], 0));
   };
 
   // ============================================================================
@@ -1413,8 +1545,8 @@ export default function CombatTracker() {
     input.click();
   };
 
-  return (
-    <div className="space-y-4">
+  const controlsContent = (
+    <>
       {/* Header */}
       <CombatHeaderView
         combat={combat}
@@ -1464,6 +1596,23 @@ export default function CombatTracker() {
         </div>
       )}
 
+      {/* Movement Budget Display (Phase D: VTT) */}
+      {hasLinkedMap && selectedManeuverId && !isEnemyInPlayerView && (
+        <div className="bg-gray-800/50 rounded px-3 py-1.5 text-xs text-gray-300 flex items-center gap-2">
+          <span className="text-gray-500">Move:</span>
+          {movementBudgetYards > 0 ? (
+            <>
+              <span>{movementBudgetYards} yard{movementBudgetYards !== 1 ? 's' : ''}</span>
+              {hasMovedThisTurn && (
+                <span className="text-green-400 ml-1">Moved</span>
+              )}
+            </>
+          ) : (
+            <span className="text-gray-500">None</span>
+          )}
+        </div>
+      )}
+
       {/* Action Panel */}
       <ActionPanel
         currentActor={currentActor as any}
@@ -1483,6 +1632,8 @@ export default function CombatTracker() {
         onAddCondition={handleAddCondition}
         onRemoveCondition={handleRemoveCondition}
         onUpdateCondition={handleUpdateCondition}
+        gridType={combat.gridType || 'square'}
+        map={linkedMap ?? undefined}
       />
 
       {/* Reinforcements Modal */}
@@ -1526,6 +1677,8 @@ export default function CombatTracker() {
           currentActorInstanceId={currentActorInstanceId}
           viewMode={viewMode}
           onUpdateResource={updateResource}
+          selectedParticipantId={selectedParticipantId}
+          onSelectParticipant={setSelectedParticipantId}
         />
 
         {/* Combat Log */}
@@ -1540,6 +1693,39 @@ export default function CombatTracker() {
       {/* Confirm Dialogs */}
       <ConfirmDialog {...endCombatDialog.dialogProps} />
       <ConfirmDialog {...loadCombatDialog.dialogProps} />
+    </>
+  );
+
+  if (hasLinkedMap) {
+    return (
+      <div className="flex gap-4 h-full">
+        {/* Map panel — left half */}
+        <div className="w-1/2 min-h-[400px] flex flex-col">
+          <CombatMapPanel
+            combat={combat}
+            participants={combatView.participants}
+            currentActorInstanceId={currentActorInstanceId}
+            selectedParticipantId={selectedParticipantId}
+            onSelectParticipant={setSelectedParticipantId}
+            movementBudgetYards={movementBudgetYards}
+            hasMovedThisTurn={hasMovedThisTurn}
+            isGmMode={gmMode}
+            onMoveTo={handleMoveTo}
+            onGmPlaceToken={handleGmPlaceToken}
+            losTileIds={losOverlayTileIds}
+          />
+        </div>
+        {/* Controls — right half, scrollable */}
+        <div className="w-1/2 overflow-y-auto space-y-4">
+          {controlsContent}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {controlsContent}
     </div>
   );
 }

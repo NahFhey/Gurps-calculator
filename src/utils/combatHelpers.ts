@@ -883,6 +883,35 @@ export function createConditionLogEntry({
 }
 
 // ============================================================================
+// Phase D (VTT): Movement Log Entry
+// ============================================================================
+
+/**
+ * Create a movement log entry for tactical grid combat
+ */
+export function createMovementLogEntry({
+  round,
+  turn,
+  actorInstanceId,
+  actorName,
+  yardsSpent
+}: {
+  round: number;
+  turn: number;
+  actorInstanceId: string;
+  actorName: string;
+  yardsSpent: number;
+}): LogEntry {
+  return createLogEntry({
+    entryType: 'movement',
+    round,
+    turn,
+    actorInstanceId,
+    text: `${actorName} moved ${yardsSpent} yard${yardsSpent !== 1 ? 's' : ''}`
+  });
+}
+
+// ============================================================================
 // Phase 5: Progressive Reveal Export/Import
 // ============================================================================
 

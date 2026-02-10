@@ -12,6 +12,8 @@ import type {
   TerrainId,
   TerrainModel,
   MapScale,
+  MapScaleValue,
+  GridType,
   TravelMode,
 } from '../types/map';
 import type { TerrainType } from '../types/location';
@@ -20,6 +22,7 @@ import {
   INITIAL_CENTER,
   EXPANSION_BUFFER,
   createPresetTerrains,
+  createTacticalTerrainPresets,
   SCALE_TO_MODES,
   getTravelModeDefinition,
 } from '../constants/map';
@@ -385,6 +388,8 @@ export function expandMapIfNeededForPaint(map: MapModel): MapModel {
  */
 export function getVisibleTileIds(map: MapModel, activeMode?: TravelMode): Set<TileId> {
   if (!map.partyTileId) return new Set();
+  // Tactical maps do not use overland vision radius
+  if (map.scaleUnit === 'yards') return new Set();
 
   const partyPos = findTileGridPos(map, map.partyTileId);
   if (!partyPos) return new Set();
@@ -394,7 +399,7 @@ export function getVisibleTileIds(map: MapModel, activeMode?: TravelMode): Set<T
   if (activeMode) {
     milesForVision = getTravelModeDefinition(activeMode).milesPerSlot;
   } else {
-    const modes = SCALE_TO_MODES[map.scaleMilesPerTile];
+    const modes = SCALE_TO_MODES[map.scaleMilesPerTile as MapScale];
     milesForVision = Math.min(
       ...modes.map((m) => getTravelModeDefinition(m).milesPerSlot)
     );
@@ -448,6 +453,71 @@ export function createNewMap(params: {
     partyTileId,
     lastSelectedTerrainId: params.startTerrainId,
     lastPlacedTerrainId: params.startTerrainId,
+  };
+}
+
+/**
+ * Create a tactical-scale MapModel for combat encounters.
+ * Uses tactical terrain presets and a scale of 1 yard per tile.
+ * Tactical maps are saved permanently and can be reused across combats.
+ */
+export function createTacticalMap(params: {
+  name: string;
+  description?: string;
+  rows?: number;
+  cols?: number;
+  startTerrainId?: TerrainId;
+  gridType?: GridType;
+}): MapModel {
+  const gridRows = params.rows ?? 20;
+  const gridCols = params.cols ?? 20;
+  const startTerrainId = params.startTerrainId ?? 'tactical-open';
+  const gridType = params.gridType ?? 'square';
+
+  // Build tactical terrain set
+  const tacticalTerrains = createTacticalTerrainPresets();
+  const terrainById: Record<TerrainId, TerrainModel> = {};
+  for (const t of tacticalTerrains) {
+    terrainById[t.id] = t;
+  }
+
+  // Build grid
+  const tilesById: Record<TileId, TileModel> = {};
+  const grid: TileId[][] = [];
+  const centerR = Math.floor(gridRows / 2);
+  const centerC = Math.floor(gridCols / 2);
+
+  for (let r = 0; r < gridRows; r++) {
+    const row: TileId[] = [];
+    for (let c = 0; c < gridCols; c++) {
+      const isCenter = r === centerR && c === centerC;
+      const tile = createTile(isCenter ? startTerrainId : null);
+      tilesById[tile.id] = tile;
+      row.push(tile.id);
+    }
+    grid.push(row);
+  }
+
+  const partyTileId = grid[centerR][centerC];
+
+  return {
+    id: crypto.randomUUID(),
+    name: params.name,
+    description: params.description,
+    scaleMilesPerTile: 1 as MapScaleValue,
+    scaleUnit: 'yards',
+    gridType,
+    rows: gridRows,
+    cols: gridCols,
+    grid,
+    tilesById,
+    terrainById,
+    markersById: {},
+    linksById: {},
+    revealedTileIds: new Set<TileId>([partyTileId]),
+    partyTileId,
+    lastSelectedTerrainId: startTerrainId,
+    lastPlacedTerrainId: startTerrainId,
   };
 }
 

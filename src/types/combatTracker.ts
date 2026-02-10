@@ -8,6 +8,19 @@
 import { ReactNode } from 'react';
 
 // ============================================================================
+// SPATIAL TYPES (VTT Integration)
+// ============================================================================
+
+/**
+ * Axial coordinate position for grid-based placement.
+ * Works for both square grids (q=col, r=row) and hex grids (axial coordinates).
+ */
+export interface GridPosition {
+  q: number;
+  r: number;
+}
+
+// ============================================================================
 // CORE COMBAT TYPES
 // ============================================================================
 
@@ -69,6 +82,14 @@ export interface Participant {
   bleeding?: { rate: number; round: number } | null;
   crippled?: string[];
   conditions?: ConditionInstance[];
+  /** Grid position in axial coordinates. Absent = abstract/no-map combat. */
+  position?: GridPosition;
+  /** Facing direction. 0-5 for hex, 0-7 for square. */
+  facing?: number;
+  /** Elevation in yards above ground level (flying, climbing, multi-story). */
+  elevation?: number;
+  /** GURPS Size Modifier. 0 = 1 hex (default human), positive = larger. */
+  size?: number;
 }
 
 export interface HPValue {
@@ -159,6 +180,12 @@ export interface CombatState {
   currentRound: number;
   turnDecisions: Record<string, TurnDecision>;
   log: LogEntry[];
+  /** ID of the linked MapModel for spatial combat. Absent = abstract mode. */
+  mapId?: string;
+  /** Scale in yards per tile for this combat session. */
+  mapScale?: number;
+  /** Grid geometry for this combat session. */
+  gridType?: 'square' | 'hex';
 }
 
 export interface TurnDecision {
@@ -166,6 +193,13 @@ export interface TurnDecision {
   notes?: string;
   aim?: { targetInstanceId?: string; turnsAimed?: number };
   wait?: { triggerText?: string };
+  /** Movement taken this turn on the tactical grid. */
+  movement?: {
+    fromPosition: GridPosition;
+    toPosition: GridPosition;
+    path: string[];       // Ordered tile IDs from start to destination
+    costYards: number;
+  };
 }
 
 export interface HistoryState {
@@ -329,6 +363,8 @@ export interface ParticipantListViewProps {
   currentActorInstanceId: string;
   viewMode: string;
   onUpdateResource: (instanceId: string, resource: string, value: number) => void;
+  selectedParticipantId?: string | null;
+  onSelectParticipant?: (instanceId: string | null) => void;
 }
 
 export interface ParticipantCardProps {
@@ -336,6 +372,8 @@ export interface ParticipantCardProps {
   isCurrent: boolean;
   onUpdateResource: (instanceId: string, resource: string, value: number) => void;
   viewMode: string;
+  isSelected?: boolean;
+  onClick?: () => void;
 }
 
 export interface CombatLogViewProps {

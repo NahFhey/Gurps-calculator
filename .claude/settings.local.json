@@ -27,7 +27,8 @@
       "Bash(npx vite build)",
       "Bash(del \"C:\\\\Users\\\\devin\\\\Documents\\\\GitHub\\\\Gurps-calculator\\\\src\\\\components\\\\AlchemyTab.tsx\")",
       "Bash(git stash:*)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(CombatMapPanel \")"
     ]
   }
 }
