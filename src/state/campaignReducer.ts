@@ -642,6 +642,10 @@ export type CampaignAction =
   | { type: 'removeCustomClimate'; payload: string }
   | { type: 'addCustomTerrain'; payload: { key: string; label: string } }
   | { type: 'removeCustomTerrain'; payload: string }
+  // Storage cleanup actions
+  | { type: 'clearCheckpoints' }
+  | { type: 'clearLogs' }
+  | { type: 'clearCombatHistory' }
   // Downtime actions
   | { type: 'setDowntime'; payload: DowntimeState }
   // Map actions (bulk setter + delegated map/ prefixed actions)
@@ -1271,6 +1275,19 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
       // ========================================================================
       case 'setMaps':
         draft.maps = action.payload;
+        return;
+
+      // ========================================================================
+      // STORAGE CLEANUP ACTIONS
+      // ========================================================================
+      case 'clearCheckpoints':
+        draft.checkpoints.entries = [];
+        return;
+      case 'clearLogs':
+        draft.logs.entries = [];
+        return;
+      case 'clearCombatHistory':
+        draft.entities.combatHistory = [];
         return;
 
       default:

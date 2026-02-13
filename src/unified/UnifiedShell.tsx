@@ -22,6 +22,10 @@ import { parseCharacterText } from '../utils/characterImport';
 import { WeatherWidget, TimeDisplay, TimeControls } from '../components/header';
 import { CombatTile } from '../components/combat/CombatTile';
 import { CombatTab } from '../components/CombatTab';
+import { CombatContextProvider } from '../components/combat/CombatContext';
+import { CombatParticipantsSidebar } from '../components/combat/CombatParticipantsSidebar';
+import { CombatManeuverRail } from '../components/combat/CombatManeuverRail';
+import { CombatMainArea } from '../components/combat/CombatMainArea';
 import { MapPanel } from '../components/map';
 import { PanelLayoutProvider, usePanelLayout } from '../contexts/PanelLayoutContext';
 import {
@@ -223,6 +227,11 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
   const isCenterExpanded = layoutState.centerPanel === 'expanded';
   const isRightExpanded = layoutState.rightPanel === 'expanded';
 
+  // Combat layout: when combat is active WITH a linked map, take over the whole shell
+  const isCombatActive = !!state.combat.activeSession;
+  const combatHasMap = !!(state.combat.activeSession as any)?.mapId;
+  const combatLayoutActive = isCombatActive && combatHasMap;
+
   // Character panel should hide when no character is selected or party is collapsed
   const shouldHideCharacterPanel = !selectedCharacterId || isPartyCollapsed;
 
@@ -239,6 +248,11 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
     const scrollEdge = '4px';
     const scrollGap = '8px';
 
+    // Combat map layout: party(220) | edges | 0px center | big map area | edges | rail(160)
+    if (combatLayoutActive) {
+      return `220px ${scrollEdge} ${scrollGap} ${scrollEdge} 0px minmax(0, 1fr) ${scrollEdge} ${scrollGap} ${scrollEdge} 160px`;
+    }
+
     if (isPartyCollapsed) {
       // Party collapsed - character panel always hidden, give space to right panel
       // Grid: party | scrollL1 | gapL | scrollL2 | center | modulepane | scrollR1 | gapR | scrollR2 | rail
@@ -251,7 +265,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
     if (isCenterExpanded) return `${partyWidth} ${scrollEdge} ${scrollGap} ${scrollEdge} minmax(0, 2fr) 0px ${scrollEdge} ${scrollGap} ${scrollEdge} ${railWidth}`;
     if (isRightExpanded) return `${partyWidth} ${scrollEdge} ${scrollGap} ${scrollEdge} 0px minmax(0, 2fr) ${scrollEdge} ${scrollGap} ${scrollEdge} ${railWidth}`;
     return `${partyWidth} ${scrollEdge} ${scrollGap} ${scrollEdge} minmax(0, 1fr) ${modulePaneWidth} ${scrollEdge} ${scrollGap} ${scrollEdge} ${railWidth}`;
-  }, [isPartyCollapsed, isCenterExpanded, isRightExpanded, shouldHideCharacterPanel, isRailCollapsed, shouldHideModulePane]);
+  }, [isPartyCollapsed, isCenterExpanded, isRightExpanded, shouldHideCharacterPanel, isRailCollapsed, shouldHideModulePane, combatLayoutActive]);
 
   // Clear active module when rail collapses (except for combat, which has its own tile)
   useEffect(() => {
@@ -260,7 +274,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
     }
   }, [isRailCollapsed, activeModuleId, actions]);
 
-  return (
+  const shellContent = (
     <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
       {/* Header - Redesigned with Weather, Time Display, and Time Controls */}
       <header className="bg-gray-800 border-b border-gray-700 px-6 py-3">
@@ -311,15 +325,20 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
 
       {/* Main Content Grid */}
       <div
-        className="flex-1 grid gap-4 p-6 transition-all duration-300"
-        style={{ gridTemplateColumns }}
+        className="flex-1 min-h-0 grid gap-4 p-6 transition-all duration-300"
+        style={{ gridTemplateColumns, gridTemplateRows: '1fr' }}
       >
-        {/* Party Column - Collapsible */}
+        {/* Party Column - Collapsible (swapped to Participants during combat) */}
         <section
           className={`rounded border border-gray-700 bg-gray-800/60 overflow-hidden transition-all duration-300 ${
-            isPartyCollapsed ? 'p-2 min-w-[56px]' : 'p-4'
+            combatLayoutActive ? 'p-3' : isPartyCollapsed ? 'p-2 min-w-[56px]' : 'p-4'
           }`}
         >
+          {combatLayoutActive ? (
+            <CombatParticipantsSidebar />
+          ) : (
+            <>
+
           <div className={`flex items-center mb-2 ${isPartyCollapsed ? 'justify-center' : 'justify-between'}`}>
             {!isPartyCollapsed && (
               <h2 className="text-sm uppercase tracking-wide text-gray-400">Party</h2>
@@ -522,6 +541,8 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
               })}
             </div>
           )}
+            </>
+          )}
         </section>
 
         {/* Left Scroll Edge 1 - decorative line (inner, next to party) */}
@@ -561,23 +582,29 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           </div>
         </section>
 
-        {/* Right Panel - Module Pane */}
+        {/* Right Panel - Module Pane (or Combat Map when combatLayoutActive) */}
         <section
-          className={`overflow-hidden transition-all duration-300 ${
-            isCenterExpanded || shouldHideModulePane
-              ? 'invisible'
-              : 'rounded border border-gray-700 bg-gray-800/60 p-4'
+          className={`overflow-hidden flex flex-col transition-all duration-300 ${
+            combatLayoutActive
+              ? 'rounded border border-gray-700 bg-gray-800/60'
+              : isCenterExpanded || shouldHideModulePane
+                ? 'invisible'
+                : 'rounded border border-gray-700 bg-gray-800/60 p-4'
           }`}
         >
-          {activeModule && (
-            <>
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-sm uppercase tracking-wide text-gray-400">
-                  {activeModule.label}
-                </h2>
-              </div>
-              <div className="mt-4">{activeModule.content}</div>
-            </>
+          {combatLayoutActive ? (
+            <CombatMainArea />
+          ) : (
+            activeModule && (
+              <>
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-sm uppercase tracking-wide text-gray-400">
+                    {activeModule.label}
+                  </h2>
+                </div>
+                <div className="mt-4 flex-1 min-h-0 overflow-y-auto">{activeModule.content}</div>
+              </>
+            )
           )}
         </section>
 
@@ -594,12 +621,16 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           <div className="w-full h-[calc(100%-1.5rem)] rounded bg-gray-700/40" />
         </div>
 
-        {/* Rail - Module Navigation */}
+        {/* Rail - Module Navigation (or Maneuvers during combat) */}
         <aside
           className={`rounded border border-gray-700 bg-gray-800/60 overflow-hidden transition-all duration-300 ${
-            isRailCollapsed ? 'p-2 min-w-[56px]' : 'p-4'
+            combatLayoutActive ? 'p-3' : isRailCollapsed ? 'p-2 min-w-[56px]' : 'p-4'
           }`}
         >
+          {combatLayoutActive ? (
+            <CombatManeuverRail />
+          ) : (
+            <>
           {/* Header with toggle button - matching Party collapsed structure */}
           <div className={`flex items-center mb-2 ${isRailCollapsed ? 'justify-center' : 'justify-between'}`}>
             {!isRailCollapsed && (
@@ -665,6 +696,8 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                 );
               })}
             </div>
+          )}
+            </>
           )}
         </aside>
       </div>
@@ -754,6 +787,13 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
       )}
     </div>
   );
+
+  // Wrap in CombatContextProvider when combat is active (with or without map)
+  if (isCombatActive) {
+    return <CombatContextProvider>{shellContent}</CombatContextProvider>;
+  }
+
+  return shellContent;
 }
 
 /**

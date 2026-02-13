@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Users, Swords, History, ScrollText, Settings } from 'lucide-react';
+import { Users, Swords, History, ScrollText, Settings, Map } from 'lucide-react';
 import { useCampaignStore } from '../state/campaignStore';
 import CharacterLibrary from './combat/CharacterLibrary';
 import EncounterSetup from './combat/EncounterSetup';
@@ -29,6 +29,7 @@ export function CombatTab() {
 
   // Derive combat state from campaign store
   const combatActive = state.combat.activeSession;
+  const combatHasMap = !!(combatActive as any)?.mapId;
   const combatRulesPreset = state.combat.rulesPreset;
 
   // Save callback for rules preset
@@ -40,7 +41,7 @@ export function CombatTab() {
   const currentView = combatActive ? 'tracker' : view;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 h-full flex flex-col">
       <div className="flex gap-2 border-b border-gray-700 pb-2">
         <button
           onClick={() => setView('library')}
@@ -110,16 +111,30 @@ export function CombatTab() {
         )}
       </div>
 
-      {currentView === 'library' && <CharacterLibrary />}
-      {currentView === 'setup' && <EncounterSetup />}
-      {currentView === 'history' && <CombatHistory />}
-      {currentView === 'settings' && (
-        <CombatRulesSettings
-          preset={combatRulesPreset || 'standard'}
-          onPresetChange={saveCombatRulesPreset}
-        />
-      )}
-      {currentView === 'tracker' && combatActive && <CombatTracker />}
+      <div className="flex-1 min-h-0">
+        {currentView === 'library' && <CharacterLibrary />}
+        {currentView === 'setup' && <EncounterSetup />}
+        {currentView === 'history' && <CombatHistory />}
+        {currentView === 'settings' && (
+          <CombatRulesSettings
+            preset={combatRulesPreset || 'standard'}
+            onPresetChange={saveCombatRulesPreset}
+          />
+        )}
+        {currentView === 'tracker' && combatActive && (
+          combatHasMap ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-400">
+              <Map className="h-10 w-10 text-blue-400/60" />
+              <p className="text-sm font-medium">Combat is displayed in the main view</p>
+              <p className="text-xs text-gray-500">
+                Participants, map, and maneuvers are shown in the shell layout.
+              </p>
+            </div>
+          ) : (
+            <CombatTracker />
+          )
+        )}
+      </div>
     </div>
   );
 }

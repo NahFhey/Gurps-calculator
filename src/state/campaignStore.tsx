@@ -592,6 +592,11 @@ export function CampaignStoreProvider({
       mapSetPendingTerrain: (tileIds: TileId[]) =>
         dispatch({ type: 'map/setPendingTerrain', payload: tileIds }),
       mapClearPendingTerrain: () => dispatch({ type: 'map/clearPendingTerrain' }),
+
+      // Storage cleanup
+      clearCheckpoints: () => dispatch({ type: 'clearCheckpoints' }),
+      clearLogs: () => dispatch({ type: 'clearLogs' }),
+      clearCombatHistory: () => dispatch({ type: 'clearCombatHistory' }),
     }),
     []
   );

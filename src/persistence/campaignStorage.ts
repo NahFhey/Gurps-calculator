@@ -91,7 +91,25 @@ const hydrateCampaignState = (payload: CampaignState): CampaignState => {
 
 export async function saveCampaignState(state: CampaignState) {
   const payload = serializeCampaignState(state);
-  await storage.set(CAMPAIGN_STORAGE_KEY, JSON.stringify(payload), false);
+  try {
+    await storage.set(CAMPAIGN_STORAGE_KEY, JSON.stringify(payload), false);
+  } catch (error) {
+    if (error instanceof Error && error.name === 'QuotaExceededError') {
+      // Auto-prune: remove checkpoints (the biggest space hog) and retry
+      const pruned = {
+        ...payload,
+        checkpoints: { ...payload.checkpoints, entries: [] },
+      };
+      logger.log('[CampaignStorage] Quota exceeded — pruning all checkpoints and retrying save');
+      try {
+        await storage.set(CAMPAIGN_STORAGE_KEY, JSON.stringify(pruned), false);
+        return; // Pruned save succeeded
+      } catch {
+        // Still over quota even without checkpoints — re-throw the original error
+      }
+    }
+    throw error;
+  }
 }
 
 /**
