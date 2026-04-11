@@ -29,3 +29,13 @@ pnpm-lock.yaml
 .env
 .env.local
 .env.*.local
+
+# Claude tooling
+.claude/
+
+# Temp / generated artifacts
+nul
+test-results.txt
+fix_tests.sh
+*.skill
+eval-review-vtt-skill.html
