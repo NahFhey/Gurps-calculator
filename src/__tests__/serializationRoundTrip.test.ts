@@ -12,12 +12,6 @@ import {
   loadCampaignState,
   saveCampaignState,
 } from '../persistence/campaignStorage';
-import { idbClear } from '../persistence/db';
-
-beforeEach(async () => {
-  localStorage.clear();
-  await idbClear();
-});
 
 // ---------------------------------------------------------------------------
 // Direct serialize → hydrate round-trip
@@ -113,7 +107,11 @@ describe('serializeCampaignState / hydrateCampaignState round-trip', () => {
 // ---------------------------------------------------------------------------
 // Full save → load round-trip via IndexedDB
 // ---------------------------------------------------------------------------
-describe('save / load round-trip via IndexedDB', () => {
+describe('save / load round-trip via localStorage', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   it('Sets survive the full persistence cycle', async () => {
     const state = createCampaignState();
     state.combat.reveal.revealedTargets.add('r1');
@@ -136,8 +134,7 @@ describe('save / load round-trip via IndexedDB', () => {
     const serialized = serializeCampaignState(state);
     delete (serialized as any).combat.reveal;
 
-    const { idbSet } = await import('../persistence/db');
-    await idbSet('campaignState', JSON.stringify(serialized));
+    localStorage.setItem('campaignState', JSON.stringify(serialized));
 
     const loaded = await loadCampaignState();
     expect(loaded.combat.reveal.revealedTargets).toBeInstanceOf(Set);
@@ -150,8 +147,7 @@ describe('save / load round-trip via IndexedDB', () => {
     (serialized as any).combat.reveal.revealedTargets = null;
     (serialized as any).combat.reveal.revealedHP = null;
 
-    const { idbSet } = await import('../persistence/db');
-    await idbSet('campaignState', JSON.stringify(serialized));
+    localStorage.setItem('campaignState', JSON.stringify(serialized));
 
     const loaded = await loadCampaignState();
     expect(loaded.combat.reveal.revealedTargets).toBeInstanceOf(Set);
@@ -165,8 +161,7 @@ describe('save / load round-trip via IndexedDB', () => {
     const serialized = serializeCampaignState(state);
     delete (serialized as any).maps;
 
-    const { idbSet } = await import('../persistence/db');
-    await idbSet('campaignState', JSON.stringify(serialized));
+    localStorage.setItem('campaignState', JSON.stringify(serialized));
 
     const loaded = await loadCampaignState();
     expect(loaded.maps).toBeDefined();

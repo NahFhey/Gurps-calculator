@@ -19,7 +19,7 @@ const serializeMapState = (maps: CampaignState['maps']) => {
   };
 };
 
-const serializeCampaignState = (state: CampaignState) => ({
+export const serializeCampaignState = (state: CampaignState) => ({
   ...state,
   legacy: {
     ...state.legacy,
@@ -54,7 +54,7 @@ const hydrateMapState = (maps: any): CampaignState['maps'] => {
   };
 };
 
-const hydrateCampaignState = (payload: CampaignState): CampaignState => {
+export const hydrateCampaignState = (payload: CampaignState): CampaignState => {
   const base = createCampaignState();
   const reveal = payload.combat?.reveal ?? base.combat.reveal;
   return {
