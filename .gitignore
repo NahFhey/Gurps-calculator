@@ -25,6 +25,14 @@ package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
+# Server data (SQLite database)
+server/data/
+data/
+
+# Electron
+electron-dist/
+release/
+
 # Environment variables
 .env
 .env.local
@@ -39,3 +47,4 @@ test-results.txt
 fix_tests.sh
 *.skill
 eval-review-vtt-skill.html
+zinxKdJt
