@@ -245,8 +245,9 @@ const mockBreakdown = [
 ];
 
 vi.mock('../../../utils/storage', () => ({
-  getStorageBreakdown: vi.fn(() => Promise.resolve(mockBreakdown)),
+  getStorageBreakdown: vi.fn(() => mockBreakdown),
   resetQuotaAlert: vi.fn(),
+  default: { get: vi.fn(), set: vi.fn(), remove: vi.fn(), clear: vi.fn(), keys: vi.fn() },
 }));
 
 vi.mock('../../../state/campaignStore', () => ({
@@ -277,7 +278,7 @@ describe('StorageQuotaBanner', () => {
   it('renders warning banner after storage-quota-exceeded event', async () => {
     const { getStorageBreakdown } = await import('../../../utils/storage');
     // Ensure mock returns a fresh resolved promise each call
-    vi.mocked(getStorageBreakdown).mockImplementation(() => Promise.resolve(mockBreakdown));
+    vi.mocked(getStorageBreakdown).mockImplementation(() => mockBreakdown);
 
     render(<StorageQuotaBanner />);
 
@@ -291,7 +292,7 @@ describe('StorageQuotaBanner', () => {
 
   it('shows cleanup action buttons when banner is visible', async () => {
     const { getStorageBreakdown } = await import('../../../utils/storage');
-    vi.mocked(getStorageBreakdown).mockImplementation(() => Promise.resolve(mockBreakdown));
+    vi.mocked(getStorageBreakdown).mockImplementation(() => mockBreakdown);
 
     render(<StorageQuotaBanner />);
 
@@ -306,7 +307,7 @@ describe('StorageQuotaBanner', () => {
 
   it('dismisses banner when dismiss button is clicked', async () => {
     const { getStorageBreakdown } = await import('../../../utils/storage');
-    vi.mocked(getStorageBreakdown).mockImplementation(() => Promise.resolve(mockBreakdown));
+    vi.mocked(getStorageBreakdown).mockImplementation(() => mockBreakdown);
 
     render(<StorageQuotaBanner />);
 

@@ -4,6 +4,7 @@
  */
 
 import { applyAction, applyInverse } from './combatReducer';
+import { safeDeepClone } from './helpers';
 
 // ============================================================================
 // Configuration
@@ -51,7 +52,7 @@ export function createSnapshot(combatState, revealState = null) {
   if (revealState) {
     return {
       combatState: snapshot,
-      revealState: JSON.parse(JSON.stringify(revealState)) // Deep clone
+      revealState: safeDeepClone(revealState) // Deep clone
     };
   }
 
@@ -243,7 +244,7 @@ export function rebuildState(baseState, historyState, targetCursor, baseRevealSt
     if (checkpoint.snapshot.combatState && checkpoint.snapshot.revealState) {
       // Phase 5 format
       state = { ...checkpoint.snapshot.combatState };
-      revealState = JSON.parse(JSON.stringify(checkpoint.snapshot.revealState));
+      revealState = safeDeepClone(checkpoint.snapshot.revealState);
       startIndex = checkpoint.at;
     } else {
       // Legacy format
@@ -279,7 +280,7 @@ export function rebuildState(baseState, historyState, targetCursor, baseRevealSt
 function applyRevealUpdate(revealState, revealUpdate) {
   if (!revealState || !revealUpdate) return revealState;
 
-  const updated = JSON.parse(JSON.stringify(revealState));
+  const updated = safeDeepClone(revealState);
   if (!updated.byInstanceId) {
     updated.byInstanceId = {};
   }

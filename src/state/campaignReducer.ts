@@ -2,6 +2,7 @@ import { enableMapSet, produce } from 'immer';
 import { createPartyToolState, PARTY_TOOL_SKILLS } from '../components/partyToolSeed';
 import { advanceTimeSlot, type TimeLogEntry } from '../utils/timeSystem';
 import { SLOT_NAMES, SLOTS_PER_DAY } from '../constants';
+import { logger } from '../utils/logger';
 import type {
   Id,
   Character,
@@ -276,7 +277,12 @@ export const logEvent = (
 
 const createCheckpointSnapshot = (state: CampaignState): CampaignSnapshot => {
   const { checkpoints, ...rest } = state;
-  return JSON.parse(JSON.stringify(rest)) as CampaignSnapshot;
+  try {
+    return JSON.parse(JSON.stringify(rest)) as CampaignSnapshot;
+  } catch (err) {
+    logger.error('Failed to create checkpoint snapshot:', err);
+    return rest as unknown as CampaignSnapshot;
+  }
 };
 
 const createCheckpointEntry = (state: CampaignState, label: string): Checkpoint => ({
@@ -895,7 +901,13 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         if (!checkpoint) {
           return;
         }
-        const restoredSnapshot = JSON.parse(JSON.stringify(checkpoint.snapshot)) as CampaignSnapshot;
+        let restoredSnapshot: CampaignSnapshot;
+        try {
+          restoredSnapshot = JSON.parse(JSON.stringify(checkpoint.snapshot)) as CampaignSnapshot;
+        } catch (err) {
+          logger.error('Failed to deep-clone checkpoint for restore:', err);
+          return;
+        }
         const rollbackEntry = logEvent('campaign.rollback', 'player', {
           message: 'Rollback occurred.'
         });

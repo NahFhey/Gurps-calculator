@@ -16,6 +16,7 @@ import {
   type ReactNode,
 } from 'react';
 import { connectionManager, type ConnectionStatus } from './ConnectionManager';
+import { standaloneToast } from '../components/ui/Toast';
 import type { SessionInfo } from '../../shared/session';
 import type { Role } from '../../shared/session';
 import type { PlayerInfo } from '../../shared/protocol';
@@ -97,6 +98,7 @@ export function SyncProvider({ children, onServerStateUpdate }: SyncProviderProp
         onServerStateUpdateRef.current?.(state);
       } catch (err) {
         console.error('[SyncProvider] Failed to fetch updated state:', err);
+        standaloneToast.error('Failed to sync with server. Your local changes are preserved.');
       }
     });
 

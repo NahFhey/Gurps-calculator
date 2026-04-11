@@ -5,6 +5,8 @@
  * Supports GM/Player view separation with granular reveal controls.
  */
 
+import { safeDeepClone } from './helpers';
+
 /**
  * Reveal modes for different data types
  */
@@ -178,7 +180,7 @@ export function getRevealForInstance(revealState, instanceId, side = 'enemy') {
  * @returns {object} Updated reveal state
  */
 export function updateReveal(revealState, instanceId, field, value) {
-  const newState = JSON.parse(JSON.stringify(revealState)); // Deep clone
+  const newState = safeDeepClone(revealState); // Deep clone
 
   if (!newState.byInstanceId[instanceId]) {
     newState.byInstanceId[instanceId] = createDefaultRevealForInstance(instanceId, 'enemy');
@@ -208,7 +210,7 @@ export function updateReveal(revealState, instanceId, field, value) {
  * @returns {object} Updated reveal state
  */
 export function setRevealForInstance(revealState, instanceId, nextReveal) {
-  const newState = JSON.parse(JSON.stringify(revealState));
+  const newState = safeDeepClone(revealState);
   if (!newState.byInstanceId) {
     newState.byInstanceId = {};
   }
@@ -261,7 +263,7 @@ export function revealHPAtZero(revealState, instanceId) {
  * @returns {object} Updated reveal state
  */
 export function addCombatantToReveal(revealState, instanceId, side) {
-  const newState = JSON.parse(JSON.stringify(revealState));
+  const newState = safeDeepClone(revealState);
   newState.byInstanceId[instanceId] = createDefaultRevealForInstance(instanceId, side);
   return newState;
 }
@@ -276,7 +278,7 @@ export function addCombatantToReveal(revealState, instanceId, side) {
 export function syncRevealStateForParticipants(revealState, participants) {
   if (!revealState) return revealState;
 
-  const updated = JSON.parse(JSON.stringify(revealState));
+  const updated = safeDeepClone(revealState);
   const participantIds = new Set(participants.map(p => p.instanceId));
 
   // Remove entries for missing participants
@@ -309,7 +311,7 @@ export function syncRevealStateForParticipants(revealState, participants) {
  * @returns {object} Updated reveal state
  */
 export function removeCombatantFromReveal(revealState, instanceId) {
-  const newState = JSON.parse(JSON.stringify(revealState));
+  const newState = safeDeepClone(revealState);
   delete newState.byInstanceId[instanceId];
   return newState;
 }

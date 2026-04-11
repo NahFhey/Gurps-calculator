@@ -4,11 +4,12 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { TileGrid, ACTIVITY_SKILL_REQUIREMENTS } from '../TileGrid';
 
 describe('TileGrid', () => {
-  it('renders all five activity tiles', () => {
+  it('renders all six activity tiles', () => {
     render(<TileGrid onNavigate={vi.fn()} />);
 
     expect(screen.getByText('Fishing')).toBeInTheDocument();
     expect(screen.getByText('Foraging')).toBeInTheDocument();
+    expect(screen.getByText('Mining')).toBeInTheDocument();
     expect(screen.getByText('Alchemy')).toBeInTheDocument();
     expect(screen.getByText('Crafting')).toBeInTheDocument();
     expect(screen.getByText('Cooking')).toBeInTheDocument();
@@ -51,6 +52,7 @@ describe('TileGrid', () => {
 
     expect(screen.getByText('Fish & Seafood')).toBeInTheDocument();
     expect(screen.getByText('Herbs & Materials')).toBeInTheDocument();
+    expect(screen.getByText('Ore & Minerals')).toBeInTheDocument();
     expect(screen.getByText('Potions & Reagents')).toBeInTheDocument();
     expect(screen.getByText('Gear & Projects')).toBeInTheDocument();
     expect(screen.getByText('Recipes & Meals')).toBeInTheDocument();
@@ -60,7 +62,7 @@ describe('TileGrid', () => {
     render(<TileGrid onNavigate={vi.fn()} />);
 
     const buttons = screen.getAllByRole('button');
-    expect(buttons).toHaveLength(5);
+    expect(buttons).toHaveLength(6);
     buttons.forEach((button) => {
       expect(button).toHaveAttribute('aria-label');
     });

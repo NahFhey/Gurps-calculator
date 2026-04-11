@@ -100,6 +100,7 @@ function createMockActions() {
     setCombatTombstones: vi.fn(),
     setCombatRulesPreset: vi.fn(),
     setCombatItems: vi.fn(),
+    setCombatRevealState: vi.fn(),
   };
 }
 
@@ -289,7 +290,8 @@ describe('useCombatStore', () => {
           combat: {
             activeSession: null,
             rulesPreset: 'standard',
-            reveal: revealState,
+            reveal: {},
+            revealState,
           },
         }),
         actions: mockActions,
@@ -557,19 +559,13 @@ describe('useCombatStore', () => {
         actions: mockActions,
       } as any);
 
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
       const { result } = renderHook(() => useCombatStore());
 
       act(() => {
-        result.current.saveCombatReveal({ showEnemyHP: true });
+        result.current.saveCombatReveal({ showEnemyHP: true } as any);
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'saveCombatReveal: reveal state updates are not yet fully implemented'
-      );
-
-      consoleSpy.mockRestore();
+      expect(mockActions.setCombatRevealState).toHaveBeenCalledWith({ showEnemyHP: true });
     });
   });
 

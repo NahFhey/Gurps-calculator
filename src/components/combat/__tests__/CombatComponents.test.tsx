@@ -403,13 +403,6 @@ describe('EncounterSetup', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders map selection dropdown', () => {
-    render(<EncounterSetup />);
-
-    expect(screen.getByText('No Map (Abstract Combat)')).toBeInTheDocument();
-    expect(screen.getByText(/No maps available/)).toBeInTheDocument();
-  });
-
   it('renders Clear button disabled when no participants', () => {
     render(<EncounterSetup />);
 

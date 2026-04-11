@@ -49,10 +49,13 @@ describe('combatReveal deep-clone crash paths', () => {
       expect(() => setRevealForInstance(undefined, 'char-1', {})).toThrow();
     });
 
-    it('handles circular reference rejection', () => {
+    it('handles circular reference gracefully (safeDeepClone returns original)', () => {
       const circular = { byInstanceId: {} };
       circular.self = circular;
-      expect(() => setRevealForInstance(circular, 'char-1', {})).toThrow();
+      // safeDeepClone catches the JSON serialization error and returns the original reference,
+      // so setRevealForInstance completes without throwing
+      const result = setRevealForInstance(circular, 'char-1', {});
+      expect(result.byInstanceId['char-1']).toBeDefined();
     });
   });
 

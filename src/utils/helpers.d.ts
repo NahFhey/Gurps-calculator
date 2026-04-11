@@ -6,6 +6,8 @@ import type { Craft, Material } from '../types/campaign';
 
 export function safeParse<T = unknown>(value: string | null | undefined, fallback: T): T;
 
+export function safeDeepClone<T>(obj: T): T;
+
 export function toNumberOr(value: number | string | unknown, fallback?: number): number;
 
 export function determineQuality(cp: number): string;

@@ -27,6 +27,7 @@ import { CombatParticipantsSidebar } from '../components/combat/CombatParticipan
 import { CombatManeuverRail } from '../components/combat/CombatManeuverRail';
 import { CombatMainArea } from '../components/combat/CombatMainArea';
 import { MapPanel } from '../components/map';
+import { TabErrorBoundary } from '../components/ui/TabErrorBoundary';
 import { PanelLayoutProvider, usePanelLayout } from '../contexts/PanelLayoutContext';
 import {
   useCampaignCharacters,
@@ -61,26 +62,28 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
       return modules;
     }
     return [
-      { id: 'inventory', label: 'Inventory', content: <InventoryTab /> },
+      { id: 'inventory', label: 'Inventory', content: <TabErrorBoundary tabName="Inventory"><InventoryTab /></TabErrorBoundary> },
       {
         id: 'downtime',
         label: 'Downtime',
         content: (
-          <DowntimePanel
-            currentDayKey={state.time?.day ?? 1}
-            currentSlot={state.time?.slot ?? 0}
-          />
+          <TabErrorBoundary tabName="Downtime">
+            <DowntimePanel
+              currentDayKey={state.time?.day ?? 1}
+              currentSlot={state.time?.slot ?? 0}
+            />
+          </TabErrorBoundary>
         ),
       },
-      { id: 'combat', label: 'Combat', content: <CombatTab /> },
-      { id: 'map', label: 'Map', content: <MapPanel /> },
+      { id: 'combat', label: 'Combat', content: <TabErrorBoundary tabName="Combat"><CombatTab /></TabErrorBoundary> },
+      { id: 'map', label: 'Map', content: <TabErrorBoundary tabName="Map"><MapPanel /></TabErrorBoundary> },
       {
         id: 'manager',
         label: 'Manager',
-        content: <ManagerTab />
+        content: <TabErrorBoundary tabName="Manager"><ManagerTab /></TabErrorBoundary>
       },
-      { id: 'rules', label: 'Rules', content: <RulesTab /> },
-      { id: 'changelog', label: 'Changelog', content: <ChangelogTab /> },
+      { id: 'rules', label: 'Rules', content: <TabErrorBoundary tabName="Rules"><RulesTab /></TabErrorBoundary> },
+      { id: 'changelog', label: 'Changelog', content: <TabErrorBoundary tabName="Changelog"><ChangelogTab /></TabErrorBoundary> },
     ];
   }, [modules, state.time?.day, state.time?.slot]);
   const activeModuleId = state.ui.activeModule;
@@ -130,6 +133,14 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
       const file = event.target.files?.[0];
       if (!file) return;
 
+      // Reject files over 50MB
+      const MAX_FILE_SIZE = 50 * 1024 * 1024;
+      if (file.size > MAX_FILE_SIZE) {
+        alert('File is too large. Maximum import size is 50MB.');
+        event.target.value = '';
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (e) => {
         const text = e.target?.result as string;
@@ -140,7 +151,8 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
             actions.selectCharacter(character.id);
           } catch (error) {
             console.error('Failed to parse character file:', error);
-            alert('Failed to parse character file. Please check the format.');
+            const message = error instanceof Error ? error.message : 'Unknown format';
+            alert(`Failed to parse character file: ${message}`);
           }
         }
       };

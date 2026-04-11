@@ -30,6 +30,22 @@ export function safeParse(value, fallback) {
 }
 
 /**
+ * Deep-clone an object via JSON serialization with crash safety.
+ * Returns the original reference (no clone) if serialization fails.
+ *
+ * @param {T} obj - Object to deep clone
+ * @returns {T} Cloned object, or original if clone fails
+ */
+export function safeDeepClone(obj) {
+  try {
+    return JSON.parse(JSON.stringify(obj));
+  } catch {
+    console.warn('[safeDeepClone] Failed to clone object, returning original reference');
+    return obj;
+  }
+}
+
+/**
  * Converts a value to a finite number or returns a fallback
  * Prevents NaN from entering storage or calculations
  *
