@@ -5,6 +5,12 @@
  * - REST API for campaign and session management
  * - Socket.IO for real-time state sync notifications
  * - Static file serving for the built client (production)
+ *
+ * Security:
+ * - JWT authentication on all protected routes and socket connections
+ * - CORS restricted to configurable allowlist (default: localhost origins)
+ * - Rate limiting on all endpoints (stricter on session join)
+ * - 10MB payload cap (down from 100MB)
  */
 
 import express from 'express';
@@ -12,6 +18,7 @@ import { createServer } from 'http';
 import { Server as SocketServer } from 'socket.io';
 import compression from 'compression';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { initDB, setDataDir, saveDB } from './db.js';
 import { setupRoutes } from './routes.js';
@@ -24,6 +31,12 @@ export interface StartServerOptions {
   dbDir?: string;
   /** Path to the built client dist/ folder for static serving. */
   clientDist?: string;
+  /**
+   * Allowed CORS origins. Comma-separated string or array.
+   * Default: localhost on common dev ports.
+   * Set to '*' to allow all (NOT recommended for production).
+   */
+  corsOrigins?: string | string[];
 }
 
 export interface ServerHandle {
@@ -31,6 +44,24 @@ export interface ServerHandle {
   port: number;
   /** Gracefully shut down the server. */
   close: () => Promise<void>;
+}
+
+/** Parse CORS origins from env or options. */
+function parseCorsOrigins(input?: string | string[]): string[] | string {
+  if (!input) {
+    // Default: localhost on common ports (Vite dev, Electron, etc.)
+    return [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:5173',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001',
+      'http://127.0.0.1:5173',
+    ];
+  }
+  if (input === '*') return '*';
+  if (Array.isArray(input)) return input;
+  return input.split(',').map((s) => s.trim());
 }
 
 /**
@@ -61,16 +92,52 @@ export async function startServer(options?: StartServerOptions): Promise<ServerH
   const app = express();
   const httpServer = createServer(app);
 
-  // Socket.IO with generous buffer for large state payloads
+  // Parse CORS origins
+  const allowedOrigins = parseCorsOrigins(
+    options?.corsOrigins ?? process.env.CORS_ORIGINS,
+  );
+
+  // Socket.IO with CORS lockdown and reduced buffer
   const io = new SocketServer(httpServer, {
-    cors: { origin: '*' },
-    maxHttpBufferSize: 100 * 1024 * 1024, // 100MB
+    cors: {
+      origin: allowedOrigins,
+      credentials: true,
+    },
+    maxHttpBufferSize: 10 * 1024 * 1024, // 10MB (down from 100MB)
   });
 
+  // ---------------------------------------------------------------------------
   // Middleware
+  // ---------------------------------------------------------------------------
   app.use(compression());
-  app.use(cors());
-  app.use(express.json({ limit: '100mb' }));
+
+  // CORS — restricted to configured origins
+  app.use(cors({
+    origin: allowedOrigins,
+    credentials: true,
+  }));
+
+  // Body parser with 10MB limit (down from 100MB)
+  app.use(express.json({ limit: '10mb' }));
+
+  // General rate limiter: 100 requests per minute per IP
+  app.use('/api', rateLimit({
+    windowMs: 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later' },
+  }));
+
+  // Stricter rate limiter for session join: 10 attempts per minute per IP
+  // Prevents brute-forcing join codes
+  app.use('/api/sessions/join', rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many join attempts, please try again later' },
+  }));
 
   // API routes
   const apiRouter = setupRoutes(io);
@@ -91,6 +158,7 @@ export async function startServer(options?: StartServerOptions): Promise<ServerH
       const actualPort = (httpServer.address() as any).port as number;
       console.log(`[Server] GURPS VTT server running on http://localhost:${actualPort}`);
       console.log(`[Server] API available at http://localhost:${actualPort}/api`);
+      console.log(`[Server] CORS origins: ${JSON.stringify(allowedOrigins)}`);
 
       resolve({
         port: actualPort,

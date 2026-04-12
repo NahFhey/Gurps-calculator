@@ -4,6 +4,11 @@
  *
  * This is NOT a React hook — it's a plain class so it can be used
  * from both React components and the campaign store's save logic.
+ *
+ * Auth flow:
+ *   - hostGame / joinGame receive a JWT from the server
+ *   - The token is sent in `Authorization: Bearer <token>` on all HTTP requests
+ *   - The token is sent in Socket.IO `auth` handshake
  */
 
 import { io, type Socket } from 'socket.io-client';
@@ -35,6 +40,7 @@ class ConnectionManager {
   private _playerCount: number = 0;
   private _displayName: string | null = null;
   private _playerList: PlayerInfo[] = [];
+  private _token: string | null = null;
 
   // Listeners
   private statusListeners = new Set<StatusListener>();
@@ -56,6 +62,20 @@ class ConnectionManager {
   get playerList(): PlayerInfo[] { return this._playerList; }
   get isConnected(): boolean { return this._status === 'connected'; }
   get isGM(): boolean { return this._role === Role.GM; }
+  get token(): string | null { return this._token; }
+
+  // ---------------------------------------------------------------------------
+  // Auth helpers
+  // ---------------------------------------------------------------------------
+
+  /** Build headers with auth token for fetch requests. */
+  private authHeaders(): Record<string, string> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (this._token) {
+      headers['Authorization'] = `Bearer ${this._token}`;
+    }
+    return headers;
+  }
 
   // ---------------------------------------------------------------------------
   // Connection lifecycle
@@ -68,7 +88,7 @@ class ConnectionManager {
     this.setStatus('connecting');
 
     try {
-      // Create campaign
+      // Create campaign — no auth needed, server returns a GM token
       const campaignRes = await fetch('/api/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -77,10 +97,13 @@ class ConnectionManager {
       if (!campaignRes.ok) throw new Error(`Failed to create campaign: ${campaignRes.statusText}`);
       const campaign = await campaignRes.json();
 
-      // Create session
+      // Store the GM token
+      this._token = campaign.token;
+
+      // Create session — requires GM auth
       const sessionRes = await fetch('/api/sessions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.authHeaders(),
         body: JSON.stringify({ campaignId: campaign.id }),
       });
       if (!sessionRes.ok) throw new Error(`Failed to create session: ${sessionRes.statusText}`);
@@ -99,7 +122,7 @@ class ConnectionManager {
       this._serverVersion = campaign.version;
       this._displayName = displayName;
 
-      // Connect Socket.IO
+      // Connect Socket.IO with auth token
       this.connectSocket(displayName);
 
       return info;
@@ -116,17 +139,20 @@ class ConnectionManager {
     this.setStatus('connecting');
 
     try {
-      // Look up session
+      // Look up session — no auth needed, join code is the credential
       const joinRes = await fetch('/api/sessions/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ joinCode }),
+        body: JSON.stringify({ joinCode, displayName }),
       });
       if (!joinRes.ok) {
         if (joinRes.status === 404) throw new Error('Invalid or expired join code');
         throw new Error(`Failed to join: ${joinRes.statusText}`);
       }
       const joinData = await joinRes.json();
+
+      // Store the player token
+      this._token = joinData.token;
 
       const info: SessionInfo = {
         sessionId: joinData.sessionId,
@@ -141,10 +167,10 @@ class ConnectionManager {
       this._serverVersion = joinData.version;
       this._displayName = displayName;
 
-      // Fetch current campaign state
+      // Fetch current campaign state — requires auth
       const stateData = await this.fetchState(joinData.campaignId);
 
-      // Connect Socket.IO
+      // Connect Socket.IO with auth token
       this.connectSocket(displayName);
 
       return { sessionInfo: info, stateJson: stateData.state };
@@ -171,6 +197,7 @@ class ConnectionManager {
     this._playerCount = 0;
     this._displayName = null;
     this._playerList = [];
+    this._token = null;
     this.notifyStatusListeners();
     this.notifyPlayerCountListeners();
     this.notifyPlayerListListeners();
@@ -188,7 +215,7 @@ class ConnectionManager {
 
     const res = await fetch(`/api/campaigns/${this._campaignId}/state`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.authHeaders(),
       body: JSON.stringify({ state: stateJson }),
     });
     if (!res.ok) throw new Error(`Failed to push state: ${res.statusText}`);
@@ -205,7 +232,9 @@ class ConnectionManager {
     const id = campaignId || this._campaignId;
     if (!id) throw new Error('No campaign ID');
 
-    const res = await fetch(`/api/campaigns/${id}`);
+    const res = await fetch(`/api/campaigns/${id}`, {
+      headers: this.authHeaders(),
+    });
     if (!res.ok) throw new Error(`Failed to fetch state: ${res.statusText}`);
 
     const data = await res.json();
@@ -249,7 +278,10 @@ class ConnectionManager {
       this.socket.disconnect();
     }
 
-    this.socket = io({ transports: ['websocket', 'polling'] });
+    this.socket = io({
+      transports: ['websocket', 'polling'],
+      auth: { token: this._token },
+    });
 
     this.socket.on('connect', () => {
       this.setStatus('connected');

@@ -3,13 +3,26 @@ import { createServer } from 'http';
 import { Server as SocketServer } from 'socket.io';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import { setupSocket } from '../socket.js';
+import { signToken } from '../auth.js';
+import { Role } from '../../../shared/session.js';
 import { EVENTS } from '../../../shared/protocol.js';
 
 let httpServer: ReturnType<typeof createServer>;
 let io: SocketServer;
 let port: number;
 
-function connectClient(): ClientSocket {
+/** Create an authenticated client for a campaign. */
+async function connectClient(campaignId: string, role: Role = Role.GM, displayName = 'GM'): Promise<ClientSocket> {
+  const token = await signToken({ campaignId, role, displayName });
+  return ioClient(`http://localhost:${port}`, {
+    transports: ['websocket'],
+    forceNew: true,
+    auth: { token },
+  });
+}
+
+/** Create an unauthenticated client (no token). */
+function connectUnauthClient(): ClientSocket {
   return ioClient(`http://localhost:${port}`, {
     transports: ['websocket'],
     forceNew: true,
@@ -45,18 +58,46 @@ afterEach(
     })
 );
 
-describe('Socket connection', () => {
-  it('accepts a client connection', async () => {
-    const client = connectClient();
+// ---------------------------------------------------------------------------
+// Authentication
+// ---------------------------------------------------------------------------
+describe('Socket authentication', () => {
+  it('rejects connection without a token', async () => {
+    const client = connectUnauthClient();
+
+    const error = await waitForEvent<Error>(client, 'connect_error');
+    expect(error.message).toMatch(/authentication/i);
+
+    client.disconnect();
+  });
+
+  it('rejects connection with an invalid token', async () => {
+    const client = ioClient(`http://localhost:${port}`, {
+      transports: ['websocket'],
+      forceNew: true,
+      auth: { token: 'garbage-token' },
+    });
+
+    const error = await waitForEvent<Error>(client, 'connect_error');
+    expect(error.message).toMatch(/invalid|expired/i);
+
+    client.disconnect();
+  });
+
+  it('accepts connection with a valid token', async () => {
+    const client = await connectClient('camp-auth');
     await waitForEvent(client, 'connect');
     expect(client.connected).toBe(true);
     client.disconnect();
   });
 });
 
+// ---------------------------------------------------------------------------
+// JOIN_ROOM
+// ---------------------------------------------------------------------------
 describe('JOIN_ROOM', () => {
   it('confirms room join with ROOM_JOINED event', async () => {
-    const client = connectClient();
+    const client = await connectClient('camp-1', Role.GM, 'GM Alice');
     await waitForEvent(client, 'connect');
 
     const joinPromise = waitForEvent<{ campaignId: string; playerCount: number }>(
@@ -77,8 +118,51 @@ describe('JOIN_ROOM', () => {
     client.disconnect();
   });
 
+  it('uses role from token, not from client payload', async () => {
+    // Client has a Player token but tries to claim GM role in the payload
+    const client = await connectClient('camp-role', Role.Player, 'Sneaky');
+    await waitForEvent(client, 'connect');
+
+    const listPromise = waitForEvent<{ players: Array<{ displayName: string; role: string }> }>(
+      client,
+      EVENTS.PLAYER_LIST
+    );
+
+    client.emit(EVENTS.JOIN_ROOM, {
+      campaignId: 'camp-role',
+      role: 'gm', // lies about role
+      displayName: 'Admin', // lies about name
+    });
+
+    const data = await listPromise;
+    expect(data.players).toHaveLength(1);
+    // Server should use the token values, not the client payload
+    expect(data.players[0].role).toBe('player');
+    expect(data.players[0].displayName).toBe('Sneaky');
+
+    client.disconnect();
+  });
+
+  it('rejects joining a campaign the token is not for', async () => {
+    const client = await connectClient('camp-a', Role.GM, 'GM');
+    await waitForEvent(client, 'connect');
+
+    const errorPromise = waitForEvent<{ message: string }>(client, 'error');
+
+    client.emit(EVENTS.JOIN_ROOM, {
+      campaignId: 'camp-b', // different campaign
+      role: 'gm',
+      displayName: 'GM',
+    });
+
+    const data = await errorPromise;
+    expect(data.message).toMatch(/not authenticated/i);
+
+    client.disconnect();
+  });
+
   it('sends PLAYER_LIST after join', async () => {
-    const client = connectClient();
+    const client = await connectClient('camp-list', Role.GM, 'GM Bob');
     await waitForEvent(client, 'connect');
 
     const listPromise = waitForEvent<{ players: Array<{ displayName: string; role: string }> }>(
@@ -101,7 +185,7 @@ describe('JOIN_ROOM', () => {
   });
 
   it('notifies existing clients when a new player joins', async () => {
-    const client1 = connectClient();
+    const client1 = await connectClient('camp-notify', Role.GM, 'GM');
     await waitForEvent(client1, 'connect');
 
     // Client 1 joins
@@ -119,7 +203,7 @@ describe('JOIN_ROOM', () => {
     );
 
     // Client 2 joins same room
-    const client2 = connectClient();
+    const client2 = await connectClient('camp-notify', Role.Player, 'Player1');
     await waitForEvent(client2, 'connect');
     client2.emit(EVENTS.JOIN_ROOM, {
       campaignId: 'camp-notify',
@@ -137,7 +221,7 @@ describe('JOIN_ROOM', () => {
   });
 
   it('ignores JOIN_ROOM with no campaignId', async () => {
-    const client = connectClient();
+    const client = await connectClient('camp-empty', Role.GM, 'Bad');
     await waitForEvent(client, 'connect');
 
     // Send bad payload — should not crash or emit ROOM_JOINED
@@ -154,10 +238,13 @@ describe('JOIN_ROOM', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Disconnect
+// ---------------------------------------------------------------------------
 describe('Disconnect', () => {
   it('sends PLAYER_LEFT when a player disconnects', async () => {
-    const client1 = connectClient();
-    const client2 = connectClient();
+    const client1 = await connectClient('camp-dc', Role.GM, 'GM');
+    const client2 = await connectClient('camp-dc', Role.Player, 'Leaver');
     await Promise.all([
       waitForEvent(client1, 'connect'),
       waitForEvent(client2, 'connect'),
@@ -195,8 +282,8 @@ describe('Disconnect', () => {
   });
 
   it('sends updated PLAYER_LIST after disconnect', async () => {
-    const client1 = connectClient();
-    const client2 = connectClient();
+    const client1 = await connectClient('camp-dclist', Role.GM, 'GM');
+    const client2 = await connectClient('camp-dclist', Role.Player, 'Player2');
     await Promise.all([
       waitForEvent(client1, 'connect'),
       waitForEvent(client2, 'connect'),
@@ -234,10 +321,13 @@ describe('Disconnect', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Multi-room isolation
+// ---------------------------------------------------------------------------
 describe('Multi-room isolation', () => {
   it('players in different rooms do not receive each others events', async () => {
-    const clientA = connectClient();
-    const clientB = connectClient();
+    const clientA = await connectClient('room-A', Role.GM, 'GM-A');
+    const clientB = await connectClient('room-B', Role.GM, 'GM-B');
     await Promise.all([
       waitForEvent(clientA, 'connect'),
       waitForEvent(clientB, 'connect'),
@@ -259,7 +349,7 @@ describe('Multi-room isolation', () => {
     await waitForEvent(clientB, EVENTS.ROOM_JOINED);
 
     // A third client joins room-A — clientB should NOT get PLAYER_JOINED
-    const clientC = connectClient();
+    const clientC = await connectClient('room-A', Role.Player, 'Player-C');
     await waitForEvent(clientC, 'connect');
 
     const bJoinedPromise = Promise.race([

@@ -73,13 +73,18 @@ export async function initDB(): Promise<Database> {
 }
 
 /**
- * Persist the in-memory database to disk.
- * sql.js operates in-memory — we must manually write to file.
+ * Persist the in-memory database to disk using atomic write.
+ *
+ * Writes to a temporary file first, then renames over the target.
+ * This prevents corruption if the process crashes mid-write, since
+ * rename() is atomic on most filesystems.
  */
 export function saveDB(): void {
   if (!db) return;
   const data = db.export();
-  fs.writeFileSync(DB_PATH, Buffer.from(data));
+  const tmpPath = DB_PATH + '.tmp';
+  fs.writeFileSync(tmpPath, Buffer.from(data));
+  fs.renameSync(tmpPath, DB_PATH);
 }
 
 /**
