@@ -1,5 +1,22 @@
-import { memo, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Skull, Shield, Swords } from 'lucide-react';
+import { memo, useRef, useEffect, useState, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, Skull, Shield, Swords, GripVertical } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+  DragOverlay,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { calculateHPStatus } from '../../../utils/combatHelpers';
 import type { Participant } from '../../../types/combatTracker';
 
@@ -15,6 +32,7 @@ export interface InitiativeTimelineProps {
   onPrevTurn: () => void;
   onNextTurn: () => void;
   onJumpToTurn?: (turnIndex: number) => void;
+  onReorderTurnOrder?: (newTurnOrder: string[]) => void;
 }
 
 // ============================================================================
@@ -75,9 +93,12 @@ interface TokenProps {
   isCurrent: boolean;
   isPast: boolean;
   onClick?: () => void;
+  isDragging?: boolean;
+  dragHandleProps?: Record<string, unknown>;
+  canDrag?: boolean;
 }
 
-function TokenBase({ participant, isCurrent, isPast, onClick }: TokenProps) {
+function TokenBase({ participant, isCurrent, isPast, onClick, isDragging, dragHandleProps, canDrag }: TokenProps) {
   const isDead = participant.isDead;
   const isUnconscious = participant.isUnconscious;
 
@@ -85,9 +106,7 @@ function TokenBase({ participant, isCurrent, isPast, onClick }: TokenProps) {
   const bg = categoryBg(participant.category);
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <div
       className={`
         relative flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg
         transition-all duration-200 min-w-[4.5rem] max-w-[5.5rem]
@@ -98,12 +117,28 @@ function TokenBase({ participant, isCurrent, isPast, onClick }: TokenProps) {
             : `${bg}/70 ring-1 ring-gray-600 hover:ring-gray-400`
         }
         ${isDead ? 'opacity-40 line-through' : ''}
+        ${isDragging ? 'opacity-40' : ''}
         ${onClick ? 'cursor-pointer' : 'cursor-default'}
       `}
+      onClick={onClick}
       title={`${participant.name} — Speed ${participant.basicSpeed} | ${
         isDead ? 'Dead' : isUnconscious ? 'Unconscious' : `HP ${participant.currentHP ?? '?'}/${(typeof participant.hp === 'number' ? participant.hp : participant.maxHP) ?? '?'}`
       }`}
     >
+      {/* Drag handle */}
+      {canDrag && (
+        <div
+          {...dragHandleProps}
+          className="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center
+            bg-gray-600 rounded-full opacity-50 hover:opacity-100
+            cursor-grab active:cursor-grabbing transition-opacity z-20"
+          title="Drag to reorder"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="w-3 h-3 text-gray-300" />
+        </div>
+      )}
+
       {/* Avatar circle */}
       <div
         className={`
@@ -139,11 +174,54 @@ function TokenBase({ participant, isCurrent, isPast, onClick }: TokenProps) {
           border-t-[5px] border-t-blue-500"
         />
       )}
-    </button>
+    </div>
   );
 }
 
 const Token = memo(TokenBase);
+
+// ============================================================================
+// Sortable token wrapper (dnd-kit)
+// ============================================================================
+
+interface SortableTokenProps {
+  id: string;
+  participant: Participant;
+  isCurrent: boolean;
+  isPast: boolean;
+  onClick?: () => void;
+  canDrag: boolean;
+}
+
+function SortableToken({ id, participant, isCurrent, isPast, onClick, canDrag }: SortableTokenProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, disabled: !canDrag });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex-none group/token">
+      <Token
+        participant={participant}
+        isCurrent={isCurrent}
+        isPast={isPast}
+        onClick={isDragging ? undefined : onClick}
+        isDragging={isDragging}
+        dragHandleProps={canDrag ? { ...attributes, ...listeners } : undefined}
+        canDrag={canDrag}
+      />
+    </div>
+  );
+}
 
 // ============================================================================
 // Main timeline component
@@ -157,12 +235,55 @@ function InitiativeTimelineBase({
   onPrevTurn,
   onNextTurn,
   onJumpToTurn,
+  onReorderTurnOrder,
 }: InitiativeTimelineProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentTokenRef = useRef<HTMLDivElement>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   // Build participant lookup
   const participantMap = new Map(participants.map((p) => [p.instanceId, p]));
+
+  // Use unique sortable IDs: instanceId-index (handles duplicate instanceIds in turn order)
+  const sortableIds = turnOrder.map((instanceId, index) => `${instanceId}::${index}`);
+
+  // Sensors with activation distance to distinguish clicks from drags
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
+  );
+
+  const canDrag = Boolean(onReorderTurnOrder);
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(String(event.active.id));
+  }, []);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    setActiveId(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id || !onReorderTurnOrder) return;
+
+    const oldIndex = sortableIds.indexOf(String(active.id));
+    const newIndex = sortableIds.indexOf(String(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    // Build new turn order by moving the item from oldIndex to newIndex
+    const newTurnOrder = [...turnOrder];
+    const [moved] = newTurnOrder.splice(oldIndex, 1);
+    newTurnOrder.splice(newIndex, 0, moved);
+
+    onReorderTurnOrder(newTurnOrder);
+  }, [sortableIds, turnOrder, onReorderTurnOrder]);
+
+  const handleDragCancel = useCallback(() => {
+    setActiveId(null);
+  }, []);
+
+  // Resolve the dragged participant for the overlay
+  const activeParticipant = activeId
+    ? participantMap.get(activeId.split('::')[0]) ?? null
+    : null;
 
   // Auto-scroll to keep the current actor visible
   useEffect(() => {
@@ -196,6 +317,7 @@ function InitiativeTimelineBase({
         </span>
         <span className="text-xs text-gray-400">
           Turn {currentTurnIndex + 1} of {turnOrder.length}
+          {canDrag && <span className="ml-2 text-gray-500">(drag to reorder)</span>}
         </span>
       </div>
 
@@ -210,35 +332,58 @@ function InitiativeTimelineBase({
           <ChevronLeft size={18} />
         </button>
 
-        {/* Scrollable token strip */}
-        <div
-          ref={scrollRef}
-          className="flex-1 flex items-center gap-1.5 overflow-x-auto py-1 px-1
-            scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent"
+        {/* Scrollable token strip with DnD */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
         >
-          {turnOrder.map((instanceId, index) => {
-            const participant = participantMap.get(instanceId);
-            if (!participant) return null;
+          <SortableContext items={sortableIds} strategy={horizontalListSortingStrategy}>
+            <div
+              ref={scrollRef}
+              className="flex-1 flex items-center gap-1.5 overflow-x-auto py-1 px-1
+                scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent"
+            >
+              {turnOrder.map((instanceId, index) => {
+                const participant = participantMap.get(instanceId);
+                if (!participant) return null;
 
-            const isCurrent = index === currentTurnIndex;
-            const isPast = index < currentTurnIndex;
+                const isCurrent = index === currentTurnIndex;
+                const isPast = index < currentTurnIndex;
+                const sortableId = sortableIds[index];
 
-            return (
-              <div
-                key={`${instanceId}-${index}`}
-                ref={isCurrent ? currentTokenRef : undefined}
-                className="flex-none"
-              >
-                <Token
-                  participant={participant}
-                  isCurrent={isCurrent}
-                  isPast={isPast}
-                  onClick={onJumpToTurn ? () => onJumpToTurn(index) : undefined}
-                />
-              </div>
-            );
-          })}
-        </div>
+                return (
+                  <div
+                    key={sortableId}
+                    ref={isCurrent ? currentTokenRef : undefined}
+                  >
+                    <SortableToken
+                      id={sortableId}
+                      participant={participant}
+                      isCurrent={isCurrent}
+                      isPast={isPast}
+                      onClick={onJumpToTurn ? () => onJumpToTurn(index) : undefined}
+                      canDrag={canDrag}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </SortableContext>
+
+          {/* Drag overlay — renders the floating token while dragging */}
+          <DragOverlay>
+            {activeParticipant ? (
+              <Token
+                participant={activeParticipant}
+                isCurrent={false}
+                isPast={false}
+              />
+            ) : null}
+          </DragOverlay>
+        </DndContext>
 
         {/* Next button */}
         <button

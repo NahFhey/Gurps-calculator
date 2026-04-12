@@ -20,6 +20,7 @@ import {
   createSetResourceAction,
   createAddLogEntryAction,
   createSetTurnDecisionAction,
+  createReorderTurnOrderAction,
 } from '../../utils/combatActions';
 import {
   validateCombatState,
@@ -344,6 +345,32 @@ export default function CombatTracker() {
     recordAction(action);
   };
 
+  const handleReorderTurnOrder = (newTurnOrder: string[]) => {
+    const oldTurnOrder = combat.turnOrder;
+    if (JSON.stringify(oldTurnOrder) === JSON.stringify(newTurnOrder)) return;
+
+    // Track the current actor so their turn isn't lost after reorder
+    const currentActorId = oldTurnOrder[combat.currentTurnIndex];
+    const newCurrentIndex = newTurnOrder.indexOf(currentActorId);
+
+    const action = createReorderTurnOrderAction(oldTurnOrder, newTurnOrder);
+    const updatedIndex = newCurrentIndex >= 0 ? newCurrentIndex : combat.currentTurnIndex;
+
+    // Log the reorder so the GM can see what changed
+    const logEntry = createNoteLogEntry(
+      combat.currentRound, updatedIndex, null, null, 'Turn order changed (drag reorder)'
+    );
+
+    saveCombatActive({
+      ...combat,
+      turnOrder: newTurnOrder,
+      currentTurnIndex: updatedIndex,
+      log: [...combat.log, logEntry],
+    });
+    recordAction(action);
+    recordAction(createAddLogEntryAction(logEntry));
+  };
+
   // --------------------------------------------------------------------------
   // Resource management
   // --------------------------------------------------------------------------
@@ -531,6 +558,7 @@ export default function CombatTracker() {
         onPrevTurn={handlePrevTurn}
         onNextTurn={handleNextTurn}
         onJumpToTurn={handleJumpToTurn}
+        onReorderTurnOrder={handleReorderTurnOrder}
       />
 
       {!isEnemyInPlayerView ? (

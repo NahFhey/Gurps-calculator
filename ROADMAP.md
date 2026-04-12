@@ -152,17 +152,15 @@
 
 **Remaining overlap:** CombatTracker still has inline turn/maneuver/dice logic that overlaps with `useCombatSession`. Unifying these is a future cleanup opportunity but not blocking.
 
-### 11b: Combat UX Improvements (IN PROGRESS)
+### 11b: Combat UX Improvements ✅ COMPLETE
 **Completed (2026-04-12):**
 - ✅ Quick-action maneuver buttons (`QuickManeuverBar.tsx`) — 8 tactile buttons for common maneuvers (Attack, AoA Determined/Strong, AoD, Move, Aim, Wait, Do Nothing), color-coded by category, integrated into ManeuverSelector above the dropdown
 - ✅ Visual initiative timeline (`InitiativeTimeline.tsx`) — horizontal scrollable turn order bar with participant tokens, HP-status ring colors, category icons, click-to-jump navigation, auto-scroll to current actor. Replaces text-only TurnControlsView in CombatTracker
 - ✅ Condition duration UI polish (enhanced `ConditionBadge.tsx`) — urgency color-coding (red for expiring, orange for 1-2 remaining), countdown text ("2 turns left"), built-in quick-remove X button, pulse animation for expiring conditions
 - ✅ Automated attack/defense roll resolution with margin calculation — already implemented in AttackAssist/DefenseAssist (margin = roll - target)
 - ✅ Damage application with automatic DR and hit location lookup — already implemented in InjuryResolutionPanel (full DR/wounding/injury pipeline)
-
-**Remaining:**
-- Drag-and-drop participant reordering (requires DnD library — dnd-kit candidate)
-- Unit tests for new 11b components (QuickManeuverBar, InitiativeTimeline, enhanced ConditionBadge)
+- ✅ Drag-and-drop participant reordering (`@dnd-kit/core` + `@dnd-kit/sortable`) — horizontal drag in InitiativeTimeline, auto-tracks currentTurnIndex, full undo/redo via existing combatActions infrastructure
+- ✅ Unit tests for new 11b components — InitiativeTimeline (9 tests), QuickManeuverBar (11 tests), ConditionBadge (22 tests)
 
 ### 11c: Combat-Party Integration
 - Seamless character flow between party roster and combat encounters
@@ -269,6 +267,7 @@
 - Code splitting by tab/feature (lazy load combat, map, etc.)
 - Profile and optimize re-renders in large state updates
 - Target: bundle < 500KB initial, lazy-load the rest
+- **Known regression:** `@dnd-kit` (Phase 11b) pushed bundle from ~624KB to ~1,378KB — candidate for lazy loading or lighter alternative
 
 ### 15c: UX Polish
 - Keyboard shortcuts for common actions
