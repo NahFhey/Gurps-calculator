@@ -1,4 +1,5 @@
 import { ChangeEvent } from 'react';
+import QuickManeuverBar from './QuickManeuverBar';
 
 interface Maneuver {
   id: string;
@@ -30,12 +31,21 @@ export default function ManeuverSelector({
           <span className="text-xs text-red-400">{disabledReason}</span>
         )}
       </div>
+
+      {/* Quick-action buttons for common maneuvers */}
+      <QuickManeuverBar
+        maneuvers={maneuvers}
+        selectedId={selectedId}
+        onSelect={onSelect}
+      />
+
+      {/* Full dropdown for all maneuvers (including uncommon ones) */}
       <select
         value={selectedId || ''}
         onChange={(e: ChangeEvent<HTMLSelectElement>) => onSelect(e.target.value || null)}
-        className="w-full px-3 py-2 bg-gray-700 rounded"
+        className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
       >
-        <option value="">Select a maneuver</option>
+        <option value="">All maneuvers...</option>
         {maneuvers.map((maneuver) => (
           <option
             key={maneuver.id}
@@ -65,7 +75,7 @@ export default function ManeuverSelector({
       )}
       {!selectedId && (
         <div className="text-xs text-gray-400">
-          Choose a maneuver to reveal relevant action workflows.
+          Pick a quick action above, or choose from the full list.
         </div>
       )}
     </div>

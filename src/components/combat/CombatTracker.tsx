@@ -41,10 +41,10 @@ import ManeuverSelector from './ManeuverSelector';
 import ReinforcementsModal from './ReinforcementsModal';
 import {
   CombatHeaderView,
-  TurnControlsView,
   DicePanelView,
   ParticipantListView,
   CombatLogView,
+  InitiativeTimeline,
 } from './views';
 import type {
   Participant,
@@ -328,6 +328,22 @@ export default function CombatTracker() {
     recordAction(action);
   };
 
+  const handleJumpToTurn = (targetIndex: number) => {
+    if (targetIndex === combat.currentTurnIndex) return;
+    if (targetIndex < 0 || targetIndex >= combat.turnOrder.length) return;
+
+    const action = createTurnAdvanceAction(
+      combat.currentRound, combat.currentTurnIndex,
+      combat.currentRound, targetIndex
+    );
+
+    saveCombatActive({
+      ...combat,
+      currentTurnIndex: targetIndex,
+    });
+    recordAction(action);
+  };
+
   // --------------------------------------------------------------------------
   // Resource management
   // --------------------------------------------------------------------------
@@ -507,11 +523,14 @@ export default function CombatTracker() {
         setGmMode={setGmMode}
       />
 
-      <TurnControlsView
-        currentActor={currentActor}
-        combat={combat}
+      <InitiativeTimeline
+        participants={combatView.participants}
+        turnOrder={combat.turnOrder}
+        currentTurnIndex={combat.currentTurnIndex}
+        currentRound={combat.currentRound}
         onPrevTurn={handlePrevTurn}
         onNextTurn={handleNextTurn}
+        onJumpToTurn={handleJumpToTurn}
       />
 
       {!isEnemyInPlayerView ? (

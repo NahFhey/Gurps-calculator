@@ -148,20 +148,13 @@ export default function ConditionsPanel({
       {activeConditions.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {activeConditions.map(condition => (
-            <div key={condition.instanceId} className="relative group">
-              <ConditionBadge
-                condition={condition}
-                currentRound={currentRound}
-                showDuration={true}
-              />
-              <button
-                onClick={() => handleRemoveCondition(condition.instanceId)}
-                className="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                title="Remove condition"
-              >
-                <X size={10} />
-              </button>
-            </div>
+            <ConditionBadge
+              key={condition.instanceId}
+              condition={condition}
+              currentRound={currentRound}
+              showDuration={true}
+              onRemove={() => handleRemoveCondition(condition.instanceId)}
+            />
           ))}
         </div>
       ) : (
