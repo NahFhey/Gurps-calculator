@@ -112,9 +112,7 @@ export default function EncounterSetup() {
   const {
     combatCharacters,
     partyCharacters,
-    saveCombatActive,
-    combatHistory,
-    saveCombatHistory
+    saveCombatActive
   } = useCombatStore();
 
   // Access GM mode from campaign store
@@ -138,7 +136,7 @@ export default function EncounterSetup() {
   });
 
   // Categorize combat library characters
-  const characters = combatCharacters as Character[];
+  const characters = (combatCharacters || []) as unknown as Character[];
   const players = characters.filter(c => c.category === 'player');
   const allies = characters.filter(c => c.category === 'ally');
   const enemies = characters.filter(c => c.category === 'enemy');
@@ -163,7 +161,7 @@ export default function EncounterSetup() {
   const addCharacter = (character: Character, quantity = 1) => {
     if (character.category === 'enemy' && quantity > 1) {
       // Create numbered enemies
-      const numbered = createNumberedEnemies(character.name, quantity, character) as Participant[];
+      const numbered = createNumberedEnemies(character.name, quantity, character as unknown as any) as Participant[];
       setParticipants([...participants, ...numbered]);
     } else {
       // Add single character
@@ -198,7 +196,7 @@ export default function EncounterSetup() {
 
   // Generate turn order preview
   const handleGenerateTurnOrder = () => {
-    const order = generateTurnOrder(participants) as string[];
+    const order = generateTurnOrder(participants as any) as string[];
     setTurnOrder(order);
     setShowTurnOrderPreview(true);
   };
@@ -236,19 +234,19 @@ export default function EncounterSetup() {
       ...p,
       instanceId: p.id, // Use the encounter-generated ID as instanceId
       id: p.id // Keep for backward compatibility
-    }));
+    })) as any;
 
     // Get first actor
     const firstActorInstanceId = turnOrder[0];
-    const firstActor = migratedParticipants.find(p => p.instanceId === firstActorInstanceId);
+    const firstActor = migratedParticipants.find((p: any) => p.instanceId === firstActorInstanceId);
 
     // Create Phase 2 combat state
     const combat = {
       version: 2, // Phase 2
       id: generateId(),
-      name: encounterName || `Combat ${(combatHistory as unknown[]).length + 1}`,
+      name: encounterName || `Combat ${Date.now()}`,
       startTime: Date.now(),
-      participants: migratedParticipants,
+      participants: migratedParticipants as any,
       turnOrder: turnOrder, // Already uses instanceIds
       currentTurnIndex: 0,
       currentRound: 1,
@@ -479,7 +477,7 @@ export default function EncounterSetup() {
                       ) : (
                         <div className="flex items-center gap-1">
                           {isPartyChar && gmModeEnabled && (
-                            <AlertTriangle size={14} className="text-yellow-500" title="GM Override: Changing party character category" />
+                            <AlertTriangle size={14} className="text-yellow-500" />
                           )}
                           <select
                             value={p.category}

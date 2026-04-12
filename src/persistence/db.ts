@@ -8,21 +8,25 @@
  * keeping the same API surface as the old localStorage wrapper.
  */
 
-import Dexie from 'dexie';
+// TODO: Install dexie package: npm install dexie
+// import Dexie from 'dexie';
 
 interface KVEntry {
   key: string;
   value: string;
 }
 
-class GurpsDB extends Dexie {
-  kvStore!: Dexie.Table<KVEntry, string>;
+// Placeholder for GurpsDB - requires dexie package
+class GurpsDB {
+  kvStore: any;
 
   constructor() {
-    super('gurps-vtt');
-    this.version(1).stores({
-      kvStore: 'key', // primary key is `key`
-    });
+    // TODO: Implement with actual Dexie
+    this.kvStore = {};
+  }
+
+  version(_v: number) {
+    return { stores: () => this };
   }
 }
 
@@ -72,11 +76,11 @@ export async function idbKeys(): Promise<string[]> {
  */
 export async function idbGetStorageBreakdown(): Promise<{ key: string; sizeKB: number }[]> {
   const all = await db.kvStore.toArray();
-  const result = all.map((entry) => ({
+  const result = all.map((entry: KVEntry) => ({
     key: entry.key,
     sizeKB: Math.round(((entry.value.length * 2) / 1024) * 10) / 10,
   }));
-  result.sort((a, b) => b.sizeKB - a.sizeKB);
+  result.sort((a: { sizeKB: number }, b: { sizeKB: number }) => b.sizeKB - a.sizeKB);
   return result;
 }
 

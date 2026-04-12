@@ -1,6 +1,4 @@
-import type { LogEntry } from '../state/campaignReducer';
-
-type LogVisibility = 'gmOnly' | 'mixed' | 'public' | 'player';
+import type { LogEntry, LogVisibility } from '../state/campaignReducer';
 
 /**
  * Creates a log entry for activity-related events

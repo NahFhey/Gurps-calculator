@@ -16,9 +16,12 @@ interface ConditionInstance {
   instanceId: string;
   conditionId: string;
   label: string;
-  expiresAt?: number | null;
   severity?: number | null;
   source?: string | null;
+  startedAtRound?: number;
+  startedAtTurn?: number;
+  duration?: any;
+  expiresAt?: number | null;
   notes?: string | null;
 }
 
@@ -34,7 +37,6 @@ interface ConditionsPanelProps {
   currentTurn: number;
   onAddCondition: (conditionInstance: ConditionInstance) => void;
   onRemoveCondition: (conditionInstanceId: string) => void;
-  onUpdateCondition?: (conditionInstanceId: string, newDuration: number) => void;
 }
 
 /**
@@ -47,8 +49,7 @@ export default function ConditionsPanel({
   currentRound,
   currentTurn,
   onAddCondition,
-  onRemoveCondition,
-  onUpdateCondition
+  onRemoveCondition
 }: ConditionsPanelProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedConditionId, setSelectedConditionId] = useState('');
@@ -57,7 +58,6 @@ export default function ConditionsPanel({
   const [durationValue, setDurationValue] = useState('1');
   const [source, setSource] = useState('');
   const [notes, setNotes] = useState('');
-  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
 
   const { warning: showWarning, error: showError } = useToast();
 
@@ -104,7 +104,7 @@ export default function ConditionsPanel({
       severity: severity ? parseInt(severity, 10) : null,
       source: source || null,
       notes: notes || null
-    });
+    } as any);
 
     if (!conditionInstance) {
       showError('Failed to create condition');
@@ -112,7 +112,7 @@ export default function ConditionsPanel({
     }
 
     // Call handler
-    onAddCondition(conditionInstance);
+    onAddCondition(conditionInstance as ConditionInstance);
 
     // Reset form
     setSelectedConditionId('');
@@ -125,12 +125,10 @@ export default function ConditionsPanel({
   };
 
   const handleRemoveCondition = async (conditionInstanceId: string) => {
-    setPendingRemoveId(conditionInstanceId);
     const confirmed = await removeConditionDialog.confirm();
     if (confirmed) {
       onRemoveCondition(conditionInstanceId);
     }
-    setPendingRemoveId(null);
   };
 
   return (

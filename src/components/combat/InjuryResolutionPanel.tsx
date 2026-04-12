@@ -18,6 +18,7 @@ interface HitLocation {
   key: string;
   label: string;
   drKey?: string;
+  toHitPenalty: number;
 }
 
 interface LocationRoll {
@@ -67,17 +68,13 @@ interface ResolvedEffect {
   locationLabel?: string;
 }
 
-interface EffectPrompt {
-  type: string;
-  label: string;
-  description?: string;
-}
 
 interface HitLocationLog {
   profileId: string;
   locationKey: string;
   locationLabel: string;
   roll?: LocationRoll;
+  rolled?: { dice: number[]; total: number } | null;
 }
 
 interface DamageBreakdown {
@@ -147,7 +144,7 @@ export default function InjuryResolutionPanel({
   const [injuryResult, setInjuryResult] = useState<InjuryResult | null>(null);
 
   // Effects state
-  const [effectsPrompts, setEffectsPrompts] = useState<EffectPrompt[]>([]);
+  const [effectsPrompts, setEffectsPrompts] = useState<any[]>([]);
   const [resolvedEffects, setResolvedEffects] = useState<ResolvedEffect[]>([]);
 
   const profileId = target.hitLocationProfileId || 'humanoid';
@@ -177,6 +174,11 @@ export default function InjuryResolutionPanel({
   const handleLocationConfirm = () => {
     if (!selectedLocation) {
       alert('Please select a hit location');
+      return;
+    }
+    // Ensure HitLocation has required fields
+    if (!selectedLocation.key || !selectedLocation.label) {
+      alert('Invalid hit location');
       return;
     }
     setStep('damage');
@@ -244,7 +246,7 @@ export default function InjuryResolutionPanel({
       maxHP: target.hp,
       combatRulesPreset,
       target
-    }) as EffectPrompt[];
+    }) as any[];
 
     setEffectsPrompts(prompts);
 
@@ -271,7 +273,7 @@ export default function InjuryResolutionPanel({
 
     // Build complete injury data
     const injuryData: InjuryData = {
-      hitLocation: createHitLocationLog(profileId, selectedLocation, locationRoll) as HitLocationLog,
+      hitLocation: createHitLocationLog(profileId, selectedLocation, locationRoll || undefined) as HitLocationLog,
       damageBreakdown: createInjuryBreakdown(injuryResult) as DamageBreakdown,
       effects: resolvedEffects,
       newHP,
@@ -349,7 +351,7 @@ export default function InjuryResolutionPanel({
             <label className="block text-sm text-gray-400 mb-1">Damage Type</label>
             <select
               value={damageType}
-              onChange={(e: ChangeEvent<HTMLSelectElement>) => setDamageType(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => setDamageType(e.target.value as any)}
               className="w-full px-3 py-2 bg-gray-700 rounded"
             >
               {getDamageTypeOptions().map((option: { value: string; label: string }) => (
@@ -496,7 +498,7 @@ export default function InjuryResolutionPanel({
         <>
           <EffectsPanel
             prompts={effectsPrompts}
-            target={target}
+            target={{ ...target, id: target.instanceId }}
             onEffectResolved={handleEffectResolved}
             onComplete={handleComplete}
           />

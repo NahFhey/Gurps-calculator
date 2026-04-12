@@ -535,6 +535,12 @@ export interface GatheringEnvironment {
   hazards?: string[];
   /** Links this environment to a Location for auto-selection in downtime activities */
   locationId?: string;
+  /** Supported gathering modes for this environment (e.g., Fishing, Foraging) */
+  supportedModes?: string[];
+  /** Skill modifier for this environment */
+  skillMod?: number;
+  /** Default values by mode for quick task setup */
+  defaultsByMode?: Record<string, any>;
 }
 
 export interface GatheringSession {
@@ -703,11 +709,26 @@ export interface Kitchen {
 }
 
 export interface CookingSkill {
+  id: Id;
   name: string;
-  level: number;
+  level?: number;
 }
 
-export type EffectFamilyMap = Record<string, string[]>;
+export interface EffectDefinition {
+  id: Id;
+  name: string;
+  keywords: string;
+  notes: string;
+  gmNotes: string;
+  gmNotesVisible: boolean;
+}
+
+export interface EffectPairData {
+  summary?: string;
+  effects?: EffectDefinition[];
+}
+
+export type EffectFamilyMap = Record<string, EffectPairData>;
 
 // ============================================================================
 // PARTY TOOL INTEGRATION (existing types from partyTool.ts)

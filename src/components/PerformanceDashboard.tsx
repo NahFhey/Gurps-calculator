@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { performanceMonitor } from '../utils/performanceMonitor';
-import { usePerformanceReporting, useMemoryTracking, MemoryStats } from '../hooks/usePerformanceMonitoring';
+import { usePerformanceReporting, useMemoryTracking } from '../hooks/usePerformanceMonitoring';
 import { BarChart3, TrendingUp, Zap, HardDrive, Activity, LucideIcon } from 'lucide-react';
 
 // ============================================================================
@@ -67,7 +67,7 @@ interface PerformanceDashboardProps {
 /**
  * Performance metric card component
  */
-function MetricCard({ title, value, unit, icon: Icon, trend, warning }: MetricCardProps): JSX.Element {
+function MetricCard({ title, value, unit, icon: Icon, trend, warning }: MetricCardProps): React.ReactElement {
   return (
     <div className={`bg-white rounded-lg p-4 shadow ${warning ? 'border-l-4 border-red-500' : 'border-l-4 border-blue-500'}`}>
       <div className="flex items-center justify-between mb-2">
@@ -92,7 +92,7 @@ function MetricCard({ title, value, unit, icon: Icon, trend, warning }: MetricCa
 /**
  * Performance stats table component
  */
-function StatsTable({ stats, title }: StatsTableProps): JSX.Element {
+function StatsTable({ stats, title }: StatsTableProps): React.ReactElement {
   if (!stats || stats.count === 0) {
     return (
       <div className="bg-white rounded-lg p-4 shadow">
@@ -150,7 +150,7 @@ function StatsTable({ stats, title }: StatsTableProps): JSX.Element {
 /**
  * Slow operations list component
  */
-function SlowOperationsList(): JSX.Element {
+function SlowOperationsList(): React.ReactElement {
   const [slowOps, setSlowOps] = useState<SlowOperation[]>([]);
 
   useEffect(() => {
@@ -200,7 +200,7 @@ function SlowOperationsList(): JSX.Element {
 /**
  * Main Performance Dashboard Component
  */
-export default function PerformanceDashboard({ defaultOpen = false }: PerformanceDashboardProps): JSX.Element {
+export default function PerformanceDashboard({ defaultOpen = false }: PerformanceDashboardProps): React.ReactElement {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [report, setReport] = useState<PerformanceReport | null>(null);
   const memory = useMemoryTracking(5000);

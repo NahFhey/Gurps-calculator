@@ -20,6 +20,7 @@ import type {
   CraftDesign,
   CustomTemplates,
   EffectFamilyMap,
+  CookingSkill,
   GatheringSpecies,
   GatheringTool,
   GatheringTable,
@@ -46,13 +47,10 @@ export type OnDeleteHandler = (
 ) => void;
 
 // ============================================================================
-// COOKING SKILL TYPE
+// COOKING SKILL TYPE (re-exported from campaign.ts)
 // ============================================================================
 
-export interface CookingSkill {
-  id: Id;
-  name: string;
-}
+export type { CookingSkill } from './campaign';
 
 // ============================================================================
 // WORKER TYPE
@@ -158,24 +156,13 @@ export interface AlchemyFormula {
 }
 
 // ============================================================================
-// EFFECT FAMILY MAP TYPE (Extended)
+// EFFECT FAMILY MAP TYPE (Extended — alias for campaign.ts EffectFamilyMap)
 // ============================================================================
 
-export interface EffectDefinition {
-  id: Id;
-  name: string;
-  keywords: string;
-  notes: string;
-  gmNotes: string;
-  gmNotesVisible: boolean;
-}
+export type { EffectDefinition, EffectPairData } from './campaign';
 
-export interface EffectPairData {
-  summary?: string;
-  effects?: EffectDefinition[];
-}
-
-export type EffectFamilyMapExtended = Record<string, EffectPairData>;
+/** @deprecated Use EffectFamilyMap from campaign.ts directly. Kept for backward compat. */
+export type EffectFamilyMapExtended = EffectFamilyMap;
 
 // ============================================================================
 // VIEW PROPS INTERFACES

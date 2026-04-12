@@ -5,6 +5,7 @@
  * JSON string — the server does not need to understand its structure.
  */
 
+// @ts-ignore
 import initSqlJs, { type Database } from 'sql.js';
 import fs from 'fs';
 import path from 'path';

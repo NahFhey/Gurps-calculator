@@ -9,15 +9,7 @@ import { logger } from '../utils/logger';
  * on page unload to prevent data loss.
  */
 
-// Extend Window interface to include optional storage API
-declare global {
-  interface Window {
-    storage?: {
-      set: (key: string, value: string, sync?: boolean) => Promise<void>;
-      get: (key: string) => Promise<string | null>;
-    };
-  }
-}
+// Window.storage is declared in batchedStorageManager.ts
 
 /**
  * Type for the debounced save function with flush method

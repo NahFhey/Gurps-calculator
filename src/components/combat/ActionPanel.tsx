@@ -132,7 +132,7 @@ export default function ActionPanel({
   currentTurn = 0,
   onAddCondition,
   onRemoveCondition,
-  onUpdateCondition,
+  // onUpdateCondition is not used in this component
 }: ActionPanelProps) {
   const [activeWorkflow, setActiveWorkflow] = useState<WorkflowType>(null);
   const [noteText, setNoteText] = useState('');
@@ -334,7 +334,7 @@ export default function ActionPanel({
             </div>
           )}
           {targets.length > 0 ? (
-            <InjuryResolutionPanel attacker={{ st: currentActor.st ?? 10, name: currentActor.name }} target={(boundTargetTruth || getTruthParticipant(selectedTargetId!) || truthTargets[0]) as any} combatRulesPreset={combatRulesPreset} damageExpression={boundDamageExpression || ''} injectedDamageModifiers={maneuverWorkflow?.damage?.modifiers || []} initialLocation={boundHitLocation} initialLocationRoll={boundHitLocationRoll} onComplete={handleDamageComplete} onCancel={() => setActiveWorkflow(null)} />
+            <InjuryResolutionPanel attacker={{ st: currentActor.st ?? 10, name: currentActor.name }} target={(boundTargetTruth || getTruthParticipant(selectedTargetId!) || truthTargets[0]) as any} combatRulesPreset={combatRulesPreset} damageExpression={boundDamageExpression || ''} injectedDamageModifiers={maneuverWorkflow?.damage?.modifiers || []} initialLocation={boundHitLocation as any} initialLocationRoll={boundHitLocationRoll as any} onComplete={handleDamageComplete} onCancel={() => setActiveWorkflow(null)} />
           ) : (
             <div className="text-gray-400 text-sm">No valid targets available</div>
           )}
@@ -354,7 +354,7 @@ export default function ActionPanel({
 
       {activeWorkflow === 'conditions' && onAddCondition && onRemoveCondition && (
         <div className="border-t border-gray-700 pt-4">
-          <ConditionsPanel participant={{ ...currentActor, id: currentActor.instanceId }} currentRound={currentRound} currentTurn={currentTurn} onAddCondition={onAddCondition} onRemoveCondition={onRemoveCondition} onUpdateCondition={onUpdateCondition ? (id: string, dur: number) => onUpdateCondition(id, { type: 'rounds', value: dur }) : undefined} />
+          <ConditionsPanel participant={{ ...currentActor, id: currentActor.instanceId }} currentRound={currentRound} currentTurn={currentTurn} onAddCondition={onAddCondition} onRemoveCondition={onRemoveCondition} />
           <button onClick={() => setActiveWorkflow(null)} className="w-full mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded">Close</button>
         </div>
       )}

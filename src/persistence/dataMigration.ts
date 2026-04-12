@@ -12,7 +12,7 @@ import {
   createCharacterInventories,
   ensureIds
 } from '../state/campaignUtils';
-import type { Id } from '../types/campaign';
+import type { Id, Material, Food, Recipe, Craft, CraftDesign, AlchemyReagent, AlchemyFormula, AlchemyBatch, AlchemyLab, GatheringSpecies, GatheringTool, GatheringTable, GatheringEnvironment, GatheringSession, GatheringBait, GatheringCategory, GatheringItem, CombatCharacter, CombatItem, Kitchen } from '../types/campaign';
 
 // Legacy localStorage keys to migrate
 const LEGACY_KEYS = [
@@ -80,7 +80,7 @@ export async function checkMigrationNeeded(): Promise<boolean> {
     // Check if any legacy data exists
     const hasLegacyData = await Promise.all(
       LEGACY_KEYS.slice(0, 5).map(async (key) => {
-        const data = await window.storage.get(key, true).catch(() => null);
+        const data = await window.storage?.get(key, true).catch(() => null);
         return data !== null && data !== undefined;
       })
     );
@@ -139,7 +139,7 @@ export async function migrateToV2(): Promise<CampaignState | null> {
 
     // Step 7: Save new campaign state
     console.log('[Migration] Step 7/7: Saving new campaign state...');
-    await window.storage.set(NEW_KEY, campaignState);
+    await window.storage?.set(NEW_KEY, JSON.stringify(campaignState));
 
     console.log('[Migration] ✅ Migration complete!');
     console.log('[Migration] Backup saved to:', BACKUP_KEY);
@@ -159,7 +159,7 @@ async function loadLegacyData(): Promise<Record<string, any>> {
 
   for (const key of LEGACY_KEYS) {
     try {
-      const value = await window.storage.get(key, true);
+      const value = await window.storage?.get(key, true);
       if (value !== null && value !== undefined) {
         data[key] = value;
         console.log(`[Migration] Loaded ${key}:`, Array.isArray(value) ? `${value.length} items` : typeof value);
@@ -237,17 +237,17 @@ function migrateEntities(state: CampaignState, legacy: Record<string, any>): voi
 
   // Materials
   const materials = ensureIds(legacy.materials || []);
-  state.entities.materials = normalizeArray(materials);
+  state.entities.materials = normalizeArray(materials) as Record<Id, Material>;
   console.log(`[Migration] Migrated ${materials.length} materials`);
 
   // Foods
   const foods = ensureIds(legacy.foods || []);
-  state.entities.foods = normalizeArray(foods);
+  state.entities.foods = normalizeArray(foods) as Record<Id, Food>;
   console.log(`[Migration] Migrated ${foods.length} foods`);
 
   // Recipes
   const recipes = ensureIds(legacy.recipes || []);
-  state.entities.recipes = normalizeArray(recipes);
+  state.entities.recipes = normalizeArray(recipes) as Record<Id, Recipe>;
   console.log(`[Migration] Migrated ${recipes.length} recipes`);
 
   // Food Types & Material Types (already arrays)
@@ -256,12 +256,12 @@ function migrateEntities(state: CampaignState, legacy: Record<string, any>): voi
 
   // Crafts
   const crafts = ensureIds(legacy.crafts || []);
-  state.entities.crafts = normalizeArray(crafts);
+  state.entities.crafts = normalizeArray(crafts) as Record<Id, Craft>;
   console.log(`[Migration] Migrated ${crafts.length} crafts`);
 
   // Craft Designs
   const craftDesigns = ensureIds(legacy.craftDesigns || []);
-  state.entities.craftDesigns = normalizeArray(craftDesigns);
+  state.entities.craftDesigns = normalizeArray(craftDesigns) as Record<Id, CraftDesign>;
   console.log(`[Migration] Migrated ${craftDesigns.length} craft designs`);
 
   // Custom Templates
@@ -269,53 +269,56 @@ function migrateEntities(state: CampaignState, legacy: Record<string, any>): voi
 
   // Alchemy
   const alchemyReagents = ensureIds(legacy.alchemyReagents || []);
-  state.entities.alchemyReagents = normalizeArray(alchemyReagents) as any;
+  state.entities.alchemyReagents = normalizeArray(alchemyReagents) as Record<Id, AlchemyReagent>;
   const alchemyFormulas = ensureIds(legacy.alchemyFormulas || []);
-  state.entities.alchemyFormulas = normalizeArray(alchemyFormulas) as any;
+  state.entities.alchemyFormulas = normalizeArray(alchemyFormulas) as Record<Id, AlchemyFormula>;
   const alchemyBatches = ensureIds(legacy.alchemyBatches || []);
-  state.entities.alchemyBatches = normalizeArray(alchemyBatches) as any;
+  state.entities.alchemyBatches = normalizeArray(alchemyBatches) as Record<Id, AlchemyBatch>;
   const alchemyLabs = ensureIds(legacy.alchemyLabs || []);
-  state.entities.alchemyLabs = normalizeArray(alchemyLabs) as any;
+  state.entities.alchemyLabs = normalizeArray(alchemyLabs) as Record<Id, AlchemyLab>;
   state.entities.alchemySettings = legacy.alchemySettings || getDefaultValue('alchemySettings');
   console.log(`[Migration] Migrated alchemy: ${alchemyReagents.length} reagents, ${alchemyFormulas.length} formulas, ${alchemyBatches.length} batches`);
 
   // Gathering
   const gatheringSpecies = ensureIds(legacy.gatheringSpecies || []);
-  state.entities.gatheringSpecies = normalizeArray(gatheringSpecies);
+  state.entities.gatheringSpecies = normalizeArray(gatheringSpecies) as Record<Id, GatheringSpecies>;
   const gatheringTools = ensureIds(legacy.gatheringTools || []);
-  state.entities.gatheringTools = normalizeArray(gatheringTools);
+  state.entities.gatheringTools = normalizeArray(gatheringTools) as Record<Id, GatheringTool>;
   const gatheringTables = ensureIds(legacy.gatheringTables || []);
-  state.entities.gatheringTables = normalizeArray(gatheringTables);
+  state.entities.gatheringTables = normalizeArray(gatheringTables) as Record<Id, GatheringTable>;
   const gatheringEnvironments = ensureIds(legacy.gatheringEnvironments || []);
-  state.entities.gatheringEnvironments = normalizeArray(gatheringEnvironments);
+  state.entities.gatheringEnvironments = normalizeArray(gatheringEnvironments) as Record<Id, GatheringEnvironment>;
   const gatheringSessions = ensureIds(legacy.gatheringSessions || []);
-  state.entities.gatheringSessions = normalizeArray(gatheringSessions);
+  state.entities.gatheringSessions = normalizeArray(gatheringSessions) as Record<Id, GatheringSession>;
   const gatheringBait = ensureIds(legacy.gatheringBait || []);
-  state.entities.gatheringBait = normalizeArray(gatheringBait);
+  state.entities.gatheringBait = normalizeArray(gatheringBait) as Record<Id, GatheringBait>;
   const gatheringCategories = ensureIds(legacy.gatheringCategories || []);
-  state.entities.gatheringCategories = normalizeArray(gatheringCategories);
+  state.entities.gatheringCategories = normalizeArray(gatheringCategories) as Record<Id, GatheringCategory>;
   const gatheringItems = ensureIds(legacy.gatheringItems || []);
-  state.entities.gatheringItems = normalizeArray(gatheringItems);
+  state.entities.gatheringItems = normalizeArray(gatheringItems) as Record<Id, GatheringItem>;
   state.entities.gatheringDailyEvents = legacy.gatheringDailyEvents || {};
   console.log(`[Migration] Migrated gathering: ${gatheringSpecies.length} species, ${gatheringSessions.length} sessions`);
 
   // Combat
   const combatCharacters = ensureIds(legacy.combatCharacters || []);
-  state.entities.combatCharacters = normalizeArray(combatCharacters);
+  state.entities.combatCharacters = normalizeArray(combatCharacters) as Record<Id, CombatCharacter>;
   const combatItems = ensureIds(legacy.combatItems || []);
-  state.entities.combatItems = normalizeArray(combatItems);
+  state.entities.combatItems = normalizeArray(combatItems) as Record<Id, CombatItem>;
   state.entities.combatHistory = legacy.combatHistory || [];
   state.entities.combatTombstones = legacy.combatTombstones || [];
   console.log(`[Migration] Migrated combat: ${combatCharacters.length} characters, ${state.entities.combatHistory.length} history`);
 
   // Config/Facilities
   const kitchens = ensureIds(legacy.kitchens || [{ id: 'default', name: 'Basic Kitchen', rating: 0, description: 'Standard cooking area' }]);
-  state.entities.kitchens = normalizeArray(kitchens);
+  state.entities.kitchens = normalizeArray(kitchens) as Record<Id, Kitchen>;
   state.entities.cookingSkills = legacy.cookingSkills || [];
   state.entities.effectFamilyMap = legacy.effectFamilyMap || {};
 
   // Create unified inventories
-  const partyInventory = createPartyInventory(materials, foods);
+  const partyInventory = createPartyInventory(
+    materials as Array<{ id: Id; quantity: number }>,
+    foods as Array<{ id: Id; quantity: number }>
+  );
   const characterInventories = createCharacterInventories(state.entities.characters);
 
   state.entities.inventories = {
@@ -375,13 +378,13 @@ function migrateCombat(state: CampaignState, legacy: Record<string, any>): void 
  * Create backup of all legacy data
  */
 async function createBackup(legacyData: Record<string, any>): Promise<void> {
-  const backup = {
+  const backup: Record<string, unknown> = {
     timestamp: Date.now(),
     version: '1.0.0',
     data: legacyData
   };
 
-  await window.storage.set(BACKUP_KEY, backup);
+  await window.storage?.set(BACKUP_KEY, JSON.stringify(backup));
   console.log('[Migration] Backup created with', Object.keys(legacyData).length, 'keys');
 }
 
@@ -398,19 +401,20 @@ export async function rollbackMigration(): Promise<boolean> {
     console.log('[Migration] Rolling back to legacy data...');
 
     // Load backup
-    const backup = await window.storage.get(BACKUP_KEY, true);
-    if (!backup || !backup.data) {
+    const backup = await window.storage?.get(BACKUP_KEY, true);
+    if (!backup || typeof backup !== 'object' || !('data' in backup)) {
       console.error('[Migration] No backup found');
       return false;
     }
 
     // Restore all legacy keys
-    for (const [key, value] of Object.entries(backup.data)) {
-      await window.storage.set(key, value);
+    const backupData = (backup as Record<string, unknown>).data as Record<string, unknown>;
+    for (const [key, value] of Object.entries(backupData)) {
+      await window.storage?.set(key, typeof value === 'string' ? value : JSON.stringify(value));
     }
 
     // Remove new campaign state
-    await window.storage.remove(NEW_KEY);
+    await window.storage?.remove(NEW_KEY);
 
     console.log('[Migration] ✅ Rollback complete');
     return true;
@@ -433,7 +437,7 @@ export async function cleanupLegacyData(): Promise<void> {
 
   for (const key of LEGACY_KEYS) {
     try {
-      await window.storage.remove(key);
+      await window.storage?.remove(key);
     } catch (error) {
       console.warn(`[Migration] Failed to remove ${key}:`, error);
     }

@@ -387,15 +387,15 @@ export function createLogEntry({
 export function createTurnLogEntry(
   round: number,
   turn: number,
-  actorInstanceId: string,
-  actorName: string
+  actorInstanceId: string | null,
+  actorName?: string | null
 ): LogEntry {
   return createLogEntry({
     entryType: 'turn',
     round,
     turn,
-    actorInstanceId,
-    text: `${actorName}'s turn`
+    actorInstanceId: actorInstanceId ?? undefined,
+    text: actorName ? `${actorName}'s turn` : `Turn ${turn}`
   });
 }
 

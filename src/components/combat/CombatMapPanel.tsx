@@ -14,22 +14,6 @@ import { useEffectiveRole } from '../../hooks/useEffectiveRole';
 import { useCampaignStore } from '../../state/campaignStore';
 import { computePlayerVisibleTiles } from '../../utils/fogOfWar';
 
-/** Returns a hex colour string for a participant category (used in inline styles). */
-function categoryColorHex(cat: string): string {
-  switch (cat) {
-    case 'pc':
-      return '#3b82f6'; // blue-500
-    case 'ally':
-      return '#22c55e'; // green-500
-    case 'enemy':
-      return '#ef4444'; // red-500
-    case 'neutral':
-      return '#eab308'; // yellow-500
-    default:
-      return '#6b7280'; // gray-500
-  }
-}
-
 /** Returns Tailwind class string for category colours (used in legend). */
 function categoryColorClass(cat: string): string {
   switch (cat) {
@@ -80,7 +64,7 @@ export function CombatMapPanel({
   const visibleTileIds = useMemo(() => {
     if (!linkedMap || !isPlayer || isGmMode) return undefined;
     const assignedCharIds = displayName
-      ? state.multiplayer?.playerCharacters[displayName] ?? []
+      ? (state as any).multiplayer?.playerCharacters[displayName] ?? []
       : [];
     // Find positions of assigned characters among participants
     const positions: TileId[] = [];
@@ -95,7 +79,7 @@ export function CombatMapPanel({
     }
     if (positions.length === 0) return undefined;
     return computePlayerVisibleTiles(linkedMap, positions);
-  }, [linkedMap, isPlayer, isGmMode, displayName, state.multiplayer?.playerCharacters, participants]);
+  }, [linkedMap, isPlayer, isGmMode, displayName, (state as any).multiplayer?.playerCharacters, participants]);
 
   if (!linkedMap) {
     return (
@@ -104,22 +88,6 @@ export function CombatMapPanel({
       </div>
     );
   }
-
-  // Build token overlays for the MapGrid
-  const tokenOverlays = useMemo(
-    () =>
-      participants
-        .filter((p) => p.position)
-        .map((p) => ({
-          row: p.position!.r,
-          col: p.position!.q,
-          color: categoryColorHex(p.category),
-          label: p.name.charAt(0),
-          isCurrent: p.instanceId === currentActorInstanceId,
-          isSelected: p.instanceId === selectedParticipantId,
-        })),
-    [participants, currentActorInstanceId, selectedParticipantId],
-  );
 
   // Handle tile click: move current actor or select participant on that tile
   const handleTileClick = useCallback(
@@ -168,7 +136,6 @@ export function CombatMapPanel({
         routeTileIds={losTileIds}
         visibleTileIds={visibleTileIds}
         onTileClick={handleTileClick}
-        tokenOverlays={tokenOverlays}
       />
 
       {/* Token legend — positioned absolutely over the MapGrid */}

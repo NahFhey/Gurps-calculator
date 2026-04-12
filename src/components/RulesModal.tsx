@@ -1,4 +1,4 @@
-import React from 'react';
+/// <reference types="react" />
 import { X, BookOpen } from 'lucide-react';
 
 // ============================================================================
@@ -155,7 +155,7 @@ const rulesContent: Record<RulesSection, RulesContent> = {
  * crafting, alchemy, manager). Used as a contextual help popup accessed from various
  * parts of the application.
  */
-export function RulesModal({ section, onClose }: RulesModalProps): JSX.Element | null {
+export function RulesModal({ section, onClose }: RulesModalProps) {
   if (!section) return null;
 
   const content = rulesContent[section];

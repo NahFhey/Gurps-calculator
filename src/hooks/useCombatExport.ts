@@ -57,7 +57,7 @@ export function useCombatExport(
   const combat = combatActive as CombatState | null;
   const reveal = combatReveal as RevealState | null;
   // Use provided history or a minimal empty object for export compatibility
-  const hist = history ?? ({ version: 1, actions: [], cursor: 0, checkpoints: [], checkpointEvery: 25, maxActions: 500, maxCheckpoints: 30 } as HistoryState);
+  const hist = history ?? ({ version: 1, actions: [], cursor: 0, checkpoints: [], checkpointEvery: 25, maxActions: 500, maxCheckpoints: 30 } as unknown as HistoryState);
 
   const handleExportLog = useCallback(() => {
     if (!combat) return;

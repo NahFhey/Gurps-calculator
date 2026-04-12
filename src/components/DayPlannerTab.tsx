@@ -22,10 +22,16 @@ import {
 } from './dayplanner/views';
 import { ConfirmDialog, useConfirmDialog, useToast } from './ui';
 import type {
-  TaskAssignment,
+  TaskAssignment as DayPlannerTaskAssignment,
   TaskMode,
-  PendingDayLedger
+  PendingDayLedger as DayPlannerPendingDayLedger,
+  TimeSlot as DayPlannerTimeSlot
 } from '../types/dayplanner';
+import type {
+  TaskAssignment,
+  DayLedger,
+  TimeSlot
+} from '../types/campaign';
 
 /**
  * DayPlannerTab - Main component for the Day Planner gathering system
@@ -112,23 +118,23 @@ function DayPlannerTabBase() {
   );
 
   // Day planner state
-  const timeSlots = state.dayPlanner.timeSlots || [];
-  const taskAssignments = state.dayPlanner.taskAssignments || [];
-  const pendingDayLedger = state.dayPlanner.pendingDayLedger;
+  const timeSlots = (state.dayPlanner.timeSlots || []) as unknown as DayPlannerTimeSlot[];
+  const taskAssignments = (state.dayPlanner.taskAssignments || []) as unknown as DayPlannerTaskAssignment[];
+  const pendingDayLedger = (state.dayPlanner.pendingDayLedger || null) as unknown as DayPlannerPendingDayLedger | null;
   const currentDay = state.time.day;
   const currentSlot = state.dayPlanner.currentSlot || 0;
 
   // Save callbacks
-  const saveTimeSlots = useCallback((slots: any[]) => {
-    actions.setTimeSlots(slots);
+  const saveTimeSlots = useCallback((slots: DayPlannerTimeSlot[]) => {
+    actions.setTimeSlots(slots as unknown as TimeSlot[]);
   }, [actions]);
 
-  const saveTaskAssignments = useCallback((tasks: TaskAssignment[]) => {
-    actions.setTaskAssignments(tasks);
+  const saveTaskAssignments = useCallback((tasks: DayPlannerTaskAssignment[]) => {
+    actions.setTaskAssignments(tasks as unknown as TaskAssignment[]);
   }, [actions]);
 
-  const savePendingDayLedger = useCallback((ledger: PendingDayLedger | null) => {
-    actions.setPendingDayLedger(ledger as any);
+  const savePendingDayLedger = useCallback((ledger: DayPlannerPendingDayLedger | null) => {
+    actions.setPendingDayLedger(ledger as unknown as DayLedger | null);
   }, [actions]);
 
   const saveCurrentDay = useCallback((day: number) => {
@@ -224,7 +230,7 @@ function DayPlannerTabBase() {
   /**
    * Updates a task
    */
-  function updateTask(updatedTask: TaskAssignment) {
+  function updateTask(updatedTask: DayPlannerTaskAssignment) {
     const updatedTasks = taskAssignments.map(t =>
       t.id === updatedTask.id ? updatedTask : t
     );
@@ -234,9 +240,9 @@ function DayPlannerTabBase() {
   /**
    * Completes a task and adds its results to the pending ledger
    */
-  function completeTask(task: TaskAssignment) {
+  function completeTask(task: DayPlannerTaskAssignment) {
     // Mark task as completed
-    const completedTask: TaskAssignment = {
+    const completedTask: DayPlannerTaskAssignment = {
       ...task,
       resolutionState: 'Completed'
     };

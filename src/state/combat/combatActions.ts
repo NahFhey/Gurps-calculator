@@ -151,5 +151,5 @@ const COMBAT_ACTION_TYPES = new Set([
  * Type guard to check if an action is a combat action
  */
 export function isCombatAction(action: { type: string }): action is CombatAction {
-  return COMBAT_ACTION_TYPES.has(action.type);
+  return COMBAT_ACTION_TYPES.has(action.type as typeof COMBAT_CHARACTER_ADD);
 }

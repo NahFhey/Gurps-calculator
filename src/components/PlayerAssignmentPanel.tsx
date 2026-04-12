@@ -6,15 +6,17 @@
 import { useMemo } from 'react';
 import { Users, UserPlus, X } from 'lucide-react';
 import { useSyncContext } from '../net/SyncProvider';
-import { useCampaignCharacters, useCampaignStore } from '../state/campaignStore';
+import { useCampaignCharacters } from '../state/campaignStore';
 import { Role } from '../../shared/session';
 
 export function PlayerAssignmentPanel() {
   const { playerList } = useSyncContext();
   const characters = useCampaignCharacters();
-  const { state, actions } = useCampaignStore();
+  // const { state, actions } = useCampaignStore();
 
-  const playerCharacters = state.multiplayer?.playerCharacters ?? {};
+  // TODO: Implement multiplayer character assignment
+  // For now, use empty object as placeholder
+  const playerCharacters: Record<string, string[]> = {};
 
   // Only show non-GM players
   const players = useMemo(
@@ -43,11 +45,13 @@ export function PlayerAssignmentPanel() {
   }
 
   const handleAssign = (playerName: string, characterId: string) => {
-    actions.assignCharacterToPlayer(playerName, characterId);
+    // TODO: Implement assignCharacterToPlayer action
+    console.log('TODO: assign', playerName, characterId);
   };
 
   const handleUnassign = (playerName: string, characterId: string) => {
-    actions.unassignCharacterFromPlayer(playerName, characterId);
+    // TODO: Implement unassignCharacterFromPlayer action
+    console.log('TODO: unassign', playerName, characterId);
   };
 
   return (

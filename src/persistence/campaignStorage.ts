@@ -2,6 +2,7 @@ import storage from '../utils/storage';
 import { createCampaignState, type CampaignState } from '../state/campaignReducer';
 import { generateAllTestSampleData, isStateEmpty } from '../utils/testSampleData';
 import { initialMapState } from '../types/map';
+import { logger } from '../utils/logger';
 
 const CAMPAIGN_STORAGE_KEY = 'campaignState';
 

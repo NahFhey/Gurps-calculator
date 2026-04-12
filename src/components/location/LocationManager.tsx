@@ -322,7 +322,6 @@ export function LocationManager({ onClose }: LocationManagerProps) {
   const [view, setView] = useState<ManagerView>('list');
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Location>>({});
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [editingTableId, setEditingTableId] = useState<string | null>(null);
 
   const { warning: showWarning } = useToast();
@@ -372,10 +371,6 @@ export function LocationManager({ onClose }: LocationManagerProps) {
     return labels;
   }, [customTerrains]);
 
-  const selectedLocation = selectedLocationId
-    ? state.locations.locations[selectedLocationId]
-    : null;
-
   const editingTable = editingTableId
     ? state.locations.weatherTables?.[editingTableId]
     : undefined;
@@ -415,7 +410,7 @@ export function LocationManager({ onClose }: LocationManagerProps) {
           connections: [],
           createdAt: Date.now(),
           modifiedAt: Date.now(),
-        } as Location,
+        } as unknown as Location,
         weatherTable,
         currentTime,
       }).weather,
@@ -460,12 +455,10 @@ export function LocationManager({ onClose }: LocationManagerProps) {
       showWarning('Cannot delete the last location. Create another location first.');
       return;
     }
-    setPendingDeleteId(locationId);
     const confirmed = await deleteLocationDialog.confirm();
     if (confirmed) {
       actions.removeLocation(locationId);
     }
-    setPendingDeleteId(null);
   };
 
   const handleStartEdit = (location: Location) => {

@@ -10,18 +10,16 @@ import {
   createContext,
   useContext,
   useState,
-  useCallback,
   useMemo,
   useEffect,
   type ReactNode,
 } from 'react';
 import { useCombatStore } from '../../hooks/useCombatStore';
 import { useCampaignStore } from '../../state/campaignStore';
-import { getCombatView, ViewMode } from '../../utils/combatViewFilter';
+import { getCombatView, ViewMode, type ViewModeType } from '../../utils/combatViewFilter';
 import { filterLogForPlayerView } from '../../utils/combatLogFilter';
 import {
   createInitialRevealState,
-  syncRevealStateForParticipants,
 } from '../../utils/combatReveal';
 import { ManeuverCatalog, getMovementBudgetYards } from '../../constants/maneuvers';
 import { deriveTurnContext } from '../../utils/turnContext';
@@ -32,7 +30,6 @@ import { findTileGridPos } from '../../utils/mapUtils';
 import { getLineOfSight } from '../../utils/losUtils';
 import {
   createHistoryState,
-  createSnapshot,
   addAction,
 } from '../../utils/combatHistory';
 import {
@@ -96,8 +93,8 @@ export interface CombatContextValue {
   /** GM / view mode */
   gmMode: boolean;
   setGmMode: (v: boolean) => void;
-  viewMode: ViewMode;
-  setViewMode: (v: ViewMode) => void;
+  viewMode: ViewModeType;
+  setViewMode: (v: ViewModeType) => void;
   /** Map data */
   hasLinkedMap: boolean;
   linkedMap: any | null;
@@ -145,7 +142,7 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
   const { state: campaignState } = useCampaignStore();
 
   // Local UI state
-  const [viewMode, setViewMode] = useState(ViewMode.PLAYER);
+  const [viewMode, setViewMode] = useState<ViewModeType>(ViewMode.PLAYER);
   const [gmMode, setGmMode] = useState(false);
   const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
   const [diceExpression, setDiceExpression] = useState('3d6');
@@ -159,21 +156,22 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
     variant: 'warning',
   });
 
-  // History stub (undo/redo is only supported in CombatTracker's abstract mode for now)
-  const history = createHistoryState() as HistoryState;
-  const saveCombatActiveHistory = (_h: HistoryState | null) => {};
-  const recordAction = (action: unknown) => {
-    addAction(history, action, combat, reveal);
-  };
-
   // Cast
   const combat = combatActive as CombatState | null;
   const reveal = combatReveal as RevealState | null;
 
+  // History stub (undo/redo is only supported in CombatTracker's abstract mode for now)
+  const history = createHistoryState() as HistoryState;
+  const saveCombatActiveHistory = (_h: HistoryState | null) => {};
+  const recordAction = (action: unknown) => {
+    if (!combat) return;
+    addAction(history, action as Record<string, unknown>, combat, reveal ?? undefined);
+  };
+
   // Ensure reveal state is initialised
   useEffect(() => {
     if (combat && !reveal) {
-      const init = createInitialRevealState(combat.id, combat.participants);
+      const init = createInitialRevealState(combat.id, combat.participants) as RevealState;
       saveCombatReveal(init);
     }
   }, [combat, reveal]);
@@ -191,7 +189,7 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
   // ---------------------------------------------------------------------------
   // Derived state
   // ---------------------------------------------------------------------------
-  const combatView = getCombatView(combat, reveal, viewMode) as { participants: Participant[] };
+  const combatView = getCombatView(combat, reveal ?? undefined, viewMode) as { participants: Participant[] };
   const combatLog = combat.log || [];
   const displayLog =
     viewMode === ViewMode.PLAYER && reveal
@@ -446,11 +444,11 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
       endTime: Date.now(),
       log: [...combat.log, endLogEntry],
     };
-    const newHistory = [endedCombat, ...(combatHistory as CombatState[])].slice(
+    const newHistory = [endedCombat, ...(combatHistory as unknown as CombatState[])].slice(
       0,
       MAX_COMBAT_HISTORY,
     );
-    saveCombatHistory(newHistory);
+    saveCombatHistory(newHistory as unknown as typeof combatHistory);
     saveCombatActive(null);
     saveCombatActiveHistory(null);
   };
@@ -518,7 +516,7 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
 
   const handleGmPlaceToken = (
     instanceId: string,
-    tileId: string,
+    _tileId: string,
     row: number,
     col: number,
   ) => {

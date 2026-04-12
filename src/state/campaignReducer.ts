@@ -292,13 +292,13 @@ const createCheckpointEntry = (state: CampaignState, label: string): Checkpoint 
   snapshot: createCheckpointSnapshot(state)
 });
 
-const normalizeCombatReveal = (combat: CampaignState['combat']) => {
+const normalizeCombatReveal = (combat: CampaignState['combat']): CampaignState['combat'] => {
   const revealedTargets =
     combat.reveal.revealedTargets instanceof Set
       ? combat.reveal.revealedTargets
-      : new Set(combat.reveal.revealedTargets || []);
+      : new Set<string>(combat.reveal.revealedTargets || []);
   const revealedHP =
-    combat.reveal.revealedHP instanceof Set ? combat.reveal.revealedHP : new Set(combat.reveal.revealedHP || []);
+    combat.reveal.revealedHP instanceof Set ? combat.reveal.revealedHP : new Set<string>(combat.reveal.revealedHP || []);
   return {
     ...combat,
     reveal: {
@@ -408,7 +408,7 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
     day: 1,
     slot: 0,
     slotsPerDay: SLOTS_PER_DAY,
-    slotLabels: SLOT_NAMES,
+    slotLabels: [...SLOT_NAMES],
     history: []
   },
   inventory: {
@@ -601,6 +601,8 @@ export type CampaignAction =
   | { type: 'updateTaskAssignment'; payload: { id: Id; changes: Partial<TaskAssignment> } }
   | { type: 'setTaskAssignments'; payload: TaskAssignment[] }
   | { type: 'setPendingDayLedger'; payload: DayLedger | null }
+  | { type: 'setDayPlannerSlot'; payload: number }
+  | { type: 'setTimeDay'; payload: number }
   // Combat Character actions
   | { type: 'addCombatCharacter'; payload: CombatCharacter }
   | { type: 'updateCombatCharacter'; payload: { id: Id; changes: Partial<CombatCharacter> } }
@@ -622,6 +624,8 @@ export type CampaignAction =
   | { type: 'addKitchen'; payload: Kitchen }
   // Cooking Skill actions
   | { type: 'setCookingSkills'; payload: CookingSkill[] }
+  // Facility actions
+  | { type: 'setFacilities'; payload: Record<Id, Facility> }
   // Effect Family Map actions
   | { type: 'setEffectFamilyMap'; payload: EffectFamilyMap }
   // Inventory actions
@@ -729,7 +733,13 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         const { slot, slotsPerDay, slotLabels, day } = draft.time;
         const { nextSlot, logEntry } = advanceTimeSlot(
           slot,
-          { clearAllReservations() {} },
+          {
+            reserveTool() {},
+            validateReservations() { return true; },
+            invalidateReservationsForTool() {},
+            clearAllReservations() {},
+            activeReservations: {}
+          } as any,
           { totalSlots: slotsPerDay, slotLabels }
         );
         const nextDay = nextSlot < slot ? day + 1 : day;
@@ -952,7 +962,13 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         const { slot, slotsPerDay, slotLabels, day } = draft.time;
         const { nextSlot, logEntry } = advanceTimeSlot(
           slot,
-          { clearAllReservations() {} },
+          {
+            reserveTool() {},
+            validateReservations() { return true; },
+            invalidateReservationsForTool() {},
+            clearAllReservations() {},
+            activeReservations: {}
+          } as any,
           {
             totalSlots: slotsPerDay,
             slotLabels
@@ -1101,10 +1117,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
           draft.locations.currentLocationId = remainingIds.length > 0 ? remainingIds[0] : null;
         }
         // Remove any weather tables associated with this location
-        for (const tableId of Object.keys(draft.locations.weatherTables)) {
-          const table = draft.locations.weatherTables[tableId];
-          // Note: weather tables don't have locationId, they're referenced by location.weatherTableId
-        }
+        // Note: weather tables don't have locationId, they're referenced by location.weatherTableId
         return;
       }
 

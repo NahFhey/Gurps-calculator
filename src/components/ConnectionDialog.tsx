@@ -19,7 +19,7 @@ interface ConnectionDialogProps {
 
 export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
   const { status, sessionInfo, hostGame, joinGame, disconnect } = useSyncContext();
-  const { state, dispatch } = useCampaignStore();
+  const { state, actions } = useCampaignStore();
 
   const [tab, setTab] = useState<'host' | 'join'>('host');
   const [campaignName, setCampaignName] = useState('My Campaign');
@@ -52,7 +52,7 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
       // Parse and hydrate the server state, then replace local state
       const parsed = JSON.parse(stateJson);
       const hydrated = hydrateCampaignState(parsed as CampaignState);
-      dispatch({ type: 'replaceState', payload: hydrated });
+      actions.importCampaignState(hydrated);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to join game');

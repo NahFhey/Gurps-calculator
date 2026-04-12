@@ -3,63 +3,7 @@ import { History, Download, Trash2, Eye, EyeOff } from 'lucide-react';
 import { useCombatStore } from '../../hooks/useCombatStore';
 import { exportCombatLog } from '../../utils/combatHelpers';
 import { ConfirmDialog, useConfirmDialog } from '../ui';
-
-interface LogEntry {
-  type: string;
-  timestamp: number;
-  round?: number;
-  actorName?: string;
-  oldValue?: number;
-  newValue?: number;
-  note?: string;
-  message?: string;
-}
-
-interface Participant {
-  id: string;
-  name: string;
-  category: string;
-  currentHP: number;
-  hp: number;
-}
-
-interface CombatHistoryEntry {
-  id: string;
-  name: string;
-  startTime: number;
-  endTime: number;
-  currentRound: number;
-  participants: Participant[];
-  log: LogEntry[];
-}
-
-/**
- * Format log entry for display
- */
-function formatLogEntry(entry: LogEntry): string {
-  const time = new Date(entry.timestamp).toLocaleTimeString();
-
-  switch (entry.type) {
-    case 'combat_start':
-      return `[${time}] ═══ Combat Started ═══`;
-    case 'combat_end':
-      return `[${time}] ═══ Combat Ended ═══`;
-    case 'round_change':
-      return `[${time}] ═══ Round ${entry.round} ═══`;
-    case 'turn_change':
-      return `[${time}] → ${entry.actorName}'s turn`;
-    case 'hp_change':
-      return `[${time}] ${entry.actorName}: HP ${entry.oldValue} → ${entry.newValue}`;
-    case 'fp_change':
-      return `[${time}] ${entry.actorName}: FP ${entry.oldValue} → ${entry.newValue}`;
-    case 'mp_change':
-      return `[${time}] ${entry.actorName}: MP ${entry.oldValue} → ${entry.newValue}`;
-    case 'note':
-      return `[${time}] ${entry.actorName ? entry.actorName + ': ' : ''}${entry.note}`;
-    default:
-      return `[${time}] ${entry.message || 'Unknown event'}`;
-  }
-}
+import type { CombatSession } from '../../types/campaign';
 
 /**
  * Combat History Component
@@ -68,7 +12,6 @@ function formatLogEntry(entry: LogEntry): string {
 export default function CombatHistory() {
   const { combatHistory, saveCombatHistory } = useCombatStore();
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const deleteDialog = useConfirmDialog({
     title: 'Delete Combat History',
@@ -81,35 +24,26 @@ export default function CombatHistory() {
     setExpandedId(expandedId === id ? null : id);
   };
 
-  const handleExport = (combat: CombatHistoryEntry) => {
-    const text = exportCombatLog(combat.log, {
+  const handleExport = (combat: CombatSession) => {
+    const text = exportCombatLog(combat.log as any, {
       name: combat.name,
-      date: combat.startTime
+      date: Date.now()
     });
 
     const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `combat-log-${combat.name}-${combat.startTime}.txt`;
+    link.download = `combat-log-${combat.name}-${Date.now()}.txt`;
     link.click();
     URL.revokeObjectURL(url);
   };
 
   const handleDelete = async (id: string) => {
-    setPendingDeleteId(id);
     const confirmed = await deleteDialog.confirm();
     if (confirmed) {
-      saveCombatHistory(combatHistory.filter((c: CombatHistoryEntry) => c.id !== id));
+      saveCombatHistory(combatHistory.filter((c: CombatSession) => c.id !== id));
     }
-    setPendingDeleteId(null);
-  };
-
-  const formatDuration = (startTime: number, endTime: number): string => {
-    const duration = endTime - startTime;
-    const minutes = Math.floor(duration / 60000);
-    const seconds = Math.floor((duration % 60000) / 1000);
-    return `${minutes}m ${seconds}s`;
   };
 
   if (combatHistory.length === 0) {
@@ -130,19 +64,17 @@ export default function CombatHistory() {
       </div>
 
       <div className="space-y-2">
-        {combatHistory.map((combat: CombatHistoryEntry) => (
+        {combatHistory.map((combat: CombatSession) => (
           <div key={combat.id} className="bg-gray-800 rounded-lg overflow-hidden">
             {/* Header */}
             <div
               className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-700"
-              onClick={() => toggleExpand(combat.id)}
+              onClick={() => toggleExpand(combat.id as string)}
             >
               <div className="flex-1">
                 <h3 className="text-lg font-semibold">{combat.name}</h3>
                 <div className="text-sm text-gray-400 flex gap-4 mt-1">
-                  <span>{new Date(combat.startTime).toLocaleString()}</span>
                   <span>{combat.currentRound} rounds</span>
-                  <span>{formatDuration(combat.startTime, combat.endTime)}</span>
                   <span>{combat.participants.length} participants</span>
                 </div>
               </div>
@@ -180,11 +112,11 @@ export default function CombatHistory() {
                   <div>
                     <h4 className="font-semibold mb-2">Participants</h4>
                     <div className="space-y-1 max-h-64 overflow-y-auto">
-                      {combat.participants.map((p) => (
-                        <div key={p.id} className="text-sm bg-gray-700 rounded p-2">
-                          <div className="font-semibold">{p.name}</div>
+                      {combat.participants.map((p, idx) => (
+                        <div key={idx} className="text-sm bg-gray-700 rounded p-2">
+                          <div className="font-semibold">{p.characterId}</div>
                           <div className="text-gray-400">
-                            {p.category} | Final HP: {p.currentHP}/{p.hp}
+                            {p.team} | Final HP: {p.currentHP}
                           </div>
                         </div>
                       ))}
@@ -197,7 +129,7 @@ export default function CombatHistory() {
                     <div className="bg-gray-900 rounded p-3 max-h-64 overflow-y-auto font-mono text-xs">
                       {combat.log.map((entry, index) => (
                         <div key={index} className="mb-1">
-                          {formatLogEntry(entry)}
+                          {entry.action}
                         </div>
                       ))}
                     </div>

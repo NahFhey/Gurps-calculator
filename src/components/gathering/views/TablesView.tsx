@@ -5,8 +5,6 @@ import type {
   TablesViewProps,
   GatheringTableExtended,
   TableEntry,
-  GatheringSpeciesExtended,
-  GatheringItemExtended
 } from '../../../types/gathering';
 
 type RollMethod = '1d6' | '2d6' | '3d6';

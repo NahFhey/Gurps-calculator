@@ -11,7 +11,7 @@
  * actually trigger re-renders via the external stores.
  */
 
-import { useMemo, useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
 import { useCombatStore } from './useCombatStore';
 import { useCombatHistory } from './useCombatHistory';
 import { useCombatUI, setCombatUI } from './combatUIStore';
@@ -154,7 +154,7 @@ export function useCombatSession(): CombatSessionValue | null {
   }, [combat, reveal]);
 
   // Persistent undo/redo history (Phase 11a — replaced throwaway stub)
-  const { history, recordAction, handleUndo, handleRedo } = useCombatHistory();
+  const { recordAction } = useCombatHistory();
 
   // Early return — no active combat
   if (!combat || !combat.participants || !combat.turnOrder) {

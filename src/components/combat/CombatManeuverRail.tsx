@@ -46,7 +46,7 @@ export function CombatManeuverRail() {
         {availableManeuvers.map((m) => {
           const isSelected = m.id === selectedManeuverId;
           const isDisabled = !!m.disabled;
-          const groupColor = GROUP_COLORS[m.group] ?? 'border-gray-600/40';
+          const groupColor = m.group && GROUP_COLORS[m.group] ? GROUP_COLORS[m.group] : 'border-gray-600/40';
 
           return (
             <button

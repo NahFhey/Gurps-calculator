@@ -139,7 +139,9 @@ function ParticipantCard({
   onClick: () => void;
 }) {
   const p = participant;
-  const hpStatus = calculateHPStatus(p.currentHP ?? p.hp, p.hp);
+  const currentHP = typeof p.currentHP === 'number' ? p.currentHP : (typeof p.hp === 'number' ? p.hp : (p.hp as any)?.current ?? 0);
+  const maxHP = typeof p.hp === 'number' ? p.hp : (p.hp as any)?.max ?? 0;
+  const hpStatus = calculateHPStatus(currentHP, maxHP);
   const borderColor = HP_COLORS[hpStatus] ?? 'border-gray-600';
   const bgColor = isCurrent
     ? 'bg-blue-900/40'
@@ -187,12 +189,12 @@ function ParticipantCard({
                     : 'bg-gray-500'
             }`}
             style={{
-              width: `${Math.max(0, Math.min(100, ((p.currentHP ?? p.hp) / p.hp) * 100))}%`,
+              width: `${Math.max(0, Math.min(100, (currentHP / maxHP) * 100))}%`,
             }}
           />
         </div>
         <span className="text-[10px] text-gray-400 tabular-nums w-12 text-right">
-          {p.currentHP ?? p.hp}/{p.hp}
+          {currentHP}/{maxHP}
         </span>
       </div>
 

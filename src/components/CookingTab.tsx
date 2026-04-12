@@ -119,7 +119,7 @@ export function CookingTab() {
   const { state, actions } = useCampaignStore();
 
   // Get weather modifiers for cooking
-  const { modifiers: weatherModifiers, hasEffect, effectDescription, locationName, skillBonus: weatherSkillBonus } = useWeatherModifiers('cooking');
+  const { hasEffect, effectDescription, locationName } = useWeatherModifiers('cooking');
 
   // Derive data from normalized state
   const foods = useMemo(() =>
@@ -128,12 +128,12 @@ export function CookingTab() {
   );
 
   const recipes = useMemo(() =>
-    denormalizeObject(state.entities.recipes) as Recipe[],
+    denormalizeObject(state.entities.recipes) as unknown as Recipe[],
     [state.entities.recipes]
   );
 
   const kitchens = useMemo(() =>
-    denormalizeObject(state.entities.kitchens) as Kitchen[],
+    denormalizeObject(state.entities.kitchens) as unknown as Kitchen[],
     [state.entities.kitchens]
   );
 
@@ -141,11 +141,11 @@ export function CookingTab() {
 
   // Derive workers from characters
   const workers = useMemo(() =>
-    Object.values(state.entities.characters).map((character: Record<string, unknown>) => ({
-      id: character.id as string,
-      name: character.name as string,
-      skills: (character.work as Record<string, unknown>)?.skills as Record<string, number> || {},
-      st: character.st as number | undefined
+    Object.values(state.entities.characters).map((character) => ({
+      id: character.id,
+      name: character.name,
+      skills: (character as any).work?.skills || {},
+      st: (character as any).st
     })) as Worker[],
     [state.entities.characters]
   );
@@ -156,7 +156,7 @@ export function CookingTab() {
   }, [actions]);
 
   const saveRecipes = useCallback((recipesArray: Recipe[]) => {
-    actions.setRecipes(normalizeArray(recipesArray));
+    actions.setRecipes(normalizeArray(recipesArray as any));
   }, [actions]);
 
   // Local state
@@ -300,13 +300,14 @@ export function CookingTab() {
         String(f.id) === ing.foodId ||
         f.id === String(ing.foodId)
       );
-      const hasEnough = available && available.quantity >= ing.amount;
-      return {
+      const hasEnough = !!(available && available.quantity >= ing.amount);
+      const remakeItem: RemakeIngredient = {
         original: ing,
         useOriginal: hasEnough,
-        substitutes: hasEnough ? [] : [{ foodId: null, amount: ing.amount }],
+        substitutes: hasEnough ? [] : [{ foodId: null as string | null, amount: ing.amount }],
         penalty: 0
       };
+      return remakeItem;
     });
     setRemakeIngredients(ingredients);
     setView('remake');
@@ -656,6 +657,7 @@ export function CookingTab() {
                     dice={roll.dice}
                     total={roll.total}
                     onRoll={(dice: number[], total: number) => setRoll({ dice, total })}
+                    onTotalChange={(total: number) => setRoll(prev => ({ ...prev, total }))}
                   />
                 </div>
                 {cookingSkillValue && (
@@ -969,6 +971,7 @@ export function CookingTab() {
                     dice={remakeRoll.dice}
                     total={remakeRoll.total}
                     onRoll={(dice: number[], total: number) => setRemakeRoll({ dice, total })}
+                    onTotalChange={(total: number) => setRemakeRoll(prev => ({ ...prev, total }))}
                   />
                 </div>
                 {remakeSkill && (

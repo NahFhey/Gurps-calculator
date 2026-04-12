@@ -5,7 +5,7 @@ import { unlockGMData, mergeGM } from '../utils/exportImport';
 import { useCampaignStore } from '../state/campaignStore';
 import { denormalizeObject, normalizeArray } from '../state/campaignUtils';
 import type { GMLockData } from '../types/views';
-import type { Id, FoodType, MaterialType, AlchemyLab, Kitchen, CookingSkill, AlchemyReagent, AlchemyFormula, CustomTemplates, Craft, Character } from '../types/campaign';
+import type { Id, FoodType, MaterialType, Material, AlchemyLab, Kitchen, CookingSkill, AlchemyReagent, AlchemyFormula, CustomTemplates, Craft } from '../types/campaign';
 
 // View components
 import { FoodTypesView } from './manager/views/FoodTypesView';
@@ -83,10 +83,9 @@ export function ManagerTab() {
     denormalizeObject(campaignState.entities.crafts) as Craft[],
     [campaignState.entities.crafts]
   );
-  const craftDesigns = campaignState.entities.craftDesigns;
   const customTemplates = campaignState.entities.customTemplates;
   const materials = useMemo(() =>
-    denormalizeObject(campaignState.entities.materials),
+    denormalizeObject(campaignState.entities.materials) as Material[],
     [campaignState.entities.materials]
   );
 
@@ -113,40 +112,11 @@ export function ManagerTab() {
   );
   const cookingSkills = campaignState.entities.cookingSkills as CookingSkill[];
 
-  // Gathering
-  const gatheringSpecies = useMemo(() =>
-    denormalizeObject(campaignState.entities.gatheringSpecies),
-    [campaignState.entities.gatheringSpecies]
-  );
-  const gatheringTools = useMemo(() =>
-    denormalizeObject(campaignState.entities.gatheringTools),
-    [campaignState.entities.gatheringTools]
-  );
-  const gatheringTables = useMemo(() =>
-    denormalizeObject(campaignState.entities.gatheringTables),
-    [campaignState.entities.gatheringTables]
-  );
-  const gatheringEnvironments = useMemo(() =>
-    denormalizeObject(campaignState.entities.gatheringEnvironments),
-    [campaignState.entities.gatheringEnvironments]
-  );
-  const gatheringBait = useMemo(() =>
-    denormalizeObject(campaignState.entities.gatheringBait),
-    [campaignState.entities.gatheringBait]
-  );
-  const gatheringCategories = useMemo(() =>
-    denormalizeObject(campaignState.entities.gatheringCategories),
-    [campaignState.entities.gatheringCategories]
-  );
-  const gatheringItems = useMemo(() =>
-    denormalizeObject(campaignState.entities.gatheringItems),
-    [campaignState.entities.gatheringItems]
-  );
-  const currentDay = campaignState.time.day;
+  // Gathering is managed by GatheringManager directly
 
   // Save callbacks
-  const saveFoodTypes = useCallback((types: FoodType[]) => {
-    campaignActions.setFoodTypes(types);
+  const saveFoodTypes = useCallback((types: (FoodType | string)[]) => {
+    campaignActions.setFoodTypes(types as FoodType[]);
   }, [campaignActions]);
 
   const saveMaterialTypes = useCallback((types: MaterialType[]) => {
@@ -154,7 +124,7 @@ export function ManagerTab() {
   }, [campaignActions]);
 
 
-  const saveMaterials = useCallback((mats: unknown[]) => {
+  const saveMaterials = useCallback((mats: Material[]) => {
     campaignActions.setMaterials(normalizeArray(mats));
   }, [campaignActions]);
 
@@ -208,39 +178,7 @@ export function ManagerTab() {
     saveMaterials(updatedMaterials);
   }, [materialTypes, campaignState.entities.materials, saveMaterialTypes, saveMaterials]);
 
-  // Gathering save callbacks
-  const saveGatheringSpecies = useCallback((species: unknown[]) => {
-    campaignActions.setGatheringSpecies(normalizeArray(species));
-  }, [campaignActions]);
-
-  const saveGatheringTools = useCallback((tools: unknown[]) => {
-    campaignActions.setGatheringTools(normalizeArray(tools));
-  }, [campaignActions]);
-
-  const saveGatheringTables = useCallback((tables: unknown[]) => {
-    campaignActions.setGatheringTables(normalizeArray(tables));
-  }, [campaignActions]);
-
-  const saveGatheringEnvironments = useCallback((envs: unknown[]) => {
-    campaignActions.setGatheringEnvironments(normalizeArray(envs));
-  }, [campaignActions]);
-
-  const saveGatheringBait = useCallback((baitList: unknown[]) => {
-    campaignActions.setGatheringBait(normalizeArray(baitList));
-  }, [campaignActions]);
-
-  const saveGatheringCategories = useCallback((cats: unknown[]) => {
-    campaignActions.setGatheringCategories(normalizeArray(cats));
-  }, [campaignActions]);
-
-  const saveGatheringItems = useCallback((items: unknown[]) => {
-    campaignActions.setGatheringItems(normalizeArray(items));
-  }, [campaignActions]);
-
-  const saveCurrentDay = useCallback((day: number) => {
-    // Day is managed through time system, but for compatibility we can log this
-    console.log('saveCurrentDay called with', day);
-  }, []);
+  // Gathering save callbacks removed — GatheringManager handles its own state
 
   // Delete handler for all views
   function handleDelete(type: string, value: string, extra: { id?: Id; templateType?: string } = {}) {

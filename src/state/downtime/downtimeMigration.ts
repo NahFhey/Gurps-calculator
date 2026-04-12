@@ -227,13 +227,11 @@ function createActivityData(
     case 'crafting':
       return {
         type: 'crafting',
-        projectId: 'migrated',
         recipeId: 'migrated',
-        materialIds: [],
-        toolIds,
-        phase: 'craft',
-        progressCurrent: 0,
-        progressRequired: 1,
+        materialInstanceIds: [],
+        toolInstanceIds: toolIds,
+        qualityTarget: 'standard',
+        skillModifier: 0,
       };
 
     case 'rest':

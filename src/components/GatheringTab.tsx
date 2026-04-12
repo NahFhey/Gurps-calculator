@@ -14,7 +14,6 @@ import {
   determineDynamicEventType,
   rollOnCatchTable,
   rollNetCatch,
-  calculateFishYields,
   generateGroupKey,
   hasDailyEventBeenRolled,
   filterToolsForMethod,
@@ -23,9 +22,7 @@ import {
   roll3d6,
   calculateEffectiveForagingSkill,
   evaluateForagingRoll,
-  determineForageFind,
-  calculateForageYields,
-  getToolYieldBonus
+  determineForageFind
 } from '../utils/gathering';
 
 // ============================================================================
@@ -315,7 +312,7 @@ function GatheringTabBase({
   saveDailyEvents,
   saveFoods,
   saveMaterials
-}: GatheringTabProps): JSX.Element {
+}: GatheringTabProps): React.ReactElement {
   // Mode and environment selection
   const [selectedMode, setSelectedMode] = useState('Fishing');
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState('');
@@ -497,7 +494,7 @@ function GatheringTabBase({
       selectedToolIds,
       selectedConsumableIds: selectedBaitId ? [selectedBaitId] : [],
       currentDay
-    }) as GatheringSession;
+    }) as unknown as GatheringSession;
 
     session.tablesResolved = {
       randomCatchTableId: resolvedTables.randomCatch?.id,
@@ -529,10 +526,10 @@ function GatheringTabBase({
     let eventText: string | null = null;
 
     if (eventType === 'rare' && resolvedTables.rareEvent) {
-      eventEntry = rollOnCatchTable(resolvedTables.rareEvent) as { id?: string; text?: string };
+      eventEntry = rollOnCatchTable(resolvedTables.rareEvent as any) as { id?: string; text?: string };
       eventText = eventEntry?.text || 'Rare event occurred!';
     } else if (eventType === 'mild' && resolvedTables.mildEvent) {
-      eventEntry = rollOnCatchTable(resolvedTables.mildEvent) as { id?: string; text?: string };
+      eventEntry = rollOnCatchTable(resolvedTables.mildEvent as any) as { id?: string; text?: string };
       eventText = eventEntry?.text || 'Mild event occurred!';
     }
 
@@ -601,8 +598,8 @@ function GatheringTabBase({
 
     const findResult = determineForageFind({
       rollResult: result,
-      findTable: resolvedTables.randomCatch,
-      targetCategory,
+      findTable: resolvedTables.randomCatch as any,
+      _targetCategory: targetCategory?.id || undefined,
       targetItem
     }) as ForageFind;
 
@@ -624,9 +621,9 @@ function GatheringTabBase({
     let entry: { resultType?: string; speciesId?: string };
     try {
       if (selectedMethod === 'Net') {
-        entry = rollNetCatch(resolvedTables.randomCatch, species) as { resultType?: string; speciesId?: string };
+        entry = rollNetCatch(resolvedTables.randomCatch as any, species) as { resultType?: string; speciesId?: string };
       } else {
-        entry = rollOnCatchTable(resolvedTables.randomCatch, baitRollBonus) as { resultType?: string; speciesId?: string };
+        entry = rollOnCatchTable(resolvedTables.randomCatch as any, baitRollBonus) as { resultType?: string; speciesId?: string };
       }
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Unknown error');

@@ -70,7 +70,7 @@ const storage: Storage = {
             const validation = validateDataForVersion(
               migratedData,
               CURRENT_SCHEMA_VERSION
-            );
+            ) as { valid: boolean; issues: string[] };
 
             if (!validation.valid) {
               logger.warn(

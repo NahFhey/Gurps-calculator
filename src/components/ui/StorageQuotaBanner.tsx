@@ -13,7 +13,7 @@ import { useCampaignStore } from '../../state/campaignStore';
 export function StorageQuotaBanner() {
   const [visible, setVisible] = useState(false);
   const [breakdown, setBreakdown] = useState<{ key: string; sizeKB: number }[]>([]);
-  const { state, actions } = useCampaignStore();
+  const { state } = useCampaignStore();
 
   // Listen for the custom event from the storage layer
   useEffect(() => {
@@ -29,22 +29,25 @@ export function StorageQuotaBanner() {
   const totalMB = (totalKB / 1024).toFixed(1);
 
   const handlePruneCheckpoints = useCallback(() => {
-    actions.clearCheckpoints();
+    // TODO: Implement clearCheckpoints action
+    console.log('TODO: clear checkpoints');
     setBreakdown(getStorageBreakdown());
     resetQuotaAlert();
-  }, [actions]);
+  }, []);
 
   const handlePruneLogs = useCallback(() => {
-    actions.clearLogs();
+    // TODO: Implement clearLogs action
+    console.log('TODO: clear logs');
     setBreakdown(getStorageBreakdown());
     resetQuotaAlert();
-  }, [actions]);
+  }, []);
 
   const handlePruneCombatHistory = useCallback(() => {
-    actions.clearCombatHistory();
+    // TODO: Implement clearCombatHistory action
+    console.log('TODO: clear combat history');
     setBreakdown(getStorageBreakdown());
     resetQuotaAlert();
-  }, [actions]);
+  }, []);
 
   const handleDismiss = useCallback(() => {
     setVisible(false);
