@@ -8,6 +8,7 @@ import { DAMAGE_TYPE_LABELS } from './wounding';
 import { getCombatView } from './combatViewFilter';
 import { filterLogForPlayerView } from './combatLogFilter';
 import { encryptJSON, decryptJSON } from './cryptoLock';
+import { CombatExportSchema } from './importSchemas';
 import type {
   Participant,
   LogEntry,
@@ -330,15 +331,15 @@ export function parseImportedCombat(jsonString: string): ImportResult<CombatExpo
   try {
     const data = JSON.parse(jsonString);
 
-    if (!data || typeof data !== 'object') {
-      return { valid: false, data: null, error: 'Invalid JSON format' };
+    // Structural validation via Zod
+    const zodResult = CombatExportSchema.safeParse(data);
+    if (!zodResult.success) {
+      const issue = zodResult.error.issues[0];
+      const path = issue?.path?.join('.') || '';
+      return { valid: false, data: null, error: `Validation error${path ? ` at ${path}` : ''}: ${issue?.message}` };
     }
 
-    if (!data.combatState) {
-      return { valid: false, data: null, error: 'Missing combatState in import' };
-    }
-
-    return { valid: true, data, error: null };
+    return { valid: true, data: data as CombatExportData, error: null };
   } catch (error) {
     return { valid: false, data: null, error: (error as Error).message };
   }

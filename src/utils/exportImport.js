@@ -23,6 +23,7 @@ import {
 } from './schemaVersioning';
 import { migrateData, validateDataForVersion } from './dataMigrations';
 import { logger } from './logger';
+import { CampaignImportSchema, exceedsImportSizeLimit } from './importSchemas';
 
 /** Current schema version - synchronized with schemaVersioning.js */
 export const SCHEMA_VERSION = CURRENT_SCHEMA_VERSION;
@@ -487,10 +488,23 @@ export function migrateImport(data) {
  */
 export async function importFile(jsonInput) {
   try {
+    // Reject oversized input
+    if (typeof jsonInput === 'string' && exceedsImportSizeLimit(jsonInput)) {
+      return { ok: false, error: 'Import file too large (max 50 MB)' };
+    }
+
     // Parse JSON if string
     const data = typeof jsonInput === 'string' ? JSON.parse(jsonInput) : jsonInput;
 
-    // Validate
+    // Structural validation via Zod schema
+    const zodResult = CampaignImportSchema.safeParse(data);
+    if (!zodResult.success) {
+      const issue = zodResult.error.issues[0];
+      const path = issue?.path?.join('.') || '';
+      return { ok: false, error: `Import validation error${path ? ` at ${path}` : ''}: ${issue?.message}` };
+    }
+
+    // Business-rule validation (schema version compat, exportType, gmLock)
     const validation = validateImport(data);
     if (!validation.valid) {
       return { ok: false, error: validation.error };

@@ -3,6 +3,7 @@ import { Plus, Search, Download, Upload, FileText, Users, Info } from 'lucide-re
 import { useCombatStore } from '../../hooks/useCombatStore';
 import { COMBAT_CATEGORIES } from '../../constants';
 import { generateId } from '../../utils/combatHelpers';
+import { CharacterArraySchema, exceedsImportSizeLimit } from '../../utils/importSchemas';
 import CharacterSheet from './CharacterSheet';
 import CharacterForm from './CharacterForm';
 import GCSImportModal from './GCSImportModal';
@@ -169,17 +170,29 @@ export default function CharacterLibrary() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Reject oversized files before reading
+    if (exceedsImportSizeLimit(file)) {
+      showError('File too large (max 50 MB)');
+      event.target.value = '';
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const imported = JSON.parse(e.target?.result as string);
-        if (!Array.isArray(imported)) {
-          showError('Invalid file format: expected an array of characters');
+        const raw = JSON.parse(e.target?.result as string);
+
+        // Validate structure with Zod schema
+        const result = CharacterArraySchema.safeParse(raw);
+        if (!result.success) {
+          const issue = result.error.issues[0];
+          const path = issue?.path?.join('.') || '';
+          showError(`Invalid character data${path ? ` at ${path}` : ''}: ${issue?.message}`);
           return;
         }
 
         // Merge with existing, regenerating IDs to avoid conflicts
-        const newChars = imported.map((char: CharacterData) => ({
+        const newChars = result.data.map((char) => ({
           ...char,
           id: generateId(),
           currentHP: char.hp,
