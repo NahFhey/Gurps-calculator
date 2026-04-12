@@ -210,6 +210,64 @@ export const ManeuverCatalog: Maneuver[] = [
 // Maneuver ID Lookup
 // ============================================================================
 
+/**
+ * Get movement budget in yards for a given maneuver.
+ *
+ * GURPS movement rules by maneuver:
+ * - Move: full Move
+ * - Attack, Feint, Ready, Evaluate, Concentrate: step (1 yard) normally, full Move on map
+ * - All-Out Attack: half Move (round up)
+ * - All-Out Defense: half Move (round up)
+ * - Aim: step only (1 yard)
+ * - Change Posture, Do Nothing: 0
+ * - Wait: depends on triggered action (treat as full for budget)
+ *
+ * @param maneuverId - The selected maneuver ID
+ * @param basicMove - The character's Basic Move stat
+ * @param hasMap - Whether combat is linked to a map (affects step vs full move)
+ * @returns Movement budget in yards
+ */
+export function getMovementBudgetYards(
+  maneuverId: string,
+  basicMove: number = 5,
+  hasMap: boolean = false,
+): number {
+  const move = Math.max(basicMove, 1);
+
+  switch (maneuverId) {
+    case 'move':
+    case 'wait':
+      return move;
+
+    case 'all_out_attack_determined':
+    case 'all_out_attack_strong':
+    case 'all_out_defense_increased':
+    case 'all_out_defense_dodge':
+      return Math.ceil(move / 2);
+
+    case 'attack':
+    case 'feint':
+    case 'ready':
+    case 'evaluate':
+    case 'concentrate':
+      // On a tactical map these maneuvers allow a step (1 yard)
+      // Without a map, treat as no movement tracking
+      return hasMap ? 1 : 0;
+
+    case 'aim':
+      return hasMap ? 1 : 0;
+
+    case 'change_posture':
+    case 'do_nothing':
+    default:
+      return 0;
+  }
+}
+
+// ============================================================================
+// Maneuver ID Lookup
+// ============================================================================
+
 export const ManeuverIds: Record<string, string> = ManeuverCatalog.reduce((acc, maneuver) => {
   acc[maneuver.id] = maneuver.id;
   return acc;

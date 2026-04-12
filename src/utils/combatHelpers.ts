@@ -841,6 +841,32 @@ export function createItemLogEntry({
  * @param {Object} params - Condition parameters
  * @returns {Object} Structured condition log entry
  */
+/**
+ * Phase F (Map Integration): Create a movement log entry
+ */
+export function createMovementLogEntry({
+  round,
+  turn,
+  actorInstanceId: _actorInstanceId,
+  actorName,
+  yardsSpent,
+}: {
+  round: number;
+  turn: number;
+  actorInstanceId: string;
+  actorName: string;
+  yardsSpent: number;
+}): LogEntry {
+  return {
+    id: generateId(),
+    timestamp: Date.now(),
+    round,
+    turn,
+    entryType: 'note',
+    text: `${actorName}: Moved ${yardsSpent} yard${yardsSpent !== 1 ? 's' : ''}`,
+  };
+}
+
 export function createConditionLogEntry({
   round,
   turn,
