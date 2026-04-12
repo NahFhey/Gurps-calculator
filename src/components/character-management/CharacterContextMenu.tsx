@@ -31,6 +31,8 @@ export function CharacterContextMenu({
 
   // Close menu when clicking outside
   useEffect(() => {
+    let mounted = true;
+
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         onClose();
@@ -43,13 +45,17 @@ export function CharacterContextMenu({
       }
     };
 
-    // Use setTimeout to avoid immediately closing from the same click that opened it
-    setTimeout(() => {
+    // Use setTimeout to avoid immediately closing from the same click that opened it.
+    // Guard with `mounted` flag so listeners aren't added after cleanup runs.
+    const timerId = setTimeout(() => {
+      if (!mounted) return;
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleEscape);
     }, 0);
 
     return () => {
+      mounted = false;
+      clearTimeout(timerId);
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
