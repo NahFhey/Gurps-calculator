@@ -199,6 +199,8 @@ export interface Maneuver {
 export interface ManeuverPrompts {
   allowsAttackPanel?: boolean;
   allowsDefensePanel?: boolean;
+  allowsAimPanel?: boolean;
+  allowsWaitPanel?: boolean;
 }
 
 export interface ManeuverWorkflow {

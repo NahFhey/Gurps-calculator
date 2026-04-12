@@ -13,6 +13,7 @@
 
 import { useMemo, useEffect, useCallback } from 'react';
 import { useCombatStore } from './useCombatStore';
+import { useCombatHistory } from './useCombatHistory';
 import { useCombatUI, setCombatUI } from './combatUIStore';
 import { useCampaignStore } from '../state/campaignStore';
 import { useEffectiveRole } from './useEffectiveRole';
@@ -25,10 +26,6 @@ import { filterManeuvers } from '../utils/maneuverFilter';
 import { clearShock } from '../utils/effectsEngine';
 import { tickConditionsTurn, tickConditionsRound } from '../utils/conditionsEngine';
 import { findTileGridPos } from '../utils/mapUtils';
-import {
-  createHistoryState,
-  addAction,
-} from '../utils/combatHistory';
 import {
   createTurnAdvanceAction,
   createAddLogEntryAction,
@@ -49,7 +46,6 @@ import type {
   Participant,
   CombatState,
   TurnDecision,
-  HistoryState,
   RevealState,
   Maneuver,
   TurnContext,
@@ -157,16 +153,8 @@ export function useCombatSession(): CombatSessionValue | null {
     }
   }, [combat, reveal]);
 
-  // History stub (undo/redo only in CombatTracker's abstract mode for now)
-  const history = useMemo(() => createHistoryState() as HistoryState, []);
-  const recordAction = useCallback(
-    (action: unknown) => {
-      if (combat && reveal !== null && reveal !== undefined) {
-        addAction(history, action as Record<string, unknown>, combat, reveal);
-      }
-    },
-    [combat, reveal, history],
-  );
+  // Persistent undo/redo history (Phase 11a — replaced throwaway stub)
+  const { history, recordAction, handleUndo, handleRedo } = useCombatHistory();
 
   // Early return — no active combat
   if (!combat || !combat.participants || !combat.turnOrder) {

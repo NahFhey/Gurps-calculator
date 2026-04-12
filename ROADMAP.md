@@ -136,12 +136,21 @@
 
 **Goal:** Make combat the standout feature — smooth, tactical, and fast at the table.
 
-### 11a: CombatTracker Decomposition
-- Extract remaining business logic from CombatTracker.tsx (1,545 lines)
-- Create dedicated hooks: `useCombatTurn`, `useInitiativeTracker`, `useCombatHistory`
-- Extract ActionPanel.tsx (644 lines) into sub-views by action type
-- Target: CombatTracker < 800 lines, ActionPanel < 300 lines
-- **Ensure extracted hooks use atomic state updates** (single `saveCombatActive()` per operation)
+### 11a: CombatTracker Decomposition ✅ COMPLETE
+**Completed (2026-04-12):**
+- ✅ CombatTracker.tsx: 1,545 → 602 lines (61% reduction, well under 800 target)
+- ✅ ActionPanel.tsx: 644 → 371 lines (42% reduction)
+- ✅ Extracted 5 hooks + 1 component:
+  - `useActionResolution` (437 lines) — injury/damage/effect processing, reveal state updates
+  - `useCombatExport` (272 lines) — export/import (player view, GM-locked, save/load)
+  - `useCombatConditions` (196 lines) — condition CRUD with undo support
+  - `useCombatReinforcements` (190 lines) — reinforcement insertion with turn order modes
+  - `useCombatHistory` (152 lines) — persistent undo/redo with useState (was broken no-op)
+  - `ManeuverWorkflowWidgets` (92 lines) — aim tracking and wait trigger panels
+- ✅ All 93 combat tests pass, zero new tsc errors
+- ✅ Undo/redo fully functional (was previously broken — history state was discarded every render)
+
+**Remaining overlap:** CombatTracker still has inline turn/maneuver/dice logic that overlaps with `useCombatSession`. Unifying these is a future cleanup opportunity but not blocking.
 
 ### 11b: Combat UX Improvements
 - Automated attack/defense roll resolution with margin calculation
