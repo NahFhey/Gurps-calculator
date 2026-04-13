@@ -43,7 +43,8 @@ import type {
   CookingSkill,
   EffectFamilyMap,
   Inventory,
-  Facility
+  Facility,
+  EncounterTemplate
 } from '../types/campaign';
 import type {
   Location,
@@ -220,6 +221,12 @@ type CampaignStoreValue = {
     setCombatItems: (items: Record<Id, CombatItem>) => void;
     addCombatItem: (item: CombatItem) => void;
     setCombatRevealState: (revealState: { version?: number; combatId?: string; byInstanceId: Record<string, unknown> } | null) => void;
+
+    // Encounter Template Actions (Phase 11c)
+    addEncounterTemplate: (template: EncounterTemplate) => void;
+    updateEncounterTemplate: (id: Id, changes: Partial<EncounterTemplate>) => void;
+    removeEncounterTemplate: (id: Id) => void;
+    setEncounterTemplates: (templates: Record<Id, EncounterTemplate>) => void;
 
     // Config Actions
     setKitchens: (kitchens: Record<Id, Kitchen>) => void;
@@ -504,6 +511,16 @@ export function CampaignStoreProvider({
       addCombatItem: (item: CombatItem) => dispatch({ type: 'addCombatItem', payload: item }),
       setCombatRevealState: (revealState: { version?: number; combatId?: string; byInstanceId: Record<string, unknown> } | null) =>
         dispatch({ type: 'setCombatRevealState', payload: revealState }),
+
+      // Encounter Template Actions (Phase 11c)
+      addEncounterTemplate: (template: EncounterTemplate) =>
+        dispatch({ type: 'addEncounterTemplate', payload: template }),
+      updateEncounterTemplate: (id: Id, changes: Partial<EncounterTemplate>) =>
+        dispatch({ type: 'updateEncounterTemplate', payload: { id, changes } }),
+      removeEncounterTemplate: (id: Id) =>
+        dispatch({ type: 'removeEncounterTemplate', payload: id }),
+      setEncounterTemplates: (templates: Record<Id, EncounterTemplate>) =>
+        dispatch({ type: 'setEncounterTemplates', payload: templates }),
 
       // Config Actions
       setKitchens: (kitchens: Record<Id, Kitchen>) => dispatch({ type: 'setKitchens', payload: kitchens }),

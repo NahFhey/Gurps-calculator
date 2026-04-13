@@ -68,6 +68,10 @@ export interface Participant {
   bleeding?: { rate: number; round: number } | null;
   crippled?: string[];
   conditions?: ConditionInstance[];
+  /** Whether this participant was added from the party roster (Phase 11c) */
+  isFromParty?: boolean;
+  /** Link back to the campaign Character.id for post-combat sync (Phase 11c) */
+  partyCharacterId?: string;
 }
 
 export interface HPValue {
@@ -365,4 +369,105 @@ export interface RollLogEntryProps {
 export interface ActionLogEntryProps {
   timestamp: string;
   entry: LogEntry;
+}
+
+// ============================================================================
+// ENCOUNTER TEMPLATE TYPES
+// ============================================================================
+
+export interface EncounterTemplateParticipant {
+  /** Reference to a combat library character ID */
+  libraryId: string;
+  /** Character name (snapshot — used if library char is deleted) */
+  name: string;
+  /** Combat category */
+  category: string;
+  /** Number of this character to spawn */
+  quantity: number;
+}
+
+export interface EncounterTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  participants: EncounterTemplateParticipant[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+// ============================================================================
+// POST-COMBAT SUMMARY TYPES
+// ============================================================================
+
+export interface ParticipantSummary {
+  instanceId: string;
+  name: string;
+  category: string;
+  /** Whether this participant is linked to a party character */
+  isFromParty: boolean;
+  /** Party character ID for sync-back */
+  partyCharacterId?: string;
+  /** HP at combat start */
+  startHP: number;
+  maxHP: number;
+  /** HP at combat end */
+  endHP: number;
+  /** FP at combat start */
+  startFP: number;
+  maxFP: number;
+  /** FP at combat end */
+  endFP: number;
+  /** Final status flags */
+  isStunned: boolean;
+  isUnconscious: boolean;
+  isDead: boolean;
+  /** Active conditions at combat end */
+  conditions: ConditionInstance[];
+  /** Crippled locations */
+  crippled: string[];
+  /** Bleeding state */
+  bleeding: { rate: number; round: number } | null;
+}
+
+export interface HealingEstimate {
+  /** Days to full HP recovery at 1 HP/day with rest */
+  daysToFullHP: number;
+  /** Days to full FP recovery (1 FP per 10 min rest, so usually < 1 day) */
+  daysToFullFP: number;
+  /** HP recoverable by First Aid (typically 1d-2 or 1d-3) */
+  firstAidEstimate: { min: number; max: number };
+}
+
+export interface CombatSummaryData {
+  combatId: string;
+  combatName: string;
+  /** Duration in rounds */
+  rounds: number;
+  /** Duration in real time (ms) */
+  durationMs: number;
+  /** Summary per participant */
+  participants: ParticipantSummary[];
+  /** Healing estimates for party characters */
+  healingEstimates: Record<string, HealingEstimate>;
+}
+
+// ============================================================================
+// LOOT DISTRIBUTION TYPES
+// ============================================================================
+
+export interface LootItem {
+  id: string;
+  name: string;
+  type: 'currency' | 'material' | 'food' | 'equipment' | 'other';
+  quantity: number;
+  /** Value in copper pieces (base currency) */
+  value?: number;
+  notes?: string;
+}
+
+export interface LootDistributionEntry {
+  lootItemId: string;
+  /** Target: 'party' or a character ID */
+  targetId: string;
+  quantity: number;
 }

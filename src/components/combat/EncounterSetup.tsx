@@ -1,9 +1,10 @@
 import { useState, ChangeEvent } from 'react';
-import { Plus, Play, ChevronUp, ChevronDown, X, Users, Lock, AlertTriangle } from 'lucide-react';
+import { Plus, Play, ChevronUp, ChevronDown, X, Users, Lock, AlertTriangle, Save, FolderOpen, Trash2, UserPlus } from 'lucide-react';
 import { useCombatStore } from '../../hooks/useCombatStore';
 import { useCampaignStore } from '../../state/campaignStore';
 import { generateTurnOrder, createNumberedEnemies, generateId, createLogEntry, createTurnLogEntry } from '../../utils/combatHelpers';
 import type { Character as PartyCharacter } from '../../types/campaign';
+import type { EncounterTemplate, EncounterTemplateParticipant } from '../../types/combatTracker';
 import { DEFAULT_HIT_LOCATION_PROFILE } from '../../types/characterSheet';
 import { COMBAT_CATEGORIES } from '../../constants';
 import { ConfirmDialog, useConfirmDialog, useToast } from '../ui';
@@ -112,7 +113,10 @@ export default function EncounterSetup() {
   const {
     combatCharacters,
     partyCharacters,
-    saveCombatActive
+    saveCombatActive,
+    encounterTemplates,
+    addEncounterTemplate,
+    removeEncounterTemplate
   } = useCombatStore();
 
   // Access GM mode from campaign store
@@ -124,8 +128,11 @@ export default function EncounterSetup() {
   const [turnOrder, setTurnOrder] = useState<string[]>([]);
   const [showTurnOrderPreview, setShowTurnOrderPreview] = useState(false);
 
+  const [showTemplatePanel, setShowTemplatePanel] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+
   // Toast notifications
-  const { warning: showWarning } = useToast();
+  const { warning: showWarning, success: showSuccess } = useToast();
 
   // Confirm dialog for clearing
   const clearDialog = useConfirmDialog({
@@ -148,6 +155,90 @@ export default function EncounterSetup() {
   // Check if a party character is already in the encounter
   const isPartyCharInEncounter = (partyCharId: string) => {
     return participants.some(p => p.partyCharacterId === partyCharId);
+  };
+
+  // Add all party characters at once
+  const handleAddAllParty = () => {
+    const toAdd = partyCharsForCombat.filter(
+      c => !isPartyCharInEncounter(c.partyCharacterId || c.id)
+    );
+    if (toAdd.length === 0) {
+      showWarning('All party characters are already in the encounter');
+      return;
+    }
+    for (const char of toAdd) {
+      addCharacter(char, 1);
+    }
+    showSuccess(`Added ${toAdd.length} party character${toAdd.length !== 1 ? 's' : ''}`);
+  };
+
+  // Save current encounter as a template
+  const handleSaveTemplate = () => {
+    if (!templateName.trim()) {
+      showWarning('Enter a template name');
+      return;
+    }
+    if (participants.length === 0) {
+      showWarning('Add participants before saving a template');
+      return;
+    }
+
+    // Build template from non-party participants (party chars are added separately)
+    const templateParticipants: EncounterTemplateParticipant[] = participants
+      .filter(p => !p.isFromParty)
+      .map(p => ({
+        libraryId: p.libraryId || p.id,
+        name: p.name,
+        category: p.category,
+        quantity: 1
+      }));
+
+    // Collapse duplicates by libraryId
+    const collapsed: Record<string, EncounterTemplateParticipant> = {};
+    for (const tp of templateParticipants) {
+      const key = tp.libraryId;
+      if (collapsed[key]) {
+        collapsed[key].quantity += 1;
+      } else {
+        collapsed[key] = { ...tp };
+      }
+    }
+
+    const template: EncounterTemplate = {
+      id: generateId(),
+      name: templateName.trim(),
+      description: encounterName || undefined,
+      participants: Object.values(collapsed),
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+
+    addEncounterTemplate(template);
+    setTemplateName('');
+    showSuccess(`Template "${template.name}" saved`);
+  };
+
+  // Load a template into the encounter
+  const handleLoadTemplate = (template: EncounterTemplate) => {
+    for (const tp of template.participants) {
+      // Try to find the character in the combat library
+      const libChar = characters.find(c => c.id === tp.libraryId);
+      if (libChar) {
+        addCharacter(libChar, tp.quantity);
+      } else {
+        // Library char was deleted — show warning
+        showWarning(`Character "${tp.name}" not found in library, skipped`);
+      }
+    }
+    if (template.description && !encounterName) {
+      setEncounterName(template.description);
+    }
+    showSuccess(`Loaded template "${template.name}"`);
+  };
+
+  // Delete a template
+  const handleDeleteTemplate = (id: string) => {
+    removeEncounterTemplate(id);
   };
 
   // Update participant category (for GM override)
@@ -287,6 +378,13 @@ export default function EncounterSetup() {
         <h2 className="text-2xl font-bold">Encounter Setup</h2>
         <div className="flex gap-2">
           <button
+            onClick={() => setShowTemplatePanel(!showTemplatePanel)}
+            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm"
+          >
+            <FolderOpen size={16} />
+            Templates
+          </button>
+          <button
             onClick={handleClear}
             className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded"
             disabled={participants.length === 0}
@@ -295,6 +393,67 @@ export default function EncounterSetup() {
           </button>
         </div>
       </div>
+
+      {/* Encounter Templates Panel */}
+      {showTemplatePanel && (
+        <div className="bg-gray-800 rounded-lg p-4 border border-blue-600/50 space-y-3">
+          <h3 className="font-semibold text-blue-300">Encounter Templates</h3>
+
+          {/* Save current encounter */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={templateName}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setTemplateName(e.target.value)}
+              placeholder="Template name..."
+              className="flex-1 px-3 py-2 bg-gray-700 rounded text-sm"
+              onKeyDown={e => e.key === 'Enter' && handleSaveTemplate()}
+            />
+            <button
+              onClick={handleSaveTemplate}
+              disabled={!templateName.trim() || participants.length === 0}
+              className="flex items-center gap-1 px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded text-sm transition-colors"
+            >
+              <Save size={14} />
+              Save
+            </button>
+          </div>
+
+          {/* Template list */}
+          {Object.keys(encounterTemplates).length > 0 ? (
+            <div className="space-y-2">
+              {Object.values(encounterTemplates).map(t => (
+                <div key={t.id} className="flex items-center gap-2 bg-gray-700 rounded p-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm truncate">{t.name}</div>
+                    <div className="text-xs text-gray-400">
+                      {t.participants.reduce((sum, p) => sum + p.quantity, 0)} combatants
+                      {t.description && ` — ${t.description}`}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleLoadTemplate(t)}
+                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs transition-colors"
+                  >
+                    Load
+                  </button>
+                  <button
+                    onClick={() => handleDeleteTemplate(t.id)}
+                    className="p-1 text-red-400 hover:bg-red-900/30 rounded transition-colors"
+                    title="Delete template"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-sm text-gray-500">
+              No saved templates. Build an encounter and save it as a template.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Encounter Name */}
       <div>
@@ -314,10 +473,20 @@ export default function EncounterSetup() {
           {/* Party Characters Section */}
           {partyCharsForCombat.length > 0 && (
             <>
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Users size={20} className="text-purple-400" />
-                Party Characters
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Users size={20} className="text-purple-400" />
+                  Party Characters
+                </h3>
+                <button
+                  onClick={handleAddAllParty}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 rounded text-sm font-medium transition-colors"
+                  title="Add all party characters to encounter"
+                >
+                  <UserPlus size={14} />
+                  Add All
+                </button>
+              </div>
               <div className="bg-gray-800 rounded p-4 border-2 border-purple-600/50">
                 <div className="space-y-2">
                   {partyCharsForCombat.map(char => {

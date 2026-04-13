@@ -697,6 +697,8 @@ export interface CombatItem {
   quantity: number;
 }
 
+export { type EncounterTemplate } from './combatTracker';
+
 // ============================================================================
 // CONFIG SYSTEM
 // ============================================================================

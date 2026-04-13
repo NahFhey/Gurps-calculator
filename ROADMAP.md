@@ -162,13 +162,19 @@
 - ✅ Drag-and-drop participant reordering (`@dnd-kit/core` + `@dnd-kit/sortable`) — horizontal drag in InitiativeTimeline, auto-tracks currentTurnIndex, full undo/redo via existing combatActions infrastructure
 - ✅ Unit tests for new 11b components — InitiativeTimeline (9 tests), QuickManeuverBar (11 tests), ConditionBadge (22 tests)
 
-### 11c: Combat-Party Integration
-- Seamless character flow between party roster and combat encounters
-- Pre-built encounter templates (save/load enemy groups)
-- Post-combat injury summary and healing time calculation
-- Loot/reward distribution after encounter resolution
-
-**Estimated effort:** 3-4 sessions
+### 11c: Combat-Party Integration ✅ COMPLETE
+**Completed (2026-04-12):**
+- ✅ Seamless party→combat flow: "Add All Party" button in EncounterSetup adds all party characters in one click
+- ✅ Encounter templates: save/load enemy groups from campaign store with full CRUD (save, load, delete)
+- ✅ Post-combat summary: auto HP/FP sync-back to party characters' gcsData.pools, participant status review, expandable detail cards with HP/FP bars, status badges, condition lists
+- ✅ Healing time estimates: GURPS B424-based natural recovery (1 HP/day), First Aid estimate (1d-2), FP recovery (10 min/FP)
+- ✅ Loot distribution: add items (currency/material/food/equipment/other), assign to party pool or individual characters, value tracking, distribution confirmation
+- ✅ Post-combat flow: End Combat → Summary → Loot → Done (or skip loot); combat stays active in store until flow completes
+- ✅ Unit tests: 9 tests for buildCombatSummary (healing estimates, status flags, multi-party, edge cases)
+- **New types:** EncounterTemplate, EncounterTemplateParticipant, ParticipantSummary, HealingEstimate, CombatSummaryData, LootItem, LootDistributionEntry
+- **New components:** PostCombatSummary.tsx, LootDistribution.tsx
+- **Modified:** CombatTracker.tsx (post-combat flow), EncounterSetup.tsx (Add All Party + templates), useCombatStore.ts (templates + party sync), combatTracker.ts (types), combatActions.ts + combatReducer.ts (template CRUD)
+- **Deferred:** Full inventory integration for loot (Phase 15 — currently logs distribution, doesn't modify inventory entities)
 
 ---
 

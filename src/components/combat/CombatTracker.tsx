@@ -6,6 +6,8 @@ import { useCombatConditions } from '../../hooks/useCombatConditions';
 import { useCombatReinforcements } from '../../hooks/useCombatReinforcements';
 import { useCombatHistory } from '../../hooks/useCombatHistory';
 import { ConfirmDialog, useConfirmDialog } from '../ui';
+import PostCombatSummary from './PostCombatSummary';
+import LootDistribution from './LootDistribution';
 import {
   createResourceLogEntry,
   createTurnLogEntry,
@@ -74,6 +76,11 @@ export default function CombatTracker() {
     combatReveal,
     saveCombatReveal,
   } = useCombatStore();
+
+  // Post-combat flow state (Phase 11c)
+  type PostCombatPhase = 'active' | 'summary' | 'loot';
+  const [postCombatPhase, setPostCombatPhase] = useState<PostCombatPhase>('active');
+  const [endedCombatSnapshot, setEndedCombatSnapshot] = useState<CombatState | null>(null);
 
   // Local UI state
   const [noteText, setNoteText] = useState('');
@@ -514,10 +521,48 @@ export default function CombatTracker() {
       endTime: Date.now(),
       log: [...combat.log, endLogEntry],
     };
+
+    // Save to history
     const newHistory = [endedCombat, ...(combatHistory as unknown as CombatState[])].slice(0, MAX_COMBAT_HISTORY) as any;
     saveCombatHistory(newHistory);
+
+    // Enter post-combat flow — keep combat active in store until flow completes
+    // so CombatTab continues to render CombatTracker
+    setEndedCombatSnapshot(endedCombat);
+    setPostCombatPhase('summary');
+    // Note: we do NOT call saveCombatActive(null) yet — that happens when the flow completes
+  };
+
+  /** Finalize post-combat flow and return to normal view */
+  const handlePostCombatComplete = () => {
+    setPostCombatPhase('active');
+    setEndedCombatSnapshot(null);
     saveCombatActive(null);
   };
+
+  // --------------------------------------------------------------------------
+  // Post-combat flow renders (Phase 11c)
+  // --------------------------------------------------------------------------
+
+  if (postCombatPhase === 'summary' && endedCombatSnapshot) {
+    return (
+      <div className="py-6">
+        <PostCombatSummary
+          combat={endedCombatSnapshot}
+          onComplete={handlePostCombatComplete}
+          onProceedToLoot={() => setPostCombatPhase('loot')}
+        />
+      </div>
+    );
+  }
+
+  if (postCombatPhase === 'loot' && endedCombatSnapshot) {
+    return (
+      <div className="py-6">
+        <LootDistribution onComplete={handlePostCombatComplete} />
+      </div>
+    );
+  }
 
   // --------------------------------------------------------------------------
   // Render

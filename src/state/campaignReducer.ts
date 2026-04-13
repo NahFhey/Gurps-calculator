@@ -149,6 +149,7 @@ export type CampaignState = {
     combatItems: Record<Id, CombatItem>;
     combatHistory: CombatSession[];
     combatTombstones: CombatCharacter[];
+    encounterTemplates: Record<Id, import('../types/combatTracker').EncounterTemplate>;
 
     // Config/Facilities
     kitchens: Record<Id, Kitchen>;
@@ -383,6 +384,7 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
     combatItems: {},
     combatHistory: [],
     combatTombstones: [],
+    encounterTemplates: {},
 
     // Config/Facilities
     kitchens: {
@@ -619,6 +621,11 @@ export type CampaignAction =
   | { type: 'addCombatItem'; payload: CombatItem }
   // Combat Reveal State action (Phase 5)
   | { type: 'setCombatRevealState'; payload: { version?: number; combatId?: string; byInstanceId: Record<string, unknown> } | null }
+  // Encounter template actions (Phase 11c)
+  | { type: 'addEncounterTemplate'; payload: import('../types/combatTracker').EncounterTemplate }
+  | { type: 'updateEncounterTemplate'; payload: { id: Id; changes: Partial<import('../types/combatTracker').EncounterTemplate> } }
+  | { type: 'removeEncounterTemplate'; payload: Id }
+  | { type: 'setEncounterTemplates'; payload: Record<Id, import('../types/combatTracker').EncounterTemplate> }
   // Kitchen actions
   | { type: 'setKitchens'; payload: Record<Id, Kitchen> }
   | { type: 'addKitchen'; payload: Kitchen }

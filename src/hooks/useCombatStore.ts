@@ -8,7 +8,7 @@
 import { useMemo, useRef, useEffect } from 'react';
 import { useCampaignStore } from '../state/campaignStore';
 import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
-import type { CombatCharacter, CombatSession, CombatItem, Character } from '../types/campaign';
+import type { CombatCharacter, CombatSession, CombatItem, Character, EncounterTemplate } from '../types/campaign';
 
 /**
  * Hook to access combat state and actions from the campaign store.
@@ -57,6 +57,9 @@ export function useCombatStore() {
 
       /** Combat items inventory as array */
       combatItems,
+
+      /** Encounter templates (Phase 11c) */
+      encounterTemplates: (state.entities.encounterTemplates || {}) as Record<string, EncounterTemplate>,
 
       // ====================================================================
       // ACTIONS
@@ -126,6 +129,26 @@ export function useCombatStore() {
        */
       saveCombatReveal: (revealState: { version?: number; combatId?: string; byInstanceId: Record<string, unknown> } | null) => {
         actions.setCombatRevealState(revealState);
+      },
+
+      /**
+       * Encounter template CRUD (Phase 11c)
+       */
+      addEncounterTemplate: (template: EncounterTemplate) => {
+        actions.addEncounterTemplate(template);
+      },
+      updateEncounterTemplate: (id: string, changes: Partial<EncounterTemplate>) => {
+        actions.updateEncounterTemplate(id, changes);
+      },
+      removeEncounterTemplate: (id: string) => {
+        actions.removeEncounterTemplate(id);
+      },
+
+      /**
+       * Update a party character (for post-combat sync-back).
+       */
+      updatePartyCharacter: (id: string, changes: Partial<Character>) => {
+        actions.updateCharacter(id, changes);
       }
     };
   }, [
@@ -137,6 +160,7 @@ export function useCombatStore() {
     state.combat.rulesPreset,
     state.combat.revealState,
     state.entities.combatItems,
+    state.entities.encounterTemplates,
     actions
   ]);
 }
