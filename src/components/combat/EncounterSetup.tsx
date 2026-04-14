@@ -6,6 +6,7 @@ import { generateTurnOrder, createNumberedEnemies, generateId, createLogEntry, c
 import type { Character as PartyCharacter } from '../../types/campaign';
 import type { EncounterTemplate, EncounterTemplateParticipant } from '../../types/combatTracker';
 import { DEFAULT_HIT_LOCATION_PROFILE } from '../../types/characterSheet';
+import { calculateCharacterEncumbrance, calculateLocationDR } from '../../utils/encumbrance';
 import { COMBAT_CATEGORIES } from '../../constants';
 import { ConfirmDialog, useConfirmDialog, useToast } from '../ui';
 
@@ -40,6 +41,11 @@ interface Character {
   // Party character integration
   isFromParty?: boolean;
   partyCharacterId?: string;
+  // Phase 12a: images and encumbrance
+  tokenImage?: string;
+  armorByLocation?: Array<{ location: string; dr: number }>;
+  encumbranceDodge?: number;
+  encumbranceMove?: number;
 }
 
 /**
@@ -50,16 +56,37 @@ function partyCharacterToCombat(partyChar: PartyCharacter): Character {
   const attrs = gcs?.attributes || { ST: 10, DX: 10, IQ: 10, HT: 10 };
   const pools = gcs?.pools || { HP: { current: 10, max: 10 }, FP: { current: 10, max: 10 } };
   const secondary = gcs?.secondaryAttributes;
+  const equipment = gcs?.equipment || [];
 
   // Calculate derived stats
   const basicSpeed = secondary?.basicSpeed?.value ?? (attrs.DX + attrs.HT) / 4;
   const basicMove = secondary?.basicMove?.value ?? Math.floor(basicSpeed);
-  const dodge = Math.floor(basicSpeed) + 3;
+  const baseDodge = Math.floor(basicSpeed) + 3;
+
+  // Phase 12a: Calculate encumbrance-adjusted move and dodge
+  let adjustedMove = basicMove;
+  let adjustedDodge = baseDodge;
+  let armorByLocation: Array<{ location: string; dr: number }> | undefined;
+
+  if (secondary) {
+    const encumbrance = calculateCharacterEncumbrance(attrs, secondary, equipment);
+    adjustedMove = encumbrance.adjustedMove;
+    adjustedDodge = encumbrance.adjustedDodge;
+  }
+
+  // Phase 12a: Calculate per-location DR from equipped armor
+  const locationDR = calculateLocationDR(equipment);
+  if (locationDR.length > 0) {
+    armorByLocation = locationDR.map(({ location, dr }) => ({ location, dr }));
+  }
+
+  // Phase 12a: Token image for initiative timeline
+  const tokenImage = partyChar.images?.token;
 
   return {
     id: partyChar.id,
     name: partyChar.name,
-    category: 'player', // Party characters are always players
+    category: 'player',
     st: attrs.ST,
     dx: attrs.DX,
     iq: attrs.IQ,
@@ -68,8 +95,8 @@ function partyCharacterToCombat(partyChar: PartyCharacter): Character {
     fp: pools.FP.max,
     mp: 0,
     basicSpeed,
-    basicMove,
-    dodge,
+    basicMove: adjustedMove,
+    dodge: adjustedDodge,
     parry: 0,
     block: 0,
     dr: 0,
@@ -77,7 +104,11 @@ function partyCharacterToCombat(partyChar: PartyCharacter): Character {
     attacks: [],
     notes: gcs?.notes || '',
     isFromParty: true,
-    partyCharacterId: partyChar.id
+    partyCharacterId: partyChar.id,
+    tokenImage,
+    armorByLocation,
+    encumbranceDodge: adjustedDodge !== baseDodge ? adjustedDodge : undefined,
+    encumbranceMove: adjustedMove !== basicMove ? adjustedMove : undefined,
   };
 }
 

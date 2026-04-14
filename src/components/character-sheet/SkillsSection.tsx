@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
-import type { Skill, SkillAttribute, PrimaryAttributes, SecondaryAttributes } from '../../types/characterSheet';
+import type { Skill, SkillAttribute, SkillDifficulty, PrimaryAttributes, SecondaryAttributes } from '../../types/characterSheet';
+import { calculateSkillLevel } from '../../types/characterSheet';
 
 interface SkillsSectionProps {
   skills: Skill[];
@@ -10,10 +11,25 @@ interface SkillsSectionProps {
   onChange: (skills: Skill[]) => void;
 }
 
-type SortField = 'name' | 'attribute' | 'level' | 'points';
+type SortField = 'name' | 'attribute' | 'level' | 'points' | 'difficulty';
 type SortDir = 'asc' | 'desc';
 
 const SKILL_ATTRIBUTES: SkillAttribute[] = ['ST', 'DX', 'IQ', 'HT', 'Will', 'Per'];
+const SKILL_DIFFICULTIES: SkillDifficulty[] = ['E', 'A', 'H', 'VH'];
+
+const DIFFICULTY_LABELS: Record<SkillDifficulty, string> = {
+  'E': 'Easy',
+  'A': 'Average',
+  'H': 'Hard',
+  'VH': 'Very Hard',
+};
+
+const DIFFICULTY_COLORS: Record<SkillDifficulty, string> = {
+  'E': 'text-green-400',
+  'A': 'text-yellow-400',
+  'H': 'text-orange-400',
+  'VH': 'text-red-400',
+};
 
 export function SkillsSection({
   skills,
@@ -55,18 +71,24 @@ export function SkillsSection({
       case 'points':
         cmp = a.points - b.points;
         break;
+      case 'difficulty':
+        cmp = (a.difficulty || 'A').localeCompare(b.difficulty || 'A');
+        break;
     }
     return sortDir === 'asc' ? cmp : -cmp;
   });
 
   const handleAdd = () => {
+    const defaultDifficulty: SkillDifficulty = 'A';
+    const attrValue = primaryAttributes.IQ;
     const newSkill: Skill = {
       id: `skill-${Date.now()}`,
       name: '',
       attribute: 'IQ',
-      relativeLevel: 0,
+      difficulty: defaultDifficulty,
+      relativeLevel: -1, // A difficulty, 1pt = attr-1
       points: 1,
-      level: primaryAttributes.IQ,
+      level: calculateSkillLevel(attrValue, defaultDifficulty, 1),
     };
     onChange([...skills, newSkill]);
   };
@@ -80,9 +102,22 @@ export function SkillsSection({
       skills.map((s) => {
         if (s.id !== id) return s;
         const updated = { ...s, ...updates };
+        const difficulty = updated.difficulty || 'A';
 
-        // Recalculate level if attribute or relative level changed
-        if (updates.attribute !== undefined || updates.relativeLevel !== undefined) {
+        // Recalculate level from points and difficulty when relevant fields change
+        if (
+          updates.attribute !== undefined ||
+          updates.points !== undefined ||
+          updates.difficulty !== undefined
+        ) {
+          const attrValue = getAttributeValue(updated.attribute);
+          updated.level = calculateSkillLevel(attrValue, difficulty, updated.points);
+          // Update relative level to match
+          updated.relativeLevel = updated.level - attrValue;
+        }
+
+        // If relative level is directly changed (manual override), recalculate level
+        if (updates.relativeLevel !== undefined && updates.points === undefined && updates.difficulty === undefined) {
           const attrValue = getAttributeValue(updated.attribute);
           updated.level = attrValue + updated.relativeLevel;
         }
@@ -137,6 +172,14 @@ export function SkillsSection({
                 >
                   <div className="flex items-center gap-1">
                     Attr <SortIcon field="attribute" />
+                  </div>
+                </th>
+                <th
+                  className="pb-2 cursor-pointer hover:text-gray-200 w-16"
+                  onClick={() => handleSort('difficulty')}
+                >
+                  <div className="flex items-center gap-1">
+                    Diff <SortIcon field="difficulty" />
                   </div>
                 </th>
                 <th className="pb-2 w-24">Rel. Lvl</th>
@@ -203,6 +246,23 @@ export function SkillsSection({
                       </select>
                     ) : (
                       <span className="text-gray-400">{skill.attribute}</span>
+                    )}
+                  </td>
+                  <td className="py-1.5">
+                    {editMode ? (
+                      <select
+                        value={skill.difficulty || 'A'}
+                        onChange={(e) => handleChange(skill.id, { difficulty: e.target.value as SkillDifficulty })}
+                        className="bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-gray-100"
+                      >
+                        {SKILL_DIFFICULTIES.map((d) => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className={`${DIFFICULTY_COLORS[skill.difficulty || 'A']}`} title={DIFFICULTY_LABELS[skill.difficulty || 'A']}>
+                        {skill.difficulty || 'A'}
+                      </span>
                     )}
                   </td>
                   <td className="py-1.5">

@@ -182,12 +182,38 @@
 
 **Goal:** Richer character sheets that cover more of GURPS character building.
 
-### 12a: Character Sheet Enhancement
-- Skill advancement tracking (points spent, progression history)
-- Advantage/disadvantage management with point costs
-- Equipment encumbrance calculation with move/dodge impact
-- Spell management improvements (SpellsSection already at 332 lines — may need decomposition)
-- Character portrait/token support
+### 12a: Character Sheet Enhancement ✅ COMPLETE
+**Completed (2026-04-14):**
+- ✅ **Encumbrance system** (GURPS B17): Basic Lift calculation, 5 encumbrance levels with weight thresholds, Move/Dodge penalties, progress bar visualization. `EncumbranceSection` component with per-level threshold display.
+- ✅ **Equipment overhaul**: Equipped/unequipped toggle on every item, equipment categories (weapon/armor/shield/ammo/general), expandable detail rows with weapon stats (damage/reach), armor stats (DR + hit location coverage), shield stats (DB), notes and reference fields. Equipped weight vs total weight tracking.
+- ✅ **Per-location DR**: Armor items specify which hit locations they cover (multi-select). `calculateLocationDR()` stacks DR from multiple armor pieces. Displayed in EncumbranceSection under "Armor by Location".
+- ✅ **Combat integration**: Party characters added to combat now carry encumbrance-adjusted Move/Dodge, per-location DR array, and token images. `partyCharacterToCombat()` calls encumbrance and DR calculations.
+- ✅ **Skill calculation fix**: `calculateSkillLevel` now matches GURPS B170 progression (E/A/H/VH difficulty offsets + correct point-to-level curve). Added `calculateRelativeLevel()` and `calculateSkillPointCost()` utilities. Difficulty column added to Skills table with color-coded display and edit support.
+- ✅ **Skill advancement history**: `SkillHistorySection` component with session-labeled entries, point/level change tracking, "Record Advancement" form with live preview, newest-first chronological display.
+- ✅ **Character portraits/tokens**: `CharacterImages` type with portrait (256px) and token (64px) images stored as base64 data URLs. Upload UI with auto-resize. Portrait displayed in character sheet header, token displayed in InitiativeTimeline (replaces initials when available).
+- ✅ **40 new unit tests**: 28 encumbrance tests (Basic Lift, thresholds, levels, carried weight, full calculation, per-location DR, character-level convenience) + 12 skill calculation tests (all difficulty progressions, inverse cost calculation, derived attributes)
+
+**Deferred:**
+- SpellsSection decomposition (332 lines — functional, not yet blocking)
+- Advantage/disadvantage point cost enforcement (already has CRUD + point display; enforcement deferred)
+
+**New files:**
+- `src/utils/encumbrance.ts` — encumbrance + per-location DR calculation
+- `src/components/character-sheet/EncumbranceSection.tsx` — encumbrance display
+- `src/components/character-sheet/PortraitSection.tsx` — image upload/display
+- `src/components/character-sheet/SkillHistorySection.tsx` — advancement log
+- `src/utils/__tests__/encumbrance.test.ts` — 28 tests
+- `src/types/__tests__/characterSheet.test.ts` — 12 tests
+
+**Modified:**
+- `src/types/characterSheet.ts` — added encumbrance types, equipment categories, LocationDR, SkillAdvancementEntry, CharacterImages, fixed calculateSkillLevel
+- `src/types/campaign.ts` — added `images?: CharacterImages` to Character
+- `src/types/combatTracker.ts` — added tokenImage, armorByLocation, encumbranceDodge/Move to Participant
+- `src/components/character-sheet/CharacterSheet.tsx` — portrait header, EncumbranceSection, SkillHistorySection, image draft state
+- `src/components/character-sheet/EquipmentSection.tsx` — equipped toggle, categories, expandable detail rows
+- `src/components/character-sheet/SkillsSection.tsx` — difficulty column, B170-accurate calculations
+- `src/components/combat/EncounterSetup.tsx` — encumbrance/DR/token in partyCharacterToCombat
+- `src/components/combat/views/InitiativeTimeline.tsx` — token image in avatar circle
 
 ### 12b: GCS Import Improvements
 - Broader GCS format support (validate against real exports)

@@ -174,8 +174,38 @@ export interface Spell {
 }
 
 // ============================================================================
+// ENCUMBRANCE TYPES (GURPS B17)
+// ============================================================================
+
+/**
+ * GURPS encumbrance levels (B17).
+ * Each level has a weight threshold (multiple of Basic Lift) and
+ * applies penalties to Move and Dodge.
+ */
+export type EncumbranceLevel = 0 | 1 | 2 | 3 | 4;
+
+export interface EncumbranceLevelInfo {
+  level: EncumbranceLevel;
+  label: string;             // "None", "Light", "Medium", "Heavy", "X-Heavy"
+  maxWeight: number;         // In lbs — threshold for this level
+  movePenalty: number;       // Multiplier applied to Basic Move (1, 0.8, 0.6, 0.4, 0.2)
+  dodgePenalty: number;      // Subtracted from Dodge (0, 1, 2, 3, 4)
+}
+
+export interface EncumbranceState {
+  basicLift: number;         // ST×ST/5 in lbs
+  carriedWeight: number;     // Total weight of equipped items
+  level: EncumbranceLevel;
+  adjustedMove: number;      // Basic Move × movePenalty, floored
+  adjustedDodge: number;     // Dodge - dodgePenalty
+  thresholds: EncumbranceLevelInfo[];
+}
+
+// ============================================================================
 // EQUIPMENT TYPES
 // ============================================================================
+
+export type EquipmentCategory = 'weapon' | 'armor' | 'shield' | 'ammo' | 'general';
 
 export interface Equipment {
   id: Id;
@@ -185,13 +215,59 @@ export interface Equipment {
   cost: number;               // Cost per item in $
   equipped?: boolean;
   location?: string;          // e.g., "Belt", "Back", "Torso"
+  category?: EquipmentCategory;
   notes?: string;
   reference?: string;
 
-  // Optional weapon/armor stats
+  // Weapon stats
   damage?: string;
-  dr?: number;
   reach?: string;
+  rangeHalf?: number;         // Half-damage range
+  rangeFull?: number;         // Full-damage range
+
+  // Armor stats
+  dr?: number;                // Damage Resistance
+  drLocations?: string[];     // Hit locations this armor covers, e.g. ["torso", "groin"]
+
+  // Shield stats
+  db?: number;                // Defense Bonus
+}
+
+// ============================================================================
+// PER-LOCATION DR (derived from equipped armor)
+// ============================================================================
+
+export interface LocationDR {
+  location: string;           // Hit location key, e.g. "torso", "skull"
+  dr: number;                 // Total DR from all equipped armor covering this location
+  sources: string[];          // Equipment names contributing DR
+}
+
+// ============================================================================
+// SKILL ADVANCEMENT HISTORY
+// ============================================================================
+
+export interface SkillAdvancementEntry {
+  id: Id;
+  skillId: Id;               // References Skill.id
+  skillName: string;         // Denormalized for history readability
+  date: string;              // ISO date string (when the advancement was recorded)
+  sessionLabel?: string;     // e.g., "Session 12", "Downtime after Arc 3"
+  pointsAdded: number;       // Points spent in this advancement
+  previousPoints: number;    // Points before advancement
+  newPoints: number;         // Points after advancement
+  previousLevel: number;     // Skill level before
+  newLevel: number;          // Skill level after
+  notes?: string;            // Optional GM notes
+}
+
+// ============================================================================
+// PORTRAIT / TOKEN IMAGES
+// ============================================================================
+
+export interface CharacterImages {
+  portrait?: string;         // Base64 data URL or relative path for character portrait
+  token?: string;            // Base64 data URL or relative path for combat token (smaller, round)
 }
 
 // ============================================================================
@@ -245,6 +321,9 @@ export interface GCSCharacterData {
   // Equipment
   equipment: Equipment[];
   otherEquipment: string;
+
+  // Skill Advancement History
+  skillHistory?: SkillAdvancementEntry[];
 
   // Notes
   notes: string;
@@ -325,34 +404,72 @@ export function calculateSwingDamage(st: number): string {
 }
 
 /**
- * Calculate skill level from attribute, difficulty, and points
+ * Calculate skill level from attribute, difficulty, and points (GURPS B170).
+ *
+ * Point costs by difficulty:
+ *   Easy:     1pt=+0, 2pt=+1, 4pt=+2, then +4pt per additional +1
+ *   Average:  1pt=-1, 2pt=+0, 4pt=+1, 8pt=+2, then +4pt per additional +1
+ *   Hard:     1pt=-2, 2pt=-1, 4pt=+0, 8pt=+1, then +4pt per additional +1
+ *   VH:       1pt=-3, 2pt=-2, 4pt=-1, 8pt=+0, then +4pt per additional +1
+ *
+ * Returns the relative level (bonus/penalty from attribute).
+ */
+export function calculateRelativeLevel(
+  difficulty: SkillDifficulty,
+  points: number
+): number {
+  if (points <= 0) return -10; // Effectively "no skill"
+
+  // Difficulty offset: E=0, A=-1, H=-2, VH=-3
+  const diffOffset: Record<SkillDifficulty, number> = {
+    'E': 0, 'A': -1, 'H': -2, 'VH': -3,
+  };
+
+  // Base relative level from points (before difficulty offset)
+  // 1pt → Attr+0, 2pt → Attr+1, 4pt → Attr+2, then +4pt per +1
+  let baseRelLevel: number;
+  if (points < 2) {
+    baseRelLevel = 0;
+  } else if (points < 4) {
+    baseRelLevel = 1;
+  } else {
+    // 4pt = +2, then every 4pt after = +1
+    baseRelLevel = 2 + Math.floor((points - 4) / 4);
+  }
+
+  return diffOffset[difficulty] + baseRelLevel;
+}
+
+/**
+ * Calculate skill level from attribute, difficulty, and points (GURPS B170).
  */
 export function calculateSkillLevel(
   attributeValue: number,
   difficulty: SkillDifficulty,
   points: number
 ): number {
-  // Difficulty offsets: E=0, A=-1, H=-2, VH=-3
-  const difficultyOffset: Record<SkillDifficulty, number> = {
-    'E': 0,
-    'A': -1,
-    'H': -2,
-    'VH': -3,
+  return attributeValue + calculateRelativeLevel(difficulty, points);
+}
+
+/**
+ * Calculate the cost in points for a given relative skill level and difficulty.
+ * Inverse of calculateRelativeLevel. Returns minimum points needed.
+ */
+export function calculateSkillPointCost(
+  difficulty: SkillDifficulty,
+  relativeLevel: number
+): number {
+  const diffOffset: Record<SkillDifficulty, number> = {
+    'E': 0, 'A': -1, 'H': -2, 'VH': -3,
   };
 
-  // Points to relative level: 1=0, 2=+1, 4=+2, 8=+3, etc.
-  let relativeLevel = 0;
-  if (points >= 1) relativeLevel = 0;
-  if (points >= 2) relativeLevel = 1;
-  if (points >= 4) relativeLevel = 2;
-  if (points >= 8) relativeLevel = 3;
-  if (points >= 12) relativeLevel = 4;
-  if (points >= 16) relativeLevel = 5;
-  if (points >= 20) relativeLevel = 6;
-  if (points >= 24) relativeLevel = 7;
-  if (points >= 28) relativeLevel = 8;
+  // Remove difficulty offset to get base relative level
+  const baseRelLevel = relativeLevel - diffOffset[difficulty];
 
-  return attributeValue + difficultyOffset[difficulty] + relativeLevel;
+  if (baseRelLevel <= 0) return 1;
+  if (baseRelLevel === 1) return 2;
+  // baseRelLevel >= 2: cost = 4 + (baseRelLevel - 2) × 4
+  return 4 + (baseRelLevel - 2) * 4;
 }
 
 /**

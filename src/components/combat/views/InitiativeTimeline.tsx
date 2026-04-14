@@ -139,21 +139,32 @@ function TokenBase({ participant, isCurrent, isPast, onClick, isDragging, dragHa
         </div>
       )}
 
-      {/* Avatar circle */}
-      <div
-        className={`
-          w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold
-          ${isCurrent ? 'bg-blue-600 text-white' : 'bg-gray-600 text-gray-200'}
-          ${isDead ? 'bg-red-900 text-red-400' : ''}
-          ${isUnconscious && !isDead ? 'bg-yellow-900 text-yellow-400' : ''}
-        `}
-      >
-        {isDead ? (
-          <Skull className="w-4 h-4" />
-        ) : (
-          nameInitials(participant.name)
-        )}
-      </div>
+      {/* Avatar circle — show token image if available */}
+      {participant.tokenImage && !isDead ? (
+        <img
+          src={participant.tokenImage}
+          alt={participant.name}
+          className={`
+            w-8 h-8 rounded-full object-cover
+            ${isUnconscious ? 'opacity-50 grayscale' : ''}
+          `}
+        />
+      ) : (
+        <div
+          className={`
+            w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold
+            ${isCurrent ? 'bg-blue-600 text-white' : 'bg-gray-600 text-gray-200'}
+            ${isDead ? 'bg-red-900 text-red-400' : ''}
+            ${isUnconscious && !isDead ? 'bg-yellow-900 text-yellow-400' : ''}
+          `}
+        >
+          {isDead ? (
+            <Skull className="w-4 h-4" />
+          ) : (
+            nameInitials(participant.name)
+          )}
+        </div>
+      )}
 
       {/* Name */}
       <span className="text-[0.65rem] leading-tight text-center truncate w-full">

@@ -3,7 +3,7 @@
  * This file defines all types needed for the unified CampaignStore
  */
 
-import type { GCSCharacterData } from './characterSheet';
+import type { GCSCharacterData, CharacterImages } from './characterSheet';
 
 export type Id = string;
 
@@ -23,6 +23,9 @@ export interface Character {
 
   // Hit location profile for combat (defaults to 'humanoid')
   hitLocationProfileId?: string;
+
+  // Character portrait and combat token images
+  images?: CharacterImages;
 
   // Full GCS character sheet data (optional for backward compatibility)
   gcsData?: GCSCharacterData;

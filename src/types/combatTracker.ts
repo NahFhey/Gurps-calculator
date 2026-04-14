@@ -72,6 +72,14 @@ export interface Participant {
   isFromParty?: boolean;
   /** Link back to the campaign Character.id for post-combat sync (Phase 11c) */
   partyCharacterId?: string;
+  /** Combat token image (base64 data URL, from Character.images.token) */
+  tokenImage?: string;
+  /** Armor DR by hit location (derived from equipped armor at combat start) */
+  armorByLocation?: Array<{ location: string; dr: number }>;
+  /** Encumbrance-adjusted dodge (overrides dodge field when set) */
+  encumbranceDodge?: number;
+  /** Encumbrance-adjusted move (overrides basicMove when set) */
+  encumbranceMove?: number;
 }
 
 export interface HPValue {

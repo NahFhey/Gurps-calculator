@@ -2,8 +2,9 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { Edit2, Save, X } from 'lucide-react';
 import { useCampaignStore } from '../../state/campaignStore';
 import type { Character } from '../../types/campaign';
-import type { GCSCharacterData } from '../../types/characterSheet';
+import type { GCSCharacterData, CharacterImages } from '../../types/characterSheet';
 import { createDefaultGCSData, syncWorkSkillsFromGCS, DEFAULT_HIT_LOCATION_PROFILE } from '../../types/characterSheet';
+import { PortraitSection } from './PortraitSection';
 import { IdentitySection } from './IdentitySection';
 import { AttributesSection } from './AttributesSection';
 import { SecondaryAttributesSection } from './SecondaryAttributesSection';
@@ -11,7 +12,9 @@ import { PointPoolsSection } from './PointPoolsSection';
 import { TraitsSection } from './TraitsSection';
 import { SkillsSection } from './SkillsSection';
 import { SpellsSection } from './SpellsSection';
+import { SkillHistorySection } from './SkillHistorySection';
 import { EquipmentSection } from './EquipmentSection';
+import { EncumbranceSection } from './EncumbranceSection';
 import { ModifiersSection } from './ModifiersSection';
 import { NotesSection } from './NotesSection';
 
@@ -31,13 +34,17 @@ export function CharacterSheet({ character }: CharacterSheetProps) {
   const [draftHitLocationProfileId, setDraftHitLocationProfileId] = useState(
     character.hitLocationProfileId || DEFAULT_HIT_LOCATION_PROFILE
   );
+  const [draftImages, setDraftImages] = useState<CharacterImages>(
+    character.images || {}
+  );
 
   // Reset draft when character changes
   React.useEffect(() => {
     setDraftName(character.name);
     setDraftGcsData(character.gcsData || createDefaultGCSData());
     setDraftHitLocationProfileId(character.hitLocationProfileId || DEFAULT_HIT_LOCATION_PROFILE);
-  }, [character.id, character.name, character.gcsData, character.hitLocationProfileId]);
+    setDraftImages(character.images || {});
+  }, [character.id, character.name, character.gcsData, character.hitLocationProfileId, character.images]);
 
   const handleSave = useCallback(() => {
     // Sync work.skills from the updated GCS data
@@ -48,24 +55,27 @@ export function CharacterSheet({ character }: CharacterSheetProps) {
       gcsData: draftGcsData,
       st: draftGcsData.attributes.ST,
       hitLocationProfileId: draftHitLocationProfileId,
+      images: draftImages,
       work: {
         ...character.work,
         skills: workSkills,
       },
     });
     setEditMode(false);
-  }, [actions, character.id, character.work, draftName, draftGcsData, draftHitLocationProfileId]);
+  }, [actions, character.id, character.work, draftName, draftGcsData, draftHitLocationProfileId, draftImages]);
 
   const handleCancel = useCallback(() => {
     setDraftName(character.name);
     setDraftGcsData(character.gcsData || createDefaultGCSData());
     setDraftHitLocationProfileId(character.hitLocationProfileId || DEFAULT_HIT_LOCATION_PROFILE);
+    setDraftImages(character.images || {});
     setEditMode(false);
-  }, [character.name, character.gcsData, character.hitLocationProfileId]);
+  }, [character.name, character.gcsData, character.hitLocationProfileId, character.images]);
 
   // GCS data to display (draft when editing, actual when viewing)
   const displayData = editMode ? draftGcsData : (character.gcsData || createDefaultGCSData());
   const displayName = editMode ? draftName : character.name;
+  const displayImages = editMode ? draftImages : (character.images || {});
 
   // Calculate total points
   const totalPoints = useMemo(() => {
@@ -104,49 +114,61 @@ export function CharacterSheet({ character }: CharacterSheetProps) {
 
   return (
     <div className="h-full overflow-y-auto bg-gray-900 p-4">
-      {/* Header with Edit Controls */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          {editMode ? (
-            <input
-              type="text"
-              value={draftName}
-              onChange={(e) => setDraftName(e.target.value)}
-              className="text-2xl font-bold bg-gray-800 border border-gray-600 rounded px-2 py-1 text-gray-100"
-            />
-          ) : (
-            <h1 className="text-2xl font-bold text-gray-100">{displayName}</h1>
-          )}
-          <span className="text-gray-400">({totalPoints} pts)</span>
-        </div>
+      {/* Header with Portrait, Name, and Edit Controls */}
+      <div className="flex items-start gap-4 mb-4">
+        {/* Portrait / Token images */}
+        <PortraitSection
+          images={displayImages}
+          editMode={editMode}
+          onImagesChange={setDraftImages}
+        />
 
-        <div className="flex gap-2">
-          {editMode ? (
-            <>
-              <button
-                onClick={handleSave}
-                className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded"
-              >
-                <Save size={16} />
-                Save
-              </button>
-              <button
-                onClick={handleCancel}
-                className="flex items-center gap-1 px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white rounded"
-              >
-                <X size={16} />
-                Cancel
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setEditMode(true)}
-              className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded"
-            >
-              <Edit2 size={16} />
-              Edit
-            </button>
-          )}
+        {/* Name + Points + Edit buttons */}
+        <div className="flex-1">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {editMode ? (
+                <input
+                  type="text"
+                  value={draftName}
+                  onChange={(e) => setDraftName(e.target.value)}
+                  className="text-2xl font-bold bg-gray-800 border border-gray-600 rounded px-2 py-1 text-gray-100"
+                />
+              ) : (
+                <h1 className="text-2xl font-bold text-gray-100">{displayName}</h1>
+              )}
+              <span className="text-gray-400">({totalPoints} pts)</span>
+            </div>
+
+            <div className="flex gap-2">
+              {editMode ? (
+                <>
+                  <button
+                    onClick={handleSave}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded"
+                  >
+                    <Save size={16} />
+                    Save
+                  </button>
+                  <button
+                    onClick={handleCancel}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white rounded"
+                  >
+                    <X size={16} />
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setEditMode(true)}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded"
+                >
+                  <Edit2 size={16} />
+                  Edit
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -245,6 +267,21 @@ export function CharacterSheet({ character }: CharacterSheetProps) {
           }}
         />
 
+        {/* Skill Advancement History */}
+        <SkillHistorySection
+          skills={displayData.skills}
+          skillHistory={displayData.skillHistory || []}
+          primaryAttributes={displayData.attributes}
+          secondaryAttributes={displayData.secondaryAttributes}
+          editMode={editMode}
+          onHistoryChange={(skillHistory) => {
+            setDraftGcsData((prev) => ({ ...prev, skillHistory }));
+          }}
+          onSkillsChange={(skills) => {
+            setDraftGcsData((prev) => ({ ...prev, skills }));
+          }}
+        />
+
         {/* Spells */}
         <SpellsSection
           spells={displayData.spells}
@@ -255,7 +292,7 @@ export function CharacterSheet({ character }: CharacterSheetProps) {
           }}
         />
 
-        {/* Equipment */}
+        {/* Equipment & Encumbrance */}
         <EquipmentSection
           equipment={displayData.equipment}
           otherEquipment={displayData.otherEquipment}
@@ -266,6 +303,13 @@ export function CharacterSheet({ character }: CharacterSheetProps) {
           onOtherEquipmentChange={(otherEquipment) => {
             setDraftGcsData((prev) => ({ ...prev, otherEquipment }));
           }}
+        />
+
+        {/* Encumbrance (derived from attributes + equipment, read-only) */}
+        <EncumbranceSection
+          attributes={displayData.attributes}
+          secondaryAttributes={displayData.secondaryAttributes}
+          equipment={displayData.equipment}
         />
 
         {/* Notes */}
