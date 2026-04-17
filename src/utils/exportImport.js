@@ -18,8 +18,7 @@ import { encryptJSON, decryptJSON, validateGMLock } from './cryptoLock';
 import {
   CURRENT_SCHEMA_VERSION,
   compareVersions,
-  getMigrationPath,
-  SCHEMA_METADATA
+  getMigrationPath
 } from './schemaVersioning';
 import { migrateData, validateDataForVersion } from './dataMigrations';
 import { logger } from './logger';
@@ -51,8 +50,9 @@ const stripSchemaVersion = (state) => {
   if (!state || typeof state !== 'object') {
     return state;
   }
-  const { schemaVersion, ...rest } = state;
-  return rest;
+  const copy = { ...state };
+  delete copy.schemaVersion;
+  return copy;
 };
 
 /**

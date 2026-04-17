@@ -79,10 +79,10 @@ export function getHPBandText(band) {
  *
  * @param {string} instanceId - The combatant instance ID
  * @param {string} side - The combatant's side ('player', 'ally', 'enemy', 'object')
- * @param {object} participant - The participant object (for object owner detection)
+ * @param {object} _participant - Reserved for backward-compatible callers
  * @returns {object} Default reveal state
  */
-export function createDefaultRevealForInstance(instanceId, side, participant = null) {
+export function createDefaultRevealForInstance(instanceId, side, _participant = null) {
   // Players, allies, and objects: full reveal by default
   // Only enemies have hidden information
   if (side === 'player' || side === 'ally' || side === 'object') {
@@ -141,8 +141,7 @@ export function createInitialRevealState(encounterId, participants) {
     const side = participant.category || participant.side || 'enemy'; // Use category field (category is the actual field used)
     byInstanceId[participant.instanceId] = createDefaultRevealForInstance(
       participant.instanceId,
-      side,
-      participant
+      side
     );
   }
 
@@ -292,8 +291,7 @@ export function syncRevealStateForParticipants(revealState, participants) {
       const side = participant.category || participant.side || 'enemy';
       updated.byInstanceId[participant.instanceId] = createDefaultRevealForInstance(
         participant.instanceId,
-        side,
-        participant
+        side
       );
     }
   }

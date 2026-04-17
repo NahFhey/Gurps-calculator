@@ -231,7 +231,7 @@ describe('helper functions', () => {
 
   describe('edge cases', () => {
     it('should handle very large numbers in toNumberOr', () => {
-      expect(toNumberOr('999999999999999999', 0)).toBe(999999999999999999);
+      expect(toNumberOr('999999999999999999', 0)).toBe(1e18);
     });
 
     it('should handle scientific notation in toNumberOr', () => {

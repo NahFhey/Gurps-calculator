@@ -178,11 +178,11 @@ export function parseGCSText(text) {
  * @param {Array<string>} labels - Possible labels for this stat
  * @returns {number|null} Extracted value or null if not found
  */
-function extractStat(lines, labels) {
+export function extractStat(lines, labels) {
   for (const label of labels) {
     for (const line of lines) {
       // GCS semicolon format: "Label value [cost];"
-      const gcsPattern = new RegExp(`${label}[:\\s]+([\d.]+)(?:\\s*\\[|;)`, 'i');
+      const gcsPattern = new RegExp(`${label}[:\\s]+([\\d.]+)(?:\\s*\\[|;)`, 'i');
       const gcsMatch = line.match(gcsPattern);
       if (gcsMatch) {
         return parseFloat(gcsMatch[1]);

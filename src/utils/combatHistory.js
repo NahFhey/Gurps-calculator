@@ -45,7 +45,8 @@ export function createHistoryState(config = {}) {
  */
 export function createSnapshot(combatState, revealState = null) {
   // Create a shallow copy without history reference
-  const { history, ...snapshot } = combatState;
+  const snapshot = { ...combatState };
+  delete snapshot.history;
 
   // Phase 5: Include reveal state if provided
   if (revealState) {
@@ -221,7 +222,7 @@ export function rebuildState(baseState, historyState, targetCursor, baseRevealSt
     throw new Error('rebuildState requires baseState and historyState');
   }
 
-  const { actions, checkpoints } = historyState;
+  const { actions } = historyState;
 
   // If target is 0, return base state
   if (targetCursor === 0) {

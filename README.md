@@ -98,8 +98,17 @@ npm run dev
 # Build for production
 npm run build
 
+# Run lint across JS and TypeScript
+npm run lint
+
+# Run type checks
+npm run typecheck
+
 # Run tests
 npm test
+
+# Run the standard stabilization pass
+npm run verify
 ```
 
 ## Desktop Build
@@ -155,6 +164,25 @@ Large components follow the "thin router" decomposition pattern:
 - **146 TypeScript files** (.tsx/.ts)
 - **25 legacy JavaScript files** (.jsx) - remaining for migration
 - Full type safety for combat, manager, gathering, and day planner systems
+
+## Development Workflow
+
+When stabilizing a branch or preparing a handoff, use the same quality gates we validated in this session:
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
+npx vitest run
+```
+
+Or run the bundled check:
+
+```bash
+npm run verify
+```
+
+See `docs/guides/STABILIZATION_WORKFLOW.md` for the short retrospective and the recommended cleanup order.
 
 ## Testing
 

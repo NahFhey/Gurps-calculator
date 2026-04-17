@@ -21,6 +21,7 @@ export const COMBAT_RULES_PRESETS = {
  * @returns {number} Shock penalty (negative number, e.g., -4)
  */
 export function calculateShockPenalty(injury, maxHP) {
+  void maxHP;
   // Shock = -1 per full HP of injury, max -4
   const penalty = Math.min(4, Math.floor(injury));
   return -penalty;
@@ -118,7 +119,7 @@ export function isLocationCrippled(location, injury, maxHP) {
 export function generateEffectsPrompts({
   injury,
   injuryResult,
-  currentHP,
+  currentHP: _currentHP,
   newHP,
   maxHP,
   combatRulesPreset = 'standard',

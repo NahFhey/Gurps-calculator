@@ -5,7 +5,7 @@
  * across all supported schema versions.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   CURRENT_SCHEMA_VERSION,
   compareVersions,
@@ -14,9 +14,7 @@ import {
 } from '../schemaVersioning';
 import {
   migrateData,
-  validateDataForVersion,
-  getLastBackup,
-  listBackups
+  validateDataForVersion
 } from '../dataMigrations';
 
 describe('Schema Versioning System', () => {

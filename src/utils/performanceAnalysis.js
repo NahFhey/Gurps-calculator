@@ -1,17 +1,19 @@
 /**
  * @fileoverview Performance analysis and benchmarking utilities
- * 
+ *
  * Provides tools for:
  * - Benchmarking specific operations
  * - Analyzing performance trends
  * - Comparing performance between versions
  * - Generating performance reports
- * 
+ *
  * @module utils/performanceAnalysis
  */
 
 import { performanceMonitor } from './performanceMonitor';
 import { logger } from './logger';
+
+const getPerformanceNow = () => globalThis.performance?.now?.() ?? Date.now();
 
 /**
  * Run a performance benchmark for an operation
@@ -32,13 +34,13 @@ export class PerformanceBenchmark {
     logger.log(`Starting benchmark: ${this.name} (${this.iterations} iterations)`);
 
     for (let i = 0; i < this.iterations; i++) {
-      const start = performance.now();
+      const start = getPerformanceNow();
       try {
         await this.fn();
-        const duration = performance.now() - start;
+        const duration = getPerformanceNow() - start;
         this.results.push({ duration, status: 'success' });
       } catch (error) {
-        const duration = performance.now() - start;
+        const duration = getPerformanceNow() - start;
         this.results.push({ duration, status: 'error', error: error.message });
       }
     }
@@ -87,15 +89,15 @@ export class PerformanceBenchmark {
   print() {
     const stats = this.getStats();
     if (!stats) {
-      console.log('No results available');
+      logger.log('No results available');
       return;
     }
 
-    console.group(`📊 Benchmark: ${stats.name}`);
-    console.table({
-      'Iterations': stats.iterations,
-      'Successful': stats.successful,
-      'Errors': stats.errors,
+    logger.log(`Benchmark: ${stats.name}`);
+    logger.log({
+      Iterations: stats.iterations,
+      Successful: stats.successful,
+      Errors: stats.errors,
       'Min (ms)': stats.duration.min.toFixed(2),
       'Max (ms)': stats.duration.max.toFixed(2),
       'Avg (ms)': stats.duration.avg.toFixed(2),
@@ -104,7 +106,6 @@ export class PerformanceBenchmark {
       'P99 (ms)': stats.duration.p99.toFixed(2),
       'Throughput (ops/sec)': stats.throughput
     });
-    console.groupEnd();
   }
 }
 
@@ -130,7 +131,7 @@ export class BenchmarkComparison {
 
     const avgDiff = stats2.duration.avg - stats1.duration.avg;
     const avgPercent = (avgDiff / stats1.duration.avg) * 100;
-    const throughputDiff = 
+    const throughputDiff =
       parseFloat(stats2.throughput) - parseFloat(stats1.throughput);
     const throughputPercent = (throughputDiff / parseFloat(stats1.throughput)) * 100;
 
@@ -157,25 +158,24 @@ export class BenchmarkComparison {
   print() {
     const comparison = this.getComparison();
     if (!comparison) {
-      console.log('No comparison available');
+      logger.log('No comparison available');
       return;
     }
 
-    console.group(`⚖️ Benchmark Comparison`);
-    console.log(`${comparison.benchmark1} vs ${comparison.benchmark2}`);
-    console.table({
-      'Metric': ['Avg Duration', 'Throughput'],
-      'Difference': [
+    logger.log('Benchmark Comparison');
+    logger.log(`${comparison.benchmark1} vs ${comparison.benchmark2}`);
+    logger.log({
+      Metric: ['Avg Duration', 'Throughput'],
+      Difference: [
         `${comparison.avgDuration.diff}ms (${comparison.avgDuration.percent}%)`,
         `${comparison.throughput.diff} ops/sec (${comparison.throughput.percent}%)`
       ],
-      'Improvement': [
-        comparison.avgDuration.improvement ? '✓' : '✗',
-        comparison.throughput.improvement ? '✓' : '✗'
+      Improvement: [
+        comparison.avgDuration.improvement ? 'yes' : 'no',
+        comparison.throughput.improvement ? 'yes' : 'no'
       ]
     });
-    console.log(`🏆 Winner: ${comparison.winner}`);
-    console.groupEnd();
+    logger.log(`Winner: ${comparison.winner}`);
   }
 }
 
@@ -194,7 +194,6 @@ export class PerformanceTrendAnalysis {
       return null;
     }
 
-    // Group by date
     const byDate = {};
     metrics.forEach(m => {
       if (!byDate[m.date]) {
@@ -203,8 +202,7 @@ export class PerformanceTrendAnalysis {
       byDate[m.date].push(m);
     });
 
-    // Calculate daily stats
-    const dailyStats = Object.entries(byDate).map(([date, dayMetrics]) => {
+    return Object.entries(byDate).map(([date, dayMetrics]) => {
       const durations = dayMetrics.map(m => m.duration);
       return {
         date,
@@ -214,8 +212,6 @@ export class PerformanceTrendAnalysis {
         max: Math.max(...durations).toFixed(2)
       };
     });
-
-    return dailyStats;
   }
 
   /**
@@ -235,17 +231,17 @@ export class PerformanceTrendAnalysis {
     const issues = [];
 
     for (let i = 1; i < dates.length; i++) {
-      const prevAvg = grouped[dates[i - 1]].reduce((sum, m) => sum + m.duration, 0) / 
-                      grouped[dates[i - 1]].length;
-      const currentAvg = grouped[dates[i]].reduce((sum, m) => sum + m.duration, 0) / 
-                         grouped[dates[i]].length;
+      const prevAvg = grouped[dates[i - 1]].reduce((sum, m) => sum + m.duration, 0) /
+        grouped[dates[i - 1]].length;
+      const currentAvg = grouped[dates[i]].reduce((sum, m) => sum + m.duration, 0) /
+        grouped[dates[i]].length;
 
       if (currentAvg > prevAvg * threshold) {
         issues.push({
           date: dates[i],
           previousAvg: prevAvg.toFixed(2),
           currentAvg: currentAvg.toFixed(2),
-          degradation: ((currentAvg / prevAvg - 1) * 100).toFixed(2) + '%'
+          degradation: `${((currentAvg / prevAvg - 1) * 100).toFixed(2)}%`
         });
       }
     }
@@ -267,7 +263,7 @@ export class PerformanceTrendAnalysis {
       byComponent[key].push(m.duration);
     });
 
-    const bottlenecks = Object.entries(byComponent)
+    return Object.entries(byComponent)
       .map(([component, durations]) => ({
         component,
         count: durations.length,
@@ -277,8 +273,6 @@ export class PerformanceTrendAnalysis {
       }))
       .sort((a, b) => parseFloat(b.totalDuration) - parseFloat(a.totalDuration))
       .slice(0, limit);
-
-    return bottlenecks;
   }
 }
 
@@ -293,7 +287,6 @@ export class OptimizationSuggestions {
     const suggestions = [];
     const report = performanceMonitor.getPerformanceReport();
 
-    // Check render performance
     if (report.session.renders?.count > 0) {
       const avgRender = parseFloat(report.session.renders.avg);
       if (avgRender > 16) {
@@ -312,7 +305,6 @@ export class OptimizationSuggestions {
       }
     }
 
-    // Check storage operations
     if (report.session.storageOps?.count > 0) {
       const avgStorage = parseFloat(report.session.storageOps.avg);
       if (avgStorage > 10) {
@@ -331,7 +323,6 @@ export class OptimizationSuggestions {
       }
     }
 
-    // Check memory usage
     if (report.session.memory?.percentUsed > 80) {
       suggestions.push({
         type: 'memory',
@@ -347,7 +338,6 @@ export class OptimizationSuggestions {
       });
     }
 
-    // Check for threshold exceeded
     const exceeded = performanceMonitor.getSlowOperations(20);
     if (exceeded.length > 5) {
       suggestions.push({
@@ -373,21 +363,19 @@ export class OptimizationSuggestions {
     const suggestions = this.generateSuggestions();
 
     if (suggestions.length === 0) {
-      console.log('✓ No performance issues detected');
+      logger.log('No performance issues detected');
       return;
     }
 
-    console.group('💡 Performance Optimization Suggestions');
+    logger.log('Performance Optimization Suggestions');
     suggestions.forEach(s => {
-      console.group(`[${s.severity.toUpperCase()}] ${s.title}`);
-      console.log(s.description);
-      console.log('Suggestions:');
+      logger.log(`[${s.severity.toUpperCase()}] ${s.title}`);
+      logger.log(s.description);
+      logger.log('Suggestions:');
       s.suggestions.forEach(suggestion => {
-        console.log(`  • ${suggestion}`);
+        logger.log(`  - ${suggestion}`);
       });
-      console.groupEnd();
     });
-    console.groupEnd();
   }
 }
 
@@ -463,32 +451,26 @@ export class PerformanceReportGenerator {
   }
 
   /**
-   * Print report to console
+   * Print report to logger
    */
   static printReport() {
     const report = this.generateReport();
 
-    console.group('📈 Performance Report');
-    console.log(`Generated: ${report.generatedAt}`);
-
-    console.group('Session Summary');
-    console.table(report.summary.session);
-    console.groupEnd();
+    logger.log('Performance Report');
+    logger.log(`Generated: ${report.generatedAt}`);
+    logger.log('Session Summary');
+    logger.log(report.summary.session);
 
     if (report.bottlenecks) {
-      console.group('🔴 Top Bottlenecks');
-      console.table(report.bottlenecks);
-      console.groupEnd();
+      logger.log('Top Bottlenecks');
+      logger.log(report.bottlenecks);
     }
 
     if (report.suggestions && report.suggestions.length > 0) {
-      console.group('💡 Optimization Suggestions');
+      logger.log('Optimization Suggestions');
       report.suggestions.forEach(s => {
-        console.log(`[${s.severity}] ${s.title}: ${s.description}`);
+        logger.log(`[${s.severity}] ${s.title}: ${s.description}`);
       });
-      console.groupEnd();
     }
-
-    console.groupEnd();
   }
 }

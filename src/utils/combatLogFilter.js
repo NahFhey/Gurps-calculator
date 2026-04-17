@@ -111,8 +111,6 @@ function filterResourceEntry(entry, actorReveal, actor) {
 
   // Otherwise, hide exact numbers
   const name = getDisplayName(actor, actorReveal);
-  const resource = entry.text.match(/HP|FP|MP/)?.[0] || 'resource';
-
   let change = '';
   if (entry.hpDelta && entry.hpDelta < 0) {
     change = 'took damage';

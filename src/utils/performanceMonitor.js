@@ -1,6 +1,6 @@
 /**
  * @fileoverview Performance monitoring system for tracking application metrics over time
- * 
+ *
  * Tracks:
  * - Component render times
  * - Storage operations (read/write/duration)
@@ -8,17 +8,20 @@
  * - Memory usage
  * - API call durations
  * - React Profiler metrics
- * 
+ *
  * Data persisted to localStorage with date-based aggregation for trend analysis
- * 
+ *
  * @module utils/performanceMonitor
  */
 
 import { logger } from './logger';
 
+const getPerformanceApi = () => globalThis.performance;
+const getPerformanceNow = () => getPerformanceApi()?.now?.() ?? Date.now();
+
 // Performance metric thresholds (ms)
 const THRESHOLDS = {
-  RENDER: 16,        // 60fps target
+  RENDER: 16,
   STORAGE_READ: 5,
   STORAGE_WRITE: 10,
   STATE_UPDATE: 16,
@@ -62,7 +65,6 @@ class PerformanceMonitor {
     this.isEnabled = true;
     this.maxMetricsPerSession = 1000;
 
-    // Load persisted data
     this.loadPersistedData();
   }
 
@@ -85,12 +87,10 @@ class PerformanceMonitor {
     this.metrics.push(metric);
     this.sessionMetrics[this.getMetricsCategory(type)].push(metric);
 
-    // Prevent memory bloat
     if (this.metrics.length > this.maxMetricsPerSession) {
       this.metrics.shift();
     }
 
-    // Log warning if threshold exceeded
     if (metric.exceededThreshold) {
       logger.warn(
         `Performance: ${type} took ${duration.toFixed(2)}ms (threshold: ${THRESHOLDS[type.toUpperCase()]}ms)`,
@@ -107,10 +107,10 @@ class PerformanceMonitor {
   measure(name, fn, metadata = {}) {
     if (!this.isEnabled) return fn();
 
-    const start = performance.now();
+    const start = getPerformanceNow();
     try {
       const result = fn();
-      const duration = performance.now() - start;
+      const duration = getPerformanceNow() - start;
 
       this.recordMetric(name, duration, {
         component: metadata.component,
@@ -120,7 +120,7 @@ class PerformanceMonitor {
 
       return result;
     } catch (error) {
-      const duration = performance.now() - start;
+      const duration = getPerformanceNow() - start;
       this.recordMetric(name, duration, {
         component: metadata.component,
         label: metadata.label,
@@ -137,10 +137,10 @@ class PerformanceMonitor {
   async measureAsync(name, fn, metadata = {}) {
     if (!this.isEnabled) return fn();
 
-    const start = performance.now();
+    const start = getPerformanceNow();
     try {
       const result = await fn();
-      const duration = performance.now() - start;
+      const duration = getPerformanceNow() - start;
 
       this.recordMetric(name, duration, {
         component: metadata.component,
@@ -150,7 +150,7 @@ class PerformanceMonitor {
 
       return result;
     } catch (error) {
-      const duration = performance.now() - start;
+      const duration = getPerformanceNow() - start;
       this.recordMetric(name, duration, {
         component: metadata.component,
         label: metadata.label,
@@ -210,12 +210,14 @@ class PerformanceMonitor {
    * Track memory usage
    */
   trackMemory() {
-    if (performance.memory) {
+    const performanceApi = getPerformanceApi();
+
+    if (performanceApi?.memory) {
       const memory = {
-        used: performance.memory.usedJSHeapSize,
-        limit: performance.memory.jsHeapSizeLimit,
+        used: performanceApi.memory.usedJSHeapSize,
+        limit: performanceApi.memory.jsHeapSizeLimit,
         percent: (
-          (performance.memory.usedJSHeapSize / performance.memory.jsHeapSizeLimit) * 100
+          (performanceApi.memory.usedJSHeapSize / performanceApi.memory.jsHeapSizeLimit) * 100
         ).toFixed(2)
       };
 
@@ -465,12 +467,10 @@ class PerformanceMonitor {
       JSON.stringify(m)
     ]);
 
-    const csv = [
+    return [
       headers.join(','),
       ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
     ].join('\n');
-
-    return csv;
   }
 
   /**
@@ -511,7 +511,6 @@ class PerformanceMonitor {
   }
 }
 
-// Singleton instance
 export const performanceMonitor = new PerformanceMonitor();
 
 /**

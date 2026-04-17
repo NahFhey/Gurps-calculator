@@ -6,7 +6,6 @@
 
 import { generateId } from './combatHelpers';
 import {
-  ConditionCatalog,
   DurationType,
   StackingRule,
   getCondition
@@ -69,7 +68,7 @@ export function createConditionInstance(conditionId, options = {}) {
  * @param {number} currentTurn - Current turn index
  * @returns {object|null} Expiry specification or null if permanent
  */
-function calculateExpiry(duration, currentRound, currentTurn) {
+function calculateExpiry(duration, currentRound, _currentTurn) {
   if (!duration) return null;
 
   switch (duration.type) {
@@ -250,7 +249,7 @@ export function updateConditionDuration(combatant, instanceId, newDuration, curr
  * @param {number} currentRound - Current round
  * @returns {object} { combatant: updated combatant, expired: array of expired conditions }
  */
-export function tickConditionsTurn(combatant, currentRound) {
+export function tickConditionsTurn(combatant, _currentRound) {
   const conditions = combatant.conditions || [];
   const expired = [];
   const remaining = [];

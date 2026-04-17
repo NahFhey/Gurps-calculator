@@ -91,7 +91,9 @@ function filterParticipant(participant, revealState) {
 
   // Copy non-secret combat stats (always visible for UI purposes)
   filtered.basicSpeed = participant.basicSpeed;
+  filtered.basicMove = participant.basicMove;
   filtered.dx = participant.dx;
+  filtered.position = participant.position;
   filtered.maxHP = participant.maxHP || participant.hp;
   filtered.maxFP = participant.maxFP || participant.fp;
   filtered.maxMP = participant.maxMP || participant.mp;
@@ -221,13 +223,14 @@ function filterNumericResource(current, max, reveal) {
         max
       };
 
-    case RevealMode.NUMERIC_BAND:
+    case RevealMode.NUMERIC_BAND: {
       const band = calculateHPBand(current, max);
       return {
         mode: RevealMode.NUMERIC_BAND,
         band,
         bandText: getHPBandText(band)
       };
+    }
 
     case RevealMode.NUMERIC_UNKNOWN:
     default:
