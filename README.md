@@ -102,6 +102,34 @@ npm run build
 npm test
 ```
 
+## Desktop Build
+
+This project now supports a packaged Windows desktop workflow with a custom icon, installer, and shortcut helper.
+
+```bash
+# Regenerate icon assets
+npm run icon:generate
+
+# Stop the packaged app if it is running
+npm run electron:stop
+
+# Build unpacked desktop app
+npm run electron:pack
+
+# Build Windows installer
+npm run electron:dist
+
+# Create a desktop shortcut to the unpacked build
+npm run electron:shortcut
+```
+
+Key outputs:
+
+- `release/win-unpacked/GURPS VTT.exe`
+- `release/GURPS VTT Setup <version>.exe`
+
+See `docs/guides/DESKTOP_PACKAGING_GUIDE.md` for the full workflow and the packaging lessons learned.
+
 ## Architecture
 
 ### State Management

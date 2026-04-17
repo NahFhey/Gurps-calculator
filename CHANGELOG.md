@@ -2,6 +2,21 @@
 
 All notable changes to the GURPS Party Management Tool are documented in this file.
 
+## [Unreleased]
+
+### Desktop Packaging
+
+- Added generated application icon assets for the Electron app and web favicon.
+- Added an `afterPack` Windows resource patch step so the packaged exe keeps the custom icon without relying on Electron Builder's failing local executable-edit helper path.
+- Fixed the packaged Electron runtime to resolve files from `app.getAppPath()` so the desktop exe launches correctly from `app.asar`.
+- Added a reusable desktop shortcut script and npm command for the unpacked Windows build.
+- Added a helper script that stops a running packaged app before `electron:pack` or `electron:dist`, avoiding Windows file lock packaging failures.
+- Configured the NSIS installer to create `GURPS VTT` desktop and Start Menu shortcuts consistently.
+
+### Documentation
+
+- Added a desktop packaging guide covering what worked well, what failed, and the repeatable build/shortcut workflow.
+
 ## [2.5.0] - 2025-01-XX
 
 ### Major Features Added

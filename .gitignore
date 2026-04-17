@@ -1,5 +1,7 @@
 # Dependencies
 node_modules/
+__pycache__/
+*.pyc
 
 # Build output
 dist/
@@ -24,6 +26,14 @@ Thumbs.db
 package-lock.json
 yarn.lock
 pnpm-lock.yaml
+
+# Server data (SQLite database)
+server/data/
+data/
+
+# Electron
+electron-dist/
+release/
 
 # Environment variables
 .env

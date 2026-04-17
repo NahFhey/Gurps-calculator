@@ -1,0 +1,32 @@
+appId: com.gurps.vtt
+productName: GURPS VTT
+directories:
+  output: release
+afterPack: scripts/electron-after-pack.mjs
+files:
+  - assets/icon/**/*
+  - electron-dist/**/*
+  - server/dist/**/*
+  - shared/**/*
+  - dist/**/*
+  - package.json
+  - server/package.json
+  - server/node_modules/**/*
+extraMetadata:
+  main: electron-dist/main.js
+asar: true
+win:
+  target: nsis
+  icon: assets/icon/app-icon.ico
+  signAndEditExecutable: false
+nsis:
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: GURPS VTT
+  installerIcon: assets/icon/app-icon.ico
+  uninstallerIcon: assets/icon/app-icon.ico
+  installerHeaderIcon: assets/icon/app-icon.ico
+mac:
+  target: dmg
+linux:
+  target: AppImage
