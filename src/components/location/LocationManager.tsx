@@ -97,7 +97,8 @@ function TerrainModifiersEditor({
     if (value === defaultVal) {
       // Remove override if it matches default
       if (next[terrain]) {
-        const { [key]: _, ...rest } = next[terrain];
+        const rest = { ...next[terrain] };
+        delete rest[key];
         if (Object.keys(rest).length === 0) {
           delete next[terrain];
         } else {
@@ -233,7 +234,8 @@ function WeatherModifiersEditor({
     if (value === defaultVal) {
       // Remove override if it matches default
       if (next[weatherType]) {
-        const { [key]: _, ...rest } = next[weatherType];
+        const rest = { ...next[weatherType] };
+        delete rest[key];
         if (Object.keys(rest).length === 0) {
           delete next[weatherType];
         } else {
@@ -322,7 +324,7 @@ export function LocationManager({ onClose }: LocationManagerProps) {
   const [view, setView] = useState<ManagerView>('list');
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Location>>({});
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [, setPendingDeleteId] = useState<string | null>(null);
   const [editingTableId, setEditingTableId] = useState<string | null>(null);
 
   const { warning: showWarning } = useToast();
@@ -352,13 +354,13 @@ export function LocationManager({ onClose }: LocationManagerProps) {
     [state.locations.weatherTables]
   );
 
-  const customClimates = state.locations.customClimates ?? [];
-  const customTerrains = state.locations.customTerrains ?? [];
+  const customClimates = state.locations.customClimates;
+  const customTerrains = state.locations.customTerrains;
 
   // Merged climate/terrain labels (presets + custom)
   const allClimateLabels: Record<string, string> = useMemo(() => {
     const labels: Record<string, string> = { ...CLIMATE_LABELS };
-    for (const c of customClimates) {
+    for (const c of customClimates ?? []) {
       labels[c.key] = c.label;
     }
     return labels;
@@ -366,15 +368,12 @@ export function LocationManager({ onClose }: LocationManagerProps) {
 
   const allTerrainLabels: Record<string, string> = useMemo(() => {
     const labels: Record<string, string> = { ...TERRAIN_LABELS };
-    for (const t of customTerrains) {
+    for (const t of customTerrains ?? []) {
       labels[t.key] = t.label;
     }
     return labels;
   }, [customTerrains]);
 
-  const selectedLocation = selectedLocationId
-    ? state.locations.locations[selectedLocationId]
-    : null;
 
   const editingTable = editingTableId
     ? state.locations.weatherTables?.[editingTableId]
@@ -415,7 +414,7 @@ export function LocationManager({ onClose }: LocationManagerProps) {
           connections: [],
           createdAt: Date.now(),
           modifiedAt: Date.now(),
-        } as Location,
+        } as unknown as Location,
         weatherTable,
         currentTime,
       }).weather,
@@ -1037,7 +1036,7 @@ export function LocationManager({ onClose }: LocationManagerProps) {
       {/* Climate editor */}
       {view === 'climates' && (
         <ClimateEditor
-          customClimates={customClimates}
+          customClimates={customClimates ?? []}
           locations={locations}
           onAddClimate={(key, label) => actions.addCustomClimate(key, label)}
           onRemoveClimate={(key) => actions.removeCustomClimate(key)}
@@ -1047,7 +1046,7 @@ export function LocationManager({ onClose }: LocationManagerProps) {
       {/* Terrain types editor */}
       {view === 'terrain' && (
         <TerrainEditor
-          customTerrains={customTerrains}
+          customTerrains={customTerrains ?? []}
           locations={locations}
           onAddTerrain={(key, label) => actions.addCustomTerrain(key, label)}
           onRemoveTerrain={(key) => actions.removeCustomTerrain(key)}

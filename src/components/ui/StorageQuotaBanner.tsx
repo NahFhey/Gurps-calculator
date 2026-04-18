@@ -18,8 +18,10 @@ export function StorageQuotaBanner() {
   // Listen for the custom event from the storage layer
   useEffect(() => {
     const handler = () => {
-      setBreakdown(getStorageBreakdown());
-      setVisible(true);
+      getStorageBreakdown().then((b) => {
+        setBreakdown(b);
+        setVisible(true);
+      });
     };
     window.addEventListener('storage-quota-exceeded', handler);
     return () => window.removeEventListener('storage-quota-exceeded', handler);
@@ -28,23 +30,25 @@ export function StorageQuotaBanner() {
   const totalKB = breakdown.reduce((sum, e) => sum + e.sizeKB, 0);
   const totalMB = (totalKB / 1024).toFixed(1);
 
+  const refreshBreakdown = useCallback(() => {
+    getStorageBreakdown().then(setBreakdown);
+    resetQuotaAlert();
+  }, []);
+
   const handlePruneCheckpoints = useCallback(() => {
     actions.clearCheckpoints();
-    setBreakdown(getStorageBreakdown());
-    resetQuotaAlert();
-  }, [actions]);
+    refreshBreakdown();
+  }, [actions, refreshBreakdown]);
 
   const handlePruneLogs = useCallback(() => {
     actions.clearLogs();
-    setBreakdown(getStorageBreakdown());
-    resetQuotaAlert();
-  }, [actions]);
+    refreshBreakdown();
+  }, [actions, refreshBreakdown]);
 
   const handlePruneCombatHistory = useCallback(() => {
     actions.clearCombatHistory();
-    setBreakdown(getStorageBreakdown());
-    resetQuotaAlert();
-  }, [actions]);
+    refreshBreakdown();
+  }, [actions, refreshBreakdown]);
 
   const handleDismiss = useCallback(() => {
     setVisible(false);

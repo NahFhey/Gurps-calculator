@@ -1,14 +1,8 @@
 import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { LabsView } from '../views/LabsView';
-
-interface AlchemyLab {
-  id: string;
-  name: string;
-  rating: number;
-  description?: string;
-}
+import type { AlchemyLab } from '../../../types/campaign';
 
 describe('LabsView', () => {
   const mockSaveAlchemyLabs = vi.fn();
@@ -45,8 +39,8 @@ describe('LabsView', () => {
 
   it('renders existing labs with rating badges', () => {
     const alchemyLabs: AlchemyLab[] = [
-      { id: '1', name: 'Basic Lab', rating: 1 },
-      { id: '2', name: 'Master Workshop', rating: 3 }
+      { id: '1', name: 'Basic Lab', rating: 1, description: 'A basic lab' },
+      { id: '2', name: 'Master Workshop', rating: 3, description: 'A master workshop' }
     ];
 
     render(<LabsView {...defaultProps} alchemyLabs={alchemyLabs} />);
@@ -59,7 +53,7 @@ describe('LabsView', () => {
 
   it('shows skill bonus text for each lab', () => {
     const alchemyLabs: AlchemyLab[] = [
-      { id: '1', name: 'Test Lab', rating: 2 }
+      { id: '1', name: 'Test Lab', rating: 2, description: 'A test lab' }
     ];
 
     render(<LabsView {...defaultProps} alchemyLabs={alchemyLabs} />);
@@ -117,7 +111,7 @@ describe('LabsView', () => {
 
   it('alerts when trying to add duplicate lab name', () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-    const alchemyLabs: AlchemyLab[] = [{ id: '1', name: 'Existing Lab', rating: 1 }];
+    const alchemyLabs: AlchemyLab[] = [{ id: '1', name: 'Existing Lab', rating: 1, description: 'An existing lab' }];
 
     render(<LabsView {...defaultProps} alchemyLabs={alchemyLabs} />);
 
@@ -149,7 +143,7 @@ describe('LabsView', () => {
 
   it('calls onDelete when delete button is clicked', () => {
     const alchemyLabs: AlchemyLab[] = [
-      { id: 'lab-123', name: 'Test Lab', rating: 2 }
+      { id: 'lab-123', name: 'Test Lab', rating: 2, description: 'A test lab' }
     ];
 
     render(<LabsView {...defaultProps} alchemyLabs={alchemyLabs} />);

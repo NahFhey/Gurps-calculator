@@ -5,17 +5,14 @@
  * Tests multi-activity scenarios, day transitions, and state persistence.
  */
 
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type {
-  DowntimeState,
-  DowntimeTask,
   FishingData,
   ForagingData,
   AlchemyData,
   CraftingData,
   RestData,
   TaskResults,
-  TaskStatus,
 } from '../types/downtime';
 import { downtimeInitialState } from '../state/downtime/downtimeInitialState';
 import { downtimeReducer } from '../state/downtime/downtimeReducer';
@@ -36,7 +33,6 @@ import {
   selectResolvedTasksForSlot,
   selectTasksByCharacter,
 } from '../state/downtime/downtimeSelectors';
-import { DowntimeValidationError, DOWNTIME_ERROR_CODES } from '../state/downtime/downtimeErrors';
 
 // ============================================================================
 // TEST FIXTURES

@@ -17,7 +17,7 @@ export interface TimeSystemOptions {
 
 export const advanceTimeSlot = (
   currentSlot: number,
-  reservationEngine: ReservationEngine,
+  reservationEngine: ReservationEngine | { clearAllReservations(): void },
   options: TimeSystemOptions
 ): { nextSlot: number; logEntry: TimeLogEntry } => {
   const { totalSlots, slotLabels, clearEquipmentSelections, logEntry } = options;

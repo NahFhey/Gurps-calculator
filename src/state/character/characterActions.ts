@@ -52,5 +52,5 @@ const CHARACTER_ACTION_TYPES = new Set([
 ]);
 
 export function isCharacterAction(action: { type: string }): action is CharacterAction {
-  return CHARACTER_ACTION_TYPES.has(action.type);
+  return CHARACTER_ACTION_TYPES.has(action.type as any);
 }

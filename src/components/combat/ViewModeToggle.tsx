@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Eye, EyeOff, Lock, Shield } from 'lucide-react';
 import { ViewMode } from '../../utils/combatViewFilter';
 import { ConfirmDialog, useConfirmDialog } from '../ui';

@@ -271,7 +271,7 @@ export const standaloneToast = {
     if (toastRef) {
       toastRef.addToast({ type: 'success', message });
     } else {
-      console.log('[Toast Success]', message);
+      console.warn('[Toast Success]', message);
     }
   },
   error: (message: string) => {
@@ -292,7 +292,7 @@ export const standaloneToast = {
     if (toastRef) {
       toastRef.addToast({ type: 'info', message });
     } else {
-      console.info('[Toast Info]', message);
+      console.warn('[Toast Info]', message);
     }
   },
 };

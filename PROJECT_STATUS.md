@@ -1,8 +1,18 @@
 # GURPS Calculator - Project Status & Roadmap
 
-**Last Updated:** 2026-01-27
-**Branch:** `claude/review-project-status-BbPCp`
-**Status:** Phase 9 Complete - All Legacy Tabs Migrated to TypeScript with Direct Store Access
+**Last Updated:** 2026-04-17
+**Branch:** `home-test`
+**Status:** Phase 10 stabilization baseline is green; the next cleanup targets are dependency audit, coverage expansion, and bundle follow-up before Phase 11 combat decomposition.
+
+## Current Snapshot
+
+- `npm run lint`, `npm run typecheck`, `npm run build`, and `npx vitest run` are all green in the current worktree.
+- The TypeScript lint warning backlog from the recent lint expansion has been cleared.
+- Legacy `CombatContext` has been removed and combat now uses direct store/hook access.
+- The repo-local stabilization workflow now includes thematic backlog sweeps, explicit closeout verification, and doc refresh expectations.
+- The most useful next Phase 10 work is dependency cleanup, targeted coverage expansion, and bundle-size follow-up.
+
+Historical migration details below are kept for context, but the bullets above are the current baseline.
 
 ---
 
@@ -114,16 +124,8 @@ src/
 │   └── ... (other components)
 ```
 
-### Bridge Contexts (Legacy - Now Candidates for Removal)
-These bridge contexts are no longer used by main tabs:
-- `src/contexts/AlchemyContext.jsx` - Previously used by AlchemyTab *(now direct store)*
-- `src/contexts/CombatContext.jsx` - Still used by CharacterLibrary, EncounterSetup
-- `src/contexts/ConfigContext.jsx` - Previously used by legacy tabs *(now direct store)*
-- `src/contexts/CraftingContext.jsx` - Previously used by CraftingTab *(now direct store)*
-- `src/contexts/GatheringContext.jsx` - Not used (candidate for removal)
-- `src/contexts/InventoryContext.jsx` - Previously used by legacy tabs *(now direct store)*
-
-**Note:** Most tabs now use useCampaignStore() directly. Contexts kept for combat sub-components.
+### Context Status
+Main tabs now use direct store/hook access. `CombatContext` has been removed from the current worktree, and `src/contexts` is no longer carrying the old bridge-context set referenced in earlier migration notes.
 
 ---
 
@@ -363,7 +365,7 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 - ✅ Build passes (624KB bundle)
 
 **Remaining Bridge Context Usage:**
-- CombatContext still used by CharacterLibrary, EncounterSetup (combat sub-components)
+- Resolved in the current worktree: `CombatContext` has been removed.
 
 ---
 
@@ -421,10 +423,10 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 - **README.md** - Project overview
 
 ### Architecture Files
-- **src/state/campaignStore.js** - Main state store
+- **src/state/campaignStore.tsx** - Main state store provider/hooks
 - **src/state/campaignReducer.ts** - State reducer logic
-- **src/components/UnifiedShell.jsx** - Main UI shell
-- **src/components/App.jsx** - Application entry point
+- **src/unified/UnifiedShell.tsx** - Main UI shell
+- **src/App.tsx** - Application entry point
 
 ### Key Components
 - **ManagerTab.jsx** - Thin router (528 lines)
@@ -467,7 +469,7 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 # - CraftingContext.jsx (no longer used by tabs)
 # - InventoryContext.jsx (no longer used by tabs)
 
-# Keep CombatContext.jsx - still used by combat sub-components
+# CombatContext.jsx has been removed in the current worktree
 ```
 
 ### Option B: Continue Decomposition (Phase 8e)
@@ -497,7 +499,7 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 - **App.jsx Size:** 260 → 96 lines (63% reduction) ✅
 - **Bundle Size:** 800KB → 624KB (22% reduction) ✅
 - **View Component Size:** 19-815 lines (AI-readable) ✅
-- **Test Coverage:** 300 tests passing (Phase 10 in progress) ✅
+- **Test Coverage:** 888 tests passing (Phase 10 verification green) ✅
 
 ### Architecture Health
 - ✅ Single source of truth (CampaignStore)
@@ -561,8 +563,8 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 
 ---
 
-**Current Branch:** `claude/review-project-status-BbPCp`
+**Current Branch:** `home-test`
 **Build Status:** ✅ Passing (624KB bundle)
-**Ready for:** Phase 10 (Testing) or Context Cleanup
+**Ready for:** dependency cleanup, targeted coverage expansion, or Phase 11a combat decomposition
 
 🎊 Phase 9 Complete! All legacy tabs migrated - 63 components now TypeScript! 🎊

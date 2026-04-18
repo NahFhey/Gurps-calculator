@@ -105,7 +105,7 @@ export function migrateLegacyTemplates(customTemplates: CustomTemplates): Record
 
   // Process each category
   Object.entries(customTemplates).forEach(([category, templates]) => {
-    Object.entries(templates).forEach(([templateName, templateData]) => {
+    Object.entries(templates).forEach(([templateName, _templateData]) => {
       const templateId = `${category}-${templateName}`;
 
       // Convert to tool template with activity modifiers
@@ -243,7 +243,8 @@ export function removeFromNormalized<T>(
   obj: Record<Id, T>,
   id: Id
 ): Record<Id, T> {
-  const { [id]: removed, ...rest } = obj;
+  const rest = { ...obj };
+  delete rest[id];
   return rest;
 }
 
@@ -282,7 +283,7 @@ export function normalizeTime(day: number, slot: number): { day: number; slot: n
  * Deep merge two objects (for settings/config)
  */
 export function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
-  const result = { ...target };
+  const result = { ...target } as Record<string, any>;
 
   Object.keys(source).forEach((key) => {
     const sourceValue = source[key];
@@ -295,7 +296,7 @@ export function deepMerge<T extends Record<string, any>>(target: T, source: Part
     }
   });
 
-  return result;
+  return result as T;
 }
 
 // ============================================================================

@@ -186,8 +186,8 @@ export default function ActionPanel({
   const [boundDamageExpression, setBoundDamageExpression] = useState<string | null>(null);
   const [forceTargetSelection, setForceTargetSelection] = useState(false);
   const selectedManeuver = maneuverSelection?.selectedId || null;
-  const maneuverPrompts = maneuverSelection?.prompts || {};
-  const maneuverWorkflow = maneuverSelection?.workflow || {};
+  const maneuverPrompts = maneuverSelection?.prompts;
+  const maneuverWorkflow = maneuverSelection?.workflow;
 
   // Get potential targets (exclude current actor)
   const targets = participants.filter(p => p.instanceId !== currentActor.instanceId);

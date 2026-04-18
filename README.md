@@ -70,12 +70,12 @@ src/
 │   ├── CookingTab.tsx           # Cooking interface
 │   ├── CraftingTab.tsx          # Crafting interface
 │   ├── InventoryTab.tsx         # Inventory interface
-│   ├── GatheringTab.jsx         # Gathering interface
+│   ├── GatheringTab.tsx         # Gathering interface
 │   ├── DayPlannerTab.tsx        # Day planner interface
 │   ├── ManagerTab.tsx           # Configuration interface
 │   └── RulesTab.tsx             # Rules reference
 ├── state/
-│   ├── campaignStore.js         # Redux-style store
+│   ├── campaignStore.tsx        # Redux-style store provider/hooks
 │   └── campaignReducer.ts       # State reducer with Immer
 ├── utils/                       # Utility functions
 │   ├── combat*.js               # Combat utilities
@@ -83,7 +83,7 @@ src/
 │   ├── gathering.js             # Gathering mechanics
 │   └── ...
 ├── hooks/                       # Custom React hooks
-└── contexts/                    # React contexts (legacy)
+└── contexts/                    # Shared UI contexts and remaining cross-cutting context
 ```
 
 ## Getting Started
@@ -161,8 +161,8 @@ Large components follow the "thin router" decomposition pattern:
 
 ### TypeScript Coverage
 
-- **146 TypeScript files** (.tsx/.ts)
-- **25 legacy JavaScript files** (.jsx) - remaining for migration
+- **340 TypeScript files** (.tsx/.ts) under `src`
+- **38 JavaScript files** (.js) remain under `src`; `.jsx` migration is complete
 - Full type safety for combat, manager, gathering, and day planner systems
 
 ## Development Workflow

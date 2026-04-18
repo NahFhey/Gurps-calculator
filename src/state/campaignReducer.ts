@@ -238,6 +238,10 @@ export type CampaignState = {
   locations: LocationState;
   downtime: DowntimeState;
   maps: MapState;
+  multiplayer: {
+    /** Map of player display name to their assigned character IDs */
+    playerCharacters: Record<string, string[]>;
+  };
 };
 
 export const initialLegacyAppState: LegacyAppState = {};
@@ -276,6 +280,7 @@ export const logEvent = (
 
 const createCheckpointSnapshot = (state: CampaignState): CampaignSnapshot => {
   const { checkpoints, ...rest } = state;
+  void checkpoints;
   return JSON.parse(JSON.stringify(rest)) as CampaignSnapshot;
 };
 
@@ -287,12 +292,12 @@ const createCheckpointEntry = (state: CampaignState, label: string): Checkpoint 
 });
 
 const normalizeCombatReveal = (combat: CampaignState['combat']) => {
-  const revealedTargets =
+  const revealedTargets: Set<string> =
     combat.reveal.revealedTargets instanceof Set
       ? combat.reveal.revealedTargets
-      : new Set(combat.reveal.revealedTargets || []);
-  const revealedHP =
-    combat.reveal.revealedHP instanceof Set ? combat.reveal.revealedHP : new Set(combat.reveal.revealedHP || []);
+      : new Set<string>(combat.reveal.revealedTargets || []);
+  const revealedHP: Set<string> =
+    combat.reveal.revealedHP instanceof Set ? combat.reveal.revealedHP : new Set<string>(combat.reveal.revealedHP || []);
   return {
     ...combat,
     reveal: {
@@ -402,7 +407,7 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
     day: 1,
     slot: 0,
     slotsPerDay: SLOTS_PER_DAY,
-    slotLabels: SLOT_NAMES,
+    slotLabels: [...SLOT_NAMES],
     history: []
   },
   inventory: {
@@ -460,6 +465,9 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
   locations: createInitialLocationState({ day: 1, slot: 0 }),
   downtime: downtimeInitialState,
   maps: initialMapState,
+  multiplayer: {
+    playerCharacters: {},
+  },
 });
 
 export const initialCampaignState: CampaignState = createCampaignState();
@@ -483,6 +491,7 @@ export type CampaignAction =
   | { type: 'createCheckpoint'; payload: string }
   | { type: 'restoreCheckpoint'; payload: string }
   | { type: 'importCampaignState'; payload: { state: CampaignState; label?: string } }
+  | { type: 'replaceState'; payload: CampaignState }
   | { type: 'startCombat'; payload?: { encounterId?: string } }
   | { type: 'registerCombatDamage'; payload: { targetId: string; remainingHp: number } }
   | { type: 'registerCombatDefenseSuccess'; payload: { targetId: string; defense: { dodge?: number } } }
@@ -595,6 +604,8 @@ export type CampaignAction =
   | { type: 'updateTaskAssignment'; payload: { id: Id; changes: Partial<TaskAssignment> } }
   | { type: 'setTaskAssignments'; payload: TaskAssignment[] }
   | { type: 'setPendingDayLedger'; payload: DayLedger | null }
+  | { type: 'setDayPlannerSlot'; payload: number }
+  | { type: 'setTimeDay'; payload: number }
   // Combat Character actions
   | { type: 'addCombatCharacter'; payload: CombatCharacter }
   | { type: 'updateCombatCharacter'; payload: { id: Id; changes: Partial<CombatCharacter> } }
@@ -616,6 +627,8 @@ export type CampaignAction =
   | { type: 'addKitchen'; payload: Kitchen }
   // Cooking Skill actions
   | { type: 'setCookingSkills'; payload: CookingSkill[] }
+  // Facility actions
+  | { type: 'setFacilities'; payload: Record<Id, Facility> }
   // Effect Family Map actions
   | { type: 'setEffectFamilyMap'; payload: EffectFamilyMap }
   // Inventory actions
@@ -652,6 +665,10 @@ export type CampaignAction =
   | { type: 'setMaps'; payload: MapState }
   | { type: 'setTerrainModifierOverrides'; payload: Record<string, Partial<LocationModifiers>> }
   | { type: 'setWeatherEffectOverrides'; payload: Record<string, Partial<WeatherEffects>> }
+  // Multiplayer actions
+  | { type: 'assignCharacterToPlayer'; payload: { playerName: string; characterId: string } }
+  | { type: 'unassignCharacterFromPlayer'; payload: { playerName: string; characterId: string } }
+  | { type: 'setPlayerCharacters'; payload: { playerName: string; characterIds: string[] } }
   | MapAction;
 
 export function campaignReducer(state: CampaignState, action: CampaignAction) {
@@ -805,7 +822,8 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         if (draft.checkpoints.entries.length > draft.checkpoints.maxSize) {
           draft.checkpoints.entries.pop();
         }
-        const { checkpoints: _ignored, ...nextState } = action.payload.state;
+        const { checkpoints, ...nextState } = action.payload.state;
+        void checkpoints;
         const preservedCheckpoints = draft.checkpoints;
         draft.ui = nextState.ui;
         draft.meta = nextState.meta;
@@ -867,6 +885,29 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
           ...draft.combat.reveal.revealedDefenseValues[targetId],
           ...defense
         };
+        return;
+      }
+      case 'replaceState': {
+        // Server-authoritative state replacement (no checkpoint created)
+        const serverState = action.payload;
+        draft.ui = serverState.ui;
+        draft.meta = serverState.meta;
+        draft.entities = serverState.entities;
+        draft.legacy = serverState.legacy;
+        draft.time = serverState.time;
+        draft.inventory = serverState.inventory;
+        draft.crafting = serverState.crafting;
+        draft.alchemy = serverState.alchemy;
+        draft.gathering = serverState.gathering;
+        draft.dayPlanner = serverState.dayPlanner;
+        draft.activities = serverState.activities;
+        draft.logs = serverState.logs;
+        draft.checkpoints = serverState.checkpoints;
+        draft.combat = normalizeCombatReveal(serverState.combat);
+        draft.locations = serverState.locations || createInitialLocationState(serverState.time || { day: 1, slot: 0 });
+        draft.downtime = serverState.downtime || downtimeInitialState;
+        draft.maps = serverState.maps || initialMapState;
+        draft.multiplayer = serverState.multiplayer || { playerCharacters: {} };
         return;
       }
       case 'applyDebugState': {
@@ -1088,11 +1129,6 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
           const remainingIds = Object.keys(draft.locations.locations);
           draft.locations.currentLocationId = remainingIds.length > 0 ? remainingIds[0] : null;
         }
-        // Remove any weather tables associated with this location
-        for (const tableId of Object.keys(draft.locations.weatherTables)) {
-          const table = draft.locations.weatherTables[tableId];
-          // Note: weather tables don't have locationId, they're referenced by location.weatherTableId
-        }
         return;
       }
 
@@ -1289,6 +1325,39 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
       case 'clearCombatHistory':
         draft.entities.combatHistory = [];
         return;
+
+      // ========================================================================
+      // MULTIPLAYER ACTIONS
+      // ========================================================================
+      case 'assignCharacterToPlayer': {
+        const { playerName, characterId } = action.payload;
+        if (!draft.multiplayer) draft.multiplayer = { playerCharacters: {} };
+        const existing = draft.multiplayer.playerCharacters[playerName] || [];
+        if (!existing.includes(characterId)) {
+          draft.multiplayer.playerCharacters[playerName] = [...existing, characterId];
+        }
+        return;
+      }
+      case 'unassignCharacterFromPlayer': {
+        const { playerName, characterId } = action.payload;
+        if (!draft.multiplayer?.playerCharacters[playerName]) return;
+        draft.multiplayer.playerCharacters[playerName] =
+          draft.multiplayer.playerCharacters[playerName].filter((id: string) => id !== characterId);
+        if (draft.multiplayer.playerCharacters[playerName].length === 0) {
+          delete draft.multiplayer.playerCharacters[playerName];
+        }
+        return;
+      }
+      case 'setPlayerCharacters': {
+        const { playerName, characterIds } = action.payload;
+        if (!draft.multiplayer) draft.multiplayer = { playerCharacters: {} };
+        if (characterIds.length === 0) {
+          delete draft.multiplayer.playerCharacters[playerName];
+        } else {
+          draft.multiplayer.playerCharacters[playerName] = characterIds;
+        }
+        return;
+      }
 
       default:
         return;

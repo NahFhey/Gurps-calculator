@@ -1,18 +1,25 @@
 /**
- * localStorage wrapper with async API
- * Designed to be easily swappable with a backend API later
+ * Storage wrapper with async API — backed by IndexedDB via Dexie.js
+ *
+ * Provides the same interface as the old localStorage wrapper so existing
+ * consumers (campaignStorage, dataMigration, etc.) work without changes.
+ *
+ * Benefits over localStorage:
+ * - No 5-10 MB size limit (IndexedDB supports hundreds of MB)
+ * - Truly async (localStorage blocks the main thread on large values)
  *
  * Migration path: Replace this implementation with fetch() calls to Express backend
  *
  * Schema Versioning:
  * - Automatically handles data migrations on load
- * - Tracks schema version in localStorage
+ * - Tracks schema version in IndexedDB
  * - Supports upgrading from v1.0.0 to current version
  */
 
 import { getStoredSchemaVersion, saveSchemaVersion, CURRENT_SCHEMA_VERSION } from './schemaVersioning';
 import { migrateData, validateDataForVersion } from './dataMigrations';
 import { logger } from './logger';
+import { idbGet, idbSet, idbRemove, idbClear, idbKeys, idbGetStorageBreakdown } from '../persistence/db';
 
 // ============================================================================
 // Types
@@ -31,6 +38,61 @@ export interface Storage {
 }
 
 // ============================================================================
+// localStorage → IndexedDB Migration (runs once)
+// ============================================================================
+
+let localStorageMigrationDone = false;
+
+/**
+ * One-time migration: copies all localStorage entries into IndexedDB,
+ * then clears localStorage. Subsequent calls are no-ops.
+ */
+async function ensureLocalStorageMigrated(): Promise<void> {
+  if (localStorageMigrationDone) return;
+  localStorageMigrationDone = true;
+
+  try {
+    if (typeof localStorage === 'undefined' || localStorage.length === 0) return;
+
+    // Check if IndexedDB already has the main key — if so, skip migration
+    const existing = await idbGet('campaignState');
+    if (existing) return;
+
+    // Check if there's anything worth migrating in localStorage
+    const lsValue = localStorage.getItem('campaignState');
+    if (!lsValue) {
+      // Also check legacy keys
+      const hasLegacy = localStorage.getItem('materials') || localStorage.getItem('workers');
+      if (!hasLegacy) return;
+    }
+
+    logger.log('[Storage] Migrating localStorage → IndexedDB...');
+
+    // Copy every localStorage entry into IndexedDB
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      const val = localStorage.getItem(key);
+      if (val !== null) {
+        await idbSet(key, val);
+      }
+    }
+
+    // Clear localStorage to free space, but keep schema version keys
+    // (they're tiny and used synchronously by the schema migration layer)
+    const schemaVersion = localStorage.getItem('app_schema_version');
+    const migrationHistory = localStorage.getItem('app_migration_history');
+    localStorage.clear();
+    if (schemaVersion) localStorage.setItem('app_schema_version', schemaVersion);
+    if (migrationHistory) localStorage.setItem('app_migration_history', migrationHistory);
+    logger.log('[Storage] Migration complete — localStorage cleared (kept schema keys)');
+  } catch (error) {
+    // Non-fatal: we'll just use whatever is in IndexedDB or start fresh
+    logger.error('[Storage] localStorage migration error (non-fatal):', error);
+  }
+}
+
+// ============================================================================
 // Storage Implementation
 // ============================================================================
 
@@ -39,7 +101,7 @@ let quotaAlertShown = false;
 
 const storage: Storage = {
   /**
-   * Get a value from localStorage
+   * Get a value from IndexedDB
    * Automatically handles schema migrations for application state
    *
    * @param key - Storage key
@@ -48,7 +110,9 @@ const storage: Storage = {
    */
   async get(key: string, migrations: boolean = true): Promise<StorageGetResult | null> {
     try {
-      const value = localStorage.getItem(key);
+      await ensureLocalStorageMigrated();
+
+      const value = await idbGet(key);
       if (value === null) {
         return null;
       }
@@ -70,7 +134,7 @@ const storage: Storage = {
             const validation = validateDataForVersion(
               migratedData,
               CURRENT_SCHEMA_VERSION
-            );
+            ) as { valid: boolean; issues: string[] };
 
             if (!validation.valid) {
               logger.warn(
@@ -92,14 +156,14 @@ const storage: Storage = {
 
       return { value };
     } catch (error) {
-      console.error(`localStorage.get error for key "${key}":`, error);
+      console.error(`storage.get error for key "${key}":`, error);
       return null;
     }
   },
 
 
   /**
-   * Set a value in localStorage
+   * Set a value in IndexedDB
    * Automatically tracks schema version on state saves
    *
    * @param key - Storage key
@@ -108,62 +172,61 @@ const storage: Storage = {
    */
   async set(key: string, value: string, trackVersion: boolean = true): Promise<void> {
     try {
-      localStorage.setItem(key, value);
+      await idbSet(key, value);
 
       // Track schema version when saving main state
       if (trackVersion && (key === 'appState' || key === 'gmState')) {
         saveSchemaVersion(CURRENT_SCHEMA_VERSION);
       }
     } catch (error) {
-      // Handle quota exceeded errors gracefully
+      // IndexedDB can also throw quota errors in extreme cases
       if (error instanceof Error && error.name === 'QuotaExceededError') {
-        console.error('localStorage quota exceeded. Consider clearing old data.');
+        console.error('IndexedDB quota exceeded. Consider clearing old data.');
         if (!quotaAlertShown) {
           quotaAlertShown = true;
-          // Dispatch a custom event so the UI can show a proper banner
           window.dispatchEvent(new CustomEvent('storage-quota-exceeded'));
         }
       } else {
-        console.error(`localStorage.set error for key "${key}":`, error);
+        console.error(`storage.set error for key "${key}":`, error);
       }
       throw error;
     }
   },
 
   /**
-   * Remove a value from localStorage
+   * Remove a value from IndexedDB
    * @param key - Storage key
    */
   async remove(key: string): Promise<void> {
     try {
-      localStorage.removeItem(key);
+      await idbRemove(key);
     } catch (error) {
-      console.error(`localStorage.remove error for key "${key}":`, error);
+      console.error(`storage.remove error for key "${key}":`, error);
       throw error;
     }
   },
 
   /**
-   * Clear all localStorage data
+   * Clear all IndexedDB data
    */
   async clear(): Promise<void> {
     try {
-      localStorage.clear();
+      await idbClear();
     } catch (error) {
-      console.error('localStorage.clear error:', error);
+      console.error('storage.clear error:', error);
       throw error;
     }
   },
 
   /**
-   * Get all keys in localStorage
+   * Get all keys in IndexedDB
    * @returns Array of storage keys
    */
   async keys(): Promise<string[]> {
     try {
-      return Object.keys(localStorage);
+      return await idbKeys();
     } catch (error) {
-      console.error('localStorage.keys error:', error);
+      console.error('storage.keys error:', error);
       return [];
     }
   }
@@ -175,20 +238,11 @@ export function resetQuotaAlert() {
 }
 
 /**
- * Return a breakdown of localStorage usage by key.
- * Sizes are in bytes (each JS char ≈ 2 bytes in UTF-16, but localStorage
- * implementations count in UTF-16 code units, so .length is the relevant metric).
+ * Return a breakdown of storage usage by key.
+ * Now reads from IndexedDB instead of localStorage.
  */
-export function getStorageBreakdown(): { key: string; sizeKB: number }[] {
-  const result: { key: string; sizeKB: number }[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (!key) continue;
-    const val = localStorage.getItem(key) ?? '';
-    result.push({ key, sizeKB: Math.round((val.length * 2) / 1024 * 10) / 10 });
-  }
-  result.sort((a, b) => b.sizeKB - a.sizeKB);
-  return result;
+export async function getStorageBreakdown(): Promise<{ key: string; sizeKB: number }[]> {
+  return idbGetStorageBreakdown();
 }
 
 export default storage;

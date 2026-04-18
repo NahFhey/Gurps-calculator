@@ -4,11 +4,12 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { TileGrid, ACTIVITY_SKILL_REQUIREMENTS } from '../TileGrid';
 
 describe('TileGrid', () => {
-  it('renders all five activity tiles', () => {
+  it('renders all activity tiles', () => {
     render(<TileGrid onNavigate={vi.fn()} />);
 
     expect(screen.getByText('Fishing')).toBeInTheDocument();
     expect(screen.getByText('Foraging')).toBeInTheDocument();
+    expect(screen.getByText('Mining')).toBeInTheDocument();
     expect(screen.getByText('Alchemy')).toBeInTheDocument();
     expect(screen.getByText('Crafting')).toBeInTheDocument();
     expect(screen.getByText('Cooking')).toBeInTheDocument();
@@ -51,6 +52,7 @@ describe('TileGrid', () => {
 
     expect(screen.getByText('Fish & Seafood')).toBeInTheDocument();
     expect(screen.getByText('Herbs & Materials')).toBeInTheDocument();
+    expect(screen.getByText('Ore & Minerals')).toBeInTheDocument();
     expect(screen.getByText('Potions & Reagents')).toBeInTheDocument();
     expect(screen.getByText('Gear & Projects')).toBeInTheDocument();
     expect(screen.getByText('Recipes & Meals')).toBeInTheDocument();
@@ -60,7 +62,7 @@ describe('TileGrid', () => {
     render(<TileGrid onNavigate={vi.fn()} />);
 
     const buttons = screen.getAllByRole('button');
-    expect(buttons).toHaveLength(5);
+    expect(buttons).toHaveLength(6);
     buttons.forEach((button) => {
       expect(button).toHaveAttribute('aria-label');
     });
@@ -68,7 +70,7 @@ describe('TileGrid', () => {
 
   describe('disabled activities', () => {
     it('disables tiles in the disabledActivities set', () => {
-      const disabled = new Set<'fishing' | 'foraging' | 'alchemy' | 'crafting' | 'cooking'>(['alchemy', 'cooking']);
+      const disabled = new Set<'fishing' | 'foraging' | 'mining' | 'alchemy' | 'crafting' | 'cooking'>(['alchemy', 'cooking']);
       render(<TileGrid onNavigate={vi.fn()} disabledActivities={disabled} />);
 
       const alchemyBtn = screen.getByLabelText('Open Alchemy activity');
@@ -79,7 +81,7 @@ describe('TileGrid', () => {
     });
 
     it('keeps non-disabled tiles enabled', () => {
-      const disabled = new Set<'fishing' | 'foraging' | 'alchemy' | 'crafting' | 'cooking'>(['alchemy']);
+      const disabled = new Set<'fishing' | 'foraging' | 'mining' | 'alchemy' | 'crafting' | 'cooking'>(['alchemy']);
       render(<TileGrid onNavigate={vi.fn()} disabledActivities={disabled} />);
 
       expect(screen.getByLabelText('Open Fishing activity')).toBeEnabled();
@@ -90,7 +92,7 @@ describe('TileGrid', () => {
 
     it('does not call onNavigate when a disabled tile is clicked', () => {
       const onNavigate = vi.fn();
-      const disabled = new Set<'fishing' | 'foraging' | 'alchemy' | 'crafting' | 'cooking'>(['fishing']);
+      const disabled = new Set<'fishing' | 'foraging' | 'mining' | 'alchemy' | 'crafting' | 'cooking'>(['fishing']);
       render(<TileGrid onNavigate={onNavigate} disabledActivities={disabled} />);
 
       fireEvent.click(screen.getByLabelText('Open Fishing activity'));
@@ -98,7 +100,7 @@ describe('TileGrid', () => {
     });
 
     it('shows tooltip on disabled tiles', () => {
-      const disabled = new Set<'fishing' | 'foraging' | 'alchemy' | 'crafting' | 'cooking'>(['foraging']);
+      const disabled = new Set<'fishing' | 'foraging' | 'mining' | 'alchemy' | 'crafting' | 'cooking'>(['foraging']);
       render(<TileGrid onNavigate={vi.fn()} disabledActivities={disabled} />);
 
       const foragingBtn = screen.getByLabelText('Open Foraging activity');
@@ -106,7 +108,7 @@ describe('TileGrid', () => {
     });
 
     it('does not show tooltip on enabled tiles', () => {
-      const disabled = new Set<'fishing' | 'foraging' | 'alchemy' | 'crafting' | 'cooking'>(['foraging']);
+      const disabled = new Set<'fishing' | 'foraging' | 'mining' | 'alchemy' | 'crafting' | 'cooking'>(['foraging']);
       render(<TileGrid onNavigate={vi.fn()} disabledActivities={disabled} />);
 
       const fishingBtn = screen.getByLabelText('Open Fishing activity');

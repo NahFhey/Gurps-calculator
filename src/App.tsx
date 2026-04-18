@@ -1,14 +1,39 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { logger } from './utils/logger';
 import { UnifiedShell } from './unified/UnifiedShell';
-import { CampaignStoreProvider } from './state/campaignStore';
-import { loadCampaignState } from './persistence/campaignStorage';
+import { CampaignStoreProvider, useCampaignStore } from './state/campaignStore';
+import { loadCampaignState, hydrateCampaignState } from './persistence/campaignStorage';
 import { checkMigrationNeeded, migrateToV2 } from './persistence/dataMigration';
 import { ToastProvider, ToastContainer, LoadingSpinner } from './components/ui';
 import { StorageQuotaBanner } from './components/ui/StorageQuotaBanner';
+import { SyncProvider } from './net/SyncProvider';
 import type { CampaignState } from './state/campaignReducer';
 
 type MigrationStatus = 'checking' | 'migrating' | 'ready';
+
+/**
+ * Inner wrapper that bridges SyncProvider with the campaign store.
+ * Must be rendered inside CampaignStoreProvider so it can access dispatch.
+ */
+function SyncBridge({ children }: { children: React.ReactNode }) {
+  const { dispatch } = useCampaignStore();
+
+  const handleServerStateUpdate = useCallback((stateJson: string) => {
+    try {
+      const parsed = JSON.parse(stateJson);
+      const hydrated = hydrateCampaignState(parsed as CampaignState);
+      dispatch({ type: 'replaceState', payload: hydrated });
+    } catch (err) {
+      console.error('[SyncBridge] Failed to apply server state:', err);
+    }
+  }, [dispatch]);
+
+  return (
+    <SyncProvider onServerStateUpdate={handleServerStateUpdate}>
+      {children}
+    </SyncProvider>
+  );
+}
 
 /**
  * Main App Component
@@ -93,9 +118,11 @@ export default function GURPSPartyTool() {
   return (
     <ToastProvider>
       <CampaignStoreProvider initialCampaignState={initialCampaignState}>
-        <UnifiedShell />
-        <ToastContainer position="top-right" />
-        <StorageQuotaBanner />
+        <SyncBridge>
+          <UnifiedShell />
+          <ToastContainer position="top-right" />
+          <StorageQuotaBanner />
+        </SyncBridge>
       </CampaignStoreProvider>
     </ToastProvider>
   );

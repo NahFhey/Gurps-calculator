@@ -19,7 +19,6 @@ import type {
   Craft,
   CraftDesign,
   CustomTemplates,
-  EffectFamilyMap,
   GatheringSpecies,
   GatheringTool,
   GatheringTable,

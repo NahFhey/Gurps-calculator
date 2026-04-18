@@ -5,11 +5,11 @@
  * and click-to-select for map token sync.
  */
 
-import { useCombatContext } from './CombatContext';
 import { calculateHPStatus } from '../../utils/combatHelpers';
 import { getActiveConditions } from '../../utils/conditionsEngine';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import type { Participant } from '../../types/combatTracker';
+import { useEffectiveRole } from '../../hooks/useEffectiveRole';
+import { ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import type { CombatState, Participant, HPValue } from '../../types/combatTracker';
 
 const HP_COLORS: Record<string, string> = {
   healthy: 'border-green-500',
@@ -32,17 +32,32 @@ const CATEGORY_BADGE: Record<string, { label: string; className: string }> = {
   object: { label: 'Obj', className: 'bg-gray-600 text-gray-100' },
 };
 
-export function CombatParticipantsSidebar() {
-  const {
-    combat,
-    participants,
-    turnOrder,
-    currentActorInstanceId,
-    selectedParticipantId,
-    setSelectedParticipantId,
-    handleNextTurn,
-    handlePrevTurn,
-  } = useCombatContext();
+interface CombatParticipantsSidebarProps {
+  combat: CombatState;
+  participants: Participant[];
+  turnOrder: string[];
+  currentActorInstanceId: string;
+  selectedParticipantId: string | null;
+  setSelectedParticipantId: (id: string | null) => void;
+  handleNextTurn: () => void;
+  handlePrevTurn: () => void;
+  gmMode: boolean;
+  setGmMode: (value: boolean) => void;
+}
+
+export function CombatParticipantsSidebar({
+  combat,
+  participants,
+  turnOrder,
+  currentActorInstanceId,
+  selectedParticipantId,
+  setSelectedParticipantId,
+  handleNextTurn,
+  handlePrevTurn,
+  gmMode,
+  setGmMode,
+}: CombatParticipantsSidebarProps) {
+  const { isGM: effectiveIsGM, canEdit } = useEffectiveRole();
 
   // Order participants by turnOrder
   const orderedParticipants = turnOrder
@@ -65,6 +80,19 @@ export function CombatParticipantsSidebar() {
             {combat.currentTurnIndex + 1}/{turnOrder.length}
           </div>
         </div>
+        {effectiveIsGM && (
+          <button
+            onClick={() => setGmMode(!gmMode)}
+            className={`p-1 rounded transition-colors ${
+              gmMode
+                ? 'bg-yellow-600/30 text-yellow-300 hover:bg-yellow-600/40'
+                : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+            }`}
+            title={gmMode ? 'GM Mode (click to switch to Player view)' : 'Player View (click to switch to GM mode)'}
+          >
+            {gmMode ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+          </button>
+        )}
       </div>
 
       {/* Participant list */}
@@ -104,21 +132,23 @@ export function CombatParticipantsSidebar() {
         )}
       </div>
 
-      {/* Turn nav */}
-      <div className="flex items-center gap-2 mt-3 pt-2 border-t border-gray-700">
-        <button
-          onClick={handlePrevTurn}
-          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs rounded bg-gray-700 hover:bg-gray-600 transition-colors"
-        >
-          <ChevronLeft className="h-3 w-3" /> Prev
-        </button>
-        <button
-          onClick={handleNextTurn}
-          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs rounded bg-green-700 hover:bg-green-600 text-white font-medium transition-colors"
-        >
-          Next <ChevronRight className="h-3 w-3" />
-        </button>
-      </div>
+      {/* Turn nav (GM only) */}
+      {canEdit && (
+        <div className="flex items-center gap-2 mt-3 pt-2 border-t border-gray-700">
+          <button
+            onClick={handlePrevTurn}
+            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs rounded bg-gray-700 hover:bg-gray-600 transition-colors"
+          >
+            <ChevronLeft className="h-3 w-3" /> Prev
+          </button>
+          <button
+            onClick={handleNextTurn}
+            className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs rounded bg-green-700 hover:bg-green-600 text-white font-medium transition-colors"
+          >
+            Next <ChevronRight className="h-3 w-3" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -139,7 +169,16 @@ function ParticipantCard({
   onClick: () => void;
 }) {
   const p = participant;
-  const hpStatus = calculateHPStatus(p.currentHP ?? p.hp, p.hp);
+
+  // Extract numeric HP values (handles both truth state and filtered object state)
+  const hpCurrent: number = (typeof p.hp === 'object' && p.hp !== null)
+    ? (p.hp as HPValue).current ?? 0
+    : (p.currentHP ?? (p.hp as number));
+  const hpMax: number = (typeof p.hp === 'object' && p.hp !== null)
+    ? (p.hp as HPValue).max ?? 0
+    : ((p.hp as number) || (p.maxHP ?? 0));
+
+  const hpStatus = calculateHPStatus(hpCurrent, hpMax);
   const borderColor = HP_COLORS[hpStatus] ?? 'border-gray-600';
   const bgColor = isCurrent
     ? 'bg-blue-900/40'
@@ -187,12 +226,12 @@ function ParticipantCard({
                     : 'bg-gray-500'
             }`}
             style={{
-              width: `${Math.max(0, Math.min(100, ((p.currentHP ?? p.hp) / p.hp) * 100))}%`,
+              width: `${Math.max(0, Math.min(100, (hpCurrent / hpMax) * 100))}%`,
             }}
           />
         </div>
         <span className="text-[10px] text-gray-400 tabular-nums w-12 text-right">
-          {p.currentHP ?? p.hp}/{p.hp}
+          {hpCurrent}/{hpMax}
         </span>
       </div>
 

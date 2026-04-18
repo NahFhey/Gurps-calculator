@@ -64,7 +64,6 @@ export function FacilitiesView() {
   const { state, actions } = useCampaignStore();
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [formState, setFormState] = useState<FacilityFormState>(DEFAULT_FORM_STATE);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
@@ -90,7 +89,7 @@ export function FacilitiesView() {
     const normalized = normalizeArray(facilitiesList);
     // Since there's no direct setFacilities action, we'll update through the state
     // This would need a store action to be added
-    console.log('Saving facilities:', normalized);
+    console.warn('Saving facilities via temporary setFacilities bridge', normalized);
     // Temporary: dispatch a custom action or use a workaround
     if ((actions as any).setFacilities) {
       (actions as any).setFacilities(normalized);

@@ -2,23 +2,14 @@ import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ItemsView } from '../views/ItemsView';
-
-interface Item {
-  id: string;
-  name: string;
-  inventoryKind?: 'food' | 'material';
-  typeId?: string;
-  yieldFormula?: string;
-  rarity?: string;
-  description?: string;
-}
+import type { GatheringItemExtended } from '../../../types/gathering';
 
 describe('ItemsView', () => {
   const mockSaveItems = vi.fn();
   const mockOnDelete = vi.fn();
 
   const defaultProps = {
-    items: [] as Item[],
+    items: [] as GatheringItemExtended[],
     foodTypes: ['berries', 'herbs', 'vegetables'],
     materialTypes: ['wood', 'stone', 'fiber'],
     saveItems: mockSaveItems,
@@ -35,12 +26,12 @@ describe('ItemsView', () => {
   });
 
   it('shows count in header when items exist', () => {
-    const items: Item[] = [
-      { id: '1', name: 'Berries' },
-      { id: '2', name: 'Mushrooms' },
-      { id: '3', name: 'Roots' }
+    const items = [
+      { id: '1', name: 'Berries', inventoryKind: 'food', typeId: '1', yieldFormula: '1d6', rarity: 'common', description: 'Berry' },
+      { id: '2', name: 'Mushrooms', inventoryKind: 'food', typeId: '2', yieldFormula: '1d4', rarity: 'common', description: 'Mushroom' },
+      { id: '3', name: 'Roots', inventoryKind: 'material', typeId: '3', yieldFormula: '2d4', rarity: 'common', description: 'Root' }
     ];
-    render(<ItemsView {...defaultProps} items={items} />);
+    render(<ItemsView {...defaultProps} items={items as any} />);
     expect(screen.getByText('Forageable Items (3)')).toBeInTheDocument();
   });
 
@@ -86,21 +77,21 @@ describe('ItemsView', () => {
   });
 
   it('renders existing items', () => {
-    const items: Item[] = [
+    const items = [
       { id: '1', name: 'Wild Berries', inventoryKind: 'food' },
       { id: '2', name: 'Healing Herbs', inventoryKind: 'food' }
-    ];
+    ] as any;
 
-    render(<ItemsView {...defaultProps} items={items} />);
+    render(<ItemsView {...defaultProps} items={items as any} />);
 
     expect(screen.getByText('Wild Berries')).toBeInTheDocument();
     expect(screen.getByText('Healing Herbs')).toBeInTheDocument();
   });
 
   it('displays yield formula in list', () => {
-    const items: Item[] = [
+    const items = [
       { id: '1', name: 'Berries', yieldFormula: '3d+2' }
-    ];
+    ] as any;
 
     render(<ItemsView {...defaultProps} items={items} />);
 
@@ -108,9 +99,9 @@ describe('ItemsView', () => {
   });
 
   it('displays inventory kind badge', () => {
-    const items: Item[] = [
+    const items = [
       { id: '1', name: 'Fiber Plant', inventoryKind: 'material' }
-    ];
+    ] as any;
 
     render(<ItemsView {...defaultProps} items={items} />);
 
@@ -118,9 +109,9 @@ describe('ItemsView', () => {
   });
 
   it('displays rarity badge', () => {
-    const items: Item[] = [
+    const items = [
       { id: '1', name: 'Rare Herb', rarity: 'Rare' }
-    ];
+    ] as any;
 
     render(<ItemsView {...defaultProps} items={items} />);
 
@@ -170,9 +161,9 @@ describe('ItemsView', () => {
   });
 
   it('expands item details when clicked', () => {
-    const items: Item[] = [
+    const items = [
       { id: '1', name: 'Test Item', inventoryKind: 'food', yieldFormula: '2d', rarity: 'Common' }
-    ];
+    ] as any;
 
     render(<ItemsView {...defaultProps} items={items} />);
 
@@ -184,9 +175,9 @@ describe('ItemsView', () => {
   });
 
   it('shows type ID in expanded view', () => {
-    const items: Item[] = [
+    const items = [
       { id: '1', name: 'Test Item', typeId: 'test_item_id' }
-    ];
+    ] as any;
 
     render(<ItemsView {...defaultProps} items={items} />);
 
@@ -197,9 +188,9 @@ describe('ItemsView', () => {
   });
 
   it('shows description in expanded view', () => {
-    const items: Item[] = [
+    const items = [
       { id: '1', name: 'Test Item', description: 'A test description for this item' }
-    ];
+    ] as any;
 
     render(<ItemsView {...defaultProps} items={items} />);
 
@@ -209,9 +200,9 @@ describe('ItemsView', () => {
   });
 
   it('calls onDelete when delete is clicked', () => {
-    const items: Item[] = [
+    const items = [
       { id: 'item-456', name: 'Test Item' }
-    ];
+    ] as any;
 
     render(<ItemsView {...defaultProps} items={items} />);
 
@@ -225,9 +216,9 @@ describe('ItemsView', () => {
   });
 
   it('enters edit mode when edit button is clicked', () => {
-    const items: Item[] = [
+    const items = [
       { id: '1', name: 'Edit Me', yieldFormula: '4d' }
-    ];
+    ] as any;
 
     render(<ItemsView {...defaultProps} items={items} />);
 

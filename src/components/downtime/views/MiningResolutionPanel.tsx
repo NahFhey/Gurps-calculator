@@ -247,7 +247,7 @@ export function MiningResolutionPanel({
   const eventResult = useMemo(() => {
     if (!eventDetailRoll.rolled || eventSeverity === 'none') return null;
     return selectEvent(eventSeverity as 'rare' | 'mild', eventDetailRoll.total);
-  }, [eventDetailRoll.rolled, eventSeverity]);
+  }, [eventDetailRoll.rolled, eventDetailRoll.total, eventSeverity]);
 
   // Check all rolls complete
   const allRollsComplete = useMemo(() => {

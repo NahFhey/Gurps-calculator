@@ -119,36 +119,36 @@ export function CookingTab() {
   const { state, actions } = useCampaignStore();
 
   // Get weather modifiers for cooking
-  const { modifiers: weatherModifiers, hasEffect, effectDescription, locationName, skillBonus: weatherSkillBonus } = useWeatherModifiers('cooking');
+  const { hasEffect, effectDescription, locationName } = useWeatherModifiers('cooking');
 
   // Derive data from normalized state
-  const foods = useMemo(() =>
-    denormalizeObject(state.entities.foods) as Food[],
-    [state.entities.foods]
-  );
+  const foods = useMemo(() => {
+    const data = denormalizeObject(state.entities.foods || {});
+    return (Array.isArray(data) ? data : Object.values(data || {})) as Food[];
+  }, [state.entities.foods]);
 
-  const recipes = useMemo(() =>
-    denormalizeObject(state.entities.recipes) as Recipe[],
-    [state.entities.recipes]
-  );
+  const recipes = useMemo(() => {
+    const data = denormalizeObject(state.entities.recipes || {});
+    return (Array.isArray(data) ? data : Object.values(data || {})) as Recipe[];
+  }, [state.entities.recipes]);
 
-  const kitchens = useMemo(() =>
-    denormalizeObject(state.entities.kitchens) as Kitchen[],
-    [state.entities.kitchens]
-  );
+  const kitchens = useMemo(() => {
+    const data = denormalizeObject(state.entities.kitchens || {});
+    return (Array.isArray(data) ? data : Object.values(data || {})) as Kitchen[];
+  }, [state.entities.kitchens]);
 
-  const cookingSkills = state.entities.cookingSkills as CookingSkill[];
+  const cookingSkills = ((state.entities.cookingSkills || []) as unknown) as CookingSkill[];
 
   // Derive workers from characters
-  const workers = useMemo(() =>
-    Object.values(state.entities.characters).map((character: Record<string, unknown>) => ({
+  const workers = useMemo(() => {
+    const chars = state.entities.characters || {};
+    return Object.values(chars).map((character: any) => ({
       id: character.id as string,
       name: character.name as string,
-      skills: (character.work as Record<string, unknown>)?.skills as Record<string, number> || {},
+      skills: character.work?.skills as Record<string, number> || {},
       st: character.st as number | undefined
-    })) as Worker[],
-    [state.entities.characters]
-  );
+    })) as Worker[];
+  }, [state.entities.characters]);
 
   // Save callbacks
   const saveFoods = useCallback((foodsArray: Food[]) => {
@@ -156,7 +156,7 @@ export function CookingTab() {
   }, [actions]);
 
   const saveRecipes = useCallback((recipesArray: Recipe[]) => {
-    actions.setRecipes(normalizeArray(recipesArray));
+    actions.setRecipes(normalizeArray(recipesArray) as any);
   }, [actions]);
 
   // Local state
@@ -308,7 +308,7 @@ export function CookingTab() {
         penalty: 0
       };
     });
-    setRemakeIngredients(ingredients);
+    setRemakeIngredients(ingredients as RemakeIngredient[]);
     setView('remake');
   }
 
@@ -543,7 +543,7 @@ export function CookingTab() {
         <div className="mb-4 px-3 py-2 rounded bg-blue-900/30 border border-blue-700/50">
           <div className="flex items-center gap-2 text-sm">
             <span className="text-blue-400">Weather Effect:</span>
-            <span className="text-gray-300">{effectDescription}</span>
+            <span className="text-gray-300">{effectDescription || ''}</span>
             {locationName && <span className="text-gray-500 text-xs">at {locationName}</span>}
           </div>
         </div>
@@ -656,6 +656,7 @@ export function CookingTab() {
                     dice={roll.dice}
                     total={roll.total}
                     onRoll={(dice: number[], total: number) => setRoll({ dice, total })}
+                    onTotalChange={(total: number) => setRoll({ dice: roll.dice, total })}
                   />
                 </div>
                 {cookingSkillValue && (
@@ -969,6 +970,7 @@ export function CookingTab() {
                     dice={remakeRoll.dice}
                     total={remakeRoll.total}
                     onRoll={(dice: number[], total: number) => setRemakeRoll({ dice, total })}
+                    onTotalChange={(total: number) => setRemakeRoll({ dice: remakeRoll.dice, total })}
                   />
                 </div>
                 {remakeSkill && (

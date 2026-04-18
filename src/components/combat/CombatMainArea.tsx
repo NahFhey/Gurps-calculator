@@ -5,30 +5,67 @@
  */
 
 import { useState } from 'react';
-import { useCombatContext } from './CombatContext';
 import { CombatMapPanel } from './CombatMapPanel';
 import { Dices, X, ScrollText } from 'lucide-react';
+import type { CombatState, LogEntry, Participant } from '../../types/combatTracker';
 
-export function CombatMainArea() {
-  const ctx = useCombatContext();
+interface CombatMainAreaProps {
+  combat: CombatState;
+  participants: Participant[];
+  currentActorInstanceId: string;
+  selectedParticipantId: string | null;
+  setSelectedParticipantId: (id: string | null) => void;
+  movementBudgetYards: number;
+  hasMovedThisTurn: boolean;
+  gmMode: boolean;
+  handleMoveTo: (tileId: string, path: string[], costYards: number) => void;
+  handleGmPlaceToken: (instanceId: string, tileId: string, row: number, col: number) => void;
+  losOverlayTileIds: string[] | undefined;
+  diceExpression: string;
+  setDiceExpression: (value: string) => void;
+  rollTarget: string;
+  setRollTarget: (value: string) => void;
+  handleRoll: () => void;
+  displayLog: LogEntry[];
+}
+
+export function CombatMainArea({
+  combat,
+  participants,
+  currentActorInstanceId,
+  selectedParticipantId,
+  setSelectedParticipantId,
+  movementBudgetYards,
+  hasMovedThisTurn,
+  gmMode,
+  handleMoveTo,
+  handleGmPlaceToken,
+  losOverlayTileIds,
+  diceExpression,
+  setDiceExpression,
+  rollTarget,
+  setRollTarget,
+  handleRoll,
+  displayLog,
+}: CombatMainAreaProps) {
   const [showDice, setShowDice] = useState(false);
   const [showLog, setShowLog] = useState(false);
 
   return (
-    <div className="h-full w-full relative">
+    <div className="flex-1 w-full min-h-0 relative flex flex-col">
       {/* Map fills the entire area */}
       <CombatMapPanel
-        combat={ctx.combat}
-        participants={ctx.participants}
-        currentActorInstanceId={ctx.currentActorInstanceId}
-        selectedParticipantId={ctx.selectedParticipantId}
-        onSelectParticipant={ctx.setSelectedParticipantId}
-        movementBudgetYards={ctx.movementBudgetYards}
-        hasMovedThisTurn={ctx.hasMovedThisTurn}
-        isGmMode={ctx.gmMode}
-        onMoveTo={ctx.handleMoveTo}
-        onGmPlaceToken={ctx.handleGmPlaceToken}
-        losTileIds={ctx.losOverlayTileIds}
+        combat={combat}
+        participants={participants}
+        currentActorInstanceId={currentActorInstanceId}
+        selectedParticipantId={selectedParticipantId}
+        onSelectParticipant={setSelectedParticipantId}
+        movementBudgetYards={movementBudgetYards}
+        hasMovedThisTurn={hasMovedThisTurn}
+        isGmMode={gmMode}
+        onMoveTo={handleMoveTo}
+        onGmPlaceToken={handleGmPlaceToken}
+        losTileIds={losOverlayTileIds}
       />
 
       {/* Floating toolbar — bottom-left */}
@@ -72,30 +109,30 @@ export function CombatMainArea() {
           <div className="flex gap-1.5">
             <input
               type="text"
-              value={ctx.diceExpression}
-              onChange={(e) => ctx.setDiceExpression(e.target.value)}
+              value={diceExpression}
+              onChange={(e) => setDiceExpression(e.target.value)}
               className="flex-1 px-2 py-1 text-xs bg-gray-800 border border-gray-700 rounded"
               placeholder="3d6"
             />
             <input
               type="text"
-              value={ctx.rollTarget}
-              onChange={(e) => ctx.setRollTarget(e.target.value)}
+              value={rollTarget}
+              onChange={(e) => setRollTarget(e.target.value)}
               className="w-12 px-2 py-1 text-xs bg-gray-800 border border-gray-700 rounded"
               placeholder="vs"
             />
           </div>
           <div className="flex gap-1.5 mt-1.5">
             <button
-              onClick={ctx.handleRoll}
+              onClick={handleRoll}
               className="flex-1 px-2 py-1 text-xs rounded bg-blue-600 hover:bg-blue-500 text-white font-medium"
             >
               Roll
             </button>
             <button
               onClick={() => {
-                ctx.setDiceExpression('3d6');
-                ctx.handleRoll();
+                setDiceExpression('3d6');
+                handleRoll();
               }}
               className="px-2 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600 text-gray-300"
             >
@@ -103,8 +140,8 @@ export function CombatMainArea() {
             </button>
             <button
               onClick={() => {
-                ctx.setDiceExpression('1d6');
-                ctx.handleRoll();
+                setDiceExpression('1d6');
+                handleRoll();
               }}
               className="px-2 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600 text-gray-300"
             >
@@ -127,10 +164,10 @@ export function CombatMainArea() {
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-            {ctx.displayLog.length === 0 && (
+            {displayLog.length === 0 && (
               <div className="text-[10px] text-gray-600">No entries yet</div>
             )}
-            {[...ctx.displayLog]
+            {[...displayLog]
               .reverse()
               .slice(0, 50)
               .map((entry: any, i: number) => (

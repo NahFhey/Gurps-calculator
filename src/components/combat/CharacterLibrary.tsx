@@ -9,33 +9,40 @@ import GCSImportModal from './GCSImportModal';
 import { useToast } from '../ui';
 import type { Character as PartyCharacter } from '../../types/campaign';
 
-interface Attack {
-  name: string;
-  skill: number;
-  damage: string;
-  notes?: string;
-}
-
 interface CharacterData {
   id?: string;
   name: string;
+  isNPC: boolean;
   category: string;
   st: number;
   dx: number;
   iq: number;
   ht: number;
   hp: number;
-  fp: number;
-  mp: number;
-  basicSpeed: number;
-  basicMove: number;
+  maxHP: number;
+  fp?: number;
+  maxFP?: number;
+  mp?: number;
+  maxMP?: number;
+  basicSpeed?: number;
+  basicMove?: number;
   dodge: number;
-  parry: number;
-  block: number;
+  parry?: number;
+  block?: number;
   dr: number;
   hitLocationProfileId?: string;
   drByLocation?: Record<string, number>;
-  attacks?: Attack[];
+  skills: Record<string, number>;
+  weapons: Array<{
+    name: string;
+    damage: string;
+    reach: string;
+    skill: string;
+  }>;
+  armor?: Array<{
+    location: string;
+    dr: number;
+  }>;
   notes?: string;
   currentHP?: number;
   currentFP?: number;
@@ -85,7 +92,7 @@ export default function CharacterLibrary() {
         case 'category':
           return a.category.localeCompare(b.category) || a.name.localeCompare(b.name);
         case 'basicSpeed':
-          return b.basicSpeed - a.basicSpeed || a.name.localeCompare(b.name);
+          return (b.basicSpeed || 0) - (a.basicSpeed || 0) || a.name.localeCompare(b.name);
         default:
           return 0;
       }
@@ -103,7 +110,7 @@ export default function CharacterLibrary() {
       currentFP: characterData.fp || 0,
       currentMP: characterData.mp || 0
     };
-    saveCombatCharacters([...(combatCharacters as CharacterData[]), newChar]);
+    saveCombatCharacters([...(combatCharacters as CharacterData[]), newChar] as any);
     setShowForm(false);
   };
 
@@ -112,7 +119,7 @@ export default function CharacterLibrary() {
     saveCombatCharacters(
       (combatCharacters as CharacterData[]).map(char =>
         char.id === editingId ? { ...characterData, id: editingId } : char
-      )
+      ) as any
     );
     setEditingId(null);
   };
@@ -122,17 +129,17 @@ export default function CharacterLibrary() {
     const charToDelete = (combatCharacters as CharacterData[]).find(c => c.id === id);
 
     // Check if this character is referenced in combat history
-    const isReferenced = (combatHistory as CombatHistoryEntry[]).some(combat =>
+    const isReferenced = (combatHistory as unknown as CombatHistoryEntry[]).some(combat =>
       combat.participants?.some(p => p.id === id)
     );
 
     if (isReferenced && charToDelete) {
       // Move to tombstones instead of deleting
-      saveCombatTombstones([...(combatTombstones as CharacterData[]), charToDelete]);
+      saveCombatTombstones([...(combatTombstones as CharacterData[]), charToDelete] as any);
     }
 
     // Remove from active characters
-    saveCombatCharacters((combatCharacters as CharacterData[]).filter(c => c.id !== id));
+    saveCombatCharacters((combatCharacters as CharacterData[]).filter(c => c.id !== id) as any);
   };
 
   // Duplicate character
@@ -149,7 +156,7 @@ export default function CharacterLibrary() {
       currentMP: original.mp || 0
     };
 
-    saveCombatCharacters([...(combatCharacters as CharacterData[]), duplicate]);
+    saveCombatCharacters([...(combatCharacters as CharacterData[]), duplicate] as any);
   };
 
   // Export library as JSON
@@ -187,7 +194,7 @@ export default function CharacterLibrary() {
           currentMP: char.mp || 0
         }));
 
-        saveCombatCharacters([...(combatCharacters as CharacterData[]), ...newChars]);
+        saveCombatCharacters([...(combatCharacters as CharacterData[]), ...newChars] as any);
         showSuccess(`Imported ${newChars.length} characters`);
       } catch (error) {
         showError('Error parsing JSON file: ' + (error as Error).message);
@@ -301,7 +308,7 @@ export default function CharacterLibrary() {
           displayCharacters.map(char => (
             <CharacterSheet
               key={char.id}
-              character={char}
+              character={char as unknown as any}
               onEdit={() => setEditingId(char.id!)}
               onDelete={() => handleDelete(char.id!)}
               onDuplicate={() => handleDuplicate(char.id!)}
@@ -313,8 +320,8 @@ export default function CharacterLibrary() {
       {/* Create/Edit Form Modal */}
       {(showForm || editingId) && (
         <CharacterForm
-          character={editingId ? (combatCharacters as CharacterData[]).find(c => c.id === editingId) : null}
-          onSave={editingId ? handleUpdate : handleCreate}
+          character={editingId ? ((combatCharacters as CharacterData[]).find(c => c.id === editingId) as unknown as any) : null}
+          onSave={editingId ? (handleUpdate as any) : (handleCreate as any)}
           onCancel={() => {
             setShowForm(false);
             setEditingId(null);
@@ -325,7 +332,7 @@ export default function CharacterLibrary() {
       {/* GCS Import Modal */}
       {showGCSImport && (
         <GCSImportModal
-          onImport={handleCreate}
+          onImport={handleCreate as any}
           onCancel={() => setShowGCSImport(false)}
         />
       )}

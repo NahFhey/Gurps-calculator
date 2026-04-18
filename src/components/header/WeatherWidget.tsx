@@ -322,7 +322,8 @@ function WeatherEffectsDisplay({
     if (value === defaultVal) {
       // Remove override if matches default
       if (next[weather.type]) {
-        const { [key]: _, ...rest } = next[weather.type] as Record<string, unknown>;
+        const rest = { ...(next[weather.type] as Record<string, unknown>) };
+        delete rest[key];
         if (Object.keys(rest).length === 0) {
           delete next[weather.type];
         } else {

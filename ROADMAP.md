@@ -9,16 +9,14 @@
 
 **Goal:** Get the codebase healthy before pushing new features. Fix what's broken, remove what's dead.
 
-**Status as of 2026-04-17:** In progress, but the core health checks are now in a better place.
-- `npm run lint` now covers `js/jsx/ts/tsx`.
-- `tsc --noEmit` is currently clean.
-- `npm run build` is currently clean.
-- `npx vitest run` is currently green.
-- TypeScript lint expansion surfaced a warning backlog (currently hook dependency warnings, `console` usage, and a handful of unused variables), but no blocking lint errors remain.
+**Status as of 2026-04-17:** The verification baseline is green again, and the old TypeScript lint warning backlog has been burned down.
+- `npm run lint` now covers `js/jsx/ts/tsx` and is clean.
+- `tsc --noEmit` is clean.
+- `npm run build` is clean.
+- `npx vitest run` is green.
 - Legacy `CombatContext` has been removed and the combat shell now uses direct store/hook access.
-- The remaining `.jsx` test conversions appear to already be complete.
-- The old bridge contexts listed below do not appear to still exist in `src`.
-- Best next-session target: reduce the new TypeScript lint warning backlog, then finish Phase 10 with dependency cleanup plus a focused test-coverage pass.
+- The remaining `.jsx` test conversions are complete.
+- Best next-session target: finish Phase 10 with dependency cleanup, a focused test-coverage pass, and bundle-size follow-up.
 
 ### 10a: Fix TypeScript Errors
 - Completed in the current worktree: the original TypeScript backlog is no longer the active blocker.
@@ -40,10 +38,10 @@
 - Target: all tests green, 80%+ view coverage
 
 **Suggested next session**
-1. Burn down the TypeScript lint warning backlog, starting with `react-hooks/exhaustive-deps` and `no-console`.
-2. Audit `package.json` for genuinely unused dependencies and remove the low-risk ones.
-3. Add or expand tests around combat round flow, time advancement, or crafting lifecycle.
-4. If Phase 10 is green after that, move into Phase 11a combat decomposition.
+1. Audit `package.json` for genuinely unused dependencies and remove the low-risk ones.
+2. Add or expand tests around combat round flow, time advancement, or crafting lifecycle.
+3. Decide whether the next cleanup pass should target bundle splitting before Phase 11 work expands the surface area again.
+4. If Phase 10 still looks green after that, move into Phase 11a combat decomposition.
 
 **Estimated remaining effort:** 1-2 focused sessions
 

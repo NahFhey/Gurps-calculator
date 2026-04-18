@@ -9,10 +9,10 @@ import { logger } from '../utils/logger';
  * on page unload to prevent data loss.
  */
 
-// Extend Window interface to include optional storage API
+// Extend Window interface to include optional custom storage API
 declare global {
   interface Window {
-    storage?: {
+    customStorageAPI?: {
       set: (key: string, value: string, sync?: boolean) => Promise<void>;
       get: (key: string) => Promise<string | null>;
     };
@@ -77,8 +77,8 @@ export function useKeyedDebouncedStorageSave(delay: number = 500): DebouncedSave
         pendingData.delete(key);
         try {
           // Use localStorage as fallback if window.storage unavailable
-          if (window?.storage?.set) {
-            await window.storage.set(key, JSON.stringify(data), true);
+          if (window?.customStorageAPI?.set) {
+            await window.customStorageAPI.set(key, JSON.stringify(data), true);
           } else {
             localStorage.setItem(key, JSON.stringify(data));
           }
@@ -97,8 +97,8 @@ export function useKeyedDebouncedStorageSave(delay: number = 500): DebouncedSave
         const data = pendingData.get(k);
         pendingData.delete(k);
         try {
-          if (window?.storage?.set) {
-            await window.storage.set(k, JSON.stringify(data), true);
+          if (window?.customStorageAPI?.set) {
+            await window.customStorageAPI.set(k, JSON.stringify(data), true);
           } else {
             localStorage.setItem(k, JSON.stringify(data));
           }
@@ -133,8 +133,8 @@ export function useKeyedDebouncedStorageSave(delay: number = 500): DebouncedSave
       pendingData.delete(key);
       try {
         // Use localStorage as fallback if window.storage unavailable
-        if (window?.storage?.set) {
-          await window.storage.set(key, JSON.stringify(dataToSave), true);
+        if (window?.customStorageAPI?.set) {
+          await window.customStorageAPI.set(key, JSON.stringify(dataToSave), true);
         } else {
           localStorage.setItem(key, JSON.stringify(dataToSave));
         }
@@ -155,9 +155,9 @@ export function useKeyedDebouncedStorageSave(delay: number = 500): DebouncedSave
         for (const k of keys) {
           const data = pendingData.get(k);
           try {
-            if (window?.storage?.set) {
+            if (window?.customStorageAPI?.set) {
               // Note: async won't complete, but we try
-              window.storage.set(k, JSON.stringify(data), true);
+              window.customStorageAPI.set(k, JSON.stringify(data), true);
             } else {
               localStorage.setItem(k, JSON.stringify(data));
             }

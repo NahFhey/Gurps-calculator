@@ -83,7 +83,7 @@ export function useCraftingData() {
         st: character.st,
       }))
       .filter(w => craftingSkills.some(sk => w.skills[sk] !== undefined && w.skills[sk] > 0)) as CraftingWorker[],
-    [state.entities.characters]
+    [state.entities.characters, craftingSkills]
   );
 
   // Save callbacks that normalize arrays back to records

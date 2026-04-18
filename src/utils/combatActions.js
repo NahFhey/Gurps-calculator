@@ -22,7 +22,8 @@ export const ACTION_TYPES = {
   ADD_CONDITION: 'ADD_CONDITION',
   REMOVE_CONDITION: 'REMOVE_CONDITION',
   UPDATE_CONDITION: 'UPDATE_CONDITION',
-  USE_ITEM: 'USE_ITEM'
+  USE_ITEM: 'USE_ITEM',
+  MOVE_PARTICIPANT: 'MOVE_PARTICIPANT'
 };
 
 /**
@@ -412,6 +413,40 @@ export function createUseItemAction({
       })),
       conditionsAdded: conditionsRemoved,
       conditionsRemoved: conditionsAdded
+    }
+  };
+}
+
+/**
+ * Create a MOVE_PARTICIPANT action
+ * Records a participant movement on the combat map.
+ *
+ * @param {string} instanceId - Combatant instance ID
+ * @param {object} fromPosition - Previous position {q, r}
+ * @param {object} toPosition - New position {q, r}
+ * @param {string[]} path - Tile IDs along the movement path
+ * @param {number} costYards - Movement cost in yards
+ * @returns {object} Action object
+ */
+export function createMoveParticipantAction(instanceId, fromPosition, toPosition, path, costYards) {
+  return {
+    id: generateId(),
+    ts: new Date().toISOString(),
+    type: ACTION_TYPES.MOVE_PARTICIPANT,
+    label: `Move to (${toPosition.q},${toPosition.r})`,
+    payload: {
+      instanceId,
+      fromPosition,
+      toPosition,
+      path,
+      costYards
+    },
+    inverse: {
+      instanceId,
+      fromPosition: toPosition,
+      toPosition: fromPosition,
+      path: [...path].reverse(),
+      costYards
     }
   };
 }

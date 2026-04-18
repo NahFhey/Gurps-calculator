@@ -30,9 +30,13 @@ let idCounter = 0;
 function createFishingData(overrides?: Partial<FishingData>): FishingData {
   return {
     type: 'fishing',
+    method: 'Line',
     speciesId: 'species-trout',
+    isRandomCatch: false,
     spotId: 'spot-river',
     toolIds: [],
+    baitId: null,
+    retryAttempt: 0,
     skillModifier: 0,
     targetYield: 5,
     ...overrides,
@@ -50,6 +54,7 @@ function createAlchemyData(overrides?: Partial<AlchemyData>): AlchemyData {
     reagentIds: ['reagent-1'],
     batchSize: 1,
     toolIds: [],
+    aspectModifiers: {},
     ...overrides,
   };
 }
@@ -60,12 +65,11 @@ function createAlchemyData(overrides?: Partial<AlchemyData>): AlchemyData {
 function createCraftingData(overrides?: Partial<CraftingData>): CraftingData {
   return {
     type: 'crafting',
-    projectId: 'project-sword',
     recipeId: 'recipe-longsword',
-    materialIds: ['material-1'],
-    toolIds: [],
-    phase: 'craft',
-    progress: 0,
+    materialInstanceIds: ['material-1'],
+    toolInstanceIds: [],
+    qualityTarget: 'standard',
+    skillModifier: 0,
     ...overrides,
   };
 }
@@ -1044,7 +1048,7 @@ describe('validateToolExclusivity', () => {
         dayKey: 1,
         slot: 0,
         activityType: 'crafting',
-        activityData: createCraftingData({ toolIds: ['hammer-1'], projectId: 'project-a' }),
+        activityData: createCraftingData({ toolInstanceIds: ['hammer-1'] }),
       }),
     ]);
 
@@ -1054,7 +1058,7 @@ describe('validateToolExclusivity', () => {
       slot: 1, // Different slot
       leaderId: 'char-2',
       helperIds: [],
-      activityData: createCraftingData({ toolIds: ['hammer-1'], projectId: 'project-b' }),
+      activityData: createCraftingData({ toolInstanceIds: ['hammer-1'] }),
     }));
 
     expect(result.valid).toBe(true);
@@ -1067,7 +1071,7 @@ describe('validateToolExclusivity', () => {
         dayKey: 1,
         slot: 0,
         activityType: 'crafting',
-        activityData: createCraftingData({ toolIds: ['hammer-1'], projectId: 'project-a' }),
+        activityData: createCraftingData({ toolInstanceIds: ['hammer-1'] }),
       }),
     ]);
 
@@ -1077,7 +1081,7 @@ describe('validateToolExclusivity', () => {
       slot: 0,
       leaderId: 'char-2',
       helperIds: [],
-      activityData: createCraftingData({ toolIds: ['hammer-1'], projectId: 'project-b' }),
+      activityData: createCraftingData({ toolInstanceIds: ['hammer-1'] }),
     }));
 
     expect(result.valid).toBe(true);

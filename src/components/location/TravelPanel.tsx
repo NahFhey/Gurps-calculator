@@ -13,7 +13,6 @@ import { useMemo } from 'react';
 import { useCampaignStore } from '../../state/campaignStore';
 import { getWeatherIcon } from '../../utils/weatherSystem';
 import { CLIMATE_LABELS, TERRAIN_LABELS } from '../../types/location';
-import type { Location } from '../../types/location';
 
 interface TravelPanelProps {
   onClose?: () => void;

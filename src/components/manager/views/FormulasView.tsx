@@ -369,7 +369,6 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
                   </div>
                 </div>
 
-{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 <TBBuilderPanel
                   traitBudget={stats.traitBudget}
                   initialTraits={formulaTraits as any}
@@ -430,7 +429,6 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
 
             {expandedFormula === f.id && f.traits && (
               <div className="mt-3">
-{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 <TBBuilderPanel
                   traitBudget={f.traitBudget || 10}
                   initialTraits={(f.traits || []) as any}

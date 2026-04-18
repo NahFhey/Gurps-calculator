@@ -91,7 +91,8 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
 
     if (amount <= 0) {
       // Remove currency if 0 or negative
-      const { [key]: _, ...rest } = characterInventory.currency;
+      const rest = { ...characterInventory.currency };
+      delete rest[key];
       actions.updateInventory(characterInventory.id, {
         currency: rest,
       });

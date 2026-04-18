@@ -367,7 +367,7 @@ export function getTargetKeyFromActivityData(
     case 'alchemy':
       return `recipe:${(activityData as { recipeId: string }).recipeId}`;
     case 'crafting':
-      return `project:${(activityData as { projectId: string }).projectId}`;
+      return `project:${(activityData as unknown as { projectId: string }).projectId}`;
     case 'rest':
       return `rest:${(activityData as { restType: string }).restType}`;
     default:

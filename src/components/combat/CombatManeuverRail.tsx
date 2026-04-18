@@ -5,8 +5,8 @@
  * and an End Combat button at the bottom.
  */
 
-import { useCombatContext } from './CombatContext';
 import { XCircle } from 'lucide-react';
+import type { Maneuver, Participant } from '../../types/combatTracker';
 
 const GROUP_COLORS: Record<string, string> = {
   Core: 'border-blue-500/40',
@@ -14,14 +14,21 @@ const GROUP_COLORS: Record<string, string> = {
   'All-Out Defense': 'border-green-500/40',
 };
 
-export function CombatManeuverRail() {
-  const {
-    currentActor,
-    availableManeuvers,
-    selectedManeuverId,
-    handleSelectManeuver,
-    handleEndCombat,
-  } = useCombatContext();
+interface CombatManeuverRailProps {
+  currentActor?: Participant;
+  availableManeuvers: Array<Maneuver & { disabled?: boolean; reason?: string }>;
+  selectedManeuverId: string | null;
+  handleSelectManeuver: (maneuverId: string | null) => void;
+  handleEndCombat: () => void;
+}
+
+export function CombatManeuverRail({
+  currentActor,
+  availableManeuvers,
+  selectedManeuverId,
+  handleSelectManeuver,
+  handleEndCombat,
+}: CombatManeuverRailProps) {
 
   const selectedManeuver = availableManeuvers.find(
     (m) => m.id === selectedManeuverId,
@@ -46,7 +53,7 @@ export function CombatManeuverRail() {
         {availableManeuvers.map((m) => {
           const isSelected = m.id === selectedManeuverId;
           const isDisabled = !!m.disabled;
-          const groupColor = GROUP_COLORS[m.group] ?? 'border-gray-600/40';
+          const groupColor = m.group ? GROUP_COLORS[m.group] : 'border-gray-600/40';
 
           return (
             <button

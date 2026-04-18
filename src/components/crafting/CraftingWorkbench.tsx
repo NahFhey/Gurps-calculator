@@ -173,6 +173,7 @@ export function CraftingWorkbench({
     if (!downtimeState || currentDayKey === undefined || currentSlot === undefined) return workers;
     return workers.filter(w => !selectCharacterAssignmentForSlot(downtimeState, w.id, currentDayKey, currentSlot));
   }, [workers, downtimeState, currentDayKey, currentSlot]);
+  const currentPhase = current?.phase;
 
   // Sync with external craft prop changes
   useEffect(() => {
@@ -192,12 +193,12 @@ export function CraftingWorkbench({
 
   // Auto-fill skill when worker selection or craft phase changes
   useEffect(() => {
-    if (!selectedWorker || !current) return;
+    if (!selectedWorker || !currentPhase) return;
     const worker = availableWorkers.find(w => w.name === selectedWorker);
     if (worker?.skills) {
-      setSkill(String(current.phase === 'design' ? (worker.skills.designing ?? 10) : (worker.skills.crafting ?? 10)));
+      setSkill(String(currentPhase === 'design' ? (worker.skills.designing ?? 10) : (worker.skills.crafting ?? 10)));
     }
-  }, [selectedWorker, current?.phase, availableWorkers]);
+  }, [selectedWorker, currentPhase, availableWorkers]);
 
   function startNew() {
     const weaponKeys = Object.keys(customTemplates.weapons || {});

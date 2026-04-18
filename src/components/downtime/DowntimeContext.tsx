@@ -5,7 +5,7 @@
  * for all downtime activity components.
  */
 
-import React, { createContext, useContext, useReducer, useMemo, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useReducer, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useCampaignStore } from '../../state/campaignStore';
 import {
   downtimeReducer,
@@ -173,7 +173,7 @@ export function DowntimeProvider({
     return allEnvs.filter(
       (e) =>
         (e as any).locationId === currentLocationId &&
-        (e.supportedModes?.includes('Fishing') ?? false)
+        ((e as any).supportedModes?.includes('Fishing') ?? false)
     );
   }, [campaignState.entities?.gatheringEnvironments, currentLocationId]);
 
@@ -213,7 +213,7 @@ export function DowntimeProvider({
     return allEnvs.filter(
       (e) =>
         (e as any).locationId === currentLocationId &&
-        (e.supportedModes?.includes('Foraging') ?? false)
+        ((e as any).supportedModes?.includes('Foraging') ?? false)
     );
   }, [campaignState.entities?.gatheringEnvironments, currentLocationId]);
 
@@ -318,17 +318,17 @@ export function DowntimeProvider({
     dispatch(cancelTask(taskId));
   };
 
-  const addForageZoneProfile = (zone: ForageZoneProfile) => {
+  const addForageZoneProfile = useCallback((zone: ForageZoneProfile) => {
     campaignActions.addForageZoneProfile(zone);
-  };
+  }, [campaignActions]);
 
-  const updateForageZoneProfile = (id: string, changes: Partial<ForageZoneProfile>) => {
+  const updateForageZoneProfile = useCallback((id: string, changes: Partial<ForageZoneProfile>) => {
     campaignActions.updateForageZoneProfile(id, changes);
-  };
+  }, [campaignActions]);
 
-  const removeForageZoneProfile = (id: string) => {
+  const removeForageZoneProfile = useCallback((id: string) => {
     campaignActions.removeForageZoneProfile(id);
-  };
+  }, [campaignActions]);
 
   const value = useMemo(
     () => ({
@@ -390,6 +390,9 @@ export function DowntimeProvider({
       currentLocationName,
       currentDayKey,
       currentSlot,
+      addForageZoneProfile,
+      updateForageZoneProfile,
+      removeForageZoneProfile,
     ]
   );
 

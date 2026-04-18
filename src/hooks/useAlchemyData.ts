@@ -91,7 +91,7 @@ export function useAlchemyData() {
         st: character.st,
       }))
       .filter(w => alchemySkills.some(sk => w.skills[sk] !== undefined && w.skills[sk] > 0)) as AlchemyWorker[],
-    [state.entities.characters]
+    [state.entities.characters, alchemySkills]
   );
 
   // Track previous batches for change detection

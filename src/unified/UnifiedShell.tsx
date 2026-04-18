@@ -20,9 +20,9 @@ import { CharacterStatusBadge } from '../components/downtime/views/CharacterStat
 import { duplicateCharacter, downloadCharacterJSON } from '../utils/characterManagement';
 import { parseCharacterText } from '../utils/characterImport';
 import { WeatherWidget, TimeDisplay, TimeControls } from '../components/header';
+import { ConnectionStatus } from '../components/header/ConnectionStatus';
 import { CombatTile } from '../components/combat/CombatTile';
 import { CombatTab } from '../components/CombatTab';
-import { CombatContextProvider } from '../components/combat/CombatContext';
 import { CombatParticipantsSidebar } from '../components/combat/CombatParticipantsSidebar';
 import { CombatManeuverRail } from '../components/combat/CombatManeuverRail';
 import { CombatMainArea } from '../components/combat/CombatMainArea';
@@ -35,6 +35,10 @@ import {
   useSelectedCharacterId
 } from '../state/campaignStore';
 import { useAllCharacterSlotSummaries } from '../hooks/useCharacterSlotSummary';
+import { useEffectiveRole } from '../hooks/useEffectiveRole';
+import { useCombatLayout } from '../hooks/useCombatLayout';
+import { ConfirmDialog } from '../components/ui';
+import { ViewMode } from '../utils/combatViewFilter';
 import type { Character } from '../types/campaign';
 
 interface ModuleDefinition {
@@ -55,12 +59,13 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
   const { state: layoutState, actions: layoutActions } = usePanelLayout();
 
   const { state, actions } = useCampaignStore();
+  const { isGM } = useEffectiveRole();
 
   const availableModules = useMemo<ModuleDefinition[]>(() => {
     if (modules?.length) {
       return modules;
     }
-    return [
+    const allModules: ModuleDefinition[] = [
       { id: 'inventory', label: 'Inventory', content: <InventoryTab /> },
       {
         id: 'downtime',
@@ -82,7 +87,12 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
       { id: 'rules', label: 'Rules', content: <RulesTab /> },
       { id: 'changelog', label: 'Changelog', content: <ChangelogTab /> },
     ];
-  }, [modules, state.time?.day, state.time?.slot]);
+    // Hide GM-only modules for non-GM roles
+    if (!isGM) {
+      return allModules.filter(m => m.id !== 'manager');
+    }
+    return allModules;
+  }, [modules, state.time?.day, state.time?.slot, isGM]);
   const activeModuleId = state.ui.activeModule;
   const activeModule = activeModuleId ? availableModules.find((moduleItem) => moduleItem.id === activeModuleId) : null;
   const selectedCharacterId = useSelectedCharacterId();
@@ -104,6 +114,11 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
 
   // Character creation modal state
   const [showCreationModal, setShowCreationModal] = useState(false);
+  const [combatViewMode, setCombatViewMode] = useState(ViewMode.PLAYER);
+  const [combatGmMode, setCombatGmMode] = useState(isGM);
+  const [selectedCombatParticipantId, setSelectedCombatParticipantId] = useState<string | null>(null);
+  const [combatDiceExpression, setCombatDiceExpression] = useState('3d6');
+  const [combatRollTarget, setCombatRollTarget] = useState('');
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -229,7 +244,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
 
   // Combat layout: when combat is active WITH a linked map, take over the whole shell
   const isCombatActive = !!state.combat.activeSession;
-  const combatHasMap = !!(state.combat.activeSession as any)?.mapId;
+  const combatHasMap = !!state.combat.activeSession?.mapId;
   const combatLayoutActive = isCombatActive && combatHasMap;
 
   // Character panel should hide when no character is selected or party is collapsed
@@ -274,6 +289,38 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
     }
   }, [isRailCollapsed, activeModuleId, actions]);
 
+  // Force GM mode off when connected as non-GM role
+  useEffect(() => {
+    if (!isGM && state.ui.gmModeEnabled) {
+      actions.setGmMode(false);
+    }
+  }, [isGM, state.ui.gmModeEnabled, actions]);
+
+  useEffect(() => {
+    if (!isGM) {
+      setCombatGmMode(false);
+      setCombatViewMode(ViewMode.PLAYER);
+    }
+  }, [isGM]);
+
+  const combatLayout = useCombatLayout({
+    viewMode: combatViewMode,
+    selectedParticipantId: selectedCombatParticipantId,
+    diceExpression: combatDiceExpression,
+    rollTarget: combatRollTarget,
+  });
+
+  const handleSetCombatGmMode = useCallback(
+    (value: boolean) => {
+      if (!isGM) return;
+      setCombatGmMode(value);
+      if (!value && combatViewMode === ViewMode.GM) {
+        setCombatViewMode(ViewMode.PLAYER);
+      }
+    },
+    [isGM, combatViewMode],
+  );
+
   const shellContent = (
     <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
       {/* Header - Redesigned with Weather, Time Display, and Time Controls */}
@@ -290,8 +337,9 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
             {state.ui.gmModeEnabled && <TimeControls compact />}
           </div>
 
-          {/* Right: Debug controls and blocking errors */}
+          {/* Right: Connection status, debug controls, and blocking errors */}
           <div className="flex flex-wrap items-center gap-3 text-sm text-gray-300">
+            <ConnectionStatus />
             {state.ui.debugMode && (
               <div className="rounded border border-amber-500/50 bg-amber-500/10 px-2 py-1 text-xs text-amber-100">
                 Debug mode
@@ -334,8 +382,19 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
             combatLayoutActive ? 'p-3' : isPartyCollapsed ? 'p-2 min-w-[56px]' : 'p-4'
           }`}
         >
-          {combatLayoutActive ? (
-            <CombatParticipantsSidebar />
+          {combatLayoutActive && combatLayout.combat ? (
+            <CombatParticipantsSidebar
+              combat={combatLayout.combat}
+              participants={combatLayout.participants}
+              turnOrder={combatLayout.turnOrder}
+              currentActorInstanceId={combatLayout.currentActorInstanceId}
+              selectedParticipantId={selectedCombatParticipantId}
+              setSelectedParticipantId={setSelectedCombatParticipantId}
+              handleNextTurn={combatLayout.handleNextTurn}
+              handlePrevTurn={combatLayout.handlePrevTurn}
+              gmMode={combatGmMode}
+              setGmMode={handleSetCombatGmMode}
+            />
           ) : (
             <>
 
@@ -478,8 +537,8 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                 );
               })}
 
-              {/* Add Character and Import Buttons */}
-              <div className="mt-4 pt-4 border-t border-gray-700 space-y-2">
+              {/* Add Character and Import Buttons (GM only) */}
+              {isGM && <div className="mt-4 pt-4 border-t border-gray-700 space-y-2">
                 <button
                   type="button"
                   onClick={() => setShowCreationModal(true)}
@@ -505,7 +564,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                 >
                   Quick Import
                 </button>
-              </div>
+              </div>}
             </div>
           )}
 
@@ -592,8 +651,26 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                 : 'rounded border border-gray-700 bg-gray-800/60 p-4'
           }`}
         >
-          {combatLayoutActive ? (
-            <CombatMainArea />
+          {combatLayoutActive && combatLayout.combat ? (
+            <CombatMainArea
+              combat={combatLayout.combat}
+              participants={combatLayout.participants}
+              currentActorInstanceId={combatLayout.currentActorInstanceId}
+              selectedParticipantId={selectedCombatParticipantId}
+              setSelectedParticipantId={setSelectedCombatParticipantId}
+              movementBudgetYards={combatLayout.movementBudgetYards}
+              hasMovedThisTurn={combatLayout.hasMovedThisTurn}
+              gmMode={combatGmMode}
+              handleMoveTo={combatLayout.handleMoveTo}
+              handleGmPlaceToken={combatLayout.handleGmPlaceToken}
+              losOverlayTileIds={combatLayout.losOverlayTileIds}
+              diceExpression={combatDiceExpression}
+              setDiceExpression={setCombatDiceExpression}
+              rollTarget={combatRollTarget}
+              setRollTarget={setCombatRollTarget}
+              handleRoll={combatLayout.handleRoll}
+              displayLog={combatLayout.displayLog}
+            />
           ) : (
             activeModule && (
               <>
@@ -628,7 +705,13 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           }`}
         >
           {combatLayoutActive ? (
-            <CombatManeuverRail />
+            <CombatManeuverRail
+              currentActor={combatLayout.currentActor}
+              availableManeuvers={combatLayout.availableManeuvers}
+              selectedManeuverId={combatLayout.selectedManeuverId}
+              handleSelectManeuver={combatLayout.handleSelectManeuver}
+              handleEndCombat={combatLayout.handleEndCombat}
+            />
           ) : (
             <>
           {/* Header with toggle button - matching Party collapsed structure */}
@@ -785,13 +868,10 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           </div>
         </div>
       )}
+
+      <ConfirmDialog {...combatLayout.endCombatDialogProps} />
     </div>
   );
-
-  // Wrap in CombatContextProvider when combat is active (with or without map)
-  if (isCombatActive) {
-    return <CombatContextProvider>{shellContent}</CombatContextProvider>;
-  }
 
   return shellContent;
 }

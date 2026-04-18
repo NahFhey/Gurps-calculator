@@ -1,4 +1,4 @@
-import React, { useState, useMemo, memo } from 'react';
+import { useState, useMemo, memo, ReactElement } from 'react';
 import { Fish, Users, Target, Package, CheckCircle, XCircle } from 'lucide-react';
 import { DiceRoller } from './DiceRoller';
 import {
@@ -14,7 +14,6 @@ import {
   determineDynamicEventType,
   rollOnCatchTable,
   rollNetCatch,
-  calculateFishYields,
   generateGroupKey,
   hasDailyEventBeenRolled,
   filterToolsForMethod,
@@ -23,9 +22,7 @@ import {
   roll3d6,
   calculateEffectiveForagingSkill,
   evaluateForagingRoll,
-  determineForageFind,
-  calculateForageYields,
-  getToolYieldBonus
+  determineForageFind
 } from '../utils/gathering';
 
 // ============================================================================
@@ -37,42 +34,76 @@ export interface GatheringSpecies {
   name: string;
   type?: string;
   tags?: string[];
-  st?: number;
+  st?: number | null;
   yieldMeatFormula?: string;
-  yieldSecondaryFormula?: string;
-  secondaryMaterialType?: string;
-  secondaryNameOverride?: string;
+  yieldSecondaryFormula?: string | null;
+  secondaryMaterialType?: string | null;
+  secondaryNameOverride?: string | null;
 }
 
 export interface GatheringTool {
   id: string;
   name: string;
   allowedModes?: string[];
+  allowedMethods?: string[];
   bonuses?: Array<{ type: string; skill?: string; value?: number }>;
+}
+
+export interface TableEntry {
+  id?: string;
+  rollValue?: number;
+  resultType?: string;
+  speciesId?: string | null;
+  itemId?: string | null;
+  text?: string;
+  [key: string]: unknown;
 }
 
 export interface GatheringTable {
   id: string;
   name: string;
-  entries?: unknown[];
+  rollMethod: '1d6' | '2d6' | '3d6';
+  entries: TableEntry[];
 }
 
 export interface GatheringEnvironment {
   id: string;
   name: string;
   supportedModes?: string[];
-  mode?: string;
   skillMod?: number;
   defaultsByMode?: Record<string, {
     randomCatchTableId?: string;
     mildEventTableId?: string;
     rareEventTableId?: string;
   }>;
-  defaultTables?: {
-    randomCatchTableId?: string;
-    mildEventTableId?: string;
-    rareEventTableId?: string;
-  };
+}
+
+export interface GatheringBait {
+  id: string;
+  name: string;
+  quantity?: number;
+  attractsSpeciesIds?: string[];
+  rollBonus?: number;
+}
+
+export interface GatheringCategory {
+  id: string;
+  name: string;
+  description?: string;
+  yieldFormula?: string;
+  inventoryKind?: 'food' | 'material';
+  typeId?: string;
+}
+
+export interface GatheringItem {
+  id: string;
+  name: string;
+  categoryId?: string;
+  rarity?: string;
+  description?: string;
+  yieldFormula?: string;
+  inventoryKind?: 'food' | 'material';
+  typeId?: string;
 }
 
 export interface GatheringSession {
@@ -103,34 +134,6 @@ export interface SessionResolution {
     foods: Record<string, number>;
     materials: Record<string, number>;
   };
-}
-
-export interface GatheringBait {
-  id: string;
-  name: string;
-  quantity?: number;
-  attractsSpeciesIds?: string[];
-  rollBonus?: number;
-}
-
-export interface GatheringCategory {
-  id: string;
-  name: string;
-  description?: string;
-  yieldFormula?: string;
-  inventoryOutput?: {
-    inventoryKind?: 'food' | 'material';
-    typeId?: string;
-  };
-}
-
-export interface GatheringItem {
-  id: string;
-  name: string;
-  categoryId?: string;
-  rarity?: string;
-  description?: string;
-  yieldFormula?: string;
 }
 
 export interface Worker {
@@ -227,7 +230,7 @@ export interface FishYields {
   meatDice?: number[];
   secondaryUnits?: number;
   secondaryDice?: number[];
-  secondaryType?: string;
+  secondaryType?: string | null;
   foodType?: string;
 }
 
@@ -306,16 +309,12 @@ function GatheringTabBase({
   workers,
   foods,
   materials,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  foodTypes: _foodTypes,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  materialTypes: _materialTypes,
   currentDay,
   saveSessions,
   saveDailyEvents,
   saveFoods,
   saveMaterials
-}: GatheringTabProps): JSX.Element {
+}: GatheringTabProps): ReactElement {
   // Mode and environment selection
   const [selectedMode, setSelectedMode] = useState('Fishing');
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState('');
@@ -340,7 +339,7 @@ function GatheringTabBase({
   // Roll inputs
   const [eventRoll, setEventRoll] = useState<DiceRoll>({ dice: [], total: 0 });
   const [fishingRoll, setFishingRoll] = useState<DiceRoll>({ dice: [], total: 0 });
-  const [_catchRolls, setCatchRolls] = useState<string[]>([]);
+  const [, setCatchRolls] = useState<string[]>([]);
   const [struggleRoll, setStruggleRoll] = useState('');
   const [yieldResults, setYieldResults] = useState<YieldResult[]>([]);
 
@@ -368,7 +367,7 @@ function GatheringTabBase({
   // Get filtered environments for selected mode
   const availableEnvironments = useMemo(() => {
     return environments.filter(env =>
-      env.supportedModes?.includes(selectedMode) || env.mode === selectedMode
+      env.supportedModes?.includes(selectedMode)
     );
   }, [environments, selectedMode]);
 
@@ -381,7 +380,7 @@ function GatheringTabBase({
   const resolvedTables = useMemo(() => {
     if (!selectedEnvironment) return { randomCatch: null, mildEvent: null, rareEvent: null };
 
-    const defaults = selectedEnvironment.defaultsByMode?.[selectedMode] || selectedEnvironment.defaultTables || {};
+    const defaults = selectedEnvironment.defaultsByMode?.[selectedMode] || {};
 
     return {
       randomCatch: tables.find(t => t.id === defaults.randomCatchTableId) || null,
@@ -452,9 +451,9 @@ function GatheringTabBase({
     return calculateEffectiveFishingSkill({
       baseFishingSkill: leader.skills?.fishing || 10,
       toolBonus,
-      hasCorrectBait: baitStatus.correct,
-      hasInappropriateBait: baitStatus.inappropriate,
-      targetingLargeFish: isLargeFish && !isRandomCatch,
+      hasCorrectBait: baitStatus.correct || false,
+      hasInappropriateBait: baitStatus.inappropriate || false,
+      targetingLargeFish: (isLargeFish && !isRandomCatch) || false,
       retryPenalty: -retryCount,
       environmentMod: selectedEnvironment?.skillMod || 0
     }) as EffectiveSkillResult;
@@ -466,13 +465,15 @@ function GatheringTabBase({
 
     const baseSkill = leader.skills?.[selectedSkill.toLowerCase()] || 10;
 
+    // targetRarity is a string from state, function accepts null or string
+    const rarity = !isRandomForage ? targetRarity : null;
     return calculateEffectiveForagingSkill({
       baseForagingSkill: baseSkill,
       toolBonus,
-      hasMapGuide,
-      isUnfamiliar,
-      isPeakSeason,
-      targetRarity: !isRandomForage ? targetRarity : null,
+      hasMapGuide: hasMapGuide || false,
+      isUnfamiliar: isUnfamiliar || false,
+      isPeakSeason: isPeakSeason || false,
+      targetRarity: rarity as unknown as string,
       environmentMod: selectedEnvironment?.skillMod || 0
     }) as EffectiveSkillResult;
   }, [leader, selectedSkill, toolBonus, hasMapGuide, isUnfamiliar, isPeakSeason, targetRarity, isRandomForage, selectedEnvironment, selectedMode]);
@@ -529,10 +530,12 @@ function GatheringTabBase({
     let eventText: string | null = null;
 
     if (eventType === 'rare' && resolvedTables.rareEvent) {
-      eventEntry = rollOnCatchTable(resolvedTables.rareEvent) as { id?: string; text?: string };
+      const entry = rollOnCatchTable(resolvedTables.rareEvent) as TableEntry;
+      eventEntry = { id: entry?.id, text: entry?.text };
       eventText = eventEntry?.text || 'Rare event occurred!';
     } else if (eventType === 'mild' && resolvedTables.mildEvent) {
-      eventEntry = rollOnCatchTable(resolvedTables.mildEvent) as { id?: string; text?: string };
+      const entry = rollOnCatchTable(resolvedTables.mildEvent) as TableEntry;
+      eventEntry = { id: entry?.id, text: entry?.text };
       eventText = eventEntry?.text || 'Mild event occurred!';
     }
 
@@ -596,15 +599,13 @@ function GatheringTabBase({
 
     setForageResult(result);
 
-    const targetCategory = targetCategoryId ? categories.find(c => c.id === targetCategoryId) : null;
     const targetItem = targetItemId ? items.find(i => i.id === targetItemId) : null;
 
     const findResult = determineForageFind({
       rollResult: result,
-      findTable: resolvedTables.randomCatch,
-      targetCategory,
-      targetItem
-    }) as ForageFind;
+      findTable: resolvedTables.randomCatch as any,
+      targetItem: targetItem as any
+    } as any) as ForageFind;
 
     setForageFind(findResult);
     setSessionPhase('yield');
@@ -612,7 +613,8 @@ function GatheringTabBase({
 
   // Roll for random catch
   function rollCatch(index: number): void {
-    if (!resolvedTables.randomCatch) {
+    const table = resolvedTables.randomCatch;
+    if (!table) {
       alert('No catch table configured for this environment');
       return;
     }
@@ -624,9 +626,9 @@ function GatheringTabBase({
     let entry: { resultType?: string; speciesId?: string };
     try {
       if (selectedMethod === 'Net') {
-        entry = rollNetCatch(resolvedTables.randomCatch, species) as { resultType?: string; speciesId?: string };
+        entry = rollNetCatch(table as any, species as any);
       } else {
-        entry = rollOnCatchTable(resolvedTables.randomCatch, baitRollBonus) as { resultType?: string; speciesId?: string };
+        entry = rollOnCatchTable(table as any, baitRollBonus);
       }
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Unknown error');
@@ -725,8 +727,8 @@ function GatheringTabBase({
         const cat = category || categories.find(c => c.id === item?.categoryId);
         if (!cat) return;
 
-        const inventoryKind = cat.inventoryOutput?.inventoryKind || 'food';
-        const typeId = cat.inventoryOutput?.typeId || cat.name.toLowerCase().replace(/\s+/g, '_');
+        const inventoryKind = cat.inventoryKind || 'food';
+        const typeId = cat.typeId || cat.name.toLowerCase().replace(/\s+/g, '_');
 
         const itemName = item?.name || cat.name;
 

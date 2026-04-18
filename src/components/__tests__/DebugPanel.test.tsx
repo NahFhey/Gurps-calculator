@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import '@testing-library/jest-dom';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, afterEach } from 'vitest';
@@ -61,7 +61,7 @@ describe('DebugPanel', () => {
       </ToastProvider>
     );
 
-    const input = screen.getByTestId('debug-json');
+    const input = screen.getByTestId('debug-json') as HTMLInputElement;
     const parsed = JSON.parse(input.value);
     parsed.time.day = 7;
     const updatedJson = JSON.stringify(parsed, null, 2);

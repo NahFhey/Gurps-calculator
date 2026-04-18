@@ -92,8 +92,8 @@ function GatheringManagerBase() {
   }, [state.locations?.locations]);
 
   // Get food and material types from state
-  const foodTypes = state.entities.foodTypes || [];
-  const materialTypes = state.entities.materialTypes || [];
+  const foodTypes = state.entities.foodTypes;
+  const materialTypes = state.entities.materialTypes;
 
   // Normalize food type names
   const availableFoodTypes = useMemo(() => {

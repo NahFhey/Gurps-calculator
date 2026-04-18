@@ -3,6 +3,7 @@ import { History, Download, Trash2, Eye, EyeOff } from 'lucide-react';
 import { useCombatStore } from '../../hooks/useCombatStore';
 import { exportCombatLog } from '../../utils/combatHelpers';
 import { ConfirmDialog, useConfirmDialog } from '../ui';
+import type { CombatSession } from '../../types/campaign';
 
 interface LogEntry {
   type: string;
@@ -68,7 +69,6 @@ function formatLogEntry(entry: LogEntry): string {
 export default function CombatHistory() {
   const { combatHistory, saveCombatHistory } = useCombatStore();
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const deleteDialog = useConfirmDialog({
     title: 'Delete Combat History',
@@ -97,12 +97,10 @@ export default function CombatHistory() {
   };
 
   const handleDelete = async (id: string) => {
-    setPendingDeleteId(id);
     const confirmed = await deleteDialog.confirm();
     if (confirmed) {
-      saveCombatHistory(combatHistory.filter((c: CombatHistoryEntry) => c.id !== id));
+      saveCombatHistory((combatHistory as CombatSession[]).filter((c) => c.id !== id));
     }
-    setPendingDeleteId(null);
   };
 
   const formatDuration = (startTime: number, endTime: number): string => {
@@ -130,7 +128,7 @@ export default function CombatHistory() {
       </div>
 
       <div className="space-y-2">
-        {combatHistory.map((combat: CombatHistoryEntry) => (
+        {(combatHistory as unknown as CombatHistoryEntry[]).map((combat: CombatHistoryEntry) => (
           <div key={combat.id} className="bg-gray-800 rounded-lg overflow-hidden">
             {/* Header */}
             <div
