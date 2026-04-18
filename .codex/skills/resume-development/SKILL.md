@@ -21,12 +21,14 @@ Use this skill to restart momentum in the `Gurps-calculator` repo without making
    - what is already done
    - whether lint/typecheck/build/tests are green
    - what is actually left in the current phase
+   - whether there is already uncommitted work in the tree that should be carried forward instead of re-done
 4. Choose the next task instead of waiting for more direction when the user simply says to continue:
    - prefer the current roadmap phase
    - prefer the smallest high-value slice that keeps momentum
    - if the baseline is green but `build` or `verify` still emits warnings, treat the warning as real prioritization input instead of assuming Phase 10 is "done"
    - if there is a warning/backlog cluster, handle it in thematic sweeps
    - if docs or selectors describe a workflow invariant that the UI does not appear to enforce, treat that mismatch as a strong next-task candidate
+   - if the chosen task closes the current phase's last named gap, update the docs and pivot the next target to the following phase in the same turn
 5. Start the work in the same turn:
    - make the change
    - rerun affected checks
@@ -47,6 +49,7 @@ Use this skill to restart momentum in the `Gurps-calculator` repo without making
   - focused test expansion
   - bundle-size follow-up
   - then Phase 11 combat decomposition
+- Keep test fixtures honest during focused coverage work; shared type drift is a real failure mode even when the runtime behavior is fine.
 
 ## Good Output
 

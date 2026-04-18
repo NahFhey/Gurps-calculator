@@ -26,12 +26,14 @@ description: Use when the task is to assess project health, clean up lint/type/t
    - missing coverage in high-risk workflow components is usually higher leverage than broad low-signal test churn
    - docs/selectors that promise a behavior the UI does not enforce can reveal a high-value bug plus test opportunity
    - run the focused test suite for the changed area before the final full-suite closeout
+   - if the focused suite passes but final verify fails on fixture typing or local assumptions, fix that drift immediately and rerun the narrow suite before the next full closeout
 7. If you change tooling, scripts, or the project baseline, update the docs and roadmap in the same session.
 8. Finish with a full closeout pass:
    - rerun `npm run lint`
    - rerun `npm run typecheck`
    - rerun `npm run build`
    - rerun `npx vitest run`
+   - rerun `git status --short` so unrelated untracked files are called out before handoff or commit
    - refresh the "next session" target based on the actual remaining work
 
 ## Guardrails
@@ -44,6 +46,8 @@ description: Use when the task is to assess project health, clean up lint/type/t
 - If an audit reports missing and unused dependencies at the same time, treat that as a signal to verify manually before editing `package.json`.
 - If the remaining issues are policy-only warnings, fix them intentionally instead of doing blind search-and-replace. Choose the right logger or allowed log level for each case.
 - If a coverage pass is the right next step, target the branch-heavy workflow component that is currently mocked or untested rather than defaulting to the easiest component on the list.
+- When a pass clears the phase's headline gap, update the roadmap/status target immediately instead of leaving stale "next" guidance behind.
+- Keep test fixtures aligned with shared types; if a test truly needs a shortcut, make the cast or adapter explicit.
 
 ## Good Outputs
 

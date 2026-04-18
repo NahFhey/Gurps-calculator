@@ -12,6 +12,7 @@ This guide captures what worked well in the April 17, 2026 cleanup session and w
 - Burn down warning backlogs in thematic sweeps. Grouping hook-dependency fixes separately from console-policy cleanup kept the work reviewable and low risk.
 - Re-run verification after each meaningful change so the branch state stays trustworthy.
 - For coverage work, target the branch-heavy workflow component that is still mocked or lightly tested, then run its focused suite before the full closeout pass.
+- Use the focused suite to catch fixture and state-shape assumptions before the final `npm run verify` pass.
 - Compare documented invariants and selector behavior against the actual UI. When they disagree, that mismatch is often the highest-value next fix.
 
 ## Improve Next Time
@@ -22,7 +23,9 @@ This guide captures what worked well in the April 17, 2026 cleanup session and w
 - Capture session lessons in a reusable place. If a workflow helped once, it should be easy to reuse in the next cleanup pass.
 - When console warnings are policy-only, decide deliberately whether the right fix is `warn`, `error`, or a real logger abstraction instead of treating them as a mechanical rename.
 - Keep test fixtures honest. If TypeScript-heavy tests need simplified fixture data, make the test-only cast explicit instead of letting the fixture drift silently from production types.
+- When a change clears the last named Phase 10 gap, update the roadmap/status "next target" in the same session instead of leaving docs pointed at completed work.
 - Treat dependency audits as advisory. Verify config files, lint/build tooling, and packaging scripts before removing packages, and use audit output to look for missing direct dependencies too.
+- Call out unrelated untracked files explicitly at closeout so they do not get swept into a commit by accident.
 
 ## Recommended Order
 
@@ -46,6 +49,7 @@ npm run verify
 
 - Refresh roadmap/status docs if the current baseline changed.
 - Record what should be kept versus what should improve next time.
+- Check `git status --short` one more time and separate unrelated untracked files from the task changes.
 - End the session with the full verification set, not just the last targeted gate.
 
 ## Current Baseline
@@ -61,5 +65,6 @@ As of 2026-04-17:
 - `CraftingWorkbench` now has direct workflow coverage for reservation, progression, completion, and refund behavior
 - `LocationManager` now has direct workflow coverage for creation, current-location changes, last-location delete protection, custom climates, and weather-table usage
 - shell-header `TimeControls` now honor unresolved current-slot downtime tasks and have direct coverage for compact slot/day advancement
+- `CombatTracker` now has direct round-flow coverage for next-turn advance, round rollover, and backward wrap behavior
 
-The remaining Phase 10 backlog is no longer lint cleanup, dependency hygiene, or bundle warning cleanup. The next likely target is combat-round workflow coverage, then Phase 11a combat decomposition.
+The remaining Phase 10 backlog is no longer lint cleanup, dependency hygiene, bundle warning cleanup, or combat-round workflow coverage. The next likely target is Phase 11a combat decomposition.

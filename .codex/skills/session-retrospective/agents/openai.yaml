@@ -1,0 +1,4 @@
+interface:
+  display_name: "Session Retrospective"
+  short_description: "Capture session lessons and update workflow docs"
+  default_prompt: "Use $session-retrospective to capture what worked, what to improve, and update repo workflow notes before commit."

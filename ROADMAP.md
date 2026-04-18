@@ -9,7 +9,7 @@
 
 **Goal:** Get the codebase healthy before pushing new features. Fix what's broken, remove what's dead.
 
-**Status as of 2026-04-17:** The verification baseline is green again, the old TypeScript lint warning backlog has been burned down, the shell now lazy-loads major modules so the production build no longer emits chunk-size warnings, direct workflow coverage is now in place for `CraftingWorkbench`, `LocationManager`, and time advancement in the shell header, and the dependency audit did not uncover any low-risk unused root packages.
+**Status as of 2026-04-17:** The verification baseline is green again, the old TypeScript lint warning backlog has been burned down, the shell now lazy-loads major modules so the production build no longer emits chunk-size warnings, direct workflow coverage is now in place for `CraftingWorkbench`, `LocationManager`, time advancement in the shell header, and combat round flow in `CombatTracker`, and the dependency audit did not uncover any low-risk unused root packages.
 - `npm run lint` now covers `js/jsx/ts/tsx` and is clean.
 - `tsc --noEmit` is clean.
 - `npm run build` is clean.
@@ -21,7 +21,7 @@
 - `CraftingWorkbench` now has direct tests for slot reservation, phase progression, project completion, and abandon/refund behavior.
 - `LocationManager` now has direct tests for create/set-current flow, last-location delete protection, custom climate persistence, and weather-table assignment/usage.
 - The shell header `TimeControls` now respect unresolved downtime tasks as a real advancement blocker, and the compact `+Day` path has direct coverage.
-- Best next-session target: finish Phase 10 with one more focused workflow coverage pass around combat round flow, then move into Phase 11a combat decomposition if the branch still looks this healthy.
+- Best next-session target: Phase 10 looks ready to hand off; start Phase 11a combat decomposition with `CombatTracker` turn/history logic and `ActionPanel` extraction if the branch still looks this healthy.
 
 ### 10a: Fix TypeScript Errors
 - Completed in the current worktree: the original TypeScript backlog is no longer the active blocker.
@@ -40,17 +40,18 @@
 - Completed in the current worktree: add direct `CraftingWorkbench` workflow tests for reservation, progression, completion, and refund behavior
 - Completed in the current worktree: add direct `LocationManager` workflow tests for creation, current-location changes, custom climates, and weather-table usage
 - Completed in the current worktree: add direct shell-header time-advancement coverage for downtime blocking and compact next-day advancement
+- Completed in the current worktree: add direct `CombatTracker` round-flow coverage for next-turn advance, round rollover, and backward wrap behavior
 - Add tests for remaining untested or lightly tested view components
 - Add integration tests for critical workflows: combat round and other remaining branch-heavy combat interactions
 - Keep targeted shell verification green alongside broader coverage work
 - Target: all tests green, 80%+ view coverage
 
 **Suggested next session**
-1. Add or expand tests around combat round flow.
-2. If Phase 10 still looks green after that, move into Phase 11a combat decomposition.
+1. Start Phase 11a by extracting `CombatTracker` turn/history logic into dedicated hooks.
+2. Split `ActionPanel.tsx` into smaller action-type views or workflows.
 3. Keep dependency cleanup limited to evidence-backed follow-up only; the current root audit did not reveal a safe removal target.
 
-**Estimated remaining effort:** 1-2 focused sessions
+**Estimated remaining effort:** Phase 10 wrap-up is effectively done; Phase 11 can begin next session.
 
 ---
 
@@ -220,7 +221,7 @@
 
 | Phase | Type | Focus | Sessions |
 |-------|------|-------|----------|
-| 10 | Cleanup | TS errors, dead code, tests | 1-2 remaining |
+| 10 | Cleanup | TS errors, dead code, tests | verification baseline green |
 | 11 | Feature | Combat system | 3-4 |
 | 12 | Feature | Character depth | 3-4 |
 | 13 | Mixed | Downtime polish | 3-4 |
