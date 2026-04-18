@@ -1,10 +1,5 @@
-import { useMemo, useRef, useCallback, useState, useEffect, ReactNode, KeyboardEvent, MouseEvent, ChangeEvent } from 'react';
+import { lazy, Suspense, useMemo, useRef, useCallback, useState, useEffect, ReactNode, KeyboardEvent, MouseEvent, ChangeEvent } from 'react';
 import { ChevronLeft, ChevronRight, Plus, MoreVertical } from 'lucide-react';
-import { InventoryTab } from '../components/InventoryTab';
-import { ManagerTab } from '../components/ManagerTab';
-import { RulesTab } from '../components/RulesTab';
-import { ChangelogTab } from '../components/ChangelogTab';
-import { DowntimePanel } from '../components/downtime';
 import { CharacterSheet } from '../components/character-sheet';
 import {
   CharacterSkillsPanel,
@@ -22,11 +17,9 @@ import { parseCharacterText } from '../utils/characterImport';
 import { WeatherWidget, TimeDisplay, TimeControls } from '../components/header';
 import { ConnectionStatus } from '../components/header/ConnectionStatus';
 import { CombatTile } from '../components/combat/CombatTile';
-import { CombatTab } from '../components/CombatTab';
 import { CombatParticipantsSidebar } from '../components/combat/CombatParticipantsSidebar';
 import { CombatManeuverRail } from '../components/combat/CombatManeuverRail';
 import { CombatMainArea } from '../components/combat/CombatMainArea';
-import { MapPanel } from '../components/map';
 import { PanelLayoutProvider, usePanelLayout } from '../contexts/PanelLayoutContext';
 import {
   useCampaignCharacters,
@@ -37,9 +30,31 @@ import {
 import { useAllCharacterSlotSummaries } from '../hooks/useCharacterSlotSummary';
 import { useEffectiveRole } from '../hooks/useEffectiveRole';
 import { useCombatLayout } from '../hooks/useCombatLayout';
-import { ConfirmDialog } from '../components/ui';
+import { ConfirmDialog, LoadingSpinner } from '../components/ui';
 import { ViewMode } from '../utils/combatViewFilter';
 import type { Character } from '../types/campaign';
+
+const InventoryTab = lazy(() =>
+  import('../components/InventoryTab').then((module) => ({ default: module.InventoryTab }))
+);
+const ManagerTab = lazy(() =>
+  import('../components/ManagerTab').then((module) => ({ default: module.ManagerTab }))
+);
+const RulesTab = lazy(() =>
+  import('../components/RulesTab').then((module) => ({ default: module.RulesTab }))
+);
+const ChangelogTab = lazy(() =>
+  import('../components/ChangelogTab').then((module) => ({ default: module.ChangelogTab }))
+);
+const DowntimePanel = lazy(() =>
+  import('../components/downtime').then((module) => ({ default: module.DowntimePanel }))
+);
+const CombatTab = lazy(() =>
+  import('../components/CombatTab').then((module) => ({ default: module.CombatTab }))
+);
+const MapPanel = lazy(() =>
+  import('../components/map').then((module) => ({ default: module.MapPanel }))
+);
 
 interface ModuleDefinition {
   id: string;
@@ -49,6 +64,25 @@ interface ModuleDefinition {
 
 interface UnifiedShellProps {
   modules?: ModuleDefinition[];
+}
+
+interface DefaultModuleDefinition {
+  id: string;
+  label: string;
+}
+
+function isCustomModuleDefinition(
+  moduleDefinition: ModuleDefinition | DefaultModuleDefinition,
+): moduleDefinition is ModuleDefinition {
+  return 'content' in moduleDefinition;
+}
+
+function ModuleLoadingFallback() {
+  return (
+    <div className="flex min-h-[240px] items-center justify-center rounded-lg border border-gray-700 bg-gray-900/40">
+      <LoadingSpinner size="md" label="Loading module..." />
+    </div>
+  );
 }
 
 /**
@@ -61,38 +95,25 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
   const { state, actions } = useCampaignStore();
   const { isGM } = useEffectiveRole();
 
-  const availableModules = useMemo<ModuleDefinition[]>(() => {
+  const availableModules = useMemo<Array<ModuleDefinition | DefaultModuleDefinition>>(() => {
     if (modules?.length) {
       return modules;
     }
-    const allModules: ModuleDefinition[] = [
-      { id: 'inventory', label: 'Inventory', content: <InventoryTab /> },
-      {
-        id: 'downtime',
-        label: 'Downtime',
-        content: (
-          <DowntimePanel
-            currentDayKey={state.time?.day ?? 1}
-            currentSlot={state.time?.slot ?? 0}
-          />
-        ),
-      },
-      { id: 'combat', label: 'Combat', content: <CombatTab /> },
-      { id: 'map', label: 'Map', content: <MapPanel /> },
-      {
-        id: 'manager',
-        label: 'Manager',
-        content: <ManagerTab />
-      },
-      { id: 'rules', label: 'Rules', content: <RulesTab /> },
-      { id: 'changelog', label: 'Changelog', content: <ChangelogTab /> },
+    const allModules: DefaultModuleDefinition[] = [
+      { id: 'inventory', label: 'Inventory' },
+      { id: 'downtime', label: 'Downtime' },
+      { id: 'combat', label: 'Combat' },
+      { id: 'map', label: 'Map' },
+      { id: 'manager', label: 'Manager' },
+      { id: 'rules', label: 'Rules' },
+      { id: 'changelog', label: 'Changelog' },
     ];
     // Hide GM-only modules for non-GM roles
     if (!isGM) {
       return allModules.filter(m => m.id !== 'manager');
     }
     return allModules;
-  }, [modules, state.time?.day, state.time?.slot, isGM]);
+  }, [modules, isGM]);
   const activeModuleId = state.ui.activeModule;
   const activeModule = activeModuleId ? availableModules.find((moduleItem) => moduleItem.id === activeModuleId) : null;
   const selectedCharacterId = useSelectedCharacterId();
@@ -320,6 +341,30 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
     },
     [isGM, combatViewMode],
   );
+
+  const renderDefaultModuleContent = useCallback((moduleId: string) => {
+    const currentDayKey = state.time?.day ?? 1;
+    const currentSlot = state.time?.slot ?? 0;
+
+    switch (moduleId) {
+      case 'inventory':
+        return <InventoryTab />;
+      case 'downtime':
+        return <DowntimePanel currentDayKey={currentDayKey} currentSlot={currentSlot} />;
+      case 'combat':
+        return <CombatTab />;
+      case 'map':
+        return <MapPanel />;
+      case 'manager':
+        return <ManagerTab />;
+      case 'rules':
+        return <RulesTab />;
+      case 'changelog':
+        return <ChangelogTab />;
+      default:
+        return null;
+    }
+  }, [state.time?.day, state.time?.slot]);
 
   const shellContent = (
     <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
@@ -679,7 +724,15 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                     {activeModule.label}
                   </h2>
                 </div>
-                <div className="mt-4 flex-1 min-h-0 overflow-y-auto">{activeModule.content}</div>
+                <div className="mt-4 flex-1 min-h-0 overflow-y-auto">
+                  {isCustomModuleDefinition(activeModule) ? (
+                    activeModule.content
+                  ) : (
+                    <Suspense fallback={<ModuleLoadingFallback />}>
+                      {renderDefaultModuleContent(activeModule.id)}
+                    </Suspense>
+                  )}
+                </div>
               </>
             )
           )}

@@ -24,10 +24,12 @@ Use this skill to restart momentum in the `Gurps-calculator` repo without making
 4. Choose the next task instead of waiting for more direction when the user simply says to continue:
    - prefer the current roadmap phase
    - prefer the smallest high-value slice that keeps momentum
+   - if the baseline is green but `build` or `verify` still emits warnings, treat the warning as real prioritization input instead of assuming Phase 10 is "done"
    - if there is a warning/backlog cluster, handle it in thematic sweeps
 5. Start the work in the same turn:
    - make the change
    - rerun affected checks
+   - if the change is test-focused, run the narrow suite first and then finish with the full verification set
    - end with the updated next target
 
 ## Repo Heuristics
@@ -35,6 +37,9 @@ Use this skill to restart momentum in the `Gurps-calculator` repo without making
 - Treat the roadmap as guidance, but trust the current verification output more than stale notes.
 - Do not assume a large dirty worktree means the branch is broken.
 - If docs disagree with the code, update the docs once the code reality is verified.
+- When deciding between cleanup options, prefer the path with current evidence behind it:
+  - warning-producing build output beats speculative dependency cleanup
+  - a large untested workflow component beats another round of shallow view tests
 - If Phase 10 is active and the baseline is green, the usual next targets are:
   - dependency cleanup
   - focused test expansion

@@ -2,15 +2,17 @@
 
 **Last Updated:** 2026-04-17
 **Branch:** `home-test`
-**Status:** Phase 10 stabilization baseline is green; the next cleanup targets are dependency audit, coverage expansion, and bundle follow-up before Phase 11 combat decomposition.
+**Status:** Phase 10 stabilization baseline is green; shell module lazy-loading and vendor chunking are in place, `CraftingWorkbench` now has direct workflow coverage, and the next cleanup targets are dependency audit plus another focused workflow coverage pass before Phase 11 combat decomposition.
 
 ## Current Snapshot
 
 - `npm run lint`, `npm run typecheck`, `npm run build`, and `npx vitest run` are all green in the current worktree.
 - The TypeScript lint warning backlog from the recent lint expansion has been cleared.
 - Legacy `CombatContext` has been removed and combat now uses direct store/hook access.
+- Built-in shell modules now lazy-load, and the production build no longer emits chunk-size warnings.
+- `CraftingWorkbench` now has direct tests for slot reservation, phase progression, project completion, and abandon/refund behavior.
 - The repo-local stabilization workflow now includes thematic backlog sweeps, explicit closeout verification, and doc refresh expectations.
-- The most useful next Phase 10 work is dependency cleanup, targeted coverage expansion, and bundle-size follow-up.
+- The most useful next Phase 10 work is dependency cleanup and the next targeted workflow coverage pass.
 
 Historical migration details below are kept for context, but the bullets above are the current baseline.
 
@@ -392,14 +394,15 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 9. ItemsView.test.tsx - 22 tests (forageable items, rarity, inventory types)
 
 **Test Summary:**
-- Total tests: 300 (up from 169)
-- New tests added: 131
+- Total tests: 894 passing
+- Recent additions include direct `CraftingWorkbench` workflow coverage for reservation, progression, completion, and refund behavior
 - All tests passing
 
 **Test Coverage Goals:**
 - View components: Good progress (9/~30 views tested)
 - State reducers: Good (14 tests)
 - Utility functions: Good (100+ tests)
+- Workflow coverage: improving, but combat round flow, time advancement, and `LocationManager` still deserve direct coverage
 
 #### Integration Tests
 - End-to-end workflows
@@ -441,9 +444,8 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 - None currently! 🎉
 
 ### Medium Priority
-1. **Bundle Size Warning** - 625KB bundle (consider code splitting)
-2. **Bridge Contexts** - Can be removed after legacy tab migration
-3. **PropTypes vs TypeScript** - Should migrate to TypeScript interfaces
+1. **Bridge Contexts** - Can be removed after legacy tab migration
+2. **PropTypes vs TypeScript** - Should migrate to TypeScript interfaces
 
 ### Low Priority
 1. **Documentation Consolidation** - 16,000+ lines of docs could be streamlined
@@ -481,7 +483,8 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 
 ### Option C: Testing & Documentation (Phase 10)
 ```bash
-# Add unit tests for view components
+# Add direct tests for branch-heavy workflow components
+# Good next targets: combat round flow, time advancement, LocationManager
 # Document component APIs
 # Create contributing guide
 ```
@@ -499,7 +502,7 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 - **App.jsx Size:** 260 → 96 lines (63% reduction) ✅
 - **Bundle Size:** 800KB → 624KB (22% reduction) ✅
 - **View Component Size:** 19-815 lines (AI-readable) ✅
-- **Test Coverage:** 888 tests passing (Phase 10 verification green) ✅
+- **Test Coverage:** 894 tests passing (Phase 10 verification green) ✅
 
 ### Architecture Health
 - ✅ Single source of truth (CampaignStore)
@@ -533,6 +536,7 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 - **Type Safety Pioneer** - Converted 63 components to TypeScript ✅
 - **Combat System Master** - Full TypeScript coverage for combat (22 files) ✅
 - **Legacy Liberator** - Migrated all 5 legacy tabs to direct store access ✅
+- **Workflow Tester** - Added direct `CraftingWorkbench` coverage for reservation, progression, completion, and refund flows ✅
 
 ---
 
@@ -563,8 +567,11 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 
 ---
 
-**Current Branch:** `home-test`
-**Build Status:** ✅ Passing (624KB bundle)
-**Ready for:** dependency cleanup, targeted coverage expansion, or Phase 11a combat decomposition
+Latest Phase 10 note: built-in shell modules now lazy-load, vendor chunks are split out, and the largest emitted bundle is about 360KB without a chunk-size warning.
+Latest coverage note: `CraftingWorkbench` now has direct workflow tests instead of relying only on higher-level mocks.
 
-🎊 Phase 9 Complete! All legacy tabs migrated - 63 components now TypeScript! 🎊
+**Current Branch:** `home-test`
+**Build Status:** ? Passing (largest emitted chunk ~360KB, no chunk-size warning)
+**Ready for:** dependency cleanup, the next focused workflow coverage pass, or Phase 11a combat decomposition
+
+Phase 9 Complete! All legacy tabs migrated - 63 components now TypeScript.
