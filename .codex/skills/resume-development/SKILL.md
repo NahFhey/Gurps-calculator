@@ -25,6 +25,7 @@ Use this skill to restart momentum in the `Gurps-calculator` repo without making
 4. Choose the next task instead of waiting for more direction when the user simply says to continue:
    - prefer the current roadmap phase
    - prefer the smallest high-value slice that keeps momentum
+   - when the active phase is decomposition, prefer the cleanest seam first: shared types/view wrappers, then bookkeeping hooks, then heavier workflow bodies
    - if the baseline is green but `build` or `verify` still emits warnings, treat the warning as real prioritization input instead of assuming Phase 10 is "done"
    - if there is a warning/backlog cluster, handle it in thematic sweeps
    - if docs or selectors describe a workflow invariant that the UI does not appear to enforce, treat that mismatch as a strong next-task candidate
@@ -32,14 +33,16 @@ Use this skill to restart momentum in the `Gurps-calculator` repo without making
 5. Start the work in the same turn:
    - make the change
    - rerun affected checks
+   - for component decomposition, prefer `npm run typecheck`, targeted `eslint`, and the focused component tests before the final full-suite pass
    - if the change is test-focused, run the narrow suite first and then finish with the full verification set
-   - end with the updated next target
+   - end with the updated next target and any measurable before/after deltas that help the next session resume quickly
 
 ## Repo Heuristics
 
 - Treat the roadmap as guidance, but trust the current verification output more than stale notes.
 - Do not assume a large dirty worktree means the branch is broken.
 - If docs disagree with the code, update the docs once the code reality is verified.
+- If a decomposition slice lands, refresh roadmap/status docs in the same turn with the new line counts and the next seam instead of leaving the branch pointed at already-finished work.
 - When deciding between cleanup options, prefer the path with current evidence behind it:
   - warning-producing build output beats speculative dependency cleanup
   - a large untested workflow component beats another round of shallow view tests
@@ -49,6 +52,7 @@ Use this skill to restart momentum in the `Gurps-calculator` repo without making
   - focused test expansion
   - bundle-size follow-up
   - then Phase 11 combat decomposition
+- When extracting React hooks from a large component, expect hook-order regressions to be an early failure mode and move new hook calls above any early returns before trusting the targeted checks.
 - Keep test fixtures honest during focused coverage work; shared type drift is a real failure mode even when the runtime behavior is fine.
 
 ## Good Output

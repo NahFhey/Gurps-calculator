@@ -1,156 +1,25 @@
-import { useState, useEffect, ChangeEvent } from 'react';
-import { Swords, Shield, Zap, MessageSquare, ChevronDown, ChevronUp, Droplet, Activity } from 'lucide-react';
+import { useState, useEffect, type ChangeEvent } from 'react';
 import AttackAssist from './AttackAssist';
 import DefenseAssist from './DefenseAssist';
 import InjuryResolutionPanel from './InjuryResolutionPanel';
 import ConditionsPanel from './ConditionsPanel';
+import ActionPanelCollapsedView from './action-panel/ActionPanelCollapsedView';
+import ActionPanelHeader from './action-panel/ActionPanelHeader';
+import ActionPanelManeuverPrompts from './action-panel/ActionPanelManeuverPrompts';
+import ActionPanelWorkflowSelector from './action-panel/ActionPanelWorkflowSelector';
 import { getPublicDefenderLabel } from '../../utils/combatViewSelectors';
 import { ViewMode } from '../../utils/combatViewFilter';
-
-interface Modifier {
-  label: string;
-  value: number;
-}
-
-interface HitLocation {
-  key: string;
-  label: string;
-}
-
-interface LocationRoll {
-  dice: number[];
-  total: number;
-}
-
-interface Attack {
-  name: string;
-  skill: number;
-  damage?: string;
-  hitLocation?: HitLocation | null;
-  hitLocationRoll?: LocationRoll | null;
-  success?: boolean;
-}
-
-interface Defense {
-  type: string;
-  baseDefense: number;
-  effectiveDefense: number;
-  success?: boolean | null;
-}
-
-interface Participant {
-  instanceId: string;
-  id?: string;  // Alias for instanceId (some components use 'id')
-  name: string;
-  category: string;
-  currentHP?: number;
-  hp?: number;
-  st?: number;  // Strength attribute for damage calculations
-  isDead?: boolean;
-  isUnconscious?: boolean;
-  isStunned?: boolean;
-  defenses?: {
-    dodge?: number | { mode: string; value?: number };
-    parry?: number | { mode: string; value?: number };
-    block?: number | { mode: string; value?: number };
-  };
-  dodge?: number | { mode: string; value?: number };
-  parry?: number | { mode: string; value?: number };
-  block?: number | { mode: string; value?: number };
-  conditions?: ConditionInstance[];
-}
-
-interface ConditionInstance {
-  instanceId: string;
-  conditionId: string;
-  label: string;
-  duration?: { type: string; value?: number };
-  source?: string;
-}
-
-interface ManeuverPrompts {
-  allowsAttackPanel?: boolean;
-  allowsDefensePanel?: boolean;
-  allowsAimPanel?: boolean;
-  allowsWaitPanel?: boolean;
-}
-
-interface ManeuverWorkflow {
-  attack?: { modifiers: Modifier[] };
-  defense?: { modifiers: Modifier[] };
-  damage?: { modifiers: Modifier[] };
-}
-
-interface ManeuverSelection {
-  selectedId: string | null;
-  prompts: ManeuverPrompts;
-  workflow: ManeuverWorkflow;
-}
-
-interface TurnDecision {
-  aim?: { targetInstanceId?: string; turnsAimed?: number };
-  wait?: { triggerText?: string };
-}
-
-// AttackData from AttackAssist (different from local Attack interface)
-interface AttackData {
-  name: string;
-  baseSkill: number;
-  modifiers: Modifier[];
-  injectedModifiers: Modifier[];
-  effectiveSkill: number;
-  rollTotal: number | null;
-  margin: number | null;
-  success: boolean | null;
-  damage?: string;
-  notes?: string;
-  hitLocation: HitLocation | null;
-  hitLocationRoll: LocationRoll | null;
-}
-
-interface DefenseData {
-  defense?: Defense;
-}
-
-interface InjuryData {
-  targetInstanceId?: string;
-  newHP?: number;
-}
-
-interface ActionData {
-  maneuver: string | null;
-  kind: 'attack' | 'defense' | 'injury' | 'note';
-  attack?: Attack;
-  defense?: Defense;
-  injury?: InjuryData;
-  note?: string;
-  targetInstanceId?: string | null;
-  newHP?: number;
-}
-
-type WorkflowType = 'attack' | 'defense' | 'damage' | 'note' | 'conditions' | 'items' | null;
-
-interface ActionPanelProps {
-  currentActor: Participant;
-  participants: Participant[];
-  combatState?: unknown;
-  revealState?: unknown;
-  viewMode?: string;
-  onActionComplete: (data: ActionData) => void;
-  combatRulesPreset?: string;
-  expanded?: boolean;
-  onToggleExpanded?: () => void;
-  maneuverSelection?: ManeuverSelection | null;
-  onManeuverWorkflow?: (update: { type: string; targetInstanceId?: string; turnsAimed?: number; triggerText?: string }) => void;
-  turnDecision?: TurnDecision | null;
-  currentRound?: number;
-  currentTurn?: number;
-  // Note: ConditionInstance type differs between ActionPanel and ConditionsPanel
-  // ActionPanel uses duration: { type, value }, ConditionsPanel uses expiresAt
-  onAddCondition?: (condition: any) => void;
-  onRemoveCondition?: (conditionInstanceId: string) => void;
-  onUpdateCondition?: (conditionInstanceId: string, newDuration: { type: string; value?: number }) => void;
-}
+import type {
+  ActionPanelParticipant,
+  ActionPanelProps,
+  Attack,
+  AttackData,
+  DefenseData,
+  HitLocation,
+  InjuryData,
+  LocationRoll,
+  WorkflowType,
+} from '../../types/actionPanel';
 
 /**
  * ActionPanel Component - Phase 3, 4 & 6
@@ -192,10 +61,10 @@ export default function ActionPanel({
   // Get potential targets (exclude current actor)
   const targets = participants.filter(p => p.instanceId !== currentActor.instanceId);
   const boundTarget = targets.find(target => target.instanceId === boundTargetId) || null;
-  const truthParticipants = (combatState as { participants?: Participant[] })?.participants || participants;
+  const truthParticipants = (combatState as { participants?: ActionPanelParticipant[] })?.participants || participants;
   const getTruthParticipant = (instanceId: string) => truthParticipants.find(p => p.instanceId === instanceId);
   const boundTargetTruth = boundTargetId ? getTruthParticipant(boundTargetId) : null;
-  const truthTargets = targets.map(target => getTruthParticipant(target.instanceId)).filter(Boolean) as Participant[];
+  const truthTargets = targets.map(target => getTruthParticipant(target.instanceId)).filter(Boolean) as ActionPanelParticipant[];
 
   const handleStartWorkflow = (workflow: WorkflowType) => {
     setActiveWorkflow(workflow);
@@ -335,149 +204,30 @@ export default function ActionPanel({
   }, [selectedManeuver, maneuverPrompts]);
 
   if (!expanded) {
-    return (
-      <div className="bg-gray-800 rounded-lg p-3">
-        <button
-          onClick={onToggleExpanded}
-          className="flex items-center justify-between w-full text-left"
-        >
-          <span className="font-semibold">Action Panel</span>
-          <ChevronDown size={20} />
-        </button>
-      </div>
-    );
+    return <ActionPanelCollapsedView onToggleExpanded={onToggleExpanded} />;
   }
 
   return (
     <div className="bg-gray-800 rounded-lg p-4 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Action Panel</h3>
-        {onToggleExpanded && (
-          <button onClick={onToggleExpanded} className="text-gray-400 hover:text-white">
-            <ChevronUp size={20} />
-          </button>
-        )}
-      </div>
+      <ActionPanelHeader onToggleExpanded={onToggleExpanded} />
 
       {/* Maneuver-specific Widgets (if not in active workflow) */}
       {!activeWorkflow && (maneuverPrompts?.allowsAimPanel || maneuverPrompts?.allowsWaitPanel) && (
-        <div className="space-y-4">
-          {maneuverPrompts?.allowsAimPanel && (
-            <div className="space-y-2">
-              <h5 className="text-sm font-semibold">Aim Tracking</h5>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Target</label>
-                <select
-                  value={turnDecision?.aim?.targetInstanceId || ''}
-                  onChange={(e: ChangeEvent<HTMLSelectElement>) => onManeuverWorkflow?.({
-                    type: 'aim',
-                    targetInstanceId: e.target.value || undefined
-                  })}
-                  className="w-full px-3 py-2 bg-gray-700 rounded"
-                >
-                  <option value="">No target</option>
-                  {targets.map((target) => (
-                    <option key={target.instanceId} value={target.instanceId}>
-                      {target.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Turns Aimed</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={turnDecision?.aim?.turnsAimed ?? 0}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => onManeuverWorkflow?.({
-                    type: 'aim',
-                    turnsAimed: parseInt(e.target.value, 10) || 0
-                  })}
-                  className="w-full px-3 py-2 bg-gray-700 rounded"
-                />
-              </div>
-            </div>
-          )}
-          {maneuverPrompts?.allowsWaitPanel && (
-            <div className="space-y-2">
-              <h5 className="text-sm font-semibold">Wait Trigger</h5>
-              <input
-                type="text"
-                value={turnDecision?.wait?.triggerText || ''}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => onManeuverWorkflow?.({
-                  type: 'wait',
-                  triggerText: e.target.value
-                })}
-                placeholder="Describe the trigger condition"
-                className="w-full px-3 py-2 bg-gray-700 rounded"
-              />
-            </div>
-          )}
-        </div>
+        <ActionPanelManeuverPrompts
+          prompts={maneuverPrompts}
+          targets={targets}
+          turnDecision={turnDecision}
+          onManeuverWorkflow={onManeuverWorkflow}
+        />
       )}
 
       {/* Action Type Selection (if not in active workflow) */}
       {!activeWorkflow && (
-        <div>
-          <label className="block text-sm font-semibold mb-2">Choose Action</label>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => handleStartWorkflow('attack')}
-              className="flex items-center justify-center gap-2 p-3 bg-red-600 hover:bg-red-700 rounded"
-              disabled={!maneuverPrompts?.allowsAttackPanel}
-            >
-              <Swords size={20} />
-              Attack
-            </button>
-            <button
-              onClick={() => handleStartWorkflow('defense')}
-              className="flex items-center justify-center gap-2 p-3 bg-blue-600 hover:bg-blue-700 rounded"
-              disabled={!maneuverPrompts?.allowsDefensePanel}
-            >
-              <Shield size={20} />
-              Defense
-            </button>
-            <button
-              onClick={() => handleStartWorkflow('damage')}
-              className="flex items-center justify-center gap-2 p-3 bg-orange-600 hover:bg-orange-700 rounded"
-            >
-              <Zap size={20} />
-              Damage
-            </button>
-            <button
-              onClick={() => handleStartWorkflow('note')}
-              className="flex items-center justify-center gap-2 p-3 bg-gray-600 hover:bg-gray-500 rounded"
-            >
-              <MessageSquare size={20} />
-              Note
-            </button>
-            <button
-              onClick={() => handleStartWorkflow('items')}
-              className="flex items-center justify-center gap-2 p-3 bg-purple-600 hover:bg-purple-700 rounded"
-            >
-              <Droplet size={20} />
-              Items
-            </button>
-            <button
-              onClick={() => handleStartWorkflow('conditions')}
-              className="flex items-center justify-center gap-2 p-3 bg-indigo-600 hover:bg-indigo-700 rounded"
-            >
-              <Activity size={20} />
-              Conditions
-            </button>
-          </div>
-          {selectedManeuver && !maneuverPrompts?.allowsAttackPanel && !maneuverPrompts?.allowsDefensePanel && (
-            <div className="text-xs text-gray-400 mt-2">
-              This maneuver doesn&apos;t open attack or defense workflows. Use notes or other panels as needed.
-            </div>
-          )}
-          {!selectedManeuver && (
-            <div className="text-xs text-gray-400 mt-2">
-              Select a maneuver above to enable relevant workflows.
-            </div>
-          )}
-        </div>
+        <ActionPanelWorkflowSelector
+          selectedManeuver={selectedManeuver}
+          maneuverPrompts={maneuverPrompts}
+          onStartWorkflow={handleStartWorkflow}
+        />
       )}
 
       {/* Active Workflow */}

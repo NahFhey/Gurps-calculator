@@ -1,8 +1,8 @@
 # GURPS Calculator - Project Status & Roadmap
 
-**Last Updated:** 2026-04-17
+**Last Updated:** 2026-04-18
 **Branch:** `home-test`
-**Status:** Phase 10 stabilization baseline is green; shell module lazy-loading and vendor chunking are in place, `CraftingWorkbench`, `LocationManager`, shell-header time advancement, and `CombatTracker` round flow now have direct workflow coverage, the root dependency audit is complete, and the branch is ready to move into Phase 11 combat decomposition.
+**Status:** Phase 10 stabilization baseline is still green, and Phase 11a combat decomposition is underway with `ActionPanel` split into smaller prompt/chooser subviews, reusable action-panel types, direct workflow tests, and `CombatTracker` turn/history bookkeeping moved into dedicated hooks while the next combat target shifts to the remaining combat workflow bodies.
 
 ## Current Snapshot
 
@@ -15,7 +15,10 @@
 - `LocationManager` now has direct tests for location creation/current-location changes, last-location delete protection, custom climates, and weather-table assignment.
 - `TimeControls` now block on unresolved current-slot downtime tasks as well as paused activities, and the compact `+Day` path has direct shell coverage.
 - The repo-local stabilization workflow now includes thematic backlog sweeps, explicit closeout verification, and doc refresh expectations.
-- The most useful next work is Phase 11a combat decomposition, starting with `CombatTracker` turn/history extraction and `ActionPanel` breakdown while the verification baseline stays green.
+- `ActionPanel.tsx` now delegates its collapsed state, header, maneuver prompts, and workflow chooser to dedicated subviews, and its shared workflow types now live in `src/types/actionPanel.ts`.
+- Direct `ActionPanel` tests now cover aim/wait prompt updates, maneuver-gated workflow opening, and note submission flow.
+- `CombatTracker.tsx` now delegates turn/history bookkeeping into `src/hooks/useCombatHistory.ts` and `src/hooks/useCombatTurn.ts`, shrinking the component from 1,506 lines to 1,019 lines while keeping behavior green under the existing combat tests.
+- The most useful next work is Phase 11a combat decomposition, continuing with the remaining `ActionPanel` workflow views and any further `CombatTracker` logic slices that can move cleanly into hooks while the verification baseline stays green.
 
 Historical migration details below are kept for context, but the bullets above are the current baseline.
 
@@ -397,8 +400,8 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 9. ItemsView.test.tsx - 22 tests (forageable items, rarity, inventory types)
 
 **Test Summary:**
-- Total tests: 903 passing
-- Recent additions include direct `CraftingWorkbench` workflow coverage for reservation, progression, completion, and refund behavior, plus direct `LocationManager`, shell-header time-advancement, and `CombatTracker` round-flow coverage
+- Total tests: 907 passing
+- Recent additions include direct `CraftingWorkbench` workflow coverage for reservation, progression, completion, and refund behavior, plus direct `LocationManager`, shell-header time-advancement, `CombatTracker` round-flow, and `ActionPanel` maneuver/note workflow coverage
 - All tests passing
 
 **Test Coverage Goals:**
@@ -477,11 +480,11 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 # CombatContext.jsx has been removed in the current worktree
 ```
 
-### Option B: Continue Decomposition (Phase 8e)
+### Option B: Continue Decomposition (Phase 11a)
 ```bash
-# ActionPanel.tsx - combat action workflow
-# Complex component with multiple sub-workflows
-# Could extract AttackWorkflow, DefenseWorkflow, DamageWorkflow views
+# ActionPanel.tsx - continue splitting workflow-specific views
+# CombatTracker.tsx - consider the next extractable logic slice after turn/history
+# Highest-value next slices are attack/defense/damage workflow wrappers
 ```
 
 ### Option C: Testing & Documentation (Phase 10)
@@ -501,11 +504,11 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 - **GatheringManager Size:** 1,754 → 184 lines (90% reduction) ✅
 - **DayPlannerTab Size:** 1,365 → 270 lines (80% reduction) ✅
 - **RulesTab Size:** 820 → 50 lines (94% reduction) ✅
-- **CombatTracker Size:** 2,051 → 1,506 lines (27% reduction) ✅
+- **CombatTracker Size:** 2,051 → 1,019 lines (50% reduction) ✅
 - **App.jsx Size:** 260 → 96 lines (63% reduction) ✅
 - **Bundle Size:** 800KB → 624KB (22% reduction) ✅
 - **View Component Size:** 19-815 lines (AI-readable) ✅
-- **Test Coverage:** 903 tests passing (Phase 10 verification green) ✅
+- **Test Coverage:** 907 tests passing (Phase 10 verification green) ✅
 
 ### Architecture Health
 - ✅ Single source of truth (CampaignStore)
@@ -572,9 +575,10 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 
 Latest Phase 10 note: built-in shell modules now lazy-load, vendor chunks are split out, and the largest emitted bundle is about 360KB without a chunk-size warning.
 Latest coverage note: `CraftingWorkbench`, `LocationManager`, shell-header time advancement, and `CombatTracker` round flow now have direct workflow tests instead of relying only on higher-level mocks for those flows.
+Latest Phase 11a note: `ActionPanel.tsx` is down to 359 lines after extracting its collapsed/header/prompt/chooser UI into dedicated subviews, `CombatTracker.tsx` is down to 1,019 lines after moving turn/history bookkeeping into `useCombatHistory` and `useCombatTurn`, and both slices are covered by the green verification baseline.
 
 **Current Branch:** `home-test`
 **Build Status:** ? Passing (largest emitted chunk ~360KB, no chunk-size warning)
-**Ready for:** Phase 11a combat decomposition
+**Ready for:** Continue Phase 11a combat decomposition
 
 Phase 9 Complete! All legacy tabs migrated - 63 components now TypeScript.

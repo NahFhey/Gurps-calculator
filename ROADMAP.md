@@ -9,7 +9,7 @@
 
 **Goal:** Get the codebase healthy before pushing new features. Fix what's broken, remove what's dead.
 
-**Status as of 2026-04-17:** The verification baseline is green again, the old TypeScript lint warning backlog has been burned down, the shell now lazy-loads major modules so the production build no longer emits chunk-size warnings, direct workflow coverage is now in place for `CraftingWorkbench`, `LocationManager`, time advancement in the shell header, and combat round flow in `CombatTracker`, and the dependency audit did not uncover any low-risk unused root packages.
+**Status as of 2026-04-18:** The verification baseline is still green, the old TypeScript lint warning backlog has been burned down, the shell now lazy-loads major modules so the production build no longer emits chunk-size warnings, direct workflow coverage is now in place for `CraftingWorkbench`, `LocationManager`, time advancement in the shell header, combat round flow in `CombatTracker`, and `ActionPanel` maneuver/note flows, the dependency audit did not uncover any low-risk unused root packages, and Phase 11a is underway with `ActionPanel` split into smaller prompt/chooser subviews plus shared action-panel types and `CombatTracker` turn/history bookkeeping extracted into dedicated hooks.
 - `npm run lint` now covers `js/jsx/ts/tsx` and is clean.
 - `tsc --noEmit` is clean.
 - `npm run build` is clean.
@@ -21,7 +21,7 @@
 - `CraftingWorkbench` now has direct tests for slot reservation, phase progression, project completion, and abandon/refund behavior.
 - `LocationManager` now has direct tests for create/set-current flow, last-location delete protection, custom climate persistence, and weather-table assignment/usage.
 - The shell header `TimeControls` now respect unresolved downtime tasks as a real advancement blocker, and the compact `+Day` path has direct coverage.
-- Best next-session target: Phase 10 looks ready to hand off; start Phase 11a combat decomposition with `CombatTracker` turn/history logic and `ActionPanel` extraction if the branch still looks this healthy.
+- Best next-session target: Continue Phase 11a combat decomposition with the remaining `ActionPanel` workflow subviews and the next cleanly separable `CombatTracker` logic slice while the branch stays this healthy.
 
 ### 10a: Fix TypeScript Errors
 - Completed in the current worktree: the original TypeScript backlog is no longer the active blocker.
@@ -47,11 +47,11 @@
 - Target: all tests green, 80%+ view coverage
 
 **Suggested next session**
-1. Start Phase 11a by extracting `CombatTracker` turn/history logic into dedicated hooks.
-2. Split `ActionPanel.tsx` into smaller action-type views or workflows.
+1. Split the remaining `ActionPanel` workflow bodies into smaller action-type views.
+2. Decide whether the next `CombatTracker` slice should be action resolution, maneuver orchestration, or reinforcements based on the cleanest hook seam.
 3. Keep dependency cleanup limited to evidence-backed follow-up only; the current root audit did not reveal a safe removal target.
 
-**Estimated remaining effort:** Phase 10 wrap-up is effectively done; Phase 11 can begin next session.
+**Estimated remaining effort:** Phase 10 wrap-up is effectively done; Phase 11 is underway.
 
 ---
 
@@ -60,9 +60,10 @@
 **Goal:** Make combat the standout feature - smooth, tactical, and fast at the table.
 
 ### 11a: CombatTracker Decomposition
-- Extract remaining business logic from CombatTracker.tsx (1,545 lines)
-- Create dedicated hooks: `useCombatTurn`, `useInitiativeTracker`, `useCombatHistory`
-- Extract ActionPanel.tsx (644 lines) into sub-views by action type
+- Extract remaining business logic from CombatTracker.tsx (1,019 lines)
+- Started in the current worktree: create dedicated hooks `useCombatTurn` and `useCombatHistory` for turn/history bookkeeping
+- Started in the current worktree: extract `ActionPanel` shared types plus collapsed/header/prompt/chooser subviews, shrinking `ActionPanel.tsx` from 592 lines to 359 lines
+- Continue extracting `ActionPanel` workflow bodies into sub-views by action type
 - Target: CombatTracker < 800 lines, ActionPanel < 300 lines
 
 ### 11b: Combat UX Improvements

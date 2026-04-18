@@ -25,6 +25,8 @@ Use this skill to turn a "what did we learn?" request into concrete repo improve
    - turn "we should verify earlier" into a specific command/order change
    - turn "docs got stale" into an explicit same-session update rule
    - turn "the test fixture drifted" into a fixture/type guardrail
+   - turn "the decomposition went smoothly" into a repeatable seam-order rule and before/after measurement habit
+   - turn "the hook extraction broke lint/typecheck first" into a targeted validation sequence before the final full verify
 5. If code or docs changed during the session, refresh the "next target" so the branch no longer points at already-finished work.
 6. Rerun the smallest useful validation for the updates you made, then do the final closeout checks the task requires.
 7. If the user asked for a commit, stage only the relevant files, leave unrelated changes alone, and commit with a message that reflects the retrospective improvements.
@@ -35,6 +37,8 @@ Use this skill to turn a "what did we learn?" request into concrete repo improve
 - Keep the retro grounded in actual repo artifacts, not memory alone.
 - If an existing workflow already says the right thing, do not duplicate it elsewhere just to "document more."
 - If the lesson is "this should have been a skill," make the skill small and narrowly triggered.
+- If the session involved decomposition, capture the quantitative deltas that matter for re-entry: file sizes before/after, new hooks or views introduced, and the next clean seam.
+- React hook-order and type-boundary regressions are common decomposition failure modes; if they showed up this session, encode the guardrail where the next resume will see it.
 - Call out unrelated untracked files explicitly before committing.
 
 ## Good Output

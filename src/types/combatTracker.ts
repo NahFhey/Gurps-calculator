@@ -26,7 +26,7 @@ export interface ConditionInstance {
   conditionId: string;
   label: string;
   duration?: ConditionDuration;
-  source?: string;
+  source?: string | null;
 }
 
 export interface Participant {
