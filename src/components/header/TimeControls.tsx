@@ -1,4 +1,5 @@
 import { useCampaignStore } from '../../state/campaignStore';
+import { selectCanAdvanceSlot } from '../../state/downtime/downtimeSelectors';
 
 /**
  * TimeControls - Buttons to advance game time
@@ -28,10 +29,20 @@ export function TimeControls({
 }: TimeControlsProps) {
   const { state, actions } = useCampaignStore();
 
+  const downtimeAdvancementCheck = state.downtime
+    ? selectCanAdvanceSlot(state.downtime, state.time?.day ?? 1, state.time?.slot ?? 0)
+    : { canAdvance: true, blockingTaskIds: [] };
+
   // Check if there are any blocking conditions
   const hasBlockingError = state.ui.blockingError !== null;
   const hasPausedActivities = state.activities.pausedSessionIds.length > 0;
-  const isBlocked = hasBlockingError || hasPausedActivities;
+  const hasDowntimeBlock = !downtimeAdvancementCheck.canAdvance;
+  const isBlocked = hasBlockingError || hasPausedActivities || hasDowntimeBlock;
+  const blockedTitle = hasBlockingError
+    ? state.ui.blockingError?.reason ?? 'Blocked'
+    : hasPausedActivities
+      ? 'Blocked by paused activities'
+      : downtimeAdvancementCheck.reason ?? 'Blocked by unresolved downtime tasks';
 
   const handleAdvanceSlot = () => {
     if (disabled || isBlocked) return;
@@ -67,7 +78,7 @@ export function TimeControls({
               ? `${disabledButtonClass} border-gray-600 bg-gray-700 text-gray-400`
               : `${activeButtonClass} border-blue-500 bg-blue-500/20 text-blue-100 hover:bg-blue-500/30`
           }
-          title={isBlocked ? 'Blocked by paused activities' : 'Advance to next time slot'}
+          title={isBlocked ? blockedTitle : 'Advance to next time slot'}
           data-testid="advance-slot-compact"
         >
           +Slot
@@ -82,7 +93,7 @@ export function TimeControls({
                 ? `${disabledButtonClass} border-gray-600 bg-gray-700 text-gray-400`
                 : `${activeButtonClass} border-amber-500 bg-amber-500/20 text-amber-100 hover:bg-amber-500/30`
             }
-            title={isBlocked ? 'Blocked by paused activities' : 'Advance to next day'}
+            title={isBlocked ? blockedTitle : 'Advance to next day'}
             data-testid="advance-day-compact"
           >
             +Day
@@ -108,7 +119,7 @@ export function TimeControls({
             ? `${disabledButtonClass} border-gray-600 bg-gray-700 text-gray-400`
             : `${activeButtonClass} border-blue-500 bg-blue-500/20 text-blue-100 hover:bg-blue-500/30`
         }
-        title={isBlocked ? 'Blocked by paused activities' : 'Advance to next time slot'}
+        title={isBlocked ? blockedTitle : 'Advance to next time slot'}
         data-testid="advance-slot"
       >
         Adv. Slot
@@ -124,7 +135,7 @@ export function TimeControls({
               ? `${disabledButtonClass} border-gray-600 bg-gray-700 text-gray-400`
               : `${activeButtonClass} border-amber-500 bg-amber-500/20 text-amber-100 hover:bg-amber-500/30`
           }
-          title={isBlocked ? 'Blocked by paused activities' : 'Advance to next day'}
+          title={isBlocked ? blockedTitle : 'Advance to next day'}
           data-testid="advance-day"
         >
           Adv. Day

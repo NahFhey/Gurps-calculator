@@ -26,6 +26,7 @@ Use this skill to restart momentum in the `Gurps-calculator` repo without making
    - prefer the smallest high-value slice that keeps momentum
    - if the baseline is green but `build` or `verify` still emits warnings, treat the warning as real prioritization input instead of assuming Phase 10 is "done"
    - if there is a warning/backlog cluster, handle it in thematic sweeps
+   - if docs or selectors describe a workflow invariant that the UI does not appear to enforce, treat that mismatch as a strong next-task candidate
 5. Start the work in the same turn:
    - make the change
    - rerun affected checks
@@ -40,6 +41,7 @@ Use this skill to restart momentum in the `Gurps-calculator` repo without making
 - When deciding between cleanup options, prefer the path with current evidence behind it:
   - warning-producing build output beats speculative dependency cleanup
   - a large untested workflow component beats another round of shallow view tests
+- Treat dependency audits as a starting point, not the answer: they can reveal missing direct dependencies and config-only false positives, not just removable packages.
 - If Phase 10 is active and the baseline is green, the usual next targets are:
   - dependency cleanup
   - focused test expansion

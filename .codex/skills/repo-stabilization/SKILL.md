@@ -18,12 +18,13 @@ description: Use when the task is to assess project health, clean up lint/type/t
    - `npx vitest run`
 3. Classify findings:
    - blockers: failing lint errors, type errors, broken tests, build failures
-   - backlog: warnings, stale docs, large-bundle notes, low-risk cleanup
+   - backlog: warnings, stale docs, large-bundle notes, low-risk cleanup, dependency hygiene
 4. Fix the smallest blocker first, then rerun the affected gate before moving on.
 5. Burn down backlog in thematic sweeps when possible (for example hook dependencies, unused variables, or log-policy cleanup) so each pass stays reviewable.
 6. When the branch is green but backlog remains, pick the next slice from evidence:
    - build warnings can justify performance work even when tests are green
    - missing coverage in high-risk workflow components is usually higher leverage than broad low-signal test churn
+   - docs/selectors that promise a behavior the UI does not enforce can reveal a high-value bug plus test opportunity
    - run the focused test suite for the changed area before the final full-suite closeout
 7. If you change tooling, scripts, or the project baseline, update the docs and roadmap in the same session.
 8. Finish with a full closeout pass:
@@ -39,6 +40,8 @@ description: Use when the task is to assess project health, clean up lint/type/t
 - Prefer objective gate output over roadmap assumptions.
 - When expanding tooling, expect a warning backlog; keep it visible without confusing it with blocking failures.
 - If you add a new standard command, put it in `package.json` so the workflow is repeatable.
+- Before removing dependencies, check config files and packaging/build scripts as well as application imports; config-only tooling is easy for audits to miss.
+- If an audit reports missing and unused dependencies at the same time, treat that as a signal to verify manually before editing `package.json`.
 - If the remaining issues are policy-only warnings, fix them intentionally instead of doing blind search-and-replace. Choose the right logger or allowed log level for each case.
 - If a coverage pass is the right next step, target the branch-heavy workflow component that is currently mocked or untested rather than defaulting to the easiest component on the list.
 

@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-04-17
 **Branch:** `home-test`
-**Status:** Phase 10 stabilization baseline is green; shell module lazy-loading and vendor chunking are in place, `CraftingWorkbench` now has direct workflow coverage, and the next cleanup targets are dependency audit plus another focused workflow coverage pass before Phase 11 combat decomposition.
+**Status:** Phase 10 stabilization baseline is green; shell module lazy-loading and vendor chunking are in place, `CraftingWorkbench`, `LocationManager`, and shell-header time advancement now have direct workflow coverage, the root dependency audit is complete, and the main remaining Phase 10 target is a final combat-round coverage pass before Phase 11 combat decomposition.
 
 ## Current Snapshot
 
@@ -10,9 +10,12 @@
 - The TypeScript lint warning backlog from the recent lint expansion has been cleared.
 - Legacy `CombatContext` has been removed and combat now uses direct store/hook access.
 - Built-in shell modules now lazy-load, and the production build no longer emits chunk-size warnings.
+- The root dependency audit did not reveal a safe unused-package removal, but it did add the missing direct tool dependencies `@eslint/js` and `resedit`.
 - `CraftingWorkbench` now has direct tests for slot reservation, phase progression, project completion, and abandon/refund behavior.
+- `LocationManager` now has direct tests for location creation/current-location changes, last-location delete protection, custom climates, and weather-table assignment.
+- `TimeControls` now block on unresolved current-slot downtime tasks as well as paused activities, and the compact `+Day` path has direct shell coverage.
 - The repo-local stabilization workflow now includes thematic backlog sweeps, explicit closeout verification, and doc refresh expectations.
-- The most useful next Phase 10 work is dependency cleanup and the next targeted workflow coverage pass.
+- The most useful next Phase 10 work is one more combat-round coverage pass, then Phase 11a combat decomposition if the branch stays green.
 
 Historical migration details below are kept for context, but the bullets above are the current baseline.
 
@@ -394,15 +397,15 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 9. ItemsView.test.tsx - 22 tests (forageable items, rarity, inventory types)
 
 **Test Summary:**
-- Total tests: 894 passing
-- Recent additions include direct `CraftingWorkbench` workflow coverage for reservation, progression, completion, and refund behavior
+- Total tests: 900 passing
+- Recent additions include direct `CraftingWorkbench` workflow coverage for reservation, progression, completion, and refund behavior, plus direct `LocationManager` and shell-header time-advancement workflow coverage
 - All tests passing
 
 **Test Coverage Goals:**
 - View components: Good progress (9/~30 views tested)
 - State reducers: Good (14 tests)
 - Utility functions: Good (100+ tests)
-- Workflow coverage: improving, but combat round flow, time advancement, and `LocationManager` still deserve direct coverage
+- Workflow coverage: improving, but combat round flow still deserves the next direct coverage pass
 
 #### Integration Tests
 - End-to-end workflows
@@ -502,7 +505,7 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 - **App.jsx Size:** 260 → 96 lines (63% reduction) ✅
 - **Bundle Size:** 800KB → 624KB (22% reduction) ✅
 - **View Component Size:** 19-815 lines (AI-readable) ✅
-- **Test Coverage:** 894 tests passing (Phase 10 verification green) ✅
+- **Test Coverage:** 900 tests passing (Phase 10 verification green) ✅
 
 ### Architecture Health
 - ✅ Single source of truth (CampaignStore)
@@ -536,7 +539,7 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 - **Type Safety Pioneer** - Converted 63 components to TypeScript ✅
 - **Combat System Master** - Full TypeScript coverage for combat (22 files) ✅
 - **Legacy Liberator** - Migrated all 5 legacy tabs to direct store access ✅
-- **Workflow Tester** - Added direct `CraftingWorkbench` coverage for reservation, progression, completion, and refund flows ✅
+- **Workflow Tester** - Added direct `CraftingWorkbench`, `LocationManager`, and time-advancement coverage for key GM and project-lifecycle flows ✅
 
 ---
 
@@ -568,10 +571,10 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 ---
 
 Latest Phase 10 note: built-in shell modules now lazy-load, vendor chunks are split out, and the largest emitted bundle is about 360KB without a chunk-size warning.
-Latest coverage note: `CraftingWorkbench` now has direct workflow tests instead of relying only on higher-level mocks.
+Latest coverage note: `CraftingWorkbench`, `LocationManager`, and shell-header time advancement now have direct workflow tests instead of relying only on higher-level mocks for those flows.
 
 **Current Branch:** `home-test`
 **Build Status:** ? Passing (largest emitted chunk ~360KB, no chunk-size warning)
-**Ready for:** dependency cleanup, the next focused workflow coverage pass, or Phase 11a combat decomposition
+**Ready for:** combat round flow coverage or Phase 11a combat decomposition
 
 Phase 9 Complete! All legacy tabs migrated - 63 components now TypeScript.

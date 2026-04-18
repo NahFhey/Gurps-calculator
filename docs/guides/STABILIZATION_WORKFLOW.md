@@ -12,6 +12,7 @@ This guide captures what worked well in the April 17, 2026 cleanup session and w
 - Burn down warning backlogs in thematic sweeps. Grouping hook-dependency fixes separately from console-policy cleanup kept the work reviewable and low risk.
 - Re-run verification after each meaningful change so the branch state stays trustworthy.
 - For coverage work, target the branch-heavy workflow component that is still mocked or lightly tested, then run its focused suite before the full closeout pass.
+- Compare documented invariants and selector behavior against the actual UI. When they disagree, that mismatch is often the highest-value next fix.
 
 ## Improve Next Time
 
@@ -21,6 +22,7 @@ This guide captures what worked well in the April 17, 2026 cleanup session and w
 - Capture session lessons in a reusable place. If a workflow helped once, it should be easy to reuse in the next cleanup pass.
 - When console warnings are policy-only, decide deliberately whether the right fix is `warn`, `error`, or a real logger abstraction instead of treating them as a mechanical rename.
 - Keep test fixtures honest. If TypeScript-heavy tests need simplified fixture data, make the test-only cast explicit instead of letting the fixture drift silently from production types.
+- Treat dependency audits as advisory. Verify config files, lint/build tooling, and packaging scripts before removing packages, and use audit output to look for missing direct dependencies too.
 
 ## Recommended Order
 
@@ -55,6 +57,9 @@ As of 2026-04-17:
 - `npm run build` passes
 - `npx vitest run` passes
 - built-in shell modules lazy-load and the production build no longer emits chunk-size warnings
+- the root dependency audit did not reveal a safe unused-package removal, but it did add the missing direct tool dependencies `@eslint/js` and `resedit`
 - `CraftingWorkbench` now has direct workflow coverage for reservation, progression, completion, and refund behavior
+- `LocationManager` now has direct workflow coverage for creation, current-location changes, last-location delete protection, custom climates, and weather-table usage
+- shell-header `TimeControls` now honor unresolved current-slot downtime tasks and have direct coverage for compact slot/day advancement
 
-The remaining Phase 10 backlog is no longer lint cleanup or bundle warning cleanup. The next likely targets are dependency audit and the next focused workflow coverage pass.
+The remaining Phase 10 backlog is no longer lint cleanup, dependency hygiene, or bundle warning cleanup. The next likely target is combat-round workflow coverage, then Phase 11a combat decomposition.

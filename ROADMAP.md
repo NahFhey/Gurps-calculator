@@ -9,7 +9,7 @@
 
 **Goal:** Get the codebase healthy before pushing new features. Fix what's broken, remove what's dead.
 
-**Status as of 2026-04-17:** The verification baseline is green again, the old TypeScript lint warning backlog has been burned down, the shell now lazy-loads major modules so the production build no longer emits chunk-size warnings, and the first direct crafting workflow coverage pass is in place.
+**Status as of 2026-04-17:** The verification baseline is green again, the old TypeScript lint warning backlog has been burned down, the shell now lazy-loads major modules so the production build no longer emits chunk-size warnings, direct workflow coverage is now in place for `CraftingWorkbench`, `LocationManager`, and time advancement in the shell header, and the dependency audit did not uncover any low-risk unused root packages.
 - `npm run lint` now covers `js/jsx/ts/tsx` and is clean.
 - `tsc --noEmit` is clean.
 - `npm run build` is clean.
@@ -17,8 +17,11 @@
 - Legacy `CombatContext` has been removed and the combat shell now uses direct store/hook access.
 - The remaining `.jsx` test conversions are complete.
 - Major shell modules now load on demand, and the largest emitted chunk is about 360 kB instead of triggering the old warning.
+- The dependency audit did not find a safe root-package removal, but it did expose and fix two undeclared direct tool dependencies: `@eslint/js` and `resedit`.
 - `CraftingWorkbench` now has direct tests for slot reservation, phase progression, project completion, and abandon/refund behavior.
-- Best next-session target: finish Phase 10 with dependency cleanup and one more focused workflow coverage pass.
+- `LocationManager` now has direct tests for create/set-current flow, last-location delete protection, custom climate persistence, and weather-table assignment/usage.
+- The shell header `TimeControls` now respect unresolved downtime tasks as a real advancement blocker, and the compact `+Day` path has direct coverage.
+- Best next-session target: finish Phase 10 with one more focused workflow coverage pass around combat round flow, then move into Phase 11a combat decomposition if the branch still looks this healthy.
 
 ### 10a: Fix TypeScript Errors
 - Completed in the current worktree: the original TypeScript backlog is no longer the active blocker.
@@ -29,21 +32,23 @@
 - Completed: migrate remaining combat shell usage off `CombatContext` to direct store/hook access
 - Completed: remove `CombatContext` after migration
 - Apparently already done: convert remaining `.jsx` test files to `.tsx`
-- Next: audit and remove unused dependencies from `package.json`
+- Completed in the current worktree: audit root dependencies, confirm there is no low-risk unused removal, and add missing direct tool dependencies `@eslint/js` and `resedit`
 - Optional follow-up: remove or rewrite stale comments in `useCombatStore.ts` that still mention legacy `CombatContext`
 
 ### 10c: Expand Test Coverage
 - Keep fixing test mocks as coverage work exposes drift
 - Completed in the current worktree: add direct `CraftingWorkbench` workflow tests for reservation, progression, completion, and refund behavior
+- Completed in the current worktree: add direct `LocationManager` workflow tests for creation, current-location changes, custom climates, and weather-table usage
+- Completed in the current worktree: add direct shell-header time-advancement coverage for downtime blocking and compact next-day advancement
 - Add tests for remaining untested or lightly tested view components
-- Add integration tests for critical workflows: combat round, time advancement, crafting project lifecycle
+- Add integration tests for critical workflows: combat round and other remaining branch-heavy combat interactions
 - Keep targeted shell verification green alongside broader coverage work
 - Target: all tests green, 80%+ view coverage
 
 **Suggested next session**
-1. Audit `package.json` for genuinely unused dependencies and remove the low-risk ones.
-2. Add or expand tests around combat round flow, time advancement, or `LocationManager` workflow behavior.
-3. If Phase 10 still looks green after that, move into Phase 11a combat decomposition.
+1. Add or expand tests around combat round flow.
+2. If Phase 10 still looks green after that, move into Phase 11a combat decomposition.
+3. Keep dependency cleanup limited to evidence-backed follow-up only; the current root audit did not reveal a safe removal target.
 
 **Estimated remaining effort:** 1-2 focused sessions
 
