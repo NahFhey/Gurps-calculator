@@ -22,6 +22,7 @@ Use this skill to restart momentum in the `Gurps-calculator` repo without making
    - whether lint/typecheck/build/tests are green
    - what is actually left in the current phase
    - whether there is already uncommitted work in the tree that should be carried forward instead of re-done
+   - whether the tree already contains an exploratory architecture spike (for example under `shared/` or `server/src/`) that should be resumed intentionally instead of rediscovered
 4. Choose the next task instead of waiting for more direction when the user simply says to continue:
    - prefer the current roadmap phase
    - prefer the smallest high-value slice that keeps momentum
@@ -43,6 +44,7 @@ Use this skill to restart momentum in the `Gurps-calculator` repo without making
 - Do not assume a large dirty worktree means the branch is broken.
 - If docs disagree with the code, update the docs once the code reality is verified.
 - If a decomposition slice lands, refresh roadmap/status docs in the same turn with the new line counts and the next seam instead of leaving the branch pointed at already-finished work.
+- If the previous session produced a contract-first spike, summarize what the scaffold covers and what is still deliberately missing before choosing the next task.
 - When deciding between cleanup options, prefer the path with current evidence behind it:
   - warning-producing build output beats speculative dependency cleanup
   - a large untested workflow component beats another round of shallow view tests
