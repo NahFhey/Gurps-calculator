@@ -215,6 +215,21 @@
 - `src/components/combat/EncounterSetup.tsx` — encumbrance/DR/token in partyCharacterToCombat
 - `src/components/combat/views/InitiativeTimeline.tsx` — token image in avatar circle
 
+### 12a.5: Inventory Integration Bus
+**Status:** Planned (2026-04-28). See [`docs/INVENTORY_INTEGRATION_PLAN.md`](./docs/INVENTORY_INTEGRATION_PLAN.md) for the full design concept and [`docs/INVENTORY_INTEGRATION_FOLLOWUPS.md`](./docs/INVENTORY_INTEGRATION_FOLLOWUPS.md) for discovered side-issues.
+
+**Why this is wedged here:** Crafting / gathering / loot all record intent without writing to inventory state. The gap is biting at every session that exercises these subsystems (current arc does). Originally bundled in Phase 15 cross-system integration; pulled forward as a narrow carve-out.
+
+**Scope:**
+- Two reducer actions: `inventory/itemAcquired { item, owner, source }` and `inventory/itemRetagged { itemId, newOwner }`. Both always-succeed.
+- Single inventory store with an `owner: "party" | CharacterId` tag on each item. Shared vs individual is a tag filter, not separate stores.
+- Three dispatch sites: crafting completion, gathering success, loot distribution (rewires existing `LootDistribution.tsx` to dispatch retag instead of just logging).
+- Schema migration: existing items default to `owner: <equippedCharacterId>` if equipped, `owner: "party"` otherwise.
+
+**Out of scope:** cooking buff write path (separate followup), attunement state machine (separate followup), combat consumables (separate followup), "take from shared" UI for crafted/gathered items (separate followup), structured per-item provenance, combat-undo coupling for inventory writes (uses post-combat boundary instead).
+
+**Estimated effort:** 2 days plus a session of table verification.
+
 ### 12b: GCS Import Improvements
 - Broader GCS format support (validate against real exports)
 - Import validation with diff preview ("here's what will change")
