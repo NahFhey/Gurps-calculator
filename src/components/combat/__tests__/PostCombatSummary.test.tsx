@@ -2,7 +2,7 @@
  * Tests for PostCombatSummary component and buildCombatSummary helper (Phase 11c)
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { buildCombatSummary } from '../PostCombatSummary';
 import type { CombatState, Participant } from '../../../types/combatTracker';
 

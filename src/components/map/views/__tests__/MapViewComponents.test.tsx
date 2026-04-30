@@ -69,7 +69,7 @@ const mockTerrain: Record<TerrainId, TerrainModel> = {
 const mockMapId1: MapId = 'map-1';
 const mockMapId2: MapId = 'map-2';
 
-const mockMap: MapModel = {
+const mockMap: MapModel = ({
   id: mockMapId1,
   name: 'Thornwood Region',
   description: 'A lush forest region',
@@ -105,7 +105,7 @@ const mockMap: MapModel = {
   linksById: {},
   tileRevealMap: {},
   tileVisibilityMap: {},
-};
+}) as unknown as MapModel;
 
 const mockMaps: Record<MapId, MapModel> = {
   [mockMapId1]: mockMap,
@@ -745,7 +745,7 @@ describe('TravelStep3Confirm', () => {
 
   it('displays blocker messages', () => {
     const blockers: TravelBlocker[] = [
-      { message: 'Impassable terrain detected', details: ['Desert at (2, 3)'] },
+      { code: 'impassable', message: 'Impassable terrain detected', details: ['Desert at (2, 3)'] },
     ];
 
     render(
@@ -763,7 +763,7 @@ describe('TravelStep3Confirm', () => {
 
   it('disables confirm button when blockers exist', () => {
     const blockers: TravelBlocker[] = [
-      { message: 'Test blocker', details: [] },
+      { code: 'test', message: 'Test blocker', details: [] },
     ];
 
     render(
@@ -814,10 +814,11 @@ describe('TravelBlockerList', () => {
   it('renders blocker messages and details', () => {
     const blockers: TravelBlocker[] = [
       {
+        code: 'water',
         message: 'Blocked by water',
         details: ['Water at (1, 2)', 'Water at (2, 2)'],
       },
-      { message: 'Unknown terrain', details: [] },
+      { code: 'unknown', message: 'Unknown terrain', details: [] },
     ];
 
     render(

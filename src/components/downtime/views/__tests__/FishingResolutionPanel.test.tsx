@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom';
+import type * as React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { FishingResolutionPanel } from '../FishingResolutionPanel';
@@ -39,8 +40,8 @@ const fishingTask: DowntimeTask = {
     leaderSkill: 13,
     skillModifier: 0,
     catchMode: 'random',
-  } as FishingData,
-} as DowntimeTask;
+  } as unknown as FishingData,
+} as unknown as DowntimeTask;
 
 const testSpecies: GatheringSpeciesExtended[] = [
   {
@@ -83,7 +84,7 @@ function renderPanel(overrides = {}) {
   return render(
     <CampaignStoreProvider>
       <DowntimeProvider currentDayKey={1} currentSlot={0}>
-        <FishingResolutionPanel {...defaultProps} />
+        <FishingResolutionPanel {...defaultProps as unknown as React.ComponentProps<typeof FishingResolutionPanel>} />
       </DowntimeProvider>
     </CampaignStoreProvider>
   );

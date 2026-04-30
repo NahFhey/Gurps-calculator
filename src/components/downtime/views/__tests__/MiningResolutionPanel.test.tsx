@@ -34,8 +34,8 @@ const surfaceProspectingTask: DowntimeTask = {
     skillModifier: 0,
     dangerMode: 'lite',
     contextFlags: {},
-  } as MiningData,
-} as DowntimeTask;
+  } as unknown as MiningData,
+} as unknown as DowntimeTask;
 
 const deepMiningTask: DowntimeTask = {
   ...surfaceProspectingTask,
@@ -53,8 +53,8 @@ const deepMiningTask: DowntimeTask = {
     skillModifier: 0,
     dangerMode: 'lite',
     contextFlags: {},
-  } as MiningData,
-} as DowntimeTask;
+  } as unknown as MiningData,
+} as unknown as DowntimeTask;
 
 const testSites: MiningSite[] = [
   {
@@ -62,7 +62,7 @@ const testSites: MiningSite[] = [
     name: 'Iron Vein',
     zoneId: 'zone-1',
     materials: ['iron'],
-    depositSize: 'medium',
+    depositSize: 'Medium',
     totalUnits: 20,
     remainingUnits: 15,
     mapped: true,

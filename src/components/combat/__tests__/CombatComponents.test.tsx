@@ -235,7 +235,7 @@ describe('ConditionBadge', () => {
   it('renders duration when expiresAt is set', () => {
     render(
       <ConditionBadge
-        condition={{ conditionId: 'stunned', label: 'Stunned', expiresAt: 5 }}
+        condition={{ conditionId: 'stunned', label: 'Stunned', expiresAt: { type: 'round', round: 5 } }}
         currentRound={1}
         showDuration={true}
       />

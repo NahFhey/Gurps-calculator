@@ -12,6 +12,12 @@ import {
 } from '../../utils/conditionsEngine';
 import { ConfirmDialog, useConfirmDialog, useToast } from '../ui';
 
+interface ExpiresAt {
+  type: 'turn' | 'round' | 'endOfCombat';
+  turnsRemaining?: number;
+  round?: number;
+}
+
 interface ConditionInstance {
   instanceId: string;
   conditionId: string;
@@ -20,8 +26,8 @@ interface ConditionInstance {
   source?: string | null;
   startedAtRound?: number;
   startedAtTurn?: number;
-  duration?: any;
-  expiresAt?: number | null;
+  duration?: unknown;
+  expiresAt?: ExpiresAt | null;
   notes?: string | null;
 }
 

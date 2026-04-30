@@ -2,23 +2,17 @@ import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ItemsView } from '../views/ItemsView';
+import type { GatheringItemExtended, ItemsViewProps } from '../../../types/gathering';
 
-interface Item {
-  id: string;
-  name: string;
-  inventoryKind?: 'food' | 'material';
-  typeId?: string;
-  yieldFormula?: string;
-  rarity?: string;
-  description?: string;
-}
+type Item = Partial<GatheringItemExtended> & { id: string; name: string };
+const asItems = (xs: Item[]): GatheringItemExtended[] => xs as unknown as GatheringItemExtended[];
 
 describe('ItemsView', () => {
   const mockSaveItems = vi.fn();
   const mockOnDelete = vi.fn();
 
-  const defaultProps = {
-    items: [] as Item[],
+  const defaultProps: ItemsViewProps = {
+    items: [],
     foodTypes: ['berries', 'herbs', 'vegetables'],
     materialTypes: ['wood', 'stone', 'fiber'],
     saveItems: mockSaveItems,
@@ -40,7 +34,7 @@ describe('ItemsView', () => {
       { id: '2', name: 'Mushrooms' },
       { id: '3', name: 'Roots' }
     ];
-    render(<ItemsView {...defaultProps} items={items} />);
+    render(<ItemsView {...defaultProps} items={asItems(items)} />);
     expect(screen.getByText('Forageable Items (3)')).toBeInTheDocument();
   });
 
@@ -91,7 +85,7 @@ describe('ItemsView', () => {
       { id: '2', name: 'Healing Herbs', inventoryKind: 'food' }
     ];
 
-    render(<ItemsView {...defaultProps} items={items} />);
+    render(<ItemsView {...defaultProps} items={asItems(items)} />);
 
     expect(screen.getByText('Wild Berries')).toBeInTheDocument();
     expect(screen.getByText('Healing Herbs')).toBeInTheDocument();
@@ -102,7 +96,7 @@ describe('ItemsView', () => {
       { id: '1', name: 'Berries', yieldFormula: '3d+2' }
     ];
 
-    render(<ItemsView {...defaultProps} items={items} />);
+    render(<ItemsView {...defaultProps} items={asItems(items)} />);
 
     expect(screen.getByText('3d+2')).toBeInTheDocument();
   });
@@ -112,7 +106,7 @@ describe('ItemsView', () => {
       { id: '1', name: 'Fiber Plant', inventoryKind: 'material' }
     ];
 
-    render(<ItemsView {...defaultProps} items={items} />);
+    render(<ItemsView {...defaultProps} items={asItems(items)} />);
 
     expect(screen.getByText('material')).toBeInTheDocument();
   });
@@ -122,7 +116,7 @@ describe('ItemsView', () => {
       { id: '1', name: 'Rare Herb', rarity: 'Rare' }
     ];
 
-    render(<ItemsView {...defaultProps} items={items} />);
+    render(<ItemsView {...defaultProps} items={asItems(items)} />);
 
     expect(screen.getByText('Rare')).toBeInTheDocument();
   });
@@ -174,7 +168,7 @@ describe('ItemsView', () => {
       { id: '1', name: 'Test Item', inventoryKind: 'food', yieldFormula: '2d', rarity: 'Common' }
     ];
 
-    render(<ItemsView {...defaultProps} items={items} />);
+    render(<ItemsView {...defaultProps} items={asItems(items)} />);
 
     fireEvent.click(screen.getByText('Test Item'));
 
@@ -188,7 +182,7 @@ describe('ItemsView', () => {
       { id: '1', name: 'Test Item', typeId: 'test_item_id' }
     ];
 
-    render(<ItemsView {...defaultProps} items={items} />);
+    render(<ItemsView {...defaultProps} items={asItems(items)} />);
 
     fireEvent.click(screen.getByText('Test Item'));
 
@@ -201,7 +195,7 @@ describe('ItemsView', () => {
       { id: '1', name: 'Test Item', description: 'A test description for this item' }
     ];
 
-    render(<ItemsView {...defaultProps} items={items} />);
+    render(<ItemsView {...defaultProps} items={asItems(items)} />);
 
     fireEvent.click(screen.getByText('Test Item'));
 
@@ -213,7 +207,7 @@ describe('ItemsView', () => {
       { id: 'item-456', name: 'Test Item' }
     ];
 
-    render(<ItemsView {...defaultProps} items={items} />);
+    render(<ItemsView {...defaultProps} items={asItems(items)} />);
 
     fireEvent.click(screen.getByText('Test Item'));
 
@@ -229,7 +223,7 @@ describe('ItemsView', () => {
       { id: '1', name: 'Edit Me', yieldFormula: '4d' }
     ];
 
-    render(<ItemsView {...defaultProps} items={items} />);
+    render(<ItemsView {...defaultProps} items={asItems(items)} />);
 
     fireEvent.click(screen.getByText('Edit Me'));
     fireEvent.click(screen.getByRole('button', { name: /edit/i }));

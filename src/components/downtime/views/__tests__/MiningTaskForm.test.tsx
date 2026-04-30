@@ -7,8 +7,8 @@ import { DowntimeProvider } from '../../DowntimeContext';
 import type { DowntimeState, MiningSite } from '../../../../types/downtime';
 import type { Character, GatheringTool } from '../../../../types/campaign';
 
-// Minimal downtime state for the form
-const minimalDowntimeState: DowntimeState = {
+// Minimal downtime state for the form (loose cast — runtime only reads a subset)
+const minimalDowntimeState = {
   tasks: {},
   taskOrder: [],
   reservations: {},
@@ -16,7 +16,7 @@ const minimalDowntimeState: DowntimeState = {
     slotsPerDay: 3,
     maxDays: 30,
   },
-};
+} as unknown as DowntimeState;
 
 // Test character
 const testCharacters: Character[] = [
@@ -46,7 +46,7 @@ const testSites: MiningSite[] = [
     name: 'Iron Vein',
     zoneId: 'zone-1',
     materials: ['iron'],
-    depositSize: 'medium',
+    depositSize: 'Medium',
     totalUnits: 20,
     remainingUnits: 15,
     mapped: true,

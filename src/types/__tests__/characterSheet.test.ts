@@ -3,10 +3,7 @@ import {
   calculateSkillLevel,
   calculateRelativeLevel,
   calculateSkillPointCost,
-  calculateBasicLift,
   calculateDerivedAttributes,
-  calculateThrustDamage,
-  calculateSwingDamage,
 } from '../characterSheet';
 
 // ============================================================================

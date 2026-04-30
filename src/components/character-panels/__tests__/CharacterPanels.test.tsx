@@ -56,13 +56,13 @@ vi.mock('../../character-sheet/SpellsSection', () => ({
 // MOCK DATA
 // ============================================================================
 
-const mockCharacter: Character = {
+const mockCharacter = ({
   id: 'char-1',
   name: 'Sir Aldric',
   campaign: '',
   player: '',
   player_name: '',
-  gcsData: {
+  gcsData: ({
     attributes: { ST: 12, DX: 14, IQ: 10, HT: 11 },
     attributePoints: { ST: 20, DX: 80, IQ: 0, HT: 10 },
     secondaryAttributes: {
@@ -116,8 +116,8 @@ const mockCharacter: Character = {
     perks: [],
     disadvantages: [],
     quirks: [],
-  },
-};
+  } as unknown as Character['gcsData']),
+}) as unknown as Character;
 
 // ============================================================================
 // CharacterEquipmentPanel

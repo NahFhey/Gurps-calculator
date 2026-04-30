@@ -9,7 +9,7 @@ import type { Location, WeatherTable } from '../../../types/location';
 // MOCK DATA
 // ============================================================================
 
-const mockLocations: Location[] = [
+const mockLocations: Location[] = ([
   {
     id: 'loc-1',
     name: 'Green Valley',
@@ -83,7 +83,7 @@ const mockLocations: Location[] = [
       duration: { type: 'days', count: 1 },
     },
   },
-];
+] as unknown as Location[]);
 
 const mockWeatherTable: WeatherTable = {
   id: 'wt-1',
@@ -520,7 +520,7 @@ describe('WeatherTableEditor', () => {
     expect(screen.getByText(/2 entries/i)).toBeInTheDocument();
 
     const deleteButtons = screen.getAllByRole('button').filter((btn) =>
-      btn.innerHTML.includes('Trash') || (btn.className.includes('red') && !btn.disabled)
+      btn.innerHTML.includes('Trash') || (btn.className.includes('red') && !(btn as HTMLButtonElement).disabled)
     );
 
     expect(deleteButtons.length).toBeGreaterThan(0);

@@ -16,7 +16,7 @@ const mockedUseCampaignStore = vi.mocked(useCampaignStore);
 // TEST FIXTURES
 // ============================================================================
 
-function createMockCombatCharacter(overrides: Partial<CombatCharacter> = {}): CombatCharacter {
+function createMockCombatCharacter(overrides: Record<string, unknown> = {}): CombatCharacter {
   return {
     id: 'combat-char-1',
     name: 'Test Combat Character',
@@ -36,10 +36,10 @@ function createMockCombatCharacter(overrides: Partial<CombatCharacter> = {}): Co
     block: 0,
     dr: 0,
     ...overrides,
-  };
+  } as unknown as CombatCharacter;
 }
 
-function createMockCombatSession(overrides: Partial<CombatSession> = {}): CombatSession {
+function createMockCombatSession(overrides: Record<string, unknown> = {}): CombatSession {
   return {
     id: 'session-1',
     name: 'Test Combat Session',
@@ -50,26 +50,26 @@ function createMockCombatSession(overrides: Partial<CombatSession> = {}): Combat
     startedAt: Date.now(),
     isActive: true,
     ...overrides,
-  };
+  } as unknown as CombatSession;
 }
 
-function createMockCombatItem(overrides: Partial<CombatItem> = {}): CombatItem {
+function createMockCombatItem(overrides: Record<string, unknown> = {}): CombatItem {
   return {
     id: 'item-1',
     name: 'Test Item',
     quantity: 1,
     notes: '',
     ...overrides,
-  };
+  } as unknown as CombatItem;
 }
 
-function createMockCharacter(overrides: Partial<Character> = {}): Character {
+function createMockCharacter(overrides: Record<string, unknown> = {}): Character {
   return {
     id: 'party-char-1',
     name: 'Test Party Character',
     isPlayer: true,
     ...overrides,
-  };
+  } as unknown as Character;
 }
 
 function createMockCampaignState(overrides: any = {}) {
@@ -432,7 +432,7 @@ describe('useCombatStore', () => {
       act(() => {
         result.current.saveCombatActive((prev: CombatSession | null) => {
           if (!prev) return null;
-          return { ...prev, round: prev.round + 1 };
+          return { ...prev, currentRound: prev.currentRound + 1 };
         });
       });
 

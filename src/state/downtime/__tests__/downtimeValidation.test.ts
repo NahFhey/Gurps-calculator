@@ -36,7 +36,7 @@ function createFishingData(overrides?: Partial<FishingData>): FishingData {
     skillModifier: 0,
     targetYield: 5,
     ...overrides,
-  };
+  } as unknown as FishingData;
 }
 
 /**
@@ -51,13 +51,13 @@ function createAlchemyData(overrides?: Partial<AlchemyData>): AlchemyData {
     batchSize: 1,
     toolIds: [],
     ...overrides,
-  };
+  } as unknown as AlchemyData;
 }
 
 /**
  * Creates crafting activity data for tests.
  */
-function createCraftingData(overrides?: Partial<CraftingData>): CraftingData {
+function createCraftingData(overrides?: Record<string, unknown>): CraftingData {
   return {
     type: 'crafting',
     projectId: 'project-sword',
@@ -67,7 +67,7 @@ function createCraftingData(overrides?: Partial<CraftingData>): CraftingData {
     phase: 'craft',
     progress: 0,
     ...overrides,
-  };
+  } as unknown as CraftingData;
 }
 
 /**

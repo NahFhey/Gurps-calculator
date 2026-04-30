@@ -27,12 +27,18 @@ vi.mock('../../../constants/conditions', () => ({
 // Test data
 // ---------------------------------------------------------------------------
 
+type TestExpiresAt = {
+  type: 'turn' | 'round' | 'endOfCombat';
+  turnsRemaining?: number;
+  round?: number;
+};
+
 function makeCondition(overrides: Record<string, unknown> = {}) {
   return {
     conditionId: 'stunned',
     instanceId: 'cond-1',
     label: 'Stunned',
-    expiresAt: null as { type: string; turnsRemaining?: number; round?: number } | null,
+    expiresAt: null as TestExpiresAt | null,
     severity: null as number | null,
     ...overrides,
   };

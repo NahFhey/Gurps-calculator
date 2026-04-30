@@ -2,27 +2,17 @@ import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { SpeciesView } from '../views/SpeciesView';
+import type { GatheringSpeciesExtended, SpeciesViewProps } from '../../../types/gathering';
 
-interface Species {
-  id: string;
-  name: string;
-  type?: 'fish' | 'shellfish' | 'crustacean';
-  tags?: string[];
-  foodType?: string;
-  yieldMeatFormula?: string;
-  secondaryMaterialType?: string | null;
-  yieldSecondaryFormula?: string | null;
-  secondaryNameOverride?: string | null;
-  st?: number | null;
-  specialRules?: string[];
-}
+type Species = Partial<GatheringSpeciesExtended> & { id: string; name: string };
+const asSpecies = (xs: Species[]): GatheringSpeciesExtended[] => xs as unknown as GatheringSpeciesExtended[];
 
 describe('SpeciesView', () => {
   const mockSaveSpecies = vi.fn();
   const mockOnDelete = vi.fn();
 
-  const defaultProps = {
-    species: [] as Species[],
+  const defaultProps: SpeciesViewProps = {
+    species: [],
     foodTypes: ['fish', 'shellfish'],
     saveSpecies: mockSaveSpecies,
     onDelete: mockOnDelete
@@ -42,7 +32,7 @@ describe('SpeciesView', () => {
       { id: '1', name: 'Trout' },
       { id: '2', name: 'Salmon' }
     ];
-    render(<SpeciesView {...defaultProps} species={species} />);
+    render(<SpeciesView {...defaultProps} species={asSpecies(species)} />);
     expect(screen.getByText('Species (2)')).toBeInTheDocument();
   });
 
@@ -83,7 +73,7 @@ describe('SpeciesView', () => {
       { id: '2', name: 'River Salmon', type: 'fish' }
     ];
 
-    render(<SpeciesView {...defaultProps} species={species} />);
+    render(<SpeciesView {...defaultProps} species={asSpecies(species)} />);
 
     expect(screen.getByText('Coastal Trout')).toBeInTheDocument();
     expect(screen.getByText('River Salmon')).toBeInTheDocument();
@@ -95,7 +85,7 @@ describe('SpeciesView', () => {
       { id: '2', name: 'Clam', type: 'shellfish' }
     ];
 
-    render(<SpeciesView {...defaultProps} species={species} />);
+    render(<SpeciesView {...defaultProps} species={asSpecies(species)} />);
 
     expect(screen.getByText('fish')).toBeInTheDocument();
     expect(screen.getByText('shellfish')).toBeInTheDocument();
@@ -106,7 +96,7 @@ describe('SpeciesView', () => {
       { id: '1', name: 'Giant Tuna', type: 'fish', tags: ['LargeFish'], st: 16 }
     ];
 
-    render(<SpeciesView {...defaultProps} species={species} />);
+    render(<SpeciesView {...defaultProps} species={asSpecies(species)} />);
 
     expect(screen.getByText('Large')).toBeInTheDocument();
   });
@@ -145,7 +135,7 @@ describe('SpeciesView', () => {
       { id: '1', name: 'Test Fish', type: 'fish', yieldMeatFormula: '2d+1', foodType: 'fish' }
     ];
 
-    render(<SpeciesView {...defaultProps} species={species} />);
+    render(<SpeciesView {...defaultProps} species={asSpecies(species)} />);
 
     fireEvent.click(screen.getByText('Test Fish'));
 
@@ -159,7 +149,7 @@ describe('SpeciesView', () => {
       { id: '1', name: 'Test Fish', type: 'fish', yieldMeatFormula: '3d+2', foodType: 'fish' }
     ];
 
-    render(<SpeciesView {...defaultProps} species={species} />);
+    render(<SpeciesView {...defaultProps} species={asSpecies(species)} />);
 
     fireEvent.click(screen.getByText('Test Fish'));
 
@@ -179,7 +169,7 @@ describe('SpeciesView', () => {
       }
     ];
 
-    render(<SpeciesView {...defaultProps} species={species} />);
+    render(<SpeciesView {...defaultProps} species={asSpecies(species)} />);
 
     fireEvent.click(screen.getByText('Scaled Fish'));
 
@@ -192,7 +182,7 @@ describe('SpeciesView', () => {
       { id: '1', name: 'Big Fish', type: 'fish', tags: ['LargeFish'], st: 18, yieldMeatFormula: '2d', foodType: 'fish' }
     ];
 
-    render(<SpeciesView {...defaultProps} species={species} />);
+    render(<SpeciesView {...defaultProps} species={asSpecies(species)} />);
 
     fireEvent.click(screen.getByText('Big Fish'));
 
@@ -205,7 +195,7 @@ describe('SpeciesView', () => {
       { id: '1', name: 'Tagged Fish', type: 'fish', tags: ['LargeFish', 'Dangerous'] }
     ];
 
-    render(<SpeciesView {...defaultProps} species={species} />);
+    render(<SpeciesView {...defaultProps} species={asSpecies(species)} />);
 
     fireEvent.click(screen.getByText('Tagged Fish'));
 
@@ -218,7 +208,7 @@ describe('SpeciesView', () => {
       { id: 'species-123', name: 'Test Species', type: 'fish' }
     ];
 
-    render(<SpeciesView {...defaultProps} species={species} />);
+    render(<SpeciesView {...defaultProps} species={asSpecies(species)} />);
 
     fireEvent.click(screen.getByText('Test Species'));
 
@@ -234,7 +224,7 @@ describe('SpeciesView', () => {
       { id: '1', name: 'Edit Me', type: 'fish', yieldMeatFormula: '2d' }
     ];
 
-    render(<SpeciesView {...defaultProps} species={species} />);
+    render(<SpeciesView {...defaultProps} species={asSpecies(species)} />);
 
     fireEvent.click(screen.getByText('Edit Me'));
     fireEvent.click(screen.getByRole('button', { name: /edit/i }));

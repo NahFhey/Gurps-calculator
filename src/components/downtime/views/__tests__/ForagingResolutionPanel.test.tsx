@@ -31,8 +31,8 @@ const foragingTask: DowntimeTask = {
     skillModifier: 0,
     zoneId: 'zone-1',
     contextFlags: {},
-  } as ForagingData,
-} as DowntimeTask;
+  } as unknown as ForagingData,
+} as unknown as DowntimeTask;
 
 function renderPanel(overrides = {}) {
   const defaultProps = {

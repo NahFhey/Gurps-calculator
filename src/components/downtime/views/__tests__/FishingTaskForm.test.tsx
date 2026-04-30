@@ -21,7 +21,7 @@ const mockCharacters: Character[] = [
     advantages: [],
     disadvantages: [],
     equipment: [],
-  },
+  } as unknown as Character,
   {
     id: 'char-2',
     name: 'Brina',
@@ -36,10 +36,10 @@ const mockCharacters: Character[] = [
     advantages: [],
     disadvantages: [],
     equipment: [],
-  },
+  } as unknown as Character,
 ];
 
-const mockSpots: GatheringEnvironment[] = [
+const mockSpots: GatheringEnvironment[] = ([
   {
     id: 'spot-1',
     name: 'River Bank',
@@ -66,9 +66,9 @@ const mockSpots: GatheringEnvironment[] = [
     },
     skillMod: -2,
   },
-];
+] as unknown as GatheringEnvironment[]);
 
-const mockSpecies: GatheringSpecies[] = [
+const mockSpecies: GatheringSpecies[] = ([
   {
     id: 'species-1',
     name: 'Trout',
@@ -95,9 +95,9 @@ const mockSpecies: GatheringSpecies[] = [
     st: null,
     specialRules: [],
   },
-];
+] as unknown as GatheringSpecies[]);
 
-const mockTools: GatheringTool[] = [
+const mockTools: GatheringTool[] = ([
   {
     id: 'tool-1',
     name: 'Fishing Rod',
@@ -118,7 +118,7 @@ const mockTools: GatheringTool[] = [
     durability: 5,
     notes: '',
   },
-];
+] as unknown as GatheringTool[]);
 
 describe('FishingTaskForm', () => {
   const defaultProps = {
