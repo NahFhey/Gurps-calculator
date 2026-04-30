@@ -94,6 +94,29 @@ describe('campaignReducer', () => {
     expect(restored.time.day).toBe(1);
   });
 
+  it('restoreCheckpoint with malformed (non-serializable) snapshot leaves state unchanged', () => {
+    const state = createCampaignState();
+    const circular: Record<string, unknown> = { foo: 'bar' };
+    circular.self = circular;
+    state.checkpoints.entries.push({
+      id: 'bad-cp',
+      label: 'bad',
+      createdAt: 0,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      snapshot: circular as any
+    });
+    const dayBefore = state.time.day;
+    const slotBefore = state.time.slot;
+    const logsBefore = state.logs.entries.length;
+
+    const result = campaignReducer(state, { type: 'restoreCheckpoint', payload: 'bad-cp' });
+
+    expect(result.time.day).toBe(dayBefore);
+    expect(result.time.slot).toBe(slotBefore);
+    expect(result.logs.entries.length).toBe(logsBefore);
+    expect(result.checkpoints.entries).toHaveLength(1);
+  });
+
   it('restoreCheckpoint appends player-visible rollback log', () => {
     const state = createCampaignState();
     const withCheckpoint = campaignReducer(state, { type: 'createCheckpoint', payload: 'Before rollback' });
