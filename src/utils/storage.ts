@@ -55,8 +55,17 @@ const storage: Storage = {
 
       // Apply migrations for main state keys
       if (migrations && (key === 'appState' || key === 'gmState')) {
+        let data: Record<string, unknown>;
         try {
-          const data = JSON.parse(value) as Record<string, unknown>;
+          data = JSON.parse(value) as Record<string, unknown>;
+        } catch (parseError) {
+          logger.warn(
+            `Malformed JSON in localStorage for key "${key}"; returning null.`,
+            parseError
+          );
+          return null;
+        }
+        try {
           const storedVersion = getStoredSchemaVersion() || '1.0.0';
 
           if (storedVersion !== CURRENT_SCHEMA_VERSION) {
