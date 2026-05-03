@@ -31,7 +31,7 @@ Pattern: wrap the call in try/catch, log via existing logger (or `console.warn` 
 ## Phase 10e — Memory leak fixes
 
 - [x] Fix setTimeout race in src/components/character-management/CharacterContextMenu.tsx (lines 47-50) using a `cancelled` ref flag inside the setTimeout callback. Add unit test simulating unmount-before-timeout.
-- [ ] Fix setTimeout race in src/components/map/views/MapContextMenu.tsx using the `cancelled` ref flag pattern. Add unit test simulating unmount-before-timeout.
+- [!] Fix setTimeout race in src/components/map/views/MapContextMenu.tsx using the `cancelled` ref flag pattern. Add unit test simulating unmount-before-timeout. [auto-deferred 2026-05-03: file has no setTimeout — listeners registered synchronously in useEffect with clean cleanup, no race exists]
 - [ ] Fix setTimeout race in src/components/ui/ConfirmDialog.tsx using the `cancelled` ref flag pattern. Add unit test simulating unmount-before-timeout.
 - [ ] Fix socket listener duplication in src/net/ConnectionManager.ts (lines 243-302) — call `socket.off(event)` before each `socket.on(event, ...)` in `connectSocket()`. All existing net tests still green.
 
