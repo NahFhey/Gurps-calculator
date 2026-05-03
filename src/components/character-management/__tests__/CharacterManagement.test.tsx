@@ -96,6 +96,32 @@ describe('CharacterContextMenu', () => {
     const menu = screen.getByText('Aldric the Bold').closest('[class*="fixed"]');
     expect(menu).toHaveStyle({ left: '100px', top: '200px' });
   });
+
+  it('does not attach document listeners when unmounted before setTimeout fires', () => {
+    vi.useFakeTimers();
+    const onClose = vi.fn();
+    const addSpy = vi.spyOn(document, 'addEventListener');
+
+    const { unmount } = render(
+      <CharacterContextMenu {...defaultProps} onClose={onClose} />
+    );
+
+    // Unmount before the queued setTimeout(0) callback runs
+    unmount();
+    addSpy.mockClear();
+    vi.runAllTimers();
+
+    // The deferred listener registration must be cancelled
+    expect(addSpy).not.toHaveBeenCalledWith('mousedown', expect.any(Function));
+    expect(addSpy).not.toHaveBeenCalledWith('keydown', expect.any(Function));
+
+    // And firing events post-unmount must not invoke onClose
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
+
+    addSpy.mockRestore();
+    vi.useRealTimers();
+  });
 });
 
 // ============================================================================
