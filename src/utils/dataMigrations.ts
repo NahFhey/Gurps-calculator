@@ -20,44 +20,61 @@ import {
   getMigrationPath,
   logMigration,
   compareVersions,
-  CURRENT_SCHEMA_VERSION
+  CURRENT_SCHEMA_VERSION,
 } from './schemaVersioning';
+
+type MigratableData = Record<string, unknown> & { schemaVersion?: string };
+
+type MigrationHandler = (data: MigratableData) => MigratableData;
+
+export interface BackupEntry {
+  version: string;
+  timestamp: string;
+  data: MigratableData;
+}
+
+export interface BackupMetadata {
+  key: string;
+  version: string;
+  timestamp: string;
+  dataKeys: string[];
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  issues: string[];
+}
 
 /**
  * Migration handlers for each version transition
  * Key format: 'from_version:to_version'
  */
-const migrationHandlers = {
+const migrationHandlers: Record<string, MigrationHandler> = {
   '1.0.0:1.1.0': migrateTo1_1_0,
   '1.1.0:1.2.0': migrateTo1_2_0,
-  '1.2.0:1.3.0': migrateTo1_3_0
+  '1.2.0:1.3.0': migrateTo1_3_0,
 };
 
 /**
  * Execute all necessary migrations on application data
- *
- * @param {object} data - Application state to migrate
- * @param {string} fromVersion - Current data version
- * @param {string} toVersion - Target version (defaults to CURRENT_SCHEMA_VERSION)
- * @returns {object} Migrated data with version updated
- * @throws {Error} If migration fails with detailed error info
  */
-export function migrateData(data, fromVersion, toVersion = CURRENT_SCHEMA_VERSION) {
+export function migrateData(
+  data: MigratableData,
+  fromVersion: string,
+  toVersion: string = CURRENT_SCHEMA_VERSION
+): MigratableData {
   if (compareVersions(fromVersion, toVersion) >= 0) {
-    // Data is already at target version or newer
     return { ...data, schemaVersion: toVersion };
   }
 
   const migrationPath = getMigrationPath(fromVersion, toVersion);
 
   if (migrationPath.length === 0) {
-    logger.warn(
-      `No migration path found from ${fromVersion} to ${toVersion}`
-    );
+    logger.warn(`No migration path found from ${fromVersion} to ${toVersion}`);
     return { ...data, schemaVersion: toVersion };
   }
 
-  let migratedData = { ...data };
+  let migratedData: MigratableData = { ...data };
   let currentVersion = fromVersion;
 
   try {
@@ -66,23 +83,18 @@ export function migrateData(data, fromVersion, toVersion = CURRENT_SCHEMA_VERSIO
       const handler = migrationHandlers[handlerKey];
 
       if (!handler) {
-        throw new Error(
-          `No migration handler found for ${handlerKey}`
-        );
+        throw new Error(`No migration handler found for ${handlerKey}`);
       }
 
       logger.log(`Migrating data from ${currentVersion} to ${targetVersion}`);
 
-      // Create backup before migration
       backupData(migratedData, currentVersion);
 
-      // Execute migration
       migratedData = handler(migratedData);
 
-      // Log successful migration
       logMigration(currentVersion, targetVersion, {
         success: true,
-        dataKeys: Object.keys(migratedData)
+        dataKeys: Object.keys(migratedData),
       });
 
       currentVersion = targetVersion;
@@ -93,44 +105,38 @@ export function migrateData(data, fromVersion, toVersion = CURRENT_SCHEMA_VERSIO
 
     return migratedData;
   } catch (error) {
-    logger.error(
-      `Migration failed from ${fromVersion} to ${toVersion}:`,
-      error
-    );
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`Migration failed from ${fromVersion} to ${toVersion}:`, error);
 
     logMigration(fromVersion, toVersion, {
       success: false,
-      error: error.message
+      error: message,
     });
 
     throw new Error(
-      `Data migration failed: ${error.message}. ` +
-      'Please export your data and contact support.'
+      `Data migration failed: ${message}. ` +
+        'Please export your data and contact support.'
     );
   }
 }
 
 /**
  * Backup data before migration (for debugging)
- * @param {object} data - Data to backup
- * @param {string} version - Version being backed up
- * @private
  */
-function backupData(data, version) {
+function backupData(data: MigratableData, version: string): void {
   try {
     const backupKey = `backup_${version}_${Date.now()}`;
-    const backupData = JSON.stringify({
+    const backupPayload = JSON.stringify({
       version,
       timestamp: new Date().toISOString(),
-      data
+      data,
     });
 
-    localStorage.setItem(backupKey, backupData);
+    localStorage.setItem(backupKey, backupPayload);
 
-    // Keep only last 5 backups per version
     const allKeys = Object.keys(localStorage);
     const versionBackups = allKeys
-      .filter(k => k.startsWith(`backup_${version}_`))
+      .filter((k) => k.startsWith(`backup_${version}_`))
       .sort()
       .reverse();
 
@@ -144,32 +150,32 @@ function backupData(data, version) {
 
 /**
  * Migration: 1.0.0 → 1.1.0 (Add Alchemy System)
- * Initializes alchemy-related fields with empty defaults
  */
-function migrateTo1_1_0(data) {
+function migrateTo1_1_0(data: MigratableData): MigratableData {
+  const existingSettings =
+    (data.alchemySettings as Record<string, unknown> | undefined) ?? {};
   return {
     ...data,
     alchemyReagents: data.alchemyReagents || [],
     alchemyFormulas: data.alchemyFormulas || [],
     alchemyBatches: data.alchemyBatches || [],
     alchemyLabs: data.alchemyLabs || [
-      { id: 'default', name: 'Basic Lab', rating: 0, description: 'Standard workspace' }
+      { id: 'default', name: 'Basic Lab', rating: 0, description: 'Standard workspace' },
     ],
     alchemySettings: {
       defaultLabRating: 0,
       workBlockMinutes: 120,
       showObviousRoles: true,
-      ...data.alchemySettings
+      ...existingSettings,
     },
-    effectFamilyMap: data.effectFamilyMap || {}
+    effectFamilyMap: data.effectFamilyMap || {},
   };
 }
 
 /**
  * Migration: 1.1.0 → 1.2.0 (Add Combat System)
- * Initializes combat-related fields with empty defaults
  */
-function migrateTo1_2_0(data) {
+function migrateTo1_2_0(data: MigratableData): MigratableData {
   return {
     ...data,
     combatActive: data.combatActive || null,
@@ -178,15 +184,14 @@ function migrateTo1_2_0(data) {
     combatRulesPreset: data.combatRulesPreset || 'standard',
     combatReveal: data.combatReveal || null,
     gmMode: data.gmMode || false,
-    gmLockData: data.gmLockData || null
+    gmLockData: data.gmLockData || null,
   };
 }
 
 /**
  * Migration: 1.2.0 → 1.3.0 (Add Gathering System)
- * Initializes gathering-related fields with empty defaults
  */
-function migrateTo1_3_0(data) {
+function migrateTo1_3_0(data: MigratableData): MigratableData {
   return {
     ...data,
     gatheringSpecies: data.gatheringSpecies || [],
@@ -198,27 +203,32 @@ function migrateTo1_3_0(data) {
     gatheringBait: data.gatheringBait || [],
     gatheringCategories: data.gatheringCategories || [],
     gatheringItems: data.gatheringItems || [],
-    currentDay: data.currentDay || 1
+    currentDay: data.currentDay || 1,
   };
 }
 
 /**
  * Get the last backup for a specific version
- * @param {string} version - Version to get backup for
- * @returns {object|null} Backup data or null if not found
  */
-export function getLastBackup(version) {
+export function getLastBackup(version: string): BackupEntry | null {
   try {
     const allKeys = Object.keys(localStorage);
     const backupKey = allKeys
-      .filter(k => k.startsWith(`backup_${version}_`))
+      .filter((k) => k.startsWith(`backup_${version}_`))
       .sort()
       .reverse()[0];
 
     if (!backupKey) return null;
 
-    const backupData = JSON.parse(localStorage.getItem(backupKey));
-    return backupData;
+    const raw = localStorage.getItem(backupKey);
+    if (raw === null) return null;
+
+    try {
+      return JSON.parse(raw) as BackupEntry;
+    } catch (parseError) {
+      logger.warn(`Malformed JSON in backup ${backupKey}:`, parseError);
+      return null;
+    }
   } catch (error) {
     logger.error('Failed to retrieve backup:', error);
     return null;
@@ -227,12 +237,20 @@ export function getLastBackup(version) {
 
 /**
  * Restore data from a backup (emergency recovery)
- * @param {string} backupKey - Backup key to restore from
- * @returns {object|null} Restored data or null if failed
  */
-export function restoreFromBackup(backupKey) {
+export function restoreFromBackup(backupKey: string): MigratableData | null {
   try {
-    const backupData = JSON.parse(localStorage.getItem(backupKey));
+    const raw = localStorage.getItem(backupKey);
+    if (raw === null) return null;
+
+    let backupData: BackupEntry | null = null;
+    try {
+      backupData = JSON.parse(raw) as BackupEntry;
+    } catch (parseError) {
+      logger.warn(`Malformed JSON in backup ${backupKey}:`, parseError);
+      return null;
+    }
+
     logger.log(`Restored backup from ${backupKey}`);
     return backupData ? backupData.data : null;
   } catch (error) {
@@ -243,28 +261,32 @@ export function restoreFromBackup(backupKey) {
 
 /**
  * List all available backups
- * @returns {array} Array of backup metadata
  */
-export function listBackups() {
+export function listBackups(): BackupMetadata[] {
   try {
     const allKeys = Object.keys(localStorage);
     const backups = allKeys
-      .filter(k => k.startsWith('backup_'))
-      .map(key => {
+      .filter((k) => k.startsWith('backup_'))
+      .map((key): BackupMetadata | null => {
         try {
-          const data = JSON.parse(localStorage.getItem(key));
+          const raw = localStorage.getItem(key);
+          if (raw === null) return null;
+          const data = JSON.parse(raw) as BackupEntry;
           return {
             key,
             version: data.version,
             timestamp: data.timestamp,
-            dataKeys: Object.keys(data.data)
+            dataKeys: Object.keys(data.data),
           };
         } catch {
           return null;
         }
       })
-      .filter(Boolean)
-      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      .filter((entry): entry is BackupMetadata => entry !== null)
+      .sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
 
     return backups;
   } catch (error) {
@@ -275,43 +297,43 @@ export function listBackups() {
 
 /**
  * Validate that data conforms to a schema version
- * @param {object} data - Data to validate
- * @param {string} version - Expected version
- * @returns {object} Validation result with valid boolean and issues array
  */
-export function validateDataForVersion(data, version) {
-  const issues = [];
+export function validateDataForVersion(
+  data: unknown,
+  version: string
+): ValidationResult {
+  const issues: string[] = [];
 
-  // Basic structure checks
   if (!data || typeof data !== 'object') {
     issues.push('Data is not an object');
     return { valid: false, issues };
   }
 
-  // Version-specific validation
+  const obj = data as Record<string, unknown>;
+
   if (version >= '1.1.0') {
-    if (!Array.isArray(data.alchemyReagents)) {
+    if (!Array.isArray(obj.alchemyReagents)) {
       issues.push('Missing or invalid alchemyReagents array');
     }
-    if (!Array.isArray(data.alchemyFormulas)) {
+    if (!Array.isArray(obj.alchemyFormulas)) {
       issues.push('Missing or invalid alchemyFormulas array');
     }
   }
 
   if (version >= '1.2.0') {
-    if (data.combatActive && typeof data.combatActive !== 'object') {
+    if (obj.combatActive && typeof obj.combatActive !== 'object') {
       issues.push('Invalid combatActive structure');
     }
   }
 
   if (version >= '1.3.0') {
-    if (typeof data.currentDay !== 'number') {
+    if (typeof obj.currentDay !== 'number') {
       issues.push('Missing or invalid currentDay');
     }
   }
 
   return {
     valid: issues.length === 0,
-    issues
+    issues,
   };
 }
