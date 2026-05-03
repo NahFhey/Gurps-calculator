@@ -283,6 +283,7 @@ class ConnectionManager {
       auth: { token: this._token },
     });
 
+    this.socket.off('connect');
     this.socket.on('connect', () => {
       this.setStatus('connected');
 
@@ -294,15 +295,18 @@ class ConnectionManager {
       });
     });
 
+    this.socket.off('disconnect');
     this.socket.on('disconnect', () => {
       this.setStatus('offline');
     });
 
+    this.socket.off('connect_error');
     this.socket.on('connect_error', () => {
       this.setStatus('error');
     });
 
     // State updated by another client
+    this.socket.off(EVENTS.STATE_UPDATED);
     this.socket.on(EVENTS.STATE_UPDATED, (payload: StateUpdatedPayload) => {
       // Only process if it's a newer version (skip our own updates)
       if (payload.version > this._serverVersion) {
@@ -314,23 +318,27 @@ class ConnectionManager {
     });
 
     // Room joined confirmation
+    this.socket.off(EVENTS.ROOM_JOINED);
     this.socket.on(EVENTS.ROOM_JOINED, (payload: RoomJoinedPayload) => {
       this._playerCount = payload.playerCount;
       this.notifyPlayerCountListeners();
     });
 
     // Player join/leave
+    this.socket.off(EVENTS.PLAYER_JOINED);
     this.socket.on(EVENTS.PLAYER_JOINED, (payload: PlayerJoinedPayload) => {
       this._playerCount = payload.playerCount;
       this.notifyPlayerCountListeners();
     });
 
+    this.socket.off(EVENTS.PLAYER_LEFT);
     this.socket.on(EVENTS.PLAYER_LEFT, (payload: PlayerLeftPayload) => {
       this._playerCount = payload.playerCount;
       this.notifyPlayerCountListeners();
     });
 
     // Player list (sent to GM for character assignment)
+    this.socket.off(EVENTS.PLAYER_LIST);
     this.socket.on(EVENTS.PLAYER_LIST, (payload: PlayerListPayload) => {
       this._playerList = payload.players;
       this.notifyPlayerListListeners();
