@@ -39,7 +39,7 @@ Pattern: wrap the call in try/catch, log via existing logger (or `console.warn` 
 
 For each: rename `.js` → `.ts` (or `.tsx` if JSX), add types for parameters/returns, preserve all existing exports and runtime behavior, remove any matching `.d.ts` shim, all tests still green, no `as any` introduced.
 
-- [ ] Convert src/utils/cryptoLock.js to TypeScript.
+- [x] Convert src/utils/cryptoLock.js to TypeScript.
 - [ ] Convert src/utils/helpers.js to TypeScript.
 - [ ] Convert src/utils/schemaVersioning.js to TypeScript.
 - [ ] Convert src/utils/dataMigrations.js to TypeScript.
