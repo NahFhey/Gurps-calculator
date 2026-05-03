@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { renderHook } from '@testing-library/react';
 import { ConfirmDialog } from '../ConfirmDialog';
@@ -318,6 +318,72 @@ describe('Toast system', () => {
     expect(() => {
       renderHook(() => useToast());
     }).toThrow('useToast must be used within a ToastProvider');
+  });
+});
+
+describe('Toast unmount-before-timeout race', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('does not call onDismiss after unmount when duration timer fires', () => {
+    function Consumer({ duration }: { duration: number }) {
+      const { toast } = useToast();
+      return (
+        <button onClick={() => toast({ type: 'info', message: 'hi', duration })}>
+          add
+        </button>
+      );
+    }
+
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { unmount } = render(
+      <ToastProvider>
+        <Consumer duration={1000} />
+        <ToastContainer />
+      </ToastProvider>
+    );
+
+    fireEvent.click(screen.getByText('add'));
+    expect(screen.getByText('hi')).toBeInTheDocument();
+
+    unmount();
+    vi.advanceTimersByTime(2000);
+
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
+  it('does not call onDismiss after unmount when exit animation timer fires', () => {
+    function Consumer() {
+      const { toast } = useToast();
+      return (
+        <button onClick={() => toast({ type: 'info', message: 'bye', duration: 0 })}>
+          add
+        </button>
+      );
+    }
+
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { unmount } = render(
+      <ToastProvider>
+        <Consumer />
+        <ToastContainer />
+      </ToastProvider>
+    );
+
+    fireEvent.click(screen.getByText('add'));
+    fireEvent.click(screen.getByLabelText('Dismiss'));
+
+    unmount();
+    vi.advanceTimersByTime(500);
+
+    expect(errorSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
   });
 });
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react';
+import { useState, useEffect, useRef, useCallback, createContext, useContext, ReactNode } from 'react';
 import { X, CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-react';
 
 // ============================================================================
@@ -53,12 +53,29 @@ const iconColorMap = {
  */
 function Toast({ id, type, message, duration = 5000, onDismiss }: ToastProps) {
   const [isExiting, setIsExiting] = useState(false);
+  const cancelledRef = useRef(false);
+  const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    cancelledRef.current = false;
+    return () => {
+      cancelledRef.current = true;
+      if (exitTimerRef.current !== null) {
+        clearTimeout(exitTimerRef.current);
+        exitTimerRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (duration > 0) {
       const timer = setTimeout(() => {
+        if (cancelledRef.current) return;
         setIsExiting(true);
-        setTimeout(() => onDismiss(id), 300); // Wait for exit animation
+        exitTimerRef.current = setTimeout(() => {
+          if (cancelledRef.current) return;
+          onDismiss(id);
+        }, 300);
       }, duration);
 
       return () => clearTimeout(timer);
@@ -67,7 +84,10 @@ function Toast({ id, type, message, duration = 5000, onDismiss }: ToastProps) {
 
   const handleDismiss = () => {
     setIsExiting(true);
-    setTimeout(() => onDismiss(id), 300);
+    exitTimerRef.current = setTimeout(() => {
+      if (cancelledRef.current) return;
+      onDismiss(id);
+    }, 300);
   };
 
   const Icon = iconMap[type];
