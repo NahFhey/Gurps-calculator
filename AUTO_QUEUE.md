@@ -43,7 +43,7 @@ For each: rename `.js` → `.ts` (or `.tsx` if JSX), add types for parameters/re
 - [x] Convert src/utils/helpers.js to TypeScript.
 - [x] Convert src/utils/schemaVersioning.js to TypeScript.
 - [x] Convert src/utils/dataMigrations.js to TypeScript.
-- [ ] Convert src/utils/combatReveal.js to TypeScript (~300 lines).
+- [x] Convert src/utils/combatReveal.js to TypeScript (~300 lines).
 - [ ] Convert src/utils/combatHistory.js to TypeScript (~600 lines); remove the existing combatHistory.d.ts shim.
 - [ ] Convert src/utils/exportImport.js to TypeScript (~500 lines).
 

@@ -38,8 +38,8 @@ export const RevealMode = {
 
   // Notes reveals
   NOTES_HIDDEN: 'hidden',
-  NOTES_FULL: 'full'
-};
+  NOTES_FULL: 'full',
+} as const;
 
 /**
  * HP bands for qualitative health display
@@ -48,13 +48,23 @@ export const HPBand = {
   HEALTHY: 'healthy',
   INJURED: 'injured',
   CRITICAL: 'critical',
-  DEAD: 'dead'
-};
+  DEAD: 'dead',
+} as const;
+
+export type HPBandValue = typeof HPBand[keyof typeof HPBand];
+
+// Loose runtime types — the canonical `RevealState` lives in
+// `src/types/combatTracker.ts` but the runtime data shape produced here is
+// richer and call sites cast freely. Keeping these signatures permissive
+// preserves the original untyped JS behavior without forcing a wider refactor.
+type AnyRecord = Record<string, any>;
+type RevealStateLike = AnyRecord;
+type ParticipantLike = AnyRecord;
 
 /**
  * Calculate HP band from current/max HP
  */
-export function calculateHPBand(currentHP, maxHP) {
+export function calculateHPBand(currentHP: number, maxHP: number): HPBandValue {
   if (currentHP <= 0) return HPBand.DEAD;
 
   const ratio = currentHP / maxHP;
@@ -66,7 +76,7 @@ export function calculateHPBand(currentHP, maxHP) {
 /**
  * Get display text for HP band
  */
-export function getHPBandText(band) {
+export function getHPBandText(band: HPBandValue | string): string {
   switch (band) {
     case HPBand.HEALTHY: return 'Healthy';
     case HPBand.INJURED: return 'Wounded';
@@ -78,13 +88,14 @@ export function getHPBandText(band) {
 
 /**
  * Create default reveal state for a single combatant instance
- *
- * @param {string} instanceId - The combatant instance ID
- * @param {string} side - The combatant's side ('player', 'ally', 'enemy', 'object')
- * @param {object} participant - The participant object (for object owner detection)
- * @returns {object} Default reveal state
  */
-export function createDefaultRevealForInstance(instanceId, side, participant = null) {
+export function createDefaultRevealForInstance(
+  instanceId: string,
+  side: string,
+  participant: ParticipantLike | null = null
+): AnyRecord {
+  void instanceId;
+  void participant;
   // Players, allies, and objects: full reveal by default
   // Only enemies have hidden information
   if (side === 'player' || side === 'ally' || side === 'object') {
@@ -97,14 +108,14 @@ export function createDefaultRevealForInstance(instanceId, side, participant = n
       defenses: {
         dodge: RevealMode.DEFENSE_EXACT,
         parry: RevealMode.DEFENSE_EXACT,
-        block: RevealMode.DEFENSE_EXACT
+        block: RevealMode.DEFENSE_EXACT,
       },
       dr: {
         general: RevealMode.DR_EXACT,
-        byLocation: {}
+        byLocation: {},
       },
       attacks: RevealMode.ATTACKS_FULL,
-      notes: RevealMode.NOTES_FULL
+      notes: RevealMode.NOTES_FULL,
     };
   }
 
@@ -118,29 +129,28 @@ export function createDefaultRevealForInstance(instanceId, side, participant = n
     defenses: {
       dodge: RevealMode.DEFENSE_UNKNOWN,
       parry: RevealMode.DEFENSE_UNKNOWN,
-      block: RevealMode.DEFENSE_UNKNOWN
+      block: RevealMode.DEFENSE_UNKNOWN,
     },
     dr: {
       general: RevealMode.DR_UNKNOWN,
-      byLocation: {}
+      byLocation: {},
     },
     attacks: RevealMode.ATTACKS_HIDDEN,
-    notes: RevealMode.NOTES_HIDDEN
+    notes: RevealMode.NOTES_HIDDEN,
   };
 }
 
 /**
  * Create initial reveal state for an entire encounter
- *
- * @param {string} encounterId - The encounter ID
- * @param {array} participants - Array of participant objects with instanceId, side
- * @returns {object} Complete reveal state
  */
-export function createInitialRevealState(encounterId, participants) {
-  const byInstanceId = {};
+export function createInitialRevealState(
+  encounterId: string,
+  participants: ParticipantLike[]
+): AnyRecord {
+  const byInstanceId: Record<string, AnyRecord> = {};
 
   for (const participant of participants) {
-    const side = participant.category || participant.side || 'enemy'; // Use category field (category is the actual field used)
+    const side: string = participant.category || participant.side || 'enemy';
     byInstanceId[participant.instanceId] = createDefaultRevealForInstance(
       participant.instanceId,
       side,
@@ -151,19 +161,18 @@ export function createInitialRevealState(encounterId, participants) {
   return {
     version: 1,
     encounterId,
-    byInstanceId
+    byInstanceId,
   };
 }
 
 /**
  * Get reveal state for a specific instance (with fallback to default)
- *
- * @param {object} revealState - The full reveal state
- * @param {string} instanceId - The instance to get reveal for
- * @param {string} side - The combatant's side (for default fallback)
- * @returns {object} Reveal state for this instance
  */
-export function getRevealForInstance(revealState, instanceId, side = 'enemy') {
+export function getRevealForInstance(
+  revealState: RevealStateLike | null | undefined,
+  instanceId: string,
+  side: string = 'enemy'
+): AnyRecord {
   if (!revealState?.byInstanceId?.[instanceId]) {
     return createDefaultRevealForInstance(instanceId, side);
   }
@@ -172,22 +181,21 @@ export function getRevealForInstance(revealState, instanceId, side = 'enemy') {
 
 /**
  * Update reveal state for a specific instance field
- *
- * @param {object} revealState - Current reveal state
- * @param {string} instanceId - The instance to update
- * @param {string} field - Field path (e.g., 'name', 'hp.mode', 'dr.general')
- * @param {any} value - New value
- * @returns {object} Updated reveal state
  */
-export function updateReveal(revealState, instanceId, field, value) {
-  const newState = safeDeepClone(revealState); // Deep clone
+export function updateReveal(
+  revealState: RevealStateLike,
+  instanceId: string,
+  field: string,
+  value: unknown
+): AnyRecord {
+  const newState: AnyRecord = safeDeepClone(revealState);
 
   if (!newState.byInstanceId[instanceId]) {
     newState.byInstanceId[instanceId] = createDefaultRevealForInstance(instanceId, 'enemy');
   }
 
   const parts = field.split('.');
-  let target = newState.byInstanceId[instanceId];
+  let target: AnyRecord = newState.byInstanceId[instanceId];
 
   for (let i = 0; i < parts.length - 1; i++) {
     if (!target[parts[i]]) {
@@ -203,14 +211,13 @@ export function updateReveal(revealState, instanceId, field, value) {
 
 /**
  * Replace reveal data for a specific instance.
- *
- * @param {object} revealState - Current reveal state
- * @param {string} instanceId - The instance to update
- * @param {object} nextReveal - Full reveal data to set
- * @returns {object} Updated reveal state
  */
-export function setRevealForInstance(revealState, instanceId, nextReveal) {
-  const newState = safeDeepClone(revealState);
+export function setRevealForInstance(
+  revealState: RevealStateLike,
+  instanceId: string,
+  nextReveal: AnyRecord
+): AnyRecord {
+  const newState: AnyRecord = safeDeepClone(revealState);
   if (!newState.byInstanceId) {
     newState.byInstanceId = {};
   }
@@ -221,7 +228,11 @@ export function setRevealForInstance(revealState, instanceId, nextReveal) {
 /**
  * Reveal a defense base value after a successful defense.
  */
-export function revealDefenseForInstance(revealState, instanceId, defenseType) {
+export function revealDefenseForInstance(
+  revealState: RevealStateLike | null | undefined,
+  instanceId: string,
+  defenseType: string
+): RevealStateLike | null | undefined {
   if (!revealState || !instanceId || !defenseType) return revealState;
   const current = getRevealForInstance(revealState, instanceId, 'enemy');
   if (current?.defenses?.[defenseType] === RevealMode.DEFENSE_EXACT) {
@@ -233,7 +244,10 @@ export function revealDefenseForInstance(revealState, instanceId, defenseType) {
 /**
  * Reveal a combatant name after they take damage.
  */
-export function revealNameForInstance(revealState, instanceId) {
+export function revealNameForInstance(
+  revealState: RevealStateLike | null | undefined,
+  instanceId: string
+): RevealStateLike | null | undefined {
   if (!revealState || !instanceId) return revealState;
   const current = getRevealForInstance(revealState, instanceId, 'enemy');
   if (current?.name === RevealMode.NAME_FULL) {
@@ -245,7 +259,10 @@ export function revealNameForInstance(revealState, instanceId) {
 /**
  * Reveal HP exact values once HP reaches 0 or below.
  */
-export function revealHPAtZero(revealState, instanceId) {
+export function revealHPAtZero(
+  revealState: RevealStateLike | null | undefined,
+  instanceId: string
+): RevealStateLike | null | undefined {
   if (!revealState || !instanceId) return revealState;
   const current = getRevealForInstance(revealState, instanceId, 'enemy');
   if (current?.hp?.mode === RevealMode.NUMERIC_EXACT) {
@@ -256,29 +273,27 @@ export function revealHPAtZero(revealState, instanceId) {
 
 /**
  * Add new combatant to reveal state (when added mid-combat)
- *
- * @param {object} revealState - Current reveal state
- * @param {string} instanceId - New instance ID
- * @param {string} side - Combatant's side
- * @returns {object} Updated reveal state
  */
-export function addCombatantToReveal(revealState, instanceId, side) {
-  const newState = safeDeepClone(revealState);
+export function addCombatantToReveal(
+  revealState: RevealStateLike,
+  instanceId: string,
+  side: string
+): AnyRecord {
+  const newState: AnyRecord = safeDeepClone(revealState);
   newState.byInstanceId[instanceId] = createDefaultRevealForInstance(instanceId, side);
   return newState;
 }
 
 /**
  * Ensure reveal state entries match current participants
- *
- * @param {object} revealState - Current reveal state
- * @param {array} participants - Active combat participants
- * @returns {object} Updated reveal state
  */
-export function syncRevealStateForParticipants(revealState, participants) {
+export function syncRevealStateForParticipants(
+  revealState: RevealStateLike | null | undefined,
+  participants: ParticipantLike[]
+): RevealStateLike | null | undefined {
   if (!revealState) return revealState;
 
-  const updated = safeDeepClone(revealState);
+  const updated: AnyRecord = safeDeepClone(revealState);
   const participantIds = new Set(participants.map(p => p.instanceId));
 
   // Remove entries for missing participants
@@ -291,7 +306,7 @@ export function syncRevealStateForParticipants(revealState, participants) {
   // Add defaults for new participants
   for (const participant of participants) {
     if (!updated.byInstanceId[participant.instanceId]) {
-      const side = participant.category || participant.side || 'enemy';
+      const side: string = participant.category || participant.side || 'enemy';
       updated.byInstanceId[participant.instanceId] = createDefaultRevealForInstance(
         participant.instanceId,
         side,
@@ -305,13 +320,12 @@ export function syncRevealStateForParticipants(revealState, participants) {
 
 /**
  * Remove combatant from reveal state (when removed from combat)
- *
- * @param {object} revealState - Current reveal state
- * @param {string} instanceId - Instance to remove
- * @returns {object} Updated reveal state
  */
-export function removeCombatantFromReveal(revealState, instanceId) {
-  const newState = safeDeepClone(revealState);
+export function removeCombatantFromReveal(
+  revealState: RevealStateLike,
+  instanceId: string
+): AnyRecord {
+  const newState: AnyRecord = safeDeepClone(revealState);
   delete newState.byInstanceId[instanceId];
   return newState;
 }
@@ -320,7 +334,7 @@ export function removeCombatantFromReveal(revealState, instanceId) {
  * Check if any information is revealed for an instance
  * (useful for UI indicators)
  */
-export function hasAnyReveals(revealForInstance) {
+export function hasAnyReveals(revealForInstance: AnyRecord | null | undefined): boolean {
   if (!revealForInstance) return false;
 
   return (
