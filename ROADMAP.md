@@ -230,6 +230,25 @@
 
 **Estimated effort:** 2 days plus a session of table verification.
 
+### 12a.6: Combat Condition Visibility
+**Status:** Planned (2026-05-03). See [`docs/COMBAT_CONDITION_VISIBILITY_PLAN.md`](./docs/COMBAT_CONDITION_VISIBILITY_PLAN.md) for the full design concept and [`docs/COMBAT_CONDITION_VISIBILITY_FOLLOWUPS.md`](./docs/COMBAT_CONDITION_VISIBILITY_FOLLOWUPS.md) for discovered side-issues.
+
+**Why this is wedged here:** Conditions on NPCs are universally visible to all viewers. The combat tracker has no information-disclosure layer for conditions, so the GM cannot conceal a Poisoned or Charmed effect without verbal narration. Combat is exercised every session; the gap is currently worked around by GM voice. Bundles a long-overdue Phase 6 cleanup: `Participant.isStunned` and `isUnconscious` (boolean fields outside the conditions array) fold into `conditions[]` so the new visibility filter can't be bypassed.
+
+**Scope:**
+- Catalog flag `obvious: boolean` on every condition in `src/constants/conditions.ts`.
+- Per-instance `revealed?: 'closed' | 'half' | 'open'` on `ConditionInstance`, seeded from catalog default at creation.
+- Three-state eye control in `ConditionsPanel` and the new condition-add popover. NPC-only.
+- `combatViewFilter.js` extended with eye-state filtering; closed → omitted, half → anonymous "afflicted" placeholder, open → full badge.
+- `ConditionBadge` rewritten with `mode: 'full' | 'icon' | 'placeholder'` and a proper React tooltip.
+- Two-surface assignment: condition-add popover extracted from `ConditionsPanel` and reused from both tracker click and map token click.
+- Density cap: 4 icons in tracker rows, 3 in initiative timeline, "+N" overflow pill that opens the conditions popover.
+- Bool migration: `isStunned` and `isUnconscious` fold into `conditions[]`. Schema version bump on combat-state shape, idempotency + round-trip tests.
+
+**Out of scope:** PC-side eye control (separate followup), `bleeding` and `crippled` folding (own followups; payload doesn't fit generic shape), `isDead` migration (heavy hot-path use, categorically uncoverable, stays as-is), per-table override of catalog `obvious` defaults (separate followup), `useActionResolution` reveal-state coupling (survey-at-implementation-start; default standalone), animation polish.
+
+**Estimated effort:** 2-3 sessions.
+
 ### 12b: GCS Import Improvements
 - Broader GCS format support (validate against real exports)
 - Import validation with diff preview ("here's what will change")
