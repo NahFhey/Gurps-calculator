@@ -188,10 +188,19 @@ export interface TurnDecision {
   movement?: MovementRecord;
 }
 
+export interface HistoryCheckpoint {
+  at: number;
+  snapshot: unknown;
+}
+
 export interface HistoryState {
+  version: number;
   actions: unknown[];
-  undoStack: unknown[];
-  redoStack: unknown[];
+  cursor: number;
+  checkpoints: HistoryCheckpoint[];
+  checkpointEvery: number;
+  maxActions: number;
+  maxCheckpoints: number;
 }
 
 export interface RevealState {
