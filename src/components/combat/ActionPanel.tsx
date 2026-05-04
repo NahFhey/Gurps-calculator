@@ -234,7 +234,7 @@ export default function ActionPanel({
   if (!expanded) {
     return (
       <div className="bg-gray-800 rounded-lg p-3">
-        <button onClick={onToggleExpanded} className="flex items-center justify-between w-full text-left">
+        <button onClick={onToggleExpanded} className="flex items-center justify-between w-full text-left" aria-label="Expand Action Panel">
           <span className="font-semibold">Action Panel</span>
           <ChevronDown size={20} />
         </button>
@@ -248,7 +248,7 @@ export default function ActionPanel({
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Action Panel</h3>
         {onToggleExpanded && (
-          <button onClick={onToggleExpanded} className="text-gray-400 hover:text-white">
+          <button onClick={onToggleExpanded} className="text-gray-400 hover:text-white" aria-label="Collapse Action Panel">
             <ChevronUp size={20} />
           </button>
         )}
@@ -269,22 +269,22 @@ export default function ActionPanel({
         <div>
           <label className="block text-sm font-semibold mb-2">Choose Action</label>
           <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => setActiveWorkflow('attack')} className="flex items-center justify-center gap-2 p-3 bg-red-600 hover:bg-red-700 rounded" disabled={!maneuverPrompts?.allowsAttackPanel}>
+            <button onClick={() => setActiveWorkflow('attack')} className="flex items-center justify-center gap-2 p-3 bg-red-600 hover:bg-red-700 rounded" disabled={!maneuverPrompts?.allowsAttackPanel} aria-label="Start attack workflow">
               <Swords size={20} /> Attack
             </button>
-            <button onClick={() => setActiveWorkflow('defense')} className="flex items-center justify-center gap-2 p-3 bg-blue-600 hover:bg-blue-700 rounded" disabled={!maneuverPrompts?.allowsDefensePanel}>
+            <button onClick={() => setActiveWorkflow('defense')} className="flex items-center justify-center gap-2 p-3 bg-blue-600 hover:bg-blue-700 rounded" disabled={!maneuverPrompts?.allowsDefensePanel} aria-label="Start defense workflow">
               <Shield size={20} /> Defense
             </button>
-            <button onClick={() => setActiveWorkflow('damage')} className="flex items-center justify-center gap-2 p-3 bg-orange-600 hover:bg-orange-700 rounded">
+            <button onClick={() => setActiveWorkflow('damage')} className="flex items-center justify-center gap-2 p-3 bg-orange-600 hover:bg-orange-700 rounded" aria-label="Start damage workflow">
               <Zap size={20} /> Damage
             </button>
-            <button onClick={() => setActiveWorkflow('note')} className="flex items-center justify-center gap-2 p-3 bg-gray-600 hover:bg-gray-500 rounded">
+            <button onClick={() => setActiveWorkflow('note')} className="flex items-center justify-center gap-2 p-3 bg-gray-600 hover:bg-gray-500 rounded" aria-label="Add note">
               <MessageSquare size={20} /> Note
             </button>
-            <button onClick={() => setActiveWorkflow('items')} className="flex items-center justify-center gap-2 p-3 bg-purple-600 hover:bg-purple-700 rounded">
+            <button onClick={() => setActiveWorkflow('items')} className="flex items-center justify-center gap-2 p-3 bg-purple-600 hover:bg-purple-700 rounded" aria-label="Use item">
               <Droplet size={20} /> Items
             </button>
-            <button onClick={() => setActiveWorkflow('conditions')} className="flex items-center justify-center gap-2 p-3 bg-indigo-600 hover:bg-indigo-700 rounded">
+            <button onClick={() => setActiveWorkflow('conditions')} className="flex items-center justify-center gap-2 p-3 bg-indigo-600 hover:bg-indigo-700 rounded" aria-label="Manage conditions">
               <Activity size={20} /> Conditions
             </button>
           </div>
@@ -322,13 +322,13 @@ export default function ActionPanel({
             <div className="mb-3 bg-gray-700/40 rounded p-3">
               <div className="text-xs text-gray-400 mb-1">Target (from attack)</div>
               <div className="text-sm font-semibold">{getPublicDefenderLabel(combatState, revealState, boundTarget.instanceId)}</div>
-              <button onClick={() => setForceTargetSelection(true)} className="mt-2 text-xs text-blue-300 hover:text-blue-200" type="button">Change Target</button>
+              <button onClick={() => setForceTargetSelection(true)} className="mt-2 text-xs text-blue-300 hover:text-blue-200" type="button" aria-label="Change attack target">Change Target</button>
             </div>
           )}
           {(!boundTarget || forceTargetSelection) && (
             <div className="mb-3">
               <label className="block text-sm font-semibold mb-2">Target</label>
-              <select className="w-full px-3 py-2 bg-gray-700 rounded" value={selectedTargetId || targets[0]?.instanceId || ''} onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedTargetId(e.target.value)}>
+              <select className="w-full px-3 py-2 bg-gray-700 rounded" value={selectedTargetId || targets[0]?.instanceId || ''} onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedTargetId(e.target.value)} aria-label="Select target">
                 {targets.map((t) => (<option key={t.instanceId} value={t.instanceId}>{t.name}</option>))}
               </select>
             </div>
@@ -344,10 +344,10 @@ export default function ActionPanel({
       {activeWorkflow === 'note' && (
         <div className="border-t border-gray-700 pt-4">
           <h4 className="text-lg font-semibold mb-3">Add Note</h4>
-          <textarea value={noteText} onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setNoteText(e.target.value)} placeholder="Enter note or description..." className="w-full px-3 py-2 bg-gray-700 rounded h-24" />
+          <textarea value={noteText} onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setNoteText(e.target.value)} placeholder="Enter note or description..." className="w-full px-3 py-2 bg-gray-700 rounded h-24" aria-label="Note text" />
           <div className="flex gap-2 mt-3">
-            <button onClick={() => setActiveWorkflow(null)} className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded">Cancel</button>
-            <button onClick={handleAddNote} disabled={!noteText.trim()} className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 rounded disabled:opacity-50 disabled:cursor-not-allowed">Add Note</button>
+            <button onClick={() => setActiveWorkflow(null)} className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded" aria-label="Cancel note">Cancel</button>
+            <button onClick={handleAddNote} disabled={!noteText.trim()} className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 rounded disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Submit note">Add Note</button>
           </div>
         </div>
       )}
@@ -355,7 +355,7 @@ export default function ActionPanel({
       {activeWorkflow === 'conditions' && onAddCondition && onRemoveCondition && (
         <div className="border-t border-gray-700 pt-4">
           <ConditionsPanel participant={{ ...currentActor, id: currentActor.instanceId }} currentRound={currentRound} currentTurn={currentTurn} onAddCondition={onAddCondition} onRemoveCondition={onRemoveCondition} />
-          <button onClick={() => setActiveWorkflow(null)} className="w-full mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded">Close</button>
+          <button onClick={() => setActiveWorkflow(null)} className="w-full mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded" aria-label="Close conditions panel">Close</button>
         </div>
       )}
 
@@ -363,7 +363,7 @@ export default function ActionPanel({
         <div className="border-t border-gray-700 pt-4">
           <h4 className="text-lg font-semibold mb-3">Use Item</h4>
           <div className="text-gray-400 text-sm mb-4">Item system coming soon...</div>
-          <button onClick={() => setActiveWorkflow(null)} className="w-full px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded">Close</button>
+          <button onClick={() => setActiveWorkflow(null)} className="w-full px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded" aria-label="Close items panel">Close</button>
         </div>
       )}
     </div>

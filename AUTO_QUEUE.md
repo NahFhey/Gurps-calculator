@@ -50,7 +50,7 @@ For each: rename `.js` → `.ts` (or `.tsx` if JSX), add types for parameters/re
 ## Phase 15d — Accessibility (low-risk, no behavior change)
 
 - [!] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/CombatTracker.tsx. No behavior change. [auto-deferred 2026-05-04: file contains zero direct button/link/input/select/textarea elements — all interactive controls are delegated to subview components (CombatHeaderView, DicePanelView, ParticipantListView, ManeuverSelector, etc.); per-subview a11y items would cover them]
-- [ ] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/ActionPanel.tsx. No behavior change.
+- [x] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/ActionPanel.tsx. No behavior change.
 
 ### Per-modal a11y sweep
 
