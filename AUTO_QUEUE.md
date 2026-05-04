@@ -56,7 +56,7 @@ For each: rename `.js` → `.ts` (or `.tsx` if JSX), add types for parameters/re
 
 Pattern: ensure the root element has `role="dialog"` (or `role="alertdialog"` for confirm prompts) and `aria-modal="true"`, the title has an id and is referenced via `aria-labelledby`, the description (if any) is referenced via `aria-describedby`, focus is trapped inside the dialog while open, and Escape closes the dialog. Do not change visual styling. All existing tests still green.
 
-- [ ] A11y sweep for src/components/ui/ConfirmDialog.tsx.
+- [x] A11y sweep for src/components/ui/ConfirmDialog.tsx.
 - [ ] A11y sweep for src/components/RulesModal.tsx.
 - [ ] A11y sweep for src/components/ConnectionDialog.tsx.
 - [ ] A11y sweep for src/components/GMLockModal.tsx.
