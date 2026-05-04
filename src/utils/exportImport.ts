@@ -14,24 +14,63 @@
  * @module utils/exportImport
  */
 
-import { encryptJSON, decryptJSON, validateGMLock } from './cryptoLock';
+import { encryptJSON, decryptJSON, validateGMLock, type GMLock, type EncryptOptions } from './cryptoLock';
 import {
   CURRENT_SCHEMA_VERSION,
   compareVersions,
   getMigrationPath,
-  SCHEMA_METADATA
 } from './schemaVersioning';
 import { migrateData, validateDataForVersion } from './dataMigrations';
 import { logger } from './logger';
 import { CampaignImportSchema, exceedsImportSizeLimit } from './importSchemas';
 
-/** Current schema version - synchronized with schemaVersioning.js */
-export const SCHEMA_VERSION = CURRENT_SCHEMA_VERSION;
+/** Current schema version - synchronized with schemaVersioning.ts */
+export const SCHEMA_VERSION: string = CURRENT_SCHEMA_VERSION;
 
-const isCampaignState = (state) =>
+export interface ImportResult {
+  ok: boolean;
+  error?: string;
+  data?: any;
+  warnings?: string[];
+  isLocked?: boolean;
+}
+
+export interface ExportData {
+  schemaVersion: string;
+  exportDate: string;
+  exportType: 'locked' | 'unlocked';
+  public: any;
+  gm?: any;
+  gmLock?: GMLock;
+  migrationInfo?: {
+    sourceVersion: string;
+    targetVersion: string;
+    path: string[];
+    timestamp: string;
+  };
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  error?: string;
+  warnings?: string[];
+}
+
+export interface SplitStateResult {
+  public: any;
+  gm: any;
+}
+
+export interface UnlockResult {
+  ok: boolean;
+  gmData?: any;
+  error?: string;
+}
+
+const isCampaignState = (state: any): boolean =>
   Boolean(state && state.ui && state.meta && state.entities && state.time);
 
-const toSerializableCampaignState = (state) => {
+const toSerializableCampaignState = (state: any): any => {
   if (!state?.combat?.reveal) {
     return state;
   }
@@ -48,11 +87,11 @@ const toSerializableCampaignState = (state) => {
   };
 };
 
-const stripSchemaVersion = (state) => {
+const stripSchemaVersion = (state: any): any => {
   if (!state || typeof state !== 'object') {
     return state;
   }
-  const { schemaVersion, ...rest } = state;
+  const { schemaVersion: _schemaVersion, ...rest } = state;
   return rest;
 };
 
@@ -60,11 +99,8 @@ const stripSchemaVersion = (state) => {
  * Splits application state into public (player-safe) and GM-only portions.
  * Public data: visible to all users
  * GM data: should only be visible in GM mode
- *
- * @param {Object} state - Full application state
- * @returns {Object} Split state with public and gm properties
  */
-export function splitState(state) {
+export function splitState(state: any): SplitStateResult {
   if (isCampaignState(state)) {
     const serializedState = toSerializableCampaignState(state);
     return {
@@ -94,7 +130,7 @@ export function splitState(state) {
   } = state;
 
   // Public data: inventory, recipes, workers (without GM notes), etc.
-  const publicData = {
+  const publicData: any = {
     materials: materials || [],
     foods: foods || [],
     recipes: recipes || [],
@@ -113,8 +149,8 @@ export function splitState(state) {
   };
 
   // Process reagents: public gets masked versions, GM gets full data
-  const reagents = state.alchemyReagents || [];
-  publicData.alchemyReagents = reagents.map(r => ({
+  const reagents: any[] = state.alchemyReagents || [];
+  publicData.alchemyReagents = reagents.map((r: any) => ({
     id: r.id,
     name: r.name,
     quantity: r.quantity,
@@ -122,18 +158,15 @@ export function splitState(state) {
     basePotency: r.basePotency || 'P1',
     concentrationSteps: r.concentrationSteps || 0,
     identificationLevel: r.identificationLevel || 0,
-    // Hide full aspects if not fully identified
     aspects: r.identificationLevel >= 4 ? r.aspects : null,
-    // Hide hazards if not identified
     hazards: r.identificationLevel >= 3 ? r.hazards : [],
-    // Public roles (Solvent, Binder, Tool might be obvious)
     roles: r.roles || [],
     analysisHistory: r.analysisHistory || []
   }));
 
   // Process formulas: public gets basic info, GM gets hidden notes
-  const formulas = state.alchemyFormulas || [];
-  publicData.alchemyFormulas = formulas.map(f => ({
+  const formulas: any[] = state.alchemyFormulas || [];
+  publicData.alchemyFormulas = formulas.map((f: any) => ({
     id: f.id,
     name: f.name,
     ingredients: f.ingredients,
@@ -157,8 +190,8 @@ export function splitState(state) {
   }));
 
   // Process batches: public gets player-visible data, GM gets full hazards
-  const batches = state.alchemyBatches || [];
-  publicData.alchemyBatches = batches.map(b => ({
+  const batches: any[] = state.alchemyBatches || [];
+  publicData.alchemyBatches = batches.map((b: any) => ({
     id: b.id,
     formulaId: b.formulaId,
     formulaName: b.formulaName,
@@ -180,7 +213,6 @@ export function splitState(state) {
     forecast: b.forecast,
     microAssay: b.microAssay,
     hasMatchingStabilizer: b.hasMatchingStabilizer,
-    // Public hazard shells only (masks unknown hazards)
     hazardsPublic: b.hazardsPublic || [],
     shifts: b.shifts || [],
     quality: b.quality,
@@ -191,8 +223,7 @@ export function splitState(state) {
 
   // GM data: hidden information, secret notes, full hazard details
   const gmData = {
-    // Full reagent data (unmasked aspects, hazards, etc.)
-    reagentSecrets: reagents.map(r => ({
+    reagentSecrets: reagents.map((r: any) => ({
       id: r.id,
       aspects: r.aspects,
       hazards: r.hazards || [],
@@ -200,23 +231,17 @@ export function splitState(state) {
       falseProfile: r.falseProfile || null,
       notes: r.notes || ''
     })),
-
-    // Formula secrets (GM notes, design rationale)
-    formulaSecrets: formulas.map(f => ({
+    formulaSecrets: formulas.map((f: any) => ({
       id: f.id,
       notes: f.notes || '',
       hazardEvaluation: f.hazardEvaluation || null
     })),
-
-    // Batch secrets (full hazard details, GM observations)
-    batchSecrets: batches.map(b => ({
+    batchSecrets: batches.map((b: any) => ({
       id: b.id,
       gmHazards: b.gmHazards || [],
       hazardDetails: b.hazardDetails || [],
       gmNotes: b.gmNotes || ''
     })),
-
-    // General GM settings and notes
     gmSettings: {
       notes: state.gmNotes || '',
       customRules: state.gmCustomRules || []
@@ -229,21 +254,16 @@ export function splitState(state) {
 /**
  * Merges GM data back into public state.
  * Used after decrypting a locked import or loading an unlocked export.
- *
- * @param {Object} publicState - Public portion of state
- * @param {Object} gmPayload - GM data payload
- * @returns {Object} Merged full state
  */
-export function mergeGM(publicState, gmPayload) {
+export function mergeGM(publicState: any, gmPayload: any): any {
   if (isCampaignState(publicState)) {
     return gmPayload || publicState;
   }
-  const merged = { ...publicState };
+  const merged: any = { ...publicState };
 
-  // Merge reagent secrets
   if (gmPayload.reagentSecrets && merged.alchemyReagents) {
-    merged.alchemyReagents = merged.alchemyReagents.map(r => {
-      const secret = gmPayload.reagentSecrets.find(s => s.id === r.id);
+    merged.alchemyReagents = merged.alchemyReagents.map((r: any) => {
+      const secret = gmPayload.reagentSecrets.find((s: any) => s.id === r.id);
       if (secret) {
         return {
           ...r,
@@ -258,10 +278,9 @@ export function mergeGM(publicState, gmPayload) {
     });
   }
 
-  // Merge formula secrets
   if (gmPayload.formulaSecrets && merged.alchemyFormulas) {
-    merged.alchemyFormulas = merged.alchemyFormulas.map(f => {
-      const secret = gmPayload.formulaSecrets.find(s => s.id === f.id);
+    merged.alchemyFormulas = merged.alchemyFormulas.map((f: any) => {
+      const secret = gmPayload.formulaSecrets.find((s: any) => s.id === f.id);
       if (secret) {
         return {
           ...f,
@@ -273,10 +292,9 @@ export function mergeGM(publicState, gmPayload) {
     });
   }
 
-  // Merge batch secrets
   if (gmPayload.batchSecrets && merged.alchemyBatches) {
-    merged.alchemyBatches = merged.alchemyBatches.map(b => {
-      const secret = gmPayload.batchSecrets.find(s => s.id === b.id);
+    merged.alchemyBatches = merged.alchemyBatches.map((b: any) => {
+      const secret = gmPayload.batchSecrets.find((s: any) => s.id === b.id);
       if (secret) {
         return {
           ...b,
@@ -289,7 +307,6 @@ export function mergeGM(publicState, gmPayload) {
     });
   }
 
-  // Merge GM settings
   if (gmPayload.gmSettings) {
     merged.gmNotes = gmPayload.gmSettings.notes || '';
     merged.gmCustomRules = gmPayload.gmSettings.customRules || [];
@@ -301,11 +318,8 @@ export function mergeGM(publicState, gmPayload) {
 /**
  * Exports full application state as unlocked JSON.
  * WARNING: Contains all GM data in plaintext. For GM use only.
- *
- * @param {Object} state - Full application state
- * @returns {Object} Export data structure
  */
-export function exportUnlocked(state) {
+export function exportUnlocked(state: any): ExportData {
   const { public: publicData, gm: gmData } = splitState(state);
 
   return {
@@ -320,17 +334,14 @@ export function exportUnlocked(state) {
 /**
  * Exports application state as locked JSON with encrypted GM data.
  * Safe to share with players - GM content requires password to decrypt.
- *
- * @param {Object} state - Full application state
- * @param {string} password - Password for GM data encryption
- * @param {Object} [options={}] - Export options
- * @param {number} [options.iterations=210000] - PBKDF2 iterations for key derivation
- * @returns {Promise<Object>} Export data structure with gmLock
  */
-export async function exportLocked(state, password, options = {}) {
+export async function exportLocked(
+  state: any,
+  password: string,
+  options: EncryptOptions = {}
+): Promise<ExportData> {
   const { public: publicData, gm: gmData } = splitState(state);
 
-  // Encrypt GM payload
   const gmLock = await encryptJSON(gmData, password, options);
 
   return {
@@ -345,29 +356,20 @@ export async function exportLocked(state, password, options = {}) {
 /**
  * Validates imported data structure.
  * Checks schema version and required fields.
- *
- * @param {Object} data - Imported JSON data
- * @returns {Object} Validation result
- * @returns {boolean} returns.valid - Whether data is valid
- * @returns {string} [returns.error] - Error message if invalid
- * @returns {Array<string>} [returns.warnings] - Non-critical warnings
  */
-export function validateImport(data) {
-  const warnings = [];
+export function validateImport(data: any): ValidationResult {
+  const warnings: string[] = [];
 
-  // Check basic structure
   if (!data || typeof data !== 'object') {
     return { valid: false, error: 'Invalid import data: not an object' };
   }
 
-  // Check schema version - now supports string format (e.g., "1.3.0")
   if (!('schemaVersion' in data)) {
     return { valid: false, error: 'Missing schemaVersion field' };
   }
 
   const importedVersion = String(data.schemaVersion);
 
-  // Check if version is compatible
   if (compareVersions(importedVersion, SCHEMA_VERSION) > 0) {
     return {
       valid: false,
@@ -379,17 +381,14 @@ export function validateImport(data) {
     warnings.push(`Old schema version ${importedVersion} (current: ${SCHEMA_VERSION}). Migration will be attempted.`);
   }
 
-  // Check export type
   if (!data.exportType || !['locked', 'unlocked'].includes(data.exportType)) {
     warnings.push('Unknown or missing exportType field');
   }
 
-  // Check for public data
   if (!data.public || typeof data.public !== 'object') {
     return { valid: false, error: 'Missing or invalid public data section' };
   }
 
-  // If locked, validate gmLock
   if (data.exportType === 'locked') {
     if (!data.gmLock) {
       return { valid: false, error: 'Locked export missing gmLock' };
@@ -400,7 +399,6 @@ export function validateImport(data) {
     }
   }
 
-  // If unlocked, check for GM data
   if (data.exportType === 'unlocked' && !data.gm) {
     warnings.push('Unlocked export missing GM data section');
   }
@@ -411,16 +409,12 @@ export function validateImport(data) {
 /**
  * Migrates imported data from old schema versions to current version.
  * Handles version normalization and applies necessary migrations.
- *
- * @param {Object} data - Imported data with schemaVersion field
- * @returns {Object} Migrated data with schemaVersion updated to current
- * @throws {Error} If migration fails
  */
-export function migrateImport(data) {
+export function migrateImport(data: any): any {
   const importedVersion = String(data.schemaVersion);
 
   if (importedVersion === SCHEMA_VERSION) {
-    return data; // No migration needed
+    return data;
   }
 
   try {
@@ -428,20 +422,17 @@ export function migrateImport(data) {
       `Starting migration of imported data from v${importedVersion} to v${SCHEMA_VERSION}`
     );
 
-    // Reconstruct full state from public + gm sections
     const fullState = {
       ...(data.exportType === 'locked' ? data.public : data.gm || data.public),
       schemaVersion: importedVersion
     };
 
-    // Apply migrations
     const migratedState = migrateData(
       fullState,
       importedVersion,
       SCHEMA_VERSION
     );
 
-    // Validate migrated data
     const validation = validateDataForVersion(migratedState, SCHEMA_VERSION);
 
     if (!validation.valid) {
@@ -450,7 +441,6 @@ export function migrateImport(data) {
 
     const { public: migratedPublic, gm: migratedGm } = splitState(migratedState);
 
-    // Reconstruct export data with migrated state
     const migrationPath = getMigrationPath(importedVersion, SCHEMA_VERSION);
 
     return {
@@ -466,9 +456,10 @@ export function migrateImport(data) {
       }
     };
   } catch (error) {
-    logger.error(`Migration failed: ${error.message}`);
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`Migration failed: ${message}`);
     throw new Error(
-      `Failed to migrate data from v${importedVersion} to v${SCHEMA_VERSION}: ${error.message}`
+      `Failed to migrate data from v${importedVersion} to v${SCHEMA_VERSION}: ${message}`
     );
   }
 }
@@ -477,26 +468,15 @@ export function migrateImport(data) {
 /**
  * Imports data from JSON file/string.
  * Validates, migrates, and returns state ready for loading.
- *
- * @param {string|Object} jsonInput - JSON string or parsed object
- * @returns {Promise<Object>} Import result
- * @returns {boolean} returns.ok - Whether import succeeded
- * @returns {Object} [returns.data] - Imported data (if ok: true)
- * @returns {string} [returns.error] - Error message (if ok: false)
- * @returns {Array<string>} [returns.warnings] - Non-critical warnings
- * @returns {boolean} returns.isLocked - Whether this is a locked import (requires password for GM mode)
  */
-export async function importFile(jsonInput) {
+export async function importFile(jsonInput: string | any): Promise<ImportResult> {
   try {
-    // Reject oversized input
     if (typeof jsonInput === 'string' && exceedsImportSizeLimit(jsonInput)) {
       return { ok: false, error: 'Import file too large (max 50 MB)' };
     }
 
-    // Parse JSON if string
     const data = typeof jsonInput === 'string' ? JSON.parse(jsonInput) : jsonInput;
 
-    // Structural validation via Zod schema
     const zodResult = CampaignImportSchema.safeParse(data);
     if (!zodResult.success) {
       const issue = zodResult.error.issues[0];
@@ -504,13 +484,11 @@ export async function importFile(jsonInput) {
       return { ok: false, error: `Import validation error${path ? ` at ${path}` : ''}: ${issue?.message}` };
     }
 
-    // Business-rule validation (schema version compat, exportType, gmLock)
     const validation = validateImport(data);
     if (!validation.valid) {
       return { ok: false, error: validation.error };
     }
 
-    // Migrate if needed
     const migrated = migrateImport(data);
 
     const sanitized = {
@@ -519,7 +497,6 @@ export async function importFile(jsonInput) {
       ...(migrated.gm ? { gm: stripSchemaVersion(migrated.gm) } : {})
     };
 
-    // Return result with metadata
     return {
       ok: true,
       data: sanitized,
@@ -527,9 +504,10 @@ export async function importFile(jsonInput) {
       isLocked: migrated.exportType === 'locked'
     };
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     return {
       ok: false,
-      error: `Import failed: ${err.message}`
+      error: `Import failed: ${message}`
     };
   }
 }
@@ -537,15 +515,8 @@ export async function importFile(jsonInput) {
 /**
  * Unlocks a locked import by decrypting the GM data.
  * Call this after importFile() when user enters password for GM mode.
- *
- * @param {Object} importData - Data from importFile()
- * @param {string} password - Password to decrypt GM data
- * @returns {Promise<Object>} Unlock result
- * @returns {boolean} returns.ok - Whether unlock succeeded
- * @returns {Object} [returns.gmData] - Decrypted GM data (if ok: true)
- * @returns {string} [returns.error] - Error message (if ok: false)
  */
-export async function unlockGMData(importData, password) {
+export async function unlockGMData(importData: any, password: string): Promise<UnlockResult> {
   if (!importData.gmLock) {
     return { ok: false, error: 'No gmLock present in import data' };
   }
@@ -554,18 +525,16 @@ export async function unlockGMData(importData, password) {
     const gmData = await decryptJSON(importData.gmLock, password);
     return { ok: true, gmData };
   } catch (err) {
-    return { ok: false, error: err.message };
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: message };
   }
 }
 
 /**
  * Downloads data as a JSON file.
  * Helper function for triggering browser download.
- *
- * @param {Object} data - Data to export
- * @param {string} filename - Filename for download (e.g., 'gurps-export.json')
  */
-export function downloadJSON(data, filename) {
+export function downloadJSON(data: unknown, filename: string): void {
   const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
