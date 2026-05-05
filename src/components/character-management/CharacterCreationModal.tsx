@@ -6,7 +6,7 @@
  * - Import from file
  */
 
-import { useState, useRef, ChangeEvent } from 'react';
+import { useState, useRef, useEffect, ChangeEvent } from 'react';
 import { UserPlus, FileText, Upload, X } from 'lucide-react';
 import {
   createBlankCharacter,
@@ -34,6 +34,16 @@ export function CharacterCreationModal({
   const [selectedTemplate, setSelectedTemplate] = useState<CharacterTemplateType | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const titleId = 'character-creation-modal-title';
+
+  useEffect(() => {
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   const handleCreateBlank = () => {
     const name = characterName.trim() || 'New Character';
@@ -103,12 +113,15 @@ export function CharacterCreationModal({
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className="bg-gray-800 rounded-lg border border-gray-600 w-full max-w-md m-4"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-100">
+          <h2 id={titleId} className="text-lg font-semibold text-gray-100">
             {step === 'choose' && 'Add Character'}
             {step === 'blank' && 'Create Blank Character'}
             {step === 'template' && 'Create from Template'}
@@ -117,9 +130,10 @@ export function CharacterCreationModal({
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close"
             className="text-gray-400 hover:text-gray-200 p-1"
           >
-            <X className="h-5 w-5" />
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 
