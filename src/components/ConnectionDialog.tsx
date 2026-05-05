@@ -29,6 +29,11 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const titleId = 'connection-dialog-title';
+  const campaignNameId = 'connection-dialog-campaign-name';
+  const displayNameId = 'connection-dialog-display-name';
+  const joinCodeId = 'connection-dialog-join-code';
+
   if (!isOpen) return null;
 
   const handleHost = async () => {
@@ -78,14 +83,23 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
   if (status === 'connected' && sessionInfo) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-        <div className="bg-gray-800 rounded-xl border border-gray-600 shadow-2xl w-full max-w-md p-6">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          className="bg-gray-800 rounded-xl border border-gray-600 shadow-2xl w-full max-w-md p-6"
+        >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-100 flex items-center gap-2">
-              <Wifi className="h-5 w-5 text-green-400" />
+            <h2 id={titleId} className="text-lg font-semibold text-gray-100 flex items-center gap-2">
+              <Wifi className="h-5 w-5 text-green-400" aria-hidden="true" />
               Connected
             </h2>
-            <button onClick={onClose} className="p-1 rounded hover:bg-gray-700 text-gray-400">
-              <X className="h-5 w-5" />
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="p-1 rounded hover:bg-gray-700 text-gray-400"
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
             </button>
           </div>
 
@@ -104,8 +118,11 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
                   onClick={handleCopyCode}
                   className="p-1.5 rounded hover:bg-gray-700 text-gray-400"
                   title="Copy join code"
+                  aria-label={copied ? 'Join code copied' : 'Copy join code'}
                 >
-                  {copied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+                  {copied
+                    ? <Check className="h-4 w-4 text-green-400" aria-hidden="true" />
+                    : <Copy className="h-4 w-4" aria-hidden="true" />}
                 </button>
               </div>
             </div>
@@ -128,20 +145,31 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
   // Host/Join view
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-gray-800 rounded-xl border border-gray-600 shadow-2xl w-full max-w-md p-6">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="bg-gray-800 rounded-xl border border-gray-600 shadow-2xl w-full max-w-md p-6"
+      >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-100 flex items-center gap-2">
-            <WifiOff className="h-5 w-5 text-gray-400" />
+          <h2 id={titleId} className="text-lg font-semibold text-gray-100 flex items-center gap-2">
+            <WifiOff className="h-5 w-5 text-gray-400" aria-hidden="true" />
             Multiplayer
           </h2>
-          <button onClick={onClose} className="p-1 rounded hover:bg-gray-700 text-gray-400">
-            <X className="h-5 w-5" />
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="p-1 rounded hover:bg-gray-700 text-gray-400"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-4 bg-gray-900 rounded-lg p-1">
+        <div role="tablist" aria-label="Multiplayer mode" className="flex gap-1 mb-4 bg-gray-900 rounded-lg p-1">
           <button
+            role="tab"
+            aria-selected={tab === 'host'}
             onClick={() => { setTab('host'); setError(null); }}
             className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${
               tab === 'host' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-gray-200'
@@ -150,6 +178,8 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
             Host Game
           </button>
           <button
+            role="tab"
+            aria-selected={tab === 'join'}
             onClick={() => { setTab('join'); setError(null); }}
             className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${
               tab === 'join' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-gray-200'
@@ -162,8 +192,9 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
         {tab === 'host' ? (
           <div className="space-y-3">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Campaign Name</label>
+              <label htmlFor={campaignNameId} className="block text-xs text-gray-400 mb-1">Campaign Name</label>
               <input
+                id={campaignNameId}
                 type="text"
                 value={campaignName}
                 onChange={(e) => setCampaignName(e.target.value)}
@@ -186,8 +217,9 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
         ) : (
           <div className="space-y-3">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Your Name</label>
+              <label htmlFor={displayNameId} className="block text-xs text-gray-400 mb-1">Your Name</label>
               <input
+                id={displayNameId}
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
@@ -196,8 +228,9 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Join Code</label>
+              <label htmlFor={joinCodeId} className="block text-xs text-gray-400 mb-1">Join Code</label>
               <input
+                id={joinCodeId}
                 type="text"
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
@@ -217,7 +250,7 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
         )}
 
         {error && (
-          <div className="mt-3 p-2 rounded-lg bg-red-900/40 border border-red-600/40 text-xs text-red-300">
+          <div role="alert" className="mt-3 p-2 rounded-lg bg-red-900/40 border border-red-600/40 text-xs text-red-300">
             {error}
           </div>
         )}
