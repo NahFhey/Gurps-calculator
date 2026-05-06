@@ -65,7 +65,7 @@ Pattern: ensure the root element has `role="dialog"` (or `role="alertdialog"` fo
 - [x] A11y sweep for src/components/combat/ReinforcementsModal.tsx.
 - [x] A11y sweep for src/components/crafting/SaveDesignModal.tsx.
 - [x] A11y sweep for src/components/map/views/TerrainAssignmentModal.tsx.
-- [ ] A11y sweep for src/components/map/views/MapCreateDialog.tsx.
+- [x] A11y sweep for src/components/map/views/MapCreateDialog.tsx.
 - [ ] A11y sweep for src/components/map/views/TravelWizard.tsx (multi-step dialog — apply to the wrapping container).
 
 ## Phase 10c — Test coverage (one utility per run)
