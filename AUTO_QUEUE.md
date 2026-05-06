@@ -62,7 +62,7 @@ Pattern: ensure the root element has `role="dialog"` (or `role="alertdialog"` fo
 - [x] A11y sweep for src/components/GMLockModal.tsx.
 - [x] A11y sweep for src/components/character-management/CharacterCreationModal.tsx.
 - [x] A11y sweep for src/components/combat/GCSImportModal.tsx.
-- [ ] A11y sweep for src/components/combat/ReinforcementsModal.tsx.
+- [x] A11y sweep for src/components/combat/ReinforcementsModal.tsx.
 - [ ] A11y sweep for src/components/crafting/SaveDesignModal.tsx.
 - [ ] A11y sweep for src/components/map/views/TerrainAssignmentModal.tsx.
 - [ ] A11y sweep for src/components/map/views/MapCreateDialog.tsx.
