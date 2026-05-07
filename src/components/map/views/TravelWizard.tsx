@@ -6,7 +6,7 @@
  * Step 3: Validate and confirm
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useId, useMemo } from 'react';
 import type { TileId, TravelMode, MapModel } from '../../../types/map';
 import type { TravelBlocker } from '../../../types/map';
 import type { DowntimeState } from '../../../types/downtime';
@@ -53,6 +53,15 @@ export function TravelWizard({
   onClose,
 }: TravelWizardProps) {
   const { skillBonus: weatherTravelMod } = useWeatherModifiers('travel');
+  const titleId = useId();
+
+  useEffect(() => {
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   // Compute blockers for step 3
   const blockers: TravelBlocker[] = useMemo(() => {
@@ -91,12 +100,22 @@ export function TravelWizard({
   const canGoBack = step > 1;
 
   return (
-    <div className="w-56 bg-gray-800/95 border-l border-gray-700/50 flex flex-col h-full">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      className="w-56 bg-gray-800/95 border-l border-gray-700/50 flex flex-col h-full"
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700/50">
-        <span className="text-xs font-semibold text-gray-200">Travel</span>
-        <button onClick={onClose} className="p-0.5 rounded hover:bg-gray-700">
-          <X className="w-3.5 h-3.5 text-gray-400" />
+        <span id={titleId} className="text-xs font-semibold text-gray-200">Travel</span>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close travel wizard"
+          className="p-0.5 rounded hover:bg-gray-700"
+        >
+          <X className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
         </button>
       </div>
 
@@ -109,10 +128,13 @@ export function TravelWizard({
           return (
             <button
               key={label}
+              type="button"
               onClick={() => {
                 if (stepNum < step) onSetStep(stepNum);
               }}
               disabled={stepNum > step}
+              aria-label={`Step ${stepNum}: ${label}${isActive ? ' (current)' : isComplete ? ' (complete)' : ''}`}
+              aria-current={isActive ? 'step' : undefined}
               className={[
                 'flex-1 py-1 rounded text-[10px] font-medium transition-colors',
                 isActive
@@ -161,17 +183,21 @@ export function TravelWizard({
       <div className="flex gap-2 px-3 py-2 border-t border-gray-700/50">
         {canGoBack && (
           <button
+            type="button"
             onClick={() => onSetStep((step - 1) as 1 | 2 | 3)}
+            aria-label="Back to previous step"
             className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded text-xs text-gray-300 bg-gray-700/50 hover:bg-gray-600/50 transition-colors"
           >
-            <ChevronLeft className="w-3 h-3" />
+            <ChevronLeft className="w-3 h-3" aria-hidden="true" />
             Back
           </button>
         )}
         {step < 3 && (
           <button
+            type="button"
             disabled={!canGoNext}
             onClick={() => onSetStep((step + 1) as 1 | 2 | 3)}
+            aria-label="Next step"
             className={[
               'flex-1 flex items-center justify-center gap-1 py-1.5 rounded text-xs transition-colors',
               canGoNext
@@ -180,7 +206,7 @@ export function TravelWizard({
             ].join(' ')}
           >
             Next
-            <ChevronRight className="w-3 h-3" />
+            <ChevronRight className="w-3 h-3" aria-hidden="true" />
           </button>
         )}
       </div>
