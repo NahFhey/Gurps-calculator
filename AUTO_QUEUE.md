@@ -72,7 +72,7 @@ Pattern: ensure the root element has `role="dialog"` (or `role="alertdialog"` fo
 
 Bar: each item produces a co-located `*.test.ts` (or `*.test.js` for `.js` sources) in `src/utils/__tests__/` covering the **happy path** plus **at least one error/edge path** (malformed input, empty input, boundary value, etc.). Use existing test fixtures and patterns from the already-tested utilities. No mocks beyond what the file naturally requires. All existing tests still green; new tests pass.
 
-- [ ] Add tests for src/utils/activityLogger.ts.
+- [x] Add tests for src/utils/activityLogger.ts.
 - [ ] Add tests for src/utils/characterManagement.ts.
 - [ ] Add tests for src/utils/combatActions.js.
 - [ ] Add tests for src/utils/combatHelpers.ts.
