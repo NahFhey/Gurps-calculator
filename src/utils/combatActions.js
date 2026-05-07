@@ -22,7 +22,9 @@ export const ACTION_TYPES = {
   ADD_CONDITION: 'ADD_CONDITION',
   REMOVE_CONDITION: 'REMOVE_CONDITION',
   UPDATE_CONDITION: 'UPDATE_CONDITION',
-  USE_ITEM: 'USE_ITEM'
+  USE_ITEM: 'USE_ITEM',
+  // Phase F (map integration) actions
+  MOVE_PARTICIPANT: 'MOVE_PARTICIPANT'
 };
 
 /**
@@ -412,6 +414,40 @@ export function createUseItemAction({
       })),
       conditionsAdded: conditionsRemoved,
       conditionsRemoved: conditionsAdded
+    }
+  };
+}
+
+/**
+ * Phase F (Map Integration): Create a MOVE_PARTICIPANT action
+ * Records moving a combatant on the tactical map.
+ *
+ * @param {string} instanceId - Combatant instance ID
+ * @param {object} fromPosition - Starting position { r, q }
+ * @param {object} toPosition - Destination position { r, q }
+ * @param {string[]} path - Tile IDs along the movement path
+ * @param {number} cost - Movement cost in yards
+ * @returns {object} Action object
+ */
+export function createMoveParticipantAction(instanceId, fromPosition, toPosition, path = [], cost = 0) {
+  return {
+    id: generateId(),
+    ts: new Date().toISOString(),
+    type: ACTION_TYPES.MOVE_PARTICIPANT,
+    label: `Move to (${toPosition?.r ?? '?'},${toPosition?.q ?? '?'})`,
+    payload: {
+      instanceId,
+      fromPosition,
+      toPosition,
+      path,
+      cost
+    },
+    inverse: {
+      instanceId,
+      fromPosition: toPosition,
+      toPosition: fromPosition,
+      path: [...path].reverse(),
+      cost
     }
   };
 }

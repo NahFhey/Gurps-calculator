@@ -5,6 +5,7 @@
  * Provides consistent error messaging with actionable information.
  */
 
+import React from 'react';
 import { AlertCircle, AlertTriangle, X } from 'lucide-react';
 import { DOWNTIME_ERROR_CODES } from '../../../../state/downtime/downtimeErrors';
 
@@ -137,19 +138,24 @@ interface ErrorMetadataProps {
 
 function ErrorMetadata({ code, meta }: ErrorMetadataProps) {
   // Format metadata based on error type
+  const formatValue = (value: unknown): React.ReactNode => {
+    return typeof value === 'object' ? JSON.stringify(value) : String(value);
+  };
+
   switch (code) {
     case DOWNTIME_ERROR_CODES.LEADER_ALREADY_ASSIGNED:
-    case DOWNTIME_ERROR_CODES.HELPER_ALREADY_ASSIGNED:
+    case DOWNTIME_ERROR_CODES.HELPER_ALREADY_ASSIGNED: {
       return (
         <div className="text-xs mt-2 space-y-0.5 text-gray-400">
-          {meta.existingRole && (
-            <p>Currently assigned as: {String(meta.existingRole)}</p>
-          )}
-          {meta.characterId && (
-            <p>Character: {String(meta.characterId)}</p>
-          )}
+          {meta.existingRole ? (
+            <p>Currently assigned as: {formatValue(meta.existingRole)}</p>
+          ) : null}
+          {meta.characterId ? (
+            <p>Character: {formatValue(meta.characterId)}</p>
+          ) : null}
         </div>
       );
+    }
 
     case DOWNTIME_ERROR_CODES.LOCK_CONFLICT:
       return (

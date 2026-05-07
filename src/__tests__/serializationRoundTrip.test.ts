@@ -1,0 +1,170 @@
+/**
+ * Tests for serialization round-trip (Set → Array → Set).
+ *
+ * Ensures that all Set fields survive JSON serialization and deserialization
+ * across both campaignStorage and exportImport paths.
+ */
+import { describe, it, expect, beforeEach } from 'vitest';
+import { createCampaignState } from '../state/campaignReducer';
+import {
+  serializeCampaignState,
+  hydrateCampaignState,
+  loadCampaignState,
+  saveCampaignState,
+} from '../persistence/campaignStorage';
+
+// ---------------------------------------------------------------------------
+// Direct serialize → hydrate round-trip
+// ---------------------------------------------------------------------------
+describe('serializeCampaignState / hydrateCampaignState round-trip', () => {
+  it('round-trips empty Sets', () => {
+    const state = createCampaignState();
+    // Ensure Sets are empty
+    expect(state.combat.reveal.revealedTargets.size).toBe(0);
+
+    const serialized = serializeCampaignState(state);
+    // Serialized Sets should be arrays
+    expect(Array.isArray((serialized as any).combat.reveal.revealedTargets)).toBe(true);
+    expect(Array.isArray((serialized as any).combat.reveal.revealedHP)).toBe(true);
+
+    const hydrated = hydrateCampaignState(serialized as any);
+    expect(hydrated.combat.reveal.revealedTargets).toBeInstanceOf(Set);
+    expect(hydrated.combat.reveal.revealedTargets.size).toBe(0);
+    expect(hydrated.combat.reveal.revealedHP).toBeInstanceOf(Set);
+    expect(hydrated.combat.reveal.revealedHP.size).toBe(0);
+  });
+
+  it('round-trips populated Sets', () => {
+    const state = createCampaignState();
+    state.combat.reveal.revealedTargets.add('target-a');
+    state.combat.reveal.revealedTargets.add('target-b');
+    state.combat.reveal.revealedHP.add('hp-x');
+
+    const serialized = serializeCampaignState(state);
+    const json = JSON.stringify(serialized);
+    const parsed = JSON.parse(json);
+    const hydrated = hydrateCampaignState(parsed);
+
+    expect(hydrated.combat.reveal.revealedTargets).toBeInstanceOf(Set);
+    expect(hydrated.combat.reveal.revealedTargets.has('target-a')).toBe(true);
+    expect(hydrated.combat.reveal.revealedTargets.has('target-b')).toBe(true);
+    expect(hydrated.combat.reveal.revealedTargets.size).toBe(2);
+    expect(hydrated.combat.reveal.revealedHP.has('hp-x')).toBe(true);
+  });
+
+  it('round-trips map revealedTileIds Set', () => {
+    const state = createCampaignState();
+    // Add a map with revealedTileIds
+    state.maps.mapsById['map-1'] = {
+      id: 'map-1',
+      name: 'Test Map',
+      width: 10,
+      height: 10,
+      tileSize: 32,
+      tiles: {},
+      markers: [],
+      links: [],
+      revealedTileIds: new Set(['tile-1', 'tile-2', 'tile-3']),
+    } as any;
+
+    const serialized = serializeCampaignState(state);
+    const json = JSON.stringify(serialized);
+    const parsed = JSON.parse(json);
+    const hydrated = hydrateCampaignState(parsed);
+
+    const map = hydrated.maps.mapsById['map-1'];
+    expect(map).toBeDefined();
+    expect(map.revealedTileIds).toBeInstanceOf(Set);
+    expect(map.revealedTileIds.has('tile-1')).toBe(true);
+    expect(map.revealedTileIds.has('tile-2')).toBe(true);
+    expect(map.revealedTileIds.has('tile-3')).toBe(true);
+    expect(map.revealedTileIds.size).toBe(3);
+  });
+
+  it('survives JSON.stringify → JSON.parse → hydrate (simulates storage)', () => {
+    const state = createCampaignState();
+    state.combat.reveal.revealedTargets.add('t1');
+    state.combat.reveal.revealedHP.add('h1');
+    state.time.day = 42;
+    state.ui.activeModule = 'combat';
+
+    const serialized = serializeCampaignState(state);
+    const jsonString = JSON.stringify(serialized);
+
+    // Verify Sets became arrays in JSON
+    const raw = JSON.parse(jsonString);
+    expect(Array.isArray(raw.combat.reveal.revealedTargets)).toBe(true);
+    expect(raw.combat.reveal.revealedTargets).toContain('t1');
+
+    // Hydrate back
+    const hydrated = hydrateCampaignState(raw);
+    expect(hydrated.combat.reveal.revealedTargets).toBeInstanceOf(Set);
+    expect(hydrated.combat.reveal.revealedTargets.has('t1')).toBe(true);
+    expect(hydrated.time.day).toBe(42);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Full save → load round-trip via IndexedDB
+// ---------------------------------------------------------------------------
+describe('save / load round-trip via localStorage', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('Sets survive the full persistence cycle', async () => {
+    const state = createCampaignState();
+    state.combat.reveal.revealedTargets.add('r1');
+    state.combat.reveal.revealedTargets.add('r2');
+    state.combat.reveal.revealedHP.add('h1');
+
+    await saveCampaignState(state);
+    const loaded = await loadCampaignState();
+
+    expect(loaded.combat.reveal.revealedTargets).toBeInstanceOf(Set);
+    expect(loaded.combat.reveal.revealedTargets.has('r1')).toBe(true);
+    expect(loaded.combat.reveal.revealedTargets.has('r2')).toBe(true);
+    expect(loaded.combat.reveal.revealedHP).toBeInstanceOf(Set);
+    expect(loaded.combat.reveal.revealedHP.has('h1')).toBe(true);
+  });
+
+  it('handles hydration when stored data has no reveal field', async () => {
+    // Simulate data from older version without reveal
+    const state = createCampaignState();
+    const serialized = serializeCampaignState(state);
+    delete (serialized as any).combat.reveal;
+
+    localStorage.setItem('campaignState', JSON.stringify(serialized));
+
+    const loaded = await loadCampaignState();
+    expect(loaded.combat.reveal.revealedTargets).toBeInstanceOf(Set);
+    expect(loaded.combat.reveal.revealedHP).toBeInstanceOf(Set);
+  });
+
+  it('handles hydration when reveal arrays are null', async () => {
+    const state = createCampaignState();
+    const serialized = serializeCampaignState(state);
+    (serialized as any).combat.reveal.revealedTargets = null;
+    (serialized as any).combat.reveal.revealedHP = null;
+
+    localStorage.setItem('campaignState', JSON.stringify(serialized));
+
+    const loaded = await loadCampaignState();
+    expect(loaded.combat.reveal.revealedTargets).toBeInstanceOf(Set);
+    expect(loaded.combat.reveal.revealedTargets.size).toBe(0);
+    expect(loaded.combat.reveal.revealedHP).toBeInstanceOf(Set);
+    expect(loaded.combat.reveal.revealedHP.size).toBe(0);
+  });
+
+  it('handles hydration when maps field is missing', async () => {
+    const state = createCampaignState();
+    const serialized = serializeCampaignState(state);
+    delete (serialized as any).maps;
+
+    localStorage.setItem('campaignState', JSON.stringify(serialized));
+
+    const loaded = await loadCampaignState();
+    expect(loaded.maps).toBeDefined();
+    expect(loaded.maps.mapsById).toBeDefined();
+  });
+});

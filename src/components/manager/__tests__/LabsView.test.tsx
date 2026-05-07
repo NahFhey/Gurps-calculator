@@ -1,21 +1,19 @@
 import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { LabsView } from '../views/LabsView';
+import type { AlchemyLab as CampaignAlchemyLab } from '../../../types/campaign';
+import type { LabsViewProps } from '../../../types/views';
 
-interface AlchemyLab {
-  id: string;
-  name: string;
-  rating: number;
-  description?: string;
-}
+type AlchemyLab = Partial<CampaignAlchemyLab> & { id: string; name: string; rating: number };
+const asLabs = (xs: AlchemyLab[]): CampaignAlchemyLab[] => xs as unknown as CampaignAlchemyLab[];
 
 describe('LabsView', () => {
   const mockSaveAlchemyLabs = vi.fn();
   const mockOnDelete = vi.fn();
 
-  const defaultProps = {
-    alchemyLabs: [] as AlchemyLab[],
+  const defaultProps: LabsViewProps = {
+    alchemyLabs: [],
     saveAlchemyLabs: mockSaveAlchemyLabs,
     onDelete: mockOnDelete
   };
@@ -49,7 +47,7 @@ describe('LabsView', () => {
       { id: '2', name: 'Master Workshop', rating: 3 }
     ];
 
-    render(<LabsView {...defaultProps} alchemyLabs={alchemyLabs} />);
+    render(<LabsView {...defaultProps} alchemyLabs={asLabs(alchemyLabs)} />);
 
     expect(screen.getByText('Basic Lab')).toBeInTheDocument();
     expect(screen.getByText('Master Workshop')).toBeInTheDocument();
@@ -62,7 +60,7 @@ describe('LabsView', () => {
       { id: '1', name: 'Test Lab', rating: 2 }
     ];
 
-    render(<LabsView {...defaultProps} alchemyLabs={alchemyLabs} />);
+    render(<LabsView {...defaultProps} alchemyLabs={asLabs(alchemyLabs)} />);
 
     expect(screen.getByText('+2 to processing skill')).toBeInTheDocument();
   });
@@ -119,7 +117,7 @@ describe('LabsView', () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     const alchemyLabs: AlchemyLab[] = [{ id: '1', name: 'Existing Lab', rating: 1 }];
 
-    render(<LabsView {...defaultProps} alchemyLabs={alchemyLabs} />);
+    render(<LabsView {...defaultProps} alchemyLabs={asLabs(alchemyLabs)} />);
 
     fireEvent.click(screen.getByRole('button', { name: /add/i }));
     fireEvent.change(screen.getByPlaceholderText(/lab name/i), {
@@ -138,7 +136,7 @@ describe('LabsView', () => {
       { id: '1', name: 'Test Lab', rating: 2, description: 'A test lab' }
     ];
 
-    render(<LabsView {...defaultProps} alchemyLabs={alchemyLabs} />);
+    render(<LabsView {...defaultProps} alchemyLabs={asLabs(alchemyLabs)} />);
 
     // Click on the lab row to expand
     fireEvent.click(screen.getByText('Test Lab'));
@@ -152,7 +150,7 @@ describe('LabsView', () => {
       { id: 'lab-123', name: 'Test Lab', rating: 2 }
     ];
 
-    render(<LabsView {...defaultProps} alchemyLabs={alchemyLabs} />);
+    render(<LabsView {...defaultProps} alchemyLabs={asLabs(alchemyLabs)} />);
 
     // Expand the lab
     fireEvent.click(screen.getByText('Test Lab'));

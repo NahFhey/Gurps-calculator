@@ -8,7 +8,7 @@
  * @module logger
  */
 
-const isDev = import.meta.env.DEV;
+const isDev = (import.meta as any).env?.DEV ?? false;
 
 export interface Logger {
   log: (...args: unknown[]) => void;

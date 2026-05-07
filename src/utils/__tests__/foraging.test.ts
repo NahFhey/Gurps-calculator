@@ -2,7 +2,7 @@
  * Tests for the Foraging Resolution Engine
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   calculateForageEffectiveSkill,
   determineTierOutcome,
@@ -20,8 +20,6 @@ import type {
   ForageActionInput,
   ForageZoneProfile,
   ForageItem,
-  ForageCategoryId,
-  ForagingConfig,
   FoundStack,
   ForageEvent,
 } from '../../types/foraging';

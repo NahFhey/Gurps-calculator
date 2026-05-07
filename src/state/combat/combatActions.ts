@@ -6,6 +6,7 @@
  */
 
 import type { Id, CombatCharacter, CombatItem, CombatSession } from '../../types/campaign';
+import type { EncounterTemplate } from '../../types/combatTracker';
 
 // ============================================================================
 // ACTION TYPE CONSTANTS
@@ -34,6 +35,12 @@ export const COMBAT_ITEM_ADD = 'addCombatItem' as const;
 
 // Combat reveal state action (Phase 5)
 export const COMBAT_REVEAL_STATE_SET = 'setCombatRevealState' as const;
+
+// Encounter template actions (Phase 11c)
+export const ENCOUNTER_TEMPLATE_ADD = 'addEncounterTemplate' as const;
+export const ENCOUNTER_TEMPLATE_UPDATE = 'updateEncounterTemplate' as const;
+export const ENCOUNTER_TEMPLATE_REMOVE = 'removeEncounterTemplate' as const;
+export const ENCOUNTER_TEMPLATES_SET = 'setEncounterTemplates' as const;
 
 // ============================================================================
 // ACTION TYPES
@@ -104,6 +111,24 @@ export type SetCombatRevealStateAction = {
   payload: RevealStatePayload;
 };
 
+// Encounter template action types (Phase 11c)
+export type AddEncounterTemplateAction = {
+  type: typeof ENCOUNTER_TEMPLATE_ADD;
+  payload: EncounterTemplate;
+};
+export type UpdateEncounterTemplateAction = {
+  type: typeof ENCOUNTER_TEMPLATE_UPDATE;
+  payload: { id: Id; changes: Partial<EncounterTemplate> };
+};
+export type RemoveEncounterTemplateAction = {
+  type: typeof ENCOUNTER_TEMPLATE_REMOVE;
+  payload: Id;
+};
+export type SetEncounterTemplatesAction = {
+  type: typeof ENCOUNTER_TEMPLATES_SET;
+  payload: Record<Id, EncounterTemplate>;
+};
+
 // ============================================================================
 // UNION TYPE
 // ============================================================================
@@ -126,7 +151,12 @@ export type CombatAction =
   | SetCombatItemsAction
   | AddCombatItemAction
   // Reveal state action
-  | SetCombatRevealStateAction;
+  | SetCombatRevealStateAction
+  // Encounter template actions
+  | AddEncounterTemplateAction
+  | UpdateEncounterTemplateAction
+  | RemoveEncounterTemplateAction
+  | SetEncounterTemplatesAction;
 
 // ============================================================================
 // TYPE GUARD
@@ -144,12 +174,16 @@ const COMBAT_ACTION_TYPES = new Set([
   COMBAT_RULES_PRESET_SET,
   COMBAT_ITEMS_SET,
   COMBAT_ITEM_ADD,
-  COMBAT_REVEAL_STATE_SET
+  COMBAT_REVEAL_STATE_SET,
+  ENCOUNTER_TEMPLATE_ADD,
+  ENCOUNTER_TEMPLATE_UPDATE,
+  ENCOUNTER_TEMPLATE_REMOVE,
+  ENCOUNTER_TEMPLATES_SET
 ]);
 
 /**
  * Type guard to check if an action is a combat action
  */
 export function isCombatAction(action: { type: string }): action is CombatAction {
-  return COMBAT_ACTION_TYPES.has(action.type);
+  return COMBAT_ACTION_TYPES.has(action.type as typeof COMBAT_CHARACTER_ADD);
 }

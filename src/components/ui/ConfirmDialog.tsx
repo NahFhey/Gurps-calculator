@@ -100,6 +100,7 @@ export function ConfirmDialog({
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
+      aria-describedby="confirm-dialog-message"
     >
       <div
         className="bg-gray-800 rounded-lg border border-gray-600 w-full max-w-md m-4 p-6"
@@ -111,7 +112,7 @@ export function ConfirmDialog({
         >
           {title}
         </h2>
-        <div className="text-gray-300 mb-6">
+        <div id="confirm-dialog-message" className="text-gray-300 mb-6">
           {message}
         </div>
         <div className="flex gap-3 justify-end">

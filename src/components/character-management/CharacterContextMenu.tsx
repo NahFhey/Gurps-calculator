@@ -28,9 +28,12 @@ export function CharacterContextMenu({
   onClose,
 }: CharacterContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const cancelledRef = useRef(false);
 
   // Close menu when clicking outside
   useEffect(() => {
+    cancelledRef.current = false;
+
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         onClose();
@@ -43,13 +46,17 @@ export function CharacterContextMenu({
       }
     };
 
-    // Use setTimeout to avoid immediately closing from the same click that opened it
-    setTimeout(() => {
+    // Use setTimeout to avoid immediately closing from the same click that opened it.
+    // Guard with `cancelledRef` so listeners aren't added after cleanup runs.
+    const timerId = setTimeout(() => {
+      if (cancelledRef.current) return;
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleEscape);
     }, 0);
 
     return () => {
+      cancelledRef.current = true;
+      clearTimeout(timerId);
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };

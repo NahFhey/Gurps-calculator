@@ -17,6 +17,11 @@ export function GMLockModal({ isOpen, onClose, onUnlock, error }: GMLockModalPro
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const titleId = 'gm-lock-modal-title';
+  const descId = 'gm-lock-modal-desc';
+  const passwordId = 'gm-lock-modal-password';
+  const errorId = 'gm-lock-modal-error';
+
   if (!isOpen) return null;
 
   const handleUnlock = async () => {
@@ -45,26 +50,33 @@ export function GMLockModal({ isOpen, onClose, onUnlock, error }: GMLockModalPro
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 border border-gray-700">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descId}
+        className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 border border-gray-700"
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-700">
           <div className="flex items-center gap-2">
-            <Lock className="text-yellow-400" size={20} />
-            <h2 className="text-xl font-bold text-gray-100">Enter GM Password</h2>
+            <Lock className="text-yellow-400" size={20} aria-hidden="true" />
+            <h2 id={titleId} className="text-xl font-bold text-gray-100">Enter GM Password</h2>
           </div>
           <button
             onClick={onClose}
+            aria-label="Close"
             className="text-gray-400 hover:text-gray-200 transition"
           >
-            <X size={20} />
+            <X size={20} aria-hidden="true" />
           </button>
         </div>
 
         {/* Body */}
         <div className="p-4 space-y-4">
           {/* Info message */}
-          <div className="bg-blue-900 bg-opacity-30 border border-blue-700 rounded p-3 flex gap-2">
-            <AlertTriangle className="text-blue-400 flex-shrink-0 mt-0.5" size={18} />
+          <div id={descId} className="bg-blue-900 bg-opacity-30 border border-blue-700 rounded p-3 flex gap-2">
+            <AlertTriangle className="text-blue-400 flex-shrink-0 mt-0.5" size={18} aria-hidden="true" />
             <div className="text-sm text-blue-200">
               <p className="font-semibold mb-1">GM Mode is Password Protected</p>
               <p>This imported data has GM content encrypted. Enter the password to access:</p>
@@ -79,8 +91,8 @@ export function GMLockModal({ isOpen, onClose, onUnlock, error }: GMLockModalPro
 
           {/* Error message */}
           {error && (
-            <div className="bg-red-900 bg-opacity-30 border border-red-700 rounded p-3 flex gap-2">
-              <AlertTriangle className="text-red-400 flex-shrink-0 mt-0.5" size={18} />
+            <div id={errorId} role="alert" className="bg-red-900 bg-opacity-30 border border-red-700 rounded p-3 flex gap-2">
+              <AlertTriangle className="text-red-400 flex-shrink-0 mt-0.5" size={18} aria-hidden="true" />
               <div className="text-sm text-red-200">
                 <p className="font-semibold">Unlock Failed</p>
                 <p>{error}</p>
@@ -90,16 +102,19 @@ export function GMLockModal({ isOpen, onClose, onUnlock, error }: GMLockModalPro
 
           {/* Password input */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
+            <label htmlFor={passwordId} className="block text-sm font-medium text-gray-300 mb-1">
               Password
             </label>
             <div className="relative">
               <input
+                id={passwordId}
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Enter GM password"
+                aria-invalid={error ? true : undefined}
+                aria-errormessage={error ? errorId : undefined}
                 className="w-full p-2 pr-10 bg-gray-700 border border-gray-600 rounded text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={isUnlocking}
                 autoFocus
@@ -107,6 +122,8 @@ export function GMLockModal({ isOpen, onClose, onUnlock, error }: GMLockModalPro
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-pressed={showPassword}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
               >
                 {showPassword ? 'Hide' : 'Show'}
@@ -140,7 +157,7 @@ export function GMLockModal({ isOpen, onClose, onUnlock, error }: GMLockModalPro
             className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={!password || isUnlocking}
           >
-            <Unlock size={16} />
+            <Unlock size={16} aria-hidden="true" />
             {isUnlocking ? 'Unlocking...' : 'Unlock GM Mode'}
           </button>
         </div>

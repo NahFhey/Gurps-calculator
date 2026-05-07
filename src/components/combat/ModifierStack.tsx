@@ -60,7 +60,7 @@ export default function ModifierStack({
   };
 
   // Handle preset selection
-  const handlePresetSelect = (presetKey: string, presetData: PresetModifier) => {
+  const handlePresetSelect = (_presetKey: string, presetData: PresetModifier) => {
     if (presetData.requireInput) {
       // Show input prompt for value
       const value = prompt(`${presetData.label}\n${presetData.placeholder}:`);

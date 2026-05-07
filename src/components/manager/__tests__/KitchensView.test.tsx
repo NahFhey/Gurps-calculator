@@ -1,21 +1,19 @@
 import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { KitchensView } from '../views/KitchensView';
+import type { Kitchen as CampaignKitchen } from '../../../types/campaign';
+import type { KitchensViewProps } from '../../../types/views';
 
-interface Kitchen {
-  id: string;
-  name: string;
-  rating: number;
-  description?: string;
-}
+type Kitchen = Partial<CampaignKitchen> & { id: string; name: string; rating: number };
+const asKitchens = (xs: Kitchen[]): CampaignKitchen[] => xs as unknown as CampaignKitchen[];
 
 describe('KitchensView', () => {
   const mockSaveKitchens = vi.fn();
   const mockOnDelete = vi.fn();
 
-  const defaultProps = {
-    kitchens: [] as Kitchen[],
+  const defaultProps: KitchensViewProps = {
+    kitchens: [],
     saveKitchens: mockSaveKitchens,
     onDelete: mockOnDelete
   };
@@ -49,7 +47,7 @@ describe('KitchensView', () => {
       { id: '2', name: 'Master Chef Kitchen', rating: 4 }
     ];
 
-    render(<KitchensView {...defaultProps} kitchens={kitchens} />);
+    render(<KitchensView {...defaultProps} kitchens={asKitchens(kitchens)} />);
 
     expect(screen.getByText('Basic Kitchen')).toBeInTheDocument();
     expect(screen.getByText('Master Chef Kitchen')).toBeInTheDocument();
@@ -62,7 +60,7 @@ describe('KitchensView', () => {
       { id: '1', name: 'Test Kitchen', rating: 3 }
     ];
 
-    render(<KitchensView {...defaultProps} kitchens={kitchens} />);
+    render(<KitchensView {...defaultProps} kitchens={asKitchens(kitchens)} />);
 
     expect(screen.getByText('+3 to cooking skill')).toBeInTheDocument();
   });
@@ -118,7 +116,7 @@ describe('KitchensView', () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     const kitchens: Kitchen[] = [{ id: '1', name: 'Main Kitchen', rating: 2 }];
 
-    render(<KitchensView {...defaultProps} kitchens={kitchens} />);
+    render(<KitchensView {...defaultProps} kitchens={asKitchens(kitchens)} />);
 
     fireEvent.click(screen.getByRole('button', { name: /add/i }));
     fireEvent.change(screen.getByPlaceholderText(/kitchen name/i), {
@@ -137,7 +135,7 @@ describe('KitchensView', () => {
       { id: '1', name: 'Test Kitchen', rating: 2, description: 'A test kitchen' }
     ];
 
-    render(<KitchensView {...defaultProps} kitchens={kitchens} />);
+    render(<KitchensView {...defaultProps} kitchens={asKitchens(kitchens)} />);
 
     fireEvent.click(screen.getByText('Test Kitchen'));
 
@@ -149,7 +147,7 @@ describe('KitchensView', () => {
       { id: 'kitchen-456', name: 'Test Kitchen', rating: 2 }
     ];
 
-    render(<KitchensView {...defaultProps} kitchens={kitchens} />);
+    render(<KitchensView {...defaultProps} kitchens={asKitchens(kitchens)} />);
 
     fireEvent.click(screen.getByText('Test Kitchen'));
     fireEvent.click(screen.getByRole('button', { name: /delete kitchen/i }));
@@ -178,7 +176,7 @@ describe('KitchensView', () => {
       { id: '1', name: 'Test Kitchen', rating: 1 }
     ];
 
-    render(<KitchensView {...defaultProps} kitchens={kitchens} />);
+    render(<KitchensView {...defaultProps} kitchens={asKitchens(kitchens)} />);
 
     // Expand
     fireEvent.click(screen.getByText('Test Kitchen'));

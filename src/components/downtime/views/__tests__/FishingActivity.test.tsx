@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { FishingActivity } from '../FishingActivity';
 import { CampaignStoreProvider } from '../../../../state/campaignStore';
 import { DowntimeProvider } from '../../DowntimeContext';

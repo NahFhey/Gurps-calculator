@@ -5,8 +5,6 @@
  * Extracted from CombatTracker.tsx for better organization and reusability.
  */
 
-import { ReactNode } from 'react';
-
 // ============================================================================
 // CORE COMBAT TYPES
 // ============================================================================
@@ -62,6 +60,7 @@ export interface Participant {
     block?: number;
   };
   attacks?: Attack[];
+  position?: { q: number; r: number };
   shockPenalty?: number;
   isStunned?: boolean;
   isUnconscious?: boolean;
@@ -69,6 +68,18 @@ export interface Participant {
   bleeding?: { rate: number; round: number } | null;
   crippled?: string[];
   conditions?: ConditionInstance[];
+  /** Whether this participant was added from the party roster (Phase 11c) */
+  isFromParty?: boolean;
+  /** Link back to the campaign Character.id for post-combat sync (Phase 11c) */
+  partyCharacterId?: string;
+  /** Combat token image (base64 data URL, from Character.images.token) */
+  tokenImage?: string;
+  /** Armor DR by hit location (derived from equipped armor at combat start) */
+  armorByLocation?: Array<{ location: string; dr: number }>;
+  /** Encumbrance-adjusted dodge (overrides dodge field when set) */
+  encumbranceDodge?: number;
+  /** Encumbrance-adjusted move (overrides basicMove when set) */
+  encumbranceMove?: number;
 }
 
 export interface HPValue {
@@ -153,6 +164,7 @@ export interface CombatState {
   name: string;
   startTime: number;
   endTime?: number;
+  mapId?: string;
   participants: Participant[];
   turnOrder: string[];
   currentTurnIndex: number;
@@ -161,17 +173,34 @@ export interface CombatState {
   log: LogEntry[];
 }
 
+export interface MovementRecord {
+  fromPosition: { q: number; r: number };
+  toPosition: { q: number; r: number };
+  path: string[];
+  costYards: number;
+}
+
 export interface TurnDecision {
   maneuverId?: string;
   notes?: string;
   aim?: { targetInstanceId?: string; turnsAimed?: number };
   wait?: { triggerText?: string };
+  movement?: MovementRecord;
+}
+
+export interface HistoryCheckpoint {
+  at: number;
+  snapshot: unknown;
 }
 
 export interface HistoryState {
+  version: number;
   actions: unknown[];
-  undoStack: unknown[];
-  redoStack: unknown[];
+  cursor: number;
+  checkpoints: HistoryCheckpoint[];
+  checkpointEvery: number;
+  maxActions: number;
+  maxCheckpoints: number;
 }
 
 export interface RevealState {
@@ -192,6 +221,8 @@ export interface RevealEntry {
 export interface Maneuver {
   id: string;
   label: string;
+  group?: string;
+  notes?: string;
   prompts?: ManeuverPrompts;
   workflow?: ManeuverWorkflow;
 }
@@ -199,6 +230,8 @@ export interface Maneuver {
 export interface ManeuverPrompts {
   allowsAttackPanel?: boolean;
   allowsDefensePanel?: boolean;
+  allowsAimPanel?: boolean;
+  allowsWaitPanel?: boolean;
 }
 
 export interface ManeuverWorkflow {
@@ -353,4 +386,105 @@ export interface RollLogEntryProps {
 export interface ActionLogEntryProps {
   timestamp: string;
   entry: LogEntry;
+}
+
+// ============================================================================
+// ENCOUNTER TEMPLATE TYPES
+// ============================================================================
+
+export interface EncounterTemplateParticipant {
+  /** Reference to a combat library character ID */
+  libraryId: string;
+  /** Character name (snapshot — used if library char is deleted) */
+  name: string;
+  /** Combat category */
+  category: string;
+  /** Number of this character to spawn */
+  quantity: number;
+}
+
+export interface EncounterTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  participants: EncounterTemplateParticipant[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+// ============================================================================
+// POST-COMBAT SUMMARY TYPES
+// ============================================================================
+
+export interface ParticipantSummary {
+  instanceId: string;
+  name: string;
+  category: string;
+  /** Whether this participant is linked to a party character */
+  isFromParty: boolean;
+  /** Party character ID for sync-back */
+  partyCharacterId?: string;
+  /** HP at combat start */
+  startHP: number;
+  maxHP: number;
+  /** HP at combat end */
+  endHP: number;
+  /** FP at combat start */
+  startFP: number;
+  maxFP: number;
+  /** FP at combat end */
+  endFP: number;
+  /** Final status flags */
+  isStunned: boolean;
+  isUnconscious: boolean;
+  isDead: boolean;
+  /** Active conditions at combat end */
+  conditions: ConditionInstance[];
+  /** Crippled locations */
+  crippled: string[];
+  /** Bleeding state */
+  bleeding: { rate: number; round: number } | null;
+}
+
+export interface HealingEstimate {
+  /** Days to full HP recovery at 1 HP/day with rest */
+  daysToFullHP: number;
+  /** Days to full FP recovery (1 FP per 10 min rest, so usually < 1 day) */
+  daysToFullFP: number;
+  /** HP recoverable by First Aid (typically 1d-2 or 1d-3) */
+  firstAidEstimate: { min: number; max: number };
+}
+
+export interface CombatSummaryData {
+  combatId: string;
+  combatName: string;
+  /** Duration in rounds */
+  rounds: number;
+  /** Duration in real time (ms) */
+  durationMs: number;
+  /** Summary per participant */
+  participants: ParticipantSummary[];
+  /** Healing estimates for party characters */
+  healingEstimates: Record<string, HealingEstimate>;
+}
+
+// ============================================================================
+// LOOT DISTRIBUTION TYPES
+// ============================================================================
+
+export interface LootItem {
+  id: string;
+  name: string;
+  type: 'currency' | 'material' | 'food' | 'equipment' | 'other';
+  quantity: number;
+  /** Value in copper pieces (base currency) */
+  value?: number;
+  notes?: string;
+}
+
+export interface LootDistributionEntry {
+  lootItemId: string;
+  /** Target: 'party' or a character ID */
+  targetId: string;
+  quantity: number;
 }

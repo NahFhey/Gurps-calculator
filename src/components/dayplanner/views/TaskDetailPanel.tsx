@@ -75,7 +75,7 @@ export function TaskDetailPanel({
       currentDay,
       currentSlot,
       workerId,
-      task.id
+      task!.id
     );
 
     if (!validation.valid) {
@@ -91,7 +91,7 @@ export function TaskDetailPanel({
    * Validates and toggles a helper
    */
   function toggleHelper(workerId: string) {
-    const currentHelpers = task.helperWorkerIds || [];
+    const currentHelpers = task!.helperWorkerIds || [];
     const isCurrentlyHelper = currentHelpers.includes(workerId);
 
     if (isCurrentlyHelper) {
@@ -107,7 +107,7 @@ export function TaskDetailPanel({
       currentDay,
       currentSlot,
       workerId,
-      task.id
+      task!.id
     );
 
     if (!validation.valid) {
@@ -123,7 +123,7 @@ export function TaskDetailPanel({
    * Toggles tool selection
    */
   function toggleTool(toolId: string) {
-    const currentTools = task.selectedToolIds || [];
+    const currentTools = task!.selectedToolIds || [];
     const isSelected = currentTools.includes(toolId);
 
     if (isSelected) {
@@ -296,7 +296,7 @@ interface ForagingResultRollerProps {
   updateTask: (task: TaskAssignment) => void;
 }
 
-function ForagingResultRoller({ task, items, updateTask }: ForagingResultRollerProps) {
+function ForagingResultRoller({ task, items: _items, updateTask }: ForagingResultRollerProps) {
   const foundItem = task.payload?.findResult?.item;
   if (!foundItem) return null;
 
@@ -948,7 +948,7 @@ function ManualResolutionUI({
   const showEventTableRoll = eventType !== 'none';
 
   // Get table info
-  const modeDefaults = env.defaultsByMode?.[task.mode] || {};
+  const modeDefaults = env.defaultsByMode?.[task.mode] || { randomCatchTableId: null, mildEventTableId: null, rareEventTableId: null };
   const findTable = tables.find(t => t.id === modeDefaults.randomCatchTableId);
   const tableName = findTable?.name || 'Table';
   const tableRollMethod = findTable?.rollMethod || '2d6';

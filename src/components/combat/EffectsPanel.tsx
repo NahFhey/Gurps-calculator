@@ -55,7 +55,7 @@ interface EffectsPanelProps {
  */
 export default function EffectsPanel({
   prompts,
-  target,
+  // target is not used in this component
   onEffectResolved,
   onComplete
 }: EffectsPanelProps) {

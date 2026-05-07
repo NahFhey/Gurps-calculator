@@ -4,6 +4,8 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { FishingTaskCard } from '../FishingTaskCard';
 import type { DowntimeTask, FishingData, TaskResults } from '../../../../types/downtime';
 import type { Character, GatheringSpecies, GatheringEnvironment } from '../../../../types/campaign';
+const asSpecies = <T,>(xs: T[]): GatheringSpecies[] => xs as unknown as GatheringSpecies[];
+const asSpots = <T,>(xs: T[]): GatheringEnvironment[] => xs as unknown as GatheringEnvironment[];
 
 // Helper to create a fishing task
 function createFishingTask(
@@ -51,7 +53,7 @@ const mockCharacters: Character[] = [
     advantages: [],
     disadvantages: [],
     equipment: [],
-  },
+  } as unknown as Character,
   {
     id: 'char-2',
     name: 'Brina',
@@ -66,10 +68,10 @@ const mockCharacters: Character[] = [
     advantages: [],
     disadvantages: [],
     equipment: [],
-  },
+  } as unknown as Character,
 ];
 
-const mockSpots: GatheringEnvironment[] = [
+const mockSpots: GatheringEnvironment[] = asSpots([
   {
     id: 'spot-river',
     name: 'River Bank',
@@ -77,9 +79,9 @@ const mockSpots: GatheringEnvironment[] = [
     defaultsByMode: {},
     skillMod: 0,
   },
-];
+]);
 
-const mockSpecies: GatheringSpecies[] = [
+const mockSpecies: GatheringSpecies[] = asSpecies([
   {
     id: 'species-trout',
     name: 'Trout',
@@ -93,7 +95,7 @@ const mockSpecies: GatheringSpecies[] = [
     st: null,
     specialRules: [],
   },
-];
+]);
 
 const defaultProps = {
   species: mockSpecies,

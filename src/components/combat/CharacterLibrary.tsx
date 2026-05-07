@@ -3,21 +3,16 @@ import { Plus, Search, Download, Upload, FileText, Users, Info } from 'lucide-re
 import { useCombatStore } from '../../hooks/useCombatStore';
 import { COMBAT_CATEGORIES } from '../../constants';
 import { generateId } from '../../utils/combatHelpers';
+import { CharacterArraySchema, exceedsImportSizeLimit } from '../../utils/importSchemas';
 import CharacterSheet from './CharacterSheet';
 import CharacterForm from './CharacterForm';
 import GCSImportModal from './GCSImportModal';
 import { useToast } from '../ui';
-import type { Character as PartyCharacter } from '../../types/campaign';
+import type { Character as PartyCharacter, CombatCharacter, CombatSession } from '../../types/campaign';
 
-interface Attack {
-  name: string;
-  skill: number;
-  damage: string;
-  notes?: string;
-}
-
-interface CharacterData {
-  id?: string;
+// Local interface matching CharacterSheet's expected Character type
+interface LibraryCharacter {
+  id: string;
   name: string;
   category: string;
   st: number;
@@ -25,26 +20,70 @@ interface CharacterData {
   iq: number;
   ht: number;
   hp: number;
-  fp: number;
-  mp: number;
-  basicSpeed: number;
-  basicMove: number;
-  dodge: number;
-  parry: number;
-  block: number;
-  dr: number;
-  hitLocationProfileId?: string;
-  drByLocation?: Record<string, number>;
-  attacks?: Attack[];
-  notes?: string;
   currentHP?: number;
+  fp?: number;
   currentFP?: number;
+  mp?: number;
   currentMP?: number;
+  basicSpeed: number;
+  basicMove?: number;
+  dodge?: number;
+  parry?: number;
+  block?: number;
+  dr?: number;
+  notes?: string;
 }
 
-interface CombatHistoryEntry {
-  id: string;
-  participants?: Array<{ id: string }>;
+// Alias for form input - represents the data structure for create/update operations
+type CharacterData = LibraryCharacter;
+
+// Convert CombatCharacter to LibraryCharacter for display
+function combatCharacterToLibrary(char: CombatCharacter): LibraryCharacter {
+  return {
+    id: char.id,
+    name: char.name,
+    category: char.isNPC ? 'npc' : 'player',
+    st: char.st,
+    dx: char.dx,
+    iq: char.iq,
+    ht: char.ht,
+    hp: char.maxHP,
+    currentHP: char.maxHP,
+    fp: char.maxFP || 0,
+    currentFP: char.maxFP || 0,
+    mp: 0,
+    currentMP: 0,
+    basicSpeed: 0,
+    dodge: char.dodge,
+    parry: char.parry,
+    block: char.block,
+    dr: char.dr,
+    notes: char.notes
+  };
+}
+
+// Convert LibraryCharacter to CombatCharacter for storage
+function libraryCharacterToCombat(char: LibraryCharacter): CombatCharacter {
+  return {
+    id: char.id,
+    name: char.name,
+    isNPC: char.category === 'npc',
+    hp: char.hp,
+    maxHP: char.hp,
+    fp: char.fp || 0,
+    maxFP: char.fp || 0,
+    st: char.st,
+    dx: char.dx,
+    iq: char.iq,
+    ht: char.ht,
+    dodge: char.dodge || 0,
+    parry: char.parry,
+    block: char.block,
+    dr: char.dr || 0,
+    skills: {},
+    weapons: [],
+    notes: char.notes
+  };
 }
 
 type SortByValue = 'name' | 'category' | 'basicSpeed';
@@ -71,7 +110,8 @@ export default function CharacterLibrary() {
 
   // Filtered and sorted characters
   const displayCharacters = useMemo(() => {
-    let filtered = (combatCharacters as CharacterData[]).filter(char => {
+    const libraryChars = (combatCharacters as CombatCharacter[]).map(combatCharacterToLibrary);
+    let filtered = libraryChars.filter(char => {
       const matchesSearch = char.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = filterCategory === 'all' || char.category === filterCategory;
       return matchesSearch && matchesCategory;
@@ -96,22 +136,25 @@ export default function CharacterLibrary() {
 
   // Create new character
   const handleCreate = (characterData: CharacterData) => {
-    const newChar: CharacterData = {
+    const newLibChar: LibraryCharacter = {
       ...characterData,
       id: generateId(),
       currentHP: characterData.hp,
       currentFP: characterData.fp || 0,
       currentMP: characterData.mp || 0
     };
-    saveCombatCharacters([...(combatCharacters as CharacterData[]), newChar]);
+    const newCombatChar = libraryCharacterToCombat(newLibChar);
+    saveCombatCharacters([...(combatCharacters as CombatCharacter[]), newCombatChar]);
     setShowForm(false);
   };
 
   // Update existing character
   const handleUpdate = (characterData: CharacterData) => {
+    const updatedLibChar: LibraryCharacter = { ...characterData, id: editingId || '' };
+    const updatedCombatChar = libraryCharacterToCombat(updatedLibChar);
     saveCombatCharacters(
-      (combatCharacters as CharacterData[]).map(char =>
-        char.id === editingId ? { ...characterData, id: editingId } : char
+      (combatCharacters as CombatCharacter[]).map(char =>
+        char.id === editingId ? updatedCombatChar : char
       )
     );
     setEditingId(null);
@@ -119,37 +162,35 @@ export default function CharacterLibrary() {
 
   // Delete character
   const handleDelete = (id: string) => {
-    const charToDelete = (combatCharacters as CharacterData[]).find(c => c.id === id);
+    const charToDelete = (combatCharacters as CombatCharacter[]).find(c => c.id === id);
 
     // Check if this character is referenced in combat history
-    const isReferenced = (combatHistory as CombatHistoryEntry[]).some(combat =>
-      combat.participants?.some(p => p.id === id)
+    const isReferenced = (combatHistory as CombatSession[]).some(session =>
+      session.participants?.some(p => p.characterId === id)
     );
 
     if (isReferenced && charToDelete) {
       // Move to tombstones instead of deleting
-      saveCombatTombstones([...(combatTombstones as CharacterData[]), charToDelete]);
+      saveCombatTombstones([...(combatTombstones as CombatCharacter[]), charToDelete]);
     }
 
     // Remove from active characters
-    saveCombatCharacters((combatCharacters as CharacterData[]).filter(c => c.id !== id));
+    saveCombatCharacters((combatCharacters as CombatCharacter[]).filter(c => c.id !== id));
   };
 
   // Duplicate character
   const handleDuplicate = (id: string) => {
-    const original = (combatCharacters as CharacterData[]).find(c => c.id === id);
+    const original = (combatCharacters as CombatCharacter[]).find(c => c.id === id);
     if (!original) return;
 
-    const duplicate: CharacterData = {
-      ...original,
+    const dupLibChar: LibraryCharacter = {
+      ...combatCharacterToLibrary(original),
       id: generateId(),
-      name: `${original.name} (Copy)`,
-      currentHP: original.hp,
-      currentFP: original.fp || 0,
-      currentMP: original.mp || 0
+      name: `${original.name} (Copy)`
     };
+    const dupCombatChar = libraryCharacterToCombat(dupLibChar);
 
-    saveCombatCharacters([...(combatCharacters as CharacterData[]), duplicate]);
+    saveCombatCharacters([...(combatCharacters as CombatCharacter[]), dupCombatChar]);
   };
 
   // Export library as JSON
@@ -169,26 +210,39 @@ export default function CharacterLibrary() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Reject oversized files before reading
+    if (exceedsImportSizeLimit(file)) {
+      showError('File too large (max 50 MB)');
+      event.target.value = '';
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const imported = JSON.parse(e.target?.result as string);
-        if (!Array.isArray(imported)) {
-          showError('Invalid file format: expected an array of characters');
+        const raw = JSON.parse(e.target?.result as string);
+
+        // Validate structure with Zod schema
+        const result = CharacterArraySchema.safeParse(raw);
+        if (!result.success) {
+          const issue = result.error.issues[0];
+          const path = issue?.path?.join('.') || '';
+          showError(`Invalid character data${path ? ` at ${path}` : ''}: ${issue?.message}`);
           return;
         }
 
         // Merge with existing, regenerating IDs to avoid conflicts
-        const newChars = imported.map((char: CharacterData) => ({
+        const newLibChars: LibraryCharacter[] = result.data.map((char) => ({
           ...char,
           id: generateId(),
           currentHP: char.hp,
           currentFP: char.fp || 0,
           currentMP: char.mp || 0
         }));
+        const newCombatChars = newLibChars.map(libraryCharacterToCombat);
 
-        saveCombatCharacters([...(combatCharacters as CharacterData[]), ...newChars]);
-        showSuccess(`Imported ${newChars.length} characters`);
+        saveCombatCharacters([...(combatCharacters as CombatCharacter[]), ...newCombatChars]);
+        showSuccess(`Imported ${newLibChars.length} characters`);
       } catch (error) {
         showError('Error parsing JSON file: ' + (error as Error).message);
       }
@@ -220,7 +274,7 @@ export default function CharacterLibrary() {
           <button
             onClick={handleExport}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
-            disabled={(combatCharacters as CharacterData[]).length === 0}
+            disabled={(combatCharacters as CombatCharacter[]).length === 0}
           >
             <Download size={16} />
             Export
@@ -291,7 +345,7 @@ export default function CharacterLibrary() {
       <div className="space-y-2">
         {displayCharacters.length === 0 ? (
           <div className="text-center text-gray-400 py-8">
-            {(combatCharacters as CharacterData[]).length === 0 ? (
+            {(combatCharacters as CombatCharacter[]).length === 0 ? (
               <p>No characters in library. Create one to get started!</p>
             ) : (
               <p>No characters match your search.</p>
@@ -301,7 +355,7 @@ export default function CharacterLibrary() {
           displayCharacters.map(char => (
             <CharacterSheet
               key={char.id}
-              character={char}
+              character={char as any}
               onEdit={() => setEditingId(char.id!)}
               onDelete={() => handleDelete(char.id!)}
               onDuplicate={() => handleDuplicate(char.id!)}
@@ -313,8 +367,8 @@ export default function CharacterLibrary() {
       {/* Create/Edit Form Modal */}
       {(showForm || editingId) && (
         <CharacterForm
-          character={editingId ? (combatCharacters as CharacterData[]).find(c => c.id === editingId) : null}
-          onSave={editingId ? handleUpdate : handleCreate}
+          character={editingId ? (combatCharacterToLibrary((combatCharacters as CombatCharacter[]).find(c => c.id === editingId)!) as any) : null}
+          onSave={(data) => (editingId ? handleUpdate(data as unknown as CharacterData) : handleCreate(data as unknown as CharacterData))}
           onCancel={() => {
             setShowForm(false);
             setEditingId(null);
@@ -325,7 +379,7 @@ export default function CharacterLibrary() {
       {/* GCS Import Modal */}
       {showGCSImport && (
         <GCSImportModal
-          onImport={handleCreate}
+          onImport={(data) => handleCreate(data as unknown as CharacterData)}
           onCancel={() => setShowGCSImport(false)}
         />
       )}

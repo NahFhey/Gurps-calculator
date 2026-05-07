@@ -105,7 +105,7 @@ export function migrateLegacyTemplates(customTemplates: CustomTemplates): Record
 
   // Process each category
   Object.entries(customTemplates).forEach(([category, templates]) => {
-    Object.entries(templates).forEach(([templateName, templateData]) => {
+    Object.entries(templates).forEach(([templateName]) => {
       const templateId = `${category}-${templateName}`;
 
       // Convert to tool template with activity modifiers
@@ -282,20 +282,20 @@ export function normalizeTime(day: number, slot: number): { day: number; slot: n
  * Deep merge two objects (for settings/config)
  */
 export function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
-  const result = { ...target };
+  const result: Record<string, any> = { ...target };
 
   Object.keys(source).forEach((key) => {
-    const sourceValue = source[key];
+    const sourceValue = source[key as keyof T];
     const targetValue = result[key];
 
     if (sourceValue && typeof sourceValue === 'object' && !Array.isArray(sourceValue)) {
       result[key] = deepMerge(targetValue || {}, sourceValue);
     } else {
-      result[key] = sourceValue as any;
+      result[key] = sourceValue;
     }
   });
 
-  return result;
+  return result as T;
 }
 
 // ============================================================================

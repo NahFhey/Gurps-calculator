@@ -2,6 +2,7 @@ import { enableMapSet, produce } from 'immer';
 import { createPartyToolState, PARTY_TOOL_SKILLS } from '../components/partyToolSeed';
 import { advanceTimeSlot, type TimeLogEntry } from '../utils/timeSystem';
 import { SLOT_NAMES, SLOTS_PER_DAY } from '../constants';
+import { logger } from '../utils/logger';
 import type {
   Id,
   Character,
@@ -148,6 +149,7 @@ export type CampaignState = {
     combatItems: Record<Id, CombatItem>;
     combatHistory: CombatSession[];
     combatTombstones: CombatCharacter[];
+    encounterTemplates: Record<Id, import('../types/combatTracker').EncounterTemplate>;
 
     // Config/Facilities
     kitchens: Record<Id, Kitchen>;
@@ -276,7 +278,12 @@ export const logEvent = (
 
 const createCheckpointSnapshot = (state: CampaignState): CampaignSnapshot => {
   const { checkpoints, ...rest } = state;
-  return JSON.parse(JSON.stringify(rest)) as CampaignSnapshot;
+  try {
+    return JSON.parse(JSON.stringify(rest)) as CampaignSnapshot;
+  } catch (err) {
+    logger.error('Failed to create checkpoint snapshot:', err);
+    return rest as unknown as CampaignSnapshot;
+  }
 };
 
 const createCheckpointEntry = (state: CampaignState, label: string): Checkpoint => ({
@@ -286,13 +293,13 @@ const createCheckpointEntry = (state: CampaignState, label: string): Checkpoint 
   snapshot: createCheckpointSnapshot(state)
 });
 
-const normalizeCombatReveal = (combat: CampaignState['combat']) => {
+const normalizeCombatReveal = (combat: CampaignState['combat']): CampaignState['combat'] => {
   const revealedTargets =
     combat.reveal.revealedTargets instanceof Set
       ? combat.reveal.revealedTargets
-      : new Set(combat.reveal.revealedTargets || []);
+      : new Set<string>(combat.reveal.revealedTargets || []);
   const revealedHP =
-    combat.reveal.revealedHP instanceof Set ? combat.reveal.revealedHP : new Set(combat.reveal.revealedHP || []);
+    combat.reveal.revealedHP instanceof Set ? combat.reveal.revealedHP : new Set<string>(combat.reveal.revealedHP || []);
   return {
     ...combat,
     reveal: {
@@ -377,6 +384,7 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
     combatItems: {},
     combatHistory: [],
     combatTombstones: [],
+    encounterTemplates: {},
 
     // Config/Facilities
     kitchens: {
@@ -402,7 +410,7 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
     day: 1,
     slot: 0,
     slotsPerDay: SLOTS_PER_DAY,
-    slotLabels: SLOT_NAMES,
+    slotLabels: [...SLOT_NAMES],
     history: []
   },
   inventory: {
@@ -595,6 +603,8 @@ export type CampaignAction =
   | { type: 'updateTaskAssignment'; payload: { id: Id; changes: Partial<TaskAssignment> } }
   | { type: 'setTaskAssignments'; payload: TaskAssignment[] }
   | { type: 'setPendingDayLedger'; payload: DayLedger | null }
+  | { type: 'setDayPlannerSlot'; payload: number }
+  | { type: 'setTimeDay'; payload: number }
   // Combat Character actions
   | { type: 'addCombatCharacter'; payload: CombatCharacter }
   | { type: 'updateCombatCharacter'; payload: { id: Id; changes: Partial<CombatCharacter> } }
@@ -611,11 +621,18 @@ export type CampaignAction =
   | { type: 'addCombatItem'; payload: CombatItem }
   // Combat Reveal State action (Phase 5)
   | { type: 'setCombatRevealState'; payload: { version?: number; combatId?: string; byInstanceId: Record<string, unknown> } | null }
+  // Encounter template actions (Phase 11c)
+  | { type: 'addEncounterTemplate'; payload: import('../types/combatTracker').EncounterTemplate }
+  | { type: 'updateEncounterTemplate'; payload: { id: Id; changes: Partial<import('../types/combatTracker').EncounterTemplate> } }
+  | { type: 'removeEncounterTemplate'; payload: Id }
+  | { type: 'setEncounterTemplates'; payload: Record<Id, import('../types/combatTracker').EncounterTemplate> }
   // Kitchen actions
   | { type: 'setKitchens'; payload: Record<Id, Kitchen> }
   | { type: 'addKitchen'; payload: Kitchen }
   // Cooking Skill actions
   | { type: 'setCookingSkills'; payload: CookingSkill[] }
+  // Facility actions
+  | { type: 'setFacilities'; payload: Record<Id, Facility> }
   // Effect Family Map actions
   | { type: 'setEffectFamilyMap'; payload: EffectFamilyMap }
   // Inventory actions
@@ -642,6 +659,10 @@ export type CampaignAction =
   | { type: 'removeCustomClimate'; payload: string }
   | { type: 'addCustomTerrain'; payload: { key: string; label: string } }
   | { type: 'removeCustomTerrain'; payload: string }
+  // Storage cleanup actions
+  | { type: 'clearCheckpoints' }
+  | { type: 'clearLogs' }
+  | { type: 'clearCombatHistory' }
   // Downtime actions
   | { type: 'setDowntime'; payload: DowntimeState }
   // Map actions (bulk setter + delegated map/ prefixed actions)
@@ -719,7 +740,13 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         const { slot, slotsPerDay, slotLabels, day } = draft.time;
         const { nextSlot, logEntry } = advanceTimeSlot(
           slot,
-          { clearAllReservations() {} },
+          {
+            reserveTool() {},
+            validateReservations() { return true; },
+            invalidateReservationsForTool() {},
+            clearAllReservations() {},
+            activeReservations: {}
+          } as any,
           { totalSlots: slotsPerDay, slotLabels }
         );
         const nextDay = nextSlot < slot ? day + 1 : day;
@@ -891,7 +918,13 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         if (!checkpoint) {
           return;
         }
-        const restoredSnapshot = JSON.parse(JSON.stringify(checkpoint.snapshot)) as CampaignSnapshot;
+        let restoredSnapshot: CampaignSnapshot;
+        try {
+          restoredSnapshot = JSON.parse(JSON.stringify(checkpoint.snapshot)) as CampaignSnapshot;
+        } catch (err) {
+          logger.error('Failed to deep-clone checkpoint for restore:', err);
+          return;
+        }
         const rollbackEntry = logEvent('campaign.rollback', 'player', {
           message: 'Rollback occurred.'
         });
@@ -936,7 +969,13 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         const { slot, slotsPerDay, slotLabels, day } = draft.time;
         const { nextSlot, logEntry } = advanceTimeSlot(
           slot,
-          { clearAllReservations() {} },
+          {
+            reserveTool() {},
+            validateReservations() { return true; },
+            invalidateReservationsForTool() {},
+            clearAllReservations() {},
+            activeReservations: {}
+          } as any,
           {
             totalSlots: slotsPerDay,
             slotLabels
@@ -1085,10 +1124,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
           draft.locations.currentLocationId = remainingIds.length > 0 ? remainingIds[0] : null;
         }
         // Remove any weather tables associated with this location
-        for (const tableId of Object.keys(draft.locations.weatherTables)) {
-          const table = draft.locations.weatherTables[tableId];
-          // Note: weather tables don't have locationId, they're referenced by location.weatherTableId
-        }
+        // Note: weather tables don't have locationId, they're referenced by location.weatherTableId
         return;
       }
 
@@ -1271,6 +1307,19 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
       // ========================================================================
       case 'setMaps':
         draft.maps = action.payload;
+        return;
+
+      // ========================================================================
+      // STORAGE CLEANUP ACTIONS
+      // ========================================================================
+      case 'clearCheckpoints':
+        draft.checkpoints.entries = [];
+        return;
+      case 'clearLogs':
+        draft.logs.entries = [];
+        return;
+      case 'clearCombatHistory':
+        draft.entities.combatHistory = [];
         return;
 
       default:

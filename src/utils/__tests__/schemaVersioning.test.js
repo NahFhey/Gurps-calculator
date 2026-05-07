@@ -10,6 +10,9 @@ import {
   CURRENT_SCHEMA_VERSION,
   compareVersions,
   getMigrationPath,
+  getMigrationHistory,
+  logMigration,
+  MIGRATION_HISTORY_KEY,
   SCHEMA_METADATA
 } from '../schemaVersioning';
 import {
@@ -296,6 +299,31 @@ describe('Schema Versioning System', () => {
       expect(Array.isArray(result.materials) || result.materials === undefined).toBe(true);
       expect(Array.isArray(result.alchemyReagents)).toBe(true);
       expect(Array.isArray(result.gatheringSessions)).toBe(true);
+    });
+  });
+
+  describe('getMigrationHistory() malformed input', () => {
+    beforeEach(() => {
+      localStorage.removeItem(MIGRATION_HISTORY_KEY);
+    });
+
+    afterEach(() => {
+      localStorage.removeItem(MIGRATION_HISTORY_KEY);
+    });
+
+    it('returns empty array when stored history is malformed JSON', () => {
+      localStorage.setItem(MIGRATION_HISTORY_KEY, '{not valid json');
+      expect(() => getMigrationHistory()).not.toThrow();
+      expect(getMigrationHistory()).toEqual([]);
+    });
+
+    it('returns empty array when storage key is absent', () => {
+      expect(getMigrationHistory()).toEqual([]);
+    });
+
+    it('logMigration recovers when prior history is malformed', () => {
+      localStorage.setItem(MIGRATION_HISTORY_KEY, 'garbage');
+      expect(() => logMigration('1.0.0', '1.1.0')).not.toThrow();
     });
   });
 

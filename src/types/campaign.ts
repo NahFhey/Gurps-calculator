@@ -3,7 +3,7 @@
  * This file defines all types needed for the unified CampaignStore
  */
 
-import type { GCSCharacterData } from './characterSheet';
+import type { GCSCharacterData, CharacterImages } from './characterSheet';
 
 export type Id = string;
 
@@ -23,6 +23,9 @@ export interface Character {
 
   // Hit location profile for combat (defaults to 'humanoid')
   hitLocationProfileId?: string;
+
+  // Character portrait and combat token images
+  images?: CharacterImages;
 
   // Full GCS character sheet data (optional for backward compatibility)
   gcsData?: GCSCharacterData;
@@ -535,6 +538,12 @@ export interface GatheringEnvironment {
   hazards?: string[];
   /** Links this environment to a Location for auto-selection in downtime activities */
   locationId?: string;
+  /** Supported gathering modes for this environment (e.g., Fishing, Foraging) */
+  supportedModes?: string[];
+  /** Skill modifier for this environment */
+  skillMod?: number;
+  /** Default values by mode for quick task setup */
+  defaultsByMode?: Record<string, any>;
 }
 
 export interface GatheringSession {
@@ -691,6 +700,8 @@ export interface CombatItem {
   quantity: number;
 }
 
+export { type EncounterTemplate } from './combatTracker';
+
 // ============================================================================
 // CONFIG SYSTEM
 // ============================================================================
@@ -703,11 +714,26 @@ export interface Kitchen {
 }
 
 export interface CookingSkill {
+  id: Id;
   name: string;
-  level: number;
+  level?: number;
 }
 
-export type EffectFamilyMap = Record<string, string[]>;
+export interface EffectDefinition {
+  id: Id;
+  name: string;
+  keywords: string;
+  notes: string;
+  gmNotes: string;
+  gmNotesVisible: boolean;
+}
+
+export interface EffectPairData {
+  summary?: string;
+  effects?: EffectDefinition[];
+}
+
+export type EffectFamilyMap = Record<string, EffectPairData>;
 
 // ============================================================================
 // PARTY TOOL INTEGRATION (existing types from partyTool.ts)

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type {
+  ActivityData,
   DowntimeState,
   DowntimeTask,
   DowntimeActivityType,
@@ -53,7 +54,7 @@ let idCounter = 0;
 /**
  * Creates a test task with sensible defaults.
  */
-function createTestTask(overrides: Partial<DowntimeTask> = {}): DowntimeTask {
+function createTestTask(overrides: Partial<Omit<DowntimeTask, 'activityData'>> & { activityData?: unknown } = {}): DowntimeTask {
   const id = overrides.id ?? `task-${++idCounter}`;
   const now = Date.now();
 
@@ -72,11 +73,11 @@ function createTestTask(overrides: Partial<DowntimeTask> = {}): DowntimeTask {
       toolIds: [],
       skillModifier: 0,
       targetYield: 1,
-    } as FishingData,
+    } as unknown as FishingData,
     createdAt: now,
     updatedAt: now,
     ...overrides,
-  };
+  } as DowntimeTask;
 }
 
 /**
@@ -696,7 +697,7 @@ describe('getTargetKeyFromActivityData', () => {
       targetYield: 1,
     };
 
-    const result = getTargetKeyFromActivityData('fishing', activityData);
+    const result = getTargetKeyFromActivityData('fishing', activityData as unknown as ActivityData);
 
     expect(result).toBe('species:trout');
   });
@@ -762,7 +763,7 @@ describe('getTargetKeyFromActivityData', () => {
       progressRequired: 10,
     };
 
-    const result = getTargetKeyFromActivityData('crafting', activityData);
+    const result = getTargetKeyFromActivityData('crafting', activityData as unknown as ActivityData);
 
     expect(result).toBe('project:sword-project');
   });
@@ -1207,7 +1208,7 @@ function createResolvedTask(options: FatigueTaskOptions): DowntimeTask {
           toolIds: [],
           skillModifier: 0,
           targetYield: 1,
-        } as FishingData);
+        } as unknown as FishingData);
 
   return {
     id: `resolved-${++idCounter}`,
@@ -1250,7 +1251,7 @@ function createPendingTask(options: FatigueTaskOptions): DowntimeTask {
           toolIds: [],
           skillModifier: 0,
           targetYield: 1,
-        } as FishingData);
+        } as unknown as FishingData);
 
   return {
     id: `pending-${++idCounter}`,
@@ -1293,7 +1294,7 @@ function createCancelledTask(options: FatigueTaskOptions): DowntimeTask {
           toolIds: [],
           skillModifier: 0,
           targetYield: 1,
-        } as FishingData);
+        } as unknown as FishingData);
 
   return {
     id: `cancelled-${++idCounter}`,

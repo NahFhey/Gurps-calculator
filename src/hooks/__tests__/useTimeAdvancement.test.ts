@@ -30,7 +30,7 @@ function createTestTask(overrides: Partial<DowntimeTask> = {}): DowntimeTask {
       toolIds: [],
       skillModifier: 0,
       targetYield: 1,
-    } as FishingData,
+    } as unknown as FishingData,
     createdAt: now,
     updatedAt: now,
     ...overrides,

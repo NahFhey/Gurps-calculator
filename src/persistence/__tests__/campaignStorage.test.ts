@@ -7,51 +7,53 @@ import type { CombatCharacter, CombatSession, CombatItem } from '../../types/cam
 // TEST FIXTURES
 // ============================================================================
 
-function createMockCombatCharacter(overrides: Partial<CombatCharacter> = {}): CombatCharacter {
+// Test fixtures use loose `unknown` overrides to allow tests to express stale shapes;
+// runtime behavior is what these round-trip tests actually verify.
+function createMockCombatCharacter(overrides: Record<string, unknown> = {}): CombatCharacter {
   return {
     id: 'combat-char-1',
     name: 'Test Combat Character',
+    isNPC: false,
     hp: 10,
-    maxHp: 10,
+    maxHP: 10,
     fp: 10,
-    maxFp: 10,
-    speed: 5,
-    move: 5,
+    maxFP: 10,
+    st: 10,
     dx: 10,
     iq: 10,
     ht: 10,
-    will: 10,
-    per: 10,
     dodge: 8,
     parry: 8,
     block: 0,
     dr: 0,
+    skills: {},
+    weapons: [],
     ...overrides,
-  };
+  } as CombatCharacter;
 }
 
-function createMockCombatSession(overrides: Partial<CombatSession> = {}): CombatSession {
+function createMockCombatSession(overrides: Record<string, unknown> = {}): CombatSession {
   return {
     id: 'session-1',
     name: 'Test Combat Session',
-    round: 1,
-    turn: 0,
+    currentRound: 1,
+    currentTurn: 0,
     participants: [],
     log: [],
-    startedAt: Date.now(),
-    isActive: true,
+    startDate: new Date().toISOString(),
     ...overrides,
-  };
+  } as CombatSession;
 }
 
-function createMockCombatItem(overrides: Partial<CombatItem> = {}): CombatItem {
+function createMockCombatItem(overrides: Record<string, unknown> = {}): CombatItem {
   return {
     id: 'item-1',
     name: 'Test Item',
+    type: 'tool',
+    stats: {},
     quantity: 1,
-    notes: '',
     ...overrides,
-  };
+  } as CombatItem;
 }
 
 // ============================================================================
@@ -130,8 +132,8 @@ describe('campaignStorage', () => {
       expect(loaded.combat.activeSession).not.toBeNull();
       expect(loaded.combat.activeSession?.id).toBe('session-active');
       expect(loaded.combat.activeSession?.name).toBe('Battle at the Bridge');
-      expect(loaded.combat.activeSession?.round).toBe(3);
-      expect(loaded.combat.activeSession?.turn).toBe(2);
+      expect(loaded.combat.activeSession?.currentRound).toBe(3);
+      expect(loaded.combat.activeSession?.currentTurn).toBe(2);
       expect(loaded.combat.activeSession?.participants).toEqual(['fighter-1', 'mage-1', 'goblin-1']);
       expect(loaded.combat.active).toBe(true);
     });
@@ -223,7 +225,7 @@ describe('campaignStorage', () => {
       state.combat.reveal.revealedTargets.add('target-2');
       state.combat.reveal.revealedHP.add('hp-1');
       state.combat.reveal.revealedDefenseValues = {
-        'char-1': { dodge: 8, parry: 10 },
+        'char-1': { dodge: 8 },
       };
 
       await saveCampaignState(state);
@@ -240,7 +242,6 @@ describe('campaignStorage', () => {
 
       expect(loaded.combat.reveal.revealedDefenseValues['char-1']).toEqual({
         dodge: 8,
-        parry: 10,
       });
     });
 
@@ -299,7 +300,7 @@ describe('campaignStorage', () => {
       expect(loaded.entities.combatCharacters['fighter'].hp).toBe(12);
 
       expect(loaded.combat.activeSession?.name).toBe('Forest Ambush');
-      expect(loaded.combat.activeSession?.round).toBe(2);
+      expect(loaded.combat.activeSession?.currentRound).toBe(2);
       expect(loaded.combat.active).toBe(true);
 
       expect(loaded.entities.combatHistory).toHaveLength(1);

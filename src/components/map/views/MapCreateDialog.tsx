@@ -2,7 +2,7 @@
  * MapCreateDialog — modal for creating a new map.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import type { MapScale, TerrainId } from '../../../types/map';
 import { MAP_SCALES, createPresetTerrains } from '../../../constants/map';
 import { X } from 'lucide-react';
@@ -25,7 +25,21 @@ export function MapCreateDialog({ onConfirm, onCancel }: MapCreateDialogProps) {
   const [scale, setScale] = useState<MapScale>(12);
   const [startTerrainId, setStartTerrainId] = useState<TerrainId>(presetTerrains[0].id);
 
+  const titleId = useId();
+  const nameInputId = useId();
+  const descriptionInputId = useId();
+  const scaleGroupId = useId();
+  const terrainGroupId = useId();
+
   const canConfirm = name.trim().length > 0;
+
+  useEffect(() => {
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') onCancel();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onCancel]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,15 +54,22 @@ export function MapCreateDialog({ onConfirm, onCancel }: MapCreateDialogProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-full max-w-md bg-gray-800 border border-gray-600 rounded-lg shadow-2xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="w-full max-w-md bg-gray-800 border border-gray-600 rounded-lg shadow-2xl"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-100">Create New Map</h2>
+          <h2 id={titleId} className="text-lg font-semibold text-gray-100">Create New Map</h2>
           <button
+            type="button"
             onClick={onCancel}
+            aria-label="Close dialog"
             className="p-1 rounded hover:bg-gray-700 transition-colors"
           >
-            <X className="w-4 h-4 text-gray-400" />
+            <X className="w-4 h-4 text-gray-400" aria-hidden="true" />
           </button>
         </div>
 
@@ -56,14 +77,17 @@ export function MapCreateDialog({ onConfirm, onCancel }: MapCreateDialogProps) {
         <form onSubmit={handleSubmit} className="px-4 py-4 space-y-4">
           {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Map Name <span className="text-red-400">*</span>
+            <label htmlFor={nameInputId} className="block text-sm font-medium text-gray-300 mb-1">
+              Map Name <span className="text-red-400" aria-hidden="true">*</span>
             </label>
             <input
+              id={nameInputId}
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Thornwood Region"
+              required
+              aria-required="true"
               className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
               autoFocus
             />
@@ -71,10 +95,11 @@ export function MapCreateDialog({ onConfirm, onCancel }: MapCreateDialogProps) {
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
+            <label htmlFor={descriptionInputId} className="block text-sm font-medium text-gray-300 mb-1">
               Description
             </label>
             <input
+              id={descriptionInputId}
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -84,8 +109,8 @@ export function MapCreateDialog({ onConfirm, onCancel }: MapCreateDialogProps) {
           </div>
 
           {/* Scale */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+          <div role="radiogroup" aria-labelledby={scaleGroupId}>
+            <label id={scaleGroupId} className="block text-sm font-medium text-gray-300 mb-2">
               Scale
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -93,6 +118,9 @@ export function MapCreateDialog({ onConfirm, onCancel }: MapCreateDialogProps) {
                 <button
                   key={s.value}
                   type="button"
+                  role="radio"
+                  aria-checked={scale === s.value}
+                  aria-label={`${s.value} miles per tile — ${s.description}`}
                   className={[
                     'px-3 py-2 rounded text-xs font-medium border transition-colors',
                     scale === s.value
@@ -109,8 +137,8 @@ export function MapCreateDialog({ onConfirm, onCancel }: MapCreateDialogProps) {
           </div>
 
           {/* Starting Terrain */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+          <div role="radiogroup" aria-labelledby={terrainGroupId}>
+            <label id={terrainGroupId} className="block text-sm font-medium text-gray-300 mb-2">
               Starting Terrain
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -118,6 +146,9 @@ export function MapCreateDialog({ onConfirm, onCancel }: MapCreateDialogProps) {
                 <button
                   key={t.id}
                   type="button"
+                  role="radio"
+                  aria-checked={startTerrainId === t.id}
+                  aria-label={`Starting terrain: ${t.name}`}
                   className={[
                     'flex items-center gap-2 px-2 py-1.5 rounded text-xs border transition-colors',
                     startTerrainId === t.id
@@ -127,6 +158,7 @@ export function MapCreateDialog({ onConfirm, onCancel }: MapCreateDialogProps) {
                   onClick={() => setStartTerrainId(t.id)}
                 >
                   <div
+                    aria-hidden="true"
                     className="w-3 h-3 rounded-sm border border-white/20"
                     style={{ backgroundColor: t.color }}
                   />
@@ -141,6 +173,7 @@ export function MapCreateDialog({ onConfirm, onCancel }: MapCreateDialogProps) {
             <button
               type="button"
               onClick={onCancel}
+              aria-label="Cancel and close dialog"
               className="px-4 py-2 text-sm text-gray-300 hover:text-gray-100 transition-colors"
             >
               Cancel
@@ -148,6 +181,7 @@ export function MapCreateDialog({ onConfirm, onCancel }: MapCreateDialogProps) {
             <button
               type="submit"
               disabled={!canConfirm}
+              aria-label="Create Map"
               className={[
                 'px-4 py-2 text-sm font-medium rounded transition-colors',
                 canConfirm

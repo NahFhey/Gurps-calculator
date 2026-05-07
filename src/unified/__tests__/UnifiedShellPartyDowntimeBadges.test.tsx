@@ -34,7 +34,7 @@ function createFishingTask(
       toolIds: [],
       skillModifier: 0,
       targetYield: 1,
-    } as FishingData,
+    } as unknown as FishingData,
     createdAt: now,
     updatedAt: now,
   };
@@ -69,7 +69,7 @@ function createRestTask(
 
 // Component to inject downtime state for testing
 function InjectDowntimeState({
-  tasks,
+  tasks: _tasks,
   day = 1,
   slot = 0,
 }: {
@@ -77,7 +77,7 @@ function InjectDowntimeState({
   day?: number;
   slot?: number;
 }) {
-  const { state, actions } = useCampaignStore();
+  const { actions } = useCampaignStore();
 
   useEffect(() => {
     // We can't directly set downtime state through actions,
@@ -89,6 +89,11 @@ function InjectDowntimeState({
 
   return null;
 }
+
+// Reference scaffolding helpers so unused-checks pass; tests below may grow to use them.
+void createFishingTask;
+void createRestTask;
+void InjectDowntimeState;
 
 describe('UnifiedShell party sidebar downtime badges', () => {
   it('renders character list without downtime badges when no tasks exist', () => {

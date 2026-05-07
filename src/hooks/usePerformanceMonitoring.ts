@@ -63,7 +63,9 @@ export interface MemoryStats {
   usedJSHeapSize?: number;
   totalJSHeapSize?: number;
   jsHeapSizeLimit?: number;
-  percent?: number;
+  percent?: number | string;
+  used?: number;
+  limit?: number;
 }
 
 // ============================================================================
@@ -91,7 +93,6 @@ export function useRenderPerformance(
 ): RenderPerformanceResult {
   const renderCountRef = useRef(0);
   const renderTimesRef = useRef<number[]>([]);
-  const _previousPropsRef = useRef<unknown>(null);
 
   renderCountRef.current += 1;
 

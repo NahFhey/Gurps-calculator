@@ -20,7 +20,11 @@ import {
   COMBAT_RULES_PRESET_SET,
   COMBAT_ITEMS_SET,
   COMBAT_ITEM_ADD,
-  COMBAT_REVEAL_STATE_SET
+  COMBAT_REVEAL_STATE_SET,
+  ENCOUNTER_TEMPLATE_ADD,
+  ENCOUNTER_TEMPLATE_UPDATE,
+  ENCOUNTER_TEMPLATE_REMOVE,
+  ENCOUNTER_TEMPLATES_SET
 } from './combatActions';
 
 /**
@@ -110,6 +114,30 @@ export function handleCombatAction(
     // ========================================================================
     case COMBAT_REVEAL_STATE_SET:
       draft.combat.revealState = action.payload;
+      return true;
+
+    // ========================================================================
+    // ENCOUNTER TEMPLATE ACTIONS (Phase 11c)
+    // ========================================================================
+    case ENCOUNTER_TEMPLATE_ADD:
+      draft.entities.encounterTemplates[action.payload.id] = action.payload;
+      return true;
+
+    case ENCOUNTER_TEMPLATE_UPDATE:
+      if (draft.entities.encounterTemplates[action.payload.id]) {
+        draft.entities.encounterTemplates[action.payload.id] = {
+          ...draft.entities.encounterTemplates[action.payload.id],
+          ...action.payload.changes
+        };
+      }
+      return true;
+
+    case ENCOUNTER_TEMPLATE_REMOVE:
+      delete draft.entities.encounterTemplates[action.payload];
+      return true;
+
+    case ENCOUNTER_TEMPLATES_SET:
+      draft.entities.encounterTemplates = action.payload;
       return true;
 
     default:

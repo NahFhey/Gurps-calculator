@@ -99,5 +99,5 @@ const CRAFTING_ACTION_TYPES = new Set([
 ]);
 
 export function isCraftingAction(action: { type: string }): action is CraftingAction {
-  return CRAFTING_ACTION_TYPES.has(action.type);
+  return CRAFTING_ACTION_TYPES.has(action.type as typeof CRAFT_ADD);
 }

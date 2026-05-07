@@ -115,7 +115,7 @@ export function ImportExportPanel({
       if (!result.ok) {
         setImportStatus({
           type: 'error',
-          message: result.error
+          message: result.error || 'Unknown error'
         });
         return;
       }

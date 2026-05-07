@@ -1,21 +1,36 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useCombatStore } from '../../hooks/useCombatStore';
-import { ConfirmDialog, useConfirmDialog, useToast } from '../ui';
-import { exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, createActionLogEntry, createInjuryLogEntry, createEffectLogEntry, createConditionLogEntry, createManeuverLogEntry, createReinforcementLogEntry, generateId, exportActiveCombat, parseImportedCombat, exportCombatPlayerView, exportCombatGMLocked, importCombatWithGMLock } from '../../utils/combatHelpers';
+import { useCombatExport } from '../../hooks/useCombatExport';
+import { useActionResolution } from '../../hooks/useActionResolution';
+import { useCombatConditions } from '../../hooks/useCombatConditions';
+import { useCombatReinforcements } from '../../hooks/useCombatReinforcements';
+import { useCombatHistory } from '../../hooks/useCombatHistory';
+import { ConfirmDialog, useConfirmDialog } from '../ui';
+import PostCombatSummary from './PostCombatSummary';
+import LootDistribution from './LootDistribution';
+import {
+  createResourceLogEntry,
+  createTurnLogEntry,
+  createNoteLogEntry,
+  createRollLogEntry,
+  createManeuverLogEntry,
+} from '../../utils/combatHelpers';
 import { MAX_COMBAT_HISTORY } from '../../constants';
 import { roll, rollVsTarget } from '../../utils/dice';
-import { createTurnAdvanceAction, createSetResourceAction, createAddLogEntryAction, createAddConditionAction, createRemoveConditionAction, createUpdateConditionAction, createSetTurnDecisionAction, createAddReinforcementsAction } from '../../utils/combatActions';
-import { addAction, canUndo, canRedo, undo, redo, createHistoryState, createSnapshot } from '../../utils/combatHistory';
-import { validateCombatState, validateCombatExport, validateCombatImport } from '../../utils/combatValidation';
-import { clearShock, applyEffect } from '../../utils/effectsEngine';
-import { getCombatView, ViewMode } from '../../utils/combatViewFilter';
 import {
-  createDefaultRevealForInstance,
+  createTurnAdvanceAction,
+  createSetResourceAction,
+  createAddLogEntryAction,
+  createSetTurnDecisionAction,
+  createReorderTurnOrderAction,
+} from '../../utils/combatActions';
+import {
+  validateCombatState,
+} from '../../utils/combatValidation';
+import { clearShock } from '../../utils/effectsEngine';
+import { getCombatView, ViewMode, type ViewModeType } from '../../utils/combatViewFilter';
+import {
   createInitialRevealState,
-  revealDefenseForInstance,
-  revealHPAtZero,
-  revealNameForInstance,
-  syncRevealStateForParticipants
 } from '../../utils/combatReveal';
 import { filterLogForPlayerView } from '../../utils/combatLogFilter';
 import { tickConditionsTurn, tickConditionsRound } from '../../utils/conditionsEngine';
@@ -29,37 +44,27 @@ import ManeuverSelector from './ManeuverSelector';
 import ReinforcementsModal from './ReinforcementsModal';
 import {
   CombatHeaderView,
-  TurnControlsView,
   DicePanelView,
   ParticipantListView,
-  CombatLogView
+  CombatLogView,
+  InitiativeTimeline,
 } from './views';
 import type {
   Participant,
   LogEntry,
-  RollData,
   CombatState,
   TurnDecision,
-  HistoryState,
   RevealState,
-  RevealEntry,
   Maneuver,
   TurnContext,
-  ReinforcementData,
-  Character,
   ConditionInstance,
-  ConditionDuration,
-  ActionCompleteData
 } from '../../types/combatTracker';
 
+
 // ============================================================================
-// CombatTracker Component
+// CombatTracker Component — Phase 11a (decomposed)
 // ============================================================================
 
-/**
- * Combat Tracker Component - Phase 3
- * Active combat management with turn tracking, resource management, logging, dice tools, undo/redo, and action assist
- */
 export default function CombatTracker() {
   const {
     combatCharacters,
@@ -69,30 +74,24 @@ export default function CombatTracker() {
     saveCombatHistory,
     combatRulesPreset,
     combatReveal,
-    saveCombatReveal
+    saveCombatReveal,
   } = useCombatStore();
 
-  // TODO: Remove these stubs after completing combat state migration
-  // These are legacy variables that were removed but still referenced
-  const combatActiveHistory: HistoryState | null = null;
-  const saveCombatActiveHistory = (_history: HistoryState) => {
-    console.warn('saveCombatActiveHistory: not implemented - history is managed internally');
-  };
+  // Post-combat flow state (Phase 11c)
+  type PostCombatPhase = 'active' | 'summary' | 'loot';
+  const [postCombatPhase, setPostCombatPhase] = useState<PostCombatPhase>('active');
+  const [endedCombatSnapshot, setEndedCombatSnapshot] = useState<CombatState | null>(null);
 
+  // Local UI state
   const [noteText, setNoteText] = useState('');
   const [diceExpression, setDiceExpression] = useState('3d6');
   const [rollTarget, setRollTarget] = useState('');
   const [showDicePanel, setShowDicePanel] = useState(false);
   const [showActionPanel, setShowActionPanel] = useState(true);
   const [showReinforcementsModal, setShowReinforcementsModal] = useState(false);
-
-  // Phase 5: View mode and GM mode (session-only state)
-  const [viewMode, setViewMode] = useState(ViewMode.PLAYER);
+  const [viewMode, setViewMode] = useState<ViewModeType>(ViewMode.PLAYER);
   const [gmMode, setGmMode] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
-
-  // Toast notifications
-  const { error: showError } = useToast();
 
   // Confirm dialogs
   const endCombatDialog = useConfirmDialog({
@@ -110,77 +109,72 @@ export default function CombatTracker() {
   });
 
   const combat = combatActive as CombatState | null;
-  const history = createHistoryState() as HistoryState;
   const reveal = combatReveal as RevealState | null;
 
-  // Migrate Phase 1 combat on load if needed
+  // Persistent undo/redo history (extracted hook — Phase 11a)
+  const { history, recordAction, handleUndo, handleRedo } = useCombatHistory();
+
+  // --------------------------------------------------------------------------
+  // Lifecycle effects
+  // --------------------------------------------------------------------------
+
+  // Migrate Phase 1 combat on load
   useEffect(() => {
     if (combat && !combat.version) {
-      // Phase 1 detected, migrate
       const migrated = validateCombatState(combat) as { valid: boolean; combat: CombatState };
       if (migrated.valid) {
         saveCombatActive(migrated.combat);
-
-        // Create empty history if none exists
-        if (!combatActiveHistory) {
-          saveCombatActiveHistory(createHistoryState());
-        }
       }
     }
   }, [combat]);
 
-  // Phase 5: Force Player View when GM Mode locks
+  // Force Player View when GM Mode locks
   useEffect(() => {
     if (!gmMode && viewMode === ViewMode.GM) {
       setViewMode(ViewMode.PLAYER);
     }
   }, [gmMode]);
 
-  // Phase 5: Initialize reveal state if missing
+  // Initialize reveal state if missing
   useEffect(() => {
     if (combat && !reveal) {
-      const initialReveal = createInitialRevealState(
-        combat.id,
-        combat.participants
-      );
+      const initialReveal = createInitialRevealState(combat.id, combat.participants) as any;
       saveCombatReveal(initialReveal);
     }
   }, [combat, reveal]);
+
+  // --------------------------------------------------------------------------
+  // Early returns
+  // --------------------------------------------------------------------------
 
   if (!combat) {
     return <div className="text-center text-gray-400 py-8">No active combat</div>;
   }
 
-  // Ensure combat has required properties
   if (!combat.participants || !combat.turnOrder) {
     return <div className="text-center text-gray-400 py-8">Invalid combat state - missing participants or turn order</div>;
   }
-  // Use defensive fallback for log
+
+  // --------------------------------------------------------------------------
+  // Derived state
+  // --------------------------------------------------------------------------
+
   const combatLog = combat.log || [];
-
-  // Phase 5: Compute view model (filters based on reveal state + view mode)
-  const combatView = getCombatView(combat, reveal, viewMode) as { participants: Participant[] };
-
-  // Phase 5: Filter log for Player View
+  const combatView = getCombatView(combat, reveal ?? undefined, viewMode) as { participants: Participant[] };
   const displayLog = viewMode === ViewMode.PLAYER && reveal
     ? filterLogForPlayerView(combatLog, reveal, combat) as LogEntry[]
     : combatLog;
 
   const currentActorInstanceId = combat.turnOrder[combat.currentTurnIndex];
-  // Use combatView for display (respects reveal state)
   const currentActor = combatView.participants.find(p => p.instanceId === currentActorInstanceId);
-  // Use combat for truth state (for actions/modifications)
   const currentActorTruth = combat.participants.find(p => p.instanceId === currentActorInstanceId);
-
-  // Get base state (combat at start, before any actions)
-  const baseState = createSnapshot(combat);
 
   const turnDecisionKey = currentActorInstanceId
     ? `${combat.currentRound}_${combat.currentTurnIndex}_${currentActorInstanceId}`
     : null;
   const turnDecisions = combat.turnDecisions || {};
   const currentTurnDecision = turnDecisionKey ? (turnDecisions[turnDecisionKey] || {}) : {};
-  const turnContext = deriveTurnContext(currentActorTruth) as TurnContext;
+  const turnContext = deriveTurnContext(currentActorTruth ?? null) as TurnContext;
   const availableManeuvers = filterManeuvers(ManeuverCatalog as Maneuver[], turnContext, (combatRulesPreset as string) || 'standard') as Maneuver[];
   const selectedManeuverId = currentTurnDecision?.maneuverId || null;
   const selectedManeuver = (ManeuverCatalog as Maneuver[]).find(m => m.id === selectedManeuverId) || null;
@@ -190,152 +184,83 @@ export default function CombatTracker() {
 
   const isEnemyInPlayerView = viewMode === ViewMode.PLAYER && currentActor?.category === 'enemy';
 
-  // ============================================================================
-  // Action Helpers
-  // ============================================================================
-
-  /**
-   * Record an action and update state
-   * Phase 5: Also pass reveal state to create checkpoints with it
-   */
-  const recordAction = (action: unknown) => {
-    const newHistory = addAction(history, action, combat, reveal);
-    saveCombatActiveHistory(newHistory);
-  };
-
-  const buildRevealUpdate = (previousReveal: RevealState | null, nextReveal: RevealState | null, instanceId: string | null) => {
-    if (!previousReveal || !nextReveal || !instanceId) return null;
-    const previousEntry = previousReveal.byInstanceId?.[instanceId];
-    const nextEntry = nextReveal.byInstanceId?.[instanceId];
-    if (JSON.stringify(previousEntry) === JSON.stringify(nextEntry)) {
-      return null;
-    }
-    return { set: { [instanceId]: nextEntry } };
-  };
-
-  const buildAutoTurnOrder = (participants: Participant[]): string[] => {
-    const activeCombatants = participants.filter(p => p.category !== 'object');
-    const sorted = [...activeCombatants].sort((a, b) => {
-      if (b.basicSpeed !== a.basicSpeed) return b.basicSpeed - a.basicSpeed;
-      if (b.dx !== a.dx) return b.dx - a.dx;
-      return a.name.localeCompare(b.name);
-    });
-    return sorted.map(p => p.instanceId);
-  };
-
-  const insertAfterIndex = (order: string[], index: number, newIds: string[]): string[] => {
-    const nextIndex = Math.min(order.length, index + 1);
-    return [...order.slice(0, nextIndex), ...newIds, ...order.slice(nextIndex)];
-  };
+  // --------------------------------------------------------------------------
+  // Action helpers
+  // --------------------------------------------------------------------------
 
   const normalizeTurnDecision = (decision: TurnDecision | null): TurnDecision | null => {
     if (!decision) return null;
-
     const hasManeuver = Boolean(decision.maneuverId);
     const hasNotes = Boolean(decision.notes && decision.notes.trim());
     const hasAim = Boolean(decision.aim?.targetInstanceId || decision.aim?.turnsAimed);
     const hasWait = Boolean(decision.wait?.triggerText && decision.wait.triggerText.trim());
-
-    if (!hasManeuver && !hasNotes && !hasAim && !hasWait) {
-      return null;
-    }
-
+    if (!hasManeuver && !hasNotes && !hasAim && !hasWait) return null;
     return {
       ...decision,
       notes: decision.notes || undefined,
       aim: decision.aim || undefined,
-      wait: decision.wait || undefined
+      wait: decision.wait || undefined,
     };
   };
 
   const updateTurnDecisionState = (previousDecision: TurnDecision | null, nextDecision: TurnDecision | null) => {
     if (!turnDecisionKey) return;
-
     const normalizedDecision = normalizeTurnDecision(nextDecision);
     const updatedTurnDecisions = { ...turnDecisions };
-
     if (normalizedDecision) {
       updatedTurnDecisions[turnDecisionKey] = normalizedDecision;
     } else {
       delete updatedTurnDecisions[turnDecisionKey];
     }
-
-    saveCombatActive({
-      ...combat,
-      turnDecisions: updatedTurnDecisions
-    });
-
+    saveCombatActive({ ...combat, turnDecisions: updatedTurnDecisions });
     recordAction(createSetTurnDecisionAction(turnDecisionKey, previousDecision || null, normalizedDecision));
   };
 
-  // ============================================================================
-  // Undo/Redo Handlers
-  // ============================================================================
+  // --------------------------------------------------------------------------
+  // Extracted hooks
+  // --------------------------------------------------------------------------
 
-  const handleUndo = () => {
-    if (!canUndo(history)) return;
+  const exportActions = useCombatExport(viewMode, history);
 
-    // Phase 5: Pass and restore reveal state
-    const result = undo(baseState, history, combat, reveal) as {
-      newCombatState: CombatState;
-      newHistory: HistoryState;
-      newRevealState?: RevealState;
-    };
-    saveCombatActive(result.newCombatState);
-    saveCombatActiveHistory(result.newHistory);
-    if (result.newRevealState) {
-      const syncedReveal = syncRevealStateForParticipants(result.newRevealState, result.newCombatState.participants);
-      saveCombatReveal(syncedReveal);
-    }
-  };
+  const { handleActionComplete } = useActionResolution({
+    combat,
+    reveal,
+    currentActorInstanceId,
+    currentActorName: currentActor?.name ?? 'Unknown',
+    selectedManeuver: selectedManeuverId,
+    recordAction,
+  });
 
-  const handleRedo = () => {
-    if (!canRedo(history)) return;
+  const { handleAddCondition, handleRemoveCondition, handleUpdateCondition } =
+    useCombatConditions({ combat, currentActorTruth, recordAction });
 
-    // Phase 5: Pass and restore reveal state
-    const result = redo(baseState, history, combat, reveal) as {
-      newCombatState: CombatState;
-      newHistory: HistoryState;
-      newRevealState?: RevealState;
-    };
-    saveCombatActive(result.newCombatState);
-    saveCombatActiveHistory(result.newHistory);
-    if (result.newRevealState) {
-      const syncedReveal = syncRevealStateForParticipants(result.newRevealState, result.newCombatState.participants);
-      saveCombatReveal(syncedReveal);
-    }
-  };
+  const { handleAddReinforcements } = useCombatReinforcements({
+    combat,
+    reveal,
+    recordAction,
+  });
 
-  // ============================================================================
-  // Turn Management
-  // ============================================================================
+  // --------------------------------------------------------------------------
+  // Turn management
+  // --------------------------------------------------------------------------
 
   const handleNextTurn = () => {
-    const fromRound = combat.currentRound;
-    const fromTurnIndex = combat.currentTurnIndex;
-
     const nextIndex = combat.currentTurnIndex + 1;
     const isNewRound = nextIndex >= combat.turnOrder.length;
-
     const toTurnIndex = isNewRound ? 0 : nextIndex;
     const toRound = isNewRound ? combat.currentRound + 1 : combat.currentRound;
 
-    // Create TURN_ADVANCE action
-    const action = createTurnAdvanceAction(fromRound, fromTurnIndex, toRound, toTurnIndex);
+    const action = createTurnAdvanceAction(combat.currentRound, combat.currentTurnIndex, toRound, toTurnIndex);
 
-    // Get next actor and clear shock penalty (Phase 4)
     const nextActorInstanceId = combat.turnOrder[toTurnIndex];
     const nextActor = combat.participants.find(p => p.instanceId === nextActorInstanceId);
 
-    // Clear shock penalty on turn start
     let updatedParticipants = combat.participants.map(p =>
       p.instanceId === nextActorInstanceId ? clearShock(p) as Participant : p
     );
 
-    // Phase 6: Tick conditions
     const expiredConditions: Array<{ participant: Participant; condition: ConditionInstance }> = [];
 
-    // If new round, tick round-based conditions for ALL participants
     if (isNewRound) {
       updatedParticipants = updatedParticipants.map(p => {
         const result = tickConditionsRound(p, toRound) as { combatant: Participant; expired: ConditionInstance[] };
@@ -346,306 +271,155 @@ export default function CombatTracker() {
       });
     }
 
-    // Tick turn-based conditions for the next actor
     const nextActorUpdated = updatedParticipants.find(p => p.instanceId === nextActorInstanceId);
     if (nextActorUpdated) {
       const result = tickConditionsTurn(nextActorUpdated, toRound) as { combatant: Participant; expired: ConditionInstance[] };
       if (result.expired.length > 0) {
         expiredConditions.push(...result.expired.map(c => ({ participant: nextActorUpdated, condition: c })));
       }
-
-      // Replace in array
       updatedParticipants = updatedParticipants.map(p =>
         p.instanceId === nextActorInstanceId ? result.combatant : p
       );
     }
 
-    // Apply to state immediately
     const newCombat: CombatState = {
       ...combat,
       currentRound: toRound,
       currentTurnIndex: toTurnIndex,
-      participants: updatedParticipants
+      participants: updatedParticipants,
     };
 
     saveCombatActive(newCombat);
     recordAction(action);
 
-    // Add log entries for new round and new turn
     const logEntries: LogEntry[] = [];
-
     if (isNewRound) {
-      const roundLogEntry = createTurnLogEntry(toRound, toTurnIndex, null, `=== Round ${toRound} ===`);
-      const roundAction = createAddLogEntryAction(roundLogEntry);
-      recordAction(roundAction);
+      const roundLogEntry = createTurnLogEntry(toRound, toTurnIndex, null as any, `=== Round ${toRound} ===`);
+      recordAction(createAddLogEntryAction(roundLogEntry));
       logEntries.push(roundLogEntry);
     }
 
-    const turnLogEntry = createTurnLogEntry(toRound, toTurnIndex, nextActorInstanceId, nextActor?.name);
-    const turnAction = createAddLogEntryAction(turnLogEntry);
-    recordAction(turnAction);
+    const turnLogEntry = createTurnLogEntry(toRound, toTurnIndex, nextActorInstanceId, nextActor?.name ?? 'Unknown');
+    recordAction(createAddLogEntryAction(turnLogEntry));
     logEntries.push(turnLogEntry);
 
-    // Phase 6: Add expired condition log entries
     for (const { participant, condition } of expiredConditions) {
-      const condLogEntry = createConditionLogEntry({
-        round: toRound,
-        turn: toTurnIndex,
-        targetInstanceId: participant.instanceId,
-        targetName: participant.name,
-        changeType: 'expired',
-        conditionId: condition.conditionId,
-        conditionLabel: condition.label
-      });
-      const condAction = createAddLogEntryAction(condLogEntry);
-      recordAction(condAction);
+      const condLogEntry = createTurnLogEntry(
+        toRound,
+        toTurnIndex,
+        participant.instanceId,
+        `${condition.label} expired on ${participant.name}`
+      );
+      recordAction(createAddLogEntryAction(condLogEntry));
       logEntries.push(condLogEntry);
     }
 
-    // Update state with new logs
     saveCombatActive((prev: CombatState) => ({
       ...prev,
-      log: [...prev.log, ...logEntries]
+      log: [...prev.log, ...logEntries],
     }));
   };
 
   const handlePrevTurn = () => {
-    const fromRound = combat.currentRound;
-    const fromTurnIndex = combat.currentTurnIndex;
-
     const prevIndex = combat.currentTurnIndex - 1;
     const isPrevRound = prevIndex < 0;
-
     const toTurnIndex = isPrevRound ? combat.turnOrder.length - 1 : prevIndex;
     const toRound = isPrevRound ? Math.max(1, combat.currentRound - 1) : combat.currentRound;
 
-    // Create TURN_ADVANCE action
-    const action = createTurnAdvanceAction(fromRound, fromTurnIndex, toRound, toTurnIndex);
+    const action = createTurnAdvanceAction(combat.currentRound, combat.currentTurnIndex, toRound, toTurnIndex);
 
-    // Apply to state
-    const newCombat: CombatState = {
+    saveCombatActive({
       ...combat,
       currentRound: toRound,
-      currentTurnIndex: toTurnIndex
-    };
-
-    saveCombatActive(newCombat);
+      currentTurnIndex: toTurnIndex,
+    });
     recordAction(action);
   };
 
-  // ============================================================================
-  // Resource Management
-  // ============================================================================
+  const handleJumpToTurn = (targetIndex: number) => {
+    if (targetIndex === combat.currentTurnIndex) return;
+    if (targetIndex < 0 || targetIndex >= combat.turnOrder.length) return;
+
+    const action = createTurnAdvanceAction(
+      combat.currentRound, combat.currentTurnIndex,
+      combat.currentRound, targetIndex
+    );
+
+    saveCombatActive({
+      ...combat,
+      currentTurnIndex: targetIndex,
+    });
+    recordAction(action);
+  };
+
+  const handleReorderTurnOrder = (newTurnOrder: string[]) => {
+    const oldTurnOrder = combat.turnOrder;
+    if (JSON.stringify(oldTurnOrder) === JSON.stringify(newTurnOrder)) return;
+
+    // Track the current actor so their turn isn't lost after reorder
+    const currentActorId = oldTurnOrder[combat.currentTurnIndex];
+    const newCurrentIndex = newTurnOrder.indexOf(currentActorId);
+
+    const action = createReorderTurnOrderAction(oldTurnOrder, newTurnOrder);
+    const updatedIndex = newCurrentIndex >= 0 ? newCurrentIndex : combat.currentTurnIndex;
+
+    // Log the reorder so the GM can see what changed
+    const logEntry = createNoteLogEntry(
+      combat.currentRound, updatedIndex, null, null, 'Turn order changed (drag reorder)'
+    );
+
+    saveCombatActive({
+      ...combat,
+      turnOrder: newTurnOrder,
+      currentTurnIndex: updatedIndex,
+      log: [...combat.log, logEntry],
+    });
+    recordAction(action);
+    recordAction(createAddLogEntryAction(logEntry));
+  };
+
+  // --------------------------------------------------------------------------
+  // Resource management
+  // --------------------------------------------------------------------------
 
   const updateResource = (instanceId: string, resource: string, newValue: number) => {
     const participant = combat.participants.find(p => p.instanceId === instanceId);
     if (!participant) return;
 
     const resourceKey = `current${resource}` as keyof Participant;
-    const oldValue = participant[resourceKey] as number | undefined;
+    const oldValue = (participant[resourceKey] as number | undefined) ?? 0;
     if (oldValue === newValue) return;
 
-    // Create SET_RESOURCE action
-    const resourceAction = createSetResourceAction(instanceId, resource, oldValue, newValue);
-
-    // Apply to state
+    const resourceAction = createSetResourceAction(instanceId, resource as "HP" | "FP" | "MP", oldValue, newValue);
     const updatedParticipants = combat.participants.map(p =>
-      p.instanceId === instanceId
-        ? { ...p, [resourceKey]: newValue }
-        : p
+      p.instanceId === instanceId ? { ...p, [resourceKey]: newValue } : p
     );
 
-    const newCombat: CombatState = {
-      ...combat,
-      participants: updatedParticipants
-    };
-
-    saveCombatActive(newCombat);
+    saveCombatActive({ ...combat, participants: updatedParticipants });
     recordAction(resourceAction);
 
-    // Create log entry
     const logEntry = createResourceLogEntry(
-      combat.currentRound,
-      combat.currentTurnIndex,
-      instanceId,
-      participant.name,
-      resource,
-      oldValue,
-      newValue
+      combat.currentRound, combat.currentTurnIndex,
+      instanceId, participant.name, resource as "HP" | "FP" | "MP", oldValue, newValue
     );
-
-    const logAction = createAddLogEntryAction(logEntry);
-
-    // Update state with log
     saveCombatActive((prev: CombatState) => ({
       ...prev,
-      log: [...prev.log, logEntry]
+      log: [...prev.log, logEntry],
     }));
-
-    recordAction(logAction);
+    recordAction(createAddLogEntryAction(logEntry));
   };
 
-  // ============================================================================
-  // Phase 6: Condition Management
-  // ============================================================================
-
-  const handleAddCondition = (conditionInstance: ConditionInstance) => {
-    if (!currentActorTruth) return;
-
-    // Create ADD_CONDITION action
-    const conditionAction = createAddConditionAction(currentActorTruth.instanceId, conditionInstance);
-
-    // Apply to state
-    const updatedParticipants = combat.participants.map(p => {
-      if (p.instanceId === currentActorTruth.instanceId) {
-        const conditions = p.conditions || [];
-        return {
-          ...p,
-          conditions: [...conditions, conditionInstance]
-        };
-      }
-      return p;
-    });
-
-    const newCombat: CombatState = {
-      ...combat,
-      participants: updatedParticipants
-    };
-
-    saveCombatActive(newCombat);
-    recordAction(conditionAction);
-
-    // Create log entry
-    const logEntry = createConditionLogEntry({
-      round: combat.currentRound,
-      turn: combat.currentTurnIndex,
-      targetInstanceId: currentActorTruth.instanceId,
-      targetName: currentActorTruth.name,
-      changeType: 'applied',
-      conditionId: conditionInstance.conditionId,
-      conditionLabel: conditionInstance.label,
-      duration: conditionInstance.duration,
-      source: conditionInstance.source
-    });
-
-    const logAction = createAddLogEntryAction(logEntry);
-
-    saveCombatActive((prev: CombatState) => ({
-      ...prev,
-      log: [...prev.log, logEntry]
-    }));
-
-    recordAction(logAction);
-  };
-
-  const handleRemoveCondition = (conditionInstanceId: string) => {
-    if (!currentActorTruth) return;
-
-    // Find the condition being removed
-    const conditions = currentActorTruth.conditions || [];
-    const conditionToRemove = conditions.find(c => c.instanceId === conditionInstanceId);
-    if (!conditionToRemove) return;
-
-    // Create REMOVE_CONDITION action
-    const conditionAction = createRemoveConditionAction(currentActorTruth.instanceId, conditionToRemove);
-
-    // Apply to state
-    const updatedParticipants = combat.participants.map(p => {
-      if (p.instanceId === currentActorTruth.instanceId) {
-        return {
-          ...p,
-          conditions: (p.conditions || []).filter(c => c.instanceId !== conditionInstanceId)
-        };
-      }
-      return p;
-    });
-
-    const newCombat: CombatState = {
-      ...combat,
-      participants: updatedParticipants
-    };
-
-    saveCombatActive(newCombat);
-    recordAction(conditionAction);
-
-    // Create log entry
-    const logEntry = createConditionLogEntry({
-      round: combat.currentRound,
-      turn: combat.currentTurnIndex,
-      targetInstanceId: currentActorTruth.instanceId,
-      targetName: currentActorTruth.name,
-      changeType: 'removed',
-      conditionId: conditionToRemove.conditionId,
-      conditionLabel: conditionToRemove.label
-    });
-
-    const logAction = createAddLogEntryAction(logEntry);
-
-    saveCombatActive((prev: CombatState) => ({
-      ...prev,
-      log: [...prev.log, logEntry]
-    }));
-
-    recordAction(logAction);
-  };
-
-  const handleUpdateCondition = (conditionInstanceId: string, newDuration: ConditionDuration) => {
-    if (!currentActorTruth) return;
-
-    // Find the condition being updated
-    const conditions = currentActorTruth.conditions || [];
-    const conditionToUpdate = conditions.find(c => c.instanceId === conditionInstanceId);
-    if (!conditionToUpdate) return;
-
-    // Create updated condition
-    const updatedCondition: ConditionInstance = {
-      ...conditionToUpdate,
-      duration: newDuration
-    };
-
-    // Create UPDATE_CONDITION action
-    const conditionAction = createUpdateConditionAction(
-      currentActorTruth.instanceId,
-      conditionInstanceId,
-      conditionToUpdate,
-      updatedCondition
-    );
-
-    // Apply to state
-    const updatedParticipants = combat.participants.map(p => {
-      if (p.instanceId === currentActorTruth.instanceId) {
-        return {
-          ...p,
-          conditions: (p.conditions || []).map(c =>
-            c.instanceId === conditionInstanceId ? updatedCondition : c
-          )
-        };
-      }
-      return p;
-    });
-
-    const newCombat: CombatState = {
-      ...combat,
-      participants: updatedParticipants
-    };
-
-    saveCombatActive(newCombat);
-    recordAction(conditionAction);
-  };
-
-  // ============================================================================
-  // Phase 7: Maneuver Selection
-  // ============================================================================
+  // --------------------------------------------------------------------------
+  // Maneuver selection
+  // --------------------------------------------------------------------------
 
   const handleSelectManeuver = (maneuverId: string | null) => {
     if (!currentActorTruth || !turnDecisionKey) return;
-
     const previousDecision = turnDecisions[turnDecisionKey] || null;
     const nextDecision: TurnDecision = {
       ...(previousDecision || {}),
-      maneuverId: maneuverId || undefined
+      maneuverId: maneuverId || undefined,
     };
-
     updateTurnDecisionState(previousDecision, nextDecision);
 
     if (!maneuverId) return;
@@ -665,757 +439,137 @@ export default function CombatTracker() {
         isProne: turnContext.isProne,
         isGrappled: turnContext.isGrappled,
         isUnconscious: turnContext.isUnconscious,
-        shockPenalty: turnContext.shockPenalty
-      }
+        shockPenalty: turnContext.shockPenalty,
+      },
     });
-
-    saveCombatActive((prev: CombatState) => ({
-      ...prev,
-      log: [...prev.log, logEntry]
-    }));
-
+    saveCombatActive((prev: CombatState) => ({ ...prev, log: [...prev.log, logEntry] }));
     recordAction(createAddLogEntryAction(logEntry));
   };
 
   const handleManeuverWorkflowUpdate = (update: { type: string; targetInstanceId?: string; turnsAimed?: number; triggerText?: string }) => {
     if (!currentActorTruth || !turnDecisionKey) return;
-
     const previousDecision = turnDecisions[turnDecisionKey] || null;
-    const nextDecision: TurnDecision = {
-      ...(previousDecision || {})
-    };
-
+    const nextDecision: TurnDecision = { ...(previousDecision || {}) };
     if (update.type === 'aim') {
       nextDecision.aim = {
         ...(nextDecision.aim || {}),
         ...(update.targetInstanceId !== undefined ? { targetInstanceId: update.targetInstanceId } : {}),
-        ...(update.turnsAimed !== undefined ? { turnsAimed: update.turnsAimed } : {})
+        ...(update.turnsAimed !== undefined ? { turnsAimed: update.turnsAimed } : {}),
       };
     }
-
     if (update.type === 'wait') {
       nextDecision.wait = {
         ...(nextDecision.wait || {}),
-        ...(update.triggerText !== undefined ? { triggerText: update.triggerText } : {})
+        ...(update.triggerText !== undefined ? { triggerText: update.triggerText } : {}),
       };
     }
-
     updateTurnDecisionState(previousDecision, nextDecision);
   };
 
-  // ============================================================================
-  // Phase 8: Reinforcements
-  // ============================================================================
-
-  const handleAddReinforcements = (data: ReinforcementData) => {
-    const character = (combatCharacters as Character[]).find(c => c.id === data.characterId);
-    if (!character) return;
-
-    const nameList = data.previewNames || [];
-    const newCombatants: Participant[] = nameList.map((name) => {
-      const instanceId = generateId();
-      return {
-        ...character,
-        id: instanceId,
-        instanceId,
-        libraryId: character.id,
-        name,
-        category: data.category,
-        currentHP: character.hp,
-        currentFP: character.fp || 0,
-        currentMP: character.mp || 0,
-        shockPenalty: 0,
-        isStunned: false,
-        isUnconscious: false,
-        isDead: false,
-        bleeding: null,
-        crippled: [],
-        conditions: []
-      };
-    });
-
-    if (newCombatants.length === 0) {
-      return;
-    }
-
-    const newIds = newCombatants.map(c => c.instanceId);
-    const turnOrderBefore = combat.turnOrder;
-    let turnOrderAfter = turnOrderBefore;
-
-    if (data.category !== 'object') {
-      switch (data.insertionMode) {
-        case 'next_turn':
-          turnOrderAfter = insertAfterIndex(turnOrderBefore, combat.currentTurnIndex, newIds);
-          break;
-        case 'end_of_round':
-          turnOrderAfter = [...turnOrderBefore, ...newIds];
-          break;
-        case 'auto':
-          turnOrderAfter = buildAutoTurnOrder([...combat.participants, ...newCombatants]);
-          break;
-        case 'manual':
-          if (Array.isArray(data.manualOrder)) {
-            turnOrderAfter = data.manualOrder.map((entry) => {
-              if (entry.startsWith('new-')) {
-                const index = Number(entry.replace('new-', ''));
-                return newIds[index];
-              }
-              return entry;
-            });
-          }
-          break;
-        default:
-          break;
-      }
-    }
-
-    const logEntry = createReinforcementLogEntry({
-      round: combat.currentRound,
-      turn: combat.currentTurnIndex,
-      category: data.category,
-      displayName: nameList[0] || character.name,
-      quantity: newCombatants.length,
-      insertionMode: data.insertionMode
-    });
-
-    const revealAdd: Record<string, RevealEntry> = {};
-    newCombatants.forEach((combatant) => {
-      revealAdd[combatant.instanceId] = createDefaultRevealForInstance(
-        combatant.instanceId,
-        combatant.category,
-        combatant
-      ) as RevealEntry;
-    });
-
-    const newCombat: CombatState = {
-      ...combat,
-      participants: [...combat.participants, ...newCombatants],
-      turnOrder: turnOrderAfter,
-      log: [...combat.log, logEntry]
-    };
-
-    const newReveal = reveal
-      ? syncRevealStateForParticipants(
-        { ...reveal, byInstanceId: { ...reveal.byInstanceId, ...revealAdd } },
-        newCombat.participants
-      ) as RevealState
-      : reveal;
-
-    saveCombatActive(newCombat);
-    if (newReveal) {
-      saveCombatReveal(newReveal);
-    }
-
-    const action = createAddReinforcementsAction({
-      addedCombatants: newCombatants,
-      addedInstanceIds: newIds,
-      turnOrderBefore,
-      turnOrderAfter,
-      logEntry,
-      revealUpdate: { add: revealAdd }
-    });
-
-    recordAction(action);
-    setShowReinforcementsModal(false);
-  };
-
-  // ============================================================================
-  // Dice Rolling
-  // ============================================================================
+  // --------------------------------------------------------------------------
+  // Dice rolling
+  // --------------------------------------------------------------------------
 
   const handleRoll = () => {
     if (!diceExpression.trim()) return;
-
-    let rollResult: RollData;
+    let rollResult: any;
     if (rollTarget && rollTarget.trim()) {
       const target = parseInt(rollTarget);
-      if (isNaN(target)) {
-        alert('Invalid target number');
-        return;
-      }
-      rollResult = rollVsTarget(diceExpression, target) as RollData;
+      if (isNaN(target)) { alert('Invalid target number'); return; }
+      rollResult = rollVsTarget(diceExpression, target) as any;
     } else {
-      rollResult = roll(diceExpression) as RollData;
+      rollResult = roll(diceExpression) as any;
     }
+    if (!rollResult.valid) { alert(`Roll error: ${rollResult.error}`); return; }
 
-    if (!rollResult.valid) {
-      alert(`Roll error: ${rollResult.error}`);
-      return;
-    }
-
-    // Create roll log entry
     const logEntry = createRollLogEntry(
-      combat.currentRound,
-      combat.currentTurnIndex,
-      currentActorInstanceId,
-      currentActor?.name || 'Unknown',
-      rollResult
+      combat.currentRound, combat.currentTurnIndex,
+      currentActorInstanceId, currentActor?.name || 'Unknown', rollResult as any
     );
-
-    const action = createAddLogEntryAction(logEntry);
-
-    // Update state
-    saveCombatActive((prev: CombatState) => ({
-      ...prev,
-      log: [...prev.log, logEntry]
-    }));
-
-    recordAction(action);
+    saveCombatActive((prev: CombatState) => ({ ...prev, log: [...prev.log, logEntry] }));
+    recordAction(createAddLogEntryAction(logEntry));
   };
 
-  // ============================================================================
+  // --------------------------------------------------------------------------
   // Notes
-  // ============================================================================
+  // --------------------------------------------------------------------------
 
   const handleAddNote = () => {
     if (!noteText.trim()) return;
-
     const logEntry = createNoteLogEntry(
-      combat.currentRound,
-      combat.currentTurnIndex,
-      currentActorInstanceId,
-      currentActor?.name,
-      noteText
+      combat.currentRound, combat.currentTurnIndex,
+      currentActorInstanceId, currentActor?.name || null, noteText
     );
-
-    const action = createAddLogEntryAction(logEntry);
-
-    // Update state
-    saveCombatActive((prev: CombatState) => ({
-      ...prev,
-      log: [...prev.log, logEntry]
-    }));
-
-    recordAction(action);
+    saveCombatActive((prev: CombatState) => ({ ...prev, log: [...prev.log, logEntry] }));
+    recordAction(createAddLogEntryAction(logEntry));
     setNoteText('');
   };
 
-  // ============================================================================
-  // Phase 3: Action Panel Handlers
-  // ============================================================================
-
-  const handleActionComplete = (actionData: ActionCompleteData) => {
-    const { maneuver, kind, attack, defense, injury, note, targetInstanceId, newHP } = actionData;
-
-    // Get target if applicable
-    const target = targetInstanceId
-      ? combat.participants.find(p => p.instanceId === targetInstanceId)
-      : null;
-
-    // Handle Phase 4 injury workflow
-    if (kind === 'injury' && injury && targetInstanceId) {
-      // Create injury log entry
-      const injuryLogEntry = createInjuryLogEntry({
-        round: combat.currentRound,
-        turn: combat.currentTurnIndex,
-        targetInstanceId,
-        targetName: target?.name,
-        hitLocation: injury.hitLocation,
-        damageBreakdown: injury.damageBreakdown,
-        effects: null, // Will add effect logs separately
-        currentHP: target?.currentHP ?? null,
-        newHP
-      });
-
-      let updatedParticipants = [...combat.participants];
-      const logEntries: LogEntry[] = [injuryLogEntry];
-
-      // Apply HP change
-      updatedParticipants = updatedParticipants.map(p =>
-        p.instanceId === targetInstanceId
-          ? { ...p, currentHP: newHP }
-          : p
-      );
-
-      // Apply effects to target
-      if (injury.effects && injury.effects.length > 0) {
-        injury.effects.forEach(effect => {
-          // Apply shock
-          if (effect.type === 'shock' && effect.autoApplied) {
-            updatedParticipants = updatedParticipants.map(p =>
-              p.instanceId === targetInstanceId
-                ? applyEffect(p, 'shock', { value: effect.value }) as Participant
-                : p
-            );
-
-            logEntries.push(createEffectLogEntry({
-              round: combat.currentRound,
-              turn: combat.currentTurnIndex,
-              targetInstanceId,
-              targetName: target?.name,
-              effectType: 'shock',
-              effectData: { value: effect.value },
-              text: `${target?.name}: Shock penalty ${effect.value} until next turn`
-            }));
-          }
-
-          // Apply stun
-          if (effect.type === 'knockdownStun' && effect.success === false) {
-            updatedParticipants = updatedParticipants.map(p =>
-              p.instanceId === targetInstanceId
-                ? applyEffect(p, 'stunned', { stunned: true }) as Participant
-                : p
-            );
-
-            logEntries.push(createEffectLogEntry({
-              round: combat.currentRound,
-              turn: combat.currentTurnIndex,
-              targetInstanceId,
-              targetName: target?.name,
-              effectType: 'stunned',
-              effectData: { stunned: true },
-              text: `${target?.name}: Stunned!`
-            }));
-          }
-
-          // Apply unconsciousness
-          if (effect.type === 'consciousnessCheck' && effect.success === false) {
-            updatedParticipants = updatedParticipants.map(p =>
-              p.instanceId === targetInstanceId
-                ? applyEffect(p, 'unconscious', { unconscious: true }) as Participant
-                : p
-            );
-
-            logEntries.push(createEffectLogEntry({
-              round: combat.currentRound,
-              turn: combat.currentTurnIndex,
-              targetInstanceId,
-              targetName: target?.name,
-              effectType: 'unconscious',
-              effectData: { unconscious: true },
-              text: `${target?.name}: Unconscious!`
-            }));
-          }
-
-          // Apply death
-          if ((effect.type === 'deathCheck' && effect.success === false) || effect.type === 'autoDeath') {
-            updatedParticipants = updatedParticipants.map(p =>
-              p.instanceId === targetInstanceId
-                ? applyEffect(p, 'dead', { dead: true }) as Participant
-                : p
-            );
-
-            logEntries.push(createEffectLogEntry({
-              round: combat.currentRound,
-              turn: combat.currentTurnIndex,
-              targetInstanceId,
-              targetName: target?.name,
-              effectType: 'dead',
-              effectData: { dead: true },
-              text: `${target?.name}: Dead!`
-            }));
-          }
-
-          // Apply bleeding
-          if (effect.type === 'bleeding' && effect.outcome === 'yes') {
-            updatedParticipants = updatedParticipants.map(p =>
-              p.instanceId === targetInstanceId
-                ? applyEffect(p, 'bleeding', { bleeding: true, rate: 1, round: combat.currentRound }) as Participant
-                : p
-            );
-
-            logEntries.push(createEffectLogEntry({
-              round: combat.currentRound,
-              turn: combat.currentTurnIndex,
-              targetInstanceId,
-              targetName: target?.name,
-              effectType: 'bleeding',
-              effectData: { rate: 1 },
-              text: `${target?.name}: Bleeding (1 HP/turn)`
-            }));
-          }
-
-          // Apply crippling
-          if (effect.type === 'crippling' && effect.autoApplied) {
-            updatedParticipants = updatedParticipants.map(p =>
-              p.instanceId === targetInstanceId
-                ? applyEffect(p, 'crippling', { locationKey: effect.locationKey }) as Participant
-                : p
-            );
-
-            logEntries.push(createEffectLogEntry({
-              round: combat.currentRound,
-              turn: combat.currentTurnIndex,
-              targetInstanceId,
-              targetName: target?.name,
-              effectType: 'crippling',
-              effectData: { locationKey: effect.locationKey, locationLabel: effect.locationLabel },
-              text: `${target?.name}: ${effect.locationLabel} crippled!`
-            }));
-          }
-        });
-      }
-
-      // Update state
-      const newCombat: CombatState = {
-        ...combat,
-        participants: updatedParticipants,
-        log: [...combat.log, ...logEntries]
-      };
-
-      saveCombatActive(newCombat);
-
-      let updatedRevealState = reveal;
-      if (reveal) {
-        updatedRevealState = revealNameForInstance(updatedRevealState, targetInstanceId) as RevealState;
-        if (newHP !== undefined && newHP <= 0) {
-          updatedRevealState = revealHPAtZero(updatedRevealState, targetInstanceId) as RevealState;
-        }
-      }
-      const revealUpdate = buildRevealUpdate(reveal, updatedRevealState, targetInstanceId);
-      if (revealUpdate) {
-        saveCombatReveal(updatedRevealState);
-      }
-
-      // Record resource change action
-      if (target) {
-        const resourceAction = createSetResourceAction(
-          targetInstanceId,
-          'HP',
-          target.currentHP,
-          newHP
-        ) as { type: string; revealUpdate?: unknown };
-        if (revealUpdate) {
-          resourceAction.revealUpdate = revealUpdate;
-        }
-        recordAction(resourceAction);
-      }
-
-      // Record log actions
-      logEntries.forEach(entry => {
-        recordAction(createAddLogEntryAction(entry));
-      });
-
-      return;
-    }
-
-    // Create action log entry (for non-injury actions)
-    const logEntry = createActionLogEntry({
-      round: combat.currentRound,
-      turn: combat.currentTurnIndex,
-      actorInstanceId: currentActorInstanceId,
-      actorName: currentActor?.name,
-      targetInstanceId,
-      targetName: target?.name,
-      maneuver,
-      action: { kind, attack, defense }
-    });
-
-    // Update state with log
-    let newCombat: CombatState = {
-      ...combat,
-      log: [...combat.log, logEntry]
-    };
-
-    // If damage was applied, also update target HP (legacy Phase 3 support)
-    if (kind === 'damage' && targetInstanceId && newHP !== undefined && target) {
-      const updatedParticipants = combat.participants.map(p =>
-        p.instanceId === targetInstanceId
-          ? { ...p, currentHP: newHP }
-          : p
-      );
-
-      newCombat = {
-        ...newCombat,
-        participants: updatedParticipants
-      };
-
-      // Record resource change action
-      const resourceAction = createSetResourceAction(
-        targetInstanceId,
-        'HP',
-        target.currentHP,
-        newHP
-      );
-      recordAction(resourceAction);
-    }
-
-    // If it's just a note action, create a simpler note entry instead
-    if (kind === 'note' && note) {
-      const noteEntry = createNoteLogEntry(
-        combat.currentRound,
-        combat.currentTurnIndex,
-        currentActorInstanceId,
-        currentActor?.name,
-        maneuver ? `[${maneuver}] ${note}` : note
-      );
-
-      newCombat = {
-        ...combat,
-        log: [...combat.log, noteEntry]
-      };
-
-      const noteAction = createAddLogEntryAction(noteEntry);
-      saveCombatActive(newCombat);
-      recordAction(noteAction);
-      return;
-    }
-
-    let updatedRevealState = reveal;
-    let revealUpdate = null;
-
-    if (kind === 'defense' && defense?.success && targetInstanceId) {
-      const defenseType = defense.type;
-      if (defenseType === 'dodge' || defenseType === 'parry' || defenseType === 'block') {
-        updatedRevealState = revealDefenseForInstance(updatedRevealState, targetInstanceId, defenseType) as RevealState;
-      }
-    }
-
-    if (kind === 'damage' && targetInstanceId && newHP !== undefined) {
-      updatedRevealState = revealNameForInstance(updatedRevealState, targetInstanceId) as RevealState;
-      if (newHP <= 0) {
-        updatedRevealState = revealHPAtZero(updatedRevealState, targetInstanceId) as RevealState;
-      }
-    }
-
-    revealUpdate = buildRevealUpdate(reveal, updatedRevealState, targetInstanceId || null);
-    if (revealUpdate) {
-      saveCombatReveal(updatedRevealState);
-    }
-
-    // Save state and record action
-    saveCombatActive(newCombat);
-    const logAction = createAddLogEntryAction(logEntry) as { type: string; revealUpdate?: unknown };
-    if (revealUpdate) {
-      logAction.revealUpdate = revealUpdate;
-    }
-    recordAction(logAction);
-  };
-
-  // ============================================================================
-  // Combat End
-  // ============================================================================
+  // --------------------------------------------------------------------------
+  // Combat end
+  // --------------------------------------------------------------------------
 
   const handleEndCombat = async () => {
     const confirmed = await endCombatDialog.confirm();
     if (!confirmed) return;
 
     const endLogEntry = createNoteLogEntry(
-      combat.currentRound,
-      combat.currentTurnIndex,
-      null,
-      null,
-      'Combat ended'
+      combat.currentRound, combat.currentTurnIndex, null, null, 'Combat ended'
     );
-
     const endedCombat: CombatState = {
       ...combat,
       endTime: Date.now(),
-      log: [...combat.log, endLogEntry]
+      log: [...combat.log, endLogEntry],
     };
 
-    // Add to history (cap at MAX_COMBAT_HISTORY)
-    const newHistory = [endedCombat, ...(combatHistory as CombatState[])].slice(0, MAX_COMBAT_HISTORY);
+    // Save to history
+    const newHistory = [endedCombat, ...(combatHistory as unknown as CombatState[])].slice(0, MAX_COMBAT_HISTORY) as any;
     saveCombatHistory(newHistory);
 
-    // Clear active combat
+    // Enter post-combat flow — keep combat active in store until flow completes
+    // so CombatTab continues to render CombatTracker
+    setEndedCombatSnapshot(endedCombat);
+    setPostCombatPhase('summary');
+    // Note: we do NOT call saveCombatActive(null) yet — that happens when the flow completes
+  };
+
+  /** Finalize post-combat flow and return to normal view */
+  const handlePostCombatComplete = () => {
+    setPostCombatPhase('active');
+    setEndedCombatSnapshot(null);
     saveCombatActive(null);
-    saveCombatActiveHistory(null);
   };
 
-  // ============================================================================
-  // Export/Import
-  // ============================================================================
+  // --------------------------------------------------------------------------
+  // Post-combat flow renders (Phase 11c)
+  // --------------------------------------------------------------------------
 
-  const handleExportLog = () => {
-    // Phase 5: Export filtered log if in Player View
-    const text = exportCombatLog(displayLog, {
-      name: combat.name,
-      date: combat.startTime
-    });
-
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `combat-log-${combat.name}-${Date.now()}.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // Phase 5: Export Player View (unencrypted, filtered)
-  const handleExportPlayerView = () => {
-    if (!reveal) {
-      showError('Reveal state not initialized. Cannot export player view.');
-      return;
-    }
-
-    const json = exportCombatPlayerView(combat, reveal, history);
-
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `combat-player-view-${combat.name}-${Date.now()}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // Phase 5: Export GM Locked (encrypted)
-  const handleExportGMLocked = async () => {
-    if (!reveal) {
-      showError('Reveal state not initialized. Cannot export GM locked combat.');
-      return;
-    }
-
-    const password = window.prompt(
-      'Enter GM password to encrypt combat data:\n\n' +
-      'This password will be required to unlock the full combat state.\n' +
-      'Players can view the filtered version without the password.'
+  if (postCombatPhase === 'summary' && endedCombatSnapshot) {
+    return (
+      <div className="py-6">
+        <PostCombatSummary
+          combat={endedCombatSnapshot}
+          onComplete={handlePostCombatComplete}
+          onProceedToLoot={() => setPostCombatPhase('loot')}
+        />
+      </div>
     );
+  }
 
-    if (!password) {
-      return; // User cancelled
-    }
+  if (postCombatPhase === 'loot' && endedCombatSnapshot) {
+    return (
+      <div className="py-6">
+        <LootDistribution onComplete={handlePostCombatComplete} />
+      </div>
+    );
+  }
 
-    try {
-      const json = await exportCombatGMLocked(combat, reveal, history, password);
-
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `combat-gm-locked-${combat.name}-${Date.now()}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      showError(`Export failed: ${(error as Error).message}`);
-    }
-  };
-
-  // Legacy: Export full combat (Phase 2 format, unencrypted)
-  const handleSaveCombat = () => {
-    const validation = validateCombatExport(combat, history) as { valid: boolean; errors: string[] };
-    if (!validation.valid) {
-      showError(`Cannot export: ${validation.errors.join(', ')}`);
-      return;
-    }
-
-    const json = exportActiveCombat(combat, history);
-
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `combat-save-${combat.name}-${Date.now()}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleLoadCombat = async () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const jsonString = event.target?.result as string;
-
-        // Try Phase 5 import first
-        let parsed = await importCombatWithGMLock(jsonString) as {
-          valid: boolean;
-          isLocked?: boolean;
-          error?: string;
-          data?: { combatState: CombatState; history?: HistoryState; revealState?: RevealState };
-        };
-
-        // Fallback to legacy import if Phase 5 fails
-        if (!parsed.valid && !parsed.isLocked) {
-          parsed = parseImportedCombat(jsonString) as typeof parsed;
-          if (parsed.valid && parsed.data) {
-            // Legacy format
-            const validation = validateCombatImport(parsed.data) as {
-              valid: boolean;
-              errors: string[];
-              combatState: CombatState;
-              historyState: HistoryState;
-            };
-            if (!validation.valid) {
-              showError(`Validation error: ${validation.errors.join(', ')}`);
-              return;
-            }
-
-            const confirmed = await loadCombatDialog.confirm();
-            if (!confirmed) {
-              return;
-            }
-
-            saveCombatActive(validation.combatState);
-            saveCombatActiveHistory(validation.historyState);
-            return;
-          }
-        }
-
-        if (!parsed.valid && !parsed.isLocked) {
-          showError(`Import error: ${parsed.error}`);
-          return;
-        }
-
-        // Handle GM-locked import
-        if (parsed.isLocked) {
-          const password = window.prompt(
-            'This combat is GM-locked. Enter password to unlock full state.\n\n' +
-            '(Cancel to load player view only)'
-          );
-
-          if (password) {
-            // Try unlocking
-            const unlocked = await importCombatWithGMLock(jsonString, password) as typeof parsed;
-
-            if (!unlocked.valid) {
-              showError(`Failed to unlock: ${unlocked.error}. Loading player view instead.`);
-              // Fall through to load player view
-            } else if (unlocked.data) {
-              // Successfully unlocked
-              const confirmed = await loadCombatDialog.confirm();
-              if (!confirmed) {
-                return;
-              }
-
-              saveCombatActive(unlocked.data.combatState);
-              saveCombatActiveHistory(unlocked.data.history || null);
-              saveCombatReveal(unlocked.data.revealState || null);
-              return;
-            }
-          }
-
-          // Load player view (locked or failed unlock)
-          const confirmed = await loadCombatDialog.confirm();
-          if (!confirmed) {
-            return;
-          }
-
-          if (parsed.data) {
-            saveCombatActive(parsed.data.combatState);
-            saveCombatActiveHistory(null); // No history in player view
-            saveCombatReveal(parsed.data.revealState || null);
-          }
-          return;
-        }
-
-        // Phase 5 format, not locked
-        const confirmed = await loadCombatDialog.confirm();
-        if (!confirmed) {
-          return;
-        }
-
-        if (parsed.data) {
-          saveCombatActive(parsed.data.combatState);
-          saveCombatActiveHistory(parsed.data.history || null);
-          saveCombatReveal(parsed.data.revealState || null);
-        }
-      };
-      reader.readAsText(file);
-    };
-    input.click();
-  };
+  // --------------------------------------------------------------------------
+  // Render
+  // --------------------------------------------------------------------------
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       <CombatHeaderView
         combat={combat}
         history={history}
@@ -1426,15 +580,14 @@ export default function CombatTracker() {
         onRedo={handleRedo}
         onShowReinforcements={() => setShowReinforcementsModal(true)}
         onToggleExportMenu={() => setShowExportMenu(!showExportMenu)}
-        onExportPlayerView={handleExportPlayerView}
-        onExportGMLocked={handleExportGMLocked}
-        onSaveCombat={handleSaveCombat}
-        onExportLog={handleExportLog}
-        onLoadCombat={handleLoadCombat}
+        onExportPlayerView={exportActions?.handleExportPlayerView ?? (() => {})}
+        onExportGMLocked={exportActions?.handleExportGMLocked ?? (async () => {})}
+        onSaveCombat={exportActions?.handleSaveCombat ?? (() => {})}
+        onExportLog={exportActions?.handleExportLog ?? (() => {})}
+        onLoadCombat={() => exportActions?.handleLoadCombat(loadCombatDialog.confirm)}
         onEndCombat={handleEndCombat}
       />
 
-      {/* View Mode Toggle */}
       <ViewModeToggle
         viewMode={viewMode}
         setViewMode={setViewMode}
@@ -1442,21 +595,23 @@ export default function CombatTracker() {
         setGmMode={setGmMode}
       />
 
-      {/* Current Turn */}
-      <TurnControlsView
-        currentActor={currentActor}
-        combat={combat}
+      <InitiativeTimeline
+        participants={combatView.participants}
+        turnOrder={combat.turnOrder}
+        currentTurnIndex={combat.currentTurnIndex}
+        currentRound={combat.currentRound}
         onPrevTurn={handlePrevTurn}
         onNextTurn={handleNextTurn}
+        onJumpToTurn={handleJumpToTurn}
+        onReorderTurnOrder={handleReorderTurnOrder}
       />
 
-      {/* Maneuver Selection */}
       {!isEnemyInPlayerView ? (
         <ManeuverSelector
           maneuvers={availableManeuvers}
           selectedId={selectedManeuverId}
           onSelect={handleSelectManeuver}
-          disabledReason={turnContext.isUnconscious ? 'Unconscious' : null}
+          disabledReason={turnContext.isUnconscious ? 'Unconscious' : undefined}
         />
       ) : (
         <div className="bg-gray-800 rounded-lg p-4 text-sm text-gray-400">
@@ -1464,7 +619,6 @@ export default function CombatTracker() {
         </div>
       )}
 
-      {/* Action Panel */}
       <ActionPanel
         currentActor={currentActor as any}
         participants={combatView.participants as any}
@@ -1485,29 +639,29 @@ export default function CombatTracker() {
         onUpdateCondition={handleUpdateCondition}
       />
 
-      {/* Reinforcements Modal */}
       {showReinforcementsModal && (
         <ReinforcementsModal
           onClose={() => setShowReinforcementsModal(false)}
-          onConfirm={handleAddReinforcements}
-          combatCharacters={combatCharacters as Character[]}
+          onConfirm={(data) => {
+            handleAddReinforcements(data as any);
+            setShowReinforcementsModal(false);
+          }}
+          combatCharacters={combatCharacters as any}
           participants={combat.participants as any}
           turnOrder={combat.turnOrder}
           currentActorInstanceId={currentActorInstanceId}
         />
       )}
 
-      {/* Reveal Panel (GM View only) */}
       {viewMode === ViewMode.GM && (
         <RevealPanel
           combatActive={combat as any}
           combatReveal={reveal as any}
-          saveCombatReveal={saveCombatReveal}
+          saveCombatReveal={saveCombatReveal as any}
           viewMode={viewMode}
         />
       )}
 
-      {/* Dice Panel */}
       <DicePanelView
         showDicePanel={showDicePanel}
         diceExpression={diceExpression}
@@ -1518,17 +672,13 @@ export default function CombatTracker() {
         onRoll={handleRoll}
       />
 
-      {/* Two-column layout for Participants and Combat Log */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Participants */}
         <ParticipantListView
           participants={combatView.participants}
           currentActorInstanceId={currentActorInstanceId}
           viewMode={viewMode}
           onUpdateResource={updateResource}
         />
-
-        {/* Combat Log */}
         <CombatLogView
           displayLog={displayLog}
           noteText={noteText}
@@ -1537,7 +687,6 @@ export default function CombatTracker() {
         />
       </div>
 
-      {/* Confirm Dialogs */}
       <ConfirmDialog {...endCombatDialog.dialogProps} />
       <ConfirmDialog {...loadCombatDialog.dialogProps} />
     </div>

@@ -56,7 +56,7 @@ const createMockCombatSession = (overrides?: Partial<CombatSession>): CombatSess
   currentTurn: 0,
   log: [],
   ...overrides
-});
+} as unknown as CombatSession);
 
 const createMockCombatItem = (overrides?: Partial<CombatItem>): CombatItem => ({
   id: 'item-1',
@@ -67,7 +67,7 @@ const createMockCombatItem = (overrides?: Partial<CombatItem>): CombatItem => ({
   ...overrides
 });
 
-const createMinimalCampaignState = (): CampaignState => ({
+const createMinimalCampaignState = (): CampaignState => (({
   ui: {
     activeModule: 'combat',
     selectedCharacterId: null,
@@ -150,7 +150,7 @@ const createMinimalCampaignState = (): CampaignState => ({
     currentTravelRoute: null,
     activeWeather: null
   }
-}) as CampaignState;
+} as unknown)) as CampaignState;
 
 // Helper to apply action using Immer (mimics how campaignReducer works)
 function applyAction(state: CampaignState, action: CombatAction): CampaignState {
@@ -599,8 +599,8 @@ describe('combatReducer - Edge Cases', () => {
     const modifiedState = {
       ...state,
       ui: { ...state.ui, activeModule: 'different' },
-      time: { currentDay: 5, currentSlot: 2 }
-    } as CampaignState;
+      time: { ...state.time, day: 5, slot: 2 }
+    } as unknown as CampaignState;
 
     const action: CombatAction = {
       type: COMBAT_CHARACTER_ADD,
@@ -613,6 +613,6 @@ describe('combatReducer - Edge Cases', () => {
     expect(nextState.entities.combatCharacters['char-1']).toBeDefined();
     // Other state preserved
     expect(nextState.ui.activeModule).toBe('different');
-    expect(nextState.time.currentDay).toBe(5);
+    expect(nextState.time.day).toBe(5);
   });
 });

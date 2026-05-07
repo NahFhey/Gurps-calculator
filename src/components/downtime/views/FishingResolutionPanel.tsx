@@ -5,18 +5,15 @@
  * Allows the user to roll each die individually and see results before finalizing.
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { X, Dices, RotateCcw, Edit2 } from 'lucide-react';
 import { useCampaignStore } from '../../../state/campaignStore';
 import {
   evaluateFishingRoll,
   calculateEffectiveFishingSkill,
-  rollNetCatch,
-  rollOnCatchTable,
-  resolveLargeFishStruggle,
+  rollNetCatch
 } from '../../../utils/gathering';
 import {
-  FISHING_METHODS,
   DEFAULT_FISH_ST,
 } from '../../../constants';
 import { getCharacterSkills } from '../../../types/characterSheet';
@@ -24,6 +21,21 @@ import { useDowntimeContext } from '../DowntimeContext';
 import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
 import type { DowntimeTask, FishingData, TaskResults } from '../../../types/downtime';
 import type { GatheringSpecies, GatheringEnvironment, GatheringTable, GatheringBait, Character, Food, Material } from '../../../types/campaign';
+
+// Extended type for GatheringEnvironment with additional properties used in fishing resolution
+interface GatheringEnvironmentExtended extends GatheringEnvironment {
+  skillMod?: number;
+  defaultsByMode?: Record<string, {
+    randomCatchTableId?: string;
+    mildEventTableId?: string;
+    rareEventTableId?: string;
+  }>;
+  defaultTables?: {
+    randomCatchTableId?: string;
+    mildEventTableId?: string;
+    rareEventTableId?: string;
+  };
+}
 
 // ============================================================================
 // TYPES
@@ -33,7 +45,7 @@ interface FishingResolutionPanelProps {
   task: DowntimeTask;
   leader: Character | undefined;
   species: GatheringSpecies[];
-  spots: GatheringEnvironment[];
+  spots: GatheringEnvironmentExtended[];
   bait: GatheringBait[];
   gatheringTables: GatheringTable[];
   onFinalize: (results: TaskResults) => void;
@@ -372,7 +384,6 @@ export function FishingResolutionPanel({
   const gmMode = campaignState?.ui?.gmModeEnabled ?? false;
   const data = task.activityData as FishingData;
   const method = data.method || 'Line';
-  const methodConfig = FISHING_METHODS[method];
   const isRandomCatch = data.isRandomCatch ?? true;
   const isSpear = method === 'Spear';
 
@@ -422,7 +433,6 @@ export function FishingResolutionPanel({
   // Derived state
   const [stealthPenalty, setStealthPenalty] = useState(0);
   const [caughtSpecies, setCaughtSpecies] = useState<GatheringSpecies | null>(null);
-  const [fishCount, setFishCount] = useState(0);
   const [struggleWon, setStruggleWon] = useState(true);
   const [fishingSuccess, setFishingSuccess] = useState<boolean | null>(null);
   const [fishingCritSuccess, setFishingCritSuccess] = useState(false);
@@ -462,15 +472,9 @@ export function FishingResolutionPanel({
 
     const rollResult = evaluateFishingRoll(result.total, effectiveSkill, method);
     setFishingSuccess(rollResult.success);
-    setFishingCritSuccess(rollResult.critSuccess);
+    setFishingCritSuccess(rollResult.critSuccess ?? false);
 
     if (rollResult.success) {
-      let count = rollResult.fish;
-      if (method === 'Net' && rollResult.critSuccess && count < 2) {
-        count = 2;
-      }
-      setFishCount(count);
-
       // For targeted fishing, set the caught species immediately
       if (!isRandomCatch && targetSpecies) {
         setCaughtSpecies(targetSpecies);
@@ -603,18 +607,12 @@ export function FishingResolutionPanel({
     // Re-evaluate the result with new dice
     const rollResult = evaluateFishingRoll(newTotal, effectiveSkill, method);
     setFishingSuccess(rollResult.success);
-    setFishingCritSuccess(rollResult.critSuccess);
+    setFishingCritSuccess(rollResult.critSuccess ?? false);
     if (rollResult.success) {
-      let count = rollResult.fish;
-      if (method === 'Net' && rollResult.critSuccess && count < 2) {
-        count = 2;
-      }
-      setFishCount(count);
       if (!isRandomCatch && targetSpecies) {
         setCaughtSpecies(targetSpecies);
       }
     } else {
-      setFishCount(0);
       if (!isRandomCatch) {
         setCaughtSpecies(null);
       }

@@ -97,6 +97,16 @@ export default function ReinforcementsModal({
   const [insertionMode, setInsertionMode] = useState<InsertionModeValue>('next_turn');
   const [manualOrder, setManualOrder] = useState<string[]>([]);
 
+  const titleId = 'reinforcements-modal-title';
+
+  useEffect(() => {
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const filteredCharacters = useMemo(
     () => combatCharacters.filter(char => char.category === category),
     [combatCharacters, category]
@@ -163,11 +173,21 @@ export default function ReinforcementsModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-      <div className="bg-gray-800 p-6 rounded-lg max-w-3xl w-full m-4 max-h-[90vh] overflow-y-auto">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="bg-gray-800 p-6 rounded-lg max-w-3xl w-full m-4 max-h-[90vh] overflow-y-auto"
+      >
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">Add Reinforcements</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">
-            <X size={24} />
+          <h2 id={titleId} className="text-2xl font-bold">Add Reinforcements</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-gray-400 hover:text-white"
+          >
+            <X size={24} aria-hidden="true" />
           </button>
         </div>
 
@@ -283,16 +303,18 @@ export default function ReinforcementsModal({
                           <button
                             type="button"
                             onClick={() => handleMove(index, -1)}
+                            aria-label={`Move ${displayName} earlier in turn order`}
                             className="p-1 bg-gray-700 rounded hover:bg-gray-600"
                           >
-                            <ChevronUp size={16} />
+                            <ChevronUp size={16} aria-hidden="true" />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleMove(index, 1)}
+                            aria-label={`Move ${displayName} later in turn order`}
                             className="p-1 bg-gray-700 rounded hover:bg-gray-600"
                           >
-                            <ChevronDown size={16} />
+                            <ChevronDown size={16} aria-hidden="true" />
                           </button>
                         </div>
                       )}

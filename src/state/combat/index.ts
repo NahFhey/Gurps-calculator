@@ -36,7 +36,16 @@ export {
   type SetCombatTombstonesAction,
   type SetCombatRulesPresetAction,
   type SetCombatItemsAction,
-  type AddCombatItemAction
+  type AddCombatItemAction,
+  // Encounter template actions (Phase 11c)
+  ENCOUNTER_TEMPLATE_ADD,
+  ENCOUNTER_TEMPLATE_UPDATE,
+  ENCOUNTER_TEMPLATE_REMOVE,
+  ENCOUNTER_TEMPLATES_SET,
+  type AddEncounterTemplateAction,
+  type UpdateEncounterTemplateAction,
+  type RemoveEncounterTemplateAction,
+  type SetEncounterTemplatesAction
 } from './combatActions';
 
 // Re-export selectors from central location

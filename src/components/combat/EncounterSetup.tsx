@@ -1,10 +1,12 @@
 import { useState, ChangeEvent } from 'react';
-import { Plus, Play, ChevronUp, ChevronDown, X, Users, Lock, AlertTriangle } from 'lucide-react';
+import { Plus, Play, ChevronUp, ChevronDown, X, Users, Lock, AlertTriangle, Save, FolderOpen, Trash2, UserPlus } from 'lucide-react';
 import { useCombatStore } from '../../hooks/useCombatStore';
 import { useCampaignStore } from '../../state/campaignStore';
 import { generateTurnOrder, createNumberedEnemies, generateId, createLogEntry, createTurnLogEntry } from '../../utils/combatHelpers';
 import type { Character as PartyCharacter } from '../../types/campaign';
+import type { EncounterTemplate, EncounterTemplateParticipant } from '../../types/combatTracker';
 import { DEFAULT_HIT_LOCATION_PROFILE } from '../../types/characterSheet';
+import { calculateCharacterEncumbrance, calculateLocationDR } from '../../utils/encumbrance';
 import { COMBAT_CATEGORIES } from '../../constants';
 import { ConfirmDialog, useConfirmDialog, useToast } from '../ui';
 
@@ -39,6 +41,11 @@ interface Character {
   // Party character integration
   isFromParty?: boolean;
   partyCharacterId?: string;
+  // Phase 12a: images and encumbrance
+  tokenImage?: string;
+  armorByLocation?: Array<{ location: string; dr: number }>;
+  encumbranceDodge?: number;
+  encumbranceMove?: number;
 }
 
 /**
@@ -49,16 +56,37 @@ function partyCharacterToCombat(partyChar: PartyCharacter): Character {
   const attrs = gcs?.attributes || { ST: 10, DX: 10, IQ: 10, HT: 10 };
   const pools = gcs?.pools || { HP: { current: 10, max: 10 }, FP: { current: 10, max: 10 } };
   const secondary = gcs?.secondaryAttributes;
+  const equipment = gcs?.equipment || [];
 
   // Calculate derived stats
   const basicSpeed = secondary?.basicSpeed?.value ?? (attrs.DX + attrs.HT) / 4;
   const basicMove = secondary?.basicMove?.value ?? Math.floor(basicSpeed);
-  const dodge = Math.floor(basicSpeed) + 3;
+  const baseDodge = Math.floor(basicSpeed) + 3;
+
+  // Phase 12a: Calculate encumbrance-adjusted move and dodge
+  let adjustedMove = basicMove;
+  let adjustedDodge = baseDodge;
+  let armorByLocation: Array<{ location: string; dr: number }> | undefined;
+
+  if (secondary) {
+    const encumbrance = calculateCharacterEncumbrance(attrs, secondary, equipment);
+    adjustedMove = encumbrance.adjustedMove;
+    adjustedDodge = encumbrance.adjustedDodge;
+  }
+
+  // Phase 12a: Calculate per-location DR from equipped armor
+  const locationDR = calculateLocationDR(equipment);
+  if (locationDR.length > 0) {
+    armorByLocation = locationDR.map(({ location, dr }) => ({ location, dr }));
+  }
+
+  // Phase 12a: Token image for initiative timeline
+  const tokenImage = partyChar.images?.token;
 
   return {
     id: partyChar.id,
     name: partyChar.name,
-    category: 'player', // Party characters are always players
+    category: 'player',
     st: attrs.ST,
     dx: attrs.DX,
     iq: attrs.IQ,
@@ -67,8 +95,8 @@ function partyCharacterToCombat(partyChar: PartyCharacter): Character {
     fp: pools.FP.max,
     mp: 0,
     basicSpeed,
-    basicMove,
-    dodge,
+    basicMove: adjustedMove,
+    dodge: adjustedDodge,
     parry: 0,
     block: 0,
     dr: 0,
@@ -76,7 +104,11 @@ function partyCharacterToCombat(partyChar: PartyCharacter): Character {
     attacks: [],
     notes: gcs?.notes || '',
     isFromParty: true,
-    partyCharacterId: partyChar.id
+    partyCharacterId: partyChar.id,
+    tokenImage,
+    armorByLocation,
+    encumbranceDodge: adjustedDodge !== baseDodge ? adjustedDodge : undefined,
+    encumbranceMove: adjustedMove !== basicMove ? adjustedMove : undefined,
   };
 }
 
@@ -113,8 +145,9 @@ export default function EncounterSetup() {
     combatCharacters,
     partyCharacters,
     saveCombatActive,
-    combatHistory,
-    saveCombatHistory
+    encounterTemplates,
+    addEncounterTemplate,
+    removeEncounterTemplate
   } = useCombatStore();
 
   // Access GM mode from campaign store
@@ -126,8 +159,11 @@ export default function EncounterSetup() {
   const [turnOrder, setTurnOrder] = useState<string[]>([]);
   const [showTurnOrderPreview, setShowTurnOrderPreview] = useState(false);
 
+  const [showTemplatePanel, setShowTemplatePanel] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+
   // Toast notifications
-  const { warning: showWarning } = useToast();
+  const { warning: showWarning, success: showSuccess } = useToast();
 
   // Confirm dialog for clearing
   const clearDialog = useConfirmDialog({
@@ -138,7 +174,7 @@ export default function EncounterSetup() {
   });
 
   // Categorize combat library characters
-  const characters = combatCharacters as Character[];
+  const characters = (combatCharacters || []) as unknown as Character[];
   const players = characters.filter(c => c.category === 'player');
   const allies = characters.filter(c => c.category === 'ally');
   const enemies = characters.filter(c => c.category === 'enemy');
@@ -152,6 +188,90 @@ export default function EncounterSetup() {
     return participants.some(p => p.partyCharacterId === partyCharId);
   };
 
+  // Add all party characters at once
+  const handleAddAllParty = () => {
+    const toAdd = partyCharsForCombat.filter(
+      c => !isPartyCharInEncounter(c.partyCharacterId || c.id)
+    );
+    if (toAdd.length === 0) {
+      showWarning('All party characters are already in the encounter');
+      return;
+    }
+    for (const char of toAdd) {
+      addCharacter(char, 1);
+    }
+    showSuccess(`Added ${toAdd.length} party character${toAdd.length !== 1 ? 's' : ''}`);
+  };
+
+  // Save current encounter as a template
+  const handleSaveTemplate = () => {
+    if (!templateName.trim()) {
+      showWarning('Enter a template name');
+      return;
+    }
+    if (participants.length === 0) {
+      showWarning('Add participants before saving a template');
+      return;
+    }
+
+    // Build template from non-party participants (party chars are added separately)
+    const templateParticipants: EncounterTemplateParticipant[] = participants
+      .filter(p => !p.isFromParty)
+      .map(p => ({
+        libraryId: p.libraryId || p.id,
+        name: p.name,
+        category: p.category,
+        quantity: 1
+      }));
+
+    // Collapse duplicates by libraryId
+    const collapsed: Record<string, EncounterTemplateParticipant> = {};
+    for (const tp of templateParticipants) {
+      const key = tp.libraryId;
+      if (collapsed[key]) {
+        collapsed[key].quantity += 1;
+      } else {
+        collapsed[key] = { ...tp };
+      }
+    }
+
+    const template: EncounterTemplate = {
+      id: generateId(),
+      name: templateName.trim(),
+      description: encounterName || undefined,
+      participants: Object.values(collapsed),
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+
+    addEncounterTemplate(template);
+    setTemplateName('');
+    showSuccess(`Template "${template.name}" saved`);
+  };
+
+  // Load a template into the encounter
+  const handleLoadTemplate = (template: EncounterTemplate) => {
+    for (const tp of template.participants) {
+      // Try to find the character in the combat library
+      const libChar = characters.find(c => c.id === tp.libraryId);
+      if (libChar) {
+        addCharacter(libChar, tp.quantity);
+      } else {
+        // Library char was deleted — show warning
+        showWarning(`Character "${tp.name}" not found in library, skipped`);
+      }
+    }
+    if (template.description && !encounterName) {
+      setEncounterName(template.description);
+    }
+    showSuccess(`Loaded template "${template.name}"`);
+  };
+
+  // Delete a template
+  const handleDeleteTemplate = (id: string) => {
+    removeEncounterTemplate(id);
+  };
+
   // Update participant category (for GM override)
   const updateParticipantCategory = (id: string, newCategory: string) => {
     setParticipants(participants.map(p =>
@@ -163,7 +283,7 @@ export default function EncounterSetup() {
   const addCharacter = (character: Character, quantity = 1) => {
     if (character.category === 'enemy' && quantity > 1) {
       // Create numbered enemies
-      const numbered = createNumberedEnemies(character.name, quantity, character) as Participant[];
+      const numbered = createNumberedEnemies(character.name, quantity, character as unknown as any) as Participant[];
       setParticipants([...participants, ...numbered]);
     } else {
       // Add single character
@@ -198,7 +318,7 @@ export default function EncounterSetup() {
 
   // Generate turn order preview
   const handleGenerateTurnOrder = () => {
-    const order = generateTurnOrder(participants) as string[];
+    const order = generateTurnOrder(participants as any) as string[];
     setTurnOrder(order);
     setShowTurnOrderPreview(true);
   };
@@ -236,19 +356,19 @@ export default function EncounterSetup() {
       ...p,
       instanceId: p.id, // Use the encounter-generated ID as instanceId
       id: p.id // Keep for backward compatibility
-    }));
+    })) as any;
 
     // Get first actor
     const firstActorInstanceId = turnOrder[0];
-    const firstActor = migratedParticipants.find(p => p.instanceId === firstActorInstanceId);
+    const firstActor = migratedParticipants.find((p: any) => p.instanceId === firstActorInstanceId);
 
     // Create Phase 2 combat state
     const combat = {
       version: 2, // Phase 2
       id: generateId(),
-      name: encounterName || `Combat ${(combatHistory as unknown[]).length + 1}`,
+      name: encounterName || `Combat ${Date.now()}`,
       startTime: Date.now(),
-      participants: migratedParticipants,
+      participants: migratedParticipants as any,
       turnOrder: turnOrder, // Already uses instanceIds
       currentTurnIndex: 0,
       currentRound: 1,
@@ -289,6 +409,13 @@ export default function EncounterSetup() {
         <h2 className="text-2xl font-bold">Encounter Setup</h2>
         <div className="flex gap-2">
           <button
+            onClick={() => setShowTemplatePanel(!showTemplatePanel)}
+            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm"
+          >
+            <FolderOpen size={16} />
+            Templates
+          </button>
+          <button
             onClick={handleClear}
             className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded"
             disabled={participants.length === 0}
@@ -297,6 +424,67 @@ export default function EncounterSetup() {
           </button>
         </div>
       </div>
+
+      {/* Encounter Templates Panel */}
+      {showTemplatePanel && (
+        <div className="bg-gray-800 rounded-lg p-4 border border-blue-600/50 space-y-3">
+          <h3 className="font-semibold text-blue-300">Encounter Templates</h3>
+
+          {/* Save current encounter */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={templateName}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setTemplateName(e.target.value)}
+              placeholder="Template name..."
+              className="flex-1 px-3 py-2 bg-gray-700 rounded text-sm"
+              onKeyDown={e => e.key === 'Enter' && handleSaveTemplate()}
+            />
+            <button
+              onClick={handleSaveTemplate}
+              disabled={!templateName.trim() || participants.length === 0}
+              className="flex items-center gap-1 px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded text-sm transition-colors"
+            >
+              <Save size={14} />
+              Save
+            </button>
+          </div>
+
+          {/* Template list */}
+          {Object.keys(encounterTemplates).length > 0 ? (
+            <div className="space-y-2">
+              {Object.values(encounterTemplates).map(t => (
+                <div key={t.id} className="flex items-center gap-2 bg-gray-700 rounded p-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm truncate">{t.name}</div>
+                    <div className="text-xs text-gray-400">
+                      {t.participants.reduce((sum, p) => sum + p.quantity, 0)} combatants
+                      {t.description && ` — ${t.description}`}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleLoadTemplate(t)}
+                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs transition-colors"
+                  >
+                    Load
+                  </button>
+                  <button
+                    onClick={() => handleDeleteTemplate(t.id)}
+                    className="p-1 text-red-400 hover:bg-red-900/30 rounded transition-colors"
+                    title="Delete template"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-sm text-gray-500">
+              No saved templates. Build an encounter and save it as a template.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Encounter Name */}
       <div>
@@ -316,10 +504,20 @@ export default function EncounterSetup() {
           {/* Party Characters Section */}
           {partyCharsForCombat.length > 0 && (
             <>
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Users size={20} className="text-purple-400" />
-                Party Characters
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Users size={20} className="text-purple-400" />
+                  Party Characters
+                </h3>
+                <button
+                  onClick={handleAddAllParty}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 rounded text-sm font-medium transition-colors"
+                  title="Add all party characters to encounter"
+                >
+                  <UserPlus size={14} />
+                  Add All
+                </button>
+              </div>
               <div className="bg-gray-800 rounded p-4 border-2 border-purple-600/50">
                 <div className="space-y-2">
                   {partyCharsForCombat.map(char => {
@@ -479,7 +677,7 @@ export default function EncounterSetup() {
                       ) : (
                         <div className="flex items-center gap-1">
                           {isPartyChar && gmModeEnabled && (
-                            <AlertTriangle size={14} className="text-yellow-500" title="GM Override: Changing party character category" />
+                            <AlertTriangle size={14} className="text-yellow-500" />
                           )}
                           <select
                             value={p.category}

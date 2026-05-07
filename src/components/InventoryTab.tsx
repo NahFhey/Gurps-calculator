@@ -82,7 +82,7 @@ export function InventoryTab() {
   );
 
   const foodTypes = state.entities.foodTypes as (string | FoodType)[];
-  const materialTypes = state.entities.materialTypes as MaterialType[];
+  const materialTypes = (state.entities.materialTypes as unknown) as MaterialType[];
   const gmMode = state.ui.gmModeEnabled;
 
   // Party Stash data

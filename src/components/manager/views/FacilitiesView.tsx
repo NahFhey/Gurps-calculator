@@ -64,7 +64,7 @@ export function FacilitiesView() {
   const { state, actions } = useCampaignStore();
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [_expanded] = useState<Record<string, boolean>>({});
   const [formState, setFormState] = useState<FacilityFormState>(DEFAULT_FORM_STATE);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 

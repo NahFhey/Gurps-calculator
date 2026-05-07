@@ -34,6 +34,9 @@ export interface Storage {
 // Storage Implementation
 // ============================================================================
 
+/** Prevent alert() from firing on every failed save (debounce). */
+let quotaAlertShown = false;
+
 const storage: Storage = {
   /**
    * Get a value from localStorage
@@ -52,8 +55,17 @@ const storage: Storage = {
 
       // Apply migrations for main state keys
       if (migrations && (key === 'appState' || key === 'gmState')) {
+        let data: Record<string, unknown>;
         try {
-          const data = JSON.parse(value) as Record<string, unknown>;
+          data = JSON.parse(value) as Record<string, unknown>;
+        } catch (parseError) {
+          logger.warn(
+            `Malformed JSON in localStorage for key "${key}"; returning null.`,
+            parseError
+          );
+          return null;
+        }
+        try {
           const storedVersion = getStoredSchemaVersion() || '1.0.0';
 
           if (storedVersion !== CURRENT_SCHEMA_VERSION) {
@@ -67,7 +79,7 @@ const storage: Storage = {
             const validation = validateDataForVersion(
               migratedData,
               CURRENT_SCHEMA_VERSION
-            );
+            ) as { valid: boolean; issues: string[] };
 
             if (!validation.valid) {
               logger.warn(
@@ -115,7 +127,11 @@ const storage: Storage = {
       // Handle quota exceeded errors gracefully
       if (error instanceof Error && error.name === 'QuotaExceededError') {
         console.error('localStorage quota exceeded. Consider clearing old data.');
-        alert('Storage quota exceeded. Please export your data and clear old entries.');
+        if (!quotaAlertShown) {
+          quotaAlertShown = true;
+          // Dispatch a custom event so the UI can show a proper banner
+          window.dispatchEvent(new CustomEvent('storage-quota-exceeded'));
+        }
       } else {
         console.error(`localStorage.set error for key "${key}":`, error);
       }
@@ -161,5 +177,27 @@ const storage: Storage = {
     }
   }
 };
+
+/** Reset the quota-exceeded flag (call after a successful cleanup). */
+export function resetQuotaAlert() {
+  quotaAlertShown = false;
+}
+
+/**
+ * Return a breakdown of localStorage usage by key.
+ * Sizes are in bytes (each JS char ≈ 2 bytes in UTF-16, but localStorage
+ * implementations count in UTF-16 code units, so .length is the relevant metric).
+ */
+export function getStorageBreakdown(): { key: string; sizeKB: number }[] {
+  const result: { key: string; sizeKB: number }[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key) continue;
+    const val = localStorage.getItem(key) ?? '';
+    result.push({ key, sizeKB: Math.round((val.length * 2) / 1024 * 10) / 10 });
+  }
+  result.sort((a, b) => b.sizeKB - a.sizeKB);
+  return result;
+}
 
 export default storage;

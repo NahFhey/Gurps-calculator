@@ -2,6 +2,7 @@
  * Character Management Utilities
  * Functions for creating, duplicating, and exporting characters
  */
+import { safeDeepClone } from './helpers';
 
 import type { Character } from '../types/campaign';
 import type { GCSCharacterData } from '../types/characterSheet';
@@ -125,7 +126,7 @@ export function createCharacterFromTemplate(templateType: CharacterTemplateType)
  */
 export function duplicateCharacter(character: Character): Character {
   // Deep clone the character
-  const cloned = JSON.parse(JSON.stringify(character)) as Character;
+  const cloned = safeDeepClone(character) as Character;
 
   // Generate new ID
   cloned.id = generateCharacterId();
@@ -204,15 +205,36 @@ export function exportCharacterJSON(character: Character): string {
  * Parses a JSON string and returns a Character object
  */
 export function importCharacterJSON(jsonString: string): Character {
-  const data = JSON.parse(jsonString);
+  // Reject oversized inputs (50MB limit)
+  const MAX_IMPORT_SIZE = 50 * 1024 * 1024;
+  if (jsonString.length > MAX_IMPORT_SIZE) {
+    throw new Error('Character data exceeds maximum import size (50MB)');
+  }
+
+  let data: Record<string, unknown>;
+  try {
+    data = JSON.parse(jsonString);
+  } catch (err) {
+    throw new Error(`Invalid character JSON: ${err instanceof Error ? err.message : 'parse failed'}`);
+  }
+
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('Invalid character data: expected a JSON object');
+  }
 
   // Handle both direct character format and wrapped export format
-  const characterData = data.character || data;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const characterData = (data.character || data) as any;
+
+  // Validate required name field
+  if (typeof characterData.name !== 'string' && characterData.name !== undefined) {
+    throw new Error('Invalid character data: name must be a string');
+  }
 
   // Create new character with fresh ID
   const character: Character = {
     id: generateCharacterId(),
-    name: characterData.name || 'Imported Character',
+    name: (characterData.name as string) || 'Imported Character',
     isPlayer: characterData.isPlayer ?? true,
     st: characterData.st,
     work: characterData.work || { enabled: true, skills: {} },
