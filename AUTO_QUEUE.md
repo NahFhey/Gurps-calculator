@@ -75,7 +75,7 @@ Bar: each item produces a co-located `*.test.ts` (or `*.test.js` for `.js` sourc
 - [x] Add tests for src/utils/activityLogger.ts.
 - [x] Add tests for src/utils/characterManagement.ts.
 - [x] Add tests for src/utils/combatActions.js.
-- [ ] Add tests for src/utils/combatHelpers.ts.
+- [x] Add tests for src/utils/combatHelpers.ts.
 - [ ] Add tests for src/utils/combatInventoryBridge.js.
 - [ ] Add tests for src/utils/combatItemEffects.js.
 - [ ] Add tests for src/utils/combatItemFilter.js.
