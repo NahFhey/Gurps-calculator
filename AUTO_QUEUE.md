@@ -82,7 +82,7 @@ Bar: each item produces a co-located `*.test.ts` (or `*.test.js` for `.js` sourc
 - [x] Add tests for src/utils/combatLogFilter.js.
 - [x] Add tests for src/utils/combatValidation.js.
 - [x] Add tests for src/utils/combatViewFilter.js.
-- [ ] Add tests for src/utils/combatViewSelectors.js.
+- [x] Add tests for src/utils/combatViewSelectors.js.
 - [ ] Add tests for src/utils/conditionsEngine.js.
 - [ ] Add tests for src/utils/createAutoResolvedTask.ts.
 - [ ] Add tests for src/utils/damage.ts.
