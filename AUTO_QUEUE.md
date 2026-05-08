@@ -79,7 +79,7 @@ Bar: each item produces a co-located `*.test.ts` (or `*.test.js` for `.js` sourc
 - [x] Add tests for src/utils/combatInventoryBridge.js.
 - [x] Add tests for src/utils/combatItemEffects.js.
 - [x] Add tests for src/utils/combatItemFilter.js.
-- [ ] Add tests for src/utils/combatLogFilter.js.
+- [x] Add tests for src/utils/combatLogFilter.js.
 - [ ] Add tests for src/utils/combatValidation.js.
 - [ ] Add tests for src/utils/combatViewFilter.js.
 - [ ] Add tests for src/utils/combatViewSelectors.js.
