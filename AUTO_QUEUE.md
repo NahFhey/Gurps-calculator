@@ -86,7 +86,7 @@ Bar: each item produces a co-located `*.test.ts` (or `*.test.js` for `.js` sourc
 - [x] Add tests for src/utils/conditionsEngine.js.
 - [x] Add tests for src/utils/createAutoResolvedTask.ts.
 - [x] Add tests for src/utils/damage.ts.
-- [ ] Add tests for src/utils/dayPlanner.js.
+- [x] Add tests for src/utils/dayPlanner.js.
 - [ ] Add tests for src/utils/dice.ts.
 - [ ] Add tests for src/utils/effectsEngine.js.
 - [ ] Add tests for src/utils/fogOfWar.ts.
