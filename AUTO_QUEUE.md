@@ -92,7 +92,7 @@ Bar: each item produces a co-located `*.test.ts` (or `*.test.js` for `.js` sourc
 - [x] Add tests for src/utils/fogOfWar.ts.
 - [x] Add tests for src/utils/hitLocations.ts.
 - [x] Add tests for src/utils/importSchemas.ts.
-- [ ] Add tests for src/utils/injuryEngine.js.
+- [x] Add tests for src/utils/injuryEngine.js.
 - [ ] Add tests for src/utils/itemTags.js.
 - [ ] Add tests for src/utils/losUtils.ts.
 - [ ] Add tests for src/utils/maneuverFilter.js.
