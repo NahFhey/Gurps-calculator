@@ -95,7 +95,7 @@ Bar: each item produces a co-located `*.test.ts` (or `*.test.js` for `.js` sourc
 - [x] Add tests for src/utils/injuryEngine.js.
 - [x] Add tests for src/utils/itemTags.js.
 - [x] Add tests for src/utils/losUtils.ts.
-- [ ] Add tests for src/utils/maneuverFilter.js.
+- [x] Add tests for src/utils/maneuverFilter.js.
 - [ ] Add tests for src/utils/mapRouter.ts.
 - [ ] Add tests for src/utils/mapTravelValidation.ts.
 - [ ] Add tests for src/utils/mapUtils.ts.
