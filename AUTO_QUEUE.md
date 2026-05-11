@@ -99,7 +99,7 @@ Bar: each item produces a co-located `*.test.ts` (or `*.test.js` for `.js` sourc
 - [x] Add tests for src/utils/mapRouter.ts.
 - [x] Add tests for src/utils/mapTravelValidation.ts.
 - [x] Add tests for src/utils/mapUtils.ts.
-- [ ] Add tests for src/utils/modifiers.ts.
+- [x] Add tests for src/utils/modifiers.ts.
 - [ ] Add tests for src/utils/taskResolution.js.
 - [ ] Add tests for src/utils/turnContext.js.
 - [ ] Add tests for src/utils/weatherSystem.ts.
