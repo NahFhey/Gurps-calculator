@@ -102,7 +102,7 @@ Bar: each item produces a co-located `*.test.ts` (or `*.test.js` for `.js` sourc
 - [x] Add tests for src/utils/modifiers.ts.
 - [x] Add tests for src/utils/taskResolution.js.
 - [x] Add tests for src/utils/turnContext.js.
-- [ ] Add tests for src/utils/weatherSystem.ts.
+- [x] Add tests for src/utils/weatherSystem.ts.
 - [ ] Add tests for src/utils/wounding.ts.
 
 ## Out of scope for the loop (do NOT add these)
