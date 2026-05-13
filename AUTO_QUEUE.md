@@ -22,16 +22,16 @@ Pattern: wrap the call in try/catch, log via existing logger (or `console.warn` 
 
 - [x] Wrap JSON.parse in try/catch at src/state/campaignReducer.ts:937; safe default = unchanged state. Add unit test for malformed input.
 - [x] Wrap JSON.parse in try/catch at src/utils/storage.ts:123; safe default = null. Add unit test for malformed input.
-- [!] Wrap both JSON.parse calls in src/utils/combatHistory.js (lines 246, 282); safe default = empty history. Add unit tests for malformed input. [auto-deferred 2026-05-01: no JSON.parse calls in this file; lines 246/282 are safeDeepClone usages — premise stale, helpers.js item covers the underlying JSON.parse]
-- [!] Wrap all four JSON.parse calls in src/utils/combatReveal.js (lines 211, 264, 279, 312); safe default = no reveal applied. Add unit tests for malformed input. [auto-deferred 2026-05-01: no JSON.parse calls in this file; lines 211/264/279/312 are safeDeepClone usages — premise stale, helpers.js item covers the underlying JSON.parse]
-- [!] Wrap JSON.parse in try/catch at src/utils/helpers.js:26; safe default = null. Add unit test for malformed input. [auto-deferred 2026-05-01: safeParse already wraps JSON.parse in try/catch with fallback; helpers.test.js:246 already covers malformed input]
+- [x] Wrap both JSON.parse calls in src/utils/combatHistory.js (lines 246, 282); safe default = empty history. Add unit tests for malformed input. [resolved 2026-05-13: file migrated to combatHistory.ts under Phase 15e and contains zero JSON.parse calls; the original line refs were safeDeepClone usages, which live in helpers.ts and are already try/caught.]
+- [x] Wrap all four JSON.parse calls in src/utils/combatReveal.js (lines 211, 264, 279, 312); safe default = no reveal applied. Add unit tests for malformed input. [resolved 2026-05-13: file migrated to combatReveal.ts under Phase 15e and contains zero JSON.parse calls; original line refs were safeDeepClone usages, covered by helpers.ts.]
+- [x] Wrap JSON.parse in try/catch at src/utils/helpers.js:26; safe default = null. Add unit test for malformed input. [resolved 2026-05-13: helpers.ts safeParse (line 12) and safeDeepClone (line 20) both already try/caught with documented fallbacks; helpers tests cover the malformed-input path.]
 - [x] Wrap JSON.parse in try/catch at src/utils/schemaVersioning.js:198; safe default = no migration applied. Add unit test for malformed input. [2026-05-03: getMigrationHistory and logMigration JSON.parse calls already wrapped in try/catch with safe default; added 3 malformed-input tests covering both functions]
 - [x] Wrap all three JSON.parse calls in src/utils/dataMigrations.js (lines 220, 235, 255); safe default = skip migration with warning. Add unit tests for malformed input. [2026-05-03: all three JSON.parse calls already wrapped in try/catch with safe defaults (null/skipped entry); added 8 malformed-input tests covering getLastBackup, restoreFromBackup, listBackups]
 
 ## Phase 10e — Memory leak fixes
 
 - [x] Fix setTimeout race in src/components/character-management/CharacterContextMenu.tsx (lines 47-50) using a `cancelled` ref flag inside the setTimeout callback. Add unit test simulating unmount-before-timeout.
-- [!] Fix setTimeout race in src/components/map/views/MapContextMenu.tsx using the `cancelled` ref flag pattern. Add unit test simulating unmount-before-timeout. [auto-deferred 2026-05-03: file has no setTimeout — listeners registered synchronously in useEffect with clean cleanup, no race exists]
+- [x] Fix setTimeout race in src/components/map/views/MapContextMenu.tsx using the `cancelled` ref flag pattern. Add unit test simulating unmount-before-timeout. [resolved 2026-05-13: file has zero setTimeout/setInterval calls; event listeners are registered synchronously inside useEffect with matching cleanup — no race exists to fix.]
 - [x] Fix setTimeout race in src/components/ui/Toast.tsx using the `cancelled` ref flag pattern. Add unit test simulating unmount-before-timeout. [retargeted 2026-05-03: ConfirmDialog has no setTimeout; race actually lived in Toast.tsx duration timer + exit-animation timer]
 - [x] Fix socket listener duplication in src/net/ConnectionManager.ts (lines 243-302) — call `socket.off(event)` before each `socket.on(event, ...)` in `connectSocket()`. All existing net tests still green.
 
@@ -49,8 +49,13 @@ For each: rename `.js` → `.ts` (or `.tsx` if JSX), add types for parameters/re
 
 ## Phase 15d — Accessibility (low-risk, no behavior change)
 
-- [!] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/CombatTracker.tsx. No behavior change. [auto-deferred 2026-05-04: file contains zero direct button/link/input/select/textarea elements — all interactive controls are delegated to subview components (CombatHeaderView, DicePanelView, ParticipantListView, ManeuverSelector, etc.); per-subview a11y items would cover them]
+- [x] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/CombatTracker.tsx. No behavior change. [resolved 2026-05-13: CombatTracker.tsx contains zero direct button/link/input/select/textarea elements — all interactive controls are delegated to subviews; per-subview items below cover the actual gaps.]
 - [x] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/ActionPanel.tsx. No behavior change.
+- [ ] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/views/CombatHeaderView.tsx (10 `<button>` elements, zero aria-labels). No behavior change.
+- [ ] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/views/DicePanelView.tsx (4 `<button>` elements, zero aria-labels). No behavior change.
+- [ ] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/views/TurnControlsView.tsx (2 `<button>` elements, zero aria-labels). No behavior change.
+- [ ] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/views/InitiativeTimeline.tsx (2 `<button>` elements, zero aria-labels). No behavior change.
+- [ ] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/views/CombatLogView.tsx (1 `<button>` element, zero aria-labels). No behavior change.
 
 ### Per-modal a11y sweep
 
