@@ -33,6 +33,23 @@ When `AUTO_QUEUE.md` has zero `- [ ]` items AND seven consecutive runs find zero
 
 <!-- Daily entries are prepended directly below this line, newest first. -->
 
+## 2026-05-12 — PASS (10 commits: 10P, 0N, 0C)
+
+Test-coverage sweep across `src/utils/`. Every commit confined to a single new co-located test file plus a one-line `[ ] → [x]` flip in `AUTO_QUEUE.md`. No production source touched, no `:any`/`as any`/`@ts-nocheck` introduced in `src/` outside `__tests__/`. No deferrals (`[!]`) in this batch, so no honesty checks required. Engine targets (`damage`, `dice`, `effectsEngine`, `fogOfWar`, `hitLocations`, `injuryEngine`) all exercise non-trivial branches and edge cases, not just happy paths.
+
+| commit | target | verdict | notes |
+| ------ | ------ | ------- | ----- |
+| 8849b3f | src/utils/damage.ts | PASS | low/mid/cap rows on swing & thrust tables, modifier cancellation, DR floor, runtime-guard throw |
+| cb0a75a | src/utils/dayPlanner.js | PASS | 32 cases covering planner state transitions |
+| 2d83b4a | src/utils/dice.ts | PASS | bounds rejection (>100 dice, sides <2 / >100), malformed, negative constants, deterministic-RNG total |
+| 68d1740 | src/utils/effectsEngine.js | PASS | 41 cases over 364 lines |
+| f0b1701 | src/utils/fogOfWar.ts | PASS | radius 0, 8-dir radius 1, edge clipping, multi-source union, off-grid start |
+| 649f5e2 | src/utils/hitLocations.ts | PASS | 20 cases |
+| 7e46828 | src/utils/importSchemas.ts | PASS | 32 cases over 258 lines |
+| abb8a46 | src/utils/injuryEngine.js | PASS | DR floor, per-location DR, skull-imp x4 stacking, lite-preset multiplier disable |
+| f5ac437 | src/utils/itemTags.js | PASS | 30 cases |
+| 1c23698 | src/utils/losUtils.ts | PASS | source is an explicit Phase-14 stub; tests assert stub contract (always-unblocked, two-tile path, fresh array, no map read) and are labeled `(stub)` |
+
 ## 2026-05-09 — NOTE (44 commits: 43P, 1N, 0C)
 
 Bootstrap run — first review since the daily-review system was scaffolded. Window: parent of first `auto-dev:` commit through HEAD. All 6 deferrals verified honest against parent-commit file state. Type-erosion findings in `exportImport.ts` (33 `:any`) and `combatHelpers.test.ts` (`@ts-nocheck` + 20 `as any`) suppressed by `KNOWN_ISSUES.md`. Modal focus-trap gaps across 11 a11y sweeps suppressed by deferred entry.
