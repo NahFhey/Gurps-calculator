@@ -105,6 +105,46 @@ Bar: each item produces a co-located `*.test.ts` (or `*.test.js` for `.js` sourc
 - [x] Add tests for src/utils/weatherSystem.ts.
 - [x] Add tests for src/utils/wounding.ts.
 
+## Phase 10c-2 — Test coverage for state/ and persistence/ (one file per run)
+
+Same bar as Phase 10c: co-located `*.test.ts` covering happy path plus at least one error/edge case. Mirror the established patterns from `src/state/downtime/__tests__/downtimeReducer.test.ts` and `src/state/combat/__tests__/combatReducer.test.ts`. No mocks beyond what the file naturally requires. All existing tests still green; new tests pass.
+
+### Reducers
+
+- [ ] Add tests for src/state/character/characterReducer.ts.
+- [ ] Add tests for src/state/alchemy/alchemyReducer.ts.
+- [ ] Add tests for src/state/crafting/craftingReducer.ts.
+- [ ] Add tests for src/state/gathering/gatheringReducer.ts.
+- [ ] Add tests for src/state/inventory/inventoryReducer.ts.
+- [ ] Add tests for src/state/map/mapReducer.ts.
+
+### Action creators
+
+- [ ] Add tests for src/state/character/characterActions.ts.
+- [ ] Add tests for src/state/alchemy/alchemyActions.ts.
+- [ ] Add tests for src/state/combat/combatActions.ts.
+- [ ] Add tests for src/state/crafting/craftingActions.ts.
+- [ ] Add tests for src/state/gathering/gatheringActions.ts.
+- [ ] Add tests for src/state/inventory/inventoryActions.ts.
+- [ ] Add tests for src/state/map/mapActions.ts.
+- [ ] Add tests for src/state/downtime/downtimeActions.ts.
+
+### Selectors
+
+- [ ] Add tests for src/state/selectors/alchemySelectors.ts.
+- [ ] Add tests for src/state/selectors/characterSelectors.ts.
+- [ ] Add tests for src/state/selectors/combatSelectors.ts.
+- [ ] Add tests for src/state/selectors/craftingSelectors.ts.
+- [ ] Add tests for src/state/selectors/gatheringSelectors.ts.
+- [ ] Add tests for src/state/selectors/inventorySelectors.ts.
+- [ ] Add tests for src/state/selectors/locationSelectors.ts.
+
+### State utilities and persistence
+
+- [ ] Add tests for src/state/campaignUtils.ts.
+- [ ] Add tests for src/persistence/dataMigration.ts.
+- [ ] Add tests for src/persistence/db.ts (Dexie wrapper; use the `fake-indexeddb` polyfill already wired in `src/test/setup.ts`).
+
 ## Out of scope for the loop (do NOT add these)
 
 The following are tracked elsewhere because they require design judgment or coordinated multi-file changes the loop should not attempt autonomously:
