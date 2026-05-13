@@ -33,6 +33,8 @@ When `AUTO_QUEUE.md` has zero `- [ ]` items AND seven consecutive runs find zero
 
 <!-- Daily entries are prepended directly below this line, newest first. -->
 
+## 2026-05-13 — empty (0 commits) — no auto-dev: commits since last review (empty-run streak: 1/7; queue open items: 0)
+
 ## 2026-05-12 — PASS (10 commits: 10P, 0N, 0C)
 
 Test-coverage sweep across `src/utils/`. Every commit confined to a single new co-located test file plus a one-line `[ ] → [x]` flip in `AUTO_QUEUE.md`. No production source touched, no `:any`/`as any`/`@ts-nocheck` introduced in `src/` outside `__tests__/`. No deferrals (`[!]`) in this batch, so no honesty checks required. Engine targets (`damage`, `dice`, `effectsEngine`, `fogOfWar`, `hitLocations`, `injuryEngine`) all exercise non-trivial branches and edge cases, not just happy paths.
