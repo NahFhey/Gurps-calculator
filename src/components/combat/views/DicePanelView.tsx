@@ -21,6 +21,8 @@ function DicePanelViewBase({
     <div className="bg-gray-800 rounded-lg p-4">
       <button
         onClick={onToggleDicePanel}
+        aria-label={showDicePanel ? 'Collapse dice tools panel' : 'Expand dice tools panel'}
+        aria-expanded={showDicePanel}
         className="flex items-center gap-2 w-full justify-between"
       >
         <div className="flex items-center gap-2">
@@ -57,18 +59,21 @@ function DicePanelViewBase({
           <div className="flex gap-2">
             <button
               onClick={onRoll}
+              aria-label="Roll dice expression"
               className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
             >
               Roll
             </button>
             <button
               onClick={() => onSetDiceExpression('3d6')}
+              aria-label="Set dice expression to 3d6"
               className="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded"
             >
               3d6
             </button>
             <button
               onClick={() => onSetDiceExpression('1d')}
+              aria-label="Set dice expression to 1d"
               className="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded"
             >
               1d
