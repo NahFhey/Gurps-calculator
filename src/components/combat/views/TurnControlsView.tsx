@@ -29,6 +29,7 @@ function TurnControlsViewBase({
             onClick={onPrevTurn}
             className="p-3 bg-gray-700 hover:bg-gray-600 rounded"
             title="Previous turn"
+            aria-label="Previous turn"
           >
             <ChevronLeft size={24} />
           </button>
@@ -36,6 +37,7 @@ function TurnControlsViewBase({
             onClick={onNextTurn}
             className="p-3 bg-green-600 hover:bg-green-700 rounded"
             title="Next turn"
+            aria-label="Next turn"
           >
             <ChevronRight size={24} />
           </button>
