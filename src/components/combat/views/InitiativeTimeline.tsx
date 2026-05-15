@@ -339,6 +339,7 @@ function InitiativeTimelineBase({
           onClick={onPrevTurn}
           className="flex-none p-1.5 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
           title="Previous turn"
+          aria-label="Previous turn"
         >
           <ChevronLeft size={18} />
         </button>
@@ -401,6 +402,7 @@ function InitiativeTimelineBase({
           onClick={onNextTurn}
           className="flex-none p-2 bg-green-600 hover:bg-green-700 rounded transition-colors"
           title="Next turn"
+          aria-label="Next turn"
         >
           <ChevronRight size={18} />
         </button>
