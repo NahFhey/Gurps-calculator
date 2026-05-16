@@ -33,6 +33,17 @@ When `AUTO_QUEUE.md` has zero `- [ ]` items AND seven consecutive runs find zero
 
 <!-- Daily entries are prepended directly below this line, newest first. -->
 
+## 2026-05-15 — PASS (4 commits: 4P, 0N, 0C)
+
+| commit | target | verdict | notes |
+| ------ | ------ | ------- | ----- |
+| 71a6e0c | src/components/combat/views/CombatHeaderView.tsx | PASS | 10/10 buttons labeled; Export button also got `aria-haspopup="menu"` + `aria-expanded` — appropriate enhancement, still within scope |
+| 79ab16a | src/components/combat/views/DicePanelView.tsx | PASS | 4/4 buttons labeled; toggle button got dynamic label + `aria-expanded` |
+| 8ffc6ee | src/components/combat/views/TurnControlsView.tsx | PASS | 2/2 buttons labeled (Prev/Next turn) |
+| 1294fc6 | src/components/combat/views/InitiativeTimeline.tsx | PASS | 2/2 buttons labeled (Prev/Next turn) |
+
+All four commits are scope-clean a11y label additions: target `.tsx` file + single `[ ] → [x]` line in `AUTO_QUEUE.md`. No new `:any`, `as any`, or `@ts-nocheck`. No deferrals to validate. Labels match button intent and, where state is involved, include `aria-expanded` (DicePanelView toggle, CombatHeaderView Export). Engine-test scrutiny does not apply — these are pure JSX attribute additions on view components.
+
 ## 2026-05-13 — empty (0 commits) — no auto-dev: commits since last review (empty-run streak: 1/7; queue open items: 0)
 
 ## 2026-05-12 — PASS (10 commits: 10P, 0N, 0C)
