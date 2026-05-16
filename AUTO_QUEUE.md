@@ -118,7 +118,7 @@ Same bar as Phase 10c: co-located `*.test.ts` covering happy path plus at least 
 
 - [x] Add tests for src/state/character/characterReducer.ts.
 - [x] Add tests for src/state/alchemy/alchemyReducer.ts.
-- [ ] Add tests for src/state/crafting/craftingReducer.ts.
+- [x] Add tests for src/state/crafting/craftingReducer.ts.
 - [ ] Add tests for src/state/gathering/gatheringReducer.ts.
 - [ ] Add tests for src/state/inventory/inventoryReducer.ts.
 - [ ] Add tests for src/state/map/mapReducer.ts.
