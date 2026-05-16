@@ -55,7 +55,7 @@ For each: rename `.js` → `.ts` (or `.tsx` if JSX), add types for parameters/re
 - [x] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/views/DicePanelView.tsx (4 `<button>` elements, zero aria-labels). No behavior change.
 - [x] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/views/TurnControlsView.tsx (2 `<button>` elements, zero aria-labels). No behavior change.
 - [x] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/views/InitiativeTimeline.tsx (2 `<button>` elements, zero aria-labels). No behavior change.
-- [ ] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/views/CombatLogView.tsx (1 `<button>` element, zero aria-labels). No behavior change.
+- [x] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/views/CombatLogView.tsx (1 `<button>` element, zero aria-labels). No behavior change.
 
 ### Per-modal a11y sweep
 

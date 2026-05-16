@@ -41,10 +41,12 @@ function CombatLogViewBase({
           onChange={(e: ChangeEvent<HTMLInputElement>) => onSetNoteText(e.target.value)}
           onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && onAddNote()}
           placeholder="Add a note..."
+          aria-label="Add a note to the combat log"
           className="flex-1 px-3 py-2 bg-gray-700 rounded"
         />
         <button
           onClick={onAddNote}
+          aria-label="Add note to combat log"
           className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded"
         >
           <Plus size={16} />
