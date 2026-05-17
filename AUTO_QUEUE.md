@@ -125,7 +125,7 @@ Same bar as Phase 10c: co-located `*.test.ts` covering happy path plus at least 
 
 ### Action creators
 
-- [ ] Add tests for src/state/character/characterActions.ts.
+- [x] Add tests for src/state/character/characterActions.ts.
 - [ ] Add tests for src/state/alchemy/alchemyActions.ts.
 - [ ] Add tests for src/state/combat/combatActions.ts.
 - [ ] Add tests for src/state/crafting/craftingActions.ts.
