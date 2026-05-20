@@ -148,7 +148,7 @@ Same bar as Phase 10c: co-located `*.test.ts` covering happy path plus at least 
 
 - [x] Add tests for src/state/campaignUtils.ts.
 - [x] Add tests for src/persistence/dataMigration.ts.
-- [ ] Add tests for src/persistence/db.ts (Dexie wrapper; use the `fake-indexeddb` polyfill already wired in `src/test/setup.ts`).
+- [!] Add tests for src/persistence/db.ts (Dexie wrapper; use the `fake-indexeddb` polyfill already wired in `src/test/setup.ts`). [auto-deferred 2026-05-20: db.ts is a non-functional placeholder — kvStore = {} and "TODO: Install dexie" at line 11; every exported function throws at runtime. Needs human decision (install dexie or rewrite without it) before tests can be written.]
 
 ## Out of scope for the loop (do NOT add these)
 
