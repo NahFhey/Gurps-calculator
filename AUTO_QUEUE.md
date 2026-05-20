@@ -147,7 +147,7 @@ Same bar as Phase 10c: co-located `*.test.ts` covering happy path plus at least 
 ### State utilities and persistence
 
 - [x] Add tests for src/state/campaignUtils.ts.
-- [ ] Add tests for src/persistence/dataMigration.ts.
+- [x] Add tests for src/persistence/dataMigration.ts.
 - [ ] Add tests for src/persistence/db.ts (Dexie wrapper; use the `fake-indexeddb` polyfill already wired in `src/test/setup.ts`).
 
 ## Out of scope for the loop (do NOT add these)
