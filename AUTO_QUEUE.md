@@ -51,11 +51,11 @@ For each: rename `.js` → `.ts` (or `.tsx` if JSX), add types for parameters/re
 
 - [x] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/CombatTracker.tsx. No behavior change. [resolved 2026-05-13: CombatTracker.tsx contains zero direct button/link/input/select/textarea elements — all interactive controls are delegated to subviews; per-subview items below cover the actual gaps.]
 - [x] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/ActionPanel.tsx. No behavior change.
-- [ ] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/views/CombatHeaderView.tsx (10 `<button>` elements, zero aria-labels). No behavior change.
-- [ ] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/views/DicePanelView.tsx (4 `<button>` elements, zero aria-labels). No behavior change.
-- [ ] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/views/TurnControlsView.tsx (2 `<button>` elements, zero aria-labels). No behavior change.
-- [ ] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/views/InitiativeTimeline.tsx (2 `<button>` elements, zero aria-labels). No behavior change.
-- [ ] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/views/CombatLogView.tsx (1 `<button>` element, zero aria-labels). No behavior change.
+- [x] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/views/CombatHeaderView.tsx (10 `<button>` elements, zero aria-labels). No behavior change.
+- [x] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/views/DicePanelView.tsx (4 `<button>` elements, zero aria-labels). No behavior change.
+- [x] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/views/TurnControlsView.tsx (2 `<button>` elements, zero aria-labels). No behavior change.
+- [x] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/views/InitiativeTimeline.tsx (2 `<button>` elements, zero aria-labels). No behavior change.
+- [x] Add aria-label to every interactive element (button/link/input lacking one) in src/components/combat/views/CombatLogView.tsx (1 `<button>` element, zero aria-labels). No behavior change.
 
 ### Per-modal a11y sweep
 
@@ -116,39 +116,39 @@ Same bar as Phase 10c: co-located `*.test.ts` covering happy path plus at least 
 
 ### Reducers
 
-- [ ] Add tests for src/state/character/characterReducer.ts.
-- [ ] Add tests for src/state/alchemy/alchemyReducer.ts.
-- [ ] Add tests for src/state/crafting/craftingReducer.ts.
-- [ ] Add tests for src/state/gathering/gatheringReducer.ts.
-- [ ] Add tests for src/state/inventory/inventoryReducer.ts.
-- [ ] Add tests for src/state/map/mapReducer.ts.
+- [x] Add tests for src/state/character/characterReducer.ts.
+- [x] Add tests for src/state/alchemy/alchemyReducer.ts.
+- [x] Add tests for src/state/crafting/craftingReducer.ts.
+- [x] Add tests for src/state/gathering/gatheringReducer.ts.
+- [x] Add tests for src/state/inventory/inventoryReducer.ts.
+- [x] Add tests for src/state/map/mapReducer.ts.
 
 ### Action creators
 
-- [ ] Add tests for src/state/character/characterActions.ts.
-- [ ] Add tests for src/state/alchemy/alchemyActions.ts.
-- [ ] Add tests for src/state/combat/combatActions.ts.
-- [ ] Add tests for src/state/crafting/craftingActions.ts.
-- [ ] Add tests for src/state/gathering/gatheringActions.ts.
-- [ ] Add tests for src/state/inventory/inventoryActions.ts.
-- [ ] Add tests for src/state/map/mapActions.ts.
-- [ ] Add tests for src/state/downtime/downtimeActions.ts.
+- [x] Add tests for src/state/character/characterActions.ts.
+- [x] Add tests for src/state/alchemy/alchemyActions.ts.
+- [x] Add tests for src/state/combat/combatActions.ts.
+- [x] Add tests for src/state/crafting/craftingActions.ts.
+- [x] Add tests for src/state/gathering/gatheringActions.ts.
+- [x] Add tests for src/state/inventory/inventoryActions.ts.
+- [x] Add tests for src/state/map/mapActions.ts.
+- [x] Add tests for src/state/downtime/downtimeActions.ts.
 
 ### Selectors
 
-- [ ] Add tests for src/state/selectors/alchemySelectors.ts.
-- [ ] Add tests for src/state/selectors/characterSelectors.ts.
-- [ ] Add tests for src/state/selectors/combatSelectors.ts.
-- [ ] Add tests for src/state/selectors/craftingSelectors.ts.
-- [ ] Add tests for src/state/selectors/gatheringSelectors.ts.
-- [ ] Add tests for src/state/selectors/inventorySelectors.ts.
-- [ ] Add tests for src/state/selectors/locationSelectors.ts.
+- [x] Add tests for src/state/selectors/alchemySelectors.ts.
+- [x] Add tests for src/state/selectors/characterSelectors.ts.
+- [x] Add tests for src/state/selectors/combatSelectors.ts.
+- [x] Add tests for src/state/selectors/craftingSelectors.ts.
+- [x] Add tests for src/state/selectors/gatheringSelectors.ts.
+- [x] Add tests for src/state/selectors/inventorySelectors.ts.
+- [x] Add tests for src/state/selectors/locationSelectors.ts.
 
 ### State utilities and persistence
 
-- [ ] Add tests for src/state/campaignUtils.ts.
-- [ ] Add tests for src/persistence/dataMigration.ts.
-- [ ] Add tests for src/persistence/db.ts (Dexie wrapper; use the `fake-indexeddb` polyfill already wired in `src/test/setup.ts`).
+- [x] Add tests for src/state/campaignUtils.ts.
+- [x] Add tests for src/persistence/dataMigration.ts.
+- [!] Add tests for src/persistence/db.ts (Dexie wrapper; use the `fake-indexeddb` polyfill already wired in `src/test/setup.ts`). [auto-deferred 2026-05-20: db.ts is a non-functional placeholder — kvStore = {} and "TODO: Install dexie" at line 11; every exported function throws at runtime. Needs human decision (install dexie or rewrite without it) before tests can be written.]
 
 ## Out of scope for the loop (do NOT add these)
 

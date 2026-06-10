@@ -44,6 +44,7 @@ function CombatHeaderViewBase({
           disabled={!canUndo(history)}
           className="flex items-center gap-2 px-3 py-2 bg-gray-600 hover:bg-gray-500 rounded disabled:opacity-50 disabled:cursor-not-allowed"
           title={`Undo (${getUndoCount(history)})`}
+          aria-label={`Undo (${getUndoCount(history)} available)`}
         >
           <Undo size={16} />
           Undo ({getUndoCount(history)})
@@ -53,6 +54,7 @@ function CombatHeaderViewBase({
           disabled={!canRedo(history)}
           className="flex items-center gap-2 px-3 py-2 bg-gray-600 hover:bg-gray-500 rounded disabled:opacity-50 disabled:cursor-not-allowed"
           title={`Redo (${getRedoCount(history)})`}
+          aria-label={`Redo (${getRedoCount(history)} available)`}
         >
           <Redo size={16} />
           Redo ({getRedoCount(history)})
@@ -62,6 +64,7 @@ function CombatHeaderViewBase({
           <button
             onClick={onShowReinforcements}
             className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded"
+            aria-label="Add reinforcements"
           >
             <Plus size={16} />
             Reinforcements
@@ -73,6 +76,9 @@ function CombatHeaderViewBase({
           <button
             onClick={onToggleExportMenu}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded"
+            aria-label="Open export menu"
+            aria-haspopup="menu"
+            aria-expanded={showExportMenu}
           >
             <Download size={16} />
             Export
@@ -82,6 +88,7 @@ function CombatHeaderViewBase({
               <button
                 onClick={() => { onExportPlayerView(); onToggleExportMenu(); }}
                 className="w-full text-left px-4 py-3 hover:bg-gray-700 border-b border-gray-700"
+                aria-label="Export player view (filtered, safe to share with players)"
               >
                 <div className="font-medium text-blue-400">Export Player View</div>
                 <div className="text-xs text-gray-400">Filtered, safe to share with players</div>
@@ -89,6 +96,7 @@ function CombatHeaderViewBase({
               <button
                 onClick={() => { onExportGMLocked(); onToggleExportMenu(); }}
                 className="w-full text-left px-4 py-3 hover:bg-gray-700 border-b border-gray-700"
+                aria-label="Export GM locked (password-encrypted full state)"
               >
                 <div className="font-medium text-purple-400">Export GM Locked</div>
                 <div className="text-xs text-gray-400">Password-encrypted full state</div>
@@ -96,6 +104,7 @@ function CombatHeaderViewBase({
               <button
                 onClick={() => { onSaveCombat(); onToggleExportMenu(); }}
                 className="w-full text-left px-4 py-3 hover:bg-gray-700 border-b border-gray-700"
+                aria-label="Export full legacy (unencrypted, all data)"
               >
                 <div className="font-medium text-green-400">Export Full (Legacy)</div>
                 <div className="text-xs text-gray-400">Unencrypted, all data</div>
@@ -103,6 +112,7 @@ function CombatHeaderViewBase({
               <button
                 onClick={() => { onExportLog(); onToggleExportMenu(); }}
                 className="w-full text-left px-4 py-3 hover:bg-gray-700"
+                aria-label="Export log only (text file of combat log)"
               >
                 <div className="font-medium text-gray-300">Export Log Only</div>
                 <div className="text-xs text-gray-400">Text file of combat log</div>
@@ -115,6 +125,7 @@ function CombatHeaderViewBase({
         <button
           onClick={onLoadCombat}
           className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded"
+          aria-label="Load combat"
         >
           <Upload size={16} />
           Load
@@ -124,6 +135,7 @@ function CombatHeaderViewBase({
         <button
           onClick={onEndCombat}
           className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 rounded"
+          aria-label="End combat"
         >
           <X size={16} />
           End Combat
