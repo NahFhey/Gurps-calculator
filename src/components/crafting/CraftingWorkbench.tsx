@@ -21,6 +21,7 @@ import type { DowntimeState } from '../../types/downtime';
 import type { DowntimeAction } from '../../state/downtime/downtimeActions';
 import { createAndResolveTask } from '../../utils/createAutoResolvedTask';
 import { selectCharacterAssignmentForSlot } from '../../state/downtime/downtimeSelectors';
+import { useCampaignStore } from '../../state/campaignStore';
 
 // ============================================================================
 // Types
@@ -129,6 +130,7 @@ export function CraftingWorkbench({
   currentSlot,
 }: CraftingWorkbenchProps) {
   void _craftDesigns; void _saveCraftDesigns; void _weatherSkillBonus; // reserved for future use
+  const { actions: campaignActions } = useCampaignStore();
   const [current, setCurrent] = useState<Craft | null>(externalCraft);
   const [skill, setSkill] = useState('');
   const [roll, setRoll] = useState<DiceRoll>({ dice: [], total: 0 });
@@ -394,6 +396,18 @@ export function CraftingWorkbench({
       newCur.completedDate = currentDate;
       newCur.completedDay = currentDay;
       saveCrafts(upsertCraft(crafts, newCur) as Craft[]);
+      // Inventory bus (Phase 12a.5): completed craft lands in the party pool
+      campaignActions.acquireItem(
+        {
+          kind: 'equipment',
+          id: `crafted-${newCur.id}`,
+          name: newCur.name || newCur.template || 'Crafted Item',
+          quantity: 1,
+          notes: `${(newCur.currentQuality as string) || 'standard'} quality ${newCur.templateType}`
+        },
+        'party',
+        'crafting'
+      );
       addLogEntry(craftingLog.projectCompleted(
         newCur.name || newCur.template || 'Unknown',
         (newCur.currentQuality as string) || 'Standard',

@@ -33,6 +33,12 @@ vi.mock('../../../state/downtime/downtimeSelectors', () => ({
   selectCharacterAssignmentForSlot: vi.fn(() => null),
 }));
 
+// Mock campaign store (inventory bus dispatch on craft completion)
+const { acquireItemMock } = vi.hoisted(() => ({ acquireItemMock: vi.fn() }));
+vi.mock('../../../state/campaignStore', () => ({
+  useCampaignStore: () => ({ actions: { acquireItem: acquireItemMock } }),
+}));
+
 // ============================================================================
 // Shared test data
 // ============================================================================
@@ -230,5 +236,44 @@ describe('CraftingWorkbench', () => {
     render(<CraftingWorkbench {...defaultProps} craft={craft} />);
     expect(screen.getByText('Template Type')).toBeInTheDocument();
     expect(screen.getByText('Target Quality')).toBeInTheDocument();
+  });
+
+  it('dispatches acquireItem to the party pool on craft completion', () => {
+    acquireItemMock.mockClear();
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+
+    // Longsword hp=10 -> craftTime=10. One prior 8h shift + one successful
+    // 8h shift (mock roll 9 vs skill 14) crosses the threshold and completes.
+    const craft = makeInProgressCraft({
+      phase: 'craft',
+      shifts: [
+        { id: 's1', date: '2026-01-05', day: 5, worker: 'Smith', skill: 14, roll: 8, effectiveSkill: 13, result: 'Success', hoursAdded: 8, qualityChange: 0, phase: 'craft' },
+      ],
+    });
+    const onProjectCompleted = vi.fn();
+    render(
+      <CraftingWorkbench
+        {...defaultProps}
+        craft={craft}
+        onProjectCompleted={onProjectCompleted}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('dice-roller')); // roll 9
+    fireEvent.click(screen.getByText('Add Shift'));
+
+    expect(onProjectCompleted).toHaveBeenCalled();
+    expect(acquireItemMock).toHaveBeenCalledTimes(1);
+    const [item, owner, source] = acquireItemMock.mock.calls[0];
+    expect(item).toMatchObject({
+      kind: 'equipment',
+      id: 'crafted-craft-1',
+      name: 'Longsword',
+      quantity: 1,
+    });
+    expect(owner).toBe('party');
+    expect(source).toBe('crafting');
+
+    alertSpy.mockRestore();
   });
 });

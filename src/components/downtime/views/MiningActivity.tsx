@@ -47,7 +47,7 @@ import {
 import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
 import type { DowntimeTask, MiningData, MiningSite, TaskResults } from '../../../types/downtime';
 import type { CreateTaskPayload } from '../../../state/downtime/downtimeActions';
-import type { Material } from '../../../types/campaign';
+import type { AcquiredItem, InventoryOwner, AcquisitionSource } from '../../../types/campaign';
 
 // ============================================================================
 // TYPES
@@ -99,7 +99,9 @@ function selectMineralByRarity(rarity: string, targetResourceId?: string) {
 function autoResolveMiningTask(
   task: DowntimeTask,
   ctx: ReturnType<typeof useDowntimeContext>,
-  campaignActions: { addMaterial: (m: Material) => void },
+  campaignActions: {
+    acquireItem: (item: AcquiredItem, owner: InventoryOwner, source: AcquisitionSource) => void;
+  },
   miningSites: MiningSite[],
 ): { results: TaskResults; newSite?: MiningSite; updatedSite?: MiningSite } {
   const data = task.activityData as MiningData;
@@ -205,13 +207,14 @@ function autoResolveMiningTask(
         if (newSite.remainingUnits <= 0) newSite.depleted = true;
 
         inventoryChanges.push({ itemId: mineral.id, quantity: finalYield, itemName: mineral.name });
-        campaignActions.addMaterial({
+        campaignActions.acquireItem({
+          kind: 'material',
           id: `mine-${mineral.id}-${Date.now()}`,
           name: mineral.name,
           type: mineral.typeId,
           quantity: finalYield,
           source: `Mining at ${newSite.name}`,
-        } as Material);
+        }, 'party', 'gathering');
 
         message += ` Extracted ${finalYield} units (${outcome}).`;
         success = true;
@@ -264,13 +267,14 @@ function autoResolveMiningTask(
         };
 
         inventoryChanges.push({ itemId: mineral.id, quantity: finalYield, itemName: mineral.name });
-        campaignActions.addMaterial({
+        campaignActions.acquireItem({
+          kind: 'material',
           id: `mine-${mineral.id}-${Date.now()}`,
           name: mineral.name,
           type: mineral.typeId,
           quantity: finalYield,
           source: `Mining at ${site.name}`,
-        } as Material);
+        }, 'party', 'gathering');
 
         message = `${leaderName} extracted ${finalYield} units of ${mineral.name} from ${site.name} (rolled ${extRoll} vs ${extractSkill}, ${outcome}). ${newRemaining} units remaining.`;
         if (newRemaining <= 0) message += ' Deposit is now depleted!';

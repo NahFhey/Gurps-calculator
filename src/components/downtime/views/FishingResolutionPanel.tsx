@@ -20,7 +20,7 @@ import { getCharacterSkills } from '../../../types/characterSheet';
 import { useDowntimeContext } from '../DowntimeContext';
 import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
 import type { DowntimeTask, FishingData, TaskResults } from '../../../types/downtime';
-import type { GatheringSpecies, GatheringEnvironment, GatheringTable, GatheringBait, Character, Food, Material } from '../../../types/campaign';
+import type { GatheringSpecies, GatheringEnvironment, GatheringTable, GatheringBait, Character } from '../../../types/campaign';
 
 // Extended type for GatheringEnvironment with additional properties used in fishing resolution
 interface GatheringEnvironmentExtended extends GatheringEnvironment {
@@ -787,13 +787,14 @@ export function FishingResolutionPanel({
         // Use the species' foodType instead of hardcoded 'fish'
         const foodType = (caughtSpecies as any).foodType ?? 'fish';
 
-        campaignActions.addFood({
+        campaignActions.acquireItem({
+          kind: 'food',
           id: foodId,
           name: foodName,
           types: [foodType],
           quantity: meatUnits,
           source: `Fishing at ${spot?.name ?? 'unknown'}`,
-        } as Food);
+        }, 'party', 'gathering');
 
         inventoryChanges.push({
           itemId: foodId,
@@ -811,13 +812,14 @@ export function FishingResolutionPanel({
         const materialId = `material-${caughtSpecies.id}-${secondaryType}-${Date.now()}`;
         const materialName = `${caughtSpecies.name} ${secondaryType.charAt(0).toUpperCase() + secondaryType.slice(1)}`;
 
-        campaignActions.addMaterial({
+        campaignActions.acquireItem({
+          kind: 'material',
           id: materialId,
           name: materialName,
           type: secondaryType,
           quantity: secondaryUnits,
           source: `Fishing at ${spot?.name ?? 'unknown'}`,
-        } as Material);
+        }, 'party', 'gathering');
 
         inventoryChanges.push({
           itemId: materialId,

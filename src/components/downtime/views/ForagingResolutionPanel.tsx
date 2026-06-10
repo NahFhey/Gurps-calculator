@@ -31,7 +31,7 @@ import {
 import { FORAGE_CATEGORY_META, FORAGE_TIER_MULTIPLIERS } from '../../../constants/foraging';
 import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
 import type { DowntimeTask, ForagingData, TaskResults } from '../../../types/downtime';
-import type { Character, Food, Material } from '../../../types/campaign';
+import type { Character } from '../../../types/campaign';
 import type {
   ForageActionInput,
   ForageContextFlags,
@@ -263,21 +263,23 @@ export function ForagingResolutionPanel({
     for (const stack of foundStacks) {
       const itemId = `forage-${stack.itemId}-${Date.now()}`;
       if (stack.inventoryKind === 'food') {
-        campaignActions.addFood({
+        campaignActions.acquireItem({
+          kind: 'food',
           id: itemId,
           name: stack.itemName,
           types: [stack.typeId],
           quantity: stack.quantity,
           source: `Foraging at ${zoneName}`,
-        } as Food);
+        }, 'party', 'gathering');
       } else {
-        campaignActions.addMaterial({
+        campaignActions.acquireItem({
+          kind: 'material',
           id: itemId,
           name: stack.itemName,
           type: stack.typeId,
           quantity: stack.quantity,
           source: `Foraging at ${zoneName}`,
-        } as Material);
+        }, 'party', 'gathering');
       }
     }
 
