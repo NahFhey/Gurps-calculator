@@ -10,8 +10,9 @@
 import { useState, ChangeEvent } from 'react';
 import { Plus, Package, Coins, Trash2, Check, Users, User } from 'lucide-react';
 import { useCombatStore } from '../../hooks/useCombatStore';
+import { useCampaignStore } from '../../state/campaignStore';
 import type { LootItem, LootDistributionEntry } from '../../types/combatTracker';
-import type { Character } from '../../types/campaign';
+import type { Character, AcquiredItem, InventoryOwner } from '../../types/campaign';
 
 // ============================================================================
 // HELPERS
@@ -97,6 +98,7 @@ function LootItemRow({
 
 export default function LootDistribution({ onComplete }: LootDistributionProps) {
   const { partyCharacters } = useCombatStore();
+  const { actions: campaignActions } = useCampaignStore();
 
   const [lootItems, setLootItems] = useState<LootItem[]>([]);
   const [distributions, setDistributions] = useState<Record<string, LootDistributionEntry>>({});
@@ -152,20 +154,58 @@ export default function LootDistribution({ onComplete }: LootDistributionProps) 
   };
 
   const handleDistribute = () => {
-    // Apply loot to inventories
+    // Inventory bus (Phase 12a.5): commit each loot item to its assigned owner.
+    // Assignments are final at this point, so we acquire directly with the
+    // recipient as owner (equivalent to acquire-to-party + retag-to-recipient).
     for (const item of lootItems) {
       const dist = distributions[item.id];
-      if (!dist) continue;
+      const owner: InventoryOwner = dist?.targetId && dist.targetId !== 'party'
+        ? dist.targetId
+        : 'party';
 
-      // TODO (Phase 15): Replace with actual inventory mutations via campaignStore.
-      // Currently distribution is tracked in UI state only — items are not
-      // persisted to entities.inventories, entities.materials, or entities.foods.
-      // The full integration requires mapping loot types to inventory APIs:
-      //   currency → inventory.currency[key] += amount
-      //   material → entities.materials[newId] = { ... }
-      //   food     → entities.foods[newId] = { ... }
-      //   equipment/other → entities.inventories[targetInvId].items.push(...)
-      void dist; // suppress unused warning until integration
+      let acquired: AcquiredItem;
+      switch (item.type) {
+        case 'currency':
+          acquired = {
+            kind: 'currency',
+            currencyKey: item.name.trim().toLowerCase(),
+            amount: item.quantity
+          };
+          break;
+        case 'material':
+          acquired = {
+            kind: 'material',
+            id: item.id,
+            name: item.name,
+            type: 'loot',
+            quantity: item.quantity,
+            notes: item.notes
+          };
+          break;
+        case 'food':
+          acquired = {
+            kind: 'food',
+            id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            notes: item.notes
+          };
+          break;
+        case 'equipment':
+        case 'other':
+        default:
+          acquired = {
+            kind: item.type === 'equipment' ? 'equipment' : 'other',
+            id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            value: item.value,
+            notes: item.notes
+          };
+          break;
+      }
+
+      campaignActions.acquireItem(acquired, owner, 'loot');
     }
 
     setDistributed(true);

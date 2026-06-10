@@ -23,6 +23,8 @@ import {
   INVENTORY_ADD,
   INVENTORY_UPDATE,
   INVENTORY_SET,
+  ITEM_ACQUIRED,
+  ITEM_RETAGGED,
   type InventoryAction,
 } from '../inventoryActions';
 import type { CampaignState } from '../../campaignReducer';
@@ -389,6 +391,202 @@ describe('inventoryReducer', () => {
       );
       expect(result).toBe(false);
       expect(JSON.stringify(state)).toBe(before);
+    });
+  });
+
+  describe('ITEM_ACQUIRED (inventory bus)', () => {
+    it('material acquisition stacks into the pool and refs the owner inventory', () => {
+      const next = applyAction(state, {
+        type: ITEM_ACQUIRED,
+        payload: {
+          item: { kind: 'material', id: 'm1', name: 'Iron Ore', type: 'metal', quantity: 3 },
+          owner: 'party',
+          source: 'gathering',
+        },
+      });
+      expect(next.entities.materials['m1']).toMatchObject({
+        name: 'Iron Ore',
+        type: 'metal',
+        quantity: 3,
+        source: 'gathering',
+      });
+      const party = Object.values(next.entities.inventories).find(i => i.ownerType === 'party');
+      expect(party?.materials).toEqual([{ id: 'm1', quantity: 3 }]);
+    });
+
+    it('material acquisition merges with an existing pool stack by name+type', () => {
+      state.entities.materials['m1'] = material('m1', { name: 'Iron Ore', type: 'metal', quantity: 5 });
+      const next = applyAction(state, {
+        type: ITEM_ACQUIRED,
+        payload: {
+          item: { kind: 'material', id: 'm2', name: 'Iron Ore', type: 'metal', quantity: 2 },
+          owner: 'party',
+          source: 'loot',
+        },
+      });
+      expect(next.entities.materials['m1'].quantity).toBe(7);
+      expect(next.entities.materials['m2']).toBeUndefined();
+      // The owner ref points at the record the quantity landed in
+      const party = Object.values(next.entities.inventories).find(i => i.ownerType === 'party');
+      expect(party?.materials).toEqual([{ id: 'm1', quantity: 2 }]);
+    });
+
+    it('material acquisition preserves a descriptive source label when provided', () => {
+      const next = applyAction(state, {
+        type: ITEM_ACQUIRED,
+        payload: {
+          item: { kind: 'material', id: 'm1', name: 'Pine Log', type: 'wood', quantity: 1, source: 'Foraging at Greenwood' },
+          owner: 'party',
+          source: 'gathering',
+        },
+      });
+      expect(next.entities.materials['m1'].source).toBe('Foraging at Greenwood');
+    });
+
+    it('food acquisition stacks into the pool and refs the owner inventory', () => {
+      state.entities.foods['f1'] = food('f1', { name: 'Berries', type: undefined, types: ['fruit'], quantity: 4 });
+      const next = applyAction(state, {
+        type: ITEM_ACQUIRED,
+        payload: {
+          item: { kind: 'food', id: 'f2', name: 'Berries', types: ['fruit'], quantity: 6 },
+          owner: 'party',
+          source: 'gathering',
+        },
+      });
+      expect(next.entities.foods['f1'].quantity).toBe(10);
+      const party = Object.values(next.entities.inventories).find(i => i.ownerType === 'party');
+      expect(party?.food).toEqual([{ id: 'f1', quantity: 6 }]);
+    });
+
+    it('equipment acquisition lands an ItemInstance in the owner inventory', () => {
+      const next = applyAction(state, {
+        type: ITEM_ACQUIRED,
+        payload: {
+          item: { kind: 'equipment', id: 'sword-1', name: 'Fine Longsword', quantity: 1, value: 4000, notes: 'fine quality' },
+          owner: 'char-1',
+          source: 'crafting',
+        },
+      });
+      const charInv = Object.values(next.entities.inventories).find(
+        i => i.ownerType === 'character' && i.ownerId === 'char-1'
+      );
+      expect(charInv?.items).toEqual([
+        { id: 'sword-1', name: 'Fine Longsword', quantity: 1, value: 4000, notes: 'fine quality', source: 'crafting' },
+      ]);
+    });
+
+    it('auto-creates a missing owner inventory record (always-succeed)', () => {
+      expect(Object.keys(state.entities.inventories)).toHaveLength(0);
+      const next = applyAction(state, {
+        type: ITEM_ACQUIRED,
+        payload: {
+          item: { kind: 'other', id: 'rope-1', name: 'Rope', quantity: 1 },
+          owner: 'party',
+          source: 'loot',
+        },
+      });
+      const party = Object.values(next.entities.inventories).find(i => i.ownerType === 'party');
+      expect(party).toBeDefined();
+      expect(party?.items).toHaveLength(1);
+    });
+
+    it('reuses an existing owner inventory record instead of duplicating', () => {
+      state.entities.inventories['party'] = inventory('party');
+      const next = applyAction(state, {
+        type: ITEM_ACQUIRED,
+        payload: {
+          item: { kind: 'other', id: 'rope-1', name: 'Rope', quantity: 1 },
+          owner: 'party',
+          source: 'loot',
+        },
+      });
+      expect(Object.keys(next.entities.inventories)).toHaveLength(1);
+      expect(next.entities.inventories['party'].items).toHaveLength(1);
+    });
+
+    it('currency acquisition adds to the owner currency map', () => {
+      state.entities.inventories['party'] = inventory('party', { currency: { gold: 10 } });
+      const next = applyAction(state, {
+        type: ITEM_ACQUIRED,
+        payload: {
+          item: { kind: 'currency', currencyKey: 'gold', amount: 25 },
+          owner: 'party',
+          source: 'loot',
+        },
+      });
+      expect(next.entities.inventories['party'].currency.gold).toBe(35);
+    });
+  });
+
+  describe('ITEM_RETAGGED (inventory bus)', () => {
+    it('moves an ItemInstance from party to a character inventory', () => {
+      state.entities.inventories['party'] = inventory('party', {
+        items: [{ id: 'sword-1', name: 'Longsword', quantity: 1 }],
+      });
+      const next = applyAction(state, {
+        type: ITEM_RETAGGED,
+        payload: { itemId: 'sword-1', newOwner: 'char-1' },
+      });
+      expect(next.entities.inventories['party'].items).toHaveLength(0);
+      const charInv = Object.values(next.entities.inventories).find(
+        i => i.ownerType === 'character' && i.ownerId === 'char-1'
+      );
+      expect(charInv?.items).toEqual([{ id: 'sword-1', name: 'Longsword', quantity: 1 }]);
+    });
+
+    it('moves a material quantity ref between inventories, merging on arrival', () => {
+      state.entities.inventories['party'] = inventory('party', {
+        materials: [{ id: 'm1', quantity: 5 }],
+      });
+      state.entities.inventories['inv-char-1'] = inventory('inv-char-1', {
+        ownerType: 'character',
+        ownerId: 'char-1',
+        materials: [{ id: 'm1', quantity: 2 }],
+      });
+      const next = applyAction(state, {
+        type: ITEM_RETAGGED,
+        payload: { itemId: 'm1', newOwner: 'char-1' },
+      });
+      expect(next.entities.inventories['party'].materials).toHaveLength(0);
+      expect(next.entities.inventories['inv-char-1'].materials).toEqual([{ id: 'm1', quantity: 7 }]);
+    });
+
+    it('retag to the current owner is a no-op', () => {
+      state.entities.inventories['party'] = inventory('party', {
+        items: [{ id: 'sword-1', name: 'Longsword', quantity: 1 }],
+      });
+      const next = applyAction(state, {
+        type: ITEM_RETAGGED,
+        payload: { itemId: 'sword-1', newOwner: 'party' },
+      });
+      expect(next.entities.inventories['party'].items).toHaveLength(1);
+    });
+
+    it('unknown itemId is a silent no-op (always-succeed)', () => {
+      state.entities.inventories['party'] = inventory('party');
+      const before = JSON.stringify(state.entities.inventories);
+      const next = applyAction(state, {
+        type: ITEM_RETAGGED,
+        payload: { itemId: 'does-not-exist', newOwner: 'char-1' },
+      });
+      expect(JSON.stringify(next.entities.inventories)).toBe(before);
+    });
+
+    it('is idempotent: retagging twice equals retagging once', () => {
+      state.entities.inventories['party'] = inventory('party', {
+        items: [{ id: 'sword-1', name: 'Longsword', quantity: 1 }],
+      });
+      const once = applyAction(state, {
+        type: ITEM_RETAGGED,
+        payload: { itemId: 'sword-1', newOwner: 'char-1' },
+      });
+      const twice = applyAction(once, {
+        type: ITEM_RETAGGED,
+        payload: { itemId: 'sword-1', newOwner: 'char-1' },
+      });
+      expect(JSON.stringify(twice.entities.inventories)).toBe(
+        JSON.stringify(once.entities.inventories)
+      );
     });
   });
 });

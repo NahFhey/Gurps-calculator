@@ -791,6 +791,11 @@ export interface ItemInstance {
   id: Id;
   name?: string;
   quantity?: number;
+  /** Value in cp (e.g. from loot distribution) */
+  value?: number;
+  notes?: string;
+  /** Provenance label, e.g. 'crafting' | 'gathering' | 'loot' */
+  source?: string;
 }
 
 export interface MaterialEntry {
@@ -813,6 +818,34 @@ export interface Inventory {
   materials: MaterialEntry[];
   food: FoodEntry[];
 }
+
+// ============================================================================
+// INVENTORY INTEGRATION BUS (Phase 12a.5)
+// ============================================================================
+
+/** Owner tag for inventory bus writes: the shared party pool or a character id. */
+export type InventoryOwner = 'party' | Id;
+
+/** Provenance of an inventory bus write. Read-only metadata; reducers never branch on it. */
+export type AcquisitionSource = 'crafting' | 'gathering' | 'loot';
+
+/**
+ * Item payload for the `inventory/itemAcquired` bus action.
+ *
+ * Discriminated on `kind`, mapping each acquirable thing onto existing storage:
+ * - material/food → stack into the global pools (entities.materials/foods, existing
+ *   name+type stack rules) plus a quantity ref in the owner's Inventory record
+ * - equipment/other → ItemInstance in the owner's Inventory record
+ * - currency → owner's Inventory currency map
+ *
+ * `source` on material/food is the descriptive label stored on the pool record
+ * (e.g. "Foraging at Greenwood"); when omitted, the action-level source is used.
+ */
+export type AcquiredItem =
+  | { kind: 'material'; id: Id; name: string; type: string; quantity: number; source?: string; notes?: string }
+  | { kind: 'food'; id: Id; name: string; types?: string[]; quantity: number; source?: string; notes?: string }
+  | { kind: 'equipment' | 'other'; id: Id; name: string; quantity: number; value?: number; notes?: string }
+  | { kind: 'currency'; currencyKey: string; amount: number };
 
 export interface CurrencyLog {
   id: Id;

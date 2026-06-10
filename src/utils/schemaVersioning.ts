@@ -13,7 +13,7 @@ export interface SchemaMetadataEntry {
   migratesFrom?: string[];
 }
 
-export const CURRENT_SCHEMA_VERSION = '1.3.0';
+export const CURRENT_SCHEMA_VERSION = '1.4.0';
 
 export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
   '1.0.0': {
@@ -46,6 +46,16 @@ export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
     description: 'Added gathering/fishing system with daily events and yields',
     features: ['gathering_sessions', 'gathering_daily_events', 'gathering_species', 'current_day'],
     migratesFrom: ['1.2.0'],
+  },
+  '1.4.0': {
+    name: 'Inventory Integration Bus',
+    timestamp: '2026-06-09',
+    breaking: false,
+    description:
+      'Crafting/gathering/loot write to inventory via itemAcquired/itemRetagged; ' +
+      'owner records (party + per-character) guaranteed on load',
+    features: ['inventory_bus', 'inventory_owner_records'],
+    migratesFrom: ['1.3.0'],
   },
 };
 

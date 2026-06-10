@@ -31,7 +31,7 @@ import { useWeatherModifiers } from '../../../hooks/useWeatherModifiers';
 import type { DowntimeTask, ForagingData, TaskResults } from '../../../types/downtime';
 import type { CreateTaskPayload } from '../../../state/downtime/downtimeActions';
 import type { ForageActionInput, ForageContextFlags } from '../../../types/foraging';
-import type { Food, Material } from '../../../types/campaign';
+import type { AcquiredItem, InventoryOwner, AcquisitionSource } from '../../../types/campaign';
 
 // ============================================================================
 // TYPES
@@ -56,7 +56,9 @@ interface ForagingActivityProps {
 function resolveForagingTask(
   task: DowntimeTask,
   ctx: ReturnType<typeof useDowntimeContext>,
-  campaignActions: { addFood: (food: Food) => void; addMaterial: (material: Material) => void },
+  campaignActions: {
+    acquireItem: (item: AcquiredItem, owner: InventoryOwner, source: AcquisitionSource) => void;
+  },
   weatherModifier: number
 ): TaskResults {
   const data = task.activityData as ForagingData;
@@ -163,21 +165,23 @@ function resolveForagingTask(
   for (const stack of result.found) {
     const itemId = `forage-${stack.itemId}-${Date.now()}`;
     if (stack.inventoryKind === 'food') {
-      campaignActions.addFood({
+      campaignActions.acquireItem({
+        kind: 'food',
         id: itemId,
         name: stack.itemName,
         types: [stack.typeId],
         quantity: stack.quantity,
         source: `Foraging at ${zoneName}`,
-      } as Food);
+      }, 'party', 'gathering');
     } else {
-      campaignActions.addMaterial({
+      campaignActions.acquireItem({
+        kind: 'material',
         id: itemId,
         name: stack.itemName,
         type: stack.typeId,
         quantity: stack.quantity,
         source: `Foraging at ${zoneName}`,
-      } as Material);
+      }, 'party', 'gathering');
     }
   }
 

@@ -349,4 +349,84 @@ describe('campaignStorage', () => {
       expect(loaded.combat.reveal.revealedTargets).toBeInstanceOf(Set);
     });
   });
+
+  // ==========================================================================
+  // INVENTORY OWNER RECORD MIGRATION (schema 1.4.0, Phase 12a.5)
+  // ==========================================================================
+
+  describe('inventory owner record migration', () => {
+    it('backfills party and character inventory records on load of a pre-12a.5 save', async () => {
+      // Pre-12a.5 save: characters exist but no inventories key at all
+      const legacyState = {
+        time: { day: 2, slot: 1 },
+        entities: {
+          characters: {
+            'c1': { id: 'c1', name: 'Korrin' },
+          },
+          // inventories missing entirely
+        },
+      };
+      localStorage.setItem('campaignState', JSON.stringify(legacyState));
+
+      const loaded = await loadCampaignState();
+
+      const party = Object.values(loaded.entities.inventories).find(
+        (i) => i.ownerType === 'party'
+      );
+      const charInv = Object.values(loaded.entities.inventories).find(
+        (i) => i.ownerType === 'character' && i.ownerId === 'c1'
+      );
+      expect(party).toBeDefined();
+      expect(charInv).toBeDefined();
+    });
+
+    it('migration is idempotent across save/load round-trips', async () => {
+      const legacyState = {
+        entities: { characters: { 'c1': { id: 'c1', name: 'Korrin' } } },
+      };
+      localStorage.setItem('campaignState', JSON.stringify(legacyState));
+
+      const first = await loadCampaignState();
+      await saveCampaignState(first);
+      const second = await loadCampaignState();
+
+      expect(Object.keys(second.entities.inventories).sort()).toEqual(
+        Object.keys(first.entities.inventories).sort()
+      );
+    });
+
+    it('does not disturb existing inventory contents on load', async () => {
+      const stateWithInventory = {
+        entities: {
+          characters: { 'c1': { id: 'c1', name: 'Korrin' } },
+          inventories: {
+            party: {
+              id: 'party',
+              ownerType: 'party',
+              ownerId: null,
+              currency: { gold: 12 },
+              items: [{ id: 'rope-1', name: 'Rope', quantity: 1 }],
+              tools: [],
+              materials: [],
+              food: [],
+            },
+          },
+        },
+      };
+      localStorage.setItem('campaignState', JSON.stringify(stateWithInventory));
+
+      const loaded = await loadCampaignState();
+
+      expect(loaded.entities.inventories['party'].currency.gold).toBe(12);
+      expect(loaded.entities.inventories['party'].items).toEqual([
+        { id: 'rope-1', name: 'Rope', quantity: 1 },
+      ]);
+      // Character record was still backfilled
+      expect(
+        Object.values(loaded.entities.inventories).some(
+          (i) => i.ownerType === 'character' && i.ownerId === 'c1'
+        )
+      ).toBe(true);
+    });
+  });
 });

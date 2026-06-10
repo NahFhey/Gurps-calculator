@@ -41,7 +41,10 @@ import type {
   ToolInstance,
   Facility,
   Inventory,
-  CurrencyLog
+  CurrencyLog,
+  AcquiredItem,
+  InventoryOwner,
+  AcquisitionSource
 } from '../types/campaign';
 import type {
   Location,
@@ -639,6 +642,9 @@ export type CampaignAction =
   | { type: 'addInventory'; payload: Inventory }
   | { type: 'updateInventory'; payload: { id: Id; changes: Partial<Inventory> } }
   | { type: 'setInventories'; payload: Record<Id, Inventory> }
+  // Inventory integration bus actions (Phase 12a.5)
+  | { type: 'inventory/itemAcquired'; payload: { item: AcquiredItem; owner: InventoryOwner; source: AcquisitionSource } }
+  | { type: 'inventory/itemRetagged'; payload: { itemId: Id; newOwner: InventoryOwner } }
   // Location & Weather actions
   | { type: 'setLocationsState'; payload: Partial<LocationState> }
   | { type: 'addLocation'; payload: Location }

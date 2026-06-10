@@ -21,6 +21,8 @@ import {
   INVENTORY_ADD,
   INVENTORY_UPDATE,
   INVENTORY_SET,
+  ITEM_ACQUIRED,
+  ITEM_RETAGGED,
   isInventoryAction,
   type InventoryAction
 } from '../inventoryActions';
@@ -85,6 +87,8 @@ describe('inventoryActions', () => {
       expect(INVENTORY_ADD).toBe('addInventory');
       expect(INVENTORY_UPDATE).toBe('updateInventory');
       expect(INVENTORY_SET).toBe('setInventories');
+      expect(ITEM_ACQUIRED).toBe('inventory/itemAcquired');
+      expect(ITEM_RETAGGED).toBe('inventory/itemRetagged');
     });
 
     it('constants are all unique', () => {
@@ -109,7 +113,9 @@ describe('inventoryActions', () => {
         MATERIAL_TYPE_ADD,
         INVENTORY_ADD,
         INVENTORY_UPDATE,
-        INVENTORY_SET
+        INVENTORY_SET,
+        ITEM_ACQUIRED,
+        ITEM_RETAGGED
       ];
       expect(new Set(values).size).toBe(values.length);
     });
@@ -171,6 +177,23 @@ describe('inventoryActions', () => {
         { type: INVENTORY_ADD, payload: mockInventory() },
         { type: INVENTORY_UPDATE, payload: { id: 'inv-1', changes: { ownerType: 'character' } } },
         { type: INVENTORY_SET, payload: { 'inv-1': mockInventory() } }
+      ];
+      for (const action of actions) {
+        expect(isInventoryAction(action)).toBe(true);
+      }
+    });
+
+    it('returns true for inventory bus actions', () => {
+      const actions: InventoryAction[] = [
+        {
+          type: ITEM_ACQUIRED,
+          payload: {
+            item: { kind: 'material', id: 'm1', name: 'Iron Ore', type: 'metal', quantity: 1 },
+            owner: 'party',
+            source: 'gathering'
+          }
+        },
+        { type: ITEM_RETAGGED, payload: { itemId: 'm1', newOwner: 'char-1' } }
       ];
       for (const action of actions) {
         expect(isInventoryAction(action)).toBe(true);

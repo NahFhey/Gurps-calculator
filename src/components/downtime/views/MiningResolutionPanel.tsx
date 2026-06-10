@@ -45,7 +45,7 @@ import {
 } from '../../../constants/mining';
 import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
 import type { DowntimeTask, MiningData, MiningSite, TaskResults } from '../../../types/downtime';
-import type { Character, Material } from '../../../types/campaign';
+import type { Character } from '../../../types/campaign';
 
 // ============================================================================
 // TYPES
@@ -348,13 +348,14 @@ export function MiningResolutionPanel({
             });
 
             // Add to inventory
-            campaignActions.addMaterial({
+            campaignActions.acquireItem({
+              kind: 'material',
               id: `mine-${discoveredMineral.id}-${Date.now()}`,
               name: discoveredMineral.name,
               type: discoveredMineral.typeId,
               quantity: finalYield,
               source: `Mining at ${newSite.name}`,
-            } as Material);
+            }, 'party', 'gathering');
 
             message += ` Extracted ${finalYield} units of ${discoveredMineral.name}.`;
             if (extractionCritSuccess && critChoiceQuality) {
@@ -397,13 +398,14 @@ export function MiningResolutionPanel({
             itemName: activeMineral.name,
           });
 
-          campaignActions.addMaterial({
+          campaignActions.acquireItem({
+            kind: 'material',
             id: `mine-${activeMineral.id}-${Date.now()}`,
             name: activeMineral.name,
             type: activeMineral.typeId,
             quantity: finalYield,
             source: `Mining at ${existingSite.name}`,
-          } as Material);
+          }, 'party', 'gathering');
 
           message = `${leaderName} extracted ${finalYield} units of ${activeMineral.name} from ${existingSite.name}. ${newRemaining} units remaining.`;
           if (newRemaining <= 0) message += ' Deposit is now depleted!';

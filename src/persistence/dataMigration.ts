@@ -12,7 +12,7 @@ import {
   createCharacterInventories,
   ensureIds
 } from '../state/campaignUtils';
-import type { Id, Material, Food, Recipe, Craft, CraftDesign, AlchemyReagent, AlchemyFormula, AlchemyBatch, AlchemyLab, GatheringSpecies, GatheringTool, GatheringTable, GatheringEnvironment, GatheringSession, GatheringBait, GatheringCategory, GatheringItem, CombatCharacter, CombatItem, Kitchen } from '../types/campaign';
+import type { Id, Material, Food, Recipe, Craft, CraftDesign, AlchemyReagent, AlchemyFormula, AlchemyBatch, AlchemyLab, GatheringSpecies, GatheringTool, GatheringTable, GatheringEnvironment, GatheringSession, GatheringBait, GatheringCategory, GatheringItem, CombatCharacter, CombatItem, Kitchen, Inventory } from '../types/campaign';
 
 // Legacy localStorage keys to migrate
 const LEGACY_KEYS = [
@@ -422,6 +422,56 @@ export async function rollbackMigration(): Promise<boolean> {
     console.error('[Migration] ❌ Rollback failed:', error);
     return false;
   }
+}
+
+/**
+ * Schema 1.4.0 (Phase 12a.5): guarantee owner Inventory records exist.
+ *
+ * Ownership in this codebase lives on Inventory records (ownerType/ownerId),
+ * not as a per-item field, so the 12a.5 "owner backfill" is record-existence:
+ * one party record plus one record per character. Items already inside a
+ * record keep their owner. Pure and idempotent — safe to run on every load.
+ */
+export function ensureInventoryRecords(state: CampaignState): CampaignState {
+  const inventories: Record<Id, Inventory> = { ...state.entities.inventories };
+  const existing = Object.values(inventories);
+  let changed = false;
+
+  const emptyRecord = (id: Id, ownerType: Inventory['ownerType'], ownerId: Id | null): Inventory => ({
+    id,
+    ownerType,
+    ownerId,
+    currency: {},
+    items: [],
+    tools: [],
+    materials: [],
+    food: []
+  });
+
+  if (!existing.some((inv) => inv.ownerType === 'party')) {
+    inventories['party'] = emptyRecord('party', 'party', null);
+    changed = true;
+  }
+
+  for (const character of Object.values(state.entities.characters)) {
+    const hasRecord = existing.some(
+      (inv) => inv.ownerType === 'character' && inv.ownerId === character.id
+    );
+    if (!hasRecord) {
+      const id = inventories[character.id] ? `inv-${character.id}` : character.id;
+      inventories[id] = emptyRecord(id, 'character', character.id);
+      changed = true;
+    }
+  }
+
+  if (!changed) return state;
+  return {
+    ...state,
+    entities: {
+      ...state.entities,
+      inventories
+    }
+  };
 }
 
 /**

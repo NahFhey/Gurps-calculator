@@ -44,7 +44,10 @@ import type {
   EffectFamilyMap,
   Inventory,
   Facility,
-  EncounterTemplate
+  EncounterTemplate,
+  AcquiredItem,
+  InventoryOwner,
+  AcquisitionSource
 } from '../types/campaign';
 import type {
   Location,
@@ -239,6 +242,10 @@ type CampaignStoreValue = {
     addInventory: (inventory: Inventory) => void;
     updateInventory: (id: Id, changes: Partial<Inventory>) => void;
     setInventories: (inventories: Record<Id, Inventory>) => void;
+    /** Inventory bus (Phase 12a.5): land an item with an owner. Always succeeds. */
+    acquireItem: (item: AcquiredItem, owner: InventoryOwner, source: AcquisitionSource) => void;
+    /** Inventory bus (Phase 12a.5): move an item/ref to a new owner. Always succeeds. */
+    retagItem: (itemId: Id, newOwner: InventoryOwner) => void;
 
     // Location & Weather Actions
     setLocationsState: (payload: Partial<LocationState>) => void;
@@ -535,6 +542,10 @@ export function CampaignStoreProvider({
         dispatch({ type: 'updateInventory', payload: { id, changes } }),
       setInventories: (inventories: Record<Id, Inventory>) =>
         dispatch({ type: 'setInventories', payload: inventories }),
+      acquireItem: (item: AcquiredItem, owner: InventoryOwner, source: AcquisitionSource) =>
+        dispatch({ type: 'inventory/itemAcquired', payload: { item, owner, source } }),
+      retagItem: (itemId: Id, newOwner: InventoryOwner) =>
+        dispatch({ type: 'inventory/itemRetagged', payload: { itemId, newOwner } }),
 
       // Location & Weather Actions
       setLocationsState: (payload: Partial<LocationState>) =>

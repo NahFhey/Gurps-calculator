@@ -23,7 +23,7 @@ import {
 describe('Schema Versioning System', () => {
   describe('Version Constants', () => {
     it('should have current schema version defined', () => {
-      expect(CURRENT_SCHEMA_VERSION).toBe('1.3.0');
+      expect(CURRENT_SCHEMA_VERSION).toBe('1.4.0');
     });
 
     it('should have metadata for all supported versions', () => {
@@ -31,6 +31,7 @@ describe('Schema Versioning System', () => {
       expect(SCHEMA_METADATA['1.1.0']).toBeDefined();
       expect(SCHEMA_METADATA['1.2.0']).toBeDefined();
       expect(SCHEMA_METADATA['1.3.0']).toBeDefined();
+      expect(SCHEMA_METADATA['1.4.0']).toBeDefined();
     });
 
     it('should include features list in metadata', () => {
@@ -134,6 +135,30 @@ describe('Schema Versioning System', () => {
       expect(Array.isArray(result.gatheringSessions)).toBe(true);
       expect(typeof result.currentDay).toBe('number');
       expect(result.currentDay).toBe(1);
+    });
+
+    it('should add inventories when migrating from 1.3.0 to 1.4.0', () => {
+      const v1_3_data = {
+        combatActive: null,
+        currentDay: 4
+      };
+
+      const result = migrateData(v1_3_data, '1.3.0', '1.4.0');
+
+      expect(result.inventories).toEqual({});
+      expect(result.currentDay).toBe(4);
+      expect(result.schemaVersion).toBe('1.4.0');
+    });
+
+    it('should preserve existing inventories when migrating to 1.4.0', () => {
+      const v1_3_data = {
+        currentDay: 4,
+        inventories: { party: { id: 'party', ownerType: 'party' } }
+      };
+
+      const result = migrateData(v1_3_data, '1.3.0', '1.4.0');
+
+      expect(result.inventories).toEqual({ party: { id: 'party', ownerType: 'party' } });
     });
 
     it('should perform full migration from 1.0.0 to 1.3.0', () => {

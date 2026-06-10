@@ -43,7 +43,7 @@ import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/
 import { useWeatherModifiers } from '../../../hooks/useWeatherModifiers';
 import type { DowntimeState, DowntimeTask, FishingData, TaskResults, InventoryDelta } from '../../../types/downtime';
 import type { CreateTaskPayload } from '../../../state/downtime/downtimeActions';
-import type { GatheringSpecies, GatheringEnvironment, GatheringTable, GatheringBait, Food, Material } from '../../../types/campaign';
+import type { GatheringSpecies, GatheringEnvironment, GatheringTable, GatheringBait, AcquiredItem, InventoryOwner, AcquisitionSource } from '../../../types/campaign';
 
 // ============================================================================
 // TYPES
@@ -81,7 +81,10 @@ function calculateFishingResultsAuto(
   bait: GatheringBait[],
   gatheringTables: GatheringTable[],
   spot: GatheringEnvironment | undefined,
-  campaignActions: { addFood: (food: Food) => void; addMaterial: (material: Material) => void; addGatheringBait: (bait: GatheringBait) => void },
+  campaignActions: {
+    acquireItem: (item: AcquiredItem, owner: InventoryOwner, source: AcquisitionSource) => void;
+    addGatheringBait: (bait: GatheringBait) => void;
+  },
   downtimeState?: DowntimeState,
   weatherModifier: number = 0
 ): TaskResults {
@@ -284,13 +287,14 @@ function calculateFishingResultsAuto(
       // Use the species' foodType instead of hardcoded 'fish'
       const foodType = (caughtSpecies as any).foodType ?? 'fish';
 
-      campaignActions.addFood({
+      campaignActions.acquireItem({
+        kind: 'food',
         id: foodId,
         name: foodName,
         types: [foodType],
         quantity: meatYield,
         source: `Fishing at ${spot?.name ?? 'unknown'}`,
-      } as Food);
+      }, 'party', 'gathering');
 
       inventoryChanges.push({
         itemId: foodId,
@@ -302,13 +306,14 @@ function calculateFishingResultsAuto(
         const materialId = `material-${caughtSpecies.id}-${secondaryType}-${Date.now()}-${i}`;
         const materialName = `${caughtSpecies.name} ${secondaryType.charAt(0).toUpperCase() + secondaryType.slice(1)}`;
 
-        campaignActions.addMaterial({
+        campaignActions.acquireItem({
+          kind: 'material',
           id: materialId,
           name: materialName,
           type: secondaryType,
           quantity: secondaryYield,
           source: `Fishing at ${spot?.name ?? 'unknown'}`,
-        } as Material);
+        }, 'party', 'gathering');
 
         inventoryChanges.push({
           itemId: materialId,
