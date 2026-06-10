@@ -12,7 +12,10 @@ import type {
   Recipe,
   FoodType,
   MaterialType,
-  Inventory
+  Inventory,
+  AcquiredItem,
+  InventoryOwner,
+  AcquisitionSource
 } from '../../types/campaign';
 
 // ============================================================================
@@ -49,6 +52,10 @@ export const MATERIAL_TYPE_ADD = 'addMaterialType' as const;
 export const INVENTORY_ADD = 'addInventory' as const;
 export const INVENTORY_UPDATE = 'updateInventory' as const;
 export const INVENTORY_SET = 'setInventories' as const;
+
+// Inventory integration bus actions (Phase 12a.5)
+export const ITEM_ACQUIRED = 'inventory/itemAcquired' as const;
+export const ITEM_RETAGGED = 'inventory/itemRetagged' as const;
 
 // ============================================================================
 // ACTION TYPES
@@ -112,6 +119,17 @@ export type SetInventoriesAction = {
   payload: Record<Id, Inventory>;
 };
 
+// Inventory integration bus action types (Phase 12a.5)
+// Both actions are always-succeed: no validation paths, no rejection.
+export type ItemAcquiredAction = {
+  type: typeof ITEM_ACQUIRED;
+  payload: { item: AcquiredItem; owner: InventoryOwner; source: AcquisitionSource };
+};
+export type ItemRetaggedAction = {
+  type: typeof ITEM_RETAGGED;
+  payload: { itemId: Id; newOwner: InventoryOwner };
+};
+
 // ============================================================================
 // UNION TYPE
 // ============================================================================
@@ -142,7 +160,10 @@ export type InventoryAction =
   // Inventory entity actions
   | AddInventoryAction
   | UpdateInventoryAction
-  | SetInventoriesAction;
+  | SetInventoriesAction
+  // Inventory integration bus actions
+  | ItemAcquiredAction
+  | ItemRetaggedAction;
 
 // ============================================================================
 // TYPE GUARD
@@ -169,7 +190,9 @@ const INVENTORY_ACTION_TYPES = new Set([
   MATERIAL_TYPE_ADD,
   INVENTORY_ADD,
   INVENTORY_UPDATE,
-  INVENTORY_SET
+  INVENTORY_SET,
+  ITEM_ACQUIRED,
+  ITEM_RETAGGED
 ]);
 
 /**

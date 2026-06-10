@@ -32,6 +32,8 @@ export {
   INVENTORY_ADD,
   INVENTORY_UPDATE,
   INVENTORY_SET,
+  ITEM_ACQUIRED,
+  ITEM_RETAGGED,
   // Type guard
   isInventoryAction,
   // Types
@@ -56,7 +58,9 @@ export {
   type AddMaterialTypeAction,
   type AddInventoryAction,
   type UpdateInventoryAction,
-  type SetInventoriesAction
+  type SetInventoriesAction,
+  type ItemAcquiredAction,
+  type ItemRetaggedAction
 } from './inventoryActions';
 
 // Re-export selectors from central location
