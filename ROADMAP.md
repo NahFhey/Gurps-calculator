@@ -215,8 +215,9 @@
 - `src/components/combat/EncounterSetup.tsx` — encumbrance/DR/token in partyCharacterToCombat
 - `src/components/combat/views/InitiativeTimeline.tsx` — token image in avatar circle
 
-### 12a.5: Inventory Integration Bus
-**Status:** Planned (2026-04-28). See [`docs/INVENTORY_INTEGRATION_PLAN.md`](./docs/INVENTORY_INTEGRATION_PLAN.md) for the full design concept and [`docs/INVENTORY_INTEGRATION_FOLLOWUPS.md`](./docs/INVENTORY_INTEGRATION_FOLLOWUPS.md) for discovered side-issues.
+### 12a.5: Inventory Integration Bus ✅ CODE COMPLETE
+**Status:** Implemented 2026-06-09; table verification session pending. See [`docs/INVENTORY_INTEGRATION_PLAN.md`](./docs/INVENTORY_INTEGRATION_PLAN.md) (including the As-Built section) and [`docs/INVENTORY_INTEGRATION_FOLLOWUPS.md`](./docs/INVENTORY_INTEGRATION_FOLLOWUPS.md) for discovered side-issues (now 9 items).
+**Shipped:** `inventory/itemAcquired` + `inventory/itemRetagged` always-succeed bus actions; ownership via existing `Inventory` records (party + per-character, auto-created); crafting completion, 10 gathering write sites, and loot distribution all dispatch through the bus; schema 1.4.0 with `ensureInventoryRecords` load-time backfill; 36+ new tests across reducer/actions/migration/dispatch sites.
 
 **Why this is wedged here:** Crafting / gathering / loot all record intent without writing to inventory state. The gap is biting at every session that exercises these subsystems (current arc does). Originally bundled in Phase 15 cross-system integration; pulled forward as a narrow carve-out.
 

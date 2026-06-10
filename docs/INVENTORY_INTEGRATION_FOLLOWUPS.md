@@ -88,3 +88,28 @@ See [`INVENTORY_INTEGRATION_PLAN.md`](./INVENTORY_INTEGRATION_PLAN.md) for the i
 **Context:** Not surfaced by the Phase 12a.5 session, but flagged in the `gurps-vtt-resume` skill. CombatTracker and `useCombatSession` have overlapping turn/maneuver/dice logic. Recording here so it stays visible during planning.
 
 **Notes:** Independent of inventory work. Address opportunistically when a combat feature touches both paths.
+
+---
+
+## 8. Owner-Record Quantity Refs Can Drift From Pool Totals (Discovered at implementation, 2026-06-09)
+
+**Context:** `itemAcquired` for materials/foods stacks the global pool AND upserts a `{ id, quantity }` ref in the owner's `Inventory` record. But the consumption paths (`MATERIAL_CONSUME` / `FOOD_CONSUME`, used by crafting/cooking/alchemy) decrement only the pool — refs are never decremented. Refs are therefore provenance-grade ("this owner has received N of X"), not authoritative holdings.
+
+**Open questions:**
+- Should `MATERIAL_CONSUME` proportionally decrement refs across owner records, or consume party-record refs first?
+- Or formally declare refs advisory and exclude them from any quantity UI?
+- Interacts with followup #3 (take-from-shared UI) — that UI would make refs load-bearing.
+
+**Notes:** Harmless today (nothing reads refs as authoritative). Resolve before any UI treats per-owner material quantities as real.
+
+---
+
+## 9. Loot Materials Have No Material Type (Discovered at implementation, 2026-06-09)
+
+**Context:** The loot form has no material-type picker, so loot-sourced materials are written with `type: 'loot'`. They stack by name within that type and don't reference any `MaterialType` (no HT/DR/weight modifiers).
+
+**Open questions:**
+- Add a material-type dropdown to the loot add-form (populated from `entities.materialTypes`)?
+- Or a post-hoc "retype" affordance in InventoryTab?
+
+**Notes:** Small UI addition; bundle with followup #3's UI pass.

@@ -1,9 +1,12 @@
 # Phase 12a.5 — Inventory Integration Bus
 
-**Status:** Planned (not started)
+**Status:** Implemented 2026-06-09 (code + tests complete; table verification session pending)
 **Created:** 2026-04-28
 **Sequence:** Inserted between Phase 12a (complete) and Phase 12b (deferred)
 **Origin:** Design concept reached via grilling session 2026-04-28
+
+> **Implementation notes (2026-06-09):** See [Implementation Decisions — As Built](#implementation-decisions--as-built)
+> for where the shipped code maps the plan onto the existing data model.
 
 ---
 
@@ -93,6 +96,44 @@ These are the boundaries that define done.
 
 ---
 
+## Implementation Decisions — As Built
+
+Recorded 2026-06-09. The plan above was written against an assumed flat-item data
+model; the codebase already had a record-based ownership model. The bus semantics
+shipped exactly as specified — the mapping below is where the letter differs.
+
+1. **Ownership lives on `Inventory` records, not per-item fields.**
+   `entities.inventories` already keys ownership via `ownerType: 'party' | 'character'`
+   + `ownerId`. The plan's `owner` tag is implemented as record membership:
+   `itemAcquired` resolves (auto-creating if missing) the owner's record;
+   `itemRetagged` moves the entry between records. No second ownership model
+   was introduced. Action names/shapes are exactly as planned.
+2. **Materials and foods stack into the existing global pools**
+   (`entities.materials` / `entities.foods`, same name+type stack rules), and the
+   owner's record gains a quantity ref (`MaterialEntry`/`FoodEntry`). The pools are
+   what InventoryTab displays; the refs subdivide holdings by owner. Refs are
+   provenance-grade, not authoritative — see followup #8.
+3. **Migration reduced to record existence.** Because items already live inside
+   owned records, the planned equipped/unequipped owner heuristic was moot —
+   there is no ownerless item to walk. The shipped migration
+   (`ensureInventoryRecords`, schema 1.4.0) guarantees one party record plus one
+   record per character on every load; it is pure and idempotent. The
+   "[DECISION NEEDED]" question below is therefore resolved-by-architecture:
+   items keep whatever record they were already in.
+4. **Loot dispatches `itemAcquired` directly with the final owner.** The plan's
+   acquire-to-party + retag-on-assignment table modeled live dispatch during
+   editing, but the existing UI commits once on the Distribute click (rows can
+   be removed before that), and live dispatch would require an `itemRemoved`
+   action that is explicitly out of scope. Acquire(recipient) ≡
+   acquire(party) + retag(recipient) at commit time. `itemRetagged` shipped and
+   is tested; it serves the hand-retag user story.
+5. **Gathering was already writing the pools** via `addMaterial`/`addFood`
+   (added after the plan was drafted). The rewire to `acquireItem` keeps the
+   same pool placement and adds the owner ref + bus provenance.
+6. **Loot-sourced materials get `type: 'loot'`** — the loot form has no
+   material-type picker. They stack with other loot-typed materials of the same
+   name; the GM can retype them in InventoryTab. See followup #9.
+
 ## Migration & Backward Compatibility
 
 Phase 12a.5 adds an `owner` field to inventory items. Existing saves predate this field and require migration on load.
@@ -137,15 +178,15 @@ Phase 12a.5 adds an `owner` field to inventory items. Existing saves predate thi
 
 ## Definition of Done
 
-- [ ] Two reducer actions implemented with always-succeed semantics.
-- [ ] Three dispatch sites firing writes correctly (crafting completion, gathering success, loot distribution).
-- [ ] `LootDistribution.tsx` wired to dispatch `itemRetagged`.
-- [ ] Unit tests on reducer actions passing.
-- [ ] Integration tests on dispatch sites passing.
-- [ ] Migration step implemented; pre-12a.5 saves load correctly with `owner` defaults.
-- [ ] Migration round-trip test + idempotency test passing.
-- [ ] `tsc --noEmit` clean.
-- [ ] `ROADMAP.md` updated to insert Phase 12a.5 section between 12a and 12b.
+- [x] Two reducer actions implemented with always-succeed semantics. (2026-06-09)
+- [x] Three dispatch sites firing writes correctly (crafting completion, gathering success, loot distribution). (2026-06-09)
+- [x] `LootDistribution.tsx` wired to commit through the bus (direct-acquire with final owner; see As Built #4). (2026-06-09)
+- [x] Unit tests on reducer actions passing. (13 tests, inventoryReducer.test.ts)
+- [x] Integration tests on dispatch sites passing. (craft-completion dispatch test, 5 LootDistribution render tests; gathering covered by rewired call sites + reducer tests)
+- [x] Migration step implemented; pre-12a.5 saves load correctly with owner records guaranteed. (ensureInventoryRecords, schema 1.4.0)
+- [x] Migration round-trip test + idempotency test passing. (dataMigration.test.ts + campaignStorage.test.ts)
+- [x] `tsc --noEmit` clean.
+- [x] `ROADMAP.md` updated to insert Phase 12a.5 section between 12a and 12b. (was already present; status updated)
 - [ ] A live session at the table where crafting / gathering / loot all produce visible inventory changes without hand-editing.
 
 ---
