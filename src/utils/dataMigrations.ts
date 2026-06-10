@@ -53,6 +53,7 @@ const migrationHandlers: Record<string, MigrationHandler> = {
   '1.0.0:1.1.0': migrateTo1_1_0,
   '1.1.0:1.2.0': migrateTo1_2_0,
   '1.2.0:1.3.0': migrateTo1_3_0,
+  '1.3.0:1.4.0': migrateTo1_4_0,
 };
 
 /**
@@ -208,6 +209,21 @@ function migrateTo1_3_0(data: MigratableData): MigratableData {
 }
 
 /**
+ * Migration: 1.3.0 → 1.4.0 (Inventory Integration Bus)
+ *
+ * Ensures the inventories record exists. Owner-record backfill (party +
+ * per-character Inventory records) happens at hydrate time in
+ * src/persistence/dataMigration.ts ensureInventoryRecords(), because the
+ * character list lives in the entity state, not in this flat legacy shape.
+ */
+function migrateTo1_4_0(data: MigratableData): MigratableData {
+  return {
+    ...data,
+    inventories: data.inventories || {},
+  };
+}
+
+/**
  * Get the last backup for a specific version
  */
 export function getLastBackup(version: string): BackupEntry | null {
@@ -329,6 +345,15 @@ export function validateDataForVersion(
   if (version >= '1.3.0') {
     if (typeof obj.currentDay !== 'number') {
       issues.push('Missing or invalid currentDay');
+    }
+  }
+
+  if (version >= '1.4.0') {
+    if (
+      obj.inventories !== undefined &&
+      (typeof obj.inventories !== 'object' || obj.inventories === null || Array.isArray(obj.inventories))
+    ) {
+      issues.push('Invalid inventories structure');
     }
   }
 

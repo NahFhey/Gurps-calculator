@@ -4,7 +4,10 @@ import {
   migrateToV2,
   rollbackMigration,
   cleanupLegacyData,
+  ensureInventoryRecords,
 } from '../dataMigration';
+import { createCampaignState } from '../../state/campaignReducer';
+import type { Character, Inventory } from '../../types/campaign';
 
 // ============================================================================
 // In-memory mock for window.storage
@@ -216,5 +219,97 @@ describe('cleanupLegacyData', () => {
     // Install storage whose remove always throws; cleanup should swallow per-key errors.
     installMockStorage({ materials: { value: '[]' } }, { failing: true });
     await expect(cleanupLegacyData()).resolves.toBeUndefined();
+  });
+});
+
+// ============================================================================
+// ensureInventoryRecords (schema 1.4.0, Phase 12a.5)
+// ============================================================================
+
+describe('ensureInventoryRecords', () => {
+  const character = (id: string): Character =>
+    ({ id, name: `char-${id}` }) as Character;
+
+  const inventoryRecord = (id: string, overrides: Partial<Inventory> = {}): Inventory => ({
+    id,
+    ownerType: 'party',
+    ownerId: null,
+    currency: {},
+    items: [],
+    tools: [],
+    materials: [],
+    food: [],
+    ...overrides,
+  });
+
+  it('creates a party record when none exists', () => {
+    const state = createCampaignState();
+    const next = ensureInventoryRecords(state);
+    const party = Object.values(next.entities.inventories).find((i) => i.ownerType === 'party');
+    expect(party).toBeDefined();
+    expect(party?.ownerId).toBeNull();
+  });
+
+  it('creates a record per character lacking one', () => {
+    const state = createCampaignState();
+    // createCampaignState seeds party-tool sample characters; add ours on top
+    state.entities.characters = {
+      ...state.entities.characters,
+      'c1': character('c1'),
+      'c2': character('c2'),
+    };
+    const next = ensureInventoryRecords(state);
+    const owners = new Set(
+      Object.values(next.entities.inventories)
+        .filter((i) => i.ownerType === 'character')
+        .map((i) => i.ownerId)
+    );
+    // Every character — seeded and added — has a record
+    for (const id of Object.keys(state.entities.characters)) {
+      expect(owners.has(id)).toBe(true);
+    }
+  });
+
+  it('preserves existing records and their contents', () => {
+    const state = createCampaignState();
+    state.entities.characters = { 'c1': character('c1') };
+    state.entities.inventories = {
+      party: inventoryRecord('party', {
+        items: [{ id: 'rope-1', name: 'Rope', quantity: 1 }],
+        currency: { gold: 50 },
+      }),
+      'c1': inventoryRecord('c1', { ownerType: 'character', ownerId: 'c1' }),
+    };
+    const next = ensureInventoryRecords(state);
+    expect(next.entities.inventories['party'].items).toEqual([
+      { id: 'rope-1', name: 'Rope', quantity: 1 },
+    ]);
+    expect(next.entities.inventories['party'].currency.gold).toBe(50);
+    expect(Object.keys(next.entities.inventories)).toHaveLength(2);
+  });
+
+  it('is idempotent: second run returns the same state object', () => {
+    const state = createCampaignState();
+    state.entities.characters = { 'c1': character('c1') };
+    const once = ensureInventoryRecords(state);
+    const twice = ensureInventoryRecords(once);
+    expect(twice).toBe(once); // unchanged input short-circuits
+  });
+
+  it('avoids id collisions when a character id is taken by another record', () => {
+    const state = createCampaignState();
+    state.entities.characters = { 'c1': character('c1') };
+    // A record whose id equals the character id but is NOT their inventory
+    state.entities.inventories = {
+      'c1': inventoryRecord('c1', { ownerType: 'party', ownerId: null }),
+    };
+    const next = ensureInventoryRecords(state);
+    const charInv = Object.values(next.entities.inventories).find(
+      (i) => i.ownerType === 'character' && i.ownerId === 'c1'
+    );
+    expect(charInv).toBeDefined();
+    expect(charInv?.id).toBe('inv-c1');
+    // The pre-existing record is untouched
+    expect(next.entities.inventories['c1'].ownerType).toBe('party');
   });
 });
