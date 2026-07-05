@@ -798,11 +798,24 @@ export interface ItemInstance {
   source?: string;
 }
 
+/**
+ * Per-owner quantity ref into the global material pool (`entities.materials`).
+ *
+ * ADVISORY / PROVENANCE-GRADE, NOT AUTHORITATIVE. `itemAcquired` increments the
+ * matching entry ("this owner has received N of material X"), but the consume
+ * paths (`MATERIAL_CONSUME`, used by crafting/cooking/alchemy) decrement only the
+ * global pool — they carry no owner attribution, so refs are never decremented
+ * and will drift above real holdings over a campaign. The authoritative quantity
+ * of any material is always the pool total (`entities.materials[id].quantity`).
+ * Do not sum these refs as if they were holdings without first resolving
+ * owner-attributed consumption (INVENTORY_INTEGRATION_FOLLOWUPS.md #8).
+ */
 export interface MaterialEntry {
   id: Id;
   quantity: number;
 }
 
+/** Per-owner quantity ref into the global food pool. Advisory, not authoritative — see {@link MaterialEntry}. */
 export interface FoodEntry {
   id: Id;
   quantity: number;
@@ -813,9 +826,12 @@ export interface Inventory {
   ownerType: 'party' | 'character';
   ownerId: Id | null;
   currency: Record<string, number>;
+  /** Authoritative equipment/other holdings for this owner. */
   items: ItemInstance[];
   tools: ToolInstance[];
+  /** Advisory provenance refs into the global pool — NOT authoritative. See {@link MaterialEntry}. */
   materials: MaterialEntry[];
+  /** Advisory provenance refs into the global pool — NOT authoritative. See {@link FoodEntry}. */
   food: FoodEntry[];
 }
 

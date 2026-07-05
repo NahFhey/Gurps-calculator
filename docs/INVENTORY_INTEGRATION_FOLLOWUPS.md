@@ -91,25 +91,18 @@ See [`INVENTORY_INTEGRATION_PLAN.md`](./INVENTORY_INTEGRATION_PLAN.md) for the i
 
 ---
 
-## 8. Owner-Record Quantity Refs Can Drift From Pool Totals (Discovered at implementation, 2026-06-09)
+## 8. Owner-Record Quantity Refs Can Drift From Pool Totals (Discovered at implementation, 2026-06-09) — ✅ RESOLVED 2026-07-04 (advisory)
 
 **Context:** `itemAcquired` for materials/foods stacks the global pool AND upserts a `{ id, quantity }` ref in the owner's `Inventory` record. But the consumption paths (`MATERIAL_CONSUME` / `FOOD_CONSUME`, used by crafting/cooking/alchemy) decrement only the pool — refs are never decremented. Refs are therefore provenance-grade ("this owner has received N of X"), not authoritative holdings.
 
-**Open questions:**
-- Should `MATERIAL_CONSUME` proportionally decrement refs across owner records, or consume party-record refs first?
-- Or formally declare refs advisory and exclude them from any quantity UI?
-- Interacts with followup #3 (take-from-shared UI) — that UI would make refs load-bearing.
+**Resolution (2026-07-04):** Took option (b) — formally declared the refs advisory/provenance-grade rather than making consume decrement them. Verified first that nothing reads the refs as authoritative quantities: the material/food *quantity* selectors (`selectMaterialQuantityByType`, etc.) read the global pool, and `CharacterInventoryPanel` renders only `.items`/`.tools` (authoritative), never `.materials`/`.food`. Documented the invariant on `MaterialEntry`/`FoodEntry`/`Inventory` in `src/types/campaign.ts` and at the `upsertEntryRef` write site in `inventoryReducer.ts`: **pool total is authoritative; refs may drift; do not sum them as holdings**.
 
-**Notes:** Harmless today (nothing reads refs as authoritative). Resolve before any UI treats per-owner material quantities as real.
+**Why not option (a) (decrement refs on consume):** `MATERIAL_CONSUME`/`FOOD_CONSUME` carry no owner attribution — crafting/cooking consume from the global pool with no notion of *whose* materials were spent. Owner-attributed consumption is real design work that belongs with followup #3 (take-from-shared UI), which is the first consumer that would make refs load-bearing. Deferred to that phase; the advisory contract prevents misreads until then.
 
 ---
 
-## 9. Loot Materials Have No Material Type (Discovered at implementation, 2026-06-09)
+## 9. Loot Materials Have No Material Type (Discovered at implementation, 2026-06-09) — ✅ RESOLVED 2026-07-04
 
 **Context:** The loot form has no material-type picker, so loot-sourced materials are written with `type: 'loot'`. They stack by name within that type and don't reference any `MaterialType` (no HT/DR/weight modifiers).
 
-**Open questions:**
-- Add a material-type dropdown to the loot add-form (populated from `entities.materialTypes`)?
-- Or a post-hoc "retype" affordance in InventoryTab?
-
-**Notes:** Small UI addition; bundle with followup #3's UI pass.
+**Resolution (2026-07-04):** Added a material-type dropdown to the loot add-form in `LootDistribution.tsx`, populated from `entities.materialTypes` and shown only when loot type is `material`. The picked `MaterialType.name` is carried on `LootItem.materialType` and used as the acquired material's `type`; leaving it at the default "Untyped loot material" preserves the legacy `type: 'loot'` fallback. Two render tests added (typed pick → `type: 'Steel'`; default → `type: 'loot'`). A post-hoc retype affordance in InventoryTab remains a separate nicety if needed.

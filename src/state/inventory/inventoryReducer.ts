@@ -112,7 +112,14 @@ function ensureInventoryRecord(
   return draft.entities.inventories[created.id];
 }
 
-/** Merge a quantity ref into a MaterialEntry/FoodEntry list (upsert by id). */
+/**
+ * Merge a quantity ref into a MaterialEntry/FoodEntry list (upsert by id).
+ *
+ * These refs are advisory/provenance-grade — the consume paths
+ * (`MATERIAL_CONSUME`/`FOOD_CONSUME`) decrement only the global pool and never
+ * these refs, so they intentionally drift above real holdings. The pool total is
+ * authoritative. See {@link MaterialEntry} and INVENTORY_INTEGRATION_FOLLOWUPS.md #8.
+ */
 function upsertEntryRef(entries: Draft<MaterialEntry>[], id: Id, quantity: number): void {
   const existing = entries.find((e) => e.id === id);
   if (existing) {
