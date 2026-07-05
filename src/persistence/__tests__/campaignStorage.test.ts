@@ -115,8 +115,8 @@ describe('campaignStorage', () => {
       const session = createMockCombatSession({
         id: 'session-active',
         name: 'Battle at the Bridge',
-        round: 3,
-        turn: 2,
+        currentRound: 3,
+        currentTurn: 2,
         participants: ['fighter-1', 'mage-1', 'goblin-1'],
         log: [
           { type: 'attack', actor: 'fighter-1', target: 'goblin-1', result: 'hit' } as any,
@@ -263,8 +263,8 @@ describe('campaignStorage', () => {
       state.combat.activeSession = createMockCombatSession({
         id: 'current-battle',
         name: 'Forest Ambush',
-        round: 2,
-        turn: 1,
+        currentRound: 2,
+        currentTurn: 1,
         participants: ['fighter', 'mage', 'goblin'],
       });
       state.combat.active = true;
