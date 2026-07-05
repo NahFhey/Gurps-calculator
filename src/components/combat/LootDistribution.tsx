@@ -63,7 +63,7 @@ function LootItemRow({
       <div className="flex-1 min-w-0">
         <div className="font-semibold text-sm truncate">{item.name}</div>
         <div className="text-xs text-gray-400">
-          {item.type} × {item.quantity}
+          {item.type}{item.materialType ? ` (${item.materialType})` : ''} × {item.quantity}
           {item.value != null && ` — ${item.value} cp`}
         </div>
         {item.notes && (
@@ -98,7 +98,8 @@ function LootItemRow({
 
 export default function LootDistribution({ onComplete }: LootDistributionProps) {
   const { partyCharacters } = useCombatStore();
-  const { actions: campaignActions } = useCampaignStore();
+  const { state, actions: campaignActions } = useCampaignStore();
+  const materialTypes = state.entities.materialTypes ?? [];
 
   const [lootItems, setLootItems] = useState<LootItem[]>([]);
   const [distributions, setDistributions] = useState<Record<string, LootDistributionEntry>>({});
@@ -106,6 +107,7 @@ export default function LootDistribution({ onComplete }: LootDistributionProps) 
   // New item form state
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState<LootItem['type']>('currency');
+  const [newMaterialType, setNewMaterialType] = useState('');
   const [newQuantity, setNewQuantity] = useState(1);
   const [newValue, setNewValue] = useState('');
   const [newNotes, setNewNotes] = useState('');
@@ -120,7 +122,9 @@ export default function LootDistribution({ onComplete }: LootDistributionProps) 
       type: newType,
       quantity: newQuantity,
       value: newValue ? parseInt(newValue) : undefined,
-      notes: newNotes.trim() || undefined
+      notes: newNotes.trim() || undefined,
+      // Only meaningful for materials; empty string means "untyped loot material"
+      materialType: newType === 'material' && newMaterialType ? newMaterialType : undefined
     };
 
     setLootItems(prev => [...prev, item]);
@@ -135,6 +139,7 @@ export default function LootDistribution({ onComplete }: LootDistributionProps) 
     setNewQuantity(1);
     setNewValue('');
     setNewNotes('');
+    setNewMaterialType('');
   };
 
   const handleUpdateDistribution = (lootItemId: string, targetId: string, quantity: number) => {
@@ -177,7 +182,9 @@ export default function LootDistribution({ onComplete }: LootDistributionProps) 
             kind: 'material',
             id: item.id,
             name: item.name,
-            type: 'loot',
+            // Reference a real MaterialType when one was picked; otherwise
+            // fall back to the untyped 'loot' bucket (followup #9).
+            type: item.materialType ?? 'loot',
             quantity: item.quantity,
             notes: item.notes
           };
@@ -267,6 +274,19 @@ export default function LootDistribution({ onComplete }: LootDistributionProps) 
               className="px-3 py-2 bg-gray-700 rounded text-sm"
             />
           </div>
+          {newType === 'material' && (
+            <select
+              value={newMaterialType}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => setNewMaterialType(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+              title="Material type (optional)"
+            >
+              <option value="">Untyped loot material</option>
+              {materialTypes.map(mt => (
+                <option key={mt.name} value={mt.name}>{mt.name}</option>
+              ))}
+            </select>
+          )}
           <input
             type="text"
             value={newNotes}

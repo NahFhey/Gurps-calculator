@@ -480,6 +480,12 @@ export interface LootItem {
   /** Value in copper pieces (base currency) */
   value?: number;
   notes?: string;
+  /**
+   * For `type: 'material'` only — the referenced `MaterialType.name`.
+   * When absent, the item is acquired as an untyped `'loot'` material
+   * (legacy behavior). See INVENTORY_INTEGRATION_FOLLOWUPS.md #9.
+   */
+  materialType?: string;
 }
 
 export interface LootDistributionEntry {
