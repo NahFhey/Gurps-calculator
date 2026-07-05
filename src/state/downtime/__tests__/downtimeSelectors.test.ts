@@ -754,20 +754,18 @@ describe('getTargetKeyFromActivityData', () => {
   it('extracts crafting target key', () => {
     const activityData = {
       type: 'crafting' as const,
-      projectId: 'sword-project',
-      recipeId: 'r1',
-      materialIds: [],
-      toolIds: [],
-      phase: 'craft' as const,
-      progressCurrent: 0,
-      progressRequired: 10,
+      recipeId: 'recipe-longsword',
+      materialInstanceIds: [],
+      toolInstanceIds: [],
+      qualityTarget: 'standard' as const,
+      skillModifier: 0,
     };
 
-    const result = getTargetKeyFromActivityData('crafting', activityData as unknown as ActivityData);
+    const result = getTargetKeyFromActivityData('crafting', activityData);
 
     // Crafting keys by recipe since 797e04e (type unification); projectId is
     // no longer part of the lock identity.
-    expect(result).toBe('recipe:r1');
+    expect(result).toBe('recipe:recipe-longsword');
   });
 
   it('extracts rest target key', () => {
