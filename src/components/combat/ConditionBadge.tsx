@@ -2,24 +2,20 @@ import { MouseEvent } from 'react';
 import { X } from 'lucide-react';
 import { formatConditionDuration, formatConditionTooltip } from '../../utils/conditionsEngine';
 import { getConditionIcon } from '../../constants/conditions';
+import type { ConditionExpiry, ConditionInstance } from '../../types/combatTracker';
 
 // ============================================================================
 // Types
 // ============================================================================
 
-interface ExpiresAt {
-  type: 'turn' | 'round' | 'endOfCombat';
-  turnsRemaining?: number;
-  round?: number;
-}
+type ExpiresAt = ConditionExpiry;
 
-interface Condition {
-  conditionId: string;
-  instanceId?: string;
-  label: string;
-  expiresAt?: ExpiresAt | null;
-  severity?: number | null;
-}
+/**
+ * The badge accepts anything shaped like a ConditionInstance; only
+ * conditionId and label are required (tests and player-view placeholders
+ * pass partial shapes).
+ */
+type Condition = Partial<ConditionInstance> & Pick<ConditionInstance, 'conditionId' | 'label'>;
 
 interface ConditionBadgeProps {
   condition: Condition;

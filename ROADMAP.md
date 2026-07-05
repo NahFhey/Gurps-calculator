@@ -232,7 +232,9 @@
 **Estimated effort:** 2 days plus a session of table verification.
 
 ### 12a.6: Combat Condition Visibility
-**Status:** Planned (2026-05-03). See [`docs/COMBAT_CONDITION_VISIBILITY_PLAN.md`](./docs/COMBAT_CONDITION_VISIBILITY_PLAN.md) for the full design concept and [`docs/COMBAT_CONDITION_VISIBILITY_FOLLOWUPS.md`](./docs/COMBAT_CONDITION_VISIBILITY_FOLLOWUPS.md) for discovered side-issues.
+**Status:** IN PROGRESS — session 1 of ~3 complete (2026-07-04): data + filter + migration layers shipped on branch `phase-12a6-condition-visibility`. See [`docs/COMBAT_CONDITION_VISIBILITY_PLAN.md`](./docs/COMBAT_CONDITION_VISIBILITY_PLAN.md) (Implementation Status section) for as-built detail and [`docs/COMBAT_CONDITION_VISIBILITY_FOLLOWUPS.md`](./docs/COMBAT_CONDITION_VISIBILITY_FOLLOWUPS.md) for discovered side-issues.
+**Shipped (session 1):** `revealed` eye state on `ConditionInstance` (consolidated type) seeded from catalog `isObvious`; `cycleRevealed`/`cycleConditionRevealed` helpers; eye-state player-view filtering in `combatViewFilter.js` (closed/half/open, anonymous "Afflicted" placeholder); `isStunned`/`isUnconscious` bool fold into `conditions[]` across writers/readers/init sites; schema 1.5.0 with hydrate-time + flat-legacy + combat-import migrations; 45+ new/updated tests.
+**Remaining (sessions 2-3):** eye toggle widget in ConditionsPanel; ConditionBadge `mode` prop rewrite with React tooltip; ConditionAddPopover two-surface extraction (tracker + map token); "+N" overflow pills (4 tracker / 3 timeline); table verification.
 
 **Why this is wedged here:** Conditions on NPCs are universally visible to all viewers. The combat tracker has no information-disclosure layer for conditions, so the GM cannot conceal a Poisoned or Charmed effect without verbal narration. Combat is exercised every session; the gap is currently worked around by GM voice. Bundles a long-overdue Phase 6 cleanup: `Participant.isStunned` and `isUnconscious` (boolean fields outside the conditions array) fold into `conditions[]` so the new visibility filter can't be bypassed.
 

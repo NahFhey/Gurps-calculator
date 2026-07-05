@@ -284,10 +284,34 @@ describe('applyEffect', () => {
     expect(applyEffect(base(), 'shock', { value: -3 })).toMatchObject({ shockPenalty: -3 });
   });
 
-  it('applies stunned/unconscious/dead flags', () => {
-    expect(applyEffect(base(), 'stunned', { stunned: true }).isStunned).toBe(true);
-    expect(applyEffect(base(), 'unconscious', { unconscious: true }).isUnconscious).toBe(true);
+  it('writes stunned/unconscious as conditions (12a.6) and dead as a flag', () => {
+    const stunned = applyEffect(base(), 'stunned', { stunned: true, round: 3, turn: 1 });
+    expect(stunned.isStunned).toBeUndefined();
+    expect(stunned.conditions).toHaveLength(1);
+    expect(stunned.conditions[0]).toMatchObject({
+      conditionId: 'stunned',
+      revealed: 'open',        // catalog-obvious
+      startedAtRound: 3,
+      expiresAt: null          // permanent — sticky until removed, like the old bool
+    });
+
+    const ko = applyEffect(base(), 'unconscious', { unconscious: true });
+    expect(ko.isUnconscious).toBeUndefined();
+    expect(ko.conditions[0]).toMatchObject({ conditionId: 'unconscious', expiresAt: null });
+
     expect(applyEffect(base(), 'dead', { dead: true }).isDead).toBe(true);
+  });
+
+  it('clears the condition when the effect is applied with a false flag', () => {
+    const stunned = applyEffect(base(), 'stunned', { stunned: true });
+    const recovered = applyEffect(stunned, 'stunned', { stunned: false });
+    expect(recovered.conditions).toHaveLength(0);
+  });
+
+  it('replaces rather than stacks a repeated stun (catalog stacking rule)', () => {
+    const once = applyEffect(base(), 'stunned', { stunned: true });
+    const twice = applyEffect(once, 'stunned', { stunned: true });
+    expect(twice.conditions).toHaveLength(1);
   });
 
   it('sets bleeding when active and clears it when inactive', () => {
@@ -334,19 +358,19 @@ describe('getActiveEffects', () => {
     expect(getActiveEffects({})).toEqual([]);
   });
 
-  it('lists all active effects', () => {
+  it('lists all active effects (stun/unconsciousness excluded — they render as condition badges since 12a.6)', () => {
     const effects = getActiveEffects({
       shockPenalty: -2,
-      isStunned: true,
-      isUnconscious: true,
       isDead: true,
       bleeding: { rate: 3 },
       crippled: ['arm-l', 'leg-r'],
+      conditions: [
+        { instanceId: 'c1', conditionId: 'stunned', label: 'Stunned' },
+        { instanceId: 'c2', conditionId: 'unconscious', label: 'Unconscious' },
+      ],
     });
     expect(effects).toEqual([
       'Shock -2',
-      'Stunned',
-      'Unconscious',
       'Dead',
       'Bleeding (3/turn)',
       'Crippled: arm-l, leg-r',

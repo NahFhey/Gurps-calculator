@@ -22,6 +22,7 @@ import {
 } from '../utils/combatValidation';
 import { filterLogForPlayerView } from '../utils/combatLogFilter';
 import { ViewMode } from '../utils/combatViewFilter';
+import { ensureParticipantConditionVisibility } from '../utils/conditionsEngine';
 import type {
   CombatState,
   HistoryState,
@@ -36,6 +37,22 @@ export interface CombatExportActions {
   handleExportGMLocked: () => Promise<void>;
   handleSaveCombat: () => void;
   handleLoadCombat: (onConfirm: () => Promise<boolean>) => void;
+}
+
+/**
+ * Bring an imported combat save up to the 12a.6 condition-visibility shape.
+ * Old exports may carry isStunned/isUnconscious booleans and condition
+ * instances without a `revealed` eye state; migrating here keeps the import
+ * path in lockstep with hydrate-time migration in campaignStorage.
+ */
+function migrateImportedCombatState(combatState: CombatState): CombatState {
+  if (!Array.isArray(combatState.participants)) return combatState;
+  return {
+    ...combatState,
+    participants: combatState.participants.map((p) =>
+      ensureParticipantConditionVisibility(p),
+    ),
+  };
 }
 
 /**
@@ -196,7 +213,7 @@ export function useCombatExport(
               const confirmed = await onConfirm();
               if (!confirmed) return;
 
-              saveCombatActive(validation.combatState);
+              saveCombatActive(migrateImportedCombatState(validation.combatState));
               return;
             }
           }
@@ -227,7 +244,7 @@ export function useCombatExport(
                 const confirmed = await onConfirm();
                 if (!confirmed) return;
 
-                saveCombatActive(unlocked.data.combatState);
+                saveCombatActive(migrateImportedCombatState(unlocked.data.combatState));
                 saveCombatReveal(unlocked.data.revealState || null);
                 return;
               }
@@ -238,7 +255,7 @@ export function useCombatExport(
             if (!confirmed) return;
 
             if (parsed.data) {
-              saveCombatActive(parsed.data.combatState);
+              saveCombatActive(migrateImportedCombatState(parsed.data.combatState));
               saveCombatReveal(parsed.data.revealState || null);
             }
             return;
@@ -249,7 +266,7 @@ export function useCombatExport(
           if (!confirmed) return;
 
           if (parsed.data) {
-            saveCombatActive(parsed.data.combatState);
+            saveCombatActive(migrateImportedCombatState(parsed.data.combatState));
             saveCombatReveal(parsed.data.revealState || null);
           }
         };

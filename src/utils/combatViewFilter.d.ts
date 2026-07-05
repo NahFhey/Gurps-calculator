@@ -7,6 +7,9 @@ export declare const ViewMode: {
   PLAYER: 'player';
 };
 
+/** Sentinel conditionId on player-view placeholders for half-revealed conditions. */
+export declare const CONCEALED_CONDITION_ID: '__concealed__';
+
 export function getCombatView(
   combatState: CombatState,
   revealState: RevealState | undefined,

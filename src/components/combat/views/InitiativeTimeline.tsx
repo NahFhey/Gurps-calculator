@@ -18,6 +18,8 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { calculateHPStatus } from '../../../utils/combatHelpers';
+import { hasCondition } from '../../../utils/conditionsEngine';
+import { ConditionId } from '../../../constants/conditions';
 import type { Participant } from '../../../types/combatTracker';
 
 // ============================================================================
@@ -100,7 +102,7 @@ interface TokenProps {
 
 function TokenBase({ participant, isCurrent, isPast, onClick, isDragging, dragHandleProps, canDrag }: TokenProps) {
   const isDead = participant.isDead;
-  const isUnconscious = participant.isUnconscious;
+  const isUnconscious = hasCondition(participant, ConditionId.UNCONSCIOUS);
 
   const ringColor = isDead ? 'ring-red-600' : hpRingColor(participant);
   const bg = categoryBg(participant.category);

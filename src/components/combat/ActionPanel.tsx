@@ -16,6 +16,8 @@ import ConditionsPanel from './ConditionsPanel';
 import ManeuverWorkflowWidgets from './ManeuverWorkflowWidgets';
 import { getPublicDefenderLabel } from '../../utils/combatViewSelectors';
 import { ViewMode } from '../../utils/combatViewFilter';
+import { hasCondition } from '../../utils/conditionsEngine';
+import { ConditionId } from '../../constants/conditions';
 import type {
   Participant,
   ManeuverPrompts,
@@ -159,7 +161,7 @@ export default function ActionPanel({
   const canTargetDefend = (targetId: string | null): boolean => {
     if (!targetId) return false;
     const t = getTruthParticipant(targetId);
-    if (!t || t.isDead || t.isUnconscious || t.isStunned) return false;
+    if (!t || t.isDead || hasCondition(t, ConditionId.UNCONSCIOUS) || hasCondition(t, ConditionId.STUNNED)) return false;
     const vals = [t.defenses?.dodge ?? t.dodge, t.defenses?.parry ?? t.parry, t.defenses?.block ?? t.block];
     return vals.some((v) => v !== null && v !== undefined);
   };

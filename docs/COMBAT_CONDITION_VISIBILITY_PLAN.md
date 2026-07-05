@@ -1,9 +1,76 @@
 # Phase 12a.6 — Combat Condition Visibility
 
-**Status:** Planned (not started)
+**Status:** IN PROGRESS — session 1 (data + filter + migrations) complete 2026-07-04; display/UI surfaces remain
 **Created:** 2026-05-03
 **Sequence:** Inserted between Phase 12a.5 (Inventory Integration Bus, planned) and Phase 12b (GCS Import Improvements, deferred)
 **Origin:** Design concept reached via grilling session 2026-05-03
+
+---
+
+## Implementation Status (as-built, session 1 — 2026-07-04)
+
+Branch `phase-12a6-condition-visibility`. Everything below the display layer is
+in; the UI surfaces (eye widget, badge rewrite, popover, overflow pills, map
+entry point) are sessions 2–3.
+
+**Done:**
+
+- **Catalog flag** — already existed as `isObvious: boolean` on every entry in
+  `src/constants/conditions.ts` (Phase 6 shipped it; the plan's `obvious` flag
+  needed no new code). `isConditionObvious()` helper reused throughout.
+- **Type consolidation** — canonical `ConditionInstance` now lives in
+  `src/types/combatTracker.ts` (with `ConditionExpiry`, `ConditionRevealState`,
+  `revealed?`, `placeholder?`); the inline duplicates in `ConditionsPanel.tsx`
+  and `ConditionBadge.tsx` import it. New `conditionsEngine.d.ts` types the JS
+  engine for TS consumers.
+- **Seeding + cycle** — `createConditionInstance` seeds `revealed` from catalog
+  `isObvious` (`open`/`closed`; half is never a default), honours an explicit
+  override. `cycleRevealed` (closed → half → open → closed; unknown → closed)
+  and `cycleConditionRevealed(combatant, instanceId)` are ready for the eye
+  widget.
+- **Filter layer** — `combatViewFilter.js` filters NPC conditions per instance:
+  closed dropped, half replaced by an `{ conditionId: '__concealed__', label:
+  'Afflicted', placeholder: true }` stand-in (truth instanceId kept for React
+  keys; no name/icon/duration leak), open passed through. Legacy instances
+  without `revealed` fall back to catalog obviousness. **Behavior change:**
+  HP-exact reveal no longer force-shows all enemy conditions — the eye state is
+  authoritative. PCs/allies always render in full. Placeholders degrade
+  gracefully through the existing badge (❓ Afflicted) until the badge rewrite.
+- **Bool fold** — `Participant.isStunned`/`isUnconscious` removed from the type
+  and all writers/readers/init sites. `effectsEngine.applyEffect` writes
+  Stunned/Unconscious conditions with **permanent duration** (sticky until
+  removed — matches old bool semantics; GURPS stun recovery is a roll, not a
+  timer). `getActiveEffects` no longer reports the two (they render as
+  condition badges — listing both would double-display). `turnContext.js`
+  derives purely from conditions (+ `isDead`). Readers switched to
+  `hasCondition`: `ActionPanel` target eligibility, `InitiativeTimeline`
+  unconscious styling, `PostCombatSummary` snapshot capture
+  (`ParticipantSummary` keeps its frozen bools, populated via `hasCondition`
+  at snapshot time).
+- **Migrations** — schema **1.5.0**. One shared per-participant helper,
+  `ensureParticipantConditionVisibility` (conditionsEngine), runs from three
+  places: `ensureConditionVisibility` in `src/persistence/dataMigration.ts`
+  wired into `hydrateCampaignState` (live session, every load, idempotent);
+  `migrateTo1_5_0` in `src/utils/dataMigrations.ts` (flat legacy
+  `combatActive` shape); and `migrateImportedCombatState` in
+  `useCombatExport` (old exported combat JSON). Combat history and
+  ParticipantSummary snapshots stay frozen, untouched.
+- **Tests** — seeding/cycle/fold/backfill units in `conditionsEngine.test.js`;
+  eye-state filter matrix in `combatViewFilter.test.js`; condition-write tests
+  in `effectsEngine.test.js`; bool-ignored tests in `turnContext.test.js`;
+  state-level migration tests in `dataMigration.test.ts`; hydrate round-trip
+  (pre-12a.6 payload → migrated, reload no-op) in `campaignStorage.test.ts`;
+  1.4.0→1.5.0 handler tests in `schemaVersioning.test.ts`. Stale duplicate
+  `schemaVersioning.test.js` deleted (its unique history malformed-input tests
+  ported to the `.ts` suite). Two pre-existing test-authoring bugs fixed in
+  passing (`useCombatStore` functional-update `round`→`currentRound` key,
+  `CombatComponents` badge-duration expectation stale since Phase 11b).
+
+**Remaining (sessions 2–3):** eye toggle widget in `ConditionsPanel` +
+condition-add popover; `ConditionBadge` rewrite (`mode: 'full' | 'icon' |
+'placeholder'`, React tooltip); `ConditionAddPopover` extraction with tracker
+and map-token entry points; "+N" overflow pills (4 in tracker rows, 3 in
+timeline); live table verification.
 
 ---
 

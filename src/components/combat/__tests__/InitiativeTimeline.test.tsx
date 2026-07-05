@@ -29,8 +29,7 @@ function makeParticipant(overrides: Partial<Participant> & { instanceId: string;
     hp: 10,
     maxHP: 10,
     isDead: false,
-    isUnconscious: false,
-    isStunned: false,
+    conditions: [],
     ...overrides,
   } as Participant;
 }

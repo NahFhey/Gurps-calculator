@@ -14,6 +14,8 @@ import {
   ChevronDown, ChevronUp, Check, ArrowRight
 } from 'lucide-react';
 import { useCombatStore } from '../../hooks/useCombatStore';
+import { hasCondition } from '../../utils/conditionsEngine';
+import { ConditionId } from '../../constants/conditions';
 import type { CombatState, Participant, ConditionInstance } from '../../types/combatTracker';
 import type { CombatSummaryData, ParticipantSummary, HealingEstimate } from '../../types/combatTracker';
 
@@ -78,8 +80,8 @@ export function buildCombatSummary(combat: CombatState): CombatSummaryData {
       startFP: fp.max,
       maxFP: fp.max,
       endFP: fp.current,
-      isStunned: p.isStunned ?? false,
-      isUnconscious: p.isUnconscious ?? false,
+      isStunned: hasCondition(p, ConditionId.STUNNED),
+      isUnconscious: hasCondition(p, ConditionId.UNCONSCIOUS),
       isDead: p.isDead ?? false,
       conditions: (p.conditions || []) as ConditionInstance[],
       crippled: p.crippled || [],

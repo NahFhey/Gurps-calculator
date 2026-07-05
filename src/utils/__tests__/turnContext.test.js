@@ -50,9 +50,9 @@ describe('deriveTurnContext', () => {
     });
   });
 
-  it('detects stunned via boolean flag', () => {
+  it('ignores the legacy isStunned boolean (folded into conditions by the 12a.6 migration)', () => {
     const ctx = deriveTurnContext(mkCombatant({ isStunned: true }));
-    expect(ctx.isStunned).toBe(true);
+    expect(ctx.isStunned).toBe(false);
   });
 
   it('detects stunned via condition entry', () => {
@@ -86,10 +86,10 @@ describe('deriveTurnContext', () => {
     expect(ctx.isGrappled).toBe(true);
   });
 
-  it('detects unconscious via boolean flag and disables canAct', () => {
+  it('ignores the legacy isUnconscious boolean (folded into conditions by the 12a.6 migration)', () => {
     const ctx = deriveTurnContext(mkCombatant({ isUnconscious: true }));
-    expect(ctx.isUnconscious).toBe(true);
-    expect(ctx.canAct).toBe(false);
+    expect(ctx.isUnconscious).toBe(false);
+    expect(ctx.canAct).toBe(true);
   });
 
   it('treats isDead as unconscious for canAct purposes', () => {
@@ -163,7 +163,9 @@ describe('deriveTurnContext', () => {
   });
 
   it('canAct is true for a stunned but conscious combatant', () => {
-    const ctx = deriveTurnContext(mkCombatant({ isStunned: true }));
+    const ctx = deriveTurnContext(
+      mkCombatant({ conditions: [{ conditionId: ConditionId.STUNNED }] })
+    );
     expect(ctx.canAct).toBe(true);
   });
 

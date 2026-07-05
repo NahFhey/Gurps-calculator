@@ -7,9 +7,11 @@
 import { generateId } from './combatHelpers';
 import {
   ConditionCatalog,
+  ConditionId,
   DurationType,
   StackingRule,
-  getCondition
+  getCondition,
+  isConditionObvious
 } from '../constants/conditions';
 
 /**
@@ -23,6 +25,8 @@ import {
  * @param {number} options.severity - Condition severity (optional)
  * @param {string} options.source - Source of condition (e.g., "Burning Hands", "Goblin #1")
  * @param {string} options.notes - Additional notes
+ * @param {string} options.revealed - Player visibility override ('closed' | 'half' | 'open');
+ *   defaults from the catalog isObvious flag
  * @returns {object|null} Condition instance or null if invalid
  */
 export function createConditionInstance(conditionId, options = {}) {
@@ -38,7 +42,8 @@ export function createConditionInstance(conditionId, options = {}) {
     duration = null,
     severity = null,
     source = null,
-    notes = null
+    notes = null,
+    revealed = null
   } = options;
 
   // Use provided duration or default from catalog
@@ -57,8 +62,109 @@ export function createConditionInstance(conditionId, options = {}) {
     startedAtTurn: turn,
     duration: finalDuration,
     expiresAt,
-    notes
+    notes,
+    // Phase 12a.6: seed player visibility from the catalog default.
+    // Half-open is never a default — always a deliberate GM choice.
+    revealed: revealed !== null ? revealed : (definition.isObvious ? 'open' : 'closed')
   };
+}
+
+// ============================================================================
+// Phase 12a.6: Condition visibility (per-instance eye state)
+// ============================================================================
+
+/**
+ * Advance the three-state eye control: closed → half → open → closed.
+ * Unknown/legacy values (undefined) are treated as visible, so the first
+ * click always hides.
+ *
+ * @param {string|undefined} revealed - Current reveal state
+ * @returns {string} Next reveal state
+ */
+export function cycleRevealed(revealed) {
+  switch (revealed) {
+    case 'closed':
+      return 'half';
+    case 'half':
+      return 'open';
+    default:
+      return 'closed';
+  }
+}
+
+/**
+ * Cycle the eye state of one condition instance on a combatant.
+ *
+ * @param {object} combatant - Combatant carrying the condition
+ * @param {string} instanceId - Condition instance to cycle
+ * @returns {object} Updated combatant (same reference if instance not found)
+ */
+export function cycleConditionRevealed(combatant, instanceId) {
+  const conditions = combatant.conditions || [];
+  if (!conditions.some(c => c.instanceId === instanceId)) {
+    return combatant;
+  }
+  return {
+    ...combatant,
+    conditions: conditions.map(c =>
+      c.instanceId === instanceId ? { ...c, revealed: cycleRevealed(c.revealed) } : c
+    )
+  };
+}
+
+/**
+ * Phase 12a.6 migration helper: bring one participant up to the
+ * condition-visibility shape. Pure and idempotent — safe to run on every load.
+ *
+ * 1. Folds legacy `isStunned` / `isUnconscious` booleans into `conditions[]`
+ *    (permanent duration, matching the sticky-until-cleared bool semantics),
+ *    skipping the insert when a matching condition already exists.
+ * 2. Removes the boolean fields regardless of value.
+ * 3. Backfills `revealed` on instances that predate the eye state, from the
+ *    catalog isObvious default.
+ *
+ * @param {object} participant - Participant (possibly legacy-shaped)
+ * @returns {object} Migrated participant (same reference if nothing to do)
+ */
+export function ensureParticipantConditionVisibility(participant) {
+  if (!participant || typeof participant !== 'object') {
+    return participant;
+  }
+
+  const conditions = Array.isArray(participant.conditions) ? participant.conditions : [];
+  const hasLegacyBools = 'isStunned' in participant || 'isUnconscious' in participant;
+  const needsBackfill = conditions.some(
+    c => c && typeof c === 'object' && c.revealed === undefined
+  );
+
+  if (!hasLegacyBools && !needsBackfill) {
+    return participant;
+  }
+
+  let next = [...conditions];
+
+  const foldBool = (flag, conditionId) => {
+    if (flag !== true) return;
+    if (next.some(c => c && c.conditionId === conditionId)) return;
+    next.push(
+      createConditionInstance(conditionId, {
+        duration: { type: DurationType.PERMANENT, value: null }
+      })
+    );
+  };
+
+  foldBool(participant.isStunned, ConditionId.STUNNED);
+  foldBool(participant.isUnconscious, ConditionId.UNCONSCIOUS);
+
+  next = next.map(c => {
+    if (!c || typeof c !== 'object' || c.revealed !== undefined) return c;
+    return { ...c, revealed: isConditionObvious(c.conditionId) ? 'open' : 'closed' };
+  });
+
+  const migrated = { ...participant, conditions: next };
+  delete migrated.isStunned;
+  delete migrated.isUnconscious;
+  return migrated;
 }
 
 /**

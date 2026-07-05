@@ -26,10 +26,12 @@ export function deriveTurnContext(combatant) {
     return { ...DEFAULT_TURN_CONTEXT };
   }
 
-  const isStunned = Boolean(combatant.isStunned) || hasCondition(combatant, ConditionId.STUNNED);
+  // Since Phase 12a.6, stun/unconsciousness live only in conditions[]
+  // (the legacy isStunned/isUnconscious booleans were folded on migration).
+  const isStunned = hasCondition(combatant, ConditionId.STUNNED);
   const isProne = Boolean(combatant.isProne) || hasCondition(combatant, ConditionId.PRONE);
   const isGrappled = Boolean(combatant.isGrappled) || hasCondition(combatant, ConditionId.GRAPPLED);
-  const isUnconscious = Boolean(combatant.isUnconscious || combatant.isDead) || hasCondition(combatant, ConditionId.UNCONSCIOUS);
+  const isUnconscious = Boolean(combatant.isDead) || hasCondition(combatant, ConditionId.UNCONSCIOUS);
   const shockPenalty = combatant.shockPenalty ?? 0;
   const moveAvailable = combatant.basicMove ?? null;
 

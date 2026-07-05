@@ -17,15 +17,42 @@ export interface Attack {
 
 export interface ConditionDuration {
   type: string;
-  value?: number;
+  value?: number | null;
 }
 
+export interface ConditionExpiry {
+  type: 'turn' | 'round' | 'endOfCombat';
+  turnsRemaining?: number;
+  round?: number;
+}
+
+/**
+ * Player-visibility state of a single condition instance (Phase 12a.6).
+ * - 'closed' — hidden from players entirely
+ * - 'half'   — telegraphed as an anonymous "Afflicted" placeholder
+ * - 'open'   — fully visible to players
+ */
+export type ConditionRevealState = 'closed' | 'half' | 'open';
+
+/**
+ * Canonical condition instance shape (Phase 12a.6 consolidation).
+ * Matches what createConditionInstance() in utils/conditionsEngine.js returns.
+ */
 export interface ConditionInstance {
   instanceId: string;
   conditionId: string;
   label: string;
-  duration?: ConditionDuration;
-  source?: string;
+  severity?: number | null;
+  source?: string | null;
+  startedAtRound?: number;
+  startedAtTurn?: number;
+  duration?: ConditionDuration | null;
+  expiresAt?: ConditionExpiry | null;
+  notes?: string | null;
+  /** GM-controlled player visibility. Seeded from the catalog isObvious flag at creation. */
+  revealed?: ConditionRevealState;
+  /** Set on player-view stand-ins for 'half'-revealed conditions; conditionId is a sentinel. */
+  placeholder?: boolean;
 }
 
 export interface Participant {
@@ -62,8 +89,6 @@ export interface Participant {
   attacks?: Attack[];
   position?: { q: number; r: number };
   shockPenalty?: number;
-  isStunned?: boolean;
-  isUnconscious?: boolean;
   isDead?: boolean;
   bleeding?: { rate: number; round: number } | null;
   crippled?: string[];
@@ -434,7 +459,10 @@ export interface ParticipantSummary {
   maxFP: number;
   /** FP at combat end */
   endFP: number;
-  /** Final status flags */
+  /**
+   * Final status flags. Frozen snapshot fields: since 12a.6 stun/unconsciousness
+   * live in conditions[], these are populated via hasCondition() at snapshot time.
+   */
   isStunned: boolean;
   isUnconscious: boolean;
   isDead: boolean;

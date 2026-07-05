@@ -413,7 +413,9 @@ describe('useCombatStore', () => {
     });
 
     it('supports functional update pattern', () => {
-      const existingSession = createMockCombatSession({ id: 'session-1', round: 1 });
+      // CombatSession uses currentRound (not round) — same key mix-up as the
+      // campaignStorage round-trip tests fixed in PR #29
+      const existingSession = createMockCombatSession({ id: 'session-1', currentRound: 1 });
       const mockActions = createMockActions();
 
       mockedUseCampaignStore.mockReturnValue({
@@ -438,7 +440,7 @@ describe('useCombatStore', () => {
 
       expect(mockActions.setCombatActive).toHaveBeenCalledTimes(1);
       const calledWith = mockActions.setCombatActive.mock.calls[0][0];
-      expect(calledWith.round).toBe(2);
+      expect(calledWith.currentRound).toBe(2);
     });
 
     it('functional update receives null when no active session', () => {

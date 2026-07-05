@@ -22,6 +22,7 @@ import {
   compareVersions,
   CURRENT_SCHEMA_VERSION,
 } from './schemaVersioning';
+import { ensureParticipantConditionVisibility } from './conditionsEngine';
 
 type MigratableData = Record<string, unknown> & { schemaVersion?: string };
 
@@ -54,6 +55,7 @@ const migrationHandlers: Record<string, MigrationHandler> = {
   '1.1.0:1.2.0': migrateTo1_2_0,
   '1.2.0:1.3.0': migrateTo1_3_0,
   '1.3.0:1.4.0': migrateTo1_4_0,
+  '1.4.0:1.5.0': migrateTo1_5_0,
 };
 
 /**
@@ -220,6 +222,37 @@ function migrateTo1_4_0(data: MigratableData): MigratableData {
   return {
     ...data,
     inventories: data.inventories || {},
+  };
+}
+
+/**
+ * Migration: 1.4.0 → 1.5.0 (Combat Condition Visibility, Phase 12a.6)
+ *
+ * Folds legacy isStunned/isUnconscious participant booleans into
+ * conditions[] and backfills the per-instance `revealed` eye state from
+ * catalog defaults. Handles the flat legacy `combatActive` key here; the
+ * nested campaign-state shape is covered at hydrate time by
+ * src/persistence/dataMigration.ts ensureConditionVisibility() (same
+ * per-participant helper, so both paths stay in lockstep).
+ */
+function migrateTo1_5_0(data: MigratableData): MigratableData {
+  const combatActive = data.combatActive as
+    | { participants?: unknown[] }
+    | null
+    | undefined;
+
+  if (!combatActive || !Array.isArray(combatActive.participants)) {
+    return data;
+  }
+
+  return {
+    ...data,
+    combatActive: {
+      ...combatActive,
+      participants: combatActive.participants.map((p) =>
+        ensureParticipantConditionVisibility(p)
+      ),
+    },
   };
 }
 

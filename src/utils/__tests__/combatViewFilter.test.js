@@ -251,23 +251,84 @@ describe('getCombatView', () => {
     });
   });
 
-  describe('Player view — conditions filtering', () => {
-    it('shows all conditions for player side regardless of HP reveal', () => {
+  describe('Player view — conditions filtering (12a.6 eye state)', () => {
+    it('shows all conditions for player side regardless of eye state', () => {
       const p = mkParticipant({
         category: 'player',
-        conditions: [{ conditionId: 'poisoned' }, { conditionId: 'blinded' }],
+        conditions: [
+          { conditionId: 'poisoned', revealed: 'closed' },
+          { conditionId: 'blinded' },
+        ],
       });
       const combat = mkCombatState({ participants: [p] });
       const view = getCombatView(combat, { byInstanceId: {} }, ViewMode.PLAYER);
       expect(view.participants[0].conditions).toHaveLength(2);
     });
 
-    it('shows only obvious conditions for enemy when HP not revealed', () => {
+    it('drops closed-eye enemy conditions even when catalog-obvious', () => {
+      const p = mkParticipant({
+        conditions: [{ instanceId: 'c1', conditionId: 'bleeding', label: 'Bleeding', revealed: 'closed' }],
+      });
+      const combat = mkCombatState({ participants: [p] });
+      const view = getCombatView(combat, { byInstanceId: {} }, ViewMode.PLAYER);
+      expect(view.participants[0].conditions).toEqual([]);
+    });
+
+    it('passes open-eye enemy conditions through even when catalog-concealed', () => {
+      const p = mkParticipant({
+        conditions: [{ instanceId: 'c1', conditionId: 'poisoned', label: 'Poisoned', revealed: 'open' }],
+      });
+      const combat = mkCombatState({ participants: [p] });
+      const view = getCombatView(combat, { byInstanceId: {} }, ViewMode.PLAYER);
+      expect(view.participants[0].conditions).toHaveLength(1);
+      expect(view.participants[0].conditions[0].conditionId).toBe('poisoned');
+    });
+
+    it('replaces half-eye enemy conditions with an anonymous placeholder that leaks nothing', () => {
+      const p = mkParticipant({
+        conditions: [{
+          instanceId: 'c1',
+          conditionId: 'poisoned',
+          label: 'Poisoned',
+          severity: 3,
+          source: 'Assassin blade',
+          expiresAt: { type: 'round', round: 9 },
+          notes: 'deadly',
+          revealed: 'half',
+        }],
+      });
+      const combat = mkCombatState({ participants: [p] });
+      const view = getCombatView(combat, { byInstanceId: {} }, ViewMode.PLAYER);
+      const [placeholder] = view.participants[0].conditions;
+      expect(placeholder).toEqual({
+        instanceId: 'c1',
+        conditionId: '__concealed__',
+        label: 'Afflicted',
+        placeholder: true,
+      });
+    });
+
+    it('emits one placeholder per half-eye instance (count is deliberately exposed)', () => {
       const p = mkParticipant({
         conditions: [
-          { conditionId: 'prone' },     // obvious
-          { conditionId: 'poisoned' },  // not obvious
-          { conditionId: 'bleeding' },  // obvious
+          { instanceId: 'c1', conditionId: 'poisoned', revealed: 'half' },
+          { instanceId: 'c2', conditionId: 'blinded', revealed: 'half' },
+          { instanceId: 'c3', conditionId: 'slowed', revealed: 'closed' },
+        ],
+      });
+      const combat = mkCombatState({ participants: [p] });
+      const view = getCombatView(combat, { byInstanceId: {} }, ViewMode.PLAYER);
+      const conditions = view.participants[0].conditions;
+      expect(conditions).toHaveLength(2);
+      expect(conditions.every(c => c.placeholder)).toBe(true);
+    });
+
+    it('falls back to catalog obviousness for legacy instances without an eye state', () => {
+      const p = mkParticipant({
+        conditions: [
+          { conditionId: 'prone' },     // obvious → treated as open
+          { conditionId: 'poisoned' },  // not obvious → treated as closed
+          { conditionId: 'bleeding' },  // obvious → treated as open
         ],
       });
       const combat = mkCombatState({ participants: [p] });
@@ -278,9 +339,12 @@ describe('getCombatView', () => {
       expect(ids).not.toContain('poisoned');
     });
 
-    it('shows all conditions for enemy when HP fully revealed', () => {
+    it('no longer reveals concealed conditions when HP is fully revealed (eye state is authoritative)', () => {
       const p = mkParticipant({
-        conditions: [{ conditionId: 'poisoned' }, { conditionId: 'blinded' }],
+        conditions: [
+          { conditionId: 'poisoned', revealed: 'closed' },
+          { conditionId: 'blinded', revealed: 'closed' },
+        ],
       });
       const combat = mkCombatState({ participants: [p] });
       const reveal = mkRevealForInstance('enemy-001', {
@@ -289,7 +353,22 @@ describe('getCombatView', () => {
         attacks: RevealMode.ATTACKS_HIDDEN, notes: RevealMode.NOTES_HIDDEN,
       });
       const view = getCombatView(combat, reveal, ViewMode.PLAYER);
-      expect(view.participants[0].conditions).toHaveLength(2);
+      expect(view.participants[0].conditions).toEqual([]);
+    });
+
+    it('GM view sees every condition unfiltered, with eye state intact', () => {
+      const p = mkParticipant({
+        conditions: [
+          { instanceId: 'c1', conditionId: 'poisoned', revealed: 'closed' },
+          { instanceId: 'c2', conditionId: 'blinded', revealed: 'half' },
+        ],
+      });
+      const combat = mkCombatState({ participants: [p] });
+      const view = getCombatView(combat, { byInstanceId: {} }, ViewMode.GM);
+      const conditions = view.participants[0].conditions;
+      expect(conditions).toHaveLength(2);
+      expect(conditions[0].revealed).toBe('closed');
+      expect(conditions[1].conditionId).toBe('blinded');
     });
 
     it('returns empty array for missing/non-array conditions', () => {
@@ -301,8 +380,8 @@ describe('getCombatView', () => {
   });
 
   describe('Player view — injury fields', () => {
-    it('exposes injury fields when HP exact', () => {
-      const p = mkParticipant({ shockPenalty: -2, isStunned: true, bleeding: true, crippled: { leftArm: true } });
+    it('exposes injury fields when HP exact (stun flows through conditions, not a bool)', () => {
+      const p = mkParticipant({ shockPenalty: -2, bleeding: true, crippled: { leftArm: true } });
       const combat = mkCombatState({ participants: [p] });
       const reveal = mkRevealForInstance('enemy-001', {
         name: RevealMode.NAME_FULL, tags: RevealMode.NOTES_HIDDEN,
@@ -311,18 +390,18 @@ describe('getCombatView', () => {
       });
       const view = getCombatView(combat, reveal, ViewMode.PLAYER);
       expect(view.participants[0].shockPenalty).toBe(-2);
-      expect(view.participants[0].isStunned).toBe(true);
+      expect(view.participants[0].isStunned).toBeUndefined();
       expect(view.participants[0].bleeding).toBe(true);
     });
 
-    it('hides injury fields when HP not exact, but always reports dead/unconscious flags', () => {
-      const p = mkParticipant({ shockPenalty: -3, isStunned: true, isDead: false, isUnconscious: false });
+    it('hides injury fields when HP not exact, but always reports the dead flag', () => {
+      const p = mkParticipant({ shockPenalty: -3, isDead: false });
       const combat = mkCombatState({ participants: [p] });
       const view = getCombatView(combat, { byInstanceId: {} }, ViewMode.PLAYER);
       expect(view.participants[0].shockPenalty).toBeUndefined();
       expect(view.participants[0].isStunned).toBeUndefined();
+      expect(view.participants[0].isUnconscious).toBeUndefined();
       expect(view.participants[0].isDead).toBe(false);
-      expect(view.participants[0].isUnconscious).toBe(false);
     });
   });
 });

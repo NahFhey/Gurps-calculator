@@ -119,8 +119,6 @@ interface Participant extends Character {
   currentMP: number;
   instanceId?: string;
   shockPenalty: number;
-  isStunned: boolean;
-  isUnconscious: boolean;
   isDead: boolean;
   bleeding: null;
   crippled: string[];
@@ -296,8 +294,6 @@ export default function EncounterSetup() {
         currentMP: character.mp || 0,
         // Phase 4 fields
         shockPenalty: 0,
-        isStunned: false,
-        isUnconscious: false,
         isDead: false,
         bleeding: null,
         crippled: [],

@@ -13,7 +13,7 @@ export interface SchemaMetadataEntry {
   migratesFrom?: string[];
 }
 
-export const CURRENT_SCHEMA_VERSION = '1.4.0';
+export const CURRENT_SCHEMA_VERSION = '1.5.0';
 
 export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
   '1.0.0': {
@@ -56,6 +56,16 @@ export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
       'owner records (party + per-character) guaranteed on load',
     features: ['inventory_bus', 'inventory_owner_records'],
     migratesFrom: ['1.3.0'],
+  },
+  '1.5.0': {
+    name: 'Combat Condition Visibility',
+    timestamp: '2026-07-04',
+    breaking: false,
+    description:
+      'Per-instance condition reveal state (closed/half/open) seeded from catalog defaults; ' +
+      'legacy isStunned/isUnconscious participant booleans folded into conditions[]',
+    features: ['condition_reveal_state', 'condition_bool_fold'],
+    migratesFrom: ['1.4.0'],
   },
 };
 

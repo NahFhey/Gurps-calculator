@@ -642,8 +642,6 @@ export function createNumberedEnemies(
       currentMP: template.mp || 0,
       // Phase 4 fields
       shockPenalty: 0,
-      isStunned: false,
-      isUnconscious: false,
       isDead: false,
       bleeding: null,
       crippled: [],

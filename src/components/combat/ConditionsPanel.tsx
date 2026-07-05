@@ -11,25 +11,7 @@ import {
   createConditionInstance
 } from '../../utils/conditionsEngine';
 import { ConfirmDialog, useConfirmDialog, useToast } from '../ui';
-
-interface ExpiresAt {
-  type: 'turn' | 'round' | 'endOfCombat';
-  turnsRemaining?: number;
-  round?: number;
-}
-
-interface ConditionInstance {
-  instanceId: string;
-  conditionId: string;
-  label: string;
-  severity?: number | null;
-  source?: string | null;
-  startedAtRound?: number;
-  startedAtTurn?: number;
-  duration?: unknown;
-  expiresAt?: ExpiresAt | null;
-  notes?: string | null;
-}
+import type { ConditionInstance } from '../../types/combatTracker';
 
 interface Participant {
   id: string;
@@ -74,7 +56,7 @@ export default function ConditionsPanel({
     variant: 'warning',
   });
 
-  const activeConditions = getActiveConditions(participant) as ConditionInstance[];
+  const activeConditions = getActiveConditions(participant);
   const availableConditions = getAllConditions();
 
   const handleAddCondition = () => {
@@ -110,7 +92,7 @@ export default function ConditionsPanel({
       severity: severity ? parseInt(severity, 10) : null,
       source: source || null,
       notes: notes || null
-    } as any);
+    });
 
     if (!conditionInstance) {
       showError('Failed to create condition');
@@ -118,7 +100,7 @@ export default function ConditionsPanel({
     }
 
     // Call handler
-    onAddCondition(conditionInstance as ConditionInstance);
+    onAddCondition(conditionInstance);
 
     // Reset form
     setSelectedConditionId('');

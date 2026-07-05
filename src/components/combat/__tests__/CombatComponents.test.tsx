@@ -241,8 +241,9 @@ describe('ConditionBadge', () => {
       />
     );
 
-    // The mocked formatConditionDuration returns '2 rounds'
-    expect(screen.getByText('(2 rounds)')).toBeInTheDocument();
+    // Phase 11b countdown: rounds remaining computed locally (5 - 1 = 4),
+    // normal urgency renders parenthesized
+    expect(screen.getByText('(4 rounds left)')).toBeInTheDocument();
   });
 
   it('calls onClick when clicked and handler provided', () => {

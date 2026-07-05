@@ -5,9 +5,10 @@ import {
   rollbackMigration,
   cleanupLegacyData,
   ensureInventoryRecords,
+  ensureConditionVisibility,
 } from '../dataMigration';
 import { createCampaignState } from '../../state/campaignReducer';
-import type { Character, Inventory } from '../../types/campaign';
+import type { Character, CombatSession, Inventory } from '../../types/campaign';
 
 // ============================================================================
 // In-memory mock for window.storage
@@ -311,5 +312,114 @@ describe('ensureInventoryRecords', () => {
     expect(charInv?.id).toBe('inv-c1');
     // The pre-existing record is untouched
     expect(next.entities.inventories['c1'].ownerType).toBe('party');
+  });
+});
+
+// ============================================================================
+// ensureConditionVisibility (schema 1.5.0, Phase 12a.6)
+// ============================================================================
+
+describe('ensureConditionVisibility', () => {
+  /**
+   * Runtime combat sessions carry the richer CombatState participant shape
+   * (conditions as instance objects, legacy status booleans) despite the
+   * narrower declared CombatSession type — a known boundary-type gap. Tests
+   * build the runtime shape and cast, matching production data.
+   */
+  const runtimeSession = (participants: unknown[]): CombatSession =>
+    ({
+      id: 's1',
+      name: 'Skirmish',
+      currentRound: 2,
+      currentTurn: 1,
+      participants,
+      log: [],
+      startDate: '2026-07-04',
+    }) as unknown as CombatSession;
+
+  type RuntimeParticipant = {
+    instanceId: string;
+    isStunned?: boolean;
+    isUnconscious?: boolean;
+    conditions?: Array<Record<string, unknown>>;
+  };
+
+  const participantsOf = (state: ReturnType<typeof createCampaignState>): RuntimeParticipant[] =>
+    (state.combat.activeSession?.participants ?? []) as unknown as RuntimeParticipant[];
+
+  it('returns the same state when there is no active session', () => {
+    const state = createCampaignState();
+    expect(ensureConditionVisibility(state)).toBe(state);
+  });
+
+  it('folds legacy participant booleans into conditions and removes them', () => {
+    const state = createCampaignState();
+    state.combat.activeSession = runtimeSession([
+      { instanceId: 'p1', isStunned: true, conditions: [] },
+      { instanceId: 'p2', isUnconscious: true, conditions: [] },
+    ]);
+
+    const next = ensureConditionVisibility(state);
+    const [p1, p2] = participantsOf(next);
+
+    expect('isStunned' in p1).toBe(false);
+    expect(p1.conditions).toHaveLength(1);
+    expect(p1.conditions?.[0]).toMatchObject({ conditionId: 'stunned', revealed: 'open' });
+
+    expect('isUnconscious' in p2).toBe(false);
+    expect(p2.conditions?.[0]).toMatchObject({ conditionId: 'unconscious', revealed: 'open' });
+  });
+
+  it('backfills revealed on pre-12a.6 condition instances from catalog defaults', () => {
+    const state = createCampaignState();
+    state.combat.activeSession = runtimeSession([
+      {
+        instanceId: 'p1',
+        conditions: [
+          { instanceId: 'c1', conditionId: 'prone', label: 'Prone' },
+          { instanceId: 'c2', conditionId: 'poisoned', label: 'Poisoned' },
+        ],
+      },
+    ]);
+
+    const next = ensureConditionVisibility(state);
+    const [p1] = participantsOf(next);
+    expect(p1.conditions?.[0].revealed).toBe('open');
+    expect(p1.conditions?.[1].revealed).toBe('closed');
+  });
+
+  it('is idempotent: second run returns the same state object', () => {
+    const state = createCampaignState();
+    state.combat.activeSession = runtimeSession([
+      { instanceId: 'p1', isStunned: true, conditions: [] },
+    ]);
+    const once = ensureConditionVisibility(state);
+    const twice = ensureConditionVisibility(once);
+    expect(twice).toBe(once);
+  });
+
+  it('mixed legacy: bool true plus existing condition yields exactly one instance', () => {
+    const state = createCampaignState();
+    state.combat.activeSession = runtimeSession([
+      {
+        instanceId: 'p1',
+        isStunned: true,
+        conditions: [
+          { instanceId: 'c1', conditionId: 'stunned', label: 'Stunned', revealed: 'open' },
+        ],
+      },
+    ]);
+
+    const next = ensureConditionVisibility(state);
+    const [p1] = participantsOf(next);
+    expect(p1.conditions).toHaveLength(1);
+    expect(p1.conditions?.[0].instanceId).toBe('c1');
+  });
+
+  it('leaves legacy string-shaped participants untouched', () => {
+    const state = createCampaignState();
+    state.combat.activeSession = runtimeSession(['fighter-1', 'goblin-1']);
+    const next = ensureConditionVisibility(state);
+    expect(next).toBe(state);
   });
 });
