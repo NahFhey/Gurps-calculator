@@ -681,6 +681,7 @@ export interface CombatSession {
   startDate: string;
   endDate?: string;
   outcome?: 'victory' | 'defeat' | 'fled' | 'negotiated';
+  mapId?: string;
 }
 
 export interface CombatItem {

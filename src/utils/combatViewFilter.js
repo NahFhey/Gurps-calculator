@@ -91,7 +91,9 @@ function filterParticipant(participant, revealState) {
 
   // Copy non-secret combat stats (always visible for UI purposes)
   filtered.basicSpeed = participant.basicSpeed;
+  filtered.basicMove = participant.basicMove;
   filtered.dx = participant.dx;
+  filtered.position = participant.position;
   filtered.maxHP = participant.maxHP || participant.hp;
   filtered.maxFP = participant.maxFP || participant.fp;
   filtered.maxMP = participant.maxMP || participant.mp;

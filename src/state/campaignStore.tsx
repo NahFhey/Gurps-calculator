@@ -7,7 +7,8 @@ import {
   LogEntry,
   CharacterPanelView
 } from './campaignReducer';
-import { saveCampaignState } from '../persistence/campaignStorage';
+import { saveCampaignState, serializeCampaignState } from '../persistence/campaignStorage';
+import { connectionManager } from '../net/ConnectionManager';
 import type {
   Id,
   Character,
@@ -73,6 +74,8 @@ import type {
 
 type CampaignStoreValue = {
   state: CampaignState;
+  /** Dispatch a raw reducer action (used by SyncProvider for replaceState) */
+  dispatch: (action: { type: string; payload?: unknown }) => void;
   actions: {
     // UI Actions
     setActiveModule: (moduleId: string) => void;
@@ -98,6 +101,9 @@ type CampaignStoreValue = {
     restoreCheckpoint: (id: string) => void;
     importCampaignState: (state: CampaignState, label?: string) => void;
     applyDebugState: (state: CampaignState) => void;
+    clearCheckpoints: () => void;
+    clearLogs: () => void;
+    clearCombatHistory: () => void;
 
     // Combat (legacy)
     startCombat: (encounterId?: string) => void;
@@ -279,6 +285,11 @@ type CampaignStoreValue = {
     mapExecuteTravel: (params: { mapId: MapId; routeTileIds: TileId[]; destinationTileId: TileId; mode: TravelMode; gmOverride: boolean }) => void;
     mapSetPendingTerrain: (tileIds: TileId[]) => void;
     mapClearPendingTerrain: () => void;
+
+    // Multiplayer Actions
+    assignCharacterToPlayer: (playerName: string, characterId: string) => void;
+    unassignCharacterFromPlayer: (playerName: string, characterId: string) => void;
+    setPlayerCharacters: (playerName: string, characterIds: string[]) => void;
   };
 };
 
@@ -597,6 +608,14 @@ export function CampaignStoreProvider({
       clearCheckpoints: () => dispatch({ type: 'clearCheckpoints' }),
       clearLogs: () => dispatch({ type: 'clearLogs' }),
       clearCombatHistory: () => dispatch({ type: 'clearCombatHistory' }),
+
+      // Multiplayer Actions
+      assignCharacterToPlayer: (playerName: string, characterId: string) =>
+        dispatch({ type: 'assignCharacterToPlayer', payload: { playerName, characterId } }),
+      unassignCharacterFromPlayer: (playerName: string, characterId: string) =>
+        dispatch({ type: 'unassignCharacterFromPlayer', payload: { playerName, characterId } }),
+      setPlayerCharacters: (playerName: string, characterIds: string[]) =>
+        dispatch({ type: 'setPlayerCharacters', payload: { playerName, characterIds } }),
     }),
     []
   );
@@ -608,11 +627,12 @@ export function CampaignStoreProvider({
         legacy: {
           appState: initialLegacyAppState ?? state.legacy.appState
         }
-      },
+      } as CampaignState,
+      dispatch,
       actions
     }),
-    [actions, initialLegacyAppState, state]
-  );
+    [actions, dispatch, initialLegacyAppState, state]
+  ) as CampaignStoreValue;
 
   useEffect(() => {
     if (!hydratedRef.current) {
@@ -624,9 +644,18 @@ export function CampaignStoreProvider({
       window.clearTimeout(saveTimeoutRef.current);
     }
     saveTimeoutRef.current = window.setTimeout(() => {
+      // Always save to IndexedDB (offline backup)
       saveCampaignState(state).catch((error) => {
         console.error('Failed to save campaign state', error);
       });
+
+      // If connected as GM, also push to server
+      if (connectionManager.isConnected && connectionManager.isGM) {
+        const serialized = JSON.stringify(serializeCampaignState(state));
+        connectionManager.pushState(serialized).catch((error) => {
+          console.error('Failed to push state to server', error);
+        });
+      }
     }, 500);
 
     return () => {

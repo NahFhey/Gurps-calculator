@@ -145,6 +145,8 @@ export const createPartyToolState = () => {
       'facility-workbench': {
         id: 'facility-workbench',
         name: 'Workbench Bay',
+        facilityType: 'workshop',
+        rating: 1,
         conditionId: 'Good',
         activityCategories: {
           crafting: { skillBonus: 1, qualityModifier: 1 },
@@ -154,6 +156,8 @@ export const createPartyToolState = () => {
       'facility-lab': {
         id: 'facility-lab',
         name: 'Alchemy Corner',
+        facilityType: 'lab',
+        rating: 2,
         conditionId: 'Broken',
         activityCategories: {
           alchemy: { skillBonus: 2, yieldPercent: 15, riskModifier: -2 },

@@ -125,6 +125,7 @@ export function useCombatStore() {
        * This is stored in state.combat.revealState.
        */
       saveCombatReveal: (revealState: { version?: number; combatId?: string; byInstanceId: Record<string, unknown> } | null) => {
+        console.warn('saveCombatReveal: reveal state updates are not yet fully implemented');
         actions.setCombatRevealState(revealState);
       }
     };

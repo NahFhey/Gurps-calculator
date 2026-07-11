@@ -1,8 +1,8 @@
 import { useState, ChangeEvent } from 'react';
-import { Plus, Play, ChevronUp, ChevronDown, X, Users, Lock, AlertTriangle } from 'lucide-react';
+import { Plus, Play, ChevronUp, ChevronDown, X, Users, Lock, AlertTriangle, Map as MapIcon } from 'lucide-react';
 import { useCombatStore } from '../../hooks/useCombatStore';
 import { useCampaignStore } from '../../state/campaignStore';
-import { generateTurnOrder, createNumberedEnemies, generateId, createLogEntry, createTurnLogEntry } from '../../utils/combatHelpers';
+import { generateTurnOrder, createNumberedEnemies, generateId, createLogEntry, createTurnLogEntry, type EnemyTemplate } from '../../utils/combatHelpers';
 import type { Character as PartyCharacter } from '../../types/campaign';
 import { DEFAULT_HIT_LOCATION_PROFILE } from '../../types/characterSheet';
 import { COMBAT_CATEGORIES } from '../../constants';
@@ -114,17 +114,18 @@ export default function EncounterSetup() {
     partyCharacters,
     saveCombatActive,
     combatHistory,
-    saveCombatHistory
   } = useCombatStore();
 
   // Access GM mode from campaign store
   const { state } = useCampaignStore();
   const gmModeEnabled = state.ui.gmModeEnabled;
+  const availableMaps = Object.values(state.maps.mapsById);
 
   const [encounterName, setEncounterName] = useState('');
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [turnOrder, setTurnOrder] = useState<string[]>([]);
   const [showTurnOrderPreview, setShowTurnOrderPreview] = useState(false);
+  const [selectedMapId, setSelectedMapId] = useState<string>('');
 
   // Toast notifications
   const { warning: showWarning } = useToast();
@@ -138,7 +139,7 @@ export default function EncounterSetup() {
   });
 
   // Categorize combat library characters
-  const characters = combatCharacters as Character[];
+  const characters = (combatCharacters || []) as unknown as Character[];
   const players = characters.filter(c => c.category === 'player');
   const allies = characters.filter(c => c.category === 'ally');
   const enemies = characters.filter(c => c.category === 'enemy');
@@ -163,8 +164,8 @@ export default function EncounterSetup() {
   const addCharacter = (character: Character, quantity = 1) => {
     if (character.category === 'enemy' && quantity > 1) {
       // Create numbered enemies
-      const numbered = createNumberedEnemies(character.name, quantity, character) as Participant[];
-      setParticipants([...participants, ...numbered]);
+      const numbered = createNumberedEnemies(character.name, quantity, character as unknown as EnemyTemplate);
+      setParticipants([...participants, ...(numbered as Participant[])]);
     } else {
       // Add single character
       const participant: Participant = {
@@ -198,7 +199,7 @@ export default function EncounterSetup() {
 
   // Generate turn order preview
   const handleGenerateTurnOrder = () => {
-    const order = generateTurnOrder(participants) as string[];
+    const order = generateTurnOrder(participants as unknown as any) as string[];
     setTurnOrder(order);
     setShowTurnOrderPreview(true);
   };
@@ -253,6 +254,7 @@ export default function EncounterSetup() {
       currentTurnIndex: 0,
       currentRound: 1,
       turnDecisions: {},
+      ...(selectedMapId ? { mapId: selectedMapId } : {}),
       log: [
         createLogEntry({
           entryType: 'note',
@@ -266,7 +268,7 @@ export default function EncounterSetup() {
           turn: 0,
           text: `=== Round 1 ===`
         }),
-        createTurnLogEntry(1, 0, firstActorInstanceId, firstActor?.name)
+        createTurnLogEntry(1, 0, firstActorInstanceId || '', firstActor?.name || '')
       ]
     };
 
@@ -280,6 +282,7 @@ export default function EncounterSetup() {
       setParticipants([]);
       setTurnOrder([]);
       setShowTurnOrderPreview(false);
+      setSelectedMapId('');
     }
   };
 
@@ -308,6 +311,31 @@ export default function EncounterSetup() {
           className="w-full px-3 py-2 bg-gray-700 rounded"
           placeholder="e.g., Goblin Ambush"
         />
+      </div>
+
+      {/* Map Selection */}
+      <div>
+        <label className="block text-sm mb-2 flex items-center gap-2">
+          <MapIcon size={16} className="text-blue-400" />
+          Combat Map (optional)
+        </label>
+        <select
+          value={selectedMapId}
+          onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedMapId(e.target.value)}
+          className="w-full px-3 py-2 bg-gray-700 rounded text-gray-100"
+        >
+          <option value="">No Map (Abstract Combat)</option>
+          {availableMaps.map(map => (
+            <option key={map.id} value={map.id}>
+              {map.name} ({map.rows}×{map.cols})
+            </option>
+          ))}
+        </select>
+        {availableMaps.length === 0 && (
+          <p className="text-xs text-gray-500 mt-1">
+            No maps available. Create one in the Map module first.
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -479,7 +507,9 @@ export default function EncounterSetup() {
                       ) : (
                         <div className="flex items-center gap-1">
                           {isPartyChar && gmModeEnabled && (
-                            <AlertTriangle size={14} className="text-yellow-500" title="GM Override: Changing party character category" />
+                            <div title="GM Override: Changing party character category">
+                              <AlertTriangle size={14} className="text-yellow-500" />
+                            </div>
                           )}
                           <select
                             value={p.category}

@@ -7,7 +7,7 @@ import { DAMAGE_MODIFIERS, sumModifiers } from '../../utils/modifiers';
 import { rollDamage, resolveDamageExpression } from '../../utils/damage';
 import { resolveInjury, createInjuryBreakdown, createHitLocationLog, applyInjuryToHP } from '../../utils/injuryEngine';
 import { generateEffectsPrompts } from '../../utils/effectsEngine';
-import { getDamageTypeOptions, DAMAGE_TYPES } from '../../utils/wounding';
+import { getDamageTypeOptions, DAMAGE_TYPES, type DamageTypeValue } from '../../utils/wounding';
 
 interface Modifier {
   label: string;
@@ -27,6 +27,7 @@ interface LocationRoll {
 
 interface Target {
   instanceId: string;
+  id?: string;
   name: string;
   hp: number;
   currentHP: number;
@@ -67,10 +68,19 @@ interface ResolvedEffect {
   locationLabel?: string;
 }
 
+// EffectPrompt interface - represents a prompt for effect resolution
 interface EffectPrompt {
   type: string;
-  label: string;
   description?: string;
+  autoApply?: boolean;
+  value?: number;
+  locationKey?: string;
+  locationLabel?: string;
+  checkType?: string;
+  target?: number;
+  penalty?: number;
+  optional?: boolean;
+  label?: string;
 }
 
 interface HitLocationLog {
@@ -132,14 +142,14 @@ export default function InjuryResolutionPanel({
   const [step, setStep] = useState<StepValue>(initialLocation ? 'damage' : 'location');
 
   // Hit location state
-  const [selectedLocation, setSelectedLocation] = useState<HitLocation | null>(initialLocation);
+  const [selectedLocation, setSelectedLocation] = useState<HitLocation | null | undefined>(initialLocation);
   const [locationRoll, setLocationRoll] = useState<LocationRoll | null>(initialLocationRoll);
 
   // Damage state
   const [expression, setExpression] = useState(damageExpression || '');
   const [manualDamage, setManualDamage] = useState('');
   const [useManual, setUseManual] = useState(false);
-  const [damageType, setDamageType] = useState(DAMAGE_TYPES.CR);
+  const [damageType, setDamageType] = useState<DamageTypeValue>(DAMAGE_TYPES.CR as DamageTypeValue);
   const [modifiers, setModifiers] = useState<Modifier[]>([]);
   const [rollResult, setRollResult] = useState<RollResult | null>(null);
 
@@ -271,7 +281,7 @@ export default function InjuryResolutionPanel({
 
     // Build complete injury data
     const injuryData: InjuryData = {
-      hitLocation: createHitLocationLog(profileId, selectedLocation, locationRoll) as HitLocationLog,
+      hitLocation: createHitLocationLog(profileId, selectedLocation, locationRoll || undefined) as HitLocationLog,
       damageBreakdown: createInjuryBreakdown(injuryResult) as DamageBreakdown,
       effects: resolvedEffects,
       newHP,
@@ -305,7 +315,7 @@ export default function InjuryResolutionPanel({
         <>
           <HitLocationPicker
             profileId={profileId}
-            selectedLocation={selectedLocation}
+            selectedLocation={selectedLocation as any}
             onLocationSelected={handleLocationSelected}
           />
           <div className="flex gap-2">
@@ -349,7 +359,7 @@ export default function InjuryResolutionPanel({
             <label className="block text-sm text-gray-400 mb-1">Damage Type</label>
             <select
               value={damageType}
-              onChange={(e: ChangeEvent<HTMLSelectElement>) => setDamageType(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => setDamageType(e.target.value as DamageTypeValue)}
               className="w-full px-3 py-2 bg-gray-700 rounded"
             >
               {getDamageTypeOptions().map((option: { value: string; label: string }) => (
@@ -495,8 +505,8 @@ export default function InjuryResolutionPanel({
       {step === 'effects' && (
         <>
           <EffectsPanel
-            prompts={effectsPrompts}
-            target={target}
+            prompts={effectsPrompts as any}
+            target={{ ...target, id: target.id || target.instanceId } as any}
             onEffectResolved={handleEffectResolved}
             onComplete={handleComplete}
           />

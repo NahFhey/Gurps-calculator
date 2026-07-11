@@ -139,16 +139,16 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
 
   const handleRevealChange = (instanceId: string, field: string, value: string | number) => {
     const newReveal = updateReveal(combatReveal, instanceId, field, value);
-    saveCombatReveal(newReveal);
+    saveCombatReveal(newReveal as any);
   };
 
   const handleBatchRevealChange = (instanceId: string, updates: RevealUpdate[]) => {
     // Apply all updates in sequence to avoid state conflicts
-    let newReveal = combatReveal;
+    let newReveal = combatReveal as any;
     for (const { field, value } of updates) {
       newReveal = updateReveal(newReveal, instanceId, field, value);
     }
-    saveCombatReveal(newReveal);
+    saveCombatReveal(newReveal as any);
   };
 
   return (

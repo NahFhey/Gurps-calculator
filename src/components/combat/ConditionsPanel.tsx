@@ -47,17 +47,16 @@ export default function ConditionsPanel({
   currentRound,
   currentTurn,
   onAddCondition,
-  onRemoveCondition,
-  onUpdateCondition
+  onRemoveCondition
 }: ConditionsPanelProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedConditionId, setSelectedConditionId] = useState('');
-  const [severity, setSeverity] = useState('');
+  const [severity, setSeverity] = useState<string | null>(null);
   const [durationType, setDurationType] = useState<string>(DurationType.PERMANENT);
-  const [durationValue, setDurationValue] = useState('1');
-  const [source, setSource] = useState('');
-  const [notes, setNotes] = useState('');
-  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
+  const [durationValue, setDurationValue] = useState<string>('1');
+  const [source, setSource] = useState<string | null>(null);
+  const [notes, setNotes] = useState<string | null>(null);
+  const [_pendingRemoveId, _setPendingRemoveId] = useState<string | null>(null);
 
   const { warning: showWarning, error: showError } = useToast();
 
@@ -101,10 +100,10 @@ export default function ConditionsPanel({
       round: currentRound,
       turn: currentTurn,
       duration,
-      severity: severity ? parseInt(severity, 10) : null,
-      source: source || null,
-      notes: notes || null
-    });
+      severity: severity !== null && severity !== '' ? parseInt(severity, 10) : null,
+      source: source,
+      notes: notes
+    } as Parameters<typeof createConditionInstance>[1] & object);
 
     if (!conditionInstance) {
       showError('Failed to create condition');
@@ -112,7 +111,7 @@ export default function ConditionsPanel({
     }
 
     // Call handler
-    onAddCondition(conditionInstance);
+    onAddCondition(conditionInstance as ConditionInstance);
 
     // Reset form
     setSelectedConditionId('');
@@ -125,12 +124,12 @@ export default function ConditionsPanel({
   };
 
   const handleRemoveCondition = async (conditionInstanceId: string) => {
-    setPendingRemoveId(conditionInstanceId);
+    _setPendingRemoveId(conditionInstanceId);
     const confirmed = await removeConditionDialog.confirm();
     if (confirmed) {
       onRemoveCondition(conditionInstanceId);
     }
-    setPendingRemoveId(null);
+    _setPendingRemoveId(null);
   };
 
   return (
@@ -237,7 +236,7 @@ export default function ConditionsPanel({
               </label>
               <input
                 type="number"
-                value={severity}
+                value={severity || ''}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setSeverity(e.target.value)}
                 min="1"
                 className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white"
@@ -251,7 +250,7 @@ export default function ConditionsPanel({
               </label>
               <input
                 type="text"
-                value={source}
+                value={source || ''}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setSource(e.target.value)}
                 className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white"
                 placeholder="e.g., Fireball, Goblin #1"
@@ -265,7 +264,7 @@ export default function ConditionsPanel({
             </label>
             <input
               type="text"
-              value={notes}
+              value={notes || ''}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setNotes(e.target.value)}
               className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded text-white"
               placeholder="Additional notes"

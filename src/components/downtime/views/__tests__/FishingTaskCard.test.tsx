@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { FishingTaskCard } from '../FishingTaskCard';
 import type { DowntimeTask, FishingData, TaskResults } from '../../../../types/downtime';
-import type { Character, GatheringSpecies, GatheringEnvironment } from '../../../../types/campaign';
+import type { Character } from '../../../../types/campaign';
 
 // Helper to create a fishing task
 function createFishingTask(
@@ -40,36 +40,18 @@ const mockCharacters: Character[] = [
   {
     id: 'char-1',
     name: 'Aldric',
-    hp: { current: 10, max: 10 },
-    fp: { current: 10, max: 10 },
-    speed: 5,
     st: 10,
-    dx: 10,
-    iq: 10,
-    ht: 10,
-    skills: {},
-    advantages: [],
-    disadvantages: [],
-    equipment: [],
+    work: { skills: {} },
   },
   {
     id: 'char-2',
     name: 'Brina',
-    hp: { current: 12, max: 12 },
-    fp: { current: 12, max: 12 },
-    speed: 5,
     st: 12,
-    dx: 10,
-    iq: 10,
-    ht: 12,
-    skills: {},
-    advantages: [],
-    disadvantages: [],
-    equipment: [],
+    work: { skills: {} },
   },
 ];
 
-const mockSpots: GatheringEnvironment[] = [
+const mockSpots: any[] = [
   {
     id: 'spot-river',
     name: 'River Bank',
@@ -79,7 +61,7 @@ const mockSpots: GatheringEnvironment[] = [
   },
 ];
 
-const mockSpecies: GatheringSpecies[] = [
+const mockSpecies: any[] = [
   {
     id: 'species-trout',
     name: 'Trout',

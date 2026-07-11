@@ -29,7 +29,7 @@ export function CombatTab() {
 
   // Derive combat state from campaign store
   const combatActive = state.combat.activeSession;
-  const combatHasMap = !!(combatActive as any)?.mapId;
+  const combatHasMap = !!combatActive?.mapId;
   const combatRulesPreset = state.combat.rulesPreset;
 
   // Save callback for rules preset

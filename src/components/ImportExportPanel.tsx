@@ -110,18 +110,18 @@ export function ImportExportPanel({
 
     try {
       const text = await file.text();
-      const result = await importFile(text);
+      const result = await importFile(text) as any;
 
-      if (!result.ok) {
+      if (!result?.ok) {
         setImportStatus({
           type: 'error',
-          message: result.error
+          message: result?.error || 'Unknown import error'
         });
         return;
       }
 
       // Show warnings if any
-      if (result.warnings && result.warnings.length > 0) {
+      if (result?.warnings && result.warnings.length > 0) {
         setImportStatus({
           type: 'warning',
           message: 'Import successful with warnings:',
@@ -135,21 +135,21 @@ export function ImportExportPanel({
       }
 
       // Check if locked
-      if (result.isLocked) {
+      if (result?.isLocked) {
         // Store gmLock for later unlock
-        setGmLockData(result.data.gmLock);
+        setGmLockData(result?.data?.gmLock || null);
         setImportStatus({
           type: 'success',
           message: 'Locked import successful! Public data loaded. Enable GM Mode and enter password to access GM content.',
-          warnings: result.warnings
+          warnings: result?.warnings
         });
         // Load public data only
-        onImport(result.data.public);
+        onImport(result?.data?.public);
       } else {
         // Unlocked - merge GM data if present
-        const mergedState = result.data.gm
+        const mergedState = result?.data?.gm
           ? mergeGM(result.data.public, result.data.gm)
-          : result.data.public;
+          : result?.data?.public;
         onImport(mergedState);
         setGmLockData(null);
       }

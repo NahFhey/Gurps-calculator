@@ -1065,3 +1065,29 @@ export async function importCombatWithGMLock(
     };
   }
 }
+
+/**
+ * Create a movement log entry for combat map movement.
+ */
+export function createMovementLogEntry({
+  round,
+  turn,
+  actorInstanceId: _actorInstanceId,
+  actorName,
+  yardsSpent,
+}: {
+  round: number;
+  turn: number;
+  actorInstanceId: string;
+  actorName: string;
+  yardsSpent: number;
+}): LogEntry {
+  return {
+    id: generateId(),
+    timestamp: Date.now(),
+    round,
+    turn,
+    entryType: 'movement',
+    text: `${actorName} moved ${yardsSpent} yard${yardsSpent !== 1 ? 's' : ''}.`,
+  };
+}

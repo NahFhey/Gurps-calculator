@@ -3,120 +3,76 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { FishingTaskForm } from '../FishingTaskForm';
 import { downtimeInitialState } from '../../../../state/downtime/downtimeInitialState';
-import type { Character, GatheringSpecies, GatheringTool, GatheringEnvironment } from '../../../../types/campaign';
+import type { Character } from '../../../../types/campaign';
 
 // Mock data
 const mockCharacters: Character[] = [
   {
     id: 'char-1',
     name: 'Aldric',
-    hp: { current: 10, max: 10 },
-    fp: { current: 10, max: 10 },
-    speed: 5,
     st: 10,
-    dx: 10,
-    iq: 10,
-    ht: 10,
-    skills: { fishing: 12 },
-    advantages: [],
-    disadvantages: [],
-    equipment: [],
+    work: { skills: { fishing: 12 } },
   },
   {
     id: 'char-2',
     name: 'Brina',
-    hp: { current: 12, max: 12 },
-    fp: { current: 12, max: 12 },
-    speed: 5,
     st: 12,
-    dx: 10,
-    iq: 10,
-    ht: 12,
-    skills: { fishing: 14 },
-    advantages: [],
-    disadvantages: [],
-    equipment: [],
+    work: { skills: { fishing: 14 } },
   },
 ];
 
-const mockSpots: GatheringEnvironment[] = [
+const mockSpots: any[] = [
   {
     id: 'spot-1',
     name: 'River Bank',
-    supportedModes: ['Fishing'],
-    defaultsByMode: {
-      Fishing: {
-        randomCatchTableId: 'table-1',
-        mildEventTableId: null,
-        rareEventTableId: null,
-      },
-    },
-    skillMod: 0,
+    description: 'A peaceful river',
+    species: [],
   },
   {
     id: 'spot-2',
     name: 'Deep Lake',
-    supportedModes: ['Fishing'],
-    defaultsByMode: {
-      Fishing: {
-        randomCatchTableId: 'table-2',
-        mildEventTableId: null,
-        rareEventTableId: null,
-      },
-    },
-    skillMod: -2,
+    description: 'A deep lake',
+    species: [],
   },
 ];
 
-const mockSpecies: GatheringSpecies[] = [
+const mockSpecies: any[] = [
   {
     id: 'species-1',
     name: 'Trout',
-    type: 'fish',
-    tags: ['freshwater'],
-    foodType: 'fish',
-    yieldMeatFormula: '1d6',
-    secondaryMaterialType: null,
-    yieldSecondaryFormula: null,
-    secondaryNameOverride: null,
-    st: null,
-    specialRules: [],
+    category: 'fish',
+    baseYield: 1,
+    skill: 'Fishing',
+    difficulty: 12,
+    environments: ['spot-1'],
   },
   {
     id: 'species-2',
     name: 'Bass',
-    type: 'fish',
-    tags: ['freshwater'],
-    foodType: 'fish',
-    yieldMeatFormula: '2d6',
-    secondaryMaterialType: null,
-    yieldSecondaryFormula: null,
-    secondaryNameOverride: null,
-    st: null,
-    specialRules: [],
+    category: 'fish',
+    baseYield: 2,
+    skill: 'Fishing',
+    difficulty: 13,
+    environments: ['spot-1', 'spot-2'],
   },
 ];
 
-const mockTools: GatheringTool[] = [
+const mockTools: any[] = [
   {
     id: 'tool-1',
     name: 'Fishing Rod',
-    toolType: 'fishing_rod', // Matches Line fishing method's toolTypes
-    allowedModes: ['Fishing'],
-    allowedMethods: [],
-    bonuses: [{ type: 'skill_bonus', value: 1 }],
+    category: 'fishing',
+    skillBonus: 1,
+    yieldBonus: 0,
     durability: 10,
-    notes: '',
   },
   {
     id: 'tool-2',
     name: 'Fishing Net',
-    toolType: 'fishing_net', // Matches Net fishing method's toolTypes
-    allowedModes: ['Fishing'],
-    allowedMethods: [],
-    bonuses: [{ type: 'yield_bonus', dice: 1 }],
+    category: 'fishing',
+    skillBonus: 0,
+    yieldBonus: 1,
     durability: 5,
-    notes: '',
   },
 ];
 

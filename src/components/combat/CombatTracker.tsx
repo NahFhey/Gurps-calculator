@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useCombatStore } from '../../hooks/useCombatStore';
 import { ConfirmDialog, useConfirmDialog, useToast } from '../ui';
 import { exportCombatLog, createResourceLogEntry, createTurnLogEntry, createNoteLogEntry, createRollLogEntry, createActionLogEntry, createInjuryLogEntry, createEffectLogEntry, createConditionLogEntry, createManeuverLogEntry, createReinforcementLogEntry, generateId, exportActiveCombat, parseImportedCombat, exportCombatPlayerView, exportCombatGMLocked, importCombatWithGMLock } from '../../utils/combatHelpers';
 import { MAX_COMBAT_HISTORY } from '../../constants';
 import { roll, rollVsTarget } from '../../utils/dice';
+import type { RollResult as RollResultHelper } from '../../utils/combatHelpers';
 import { createTurnAdvanceAction, createSetResourceAction, createAddLogEntryAction, createAddConditionAction, createRemoveConditionAction, createUpdateConditionAction, createSetTurnDecisionAction, createAddReinforcementsAction } from '../../utils/combatActions';
 import { addAction, canUndo, canRedo, undo, redo, createHistoryState, createSnapshot } from '../../utils/combatHistory';
 import { validateCombatState, validateCombatExport, validateCombatImport } from '../../utils/combatValidation';
@@ -46,7 +47,6 @@ import type {
   Maneuver,
   TurnContext,
   ReinforcementData,
-  Character,
   ConditionInstance,
   ConditionDuration,
   ActionCompleteData
@@ -75,7 +75,7 @@ export default function CombatTracker() {
   // TODO: Remove these stubs after completing combat state migration
   // These are legacy variables that were removed but still referenced
   const combatActiveHistory: HistoryState | null = null;
-  const saveCombatActiveHistory = (_history: HistoryState) => {
+  const saveCombatActiveHistory = (_history: HistoryState | null) => {
     console.warn('saveCombatActiveHistory: not implemented - history is managed internally');
   };
 
@@ -110,7 +110,7 @@ export default function CombatTracker() {
   });
 
   const combat = combatActive as CombatState | null;
-  const history = createHistoryState() as HistoryState;
+  const history: HistoryState = createHistoryState() as HistoryState;
   const reveal = combatReveal as RevealState | null;
 
   // Migrate Phase 1 combat on load if needed
@@ -123,7 +123,7 @@ export default function CombatTracker() {
 
         // Create empty history if none exists
         if (!combatActiveHistory) {
-          saveCombatActiveHistory(createHistoryState());
+          saveCombatActiveHistory(createHistoryState() as unknown as HistoryState);
         }
       }
     }
@@ -142,8 +142,10 @@ export default function CombatTracker() {
       const initialReveal = createInitialRevealState(
         combat.id,
         combat.participants
-      );
-      saveCombatReveal(initialReveal);
+      ) as RevealState | null;
+      if (initialReveal) {
+        saveCombatReveal(initialReveal);
+      }
     }
   }, [combat, reveal]);
 
@@ -159,11 +161,11 @@ export default function CombatTracker() {
   const combatLog = combat.log || [];
 
   // Phase 5: Compute view model (filters based on reveal state + view mode)
-  const combatView = getCombatView(combat, reveal, viewMode) as { participants: Participant[] };
+  const combatView = getCombatView(combat, (reveal || undefined) as any, viewMode) as { participants: Participant[] };
 
   // Phase 5: Filter log for Player View
   const displayLog = viewMode === ViewMode.PLAYER && reveal
-    ? filterLogForPlayerView(combatLog, reveal, combat) as LogEntry[]
+    ? filterLogForPlayerView(combatLog, reveal as RevealState, combat) as LogEntry[]
     : combatLog;
 
   const currentActorInstanceId = combat.turnOrder[combat.currentTurnIndex];
@@ -180,7 +182,7 @@ export default function CombatTracker() {
     : null;
   const turnDecisions = combat.turnDecisions || {};
   const currentTurnDecision = turnDecisionKey ? (turnDecisions[turnDecisionKey] || {}) : {};
-  const turnContext = deriveTurnContext(currentActorTruth) as TurnContext;
+  const turnContext = deriveTurnContext(currentActorTruth as any) as TurnContext;
   const availableManeuvers = filterManeuvers(ManeuverCatalog as Maneuver[], turnContext, (combatRulesPreset as string) || 'standard') as Maneuver[];
   const selectedManeuverId = currentTurnDecision?.maneuverId || null;
   const selectedManeuver = (ManeuverCatalog as Maneuver[]).find(m => m.id === selectedManeuverId) || null;
@@ -199,8 +201,9 @@ export default function CombatTracker() {
    * Phase 5: Also pass reveal state to create checkpoints with it
    */
   const recordAction = (action: unknown) => {
-    const newHistory = addAction(history, action, combat, reveal);
-    saveCombatActiveHistory(newHistory);
+    if (!combat) return;
+    const newHistory = addAction(history as any, action as any, combat as any, (reveal as any) || undefined);
+    saveCombatActiveHistory(newHistory as unknown as HistoryState);
   };
 
   const buildRevealUpdate = (previousReveal: RevealState | null, nextReveal: RevealState | null, instanceId: string | null) => {
@@ -273,36 +276,36 @@ export default function CombatTracker() {
   // ============================================================================
 
   const handleUndo = () => {
-    if (!canUndo(history)) return;
+    if (!canUndo(history) || !combat) return;
 
     // Phase 5: Pass and restore reveal state
-    const result = undo(baseState, history, combat, reveal) as {
+    const result = undo(baseState as any, history as any, combat as any, (reveal as any) || undefined) as {
       newCombatState: CombatState;
-      newHistory: HistoryState;
+      newHistory: unknown;
       newRevealState?: RevealState;
     };
     saveCombatActive(result.newCombatState);
-    saveCombatActiveHistory(result.newHistory);
+    saveCombatActiveHistory(result.newHistory as unknown as HistoryState);
     if (result.newRevealState) {
       const syncedReveal = syncRevealStateForParticipants(result.newRevealState, result.newCombatState.participants);
-      saveCombatReveal(syncedReveal);
+      saveCombatReveal(syncedReveal as RevealState);
     }
   };
 
   const handleRedo = () => {
-    if (!canRedo(history)) return;
+    if (!canRedo(history) || !combat) return;
 
     // Phase 5: Pass and restore reveal state
-    const result = redo(baseState, history, combat, reveal) as {
+    const result = redo(baseState as any, history as any, combat as any, (reveal as any) || undefined) as {
       newCombatState: CombatState;
-      newHistory: HistoryState;
+      newHistory: unknown;
       newRevealState?: RevealState;
     };
     saveCombatActive(result.newCombatState);
-    saveCombatActiveHistory(result.newHistory);
+    saveCombatActiveHistory(result.newHistory as unknown as HistoryState);
     if (result.newRevealState) {
       const syncedReveal = syncRevealStateForParticipants(result.newRevealState, result.newCombatState.participants);
-      saveCombatReveal(syncedReveal);
+      saveCombatReveal(syncedReveal as RevealState);
     }
   };
 
@@ -375,13 +378,13 @@ export default function CombatTracker() {
     const logEntries: LogEntry[] = [];
 
     if (isNewRound) {
-      const roundLogEntry = createTurnLogEntry(toRound, toTurnIndex, null, `=== Round ${toRound} ===`);
+      const roundLogEntry = createTurnLogEntry(toRound, toTurnIndex, 'round', `=== Round ${toRound} ===`);
       const roundAction = createAddLogEntryAction(roundLogEntry);
       recordAction(roundAction);
       logEntries.push(roundLogEntry);
     }
 
-    const turnLogEntry = createTurnLogEntry(toRound, toTurnIndex, nextActorInstanceId, nextActor?.name);
+    const turnLogEntry = createTurnLogEntry(toRound, toTurnIndex, nextActorInstanceId || 'unknown', nextActor?.name || 'Unknown');
     const turnAction = createAddLogEntryAction(turnLogEntry);
     recordAction(turnAction);
     logEntries.push(turnLogEntry);
@@ -437,12 +440,13 @@ export default function CombatTracker() {
   // Resource Management
   // ============================================================================
 
-  const updateResource = (instanceId: string, resource: string, newValue: number) => {
+  const updateResource = (instanceId: string, resource: "HP" | "FP" | "MP", newValue: number) => {
     const participant = combat.participants.find(p => p.instanceId === instanceId);
     if (!participant) return;
 
     const resourceKey = `current${resource}` as keyof Participant;
-    const oldValue = participant[resourceKey] as number | undefined;
+    const oldValueRaw = participant[resourceKey] as number | undefined;
+    const oldValue = oldValueRaw || 0;
     if (oldValue === newValue) return;
 
     // Create SET_RESOURCE action
@@ -708,22 +712,34 @@ export default function CombatTracker() {
   // ============================================================================
 
   const handleAddReinforcements = (data: ReinforcementData) => {
-    const character = (combatCharacters as Character[]).find(c => c.id === data.characterId);
+    const character = combatCharacters.find((c: any) => c.id === data.characterId);
     if (!character) return;
 
     const nameList = data.previewNames || [];
     const newCombatants: Participant[] = nameList.map((name) => {
       const instanceId = generateId();
       return {
-        ...character,
-        id: instanceId,
         instanceId,
+        id: character.id,
         libraryId: character.id,
         name,
         category: data.category,
+        st: character.st,
+        dx: character.dx,
+        iq: character.iq,
+        ht: character.ht,
+        hp: character.hp,
+        fp: character.fp || 0,
+        mp: 0, // CombatCharacter doesn't have mp, default to 0
+        basicSpeed: 5, // Default value, could be calculated from HT and ST
+        basicMove: 5, // Default value
+        dodge: character.dodge,
+        parry: character.parry,
+        block: character.block,
+        dr: character.dr,
         currentHP: character.hp,
         currentFP: character.fp || 0,
-        currentMP: character.mp || 0,
+        currentMP: 0,
         shockPenalty: 0,
         isStunned: false,
         isUnconscious: false,
@@ -795,11 +811,11 @@ export default function CombatTracker() {
     };
 
     const newReveal = reveal
-      ? syncRevealStateForParticipants(
+      ? (syncRevealStateForParticipants(
         { ...reveal, byInstanceId: { ...reveal.byInstanceId, ...revealAdd } },
         newCombat.participants
-      ) as RevealState
-      : reveal;
+      ) as RevealState)
+      : null;
 
     saveCombatActive(newCombat);
     if (newReveal) {
@@ -847,9 +863,9 @@ export default function CombatTracker() {
     const logEntry = createRollLogEntry(
       combat.currentRound,
       combat.currentTurnIndex,
-      currentActorInstanceId,
+      currentActorInstanceId || 'unknown',
       currentActor?.name || 'Unknown',
-      rollResult
+      rollResult as RollResultHelper
     );
 
     const action = createAddLogEntryAction(logEntry);
@@ -873,8 +889,8 @@ export default function CombatTracker() {
     const logEntry = createNoteLogEntry(
       combat.currentRound,
       combat.currentTurnIndex,
-      currentActorInstanceId,
-      currentActor?.name,
+      currentActorInstanceId || null,
+      currentActor?.name || null,
       noteText
     );
 
@@ -909,9 +925,9 @@ export default function CombatTracker() {
         round: combat.currentRound,
         turn: combat.currentTurnIndex,
         targetInstanceId,
-        targetName: target?.name,
-        hitLocation: injury.hitLocation,
-        damageBreakdown: injury.damageBreakdown,
+        targetName: target?.name || 'Unknown',
+        hitLocation: (injury.hitLocation || null) as { locationLabel?: string; locationKey?: string } | null | undefined,
+        damageBreakdown: (injury.damageBreakdown || { injuryApplied: 0 }) as any,
         effects: null, // Will add effect logs separately
         currentHP: target?.currentHP ?? null,
         newHP
@@ -930,6 +946,7 @@ export default function CombatTracker() {
       // Apply effects to target
       if (injury.effects && injury.effects.length > 0) {
         injury.effects.forEach(effect => {
+          const targetName = target?.name || 'Unknown';
           // Apply shock
           if (effect.type === 'shock' && effect.autoApplied) {
             updatedParticipants = updatedParticipants.map(p =>
@@ -942,10 +959,10 @@ export default function CombatTracker() {
               round: combat.currentRound,
               turn: combat.currentTurnIndex,
               targetInstanceId,
-              targetName: target?.name,
+              targetName,
               effectType: 'shock',
-              effectData: { value: effect.value },
-              text: `${target?.name}: Shock penalty ${effect.value} until next turn`
+              effectData: { value: effect.value || 0 },
+              text: `${targetName}: Shock penalty ${effect.value || 0} until next turn`
             }));
           }
 
@@ -961,10 +978,10 @@ export default function CombatTracker() {
               round: combat.currentRound,
               turn: combat.currentTurnIndex,
               targetInstanceId,
-              targetName: target?.name,
+              targetName,
               effectType: 'stunned',
               effectData: { stunned: true },
-              text: `${target?.name}: Stunned!`
+              text: `${targetName}: Stunned!`
             }));
           }
 
@@ -980,10 +997,10 @@ export default function CombatTracker() {
               round: combat.currentRound,
               turn: combat.currentTurnIndex,
               targetInstanceId,
-              targetName: target?.name,
+              targetName,
               effectType: 'unconscious',
               effectData: { unconscious: true },
-              text: `${target?.name}: Unconscious!`
+              text: `${targetName}: Unconscious!`
             }));
           }
 
@@ -999,10 +1016,10 @@ export default function CombatTracker() {
               round: combat.currentRound,
               turn: combat.currentTurnIndex,
               targetInstanceId,
-              targetName: target?.name,
+              targetName,
               effectType: 'dead',
               effectData: { dead: true },
-              text: `${target?.name}: Dead!`
+              text: `${targetName}: Dead!`
             }));
           }
 
@@ -1018,10 +1035,10 @@ export default function CombatTracker() {
               round: combat.currentRound,
               turn: combat.currentTurnIndex,
               targetInstanceId,
-              targetName: target?.name,
+              targetName,
               effectType: 'bleeding',
               effectData: { rate: 1 },
-              text: `${target?.name}: Bleeding (1 HP/turn)`
+              text: `${targetName}: Bleeding (1 HP/turn)`
             }));
           }
 
@@ -1037,10 +1054,10 @@ export default function CombatTracker() {
               round: combat.currentRound,
               turn: combat.currentTurnIndex,
               targetInstanceId,
-              targetName: target?.name,
+              targetName,
               effectType: 'crippling',
-              effectData: { locationKey: effect.locationKey, locationLabel: effect.locationLabel },
-              text: `${target?.name}: ${effect.locationLabel} crippled!`
+              effectData: { locationKey: effect.locationKey || '', locationLabel: effect.locationLabel },
+              text: `${targetName}: ${effect.locationLabel} crippled!`
             }));
           }
         });
@@ -1072,8 +1089,8 @@ export default function CombatTracker() {
         const resourceAction = createSetResourceAction(
           targetInstanceId,
           'HP',
-          target.currentHP,
-          newHP
+          target.currentHP || 0,
+          newHP || 0
         ) as { type: string; revealUpdate?: unknown };
         if (revealUpdate) {
           resourceAction.revealUpdate = revealUpdate;
@@ -1093,12 +1110,12 @@ export default function CombatTracker() {
     const logEntry = createActionLogEntry({
       round: combat.currentRound,
       turn: combat.currentTurnIndex,
-      actorInstanceId: currentActorInstanceId,
-      actorName: currentActor?.name,
-      targetInstanceId,
-      targetName: target?.name,
-      maneuver,
-      action: { kind, attack, defense }
+      actorInstanceId: currentActorInstanceId || 'unknown',
+      actorName: currentActor?.name || 'Unknown',
+      targetInstanceId: targetInstanceId || null,
+      targetName: target?.name || null,
+      maneuver: maneuver || null,
+      action: { kind, attack: attack as any, defense }
     });
 
     // Update state with log
@@ -1124,8 +1141,8 @@ export default function CombatTracker() {
       const resourceAction = createSetResourceAction(
         targetInstanceId,
         'HP',
-        target.currentHP,
-        newHP
+        target.currentHP || 0,
+        newHP || 0
       );
       recordAction(resourceAction);
     }
@@ -1135,8 +1152,8 @@ export default function CombatTracker() {
       const noteEntry = createNoteLogEntry(
         combat.currentRound,
         combat.currentTurnIndex,
-        currentActorInstanceId,
-        currentActor?.name,
+        currentActorInstanceId || null,
+        currentActor?.name || null,
         maneuver ? `[${maneuver}] ${note}` : note
       );
 
@@ -1205,8 +1222,8 @@ export default function CombatTracker() {
     };
 
     // Add to history (cap at MAX_COMBAT_HISTORY)
-    const newHistory = [endedCombat, ...(combatHistory as CombatState[])].slice(0, MAX_COMBAT_HISTORY);
-    saveCombatHistory(newHistory);
+    const newHistory = [endedCombat as unknown as any, ...(combatHistory || [])].slice(0, MAX_COMBAT_HISTORY);
+    saveCombatHistory(newHistory as any);
 
     // Clear active combat
     saveCombatActive(null);
@@ -1376,7 +1393,7 @@ export default function CombatTracker() {
               }
 
               saveCombatActive(unlocked.data.combatState);
-              saveCombatActiveHistory(unlocked.data.history || null);
+              saveCombatActiveHistory((unlocked.data.history as unknown as HistoryState) || null);
               saveCombatReveal(unlocked.data.revealState || null);
               return;
             }
@@ -1404,7 +1421,7 @@ export default function CombatTracker() {
 
         if (parsed.data) {
           saveCombatActive(parsed.data.combatState);
-          saveCombatActiveHistory(parsed.data.history || null);
+          saveCombatActiveHistory((parsed.data.history as unknown as HistoryState) || null);
           saveCombatReveal(parsed.data.revealState || null);
         }
       };
@@ -1456,7 +1473,7 @@ export default function CombatTracker() {
           maneuvers={availableManeuvers}
           selectedId={selectedManeuverId}
           onSelect={handleSelectManeuver}
-          disabledReason={turnContext.isUnconscious ? 'Unconscious' : null}
+          disabledReason={turnContext.isUnconscious ? 'Unconscious' : undefined}
         />
       ) : (
         <div className="bg-gray-800 rounded-lg p-4 text-sm text-gray-400">
@@ -1489,11 +1506,11 @@ export default function CombatTracker() {
       {showReinforcementsModal && (
         <ReinforcementsModal
           onClose={() => setShowReinforcementsModal(false)}
-          onConfirm={handleAddReinforcements}
-          combatCharacters={combatCharacters as Character[]}
-          participants={combat.participants as any}
+          onConfirm={handleAddReinforcements as any}
+          combatCharacters={combatCharacters as any}
+          participants={combat.participants}
           turnOrder={combat.turnOrder}
-          currentActorInstanceId={currentActorInstanceId}
+          currentActorInstanceId={currentActorInstanceId || null}
         />
       )}
 
@@ -1502,7 +1519,7 @@ export default function CombatTracker() {
         <RevealPanel
           combatActive={combat as any}
           combatReveal={reveal as any}
-          saveCombatReveal={saveCombatReveal}
+          saveCombatReveal={saveCombatReveal as any}
           viewMode={viewMode}
         />
       )}
@@ -1525,7 +1542,7 @@ export default function CombatTracker() {
           participants={combatView.participants}
           currentActorInstanceId={currentActorInstanceId}
           viewMode={viewMode}
-          onUpdateResource={updateResource}
+          onUpdateResource={updateResource as any}
         />
 
         {/* Combat Log */}

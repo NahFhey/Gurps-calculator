@@ -47,6 +47,7 @@ export function TaskDetailPanel({
    * Updates a field on the task
    */
   function updateField(field: keyof TaskAssignment, value: unknown) {
+    if (!task) return;
     const updatedTask = { ...task, [field]: value } as TaskAssignment;
 
     // Recalculate assignedWorkerIds if workers changed
@@ -64,22 +65,22 @@ export function TaskDetailPanel({
    * Validates and sets the leader
    */
   function setLeader(workerId: string) {
-    if (!workerId) {
+    if (!workerId || !task) {
       updateField('leaderWorkerId', null);
       setValidationError('');
       return;
     }
 
-    const validation = validateWorkerAssignment(
+    const validation = (validateWorkerAssignment(
       taskAssignments,
       currentDay,
       currentSlot,
       workerId,
       task.id
-    );
+    ) as any);
 
-    if (!validation.valid) {
-      setValidationError(validation.error || 'Validation failed');
+    if (!validation?.valid) {
+      setValidationError(validation?.error || 'Validation failed');
       return;
     }
 
@@ -91,6 +92,7 @@ export function TaskDetailPanel({
    * Validates and toggles a helper
    */
   function toggleHelper(workerId: string) {
+    if (!task) return;
     const currentHelpers = task.helperWorkerIds || [];
     const isCurrentlyHelper = currentHelpers.includes(workerId);
 
@@ -102,16 +104,16 @@ export function TaskDetailPanel({
     }
 
     // Add helper - validate first
-    const validation = validateWorkerAssignment(
+    const validation = (validateWorkerAssignment(
       taskAssignments,
       currentDay,
       currentSlot,
       workerId,
       task.id
-    );
+    ) as any);
 
-    if (!validation.valid) {
-      setValidationError(validation.error || 'Validation failed');
+    if (!validation?.valid) {
+      setValidationError(validation?.error || 'Validation failed');
       return;
     }
 
@@ -123,6 +125,7 @@ export function TaskDetailPanel({
    * Toggles tool selection
    */
   function toggleTool(toolId: string) {
+    if (!task) return;
     const currentTools = task.selectedToolIds || [];
     const isSelected = currentTools.includes(toolId);
 
@@ -296,7 +299,7 @@ interface ForagingResultRollerProps {
   updateTask: (task: TaskAssignment) => void;
 }
 
-function ForagingResultRoller({ task, items, updateTask }: ForagingResultRollerProps) {
+function ForagingResultRoller({ task, updateTask }: ForagingResultRollerProps) {
   const foundItem = task.payload?.findResult?.item;
   if (!foundItem) return null;
 
@@ -948,14 +951,14 @@ function ManualResolutionUI({
   const showEventTableRoll = eventType !== 'none';
 
   // Get table info
-  const modeDefaults = env.defaultsByMode?.[task.mode] || {};
-  const findTable = tables.find(t => t.id === modeDefaults.randomCatchTableId);
+  const modeDefaults = (env.defaultsByMode?.[task.mode] || {}) as any;
+  const findTable = tables.find(t => t.id === modeDefaults?.randomCatchTableId);
   const tableName = findTable?.name || 'Table';
-  const tableRollMethod = findTable?.rollMethod || '2d6';
+  const tableRollMethod = (findTable as any)?.rollMethod || '2d6';
   const tableDiceCount = tableRollMethod === '1d6' ? 1 : tableRollMethod === '3d6' ? 3 : 2;
 
   // Check if event table exists
-  const eventTableId = eventType === 'rare' ? modeDefaults.rareEventTableId : modeDefaults.mildEventTableId;
+  const eventTableId = eventType === 'rare' ? modeDefaults?.rareEventTableId : modeDefaults?.mildEventTableId;
   const eventTable = tables.find(t => t.id === eventTableId);
   const eventTableName = eventTable?.name || `${eventType === 'rare' ? 'Rare' : 'Mild'} Event`;
 
@@ -1030,8 +1033,9 @@ function ManualResolutionUI({
         </button>
         <button
           onClick={() => {
+            if (!task) return;
             // Resolve task with manual roll values
-            const resolution = resolveTask({
+            const resolution = (resolveTask({
               task,
               leader,
               environment: env,
@@ -1046,16 +1050,16 @@ function ManualResolutionUI({
                 eventTableRoll: showEventTableRoll ? eventTableRoll.total : null,
                 tableRoll: tableRoll.total
               }
-            });
+            }) as any);
 
             // Mark task as completed
             const completedTask: TaskAssignment = {
               ...task,
               resolutionState: 'Completed',
-              payload: resolution.payload,
-              inventoryDelta: resolution.inventoryDelta,
-              notes: resolution.notes,
-              warnings: resolution.warnings
+              payload: resolution?.payload,
+              inventoryDelta: resolution?.inventoryDelta,
+              notes: resolution?.notes,
+              warnings: resolution?.warnings
             };
             completeTask(completedTask);
 

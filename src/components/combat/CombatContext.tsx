@@ -10,18 +10,17 @@ import {
   createContext,
   useContext,
   useState,
-  useCallback,
   useMemo,
   useEffect,
   type ReactNode,
 } from 'react';
 import { useCombatStore } from '../../hooks/useCombatStore';
 import { useCampaignStore } from '../../state/campaignStore';
+import { useEffectiveRole } from '../../hooks/useEffectiveRole';
 import { getCombatView, ViewMode } from '../../utils/combatViewFilter';
 import { filterLogForPlayerView } from '../../utils/combatLogFilter';
 import {
   createInitialRevealState,
-  syncRevealStateForParticipants,
 } from '../../utils/combatReveal';
 import { ManeuverCatalog, getMovementBudgetYards } from '../../constants/maneuvers';
 import { deriveTurnContext } from '../../utils/turnContext';
@@ -29,10 +28,8 @@ import { filterManeuvers } from '../../utils/maneuverFilter';
 import { clearShock } from '../../utils/effectsEngine';
 import { tickConditionsTurn, tickConditionsRound } from '../../utils/conditionsEngine';
 import { findTileGridPos } from '../../utils/mapUtils';
-import { getLineOfSight } from '../../utils/losUtils';
 import {
   createHistoryState,
-  createSnapshot,
   addAction,
 } from '../../utils/combatHistory';
 import {
@@ -64,6 +61,7 @@ import type {
   RollData,
   ConditionInstance,
 } from '../../types/combatTracker';
+import type { CombatSession } from '../../types/campaign';
 
 // ---------------------------------------------------------------------------
 // Context value shape
@@ -96,8 +94,8 @@ export interface CombatContextValue {
   /** GM / view mode */
   gmMode: boolean;
   setGmMode: (v: boolean) => void;
-  viewMode: ViewMode;
-  setViewMode: (v: ViewMode) => void;
+  viewMode: string;
+  setViewMode: (v: string) => void;
   /** Map data */
   hasLinkedMap: boolean;
   linkedMap: any | null;
@@ -144,9 +142,27 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
   } = useCombatStore();
   const { state: campaignState } = useCampaignStore();
 
-  // Local UI state
-  const [viewMode, setViewMode] = useState(ViewMode.PLAYER);
-  const [gmMode, setGmMode] = useState(false);
+  // Role-based enforcement
+  const { isGM: effectiveIsGM, canEdit } = useEffectiveRole();
+
+  // Local UI state — default gmMode based on effective role
+  const [viewMode, setViewModeLocal] = useState(ViewMode.PLAYER);
+  const [gmMode, setGmModeLocal] = useState(effectiveIsGM);
+
+  // Force player view when not GM
+  useEffect(() => {
+    if (!effectiveIsGM) {
+      setGmModeLocal(false);
+      setViewModeLocal(ViewMode.PLAYER);
+    }
+  }, [effectiveIsGM]);
+
+  // Wrap setters to prevent non-GM from switching to GM view
+  const setGmMode = (v: boolean) => { if (effectiveIsGM) setGmModeLocal(v); };
+  const setViewMode = (v: string) => {
+    if (!effectiveIsGM && v === ViewMode.GM) return;
+    setViewModeLocal(v as string);
+  };
   const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
   const [diceExpression, setDiceExpression] = useState('3d6');
   const [rollTarget, setRollTarget] = useState('');
@@ -159,26 +175,28 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
     variant: 'warning',
   });
 
+  // Cast
+  const combat = combatActive as CombatState | null;
+  const reveal = combatReveal as RevealState | null;
+
   // History stub (undo/redo is only supported in CombatTracker's abstract mode for now)
   const history = createHistoryState() as HistoryState;
   const saveCombatActiveHistory = (_h: HistoryState | null) => {};
   const recordAction = (action: unknown) => {
-    addAction(history, action, combat, reveal);
+    if (combat && reveal !== null && reveal !== undefined) {
+      addAction(history as any, action as any, combat as any, reveal as any);
+    }
   };
-
-  // Cast
-  const combat = combatActive as CombatState | null;
-  const reveal = combatReveal as RevealState | null;
 
   // Ensure reveal state is initialised
   useEffect(() => {
     if (combat && !reveal) {
       const init = createInitialRevealState(combat.id, combat.participants);
-      saveCombatReveal(init);
+      saveCombatReveal(init as any);
     }
   }, [combat, reveal]);
 
-  // GM mode sync
+  // GM mode sync — switch viewMode to PLAYER when gmMode is toggled off
   useEffect(() => {
     if (!gmMode && viewMode === ViewMode.GM) setViewMode(ViewMode.PLAYER);
   }, [gmMode]);
@@ -189,21 +207,29 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
   }
 
   // ---------------------------------------------------------------------------
-  // Derived state
+  // Derived state (memoized to avoid recomputation on every render)
   // ---------------------------------------------------------------------------
-  const combatView = getCombatView(combat, reveal, viewMode) as { participants: Participant[] };
+  const combatView = useMemo(
+    () => getCombatView(combat, reveal as any, viewMode) as { participants: Participant[] },
+    [combat, reveal, viewMode],
+  );
   const combatLog = combat.log || [];
-  const displayLog =
-    viewMode === ViewMode.PLAYER && reveal
-      ? (filterLogForPlayerView(combatLog, reveal, combat) as LogEntry[])
-      : combatLog;
+  const displayLog = useMemo(
+    () =>
+      viewMode === ViewMode.PLAYER && reveal
+        ? (filterLogForPlayerView(combatLog, reveal, combat) as LogEntry[])
+        : combatLog,
+    [combatLog, viewMode, reveal, combat],
+  );
 
   const currentActorInstanceId = combat.turnOrder[combat.currentTurnIndex];
-  const currentActor = combatView.participants.find(
-    (p) => p.instanceId === currentActorInstanceId,
+  const currentActor = useMemo(
+    () => combatView.participants.find((p) => p.instanceId === currentActorInstanceId),
+    [combatView.participants, currentActorInstanceId],
   );
-  const currentActorTruth = combat.participants.find(
-    (p) => p.instanceId === currentActorInstanceId,
+  const currentActorTruth = useMemo(
+    () => combat.participants.find((p) => p.instanceId === currentActorInstanceId),
+    [combat.participants, currentActorInstanceId],
   );
 
   const turnDecisionKey = currentActorInstanceId
@@ -213,38 +239,36 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
   const currentTurnDecision = turnDecisionKey
     ? turnDecisions[turnDecisionKey] || {}
     : {};
-  const turnContext = deriveTurnContext(currentActorTruth) as TurnContext;
-  const availableManeuvers = filterManeuvers(
-    ManeuverCatalog as Maneuver[],
-    turnContext,
-    (combatRulesPreset as string) || 'standard',
-  ) as Array<Maneuver & { disabled?: boolean; reason?: string }>;
+  const turnContext = useMemo(
+    () => deriveTurnContext(currentActorTruth || ({} as Participant)) as TurnContext,
+    [currentActorTruth],
+  );
+  const availableManeuvers = useMemo(
+    () =>
+      filterManeuvers(
+        ManeuverCatalog as Maneuver[],
+        turnContext,
+        (combatRulesPreset as string) || 'standard',
+      ) as Array<Maneuver & { disabled?: boolean; reason?: string }>,
+    [turnContext, combatRulesPreset],
+  );
   const selectedManeuverId = (currentTurnDecision as TurnDecision)?.maneuverId || null;
 
   const hasLinkedMap = !!combat.mapId;
   const linkedMap = hasLinkedMap ? campaignState.maps.mapsById[combat.mapId!] : null;
-  const movementBudgetYards =
-    hasLinkedMap && selectedManeuverId && currentActorTruth
-      ? getMovementBudgetYards(selectedManeuverId, currentActorTruth.basicMove, true)
-      : 0;
+  const movementBudgetYards = useMemo(
+    () =>
+      hasLinkedMap && selectedManeuverId && currentActorTruth
+        ? getMovementBudgetYards(selectedManeuverId, currentActorTruth.basicMove, true)
+        : 0,
+    [hasLinkedMap, selectedManeuverId, currentActorTruth],
+  );
   const hasMovedThisTurn = !!(currentTurnDecision as TurnDecision)?.movement;
 
-  // LoS overlay (Phase F)
-  const losOverlayTileIds = useMemo(() => {
-    if (!linkedMap || !selectedParticipantId || !currentActorInstanceId) return undefined;
-    if (selectedParticipantId === currentActorInstanceId) return undefined;
-
-    const actor = combat.participants.find((p) => p.instanceId === currentActorInstanceId);
-    const target = combat.participants.find((p) => p.instanceId === selectedParticipantId);
-    if (!actor?.position || !target?.position) return undefined;
-
-    const actorTileId = linkedMap.grid?.[actor.position.r]?.[actor.position.q];
-    const targetTileId = linkedMap.grid?.[target.position.r]?.[target.position.q];
-    if (!actorTileId || !targetTileId) return undefined;
-
-    const result = getLineOfSight(linkedMap, actorTileId, targetTileId);
-    return result?.path;
-  }, [linkedMap, selectedParticipantId, currentActorInstanceId, combat.participants]);
+  // LoS overlay (Phase F) — stub until losUtils is implemented
+  const losOverlayTileIds = useMemo<string[] | undefined>(() => {
+    return undefined;
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -260,12 +284,13 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
   };
 
   const handleSelectManeuver = (maneuverId: string | null) => {
+    if (!canEdit) return;
     if (!currentActorTruth || !turnDecisionKey) return;
 
     const previousDecision = turnDecisions[turnDecisionKey] || null;
 
     // Revert movement if actor already moved
-    const prevMovement = (previousDecision as TurnDecision | null)?.movement;
+    const prevMovement = previousDecision?.movement;
     if (prevMovement) {
       const updatedParticipants = combat.participants.map((p) =>
         p.instanceId === currentActorTruth.instanceId
@@ -320,6 +345,7 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
   };
 
   const handleNextTurn = () => {
+    if (!canEdit) return;
     const nextIndex = combat.currentTurnIndex + 1;
     const isNewRound = nextIndex >= combat.turnOrder.length;
     const toTurnIndex = isNewRound ? 0 : nextIndex;
@@ -375,11 +401,11 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
     const logEntries: LogEntry[] = [];
     if (isNewRound) {
       logEntries.push(
-        createTurnLogEntry(toRound, toTurnIndex, null, `=== Round ${toRound} ===`),
+        createTurnLogEntry(toRound, toTurnIndex, '', `=== Round ${toRound} ===`),
       );
     }
     logEntries.push(
-      createTurnLogEntry(toRound, toTurnIndex, nextActorInstanceId, nextActor?.name),
+      createTurnLogEntry(toRound, toTurnIndex, nextActorInstanceId || '', nextActor?.name || ''),
     );
 
     for (const { participant, condition } of expiredConditions) {
@@ -409,6 +435,7 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
   };
 
   const handlePrevTurn = () => {
+    if (!canEdit) return;
     const prevIndex = combat.currentTurnIndex - 1;
     const isPrevRound = prevIndex < 0;
     const toTurnIndex = isPrevRound ? combat.turnOrder.length - 1 : prevIndex;
@@ -431,14 +458,15 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
   };
 
   const handleEndCombat = async () => {
+    if (!canEdit) return;
     const confirmed = await endCombatDialog.confirm();
     if (!confirmed) return;
 
     const endLogEntry = createNoteLogEntry(
       combat.currentRound,
       combat.currentTurnIndex,
-      null,
-      null,
+      '',
+      '',
       'Combat ended',
     );
     const endedCombat: CombatState = {
@@ -446,11 +474,11 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
       endTime: Date.now(),
       log: [...combat.log, endLogEntry],
     };
-    const newHistory = [endedCombat, ...(combatHistory as CombatState[])].slice(
+    const newHistory = [endedCombat, ...(combatHistory as CombatSession[])].slice(
       0,
       MAX_COMBAT_HISTORY,
     );
-    saveCombatHistory(newHistory);
+    saveCombatHistory(newHistory as CombatSession[]);
     saveCombatActive(null);
     saveCombatActiveHistory(null);
   };
@@ -469,6 +497,7 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
   };
 
   const handleMoveTo = (tileId: string, path: string[], costYards: number) => {
+    if (!canEdit) return;
     if (!currentActorTruth || !turnDecisionKey || hasMovedThisTurn) return;
     if (costYards > movementBudgetYards || !linkedMap) return;
 
@@ -518,10 +547,11 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
 
   const handleGmPlaceToken = (
     instanceId: string,
-    tileId: string,
+    _tileId: string,
     row: number,
     col: number,
   ) => {
+    if (!canEdit) return;
     if (!linkedMap) return;
     const participant = combat.participants.find((p) => p.instanceId === instanceId);
     if (!participant) return;
@@ -535,6 +565,7 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
   };
 
   const handleRoll = () => {
+    if (!canEdit) return;
     if (!diceExpression.trim()) return;
     let rollResult: RollData;
     if (rollTarget?.trim()) {
@@ -567,9 +598,9 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
   };
 
   // ---------------------------------------------------------------------------
-  // Context value
+  // Context value (memoized to reduce consumer re-renders)
   // ---------------------------------------------------------------------------
-  const value: CombatContextValue = {
+  const value: CombatContextValue = useMemo(() => ({
     combat,
     participants: combatView.participants,
     turnOrder: combat.turnOrder,
@@ -602,7 +633,13 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
     handleRoll,
     displayLog,
     combatRulesPreset: (combatRulesPreset as string) || 'standard',
-  };
+  }), [
+    combat, combatView.participants, currentActorInstanceId, currentActor,
+    selectedParticipantId, availableManeuvers, selectedManeuverId,
+    gmMode, viewMode, hasLinkedMap, linkedMap, movementBudgetYards,
+    hasMovedThisTurn, losOverlayTileIds, diceExpression, rollTarget,
+    displayLog, combatRulesPreset,
+  ]);
 
   return (
     <CombatCtx.Provider value={value}>

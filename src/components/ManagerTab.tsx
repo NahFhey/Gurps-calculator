@@ -5,7 +5,7 @@ import { unlockGMData, mergeGM } from '../utils/exportImport';
 import { useCampaignStore } from '../state/campaignStore';
 import { denormalizeObject, normalizeArray } from '../state/campaignUtils';
 import type { GMLockData } from '../types/views';
-import type { Id, FoodType, MaterialType, AlchemyLab, Kitchen, CookingSkill, AlchemyReagent, AlchemyFormula, CustomTemplates, Craft, Character } from '../types/campaign';
+import type { Id, FoodType, MaterialType, AlchemyLab, Kitchen, CookingSkill, AlchemyReagent, AlchemyFormula, CustomTemplates, Craft } from '../types/campaign';
 
 // View components
 import { FoodTypesView } from './manager/views/FoodTypesView';
@@ -83,7 +83,6 @@ export function ManagerTab() {
     denormalizeObject(campaignState.entities.crafts) as Craft[],
     [campaignState.entities.crafts]
   );
-  const craftDesigns = campaignState.entities.craftDesigns;
   const customTemplates = campaignState.entities.customTemplates;
   const materials = useMemo(() =>
     denormalizeObject(campaignState.entities.materials),
@@ -91,7 +90,6 @@ export function ManagerTab() {
   );
 
   // Alchemy
-  const effectFamilyMap = campaignState.entities.effectFamilyMap;
   const alchemySettings = campaignState.entities.alchemySettings;
   const alchemyReagents = useMemo(() =>
     denormalizeObject(campaignState.entities.alchemyReagents) as AlchemyReagent[],
@@ -111,42 +109,14 @@ export function ManagerTab() {
     denormalizeObject(campaignState.entities.kitchens) as Kitchen[],
     [campaignState.entities.kitchens]
   );
-  const cookingSkills = campaignState.entities.cookingSkills as CookingSkill[];
+  const cookingSkills = ((campaignState.entities.cookingSkills || []) as unknown) as CookingSkill[];
 
-  // Gathering
-  const gatheringSpecies = useMemo(() =>
-    denormalizeObject(campaignState.entities.gatheringSpecies),
-    [campaignState.entities.gatheringSpecies]
-  );
-  const gatheringTools = useMemo(() =>
-    denormalizeObject(campaignState.entities.gatheringTools),
-    [campaignState.entities.gatheringTools]
-  );
-  const gatheringTables = useMemo(() =>
-    denormalizeObject(campaignState.entities.gatheringTables),
-    [campaignState.entities.gatheringTables]
-  );
-  const gatheringEnvironments = useMemo(() =>
-    denormalizeObject(campaignState.entities.gatheringEnvironments),
-    [campaignState.entities.gatheringEnvironments]
-  );
-  const gatheringBait = useMemo(() =>
-    denormalizeObject(campaignState.entities.gatheringBait),
-    [campaignState.entities.gatheringBait]
-  );
-  const gatheringCategories = useMemo(() =>
-    denormalizeObject(campaignState.entities.gatheringCategories),
-    [campaignState.entities.gatheringCategories]
-  );
-  const gatheringItems = useMemo(() =>
-    denormalizeObject(campaignState.entities.gatheringItems),
-    [campaignState.entities.gatheringItems]
-  );
-  const currentDay = campaignState.time.day;
+  // Effect Family Map
+  const effectFamilyMap = (campaignState.entities.effectFamilyMap || {}) as any;
 
   // Save callbacks
-  const saveFoodTypes = useCallback((types: FoodType[]) => {
-    campaignActions.setFoodTypes(types);
+  const saveFoodTypes = useCallback((types: (FoodType | string)[]) => {
+    campaignActions.setFoodTypes(types as FoodType[]);
   }, [campaignActions]);
 
   const saveMaterialTypes = useCallback((types: MaterialType[]) => {
@@ -155,18 +125,18 @@ export function ManagerTab() {
 
 
   const saveMaterials = useCallback((mats: unknown[]) => {
-    campaignActions.setMaterials(normalizeArray(mats));
+    campaignActions.setMaterials(normalizeArray(mats as { id: string }[]) as any);
   }, [campaignActions]);
 
   const saveCrafts = useCallback((craftsList: Craft[]) => {
-    campaignActions.setCrafts(normalizeArray(craftsList));
+    campaignActions.setCrafts(normalizeArray(craftsList) as any);
   }, [campaignActions]);
 
   const saveCustomTemplates = useCallback((templates: CustomTemplates) => {
     campaignActions.setCustomTemplates(templates);
   }, [campaignActions]);
 
-  const saveEffectFamilyMap = useCallback((map: typeof effectFamilyMap) => {
+  const saveEffectFamilyMap = useCallback((map: any) => {
     campaignActions.setEffectFamilyMap(map);
   }, [campaignActions]);
 
@@ -208,39 +178,6 @@ export function ManagerTab() {
     saveMaterials(updatedMaterials);
   }, [materialTypes, campaignState.entities.materials, saveMaterialTypes, saveMaterials]);
 
-  // Gathering save callbacks
-  const saveGatheringSpecies = useCallback((species: unknown[]) => {
-    campaignActions.setGatheringSpecies(normalizeArray(species));
-  }, [campaignActions]);
-
-  const saveGatheringTools = useCallback((tools: unknown[]) => {
-    campaignActions.setGatheringTools(normalizeArray(tools));
-  }, [campaignActions]);
-
-  const saveGatheringTables = useCallback((tables: unknown[]) => {
-    campaignActions.setGatheringTables(normalizeArray(tables));
-  }, [campaignActions]);
-
-  const saveGatheringEnvironments = useCallback((envs: unknown[]) => {
-    campaignActions.setGatheringEnvironments(normalizeArray(envs));
-  }, [campaignActions]);
-
-  const saveGatheringBait = useCallback((baitList: unknown[]) => {
-    campaignActions.setGatheringBait(normalizeArray(baitList));
-  }, [campaignActions]);
-
-  const saveGatheringCategories = useCallback((cats: unknown[]) => {
-    campaignActions.setGatheringCategories(normalizeArray(cats));
-  }, [campaignActions]);
-
-  const saveGatheringItems = useCallback((items: unknown[]) => {
-    campaignActions.setGatheringItems(normalizeArray(items));
-  }, [campaignActions]);
-
-  const saveCurrentDay = useCallback((day: number) => {
-    // Day is managed through time system, but for compatibility we can log this
-    console.log('saveCurrentDay called with', day);
-  }, []);
 
   // Delete handler for all views
   function handleDelete(type: string, value: string, extra: { id?: Id; templateType?: string } = {}) {
@@ -434,15 +371,15 @@ export function ManagerTab() {
                   } else if (deleteConfirm.type === 'kitchen') {
                     saveKitchens(kitchens.filter(k => k.id !== deleteConfirm.id));
                   } else if (deleteConfirm.type === 'cookingSkill') {
-                    saveCookingSkills(cookingSkills.filter(s => s.id !== deleteConfirm.id));
+                    saveCookingSkills(cookingSkills.filter(s => (s as any).id !== deleteConfirm.id));
                   } else if (deleteConfirm.type === 'reagent') {
                     saveAlchemyReagents((alchemyReagents || []).filter(r => r.id !== deleteConfirm.id));
                   } else if (deleteConfirm.type === 'formula') {
                     saveAlchemyFormulas(alchemyFormulas.filter(f => f.id !== deleteConfirm.id));
                   } else if (deleteConfirm.type === 'project') {
                     const proj = crafts.find(c => c.id === deleteConfirm.id);
-                    if (proj && !proj.completed) {
-                      const refunded = refundMaterialsFromProject(proj, materials);
+                    if (proj && !(proj as any).completed) {
+                      const refunded = refundMaterialsFromProject(proj as any, materials);
                       saveMaterials(refunded);
                     }
                     saveCrafts(crafts.filter(c => c.id !== deleteConfirm.id));
@@ -573,8 +510,8 @@ export function ManagerTab() {
 
       {view === 'skills' && (
         <SkillsView
-          cookingSkills={cookingSkills}
-          saveCookingSkills={saveCookingSkills}
+          cookingSkills={cookingSkills as any}
+          saveCookingSkills={(skills: any) => saveCookingSkills(skills)}
           gmMode={gmMode}
           onDelete={handleDelete}
         />

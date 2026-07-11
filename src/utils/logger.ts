@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+/// <reference types="vite/client" />
 /**
  * Logger utility for consistent logging across the application
  *

@@ -108,7 +108,7 @@ export function ValidationError({
         <Icon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${config.textColor}`} />
         <div className="flex-1 min-w-0">
           <h4 className={`font-medium text-sm ${config.textColor}`}>{config.title}</h4>
-          <p className={`text-sm mt-1 ${config.textColor}`}>{message}</p>
+          <p className={`text-sm mt-1 ${config.textColor}`}>{String(message)}</p>
           {meta && <ErrorMetadata code={code} meta={meta} />}
         </div>
         {onDismiss && (
@@ -142,11 +142,11 @@ function ErrorMetadata({ code, meta }: ErrorMetadataProps) {
     case DOWNTIME_ERROR_CODES.HELPER_ALREADY_ASSIGNED:
       return (
         <div className="text-xs mt-2 space-y-0.5 text-gray-400">
-          {meta.existingRole && (
-            <p>Currently assigned as: {String(meta.existingRole)}</p>
+          {(meta as any).existingRole && (
+            <p>Currently assigned as: {String((meta as any).existingRole)}</p>
           )}
-          {meta.characterId && (
-            <p>Character: {String(meta.characterId)}</p>
+          {(meta as any).characterId && (
+            <p>Character: {String((meta as any).characterId)}</p>
           )}
         </div>
       );
@@ -160,10 +160,10 @@ function ErrorMetadata({ code, meta }: ErrorMetadataProps) {
       );
 
     case DOWNTIME_ERROR_CODES.TOOL_CONFLICT:
-      if (Array.isArray(meta.conflictingToolIds)) {
+      if (Array.isArray((meta as any).conflictingToolIds)) {
         return (
           <div className="text-xs mt-2 text-gray-400">
-            <p>Conflicting tools: {(meta.conflictingToolIds as string[]).join(', ')}</p>
+            <p>Conflicting tools: {((meta as any).conflictingToolIds as string[]).join(', ')}</p>
           </div>
         );
       }

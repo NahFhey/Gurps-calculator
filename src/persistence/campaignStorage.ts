@@ -1,9 +1,16 @@
 import storage from '../utils/storage';
+import { logger } from '../utils/logger';
 import { createCampaignState, type CampaignState } from '../state/campaignReducer';
 import { generateAllTestSampleData, isStateEmpty } from '../utils/testSampleData';
 import { initialMapState } from '../types/map';
 
 const CAMPAIGN_STORAGE_KEY = 'campaignState';
+
+// Caps for unbounded arrays to prevent storage bloat
+const MAX_LOG_ENTRIES = 500;
+const MAX_TIME_HISTORY = 200;
+const MAX_COMBAT_HISTORY = 50;
+const MAX_CHECKPOINT_ENTRIES = 10;
 
 const serializeMapState = (maps: CampaignState['maps']) => {
   const serializedMaps: Record<string, unknown> = {};
@@ -19,11 +26,28 @@ const serializeMapState = (maps: CampaignState['maps']) => {
   };
 };
 
-const serializeCampaignState = (state: CampaignState) => ({
+export const serializeCampaignState = (state: CampaignState) => ({
   ...state,
   legacy: {
     ...state.legacy,
     appState: {}
+  },
+  // Cap unbounded arrays before serialization
+  logs: {
+    ...state.logs,
+    entries: state.logs.entries.slice(0, MAX_LOG_ENTRIES),
+  },
+  time: {
+    ...state.time,
+    history: state.time.history.slice(-MAX_TIME_HISTORY),
+  },
+  checkpoints: {
+    ...state.checkpoints,
+    entries: state.checkpoints.entries.slice(0, MAX_CHECKPOINT_ENTRIES),
+  },
+  entities: {
+    ...state.entities,
+    combatHistory: state.entities.combatHistory.slice(0, MAX_COMBAT_HISTORY),
   },
   combat: {
     ...state.combat,
@@ -54,7 +78,7 @@ const hydrateMapState = (maps: any): CampaignState['maps'] => {
   };
 };
 
-const hydrateCampaignState = (payload: CampaignState): CampaignState => {
+export const hydrateCampaignState = (payload: CampaignState): CampaignState => {
   const base = createCampaignState();
   const reveal = payload.combat?.reveal ?? base.combat.reveal;
   return {

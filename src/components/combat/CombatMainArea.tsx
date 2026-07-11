@@ -15,7 +15,7 @@ export function CombatMainArea() {
   const [showLog, setShowLog] = useState(false);
 
   return (
-    <div className="h-full w-full relative">
+    <div className="flex-1 w-full min-h-0 relative flex flex-col">
       {/* Map fills the entire area */}
       <CombatMapPanel
         combat={ctx.combat}

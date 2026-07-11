@@ -67,9 +67,13 @@ function createTestTask(overrides: Partial<DowntimeTask> = {}): DowntimeTask {
     status: 'pending',
     activityData: {
       type: 'fishing',
+      method: 'Line',
       speciesId: 'species-1',
+      isRandomCatch: false,
       spotId: 'spot-1',
       toolIds: [],
+      baitId: null,
+      retryAttempt: 0,
       skillModifier: 0,
       targetYield: 1,
     } as FishingData,
@@ -696,7 +700,7 @@ describe('getTargetKeyFromActivityData', () => {
       targetYield: 1,
     };
 
-    const result = getTargetKeyFromActivityData('fishing', activityData);
+    const result = getTargetKeyFromActivityData('fishing', activityData as any);
 
     expect(result).toBe('species:trout');
   });
@@ -762,7 +766,7 @@ describe('getTargetKeyFromActivityData', () => {
       progressRequired: 10,
     };
 
-    const result = getTargetKeyFromActivityData('crafting', activityData);
+    const result = getTargetKeyFromActivityData('crafting', activityData as any);
 
     expect(result).toBe('project:sword-project');
   });
@@ -799,8 +803,8 @@ describe('selectExistingLockKeysForSlot', () => {
         toolIds: [],
         skillModifier: 0,
         targetYield: 1,
-      },
-    });
+      } as any,
+    } as any);
     const state = createTestState([task]);
 
     const result = selectExistingLockKeysForSlot(state, 1, 0);
@@ -822,8 +826,8 @@ describe('selectExistingLockKeysForSlot', () => {
         toolIds: [],
         skillModifier: 0,
         targetYield: 1,
-      },
-    });
+      } as any,
+    } as any);
     const state = createTestState([task]);
 
     const result = selectExistingLockKeysForSlot(state, 1, 0);
@@ -845,8 +849,8 @@ describe('selectExistingLockKeysForSlot', () => {
         toolIds: [],
         skillModifier: 0,
         targetYield: 1,
-      },
-    });
+      } as any,
+    } as any);
     const state = createTestState([task]);
 
     const result = selectExistingLockKeysForSlot(state, 1, 0);
@@ -874,8 +878,8 @@ describe('canCreateTaskForTarget', () => {
         toolIds: [],
         skillModifier: 0,
         targetYield: 1,
-      },
-    });
+      } as any,
+    } as any);
     const state = createTestState([task]);
 
     // Different character, same target - allowed
@@ -904,8 +908,8 @@ describe('canCreateTaskForTarget', () => {
         toolIds: [],
         skillModifier: 0,
         targetYield: 1,
-      },
-    });
+      } as any,
+    } as any);
     const state = createTestState([task]);
 
     // Same character, same activity, same target - blocked
@@ -935,8 +939,8 @@ describe('canCreateTaskForTarget', () => {
         toolIds: [],
         skillModifier: 0,
         targetYield: 1,
-      },
-    });
+      } as any,
+    } as any);
     const state = createTestState([task]);
 
     // Even cancelled tasks block re-creation!
@@ -971,8 +975,8 @@ describe('selectReservedToolIdsForSlot', () => {
         toolIds: ['rod-1', 'net-1'],
         skillModifier: 0,
         targetYield: 1,
-      },
-    });
+      } as any,
+    } as any);
     const state = createTestState([task]);
 
     const result = selectReservedToolIdsForSlot(state, 1, 0);
@@ -993,8 +997,8 @@ describe('selectReservedToolIdsForSlot', () => {
         toolIds: ['rod-2'],
         skillModifier: 0,
         targetYield: 1,
-      },
-    });
+      } as any,
+    } as any);
     const state = createTestState([task]);
 
     const result = selectReservedToolIdsForSlot(state, 1, 0);
@@ -1015,8 +1019,8 @@ describe('selectReservedToolIdsForSlot', () => {
         toolIds: ['rod-cancelled'],
         skillModifier: 0,
         targetYield: 1,
-      },
-    });
+      } as any,
+    } as any);
     const pending = createTestTask({
       id: 't2',
       dayKey: 1,
@@ -1029,8 +1033,8 @@ describe('selectReservedToolIdsForSlot', () => {
         toolIds: ['rod-active'],
         skillModifier: 0,
         targetYield: 1,
-      },
-    });
+      } as any,
+    } as any);
     const state = createTestState([cancelled, pending]);
 
     const result = selectReservedToolIdsForSlot(state, 1, 0);
@@ -1053,8 +1057,8 @@ describe('selectReservedToolIdsForSlot', () => {
         toolIds: ['rod-done'],
         skillModifier: 0,
         targetYield: 1,
-      },
-    });
+      } as any,
+    } as any);
     const state = createTestState([resolved]);
 
     const result = selectReservedToolIdsForSlot(state, 1, 0);
@@ -1086,8 +1090,8 @@ describe('canUseTools', () => {
         toolIds: ['rod-1'],
         skillModifier: 0,
         targetYield: 1,
-      },
-    });
+      } as any,
+    } as any);
     const state = createTestState([task]);
 
     // Different tools - available
@@ -1109,8 +1113,8 @@ describe('canUseTools', () => {
         toolIds: ['rod-1', 'net-1'],
         skillModifier: 0,
         targetYield: 1,
-      },
-    });
+      } as any,
+    } as any);
     const state = createTestState([task]);
 
     // One tool conflicts
@@ -1132,8 +1136,8 @@ describe('canUseTools', () => {
         toolIds: ['rod-1'],
         skillModifier: 0,
         targetYield: 1,
-      },
-    });
+      } as any,
+    } as any);
     const state = createTestState([task]);
 
     const result = canUseTools(state, [], 1, 0);
@@ -1154,8 +1158,8 @@ describe('canUseTools', () => {
         toolIds: ['rod-freed'],
         skillModifier: 0,
         targetYield: 1,
-      },
-    });
+      } as any,
+    } as any);
     const state = createTestState([cancelled]);
 
     // Tool was freed by cancellation
@@ -1202,9 +1206,13 @@ function createResolvedTask(options: FatigueTaskOptions): DowntimeTask {
         } as RestData)
       : ({
           type: 'fishing',
+          method: 'Line',
           speciesId: 'species-1',
+          isRandomCatch: false,
           spotId: 'spot-1',
           toolIds: [],
+          baitId: null,
+          retryAttempt: 0,
           skillModifier: 0,
           targetYield: 1,
         } as FishingData);
@@ -1245,9 +1253,13 @@ function createPendingTask(options: FatigueTaskOptions): DowntimeTask {
         } as RestData)
       : ({
           type: 'fishing',
+          method: 'Line',
           speciesId: 'species-1',
+          isRandomCatch: false,
           spotId: 'spot-1',
           toolIds: [],
+          baitId: null,
+          retryAttempt: 0,
           skillModifier: 0,
           targetYield: 1,
         } as FishingData);
@@ -1288,9 +1300,13 @@ function createCancelledTask(options: FatigueTaskOptions): DowntimeTask {
         } as RestData)
       : ({
           type: 'fishing',
+          method: 'Line',
           speciesId: 'species-1',
+          isRandomCatch: false,
           spotId: 'spot-1',
           toolIds: [],
+          baitId: null,
+          retryAttempt: 0,
           skillModifier: 0,
           targetYield: 1,
         } as FishingData);

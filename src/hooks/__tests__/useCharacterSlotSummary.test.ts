@@ -28,9 +28,13 @@ function createTestTask(overrides: Partial<DowntimeTask> = {}): DowntimeTask {
     status: 'pending',
     activityData: {
       type: 'fishing',
+      method: 'Line',
       speciesId: 'species-1',
+      isRandomCatch: false,
       spotId: 'spot-1',
       toolIds: [],
+      baitId: null,
+      retryAttempt: 0,
       skillModifier: 0,
       targetYield: 1,
     } as FishingData,

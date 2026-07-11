@@ -14,6 +14,7 @@ import type {
   FishingData,
   ForagingData,
   RestData,
+  CraftingData,
 } from '../../types/downtime';
 import { downtimeInitialState, DOWNTIME_SCHEMA_VERSION } from './downtimeInitialState';
 
@@ -227,14 +228,12 @@ function createActivityData(
     case 'crafting':
       return {
         type: 'crafting',
-        projectId: 'migrated',
         recipeId: 'migrated',
-        materialIds: [],
-        toolIds,
-        phase: 'craft',
-        progressCurrent: 0,
-        progressRequired: 1,
-      };
+        materialInstanceIds: [],
+        toolInstanceIds: toolIds || [],
+        qualityTarget: 'standard',
+        skillModifier: 0,
+      } as unknown as CraftingData;
 
     case 'rest':
       return {

@@ -43,11 +43,28 @@ import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/
 import { useWeatherModifiers } from '../../../hooks/useWeatherModifiers';
 import type { DowntimeState, DowntimeTask, FishingData, TaskResults, InventoryDelta } from '../../../types/downtime';
 import type { CreateTaskPayload } from '../../../state/downtime/downtimeActions';
-import type { GatheringSpecies, GatheringEnvironment, GatheringTable, GatheringBait, Food, Material } from '../../../types/campaign';
+import type { Food, Material } from '../../../types/campaign';
+import type { GatheringSpeciesExtended, GatheringBaitExtended, GatheringEnvironmentExtended, GatheringTableExtended } from '../../../types/gathering';
 
 // ============================================================================
 // TYPES
 // ============================================================================
+
+interface FishingRollResult {
+  outcome: string;
+  success: boolean;
+  critFailure: boolean;
+  critSuccess: boolean;
+  isCritical: boolean;
+  margin: number;
+  fish: number;
+  description: string;
+}
+
+interface TableEntry {
+  resultType: string;
+  speciesId?: string;
+}
 
 interface FishingActivityProps {
   /** Current day key for task scheduling */
@@ -57,7 +74,7 @@ interface FishingActivityProps {
 }
 
 interface CaughtFish {
-  species: GatheringSpecies;
+  species: GatheringSpeciesExtended;
   isLarge: boolean;
   struggled: boolean;
   struggleSuccess: boolean;
@@ -76,12 +93,12 @@ interface CaughtFish {
  */
 function calculateFishingResultsAuto(
   task: DowntimeTask,
-  leader: any | undefined,
-  species: GatheringSpecies[],
-  bait: GatheringBait[],
-  gatheringTables: GatheringTable[],
-  spot: GatheringEnvironment | undefined,
-  campaignActions: { addFood: (food: Food) => void; addMaterial: (material: Material) => void; addGatheringBait: (bait: GatheringBait) => void },
+  leader: { id?: string; st?: number } | undefined,
+  species: GatheringSpeciesExtended[],
+  bait: GatheringBaitExtended[],
+  gatheringTables: GatheringTableExtended[],
+  spot: GatheringEnvironmentExtended | undefined,
+  campaignActions: { addFood: (food: Food) => void; addMaterial: (material: Material) => void; addGatheringBait: (bait: GatheringBaitExtended) => void },
   downtimeState?: DowntimeState,
   weatherModifier: number = 0
 ): TaskResults {
@@ -123,17 +140,15 @@ function calculateFishingResultsAuto(
   let hasCorrectBait = false;
   let hasInappropriateBait = false;
   if (baitItem && targetSpecies && !isRandomCatch) {
-    const attractsSpeciesIds = (baitItem as any).attractsSpeciesIds;
+    const attractsSpeciesIds = baitItem.attractsSpeciesIds;
     if (Array.isArray(attractsSpeciesIds)) {
-      hasCorrectBait = attractsSpeciesIds.includes(data.speciesId);
+      hasCorrectBait = attractsSpeciesIds.includes(data.speciesId ?? '');
       hasInappropriateBait = !hasCorrectBait;
     }
   }
 
   // Check if targeting large fish
-  const targetIsLarge = targetSpecies
-    ? ((targetSpecies as any).tags?.includes('LargeFish') ?? false)
-    : false;
+  const targetIsLarge = targetSpecies && targetSpecies.tags?.includes('LargeFish') ? true : false;
   const targetingLargeFish = !isRandomCatch && targetIsLarge;
 
   // Calculate fatigue penalty for the leader
@@ -172,7 +187,7 @@ function calculateFishingResultsAuto(
   const roll = fishingRollResult.total;
 
   // Evaluate the roll
-  const rollResult = evaluateFishingRoll(roll, effectiveSkill, method);
+  const rollResult = evaluateFishingRoll(roll, effectiveSkill, method) as FishingRollResult;
 
   // Handle failure
   if (!rollResult.success) {
@@ -199,28 +214,28 @@ function calculateFishingResultsAuto(
   const inventoryChanges: InventoryDelta[] = [];
 
   // Get random catch table for the spot
-  const spotDefaults = spot?.defaultsByMode?.Fishing ?? (spot as any)?.defaultTables;
+  const spotDefaults = spot?.defaultsByMode?.Fishing;
   const catchTableId = spotDefaults?.randomCatchTableId;
   const catchTable = catchTableId
     ? gatheringTables.find(t => t.id === catchTableId)
     : null;
 
   for (let i = 0; i < fishCount; i++) {
-    let caughtSpecies: GatheringSpecies | undefined;
+    let caughtSpecies: GatheringSpeciesExtended | undefined;
 
     if (!isRandomCatch && targetSpecies) {
       caughtSpecies = targetSpecies;
     } else if (catchTable) {
       try {
-        let tableEntry;
+        let tableEntry: TableEntry | undefined;
         if (method === 'Net') {
-          tableEntry = rollNetCatch(catchTable as any, species as any);
+          tableEntry = rollNetCatch(catchTable, species) as TableEntry;
         } else {
-          const baitRollBonus = baitItem ? ((baitItem as any).rollBonus ?? 0) : 0;
-          tableEntry = rollOnCatchTable(catchTable as any, baitRollBonus);
+          const baitRollBonus = baitItem?.rollBonus ?? 0;
+          tableEntry = rollOnCatchTable(catchTable, baitRollBonus) as TableEntry;
         }
 
-        if (tableEntry.resultType === 'species' && tableEntry.speciesId) {
+        if (tableEntry && tableEntry.resultType === 'species' && tableEntry.speciesId) {
           caughtSpecies = species.find(s => s.id === tableEntry.speciesId);
         }
       } catch (error) {
@@ -237,15 +252,15 @@ function calculateFishingResultsAuto(
     if (!caughtSpecies) continue;
 
     // Check if fish is large
-    const isLarge = (caughtSpecies as any).tags?.includes('LargeFish') ?? false;
+    const isLarge = caughtSpecies.tags?.includes('LargeFish') ?? false;
     let struggleSuccess = true;
 
     // Large fish struggle (Line and Spear only, not Net)
     if (isLarge && method !== 'Net') {
       const characterST = leader?.st ?? 10;
-      const fishST = (caughtSpecies as any).st ?? DEFAULT_FISH_ST;
-      const struggleResult = resolveLargeFishStruggle(characterST, fishST);
-      struggleSuccess = struggleResult.success;
+      const fishST = caughtSpecies.st ?? DEFAULT_FISH_ST;
+      const struggleResult = resolveLargeFishStruggle(characterST, fishST) as { success: boolean };
+      struggleSuccess = struggleResult?.success ?? true;
     }
 
     // Calculate yields if struggle succeeded
@@ -255,13 +270,13 @@ function calculateFishingResultsAuto(
 
     if (struggleSuccess) {
       // Roll yield dice
-      const meatFormula = (caughtSpecies as any)?.yieldMeatFormula ?? '1d';
+      const meatFormula = caughtSpecies.yieldMeatFormula ?? '1d';
       meatYield = rollYieldDice(meatFormula);
 
       // Only roll for secondary if species has secondary material type
-      const speciesSecondaryType = (caughtSpecies as any)?.secondaryMaterialType;
+      const speciesSecondaryType = caughtSpecies.secondaryMaterialType;
       if (speciesSecondaryType && speciesSecondaryType !== 'None' && speciesSecondaryType !== '') {
-        const secondaryFormula = (caughtSpecies as any)?.yieldSecondaryFormula ?? '1d-2';
+        const secondaryFormula = caughtSpecies.yieldSecondaryFormula ?? '1d-2';
         secondaryType = speciesSecondaryType;
         secondaryYield = rollYieldDice(secondaryFormula);
       }
@@ -281,8 +296,8 @@ function calculateFishingResultsAuto(
     if (struggleSuccess && meatYield > 0) {
       const foodId = `fish-${caughtSpecies.id}-${Date.now()}-${i}`;
       const foodName = `${caughtSpecies.name} Meat`;
-      // Use the species' foodType instead of hardcoded 'fish'
-      const foodType = (caughtSpecies as any).foodType ?? 'fish';
+
+      const foodType = caughtSpecies.foodType ?? 'fish';
 
       campaignActions.addFood({
         id: foodId,
@@ -347,8 +362,8 @@ function calculateFishingResultsAuto(
   }
 
   // Consume bait (decrement quantity by 1 per fishing attempt)
-  if (baitItem && (baitItem as any).quantity > 0) {
-    const updatedBait = { ...baitItem, quantity: (baitItem as any).quantity - 1 } as GatheringBait;
+  if (baitItem && baitItem.quantity > 0) {
+    const updatedBait = { ...baitItem, quantity: baitItem.quantity - 1 } as GatheringBaitExtended;
     campaignActions.addGatheringBait(updatedBait);
     message += ` (1 ${baitItem.name} consumed)`;
   }
@@ -468,19 +483,19 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
       } else {
         // Auto-resolve
         const data = task.activityData as FishingData;
-        const leader = characters.find(c => c.id === task.leaderId) as any;
-        const spot = fishingSpots.find(s => s.id === data.spotId);
+        const leader = characters.find(c => c.id === task.leaderId);
+        const spot = fishingSpots.find(s => s.id === data.spotId) as GatheringEnvironmentExtended | undefined;
 
         beginResolve(task.id);
 
         const results = calculateFishingResultsAuto(
           task,
           leader,
-          fishSpecies as any[],
-          fishingBait as any[],
-          gatheringTables as any[],
+          fishSpecies as unknown as GatheringSpeciesExtended[],
+          fishingBait as unknown as GatheringBaitExtended[],
+          gatheringTables as unknown as GatheringTableExtended[],
           spot,
-          campaignActions,
+          campaignActions as any,
           state,
           gatheringWeatherMod
         );
@@ -573,10 +588,10 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
           <FishingResolutionPanel
             task={resolvingTask}
             leader={resolvingLeader}
-            species={fishSpecies}
-            spots={fishingSpots}
-            bait={fishingBait}
-            gatheringTables={gatheringTables}
+            species={fishSpecies as unknown as GatheringSpeciesExtended[]}
+            spots={fishingSpots as unknown as GatheringEnvironmentExtended[]}
+            bait={fishingBait as unknown as GatheringBaitExtended[]}
+            gatheringTables={gatheringTables as unknown as GatheringTableExtended[]}
             onFinalize={handleManualFinalize}
             onCancel={handleManualCancel}
           />
@@ -587,11 +602,11 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
       {isCreating && !resolvingTask && (
         <FishingTaskForm
           characters={characters}
-          spots={fishingSpots}
-          species={fishSpecies}
+          spots={fishingSpots as unknown as GatheringEnvironmentExtended[]}
+          species={fishSpecies as unknown as GatheringSpeciesExtended[]}
           tools={fishingTools}
-          bait={fishingBait}
-          gatheringTables={gatheringTables}
+          bait={fishingBait as unknown as GatheringBaitExtended[]}
+          gatheringTables={gatheringTables as unknown as GatheringTableExtended[]}
           state={state}
           currentDayKey={currentDayKey}
           currentSlot={currentSlot}

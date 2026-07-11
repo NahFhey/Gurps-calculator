@@ -12,7 +12,6 @@ import {
   createCharacterInventories,
   ensureIds
 } from '../state/campaignUtils';
-import type { Id } from '../types/campaign';
 
 // Legacy localStorage keys to migrate
 const LEGACY_KEYS = [
@@ -70,8 +69,9 @@ export async function checkMigrationNeeded(): Promise<boolean> {
   }
 
   try {
+    const storage = window.storage;
     // Check if new state already exists
-    const newState = await window.storage.get(NEW_KEY, true);
+    const newState = await storage.get(NEW_KEY, true);
     if (newState) {
       console.log('[Migration] CampaignState already exists, no migration needed');
       return false;
@@ -80,7 +80,7 @@ export async function checkMigrationNeeded(): Promise<boolean> {
     // Check if any legacy data exists
     const hasLegacyData = await Promise.all(
       LEGACY_KEYS.slice(0, 5).map(async (key) => {
-        const data = await window.storage.get(key, true).catch(() => null);
+        const data = await storage.get(key, true).catch(() => null);
         return data !== null && data !== undefined;
       })
     );
@@ -139,7 +139,7 @@ export async function migrateToV2(): Promise<CampaignState | null> {
 
     // Step 7: Save new campaign state
     console.log('[Migration] Step 7/7: Saving new campaign state...');
-    await window.storage.set(NEW_KEY, campaignState);
+    await window.storage.set(NEW_KEY, JSON.stringify(campaignState));
 
     console.log('[Migration] ✅ Migration complete!');
     console.log('[Migration] Backup saved to:', BACKUP_KEY);
@@ -156,10 +156,14 @@ export async function migrateToV2(): Promise<CampaignState | null> {
  */
 async function loadLegacyData(): Promise<Record<string, any>> {
   const data: Record<string, any> = {};
+  const storage = window.storage;
+  if (!storage?.get) {
+    return data;
+  }
 
   for (const key of LEGACY_KEYS) {
     try {
-      const value = await window.storage.get(key, true);
+      const value = await storage.get(key, true);
       if (value !== null && value !== undefined) {
         data[key] = value;
         console.log(`[Migration] Loaded ${key}:`, Array.isArray(value) ? `${value.length} items` : typeof value);
@@ -237,17 +241,17 @@ function migrateEntities(state: CampaignState, legacy: Record<string, any>): voi
 
   // Materials
   const materials = ensureIds(legacy.materials || []);
-  state.entities.materials = normalizeArray(materials);
+  state.entities.materials = normalizeArray(materials as any);
   console.log(`[Migration] Migrated ${materials.length} materials`);
 
   // Foods
   const foods = ensureIds(legacy.foods || []);
-  state.entities.foods = normalizeArray(foods);
+  state.entities.foods = normalizeArray(foods as any);
   console.log(`[Migration] Migrated ${foods.length} foods`);
 
   // Recipes
   const recipes = ensureIds(legacy.recipes || []);
-  state.entities.recipes = normalizeArray(recipes);
+  state.entities.recipes = normalizeArray(recipes as any);
   console.log(`[Migration] Migrated ${recipes.length} recipes`);
 
   // Food Types & Material Types (already arrays)
@@ -256,12 +260,12 @@ function migrateEntities(state: CampaignState, legacy: Record<string, any>): voi
 
   // Crafts
   const crafts = ensureIds(legacy.crafts || []);
-  state.entities.crafts = normalizeArray(crafts);
+  state.entities.crafts = normalizeArray(crafts as any);
   console.log(`[Migration] Migrated ${crafts.length} crafts`);
 
   // Craft Designs
   const craftDesigns = ensureIds(legacy.craftDesigns || []);
-  state.entities.craftDesigns = normalizeArray(craftDesigns);
+  state.entities.craftDesigns = normalizeArray(craftDesigns as any);
   console.log(`[Migration] Migrated ${craftDesigns.length} craft designs`);
 
   // Custom Templates
@@ -281,41 +285,44 @@ function migrateEntities(state: CampaignState, legacy: Record<string, any>): voi
 
   // Gathering
   const gatheringSpecies = ensureIds(legacy.gatheringSpecies || []);
-  state.entities.gatheringSpecies = normalizeArray(gatheringSpecies);
+  state.entities.gatheringSpecies = normalizeArray(gatheringSpecies as any);
   const gatheringTools = ensureIds(legacy.gatheringTools || []);
-  state.entities.gatheringTools = normalizeArray(gatheringTools);
+  state.entities.gatheringTools = normalizeArray(gatheringTools as any);
   const gatheringTables = ensureIds(legacy.gatheringTables || []);
-  state.entities.gatheringTables = normalizeArray(gatheringTables);
+  state.entities.gatheringTables = normalizeArray(gatheringTables as any);
   const gatheringEnvironments = ensureIds(legacy.gatheringEnvironments || []);
-  state.entities.gatheringEnvironments = normalizeArray(gatheringEnvironments);
+  state.entities.gatheringEnvironments = normalizeArray(gatheringEnvironments as any);
   const gatheringSessions = ensureIds(legacy.gatheringSessions || []);
-  state.entities.gatheringSessions = normalizeArray(gatheringSessions);
+  state.entities.gatheringSessions = normalizeArray(gatheringSessions as any);
   const gatheringBait = ensureIds(legacy.gatheringBait || []);
-  state.entities.gatheringBait = normalizeArray(gatheringBait);
+  state.entities.gatheringBait = normalizeArray(gatheringBait as any);
   const gatheringCategories = ensureIds(legacy.gatheringCategories || []);
-  state.entities.gatheringCategories = normalizeArray(gatheringCategories);
+  state.entities.gatheringCategories = normalizeArray(gatheringCategories as any);
   const gatheringItems = ensureIds(legacy.gatheringItems || []);
-  state.entities.gatheringItems = normalizeArray(gatheringItems);
+  state.entities.gatheringItems = normalizeArray(gatheringItems as any);
   state.entities.gatheringDailyEvents = legacy.gatheringDailyEvents || {};
   console.log(`[Migration] Migrated gathering: ${gatheringSpecies.length} species, ${gatheringSessions.length} sessions`);
 
   // Combat
   const combatCharacters = ensureIds(legacy.combatCharacters || []);
-  state.entities.combatCharacters = normalizeArray(combatCharacters);
+  state.entities.combatCharacters = normalizeArray(combatCharacters as any);
   const combatItems = ensureIds(legacy.combatItems || []);
-  state.entities.combatItems = normalizeArray(combatItems);
+  state.entities.combatItems = normalizeArray(combatItems as any);
   state.entities.combatHistory = legacy.combatHistory || [];
   state.entities.combatTombstones = legacy.combatTombstones || [];
   console.log(`[Migration] Migrated combat: ${combatCharacters.length} characters, ${state.entities.combatHistory.length} history`);
 
   // Config/Facilities
   const kitchens = ensureIds(legacy.kitchens || [{ id: 'default', name: 'Basic Kitchen', rating: 0, description: 'Standard cooking area' }]);
-  state.entities.kitchens = normalizeArray(kitchens);
+  state.entities.kitchens = normalizeArray(kitchens as any);
   state.entities.cookingSkills = legacy.cookingSkills || [];
   state.entities.effectFamilyMap = legacy.effectFamilyMap || {};
 
   // Create unified inventories
-  const partyInventory = createPartyInventory(materials, foods);
+  const partyInventory = createPartyInventory(
+    materials.map(m => ({ id: m.id, quantity: (m as any).quantity || 0 })),
+    foods.map(f => ({ id: f.id, quantity: (f as any).quantity || 0 }))
+  );
   const characterInventories = createCharacterInventories(state.entities.characters);
 
   state.entities.inventories = {
@@ -381,7 +388,13 @@ async function createBackup(legacyData: Record<string, any>): Promise<void> {
     data: legacyData
   };
 
-  await window.storage.set(BACKUP_KEY, backup);
+  const storage = window.storage;
+  if (!storage?.set) {
+    console.warn('[Migration] Storage not available for backup');
+    return;
+  }
+
+  await storage.set(BACKUP_KEY, JSON.stringify(backup));
   console.log('[Migration] Backup created with', Object.keys(legacyData).length, 'keys');
 }
 
@@ -389,7 +402,8 @@ async function createBackup(legacyData: Record<string, any>): Promise<void> {
  * Rollback migration (restore from backup)
  */
 export async function rollbackMigration(): Promise<boolean> {
-  if (!window?.storage?.get || !window?.storage?.set) {
+  const storage = window.storage;
+  if (!storage?.get || !storage?.set || !storage?.remove) {
     console.error('[Migration] Storage not available');
     return false;
   }
@@ -398,19 +412,32 @@ export async function rollbackMigration(): Promise<boolean> {
     console.log('[Migration] Rolling back to legacy data...');
 
     // Load backup
-    const backup = await window.storage.get(BACKUP_KEY, true);
-    if (!backup || !backup.data) {
+    const backupStr = await storage.get(BACKUP_KEY, true);
+    if (!backupStr) {
       console.error('[Migration] No backup found');
+      return false;
+    }
+
+    let backup: { data: Record<string, unknown> };
+    try {
+      backup = typeof backupStr === 'string' ? JSON.parse(backupStr) : (backupStr as any);
+    } catch {
+      console.error('[Migration] Failed to parse backup');
+      return false;
+    }
+
+    if (!backup || !backup.data) {
+      console.error('[Migration] No backup data found');
       return false;
     }
 
     // Restore all legacy keys
     for (const [key, value] of Object.entries(backup.data)) {
-      await window.storage.set(key, value);
+      await storage.set(key, JSON.stringify(value));
     }
 
     // Remove new campaign state
-    await window.storage.remove(NEW_KEY);
+    await storage.remove(NEW_KEY);
 
     console.log('[Migration] ✅ Rollback complete');
     return true;

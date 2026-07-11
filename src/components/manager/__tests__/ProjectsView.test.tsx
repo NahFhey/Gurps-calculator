@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ProjectsView } from '../views/ProjectsView';
 
 interface Craft {
@@ -27,18 +27,18 @@ describe('ProjectsView', () => {
   });
 
   it('renders the Project Manager heading', () => {
-    render(<ProjectsView {...defaultProps} />);
+    render(<ProjectsView {...(defaultProps as any)} />);
     expect(screen.getByText('Project Manager')).toBeInTheDocument();
   });
 
   it('renders In-Progress and Completed section headings', () => {
-    render(<ProjectsView {...defaultProps} />);
+    render(<ProjectsView {...(defaultProps as any)} />);
     expect(screen.getByText(/In-Progress Projects/)).toBeInTheDocument();
     expect(screen.getByText(/Completed Projects/)).toBeInTheDocument();
   });
 
   it('shows empty state messages when no projects', () => {
-    render(<ProjectsView {...defaultProps} />);
+    render(<ProjectsView {...(defaultProps as any)} />);
     expect(screen.getByText('No in-progress projects')).toBeInTheDocument();
     expect(screen.getByText('No completed projects')).toBeInTheDocument();
   });
@@ -49,7 +49,7 @@ describe('ProjectsView', () => {
       { id: '2', template: 'Shield', currentQuality: 'fine', phase: 'craft', completed: false }
     ];
 
-    render(<ProjectsView {...defaultProps} crafts={crafts} />);
+    render(<ProjectsView {...defaultProps} crafts={crafts as any} />);
     expect(screen.getByText(/In-Progress Projects \(2\)/)).toBeInTheDocument();
   });
 
@@ -60,7 +60,7 @@ describe('ProjectsView', () => {
       { id: '3', template: 'Axe', currentQuality: 'good', phase: 'design', completed: false }
     ];
 
-    render(<ProjectsView {...defaultProps} crafts={crafts} />);
+    render(<ProjectsView {...defaultProps} crafts={crafts as any} />);
     expect(screen.getByText(/Completed Projects \(2\)/)).toBeInTheDocument();
     expect(screen.getByText(/In-Progress Projects \(1\)/)).toBeInTheDocument();
   });
@@ -70,7 +70,7 @@ describe('ProjectsView', () => {
       { id: '1', template: 'Sword', currentQuality: 'fine', phase: 'design', startDate: '2026-01-15' }
     ];
 
-    render(<ProjectsView {...defaultProps} crafts={crafts} />);
+    render(<ProjectsView {...defaultProps} crafts={crafts as any} />);
     expect(screen.getByText('fine Sword')).toBeInTheDocument();
     expect(screen.getByText(/Phase: design/)).toBeInTheDocument();
     expect(screen.getByText(/Started: 2026-01-15/)).toBeInTheDocument();
@@ -81,7 +81,7 @@ describe('ProjectsView', () => {
       { id: '1', template: 'Sword', currentQuality: 'fine', phase: 'complete', completed: true, completedDate: '2026-01-20' }
     ];
 
-    render(<ProjectsView {...defaultProps} crafts={crafts} />);
+    render(<ProjectsView {...defaultProps} crafts={crafts as any} />);
     expect(screen.getByText('fine Sword')).toBeInTheDocument();
     expect(screen.getByText(/Completed: 2026-01-20/)).toBeInTheDocument();
   });
@@ -91,7 +91,7 @@ describe('ProjectsView', () => {
       { id: '1', name: 'Excalibur', template: 'Sword', currentQuality: 'legendary', phase: 'design' }
     ];
 
-    render(<ProjectsView {...defaultProps} crafts={crafts} />);
+    render(<ProjectsView {...defaultProps} crafts={crafts as any} />);
     expect(screen.getByText('Excalibur')).toBeInTheDocument();
     expect(screen.queryByText('legendary Sword')).not.toBeInTheDocument();
   });
@@ -101,7 +101,7 @@ describe('ProjectsView', () => {
       { id: 'proj-123', template: 'Sword', currentQuality: 'fine', phase: 'design' }
     ];
 
-    render(<ProjectsView {...defaultProps} crafts={crafts} />);
+    render(<ProjectsView {...defaultProps} crafts={crafts as any} />);
 
     const deleteButtons = document.querySelectorAll('button.text-red-400');
     expect(deleteButtons.length).toBe(1);
@@ -116,7 +116,7 @@ describe('ProjectsView', () => {
       { id: 'proj-456', name: 'My Sword', template: 'Sword', currentQuality: 'fine', phase: 'design' }
     ];
 
-    render(<ProjectsView {...defaultProps} crafts={crafts} />);
+    render(<ProjectsView {...defaultProps} crafts={crafts as any} />);
 
     const deleteButtons = document.querySelectorAll('button.text-red-400');
     fireEvent.click(deleteButtons[0]);
@@ -129,7 +129,7 @@ describe('ProjectsView', () => {
       { id: 'proj-789', template: 'Shield', currentQuality: 'good', phase: 'complete', completed: true }
     ];
 
-    render(<ProjectsView {...defaultProps} crafts={crafts} />);
+    render(<ProjectsView {...defaultProps} crafts={crafts as any} />);
 
     const deleteButtons = document.querySelectorAll('button.text-red-400');
     expect(deleteButtons.length).toBe(1);
@@ -145,7 +145,7 @@ describe('ProjectsView', () => {
       { id: '2', template: 'Shield', currentQuality: 'fine', phase: 'complete', completed: true }
     ];
 
-    render(<ProjectsView {...defaultProps} crafts={crafts} />);
+    render(<ProjectsView {...defaultProps} crafts={crafts as any} />);
     expect(screen.getByText(/Started: unknown/)).toBeInTheDocument();
     expect(screen.getByText(/Completed: unknown/)).toBeInTheDocument();
   });
@@ -157,7 +157,7 @@ describe('ProjectsView', () => {
       { id: '3', template: 'Axe', currentQuality: 'good', phase: 'craft', completed: false }
     ];
 
-    render(<ProjectsView {...defaultProps} crafts={crafts} />);
+    render(<ProjectsView {...defaultProps} crafts={crafts as any} />);
 
     // Should have 3 delete buttons total
     const deleteButtons = document.querySelectorAll('button.text-red-400');

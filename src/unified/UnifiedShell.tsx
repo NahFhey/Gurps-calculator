@@ -20,6 +20,7 @@ import { CharacterStatusBadge } from '../components/downtime/views/CharacterStat
 import { duplicateCharacter, downloadCharacterJSON } from '../utils/characterManagement';
 import { parseCharacterText } from '../utils/characterImport';
 import { WeatherWidget, TimeDisplay, TimeControls } from '../components/header';
+import { ConnectionStatus } from '../components/header/ConnectionStatus';
 import { CombatTile } from '../components/combat/CombatTile';
 import { CombatTab } from '../components/CombatTab';
 import { CombatContextProvider } from '../components/combat/CombatContext';
@@ -35,6 +36,7 @@ import {
   useSelectedCharacterId
 } from '../state/campaignStore';
 import { useAllCharacterSlotSummaries } from '../hooks/useCharacterSlotSummary';
+import { useEffectiveRole } from '../hooks/useEffectiveRole';
 import type { Character } from '../types/campaign';
 
 interface ModuleDefinition {
@@ -55,12 +57,13 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
   const { state: layoutState, actions: layoutActions } = usePanelLayout();
 
   const { state, actions } = useCampaignStore();
+  const { isGM } = useEffectiveRole();
 
   const availableModules = useMemo<ModuleDefinition[]>(() => {
     if (modules?.length) {
       return modules;
     }
-    return [
+    const allModules: ModuleDefinition[] = [
       { id: 'inventory', label: 'Inventory', content: <InventoryTab /> },
       {
         id: 'downtime',
@@ -82,7 +85,12 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
       { id: 'rules', label: 'Rules', content: <RulesTab /> },
       { id: 'changelog', label: 'Changelog', content: <ChangelogTab /> },
     ];
-  }, [modules, state.time?.day, state.time?.slot]);
+    // Hide GM-only modules for non-GM roles
+    if (!isGM) {
+      return allModules.filter(m => m.id !== 'manager');
+    }
+    return allModules;
+  }, [modules, state.time?.day, state.time?.slot, isGM]);
   const activeModuleId = state.ui.activeModule;
   const activeModule = activeModuleId ? availableModules.find((moduleItem) => moduleItem.id === activeModuleId) : null;
   const selectedCharacterId = useSelectedCharacterId();
@@ -229,7 +237,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
 
   // Combat layout: when combat is active WITH a linked map, take over the whole shell
   const isCombatActive = !!state.combat.activeSession;
-  const combatHasMap = !!(state.combat.activeSession as any)?.mapId;
+  const combatHasMap = !!state.combat.activeSession?.mapId;
   const combatLayoutActive = isCombatActive && combatHasMap;
 
   // Character panel should hide when no character is selected or party is collapsed
@@ -274,6 +282,13 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
     }
   }, [isRailCollapsed, activeModuleId, actions]);
 
+  // Force GM mode off when connected as non-GM role
+  useEffect(() => {
+    if (!isGM && state.ui.gmModeEnabled) {
+      actions.setGmMode(false);
+    }
+  }, [isGM, state.ui.gmModeEnabled, actions]);
+
   const shellContent = (
     <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
       {/* Header - Redesigned with Weather, Time Display, and Time Controls */}
@@ -290,8 +305,9 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
             {state.ui.gmModeEnabled && <TimeControls compact />}
           </div>
 
-          {/* Right: Debug controls and blocking errors */}
+          {/* Right: Connection status, debug controls, and blocking errors */}
           <div className="flex flex-wrap items-center gap-3 text-sm text-gray-300">
+            <ConnectionStatus />
             {state.ui.debugMode && (
               <div className="rounded border border-amber-500/50 bg-amber-500/10 px-2 py-1 text-xs text-amber-100">
                 Debug mode
@@ -478,8 +494,8 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                 );
               })}
 
-              {/* Add Character and Import Buttons */}
-              <div className="mt-4 pt-4 border-t border-gray-700 space-y-2">
+              {/* Add Character and Import Buttons (GM only) */}
+              {isGM && <div className="mt-4 pt-4 border-t border-gray-700 space-y-2">
                 <button
                   type="button"
                   onClick={() => setShowCreationModal(true)}
@@ -505,7 +521,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                 >
                   Quick Import
                 </button>
-              </div>
+              </div>}
             </div>
           )}
 

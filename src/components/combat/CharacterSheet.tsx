@@ -41,7 +41,7 @@ function CharacterSheet({ character, onEdit, onDelete, onDuplicate }: CharacterS
   const [expanded, setExpanded] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const hpStatus = calculateHPStatus(character.currentHP || character.hp, character.hp);
+  calculateHPStatus(character.currentHP || character.hp, character.hp);
 
   // Category color coding
   const getCategoryColor = (category: CharacterCategory): string => {

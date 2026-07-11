@@ -173,7 +173,7 @@ export function DowntimeProvider({
     return allEnvs.filter(
       (e) =>
         (e as any).locationId === currentLocationId &&
-        (e.supportedModes?.includes('Fishing') ?? false)
+        ((e as any).supportedModes?.includes('Fishing') ?? false)
     );
   }, [campaignState.entities?.gatheringEnvironments, currentLocationId]);
 
@@ -213,7 +213,7 @@ export function DowntimeProvider({
     return allEnvs.filter(
       (e) =>
         (e as any).locationId === currentLocationId &&
-        (e.supportedModes?.includes('Foraging') ?? false)
+        ((e as any).supportedModes?.includes('Foraging') ?? false)
     );
   }, [campaignState.entities?.gatheringEnvironments, currentLocationId]);
 

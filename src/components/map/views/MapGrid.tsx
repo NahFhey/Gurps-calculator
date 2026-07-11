@@ -17,6 +17,15 @@ const DEFAULT_ZOOM = 1.0;
 const MIN_ZOOM = ZOOM_LEVELS[0];
 const MAX_ZOOM = ZOOM_LEVELS[ZOOM_LEVELS.length - 1];
 
+export interface TokenOverlayData {
+  row: number;
+  col: number;
+  color: string;
+  label: string;
+  isCurrent: boolean;
+  isSelected: boolean;
+}
+
 interface MapGridProps {
   map: MapModel;
   isGmMode: boolean;
@@ -28,6 +37,7 @@ interface MapGridProps {
   onTileContextMenu?: (tileId: TileId, row: number, col: number, e: React.MouseEvent) => void;
   onTileMouseDown?: (tileId: TileId, row: number, col: number, e: React.MouseEvent) => void;
   onTileMouseEnter?: (tileId: TileId, row: number, col: number, e: React.MouseEvent) => void;
+  tokenOverlays?: TokenOverlayData[];
 }
 
 export function MapGrid({
@@ -41,6 +51,7 @@ export function MapGrid({
   onTileContextMenu,
   onTileMouseDown,
   onTileMouseEnter,
+  tokenOverlays,
 }: MapGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollPos, setScrollPos] = useState({ top: 0, left: 0 });
@@ -188,7 +199,7 @@ export function MapGrid({
   }
 
   return (
-    <div className="flex-1 relative">
+    <div className="flex-1 min-h-0 relative">
       {/* Zoom controls */}
       <div className="absolute top-2 right-2 z-30 flex flex-col items-center gap-1 bg-gray-800/90 rounded-lg p-1 border border-gray-700/50 shadow-lg">
         <button
@@ -242,6 +253,48 @@ export function MapGrid({
           }}
         >
           {tiles}
+          {/* Combat token overlays — rendered inside the grid coordinate space */}
+          {tokenOverlays?.map((token, i) => {
+            // Only render tokens within the visible range
+            if (token.row < startRow || token.row >= endRow || token.col < startCol || token.col >= endCol) {
+              return null;
+            }
+            const size = Math.max(12, tileSizePx * 0.6);
+            return (
+              <div
+                key={`token-${token.row}-${token.col}-${i}`}
+                className="pointer-events-none"
+                style={{
+                  position: 'absolute',
+                  top: token.row * tileSizePx + (tileSizePx - size) / 2,
+                  left: token.col * tileSizePx + (tileSizePx - size) / 2,
+                  width: size,
+                  height: size,
+                  zIndex: 25,
+                }}
+              >
+                <div
+                  className="w-full h-full rounded-full flex items-center justify-center shadow-lg"
+                  style={{
+                    backgroundColor: token.color,
+                    border: `2px solid ${token.isCurrent ? '#60a5fa' : token.isSelected ? '#facc15' : 'rgba(255,255,255,0.5)'}`,
+                    boxShadow: token.isCurrent
+                      ? '0 0 8px 2px rgba(96,165,250,0.6)'
+                      : token.isSelected
+                        ? '0 0 8px 2px rgba(250,204,21,0.6)'
+                        : '0 2px 4px rgba(0,0,0,0.5)',
+                  }}
+                >
+                  <span
+                    className="font-bold text-white drop-shadow"
+                    style={{ fontSize: Math.max(8, size * 0.5) }}
+                  >
+                    {token.label}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

@@ -1,14 +1,8 @@
 import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { KitchensView } from '../views/KitchensView';
-
-interface Kitchen {
-  id: string;
-  name: string;
-  rating: number;
-  description?: string;
-}
+import type { Kitchen } from '../../../types/campaign';
 
 describe('KitchensView', () => {
   const mockSaveKitchens = vi.fn();
@@ -45,8 +39,8 @@ describe('KitchensView', () => {
 
   it('renders existing kitchens with rating badges', () => {
     const kitchens: Kitchen[] = [
-      { id: '1', name: 'Basic Kitchen', rating: 0 },
-      { id: '2', name: 'Master Chef Kitchen', rating: 4 }
+      { id: '1', name: 'Basic Kitchen', rating: 0, description: 'A basic kitchen' },
+      { id: '2', name: 'Master Chef Kitchen', rating: 4, description: 'A master chef kitchen' }
     ];
 
     render(<KitchensView {...defaultProps} kitchens={kitchens} />);
@@ -59,7 +53,7 @@ describe('KitchensView', () => {
 
   it('shows skill bonus text for each kitchen', () => {
     const kitchens: Kitchen[] = [
-      { id: '1', name: 'Test Kitchen', rating: 3 }
+      { id: '1', name: 'Test Kitchen', rating: 3, description: 'A test kitchen' }
     ];
 
     render(<KitchensView {...defaultProps} kitchens={kitchens} />);
@@ -116,7 +110,7 @@ describe('KitchensView', () => {
 
   it('alerts when trying to add duplicate kitchen name', () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-    const kitchens: Kitchen[] = [{ id: '1', name: 'Main Kitchen', rating: 2 }];
+    const kitchens: Kitchen[] = [{ id: '1', name: 'Main Kitchen', rating: 2, description: 'The main kitchen' }];
 
     render(<KitchensView {...defaultProps} kitchens={kitchens} />);
 
@@ -146,7 +140,7 @@ describe('KitchensView', () => {
 
   it('calls onDelete when delete button is clicked', () => {
     const kitchens: Kitchen[] = [
-      { id: 'kitchen-456', name: 'Test Kitchen', rating: 2 }
+      { id: 'kitchen-456', name: 'Test Kitchen', rating: 2, description: 'A test kitchen' }
     ];
 
     render(<KitchensView {...defaultProps} kitchens={kitchens} />);
@@ -175,7 +169,7 @@ describe('KitchensView', () => {
 
   it('updates kitchen rating when edited', () => {
     const kitchens: Kitchen[] = [
-      { id: '1', name: 'Test Kitchen', rating: 1 }
+      { id: '1', name: 'Test Kitchen', rating: 1, description: 'A test kitchen' }
     ];
 
     render(<KitchensView {...defaultProps} kitchens={kitchens} />);

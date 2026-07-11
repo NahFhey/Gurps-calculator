@@ -1,94 +1,28 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import '@testing-library/jest-dom';
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
-import { CampaignStoreProvider, useCampaignStore } from '../../state/campaignStore';
+import { describe, expect, it, vi } from 'vitest';
+import { CampaignStoreProvider } from '../../state/campaignStore';
 import { UnifiedShell } from '../UnifiedShell';
-import type { DowntimeTask, FishingData, RestData } from '../../types/downtime';
+
+vi.mock('../../net/SyncProvider', () => ({
+  useSyncContext: () => ({
+    status: 'offline' as const,
+    role: null,
+    sessionInfo: null,
+    playerCount: 0,
+    displayName: null,
+    playerList: [],
+    hostGame: vi.fn(),
+    joinGame: vi.fn(),
+    disconnect: vi.fn(),
+  }),
+  SyncProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
 
 const modules = [
   { id: 'inventory', label: 'Inventory', content: <div>Inventory Module</div> },
 ];
-
-// Helper to create a fishing task
-function createFishingTask(
-  id: string,
-  leaderId: string,
-  dayKey: number,
-  slot: number,
-  status: 'pending' | 'resolved' | 'cancelled' = 'pending'
-): DowntimeTask {
-  const now = Date.now();
-  return {
-    id,
-    activityType: 'fishing',
-    dayKey,
-    slot,
-    leaderId,
-    helperIds: [],
-    status,
-    activityData: {
-      type: 'fishing',
-      speciesId: 'species-1',
-      spotId: 'spot-1',
-      toolIds: [],
-      skillModifier: 0,
-      targetYield: 1,
-    } as FishingData,
-    createdAt: now,
-    updatedAt: now,
-  };
-}
-
-// Helper to create a rest task
-function createRestTask(
-  id: string,
-  leaderId: string,
-  dayKey: number,
-  slot: number,
-  status: 'pending' | 'resolved' | 'cancelled' = 'resolved'
-): DowntimeTask {
-  const now = Date.now();
-  return {
-    id,
-    activityType: 'rest',
-    dayKey,
-    slot,
-    leaderId,
-    helperIds: [],
-    status,
-    activityData: {
-      type: 'rest',
-      restType: 'sleep',
-      recoveryBonus: 0,
-    } as RestData,
-    createdAt: now,
-    updatedAt: now,
-  };
-}
-
-// Component to inject downtime state for testing
-function InjectDowntimeState({
-  tasks,
-  day = 1,
-  slot = 0,
-}: {
-  tasks: DowntimeTask[];
-  day?: number;
-  slot?: number;
-}) {
-  const { state, actions } = useCampaignStore();
-
-  useEffect(() => {
-    // We can't directly set downtime state through actions,
-    // but we can use debug actions if available
-    // For now, just set time
-    actions.setTimeDay(day);
-    actions.setDayPlannerSlot(slot);
-  }, [actions, day, slot]);
-
-  return null;
-}
 
 describe('UnifiedShell party sidebar downtime badges', () => {
   it('renders character list without downtime badges when no tasks exist', () => {

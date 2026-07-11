@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { FoodTypesView } from '../views/FoodTypesView';
 import type { FoodType } from '../../../types/campaign';
 
@@ -166,10 +166,6 @@ describe('FoodTypesView', () => {
     const foodTypes: FoodType[] = [{ name: 'meat', color: '#FF0000' }];
 
     render(<FoodTypesView {...defaultProps} foodTypes={foodTypes} />);
-
-    const colorInputs = screen.getAllByRole('textbox').filter(
-      input => (input as HTMLInputElement).type === 'color'
-    );
 
     // Color inputs in the list (not the add form)
     const listColorInputs = document.querySelectorAll('input[type="color"]');

@@ -55,7 +55,6 @@ interface EffectsPanelProps {
  */
 export default function EffectsPanel({
   prompts,
-  target,
   onEffectResolved,
   onComplete
 }: EffectsPanelProps) {

@@ -214,3 +214,35 @@ export const ManeuverIds: Record<string, string> = ManeuverCatalog.reduce((acc, 
   acc[maneuver.id] = maneuver.id;
   return acc;
 }, {} as Record<string, string>);
+
+// ============================================================================
+// Movement Budget Helper
+// ============================================================================
+
+/** Maneuvers that grant full Move */
+const FULL_MOVE_MANEUVERS = new Set(['move', 'move_and_attack']);
+/** Maneuvers that grant half Move */
+const HALF_MOVE_MANEUVERS = new Set(['all_out_attack_determined', 'all_out_attack_strong']);
+/** Maneuvers that grant no movement */
+const NO_MOVE_MANEUVERS = new Set(['aim', 'concentrate', 'do_nothing']);
+
+/**
+ * Returns the movement budget in yards for a given maneuver + basicMove.
+ * GURPS rules: Move = full, Attack/most = 1-yard step, AoA = half Move step,
+ * Aim/Concentrate/Do Nothing = 0.
+ *
+ * @param maneuverId  The maneuver chosen this turn
+ * @param basicMove   The character's Basic Move stat
+ * @param isCombatMap Whether on a tactical (hex/grid) map
+ */
+export function getMovementBudgetYards(
+  maneuverId: string,
+  basicMove: number,
+  _isCombatMap = true,
+): number {
+  if (FULL_MOVE_MANEUVERS.has(maneuverId)) return basicMove;
+  if (HALF_MOVE_MANEUVERS.has(maneuverId)) return Math.max(1, Math.floor(basicMove / 2));
+  if (NO_MOVE_MANEUVERS.has(maneuverId)) return 0;
+  // Default: 1-yard step for Attack, Feint, Ready, Evaluate, All-Out Defense, etc.
+  return 1;
+}

@@ -176,5 +176,5 @@ const INVENTORY_ACTION_TYPES = new Set([
  * Type guard to check if an action is an inventory action
  */
 export function isInventoryAction(action: { type: string }): action is InventoryAction {
-  return INVENTORY_ACTION_TYPES.has(action.type);
+  return INVENTORY_ACTION_TYPES.has(action.type as any);
 }

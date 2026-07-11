@@ -20,21 +20,19 @@ function createMockCombatCharacter(overrides: Partial<CombatCharacter> = {}): Co
   return {
     id: 'combat-char-1',
     name: 'Test Combat Character',
+    isNPC: false,
     hp: 10,
-    maxHp: 10,
-    fp: 10,
-    maxFp: 10,
-    speed: 5,
-    move: 5,
+    maxHP: 10,
+    st: 10,
     dx: 10,
     iq: 10,
     ht: 10,
-    will: 10,
-    per: 10,
     dodge: 8,
-    parry: 8,
-    block: 0,
     dr: 0,
+    skills: {},
+    weapons: [],
+    armor: [],
+    notes: '',
     ...overrides,
   };
 }
@@ -43,12 +41,11 @@ function createMockCombatSession(overrides: Partial<CombatSession> = {}): Combat
   return {
     id: 'session-1',
     name: 'Test Combat Session',
-    round: 1,
-    turn: 0,
+    currentRound: 1,
+    currentTurn: 0,
     participants: [],
     log: [],
-    startedAt: Date.now(),
-    isActive: true,
+    startDate: new Date().toISOString(),
     ...overrides,
   };
 }
@@ -57,8 +54,9 @@ function createMockCombatItem(overrides: Partial<CombatItem> = {}): CombatItem {
   return {
     id: 'item-1',
     name: 'Test Item',
+    type: 'weapon',
+    stats: {},
     quantity: 1,
-    notes: '',
     ...overrides,
   };
 }
@@ -67,7 +65,7 @@ function createMockCharacter(overrides: Partial<Character> = {}): Character {
   return {
     id: 'party-char-1',
     name: 'Test Party Character',
-    isPlayer: true,
+    work: { skills: {} },
     ...overrides,
   };
 }
@@ -85,7 +83,7 @@ function createMockCampaignState(overrides: any = {}) {
     combat: {
       activeSession: null,
       rulesPreset: 'standard',
-      reveal: {},
+      revealState: null,
       ...overrides.combat,
     },
     ...overrides,
@@ -100,6 +98,7 @@ function createMockActions() {
     setCombatTombstones: vi.fn(),
     setCombatRulesPreset: vi.fn(),
     setCombatItems: vi.fn(),
+    setCombatRevealState: vi.fn(),
   };
 }
 
@@ -193,7 +192,7 @@ describe('useCombatStore', () => {
           combat: {
             activeSession: session,
             rulesPreset: 'standard',
-            reveal: {},
+            revealState: null,
           },
         }),
         actions: mockActions,
@@ -217,7 +216,7 @@ describe('useCombatStore', () => {
     });
 
     it('returns combat history', () => {
-      const historySession = createMockCombatSession({ id: 'past-session', isActive: false });
+      const historySession = createMockCombatSession({ id: 'past-session' });
 
       const mockActions = createMockActions();
       mockedUseCampaignStore.mockReturnValue({
@@ -269,7 +268,7 @@ describe('useCombatStore', () => {
           combat: {
             activeSession: null,
             rulesPreset: 'cinematic',
-            reveal: {},
+            revealState: null,
           },
         }),
         actions: mockActions,
@@ -281,7 +280,7 @@ describe('useCombatStore', () => {
     });
 
     it('returns combat reveal state', () => {
-      const revealState = { showEnemyHP: true, showEnemyStats: false };
+      const revealState = { showEnemyHP: true, showEnemyStats: false } as any;
 
       const mockActions = createMockActions();
       mockedUseCampaignStore.mockReturnValue({
@@ -289,7 +288,7 @@ describe('useCombatStore', () => {
           combat: {
             activeSession: null,
             rulesPreset: 'standard',
-            reveal: revealState,
+            revealState: revealState,
           },
         }),
         actions: mockActions,
@@ -411,7 +410,7 @@ describe('useCombatStore', () => {
     });
 
     it('supports functional update pattern', () => {
-      const existingSession = createMockCombatSession({ id: 'session-1', round: 1 });
+      const existingSession = createMockCombatSession({ id: 'session-1', currentRound: 1 });
       const mockActions = createMockActions();
 
       mockedUseCampaignStore.mockReturnValue({
@@ -419,7 +418,7 @@ describe('useCombatStore', () => {
           combat: {
             activeSession: existingSession,
             rulesPreset: 'standard',
-            reveal: {},
+            revealState: null,
           },
         }),
         actions: mockActions,
@@ -430,13 +429,13 @@ describe('useCombatStore', () => {
       act(() => {
         result.current.saveCombatActive((prev: CombatSession | null) => {
           if (!prev) return null;
-          return { ...prev, round: prev.round + 1 };
+          return { ...prev, currentRound: prev.currentRound + 1 };
         });
       });
 
       expect(mockActions.setCombatActive).toHaveBeenCalledTimes(1);
       const calledWith = mockActions.setCombatActive.mock.calls[0][0];
-      expect(calledWith.round).toBe(2);
+      expect(calledWith.currentRound).toBe(2);
     });
 
     it('functional update receives null when no active session', () => {
@@ -562,7 +561,7 @@ describe('useCombatStore', () => {
       const { result } = renderHook(() => useCombatStore());
 
       act(() => {
-        result.current.saveCombatReveal({ showEnemyHP: true });
+        result.current.saveCombatReveal({ showEnemyHP: true } as any);
       });
 
       expect(consoleSpy).toHaveBeenCalledWith(

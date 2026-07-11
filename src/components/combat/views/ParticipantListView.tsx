@@ -6,7 +6,6 @@ import ConditionBadge from '../ConditionBadge';
 import type {
   ParticipantListViewProps,
   ParticipantCardProps,
-  Participant,
   HPValue,
   FPValue,
   MPValue,
@@ -56,7 +55,7 @@ export const ParticipantListView = memo(ParticipantListViewBase);
  * Handles both truth state (GM View) and filtered state (Player View)
  * Memoized to prevent re-renders when sibling participants change
  */
-function ParticipantCardBase({ participant, isCurrent, onUpdateResource, viewMode }: ParticipantCardProps) {
+function ParticipantCardBase({ participant, isCurrent, onUpdateResource }: ParticipantCardProps) {
   const [editing, setEditing] = useState<string | null>(null); // 'HP', 'FP', or 'MP'
   const [editValue, setEditValue] = useState('');
 
@@ -115,7 +114,7 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, viewMod
   const mp = getMPValues();
 
   const hpStatus = hp.mode === 'exact'
-    ? calculateHPStatus(hp.current, hp.max)
+    ? calculateHPStatus(hp.current || 0, hp.max || 0)
     : (hp.band || 'unknown');
 
   const getHPStatusColor = (status: string): string => {

@@ -1,13 +1,28 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { CampaignStoreProvider, useCampaignStore } from '../../state/campaignStore';
 import { UnifiedShell } from '../UnifiedShell';
 import { DowntimePanel } from '../../components/downtime';
 
+vi.mock('../../net/SyncProvider', () => ({
+  useSyncContext: () => ({
+    status: 'offline' as const,
+    role: null,
+    sessionInfo: null,
+    playerCount: 0,
+    displayName: null,
+    playerList: [],
+    hostGame: vi.fn(),
+    joinGame: vi.fn(),
+    disconnect: vi.fn(),
+  }),
+  SyncProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 const modules = [
-  { id: 'downtime', label: 'Downtime', content: <DowntimePanel /> }
+  { id: 'downtime', label: 'Downtime', content: <DowntimePanel currentDayKey={1} currentSlot={0} /> }
 ];
 
 function ActivateDowntime() {

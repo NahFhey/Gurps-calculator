@@ -24,8 +24,33 @@ import { ConfirmDialog, useConfirmDialog, useToast } from './ui';
 import type {
   TaskAssignment,
   TaskMode,
-  PendingDayLedger
+  PendingDayLedger,
+  CanAdvanceResult
 } from '../types/dayplanner';
+import type {
+  GatheringSpeciesExtended,
+  GatheringToolExtended,
+  GatheringTableExtended,
+  GatheringEnvironmentExtended,
+  GatheringBaitExtended,
+  GatheringCategoryExtended,
+  GatheringItemExtended
+} from '../types/gathering';
+import type {
+  GatheringSpecies,
+  GatheringTool,
+  GatheringTable,
+  GatheringEnvironment,
+  GatheringBait,
+  GatheringCategory,
+  GatheringItem,
+  Character,
+  Food,
+  Material,
+  TimeSlot as CampaignTimeSlot,
+  TaskAssignment as CampaignTaskAssignment,
+  DayLedger
+} from '../types/campaign';
 
 /**
  * DayPlannerTab - Main component for the Day Planner gathering system
@@ -62,73 +87,73 @@ function DayPlannerTabBase() {
 
   // Derive data from normalized state
   const species = useMemo(() =>
-    denormalizeObject(state.entities.gatheringSpecies || {}) as any[],
+    denormalizeObject<GatheringSpecies>(state.entities.gatheringSpecies || {}),
     [state.entities.gatheringSpecies]
   );
 
   const tools = useMemo(() =>
-    denormalizeObject(state.entities.gatheringTools || {}) as any[],
+    denormalizeObject<GatheringTool>(state.entities.gatheringTools || {}),
     [state.entities.gatheringTools]
   );
 
   const tables = useMemo(() =>
-    denormalizeObject(state.entities.gatheringTables || {}) as any[],
+    denormalizeObject<GatheringTable>(state.entities.gatheringTables || {}),
     [state.entities.gatheringTables]
   );
 
   const environments = useMemo(() =>
-    denormalizeObject(state.entities.gatheringEnvironments || {}) as any[],
+    denormalizeObject<GatheringEnvironment>(state.entities.gatheringEnvironments || {}),
     [state.entities.gatheringEnvironments]
   );
 
   const bait = useMemo(() =>
-    denormalizeObject(state.entities.gatheringBait || {}) as any[],
+    denormalizeObject<GatheringBait>(state.entities.gatheringBait || {}),
     [state.entities.gatheringBait]
   );
 
   const categories = useMemo(() =>
-    denormalizeObject(state.entities.gatheringCategories || {}) as any[],
+    denormalizeObject<GatheringCategory>(state.entities.gatheringCategories || {}),
     [state.entities.gatheringCategories]
   );
 
   const items = useMemo(() =>
-    denormalizeObject(state.entities.gatheringItems || {}) as any[],
+    denormalizeObject<GatheringItem>(state.entities.gatheringItems || {}),
     [state.entities.gatheringItems]
   );
 
   const workers = useMemo(() => {
-    const chars = denormalizeObject(state.entities.characters || {}) as any[];
+    const chars = denormalizeObject<Character>(state.entities.characters || {});
     return chars.filter(c => c.work?.enabled);
   }, [state.entities.characters]);
 
   const foods = useMemo(() =>
-    denormalizeObject(state.entities.foods || {}) as any[],
+    denormalizeObject<Food>(state.entities.foods || {}),
     [state.entities.foods]
   );
 
   const materials = useMemo(() =>
-    denormalizeObject(state.entities.materials || {}) as any[],
+    denormalizeObject<Material>(state.entities.materials || {}),
     [state.entities.materials]
   );
 
-  // Day planner state
+  // Day planner state (cast from campaign types to dayplanner types)
   const timeSlots = state.dayPlanner.timeSlots || [];
-  const taskAssignments = state.dayPlanner.taskAssignments || [];
-  const pendingDayLedger = state.dayPlanner.pendingDayLedger;
+  const taskAssignments = (state.dayPlanner.taskAssignments || []) as unknown as TaskAssignment[];
+  const pendingDayLedger = state.dayPlanner.pendingDayLedger as unknown as PendingDayLedger | null;
   const currentDay = state.time.day;
   const currentSlot = state.dayPlanner.currentSlot || 0;
 
   // Save callbacks
-  const saveTimeSlots = useCallback((slots: any[]) => {
+  const saveTimeSlots = useCallback((slots: CampaignTimeSlot[]) => {
     actions.setTimeSlots(slots);
   }, [actions]);
 
   const saveTaskAssignments = useCallback((tasks: TaskAssignment[]) => {
-    actions.setTaskAssignments(tasks);
+    actions.setTaskAssignments(tasks as unknown as CampaignTaskAssignment[]);
   }, [actions]);
 
   const savePendingDayLedger = useCallback((ledger: PendingDayLedger | null) => {
-    actions.setPendingDayLedger(ledger as any);
+    actions.setPendingDayLedger(ledger as unknown as DayLedger | null);
   }, [actions]);
 
   const saveCurrentDay = useCallback((day: number) => {
@@ -139,11 +164,11 @@ function DayPlannerTabBase() {
     actions.setDayPlannerSlot(slot);
   }, [actions]);
 
-  const saveFoods = useCallback((foodsList: any[]) => {
+  const saveFoods = useCallback((foodsList: Food[]) => {
     actions.setFoods(normalizeArray(foodsList));
   }, [actions]);
 
-  const saveMaterials = useCallback((materialsList: any[]) => {
+  const saveMaterials = useCallback((materialsList: Material[]) => {
     actions.setMaterials(normalizeArray(materialsList));
   }, [actions]);
 
@@ -157,14 +182,14 @@ function DayPlannerTabBase() {
    */
   function initializeDayState() {
     // Ensure slots exist
-    const updatedSlots = ensureDaySlotsExist(timeSlots, currentDay);
+    const updatedSlots = ensureDaySlotsExist(timeSlots, currentDay) as unknown as CampaignTimeSlot[];
     if (updatedSlots.length !== timeSlots.length) {
       saveTimeSlots(updatedSlots);
     }
 
     // Ensure pending ledger exists
-    if (!pendingDayLedger || pendingDayLedger.dayKey !== currentDay) {
-      const newLedger = createPendingDayLedger(currentDay);
+    if (!pendingDayLedger || (pendingDayLedger as unknown as { dayKey: number }).dayKey !== currentDay) {
+      const newLedger = createPendingDayLedger(currentDay) as unknown as PendingDayLedger;
       savePendingDayLedger(newLedger);
     }
   }
@@ -173,7 +198,7 @@ function DayPlannerTabBase() {
    * Gets tasks for the current slot
    */
   const currentSlotTasks = useMemo(() => {
-    return getTasksForSlot(taskAssignments, currentDay, currentSlot);
+    return getTasksForSlot(taskAssignments, currentDay, currentSlot) as unknown as TaskAssignment[];
   }, [taskAssignments, currentDay, currentSlot]);
 
   /**
@@ -194,15 +219,14 @@ function DayPlannerTabBase() {
    * Checks if the current slot can advance
    */
   const canAdvance = useMemo(() => {
-    return canAdvanceSlot(taskAssignments, currentDay, currentSlot);
+    return canAdvanceSlot(taskAssignments, currentDay, currentSlot) as unknown as CanAdvanceResult;
   }, [taskAssignments, currentDay, currentSlot]);
-
   /**
    * Adds a new task to the current slot
    */
   function addTask() {
     const orderIndex = currentSlotTasks.length;
-    const newTask = createTaskAssignment(currentDay, currentSlot, orderIndex, newTaskMode);
+    const newTask = createTaskAssignment(currentDay, currentSlot, orderIndex, newTaskMode) as unknown as TaskAssignment;
 
     saveTaskAssignments([...taskAssignments, newTask]);
     setSelectedTaskId(newTask.id);
@@ -244,7 +268,7 @@ function DayPlannerTabBase() {
 
     // Add to pending ledger
     if (pendingDayLedger) {
-      const updatedLedger = addTaskSummaryToLedger(pendingDayLedger, completedTask);
+      const updatedLedger = addTaskSummaryToLedger(pendingDayLedger as unknown as PendingDayLedger, completedTask) as unknown as PendingDayLedger;
       savePendingDayLedger(updatedLedger);
     }
   }
@@ -253,17 +277,15 @@ function DayPlannerTabBase() {
    * Sleep button handler - advances time when no work is done
    */
   async function handleSleep() {
-    const slotTasks = currentSlotTasks;
-
     // If slot has no tasks, advance immediately
-    if (slotTasks.length === 0) {
+    if (currentSlotTasks.length === 0) {
       advanceSlot();
       return;
     }
 
     // If slot has tasks but none started, warn
-    const hasStartedTasks = slotTasks.some(t =>
-      t.resolutionState === TASK_STATUS.Resolving || t.resolutionState === TASK_STATUS.Completed
+    const hasStartedTasks = currentSlotTasks.some(
+      t => t.resolutionState === TASK_STATUS.Resolving || t.resolutionState === TASK_STATUS.Completed
     );
 
     if (!hasStartedTasks) {
@@ -279,14 +301,14 @@ function DayPlannerTabBase() {
    * Advances to the next slot
    */
   function advanceSlot() {
-    const advancement = advanceToNextSlot(currentDay, currentSlot);
+    const advancement = advanceToNextSlot(currentDay, currentSlot) as unknown as { nextDay: number; nextSlot: number; dayAdvanced: boolean };
 
-    if (advancement.dayAdvanced) {
+    if (advancement?.dayAdvanced) {
       // Day is ending - show summary and commit
       commitDay(advancement.nextDay);
     } else {
       // Just advance to next slot
-      saveCurrentSlot(advancement.nextSlot);
+      saveCurrentSlot(advancement?.nextSlot);
     }
   }
 
@@ -297,11 +319,12 @@ function DayPlannerTabBase() {
     if (!pendingDayLedger) return;
 
     // Commit pending inventory
-    const { updatedFoods, updatedMaterials, committedLedger } = commitPendingDayLedger(
-      pendingDayLedger,
+    const result = commitPendingDayLedger(
+      pendingDayLedger as unknown as PendingDayLedger,
       foods,
       materials
-    );
+    ) as unknown as { updatedFoods: Food[]; updatedMaterials: Material[]; committedLedger: PendingDayLedger };
+    const { updatedFoods, updatedMaterials, committedLedger } = result;
 
     // Save committed inventory
     saveFoods(updatedFoods);
@@ -354,13 +377,13 @@ function DayPlannerTabBase() {
             <TaskDetailPanel
               task={taskAssignments.find(t => t.id === selectedTaskId)}
               workers={workers}
-              environments={environments}
-              tools={tools}
-              species={species}
-              categories={categories}
-              items={items}
-              bait={bait}
-              tables={tables}
+              environments={environments as unknown as GatheringEnvironmentExtended[]}
+              tools={tools as unknown as GatheringToolExtended[]}
+              species={species as unknown as GatheringSpeciesExtended[]}
+              categories={categories as unknown as GatheringCategoryExtended[]}
+              items={items as unknown as GatheringItemExtended[]}
+              bait={bait as unknown as GatheringBaitExtended[]}
+              tables={tables as unknown as GatheringTableExtended[]}
               taskAssignments={taskAssignments}
               currentDay={currentDay}
               currentSlot={currentSlot}
@@ -376,7 +399,7 @@ function DayPlannerTabBase() {
       </div>
 
       {/* Day Summary */}
-      <DaySummaryPanel pendingDayLedger={pendingDayLedger} />
+      <DaySummaryPanel pendingDayLedger={pendingDayLedger as unknown as PendingDayLedger | null} />
 
       {/* Skip Work Confirmation Dialog */}
       <ConfirmDialog {...skipWorkDialog.dialogProps} />

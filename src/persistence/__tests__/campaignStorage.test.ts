@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createCampaignState } from '../../state/campaignReducer';
 import { loadCampaignState, saveCampaignState } from '../campaignStorage';
+import { idbClear, idbSet } from '../db';
 import type { CombatCharacter, CombatSession, CombatItem } from '../../types/campaign';
 
 // ============================================================================
@@ -11,21 +12,19 @@ function createMockCombatCharacter(overrides: Partial<CombatCharacter> = {}): Co
   return {
     id: 'combat-char-1',
     name: 'Test Combat Character',
+    isNPC: false,
     hp: 10,
-    maxHp: 10,
-    fp: 10,
-    maxFp: 10,
-    speed: 5,
-    move: 5,
+    maxHP: 10,
+    st: 10,
     dx: 10,
     iq: 10,
     ht: 10,
-    will: 10,
-    per: 10,
     dodge: 8,
-    parry: 8,
-    block: 0,
     dr: 0,
+    skills: {},
+    weapons: [],
+    armor: [],
+    notes: '',
     ...overrides,
   };
 }
@@ -34,12 +33,11 @@ function createMockCombatSession(overrides: Partial<CombatSession> = {}): Combat
   return {
     id: 'session-1',
     name: 'Test Combat Session',
-    round: 1,
-    turn: 0,
+    currentRound: 1,
+    currentTurn: 0,
     participants: [],
     log: [],
-    startedAt: Date.now(),
-    isActive: true,
+    startDate: new Date().toISOString(),
     ...overrides,
   };
 }
@@ -48,8 +46,9 @@ function createMockCombatItem(overrides: Partial<CombatItem> = {}): CombatItem {
   return {
     id: 'item-1',
     name: 'Test Item',
+    type: 'weapon',
+    stats: {},
     quantity: 1,
-    notes: '',
     ...overrides,
   };
 }
@@ -59,8 +58,9 @@ function createMockCombatItem(overrides: Partial<CombatItem> = {}): CombatItem {
 // ============================================================================
 
 describe('campaignStorage', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     localStorage.clear();
+    await idbClear();
   });
 
   it('loadCampaignState returns defaults when empty', async () => {
@@ -92,8 +92,8 @@ describe('campaignStorage', () => {
   describe('combat state persistence', () => {
     it('round-trips combat characters', async () => {
       const state = createCampaignState();
-      const char1 = createMockCombatCharacter({ id: 'fighter-1', name: 'Fighter', hp: 15, maxHp: 15 });
-      const char2 = createMockCombatCharacter({ id: 'mage-1', name: 'Mage', hp: 8, maxHp: 8 });
+      const char1 = createMockCombatCharacter({ id: 'fighter-1', name: 'Fighter', hp: 15, maxHP: 15 });
+      const char2 = createMockCombatCharacter({ id: 'mage-1', name: 'Mage', hp: 8, maxHP: 8 });
 
       state.entities.combatCharacters = {
         'fighter-1': char1,
@@ -113,11 +113,15 @@ describe('campaignStorage', () => {
       const session = createMockCombatSession({
         id: 'session-active',
         name: 'Battle at the Bridge',
-        round: 3,
-        turn: 2,
-        participants: ['fighter-1', 'mage-1', 'goblin-1'],
+        currentRound: 3,
+        currentTurn: 2,
+        participants: [
+          { characterId: 'fighter-1', team: 'ally', initiative: 1, currentHP: 10, status: 'active' },
+          { characterId: 'mage-1', team: 'ally', initiative: 2, currentHP: 8, status: 'active' },
+          { characterId: 'goblin-1', team: 'enemy', initiative: 0, currentHP: 5, status: 'active' }
+        ],
         log: [
-          { type: 'attack', actor: 'fighter-1', target: 'goblin-1', result: 'hit' } as any,
+          { type: 'attack', actor: 'fighter-1', target: 'goblin-1', result: 'hit', round: 1, turn: 0 } as any,
         ],
       });
 
@@ -130,9 +134,9 @@ describe('campaignStorage', () => {
       expect(loaded.combat.activeSession).not.toBeNull();
       expect(loaded.combat.activeSession?.id).toBe('session-active');
       expect(loaded.combat.activeSession?.name).toBe('Battle at the Bridge');
-      expect(loaded.combat.activeSession?.round).toBe(3);
-      expect(loaded.combat.activeSession?.turn).toBe(2);
-      expect(loaded.combat.activeSession?.participants).toEqual(['fighter-1', 'mage-1', 'goblin-1']);
+      expect(loaded.combat.activeSession?.currentRound).toBe(3);
+      expect(loaded.combat.activeSession?.currentTurn).toBe(2);
+      expect(loaded.combat.activeSession?.participants.length).toBe(3);
       expect(loaded.combat.active).toBe(true);
     });
 
@@ -153,12 +157,10 @@ describe('campaignStorage', () => {
       const pastSession1 = createMockCombatSession({
         id: 'past-1',
         name: 'Tavern Brawl',
-        isActive: false,
       });
       const pastSession2 = createMockCombatSession({
         id: 'past-2',
         name: 'Dungeon Ambush',
-        isActive: false,
       });
 
       state.entities.combatHistory = [pastSession1, pastSession2];
@@ -223,7 +225,7 @@ describe('campaignStorage', () => {
       state.combat.reveal.revealedTargets.add('target-2');
       state.combat.reveal.revealedHP.add('hp-1');
       state.combat.reveal.revealedDefenseValues = {
-        'char-1': { dodge: 8, parry: 10 },
+        'char-1': { dodge: 8 },
       };
 
       await saveCampaignState(state);
@@ -240,7 +242,6 @@ describe('campaignStorage', () => {
 
       expect(loaded.combat.reveal.revealedDefenseValues['char-1']).toEqual({
         dodge: 8,
-        parry: 10,
       });
     });
 
@@ -248,9 +249,9 @@ describe('campaignStorage', () => {
       const state = createCampaignState();
 
       // Combat characters
-      const fighter = createMockCombatCharacter({ id: 'fighter', name: 'Sir Galahad', hp: 12, maxHp: 15 });
-      const mage = createMockCombatCharacter({ id: 'mage', name: 'Merlin', hp: 6, maxHp: 8 });
-      const goblin = createMockCombatCharacter({ id: 'goblin', name: 'Goblin Scout', hp: 5, maxHp: 7 });
+      const fighter = createMockCombatCharacter({ id: 'fighter', name: 'Sir Galahad', hp: 12, maxHP: 15 });
+      const mage = createMockCombatCharacter({ id: 'mage', name: 'Merlin', hp: 6, maxHP: 8 });
+      const goblin = createMockCombatCharacter({ id: 'goblin', name: 'Goblin Scout', hp: 5, maxHP: 7 });
 
       state.entities.combatCharacters = {
         'fighter': fighter,
@@ -262,15 +263,19 @@ describe('campaignStorage', () => {
       state.combat.activeSession = createMockCombatSession({
         id: 'current-battle',
         name: 'Forest Ambush',
-        round: 2,
-        turn: 1,
-        participants: ['fighter', 'mage', 'goblin'],
+        currentRound: 2,
+        currentTurn: 1,
+        participants: [
+          { characterId: 'fighter', team: 'ally', initiative: 1, currentHP: 12, status: 'active' },
+          { characterId: 'mage', team: 'ally', initiative: 2, currentHP: 6, status: 'active' },
+          { characterId: 'goblin', team: 'enemy', initiative: 0, currentHP: 5, status: 'active' }
+        ],
       });
       state.combat.active = true;
 
       // Combat history
       state.entities.combatHistory = [
-        createMockCombatSession({ id: 'past-battle', name: 'Tavern Fight', isActive: false }),
+        createMockCombatSession({ id: 'past-battle', name: 'Tavern Fight' }),
       ];
 
       // Tombstones
@@ -299,7 +304,7 @@ describe('campaignStorage', () => {
       expect(loaded.entities.combatCharacters['fighter'].hp).toBe(12);
 
       expect(loaded.combat.activeSession?.name).toBe('Forest Ambush');
-      expect(loaded.combat.activeSession?.round).toBe(2);
+      expect(loaded.combat.activeSession?.currentRound).toBe(2);
       expect(loaded.combat.active).toBe(true);
 
       expect(loaded.entities.combatHistory).toHaveLength(1);
@@ -317,8 +322,8 @@ describe('campaignStorage', () => {
     });
 
     it('handles corrupted JSON gracefully', async () => {
-      // Manually set corrupted data in localStorage
-      localStorage.setItem('campaignState', 'not-valid-json{{{');
+      // Manually set corrupted data in IndexedDB
+      await idbSet('campaignState', 'not-valid-json{{{');
 
       const loaded = await loadCampaignState();
 
@@ -337,7 +342,7 @@ describe('campaignStorage', () => {
         // combat field is missing entirely
       };
 
-      localStorage.setItem('campaignState', JSON.stringify(partialState));
+      await idbSet('campaignState', JSON.stringify(partialState));
 
       const loaded = await loadCampaignState();
 

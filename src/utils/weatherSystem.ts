@@ -15,7 +15,6 @@ import type {
   ActiveWeather,
   WeatherDuration,
   WeatherTableEntry,
-  WeatherTable,
   Location,
   ClimateType,
   TerrainType,
@@ -23,7 +22,6 @@ import type {
   WeatherGenerationResult,
   LocationState,
   LocationModifiers,
-  Id,
 } from '../types/location';
 import { WEATHER_ICONS, TEMPERATURE_LABELS } from '../types/location';
 

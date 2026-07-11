@@ -5,7 +5,6 @@
  * Extracted from CombatTracker.tsx for better organization and reusability.
  */
 
-import { ReactNode } from 'react';
 
 // ============================================================================
 // CORE COMBAT TYPES
@@ -69,6 +68,7 @@ export interface Participant {
   bleeding?: { rate: number; round: number } | null;
   crippled?: string[];
   conditions?: ConditionInstance[];
+  position?: { q: number; r: number };
 }
 
 export interface HPValue {
@@ -159,6 +159,7 @@ export interface CombatState {
   currentRound: number;
   turnDecisions: Record<string, TurnDecision>;
   log: LogEntry[];
+  mapId?: string;
 }
 
 export interface TurnDecision {
@@ -166,6 +167,7 @@ export interface TurnDecision {
   notes?: string;
   aim?: { targetInstanceId?: string; turnsAimed?: number };
   wait?: { triggerText?: string };
+  movement?: { fromPosition: { q: number; r: number }; toPosition: { q: number; r: number }; path: string[]; costYards: number };
 }
 
 export interface HistoryState {
@@ -194,6 +196,8 @@ export interface Maneuver {
   label: string;
   prompts?: ManeuverPrompts;
   workflow?: ManeuverWorkflow;
+  group?: string;
+  notes?: string;
 }
 
 export interface ManeuverPrompts {

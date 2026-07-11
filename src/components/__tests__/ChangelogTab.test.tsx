@@ -1,12 +1,13 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { ChangelogTab } from '../ChangelogTab';
 import { CampaignStoreProvider, useCampaignStore } from '../../state/campaignStore';
 import { logEvent } from '../../state/campaignReducer';
+import type { LogEntry } from '../../state/campaignReducer';
 
-function SeedLogs({ entries }) {
+function SeedLogs({ entries }: { entries: LogEntry[] }) {
   const { actions } = useCampaignStore();
   useEffect(() => {
     actions.setLogsEntries(entries);

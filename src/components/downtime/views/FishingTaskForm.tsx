@@ -16,7 +16,7 @@ import { FISHING_METHODS } from '../../../constants';
 import { characterHasAnySkill, getCharacterSkills, ACTIVITY_SKILL_REQUIREMENTS } from '../../../types/characterSheet';
 import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
 import type { DowntimeState, FishingData, FishingMethod } from '../../../types/downtime';
-import type { Character, GatheringSpecies, GatheringTool, GatheringEnvironment, GatheringBait } from '../../../types/campaign';
+import type { Character } from '../../../types/campaign';
 
 // ============================================================================
 // TYPES
@@ -26,13 +26,13 @@ interface FishingTaskFormProps {
   /** Available characters to assign */
   characters: Character[];
   /** Available fishing spots */
-  spots: GatheringEnvironment[];
+  spots: any[];
   /** Available fish species */
-  species: GatheringSpecies[];
+  species: any[];
   /** Available fishing tools */
-  tools: GatheringTool[];
+  tools: any[];
   /** Available fishing bait */
-  bait: GatheringBait[];
+  bait: any[];
   /** Gathering tables for species filtering */
   gatheringTables?: any[];
   /** Current downtime state for validation */
@@ -155,7 +155,7 @@ export function FishingTaskForm({
     if (!spotId || !selectedSpot) return [];
 
     // Get catch table ID from spot
-    const spotDefaults = selectedSpot?.defaultsByMode?.Fishing ?? (selectedSpot as any)?.defaultTables;
+    const spotDefaults = selectedSpot?.defaultsByMode?.Fishing;
     const catchTableId = spotDefaults?.randomCatchTableId;
 
     if (!catchTableId) {

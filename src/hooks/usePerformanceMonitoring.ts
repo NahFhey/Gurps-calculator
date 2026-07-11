@@ -91,7 +91,6 @@ export function useRenderPerformance(
 ): RenderPerformanceResult {
   const renderCountRef = useRef(0);
   const renderTimesRef = useRef<number[]>([]);
-  const _previousPropsRef = useRef<unknown>(null);
 
   renderCountRef.current += 1;
 
@@ -407,12 +406,12 @@ export function useMemoryTracking(intervalMs: number = 5000): MemoryStats | null
   useEffect(() => {
     const interval = setInterval(() => {
       const currentMemory = performanceMonitor.trackMemory();
-      setMemory(currentMemory);
+      setMemory(currentMemory as unknown as MemoryStats);
     }, intervalMs);
 
     // Initial check
     const initialMemory = performanceMonitor.trackMemory();
-    setMemory(initialMemory);
+    setMemory(initialMemory as unknown as MemoryStats);
 
     return () => clearInterval(interval);
   }, [intervalMs]);
