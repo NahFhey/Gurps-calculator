@@ -765,7 +765,9 @@ describe('getTargetKeyFromActivityData', () => {
 
     const result = getTargetKeyFromActivityData('crafting', activityData as unknown as ActivityData);
 
-    expect(result).toBe('project:sword-project');
+    // Crafting keys by recipe since 797e04e (type unification); projectId is
+    // no longer part of the lock identity.
+    expect(result).toBe('recipe:r1');
   });
 
   it('extracts rest target key', () => {
