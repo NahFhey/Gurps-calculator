@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-04-18
 **Branch:** `home-test`
-**Status:** Phase 10 stabilization baseline is still green, and Phase 11a combat decomposition is underway with `ActionPanel` split into smaller prompt/chooser subviews, reusable action-panel types, direct workflow tests, and `CombatTracker` turn/history bookkeeping moved into dedicated hooks while the next combat target shifts to the remaining combat workflow bodies.
+**Status:** Phase 10 stabilization baseline is still green, and Phase 11a combat decomposition is underway with `ActionPanel` now split into smaller prompt/chooser/workflow subviews, reusable action-panel types, direct workflow tests, and `CombatTracker` turn/history bookkeeping moved into dedicated hooks while the next combat target shifts toward the cleanest remaining `CombatTracker` seam.
 
 ## Current Snapshot
 
@@ -15,10 +15,11 @@
 - `LocationManager` now has direct tests for location creation/current-location changes, last-location delete protection, custom climates, and weather-table assignment.
 - `TimeControls` now block on unresolved current-slot downtime tasks as well as paused activities, and the compact `+Day` path has direct shell coverage.
 - The repo-local stabilization workflow now includes thematic backlog sweeps, explicit closeout verification, and doc refresh expectations.
-- `ActionPanel.tsx` now delegates its collapsed state, header, maneuver prompts, and workflow chooser to dedicated subviews, and its shared workflow types now live in `src/types/actionPanel.ts`.
+- `ActionPanel.tsx` now delegates its collapsed state, header, maneuver prompts, and workflow chooser plus damage/note/conditions/items workflow bodies to dedicated subviews, and its shared workflow types now live in `src/types/actionPanel.ts`.
 - Direct `ActionPanel` tests now cover aim/wait prompt updates, maneuver-gated workflow opening, and note submission flow.
 - `CombatTracker.tsx` now delegates turn/history bookkeeping into `src/hooks/useCombatHistory.ts` and `src/hooks/useCombatTurn.ts`, shrinking the component from 1,506 lines to 1,019 lines while keeping behavior green under the existing combat tests.
-- The most useful next work is Phase 11a combat decomposition, continuing with the remaining `ActionPanel` workflow views and any further `CombatTracker` logic slices that can move cleanly into hooks while the verification baseline stays green.
+- `ActionPanel.tsx` is now down to 295 lines, clearing the Phase 11a `< 300` target while keeping the focused `ActionPanel` suite green.
+- The most useful next work is Phase 11a combat decomposition, continuing with the next `CombatTracker` logic slice that can move cleanly into hooks or helpers while the verification baseline stays green.
 
 Historical migration details below are kept for context, but the bullets above are the current baseline.
 
@@ -331,7 +332,7 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 
 #### 8e. Future Candidates (Lower Priority)
 **Remaining large files that could benefit from decomposition:**
-- ActionPanel.tsx (combat action workflow)
+- CombatTracker.tsx (active combat orchestration)
 - AlchemyTab.jsx (bridge context dependent)
 - CookingTab.jsx (bridge context dependent)
 
@@ -575,7 +576,7 @@ The 27% reduction focuses on view extraction while preserving complex combat log
 
 Latest Phase 10 note: built-in shell modules now lazy-load, vendor chunks are split out, and the largest emitted bundle is about 360KB without a chunk-size warning.
 Latest coverage note: `CraftingWorkbench`, `LocationManager`, shell-header time advancement, and `CombatTracker` round flow now have direct workflow tests instead of relying only on higher-level mocks for those flows.
-Latest Phase 11a note: `ActionPanel.tsx` is down to 359 lines after extracting its collapsed/header/prompt/chooser UI into dedicated subviews, `CombatTracker.tsx` is down to 1,019 lines after moving turn/history bookkeeping into `useCombatHistory` and `useCombatTurn`, and both slices are covered by the green verification baseline.
+Latest Phase 11a note: `ActionPanel.tsx` is down to 295 lines after extracting its collapsed/header/prompt/chooser UI plus damage/note/conditions/items workflows into dedicated subviews, `CombatTracker.tsx` is down to 1,019 lines after moving turn/history bookkeeping into `useCombatHistory` and `useCombatTurn`, and both slices are covered by the green verification baseline.
 
 **Current Branch:** `home-test`
 **Build Status:** ? Passing (largest emitted chunk ~360KB, no chunk-size warning)

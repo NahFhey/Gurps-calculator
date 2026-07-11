@@ -1,11 +1,13 @@
-import { useState, useEffect, type ChangeEvent } from 'react';
+import { useState, useEffect } from 'react';
 import AttackAssist from './AttackAssist';
 import DefenseAssist from './DefenseAssist';
-import InjuryResolutionPanel from './InjuryResolutionPanel';
-import ConditionsPanel from './ConditionsPanel';
 import ActionPanelCollapsedView from './action-panel/ActionPanelCollapsedView';
 import ActionPanelHeader from './action-panel/ActionPanelHeader';
+import ActionPanelDamageWorkflow from './action-panel/ActionPanelDamageWorkflow';
+import ActionPanelConditionsWorkflow from './action-panel/ActionPanelConditionsWorkflow';
+import ActionPanelItemsWorkflow from './action-panel/ActionPanelItemsWorkflow';
 import ActionPanelManeuverPrompts from './action-panel/ActionPanelManeuverPrompts';
+import ActionPanelNoteWorkflow from './action-panel/ActionPanelNoteWorkflow';
 import ActionPanelWorkflowSelector from './action-panel/ActionPanelWorkflowSelector';
 import { getPublicDefenderLabel } from '../../utils/combatViewSelectors';
 import { ViewMode } from '../../utils/combatViewFilter';
@@ -65,6 +67,11 @@ export default function ActionPanel({
   const getTruthParticipant = (instanceId: string) => truthParticipants.find(p => p.instanceId === instanceId);
   const boundTargetTruth = boundTargetId ? getTruthParticipant(boundTargetId) : null;
   const truthTargets = targets.map(target => getTruthParticipant(target.instanceId)).filter(Boolean) as ActionPanelParticipant[];
+  const resolvedDamageTarget =
+    boundTargetTruth ||
+    (selectedTargetId ? getTruthParticipant(selectedTargetId) : null) ||
+    truthTargets[0] ||
+    null;
 
   const handleStartWorkflow = (workflow: WorkflowType) => {
     setActiveWorkflow(workflow);
@@ -271,123 +278,52 @@ export default function ActionPanel({
       )}
 
       {activeWorkflow === 'damage' && (
-        <div className="border-t border-gray-700 pt-4">
-          <h4 className="text-lg font-semibold mb-3">Injury Workflow (Phase 4)</h4>
-          {(boundTarget && !forceTargetSelection) && (
-            <div className="mb-3 bg-gray-700/40 rounded p-3">
-              <div className="text-xs text-gray-400 mb-1">Target (from attack)</div>
-              <div className="text-sm font-semibold">
-                {getPublicDefenderLabel(combatState, revealState, boundTarget.instanceId)}
-              </div>
-              <button
-                onClick={() => setForceTargetSelection(true)}
-                className="mt-2 text-xs text-blue-300 hover:text-blue-200"
-                type="button"
-              >
-                Change Target
-              </button>
-            </div>
-          )}
-          {(!boundTarget || forceTargetSelection) && (
-            <div className="mb-3">
-              <label className="block text-sm font-semibold mb-2">Target</label>
-              <select
-                className="w-full px-3 py-2 bg-gray-700 rounded"
-                value={selectedTargetId || targets[0]?.instanceId || ''}
-                onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedTargetId(e.target.value)}
-              >
-                {targets.map((target) => (
-                  <option key={target.instanceId} value={target.instanceId}>
-                    {target.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          {targets.length > 0 && (
-            <InjuryResolutionPanel
-              attacker={{ st: currentActor.st ?? 10, name: currentActor.name }}
-              target={(boundTargetTruth || getTruthParticipant(selectedTargetId!) || truthTargets[0]) as any}
-              combatRulesPreset={combatRulesPreset}
-              damageExpression={boundDamageExpression || ''}
-              injectedDamageModifiers={maneuverWorkflow?.damage?.modifiers || []}
-              initialLocation={boundHitLocation}
-              initialLocationRoll={boundHitLocationRoll}
-              onComplete={handleDamageComplete}
-              onCancel={handleCancelWorkflow}
-            />
-          )}
-          {targets.length === 0 && (
-            <div className="text-gray-400 text-sm">No valid targets available</div>
-          )}
-        </div>
+        <ActionPanelDamageWorkflow
+          currentActor={currentActor}
+          targets={targets}
+          selectedTargetId={selectedTargetId}
+          boundTarget={boundTarget}
+          resolvedTarget={resolvedDamageTarget}
+          combatState={combatState}
+          revealState={revealState}
+          combatRulesPreset={combatRulesPreset}
+          maneuverWorkflow={maneuverWorkflow}
+          boundDamageExpression={boundDamageExpression}
+          boundHitLocation={boundHitLocation}
+          boundHitLocationRoll={boundHitLocationRoll}
+          forceTargetSelection={forceTargetSelection}
+          onSelectTarget={setSelectedTargetId}
+          onForceTargetSelection={() => setForceTargetSelection(true)}
+          onComplete={handleDamageComplete}
+          onCancel={handleCancelWorkflow}
+        />
       )}
 
       {activeWorkflow === 'note' && (
-        <div className="border-t border-gray-700 pt-4">
-          <h4 className="text-lg font-semibold mb-3">Add Note</h4>
-          <div className="space-y-3">
-            <textarea
-              value={noteText}
-              onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setNoteText(e.target.value)}
-              placeholder="Enter note or description..."
-              className="w-full px-3 py-2 bg-gray-700 rounded h-24"
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={handleCancelWorkflow}
-                className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddNote}
-                disabled={!noteText.trim()}
-                className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Add Note
-              </button>
-            </div>
-          </div>
-        </div>
+        <ActionPanelNoteWorkflow
+          noteText={noteText}
+          onNoteTextChange={setNoteText}
+          onAddNote={handleAddNote}
+          onCancel={handleCancelWorkflow}
+        />
       )}
 
       {/* Phase 6: Conditions Workflow */}
       {activeWorkflow === 'conditions' && onAddCondition && onRemoveCondition && (
-        <div className="border-t border-gray-700 pt-4">
-          <ConditionsPanel
-            participant={{ ...currentActor, id: currentActor.instanceId }}
-            currentRound={currentRound}
-            currentTurn={currentTurn}
-            onAddCondition={onAddCondition}
-            onRemoveCondition={onRemoveCondition}
-            onUpdateCondition={onUpdateCondition ? (id: string, dur: number) => onUpdateCondition(id, { type: 'rounds', value: dur }) : undefined}
-          />
-          <div className="mt-4">
-            <button
-              onClick={handleCancelWorkflow}
-              className="w-full px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded"
-            >
-              Close
-            </button>
-          </div>
-        </div>
+        <ActionPanelConditionsWorkflow
+          currentActor={currentActor}
+          currentRound={currentRound}
+          currentTurn={currentTurn}
+          onAddCondition={onAddCondition}
+          onRemoveCondition={onRemoveCondition}
+          onUpdateCondition={onUpdateCondition}
+          onCancel={handleCancelWorkflow}
+        />
       )}
 
       {/* Phase 6: Items Workflow (placeholder) */}
       {activeWorkflow === 'items' && (
-        <div className="border-t border-gray-700 pt-4">
-          <h4 className="text-lg font-semibold mb-3">Use Item (Phase 6)</h4>
-          <div className="text-gray-400 text-sm mb-4">
-            Item system coming soon...
-          </div>
-          <button
-            onClick={handleCancelWorkflow}
-            className="w-full px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded"
-          >
-            Close
-          </button>
-        </div>
+        <ActionPanelItemsWorkflow onCancel={handleCancelWorkflow} />
       )}
     </div>
   );

@@ -9,7 +9,7 @@
 
 **Goal:** Get the codebase healthy before pushing new features. Fix what's broken, remove what's dead.
 
-**Status as of 2026-04-18:** The verification baseline is still green, the old TypeScript lint warning backlog has been burned down, the shell now lazy-loads major modules so the production build no longer emits chunk-size warnings, direct workflow coverage is now in place for `CraftingWorkbench`, `LocationManager`, time advancement in the shell header, combat round flow in `CombatTracker`, and `ActionPanel` maneuver/note flows, the dependency audit did not uncover any low-risk unused root packages, and Phase 11a is underway with `ActionPanel` split into smaller prompt/chooser subviews plus shared action-panel types and `CombatTracker` turn/history bookkeeping extracted into dedicated hooks.
+**Status as of 2026-04-18:** The verification baseline is still green, the old TypeScript lint warning backlog has been burned down, the shell now lazy-loads major modules so the production build no longer emits chunk-size warnings, direct workflow coverage is now in place for `CraftingWorkbench`, `LocationManager`, time advancement in the shell header, combat round flow in `CombatTracker`, and `ActionPanel` maneuver/note flows, the dependency audit did not uncover any low-risk unused root packages, and Phase 11a is underway with `ActionPanel` now split across smaller prompt/chooser/workflow subviews plus shared action-panel types while `CombatTracker` turn/history bookkeeping lives in dedicated hooks.
 - `npm run lint` now covers `js/jsx/ts/tsx` and is clean.
 - `tsc --noEmit` is clean.
 - `npm run build` is clean.
@@ -21,7 +21,7 @@
 - `CraftingWorkbench` now has direct tests for slot reservation, phase progression, project completion, and abandon/refund behavior.
 - `LocationManager` now has direct tests for create/set-current flow, last-location delete protection, custom climate persistence, and weather-table assignment/usage.
 - The shell header `TimeControls` now respect unresolved downtime tasks as a real advancement blocker, and the compact `+Day` path has direct coverage.
-- Best next-session target: Continue Phase 11a combat decomposition with the remaining `ActionPanel` workflow subviews and the next cleanly separable `CombatTracker` logic slice while the branch stays this healthy.
+- Best next-session target: Continue Phase 11a combat decomposition with the next cleanly separable `CombatTracker` logic slice and any remaining heavy combat workflows while the branch stays this healthy.
 
 ### 10a: Fix TypeScript Errors
 - Completed in the current worktree: the original TypeScript backlog is no longer the active blocker.
@@ -47,8 +47,8 @@
 - Target: all tests green, 80%+ view coverage
 
 **Suggested next session**
-1. Split the remaining `ActionPanel` workflow bodies into smaller action-type views.
-2. Decide whether the next `CombatTracker` slice should be action resolution, maneuver orchestration, or reinforcements based on the cleanest hook seam.
+1. Decide whether the next `CombatTracker` slice should be action resolution, maneuver orchestration, or reinforcements based on the cleanest hook seam.
+2. Keep tightening combat workflow boundaries around the extracted `ActionPanel` subviews if shared helpers or local hooks emerge naturally.
 3. Keep dependency cleanup limited to evidence-backed follow-up only; the current root audit did not reveal a safe removal target.
 
 **Estimated remaining effort:** Phase 10 wrap-up is effectively done; Phase 11 is underway.
@@ -62,9 +62,9 @@
 ### 11a: CombatTracker Decomposition
 - Extract remaining business logic from CombatTracker.tsx (1,019 lines)
 - Started in the current worktree: create dedicated hooks `useCombatTurn` and `useCombatHistory` for turn/history bookkeeping
-- Started in the current worktree: extract `ActionPanel` shared types plus collapsed/header/prompt/chooser subviews, shrinking `ActionPanel.tsx` from 592 lines to 359 lines
-- Continue extracting `ActionPanel` workflow bodies into sub-views by action type
-- Target: CombatTracker < 800 lines, ActionPanel < 300 lines
+- Completed in the current worktree: extract `ActionPanel` shared types plus collapsed/header/prompt/chooser/workflow subviews, shrinking `ActionPanel.tsx` from 592 lines to 295 lines
+- Continue extracting the next combat seam from `CombatTracker` or any remaining shared helpers that fall out of the new `ActionPanel` workflow subviews
+- Target: CombatTracker < 800 lines, ActionPanel < 300 lines (met)
 
 ### 11b: Combat UX Improvements
 - Automated attack/defense roll resolution with margin calculation
@@ -240,3 +240,14 @@
 3. **Test what matters** - Focus tests on state reducers and critical workflows, not every UI detail.
 4. **Ship incrementally** - Each phase should leave the app in a usable state. No multi-phase dependencies.
 5. **The downtime system is the differentiator** - Invest disproportionately in making it excellent.
+
+---
+
+## Companion Projects (Cross-Reference)
+
+The VTT consumes content authored in sibling projects. Authoring tooling for that content lives in those projects, not here. Tracked here so the relationship doesn't get lost.
+
+- **Spell authoring → GURPS charsheet repo.** Spell definitions (core GURPS and Drakenfire homebrew colleges) are authored in a structured spell designer that lives in `projects/Gurps-charsheet/`. See `Spell_Designer_Proposal_v1.md` in that repo. The VTT inherits the spell schema for runtime casting once Phase 6 of `GURPS_CharSheet_Proposal_v2.md` (VTT bridge) lands. No new authoring surface needed in the VTT.
+- **Character authoring → GURPS charsheet repo.** Character creation, including templates and the editor flow, lives in the charsheet. See `Character_Editor_Proposal_v1.md`. The VTT's character library will import characters built there once the bridge lands.
+
+Both companion proposals are in active drafting. Open questions in those documents may surface schema decisions the VTT will need to honor; cross-check before any VTT work that touches spell or character data.
