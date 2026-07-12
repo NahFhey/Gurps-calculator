@@ -23,6 +23,7 @@ import {
   CURRENT_SCHEMA_VERSION,
 } from './schemaVersioning';
 import { ensureParticipantConditionVisibility } from './conditionsEngine';
+import { deriveCombatCategory } from './combatHelpers';
 
 type MigratableData = Record<string, unknown> & { schemaVersion?: string };
 
@@ -56,6 +57,7 @@ const migrationHandlers: Record<string, MigrationHandler> = {
   '1.2.0:1.3.0': migrateTo1_3_0,
   '1.3.0:1.4.0': migrateTo1_4_0,
   '1.4.0:1.5.0': migrateTo1_5_0,
+  '1.5.0:1.5.1': migrateTo1_5_1,
 };
 
 /**
@@ -254,6 +256,37 @@ function migrateTo1_5_0(data: MigratableData): MigratableData {
       ),
     },
   };
+}
+
+/**
+ * Migration: 1.5.0 → 1.5.1 (CombatCharacter category backfill)
+ *
+ * Library records saved before 1.5.1 dropped the form's `category`, so
+ * EncounterSetup's category-grouped lists never showed them. Handles the flat
+ * legacy `combatCharacters`/`combatTombstones` keys here; the nested
+ * campaign-state shape is covered at hydrate time by
+ * src/persistence/dataMigration.ts ensureCombatCharacterCategories() (same
+ * deriveCombatCategory helper, so both paths stay in lockstep).
+ */
+function migrateTo1_5_1(data: MigratableData): MigratableData {
+  const backfill = (value: unknown[]): unknown[] =>
+    value.map((entry) => {
+      if (!entry || typeof entry !== 'object') return entry;
+      const char = entry as Record<string, unknown>;
+      const category = deriveCombatCategory(char.category, char.isNPC);
+      const isNPC = category !== 'player';
+      if (char.category === category && char.isNPC === isNPC) return entry;
+      return { ...char, category, isNPC };
+    });
+
+  const next: MigratableData = { ...data };
+  if (Array.isArray(data.combatCharacters)) {
+    next.combatCharacters = backfill(data.combatCharacters);
+  }
+  if (Array.isArray(data.combatTombstones)) {
+    next.combatTombstones = backfill(data.combatTombstones);
+  }
+  return next;
 }
 
 /**

@@ -24,6 +24,7 @@ describe('Combat round lifecycle', () => {
   const fighter: CombatCharacter = {
     id: 'fighter-1',
     name: 'Sir Roderick',
+    category: 'player',
     isNPC: false,
     hp: 14,
     maxHP: 14,
@@ -42,6 +43,7 @@ describe('Combat round lifecycle', () => {
   const goblin: CombatCharacter = {
     id: 'goblin-1',
     name: 'Goblin Scout',
+    category: 'enemy',
     isNPC: true,
     hp: 8,
     maxHP: 8,
@@ -396,6 +398,7 @@ describe('Cross-system character persistence', () => {
     const char: CombatCharacter = {
       id: 'hero-1',
       name: 'Hero',
+      category: 'player',
       isNPC: false,
       hp: 12,
       maxHP: 12,

@@ -24,6 +24,7 @@ function createCombatCharacter(overrides?: Partial<CombatCharacter>): CombatChar
   return {
     id: 'char-fighter',
     name: 'Test Fighter',
+    category: 'player',
     isNPC: false,
     hp: 12,
     maxHP: 12,

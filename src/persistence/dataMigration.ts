@@ -13,6 +13,7 @@ import {
   ensureIds
 } from '../state/campaignUtils';
 import { ensureParticipantConditionVisibility } from '../utils/conditionsEngine';
+import { deriveCombatCategory } from '../utils/combatHelpers';
 import type { Id, Material, Food, Recipe, Craft, CraftDesign, AlchemyReagent, AlchemyFormula, AlchemyBatch, AlchemyLab, GatheringSpecies, GatheringTool, GatheringTable, GatheringEnvironment, GatheringSession, GatheringBait, GatheringCategory, GatheringItem, CombatCharacter, CombatItem, Kitchen, Inventory } from '../types/campaign';
 
 // Legacy localStorage keys to migrate
@@ -505,6 +506,48 @@ export function ensureConditionVisibility(state: CampaignState): CampaignState {
         ...session,
         participants
       }
+    }
+  };
+}
+
+/**
+ * Schema 1.5.1 (library/encounter data-flow fix): CombatCharacter category.
+ *
+ * Records saved before 1.5.1 have no `category` — the library form's value was
+ * dropped on save — so EncounterSetup's category-grouped "Add from Library"
+ * lists never showed them. Backfills `category` (isNPC true → 'enemy', else
+ * 'player'; the buggy mapping wrote isNPC false for everything, so most
+ * records land in 'player' where they are at least visible and re-taggable)
+ * and recomputes `isNPC` to stay consistent (category !== 'player'). Covers
+ * live library records and tombstones, which share the CombatCharacter type.
+ * Pure and idempotent — safe to run on every load.
+ */
+export function ensureCombatCharacterCategories(state: CampaignState): CampaignState {
+  let changed = false;
+
+  const withCategory = (char: CombatCharacter): CombatCharacter => {
+    const category = deriveCombatCategory(char.category, char.isNPC);
+    const isNPC = category !== 'player';
+    if (char.category === category && char.isNPC === isNPC) return char;
+    changed = true;
+    return { ...char, category, isNPC };
+  };
+
+  const combatCharacters: Record<Id, CombatCharacter> = {};
+  for (const [id, char] of Object.entries(state.entities.combatCharacters)) {
+    combatCharacters[id] = withCategory(char);
+  }
+
+  const tombstones = state.entities.combatTombstones;
+  const combatTombstones = Array.isArray(tombstones) ? tombstones.map(withCategory) : tombstones;
+
+  if (!changed) return state;
+  return {
+    ...state,
+    entities: {
+      ...state.entities,
+      combatCharacters,
+      combatTombstones
     }
   };
 }

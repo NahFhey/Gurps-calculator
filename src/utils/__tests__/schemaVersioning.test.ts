@@ -26,7 +26,7 @@ import {
 describe('Schema Versioning System', () => {
   describe('Version Constants', () => {
     it('should have current schema version defined', () => {
-      expect(CURRENT_SCHEMA_VERSION).toBe('1.5.0');
+      expect(CURRENT_SCHEMA_VERSION).toBe('1.5.1');
     });
 
     it('should have metadata for all supported versions', () => {
@@ -36,6 +36,7 @@ describe('Schema Versioning System', () => {
       expect(SCHEMA_METADATA['1.3.0']).toBeDefined();
       expect(SCHEMA_METADATA['1.4.0']).toBeDefined();
       expect(SCHEMA_METADATA['1.5.0']).toBeDefined();
+      expect(SCHEMA_METADATA['1.5.1']).toBeDefined();
     });
 
     it('should include features list in metadata', () => {
@@ -197,6 +198,37 @@ describe('Schema Versioning System', () => {
       const result = migrateData(v1_4_data, '1.4.0', '1.5.0');
       expect(result.combatActive).toBeNull();
       expect(result.schemaVersion).toBe('1.5.0');
+    });
+
+    it('should backfill combat character categories when migrating from 1.5.0 to 1.5.1', () => {
+      const v1_5_data = {
+        currentDay: 4,
+        combatCharacters: [
+          { id: 'c1', name: 'Manual Enemy', isNPC: true },
+          { id: 'c2', name: 'Manual PC', isNPC: false },
+          { id: 'c3', name: 'Already Tagged', category: 'ally', isNPC: false }
+        ],
+        combatTombstones: [
+          { id: 't1', name: 'Fallen Foe', isNPC: true }
+        ]
+      };
+
+      const result = migrateData(v1_5_data, '1.5.0', '1.5.1');
+      const [c1, c2, c3] = result.combatCharacters;
+
+      expect(result.schemaVersion).toBe('1.5.1');
+      expect(c1).toMatchObject({ category: 'enemy', isNPC: true });
+      expect(c2).toMatchObject({ category: 'player', isNPC: false });
+      // A valid pre-existing category wins over isNPC, and isNPC is recomputed
+      expect(c3).toMatchObject({ category: 'ally', isNPC: true });
+      expect(result.combatTombstones[0]).toMatchObject({ category: 'enemy', isNPC: true });
+    });
+
+    it('should pass through 1.5.1 migration when no combat characters exist', () => {
+      const v1_5_data = { currentDay: 4 };
+      const result = migrateData(v1_5_data, '1.5.0', '1.5.1');
+      expect(result.schemaVersion).toBe('1.5.1');
+      expect('combatCharacters' in result).toBe(false);
     });
 
     it('should perform full migration from 1.0.0 to 1.3.0', () => {
@@ -396,7 +428,7 @@ describe('Schema Versioning System', () => {
     });
 
     it('should have upgrade path for all old versions', () => {
-      const oldVersions = ['1.0.0', '1.1.0', '1.2.0', '1.3.0', '1.4.0'];
+      const oldVersions = ['1.0.0', '1.1.0', '1.2.0', '1.3.0', '1.4.0', '1.5.0'];
 
       oldVersions.forEach(version => {
         const path = getMigrationPath(version, CURRENT_SCHEMA_VERSION);

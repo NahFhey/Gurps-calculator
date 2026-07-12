@@ -26,7 +26,8 @@ describe('CharacterDataSchema', () => {
   it('parses a valid character', () => {
     const result = CharacterDataSchema.parse(validCharacter);
     expect(result.name).toBe('Bob');
-    expect(result.category).toBe('PC');
+    // No category default — absence stays detectable for isNPC-based derivation
+    expect(result.category).toBeUndefined();
     expect(result.fp).toBe(0);
     expect(result.parry).toBe(0);
     expect(result.block).toBe(0);

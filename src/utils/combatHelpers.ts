@@ -3,7 +3,8 @@
  * Handles turn order generation, HP status calculation, and combat log formatting
  */
 
-import { HP_STATUS } from '../constants';
+import { HP_STATUS, COMBAT_CATEGORIES } from '../constants';
+import type { CombatCategory } from '../constants';
 import { DAMAGE_TYPE_LABELS } from './wounding';
 import { getCombatView } from './combatViewFilter';
 import { filterLogForPlayerView } from './combatLogFilter';
@@ -24,6 +25,27 @@ import type {
 // ============================================================================
 
 export type HPStatusValue = 'healthy' | 'injured' | 'critical' | 'dead';
+
+/**
+ * True when the value is one of the four combat library categories
+ * ('player' | 'ally' | 'enemy' | 'object').
+ */
+export function isCombatCategory(value: unknown): value is CombatCategory {
+  return typeof value === 'string' && (COMBAT_CATEGORIES as readonly string[]).includes(value);
+}
+
+/**
+ * Resolve a CombatCharacter category from possibly-legacy data.
+ *
+ * Records saved before schema 1.5.1 have no `category`; the only signal is
+ * `isNPC`, so true maps to 'enemy' and anything else to 'player'. Used by both
+ * the load-time backfill and the library import path so the two stay in
+ * lockstep.
+ */
+export function deriveCombatCategory(category: unknown, isNPC?: unknown): CombatCategory {
+  if (isCombatCategory(category)) return category;
+  return isNPC === true ? 'enemy' : 'player';
+}
 
 export interface ImportResult<T> {
   valid: boolean;

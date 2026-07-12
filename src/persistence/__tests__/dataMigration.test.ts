@@ -6,9 +6,10 @@ import {
   cleanupLegacyData,
   ensureInventoryRecords,
   ensureConditionVisibility,
+  ensureCombatCharacterCategories,
 } from '../dataMigration';
 import { createCampaignState } from '../../state/campaignReducer';
-import type { Character, CombatSession, Inventory } from '../../types/campaign';
+import type { Character, CombatCharacter, CombatSession, Inventory } from '../../types/campaign';
 
 // ============================================================================
 // In-memory mock for window.storage
@@ -421,5 +422,110 @@ describe('ensureConditionVisibility', () => {
     state.combat.activeSession = runtimeSession(['fighter-1', 'goblin-1']);
     const next = ensureConditionVisibility(state);
     expect(next).toBe(state);
+  });
+});
+
+// ============================================================================
+// ensureCombatCharacterCategories (schema 1.5.1)
+// ============================================================================
+
+describe('ensureCombatCharacterCategories', () => {
+  /**
+   * Records saved before schema 1.5.1 have no `category`. Tests build that
+   * stale shape and cast, matching production data on disk.
+   */
+  const legacyRecord = (
+    id: string,
+    fields: Record<string, unknown> = {}
+  ): CombatCharacter =>
+    ({
+      id,
+      name: `char-${id}`,
+      isNPC: false,
+      hp: 10,
+      maxHP: 10,
+      st: 10,
+      dx: 10,
+      iq: 10,
+      ht: 10,
+      dodge: 8,
+      dr: 0,
+      skills: {},
+      weapons: [],
+      ...fields,
+    }) as unknown as CombatCharacter;
+
+  it('backfills missing category from isNPC (true → enemy, false → player)', () => {
+    const state = createCampaignState();
+    state.entities.combatCharacters = {
+      hero: legacyRecord('hero', { isNPC: false }),
+      goblin: legacyRecord('goblin', { isNPC: true }),
+    };
+
+    const next = ensureCombatCharacterCategories(state);
+
+    expect(next.entities.combatCharacters['hero']).toMatchObject({
+      category: 'player',
+      isNPC: false,
+    });
+    expect(next.entities.combatCharacters['goblin']).toMatchObject({
+      category: 'enemy',
+      isNPC: true,
+    });
+  });
+
+  it('keeps a valid existing category and recomputes isNPC to match it', () => {
+    const state = createCampaignState();
+    state.entities.combatCharacters = {
+      // ally with a stale isNPC:false from the pre-1.5.1 mapping bug
+      guard: legacyRecord('guard', { category: 'ally', isNPC: false }),
+    };
+
+    const next = ensureCombatCharacterCategories(state);
+
+    expect(next.entities.combatCharacters['guard']).toMatchObject({
+      category: 'ally',
+      isNPC: true,
+    });
+  });
+
+  it('backfills tombstoned records too', () => {
+    const state = createCampaignState();
+    state.entities.combatTombstones = [legacyRecord('fallen', { isNPC: true })];
+
+    const next = ensureCombatCharacterCategories(state);
+
+    expect(next.entities.combatTombstones[0]).toMatchObject({
+      category: 'enemy',
+      isNPC: true,
+    });
+  });
+
+  it('is idempotent: second run returns the same state object', () => {
+    const state = createCampaignState();
+    state.entities.combatCharacters = {
+      hero: legacyRecord('hero', { isNPC: false }),
+      goblin: legacyRecord('goblin', { isNPC: true }),
+    };
+    state.entities.combatTombstones = [legacyRecord('fallen', { isNPC: true })];
+
+    const once = ensureCombatCharacterCategories(state);
+    const twice = ensureCombatCharacterCategories(once);
+    expect(twice).toBe(once); // unchanged input short-circuits
+  });
+
+  it('returns the same state when every record already has a consistent category', () => {
+    const state = createCampaignState();
+    state.entities.combatCharacters = {
+      hero: legacyRecord('hero', { category: 'player', isNPC: false }),
+      goblin: legacyRecord('goblin', { category: 'enemy', isNPC: true }),
+    };
+
+    expect(ensureCombatCharacterCategories(state)).toBe(state);
+  });
+
+  it('returns the same state when there are no combat characters', () => {
+    const state = createCampaignState();
+    expect(ensureCombatCharacterCategories(state)).toBe(state);
   });
 });

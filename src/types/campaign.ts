@@ -4,6 +4,7 @@
  */
 
 import type { GCSCharacterData, CharacterImages } from './characterSheet';
+import type { CombatCategory } from '../constants';
 
 export type Id = string;
 
@@ -636,6 +637,9 @@ export interface DayLedger {
 export interface CombatCharacter {
   id: Id;
   name: string;
+  /** Encounter-setup grouping. Records saved before schema 1.5.1 are backfilled at load. */
+  category: CombatCategory;
+  /** Derived: category !== 'player'. Kept for reveal/GM-mode consumers. */
   isNPC: boolean;
   hp: number;
   maxHP: number;
