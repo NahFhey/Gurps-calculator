@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useMemo } from 'react';
+import { Sparkles } from 'lucide-react';
 import type { MapModel, TileId } from '../../types/map';
 import type { Participant, CombatState } from '../../types/combatTracker';
 import { MapGrid } from '../map/views/MapGrid';
@@ -42,6 +43,7 @@ export function CombatMapPanel({
   onMoveTo,
   onGmPlaceToken,
   losTileIds,
+  onOpenConditions,
 }: {
   combat: CombatState;
   participants: Participant[];
@@ -54,6 +56,8 @@ export function CombatMapPanel({
   onMoveTo: (tileId: string, path: string[], costYards: number) => void;
   onGmPlaceToken: (instanceId: string, tileId: string, row: number, col: number) => void;
   losTileIds: string[] | undefined;
+  /** GM-only (Phase 12a.6): opens the condition popover for a participant at a screen point. */
+  onOpenConditions?: (instanceId: string, anchor: { x: number; y: number }) => void;
 }) {
   const session = useCombatSession();
   const linkedMap = (session?.linkedMap ?? null) as MapModel | null;
@@ -145,6 +149,7 @@ export function CombatMapPanel({
         selectedParticipantId={selectedParticipantId}
         onSelectParticipant={onSelectParticipant}
         categoryColor={categoryColorClass}
+        onOpenConditions={onOpenConditions}
       />
     </div>
   );
@@ -160,12 +165,14 @@ function TokenOverlay({
   selectedParticipantId,
   onSelectParticipant,
   categoryColor,
+  onOpenConditions,
 }: {
   participants: Participant[];
   currentActorInstanceId: string;
   selectedParticipantId: string | null;
   onSelectParticipant: (id: string | null) => void;
   categoryColor: (cat: string) => string;
+  onOpenConditions?: (instanceId: string, anchor: { x: number; y: number }) => void;
 }) {
   const placedParticipants = participants.filter((p) => p.position);
   const unplacedParticipants = participants.filter((p) => !p.position);
@@ -182,26 +189,41 @@ function TokenOverlay({
         const isCurrent = p.instanceId === currentActorInstanceId;
         const isSelected = p.instanceId === selectedParticipantId;
         return (
-          <button
-            key={p.instanceId}
-            type="button"
-            onClick={() => onSelectParticipant(isSelected ? null : p.instanceId)}
-            className={`w-full flex items-center gap-1.5 py-0.5 px-1 rounded text-[10px] text-left cursor-pointer hover:bg-gray-700/50 ${
-              isCurrent
-                ? 'bg-blue-500/20 text-blue-200'
-                : isSelected
-                  ? 'bg-yellow-500/20 text-yellow-200'
-                  : 'text-gray-300'
-            }`}
-          >
-            <div
-              className={`w-2.5 h-2.5 rounded-full border ${categoryColor(p.category)} flex-shrink-0`}
-            />
-            <span className="truncate">{p.name}</span>
-            <span className="text-gray-500 ml-auto flex-shrink-0">
-              {pos.q},{pos.r}
-            </span>
-          </button>
+          <div key={p.instanceId} className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => onSelectParticipant(isSelected ? null : p.instanceId)}
+              className={`flex-1 min-w-0 flex items-center gap-1.5 py-0.5 px-1 rounded text-[10px] text-left cursor-pointer hover:bg-gray-700/50 ${
+                isCurrent
+                  ? 'bg-blue-500/20 text-blue-200'
+                  : isSelected
+                    ? 'bg-yellow-500/20 text-yellow-200'
+                    : 'text-gray-300'
+              }`}
+            >
+              <div
+                className={`w-2.5 h-2.5 rounded-full border ${categoryColor(p.category)} flex-shrink-0`}
+              />
+              <span className="truncate">{p.name}</span>
+              <span className="text-gray-500 ml-auto flex-shrink-0">
+                {pos.q},{pos.r}
+              </span>
+            </button>
+            {/* Phase 12a.6: map-surface condition entry (GM only — host gates the prop) */}
+            {onOpenConditions && (
+              <button
+                type="button"
+                onClick={(e) =>
+                  onOpenConditions(p.instanceId, { x: e.clientX, y: e.clientY })
+                }
+                aria-label={`Manage conditions for ${p.name}`}
+                title="Add / manage conditions"
+                className="flex-none p-0.5 rounded text-gray-500 hover:text-purple-300 hover:bg-gray-700/70 transition-colors"
+              >
+                <Sparkles className="w-3 h-3" />
+              </button>
+            )}
+          </div>
         );
       })}
       {unplacedParticipants.length > 0 && (

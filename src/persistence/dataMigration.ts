@@ -12,6 +12,7 @@ import {
   createCharacterInventories,
   ensureIds
 } from '../state/campaignUtils';
+import { ensureParticipantConditionVisibility } from '../utils/conditionsEngine';
 import type { Id, Material, Food, Recipe, Craft, CraftDesign, AlchemyReagent, AlchemyFormula, AlchemyBatch, AlchemyLab, GatheringSpecies, GatheringTool, GatheringTable, GatheringEnvironment, GatheringSession, GatheringBait, GatheringCategory, GatheringItem, CombatCharacter, CombatItem, Kitchen, Inventory } from '../types/campaign';
 
 // Legacy localStorage keys to migrate
@@ -470,6 +471,40 @@ export function ensureInventoryRecords(state: CampaignState): CampaignState {
     entities: {
       ...state.entities,
       inventories
+    }
+  };
+}
+
+/**
+ * Schema 1.5.0 (Phase 12a.6): combat condition visibility shape.
+ *
+ * Walks the live combat session's participants and (a) folds legacy
+ * isStunned/isUnconscious booleans into conditions[], (b) backfills the
+ * per-instance `revealed` eye state from catalog defaults. Combat history
+ * and post-combat ParticipantSummary snapshots are frozen records and are
+ * deliberately left untouched. Pure and idempotent — safe to run on every
+ * load.
+ */
+export function ensureConditionVisibility(state: CampaignState): CampaignState {
+  const session = state.combat.activeSession;
+  if (!session || !Array.isArray(session.participants)) return state;
+
+  let changed = false;
+  const participants = session.participants.map((participant) => {
+    const migrated = ensureParticipantConditionVisibility(participant);
+    if (migrated !== participant) changed = true;
+    return migrated;
+  });
+
+  if (!changed) return state;
+  return {
+    ...state,
+    combat: {
+      ...state.combat,
+      activeSession: {
+        ...session,
+        participants
+      }
     }
   };
 }

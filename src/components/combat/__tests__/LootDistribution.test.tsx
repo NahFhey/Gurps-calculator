@@ -12,7 +12,17 @@ import LootDistribution from '../LootDistribution';
 const { acquireItemMock } = vi.hoisted(() => ({ acquireItemMock: vi.fn() }));
 
 vi.mock('../../../state/campaignStore', () => ({
-  useCampaignStore: () => ({ actions: { acquireItem: acquireItemMock } }),
+  useCampaignStore: () => ({
+    actions: { acquireItem: acquireItemMock },
+    state: {
+      entities: {
+        materialTypes: [
+          { name: 'Iron', difficulty: 0, effects: '', ht: 10, drShift: 0, weightMod: 0, hpMod: 0 },
+          { name: 'Steel', difficulty: 0, effects: '', ht: 12, drShift: 1, weightMod: 0, hpMod: 0 },
+        ],
+      },
+    },
+  }),
 }));
 
 vi.mock('../../../hooks/useCombatStore', () => ({
@@ -93,6 +103,39 @@ describe('LootDistribution', () => {
 
     expect(acquireItemMock).not.toHaveBeenCalled();
     expect(onComplete).toHaveBeenCalled();
+  });
+
+  it('acquires a material with the picked MaterialType instead of the loot placeholder', () => {
+    render(<LootDistribution onComplete={vi.fn()} />);
+    fireEvent.change(screen.getByPlaceholderText('Item name'), {
+      target: { value: 'Ingot' },
+    });
+    // Set loot type to material — this reveals the material-type selector
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'material' } });
+    // The material-type selector is now the second combobox in the add form
+    fireEvent.change(screen.getAllByRole('combobox')[1], { target: { value: 'Steel' } });
+    fireEvent.click(screen.getByText('Add Item'));
+    fireEvent.click(screen.getByText('Distribute'));
+
+    expect(acquireItemMock).toHaveBeenCalledTimes(1);
+    const [item, owner, source] = acquireItemMock.mock.calls[0];
+    expect(item).toMatchObject({ kind: 'material', name: 'Ingot', type: 'Steel' });
+    expect(owner).toBe('party');
+    expect(source).toBe('loot');
+  });
+
+  it('falls back to the untyped loot material type when none is picked', () => {
+    render(<LootDistribution onComplete={vi.fn()} />);
+    fireEvent.change(screen.getByPlaceholderText('Item name'), {
+      target: { value: 'Scrap' },
+    });
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'material' } });
+    // Leave the material-type selector at its default "Untyped loot material"
+    fireEvent.click(screen.getByText('Add Item'));
+    fireEvent.click(screen.getByText('Distribute'));
+
+    const [item] = acquireItemMock.mock.calls[0];
+    expect(item).toMatchObject({ kind: 'material', name: 'Scrap', type: 'loot' });
   });
 
   it('shows the distribution summary after distributing', () => {

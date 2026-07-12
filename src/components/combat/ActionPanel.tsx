@@ -16,6 +16,8 @@ import ConditionsPanel from './ConditionsPanel';
 import ManeuverWorkflowWidgets from './ManeuverWorkflowWidgets';
 import { getPublicDefenderLabel } from '../../utils/combatViewSelectors';
 import { ViewMode } from '../../utils/combatViewFilter';
+import { hasCondition } from '../../utils/conditionsEngine';
+import { ConditionId } from '../../constants/conditions';
 import type {
   Participant,
   ManeuverPrompts,
@@ -109,6 +111,7 @@ interface ActionPanelProps {
     conditionInstanceId: string,
     newDuration: ConditionDuration,
   ) => void;
+  onCycleRevealed?: (conditionInstanceId: string) => void;
 }
 
 /**
@@ -133,6 +136,7 @@ export default function ActionPanel({
   onAddCondition,
   onRemoveCondition,
   // onUpdateCondition is not used in this component
+  onCycleRevealed,
 }: ActionPanelProps) {
   const [activeWorkflow, setActiveWorkflow] = useState<WorkflowType>(null);
   const [noteText, setNoteText] = useState('');
@@ -159,7 +163,7 @@ export default function ActionPanel({
   const canTargetDefend = (targetId: string | null): boolean => {
     if (!targetId) return false;
     const t = getTruthParticipant(targetId);
-    if (!t || t.isDead || t.isUnconscious || t.isStunned) return false;
+    if (!t || t.isDead || hasCondition(t, ConditionId.UNCONSCIOUS) || hasCondition(t, ConditionId.STUNNED)) return false;
     const vals = [t.defenses?.dodge ?? t.dodge, t.defenses?.parry ?? t.parry, t.defenses?.block ?? t.block];
     return vals.some((v) => v !== null && v !== undefined);
   };
@@ -354,7 +358,7 @@ export default function ActionPanel({
 
       {activeWorkflow === 'conditions' && onAddCondition && onRemoveCondition && (
         <div className="border-t border-gray-700 pt-4">
-          <ConditionsPanel participant={{ ...currentActor, id: currentActor.instanceId }} currentRound={currentRound} currentTurn={currentTurn} onAddCondition={onAddCondition} onRemoveCondition={onRemoveCondition} />
+          <ConditionsPanel participant={{ ...currentActor, id: currentActor.instanceId }} currentRound={currentRound} currentTurn={currentTurn} onAddCondition={onAddCondition} onRemoveCondition={onRemoveCondition} onCycleRevealed={viewMode === ViewMode.GM ? onCycleRevealed : undefined} />
           <button onClick={() => setActiveWorkflow(null)} className="w-full mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded" aria-label="Close conditions panel">Close</button>
         </div>
       )}

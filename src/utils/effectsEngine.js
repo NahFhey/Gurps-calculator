@@ -4,6 +4,8 @@
  */
 
 import { rollVsTarget } from './dice';
+import { applyCondition, removeConditionType } from './conditionsEngine';
+import { ConditionId, DurationType } from '../constants/conditions';
 
 /**
  * Combat rules presets
@@ -249,12 +251,23 @@ export function performHTCheck(ht, penalty = 0) {
 
 /**
  * Apply effect result to combatant state
+ *
+ * Since Phase 12a.6, stun and unconsciousness are written to conditions[]
+ * (permanent duration — sticky until removed, matching the old bool
+ * semantics) instead of the removed isStunned/isUnconscious booleans.
+ * Pass effectData.round/turn for provenance on the created condition.
+ *
  * @param {Object} combatant - Combatant object
  * @param {string} effectType - Type of effect
  * @param {*} effectData - Effect-specific data
  * @returns {Object} Updated combatant state
  */
 export function applyEffect(combatant, effectType, effectData) {
+  const conditionOptions = {
+    round: effectData?.round ?? 0,
+    turn: effectData?.turn ?? 0,
+    duration: { type: DurationType.PERMANENT, value: null }
+  };
   const updates = { ...combatant };
 
   switch (effectType) {
@@ -263,12 +276,14 @@ export function applyEffect(combatant, effectType, effectData) {
       break;
 
     case 'stunned':
-      updates.isStunned = effectData.stunned;
-      break;
+      return effectData.stunned
+        ? applyCondition(combatant, ConditionId.STUNNED, conditionOptions)
+        : removeConditionType(combatant, ConditionId.STUNNED);
 
     case 'unconscious':
-      updates.isUnconscious = effectData.unconscious;
-      break;
+      return effectData.unconscious
+        ? applyCondition(combatant, ConditionId.UNCONSCIOUS, conditionOptions)
+        : removeConditionType(combatant, ConditionId.UNCONSCIOUS);
 
     case 'dead':
       updates.isDead = effectData.dead;
@@ -311,6 +326,11 @@ export function clearShock(combatant) {
 
 /**
  * Get all active effects summary for display
+ *
+ * Stun and unconsciousness are deliberately absent: since Phase 12a.6 they
+ * live in conditions[] and render as condition badges — listing them here
+ * would display them twice.
+ *
  * @param {Object} combatant - Combatant object
  * @returns {Array} Array of effect descriptions
  */
@@ -319,14 +339,6 @@ export function getActiveEffects(combatant) {
 
   if (combatant.shockPenalty && combatant.shockPenalty < 0) {
     effects.push(`Shock ${combatant.shockPenalty}`);
-  }
-
-  if (combatant.isStunned) {
-    effects.push('Stunned');
-  }
-
-  if (combatant.isUnconscious) {
-    effects.push('Unconscious');
   }
 
   if (combatant.isDead) {

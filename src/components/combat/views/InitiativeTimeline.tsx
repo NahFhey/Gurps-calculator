@@ -18,7 +18,11 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { calculateHPStatus } from '../../../utils/combatHelpers';
-import type { Participant } from '../../../types/combatTracker';
+import { hasCondition, getActiveConditions } from '../../../utils/conditionsEngine';
+import { ConditionId, getConditionIcon } from '../../../constants/conditions';
+import { sortConditionsByUrgency } from '../ConditionBadge';
+import ConditionOverflowPill from '../ConditionOverflowPill';
+import type { Participant, ConditionInstance } from '../../../types/combatTracker';
 
 // ============================================================================
 // Types
@@ -33,7 +37,12 @@ export interface InitiativeTimelineProps {
   onNextTurn: () => void;
   onJumpToTurn?: (turnIndex: number) => void;
   onReorderTurnOrder?: (newTurnOrder: string[]) => void;
+  /** GM-only (Phase 12a.6): opens the condition popover for a participant at a screen point. */
+  onOpenConditions?: (instanceId: string, anchor: { x: number; y: number }) => void;
 }
+
+/** Phase 12a.6 density cap: max condition icons per timeline token. */
+const TIMELINE_CONDITION_CAP = 3;
 
 // ============================================================================
 // Helpers
@@ -92,15 +101,17 @@ interface TokenProps {
   participant: Participant;
   isCurrent: boolean;
   isPast: boolean;
+  currentRound?: number;
   onClick?: () => void;
   isDragging?: boolean;
   dragHandleProps?: Record<string, unknown>;
   canDrag?: boolean;
+  onOpenConditions?: (instanceId: string, anchor: { x: number; y: number }) => void;
 }
 
-function TokenBase({ participant, isCurrent, isPast, onClick, isDragging, dragHandleProps, canDrag }: TokenProps) {
+function TokenBase({ participant, isCurrent, isPast, currentRound = 0, onClick, isDragging, dragHandleProps, canDrag, onOpenConditions }: TokenProps) {
   const isDead = participant.isDead;
-  const isUnconscious = participant.isUnconscious;
+  const isUnconscious = hasCondition(participant, ConditionId.UNCONSCIOUS);
 
   const ringColor = isDead ? 'ring-red-600' : hpRingColor(participant);
   const bg = categoryBg(participant.category);
@@ -177,6 +188,45 @@ function TokenBase({ participant, isCurrent, isPast, onClick, isDragging, dragHa
         <span>{participant.basicSpeed}</span>
       </div>
 
+      {/* Phase 12a.6: condition icons, urgency-sorted, capped at 3 + "+N" pill */}
+      {(() => {
+        const conditions = getActiveConditions(participant) as ConditionInstance[];
+        if (conditions.length === 0) return null;
+        const sorted = sortConditionsByUrgency(conditions, currentRound);
+        const visible = sorted.slice(0, TIMELINE_CONDITION_CAP);
+        const overflow = sorted.length - visible.length;
+        return (
+          <div className="flex items-center gap-0.5 text-[0.65rem] leading-none">
+            {visible.map((condition) => (
+              <span
+                key={condition.instanceId}
+                title={condition.label}
+                aria-label={condition.label}
+              >
+                {condition.placeholder ? '❓' : getConditionIcon(condition.conditionId)}
+              </span>
+            ))}
+            {overflow > 0 && (
+              <ConditionOverflowPill
+                count={overflow}
+                compact
+                onClick={
+                  onOpenConditions
+                    ? (e) => {
+                        e.stopPropagation();
+                        onOpenConditions(participant.instanceId, {
+                          x: e.clientX,
+                          y: e.clientY,
+                        });
+                      }
+                    : undefined
+                }
+              />
+            )}
+          </div>
+        );
+      })()}
+
       {/* Current turn indicator arrow */}
       {isCurrent && (
         <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0
@@ -200,11 +250,13 @@ interface SortableTokenProps {
   participant: Participant;
   isCurrent: boolean;
   isPast: boolean;
+  currentRound: number;
   onClick?: () => void;
   canDrag: boolean;
+  onOpenConditions?: (instanceId: string, anchor: { x: number; y: number }) => void;
 }
 
-function SortableToken({ id, participant, isCurrent, isPast, onClick, canDrag }: SortableTokenProps) {
+function SortableToken({ id, participant, isCurrent, isPast, currentRound, onClick, canDrag, onOpenConditions }: SortableTokenProps) {
   const {
     attributes,
     listeners,
@@ -225,10 +277,12 @@ function SortableToken({ id, participant, isCurrent, isPast, onClick, canDrag }:
         participant={participant}
         isCurrent={isCurrent}
         isPast={isPast}
+        currentRound={currentRound}
         onClick={isDragging ? undefined : onClick}
         isDragging={isDragging}
         dragHandleProps={canDrag ? { ...attributes, ...listeners } : undefined}
         canDrag={canDrag}
+        onOpenConditions={onOpenConditions}
       />
     </div>
   );
@@ -247,6 +301,7 @@ function InitiativeTimelineBase({
   onNextTurn,
   onJumpToTurn,
   onReorderTurnOrder,
+  onOpenConditions,
 }: InitiativeTimelineProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentTokenRef = useRef<HTMLDivElement>(null);
@@ -376,8 +431,10 @@ function InitiativeTimelineBase({
                       participant={participant}
                       isCurrent={isCurrent}
                       isPast={isPast}
+                      currentRound={currentRound}
                       onClick={onJumpToTurn ? () => onJumpToTurn(index) : undefined}
                       canDrag={canDrag}
+                      onOpenConditions={onOpenConditions}
                     />
                   </div>
                 );
@@ -392,6 +449,7 @@ function InitiativeTimelineBase({
                 participant={activeParticipant}
                 isCurrent={false}
                 isPast={false}
+                currentRound={currentRound}
               />
             ) : null}
           </DragOverlay>

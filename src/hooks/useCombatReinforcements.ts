@@ -83,8 +83,6 @@ export function useCombatReinforcements(
           currentFP: character.fp || 0,
           currentMP: character.mp || 0,
           shockPenalty: 0,
-          isStunned: false,
-          isUnconscious: false,
           isDead: false,
           bleeding: null,
           crippled: [],

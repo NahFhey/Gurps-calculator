@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import type { ReactNode } from 'react';
 
 // ---------------------------------------------------------------------------
 // Mock stores and heavy dependencies
@@ -68,6 +69,7 @@ vi.mock('../../../utils/combatViewFilter', () => ({
 
 // Mock ui components used across combat components
 vi.mock('../../ui', () => ({
+  Tooltip: ({ children }: { children: ReactNode }) => <>{children}</>,
   ConfirmDialog: () => null,
   useConfirmDialog: () => ({
     confirm: vi.fn(() => Promise.resolve(false)),
@@ -208,11 +210,12 @@ describe('ViewModeToggle', () => {
 // ============================================================================
 
 describe('ConditionBadge', () => {
-  it('renders condition label and icon', () => {
+  it('renders condition label and icon in full mode', () => {
     render(
       <ConditionBadge
         condition={{ conditionId: 'stunned', label: 'Stunned' }}
         currentRound={1}
+        mode="full"
       />
     );
 
@@ -221,11 +224,24 @@ describe('ConditionBadge', () => {
     expect(screen.getByText('💫')).toBeInTheDocument();
   });
 
+  it('renders icon only in default (icon) mode', () => {
+    render(
+      <ConditionBadge
+        condition={{ conditionId: 'stunned', label: 'Stunned' }}
+        currentRound={1}
+      />
+    );
+
+    expect(screen.getByText('💫')).toBeInTheDocument();
+    expect(screen.queryByText('Stunned')).not.toBeInTheDocument();
+  });
+
   it('renders severity when provided', () => {
     render(
       <ConditionBadge
         condition={{ conditionId: 'stunned', label: 'Stunned', severity: 3 }}
         currentRound={1}
+        mode="full"
       />
     );
 
@@ -238,11 +254,13 @@ describe('ConditionBadge', () => {
         condition={{ conditionId: 'stunned', label: 'Stunned', expiresAt: { type: 'round', round: 5 } }}
         currentRound={1}
         showDuration={true}
+        mode="full"
       />
     );
 
-    // The mocked formatConditionDuration returns '2 rounds'
-    expect(screen.getByText('(2 rounds)')).toBeInTheDocument();
+    // Phase 11b countdown: rounds remaining computed locally (5 - 1 = 4),
+    // normal urgency renders parenthesized
+    expect(screen.getByText('(4 rounds left)')).toBeInTheDocument();
   });
 
   it('calls onClick when clicked and handler provided', () => {
@@ -251,6 +269,7 @@ describe('ConditionBadge', () => {
       <ConditionBadge
         condition={{ conditionId: 'stunned', label: 'Stunned' }}
         onClick={handleClick}
+        mode="full"
       />
     );
 

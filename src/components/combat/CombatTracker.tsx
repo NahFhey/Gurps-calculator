@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useCombatStore } from '../../hooks/useCombatStore';
 import { useCombatExport } from '../../hooks/useCombatExport';
 import { useActionResolution } from '../../hooks/useActionResolution';
@@ -38,6 +38,7 @@ import { ManeuverCatalog } from '../../constants/maneuvers';
 import { deriveTurnContext } from '../../utils/turnContext';
 import { filterManeuvers } from '../../utils/maneuverFilter';
 import ActionPanel from './ActionPanel';
+import ConditionAddPopover from './ConditionAddPopover';
 import ViewModeToggle from './ViewModeToggle';
 import RevealPanel from './RevealPanel';
 import ManeuverSelector from './ManeuverSelector';
@@ -92,6 +93,12 @@ export default function CombatTracker() {
   const [viewMode, setViewMode] = useState<ViewModeType>(ViewMode.PLAYER);
   const [gmMode, setGmMode] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  // Phase 12a.6: condition popover anchor (tracker rows + timeline tokens)
+  const [conditionPopover, setConditionPopover] = useState<{
+    instanceId: string;
+    x: number;
+    y: number;
+  } | null>(null);
 
   // Confirm dialogs
   const endCombatDialog = useConfirmDialog({
@@ -231,8 +238,23 @@ export default function CombatTracker() {
     recordAction,
   });
 
-  const { handleAddCondition, handleRemoveCondition, handleUpdateCondition } =
-    useCombatConditions({ combat, currentActorTruth, recordAction });
+  const {
+    handleAddCondition,
+    handleRemoveCondition,
+    handleUpdateCondition,
+    handleCycleConditionRevealed,
+    addConditionTo,
+    removeConditionFrom,
+    cycleConditionRevealedOn,
+  } = useCombatConditions({ combat, currentActorTruth, recordAction });
+
+  // Phase 12a.6: open the condition popover for any participant (GM only)
+  const openConditionPopover = useCallback(
+    (instanceId: string, anchor: { x: number; y: number }) => {
+      setConditionPopover({ instanceId, x: anchor.x, y: anchor.y });
+    },
+    [],
+  );
 
   const { handleAddReinforcements } = useCombatReinforcements({
     combat,
@@ -604,6 +626,7 @@ export default function CombatTracker() {
         onNextTurn={handleNextTurn}
         onJumpToTurn={handleJumpToTurn}
         onReorderTurnOrder={handleReorderTurnOrder}
+        onOpenConditions={viewMode === ViewMode.GM ? openConditionPopover : undefined}
       />
 
       {!isEnemyInPlayerView ? (
@@ -637,6 +660,7 @@ export default function CombatTracker() {
         onAddCondition={handleAddCondition}
         onRemoveCondition={handleRemoveCondition}
         onUpdateCondition={handleUpdateCondition}
+        onCycleRevealed={handleCycleConditionRevealed}
       />
 
       {showReinforcementsModal && (
@@ -678,6 +702,7 @@ export default function CombatTracker() {
           currentActorInstanceId={currentActorInstanceId}
           viewMode={viewMode}
           onUpdateResource={updateResource}
+          onOpenConditions={viewMode === ViewMode.GM ? openConditionPopover : undefined}
         />
         <CombatLogView
           displayLog={displayLog}
@@ -686,6 +711,26 @@ export default function CombatTracker() {
           onAddNote={handleAddNote}
         />
       </div>
+
+      {/* Phase 12a.6: two-surface condition popover (GM view only) */}
+      {conditionPopover && viewMode === ViewMode.GM && (() => {
+        const truthParticipant = combat.participants.find(
+          (p) => p.instanceId === conditionPopover.instanceId,
+        );
+        if (!truthParticipant) return null;
+        return (
+          <ConditionAddPopover
+            participant={{ ...truthParticipant, id: truthParticipant.instanceId }}
+            currentRound={combat.currentRound}
+            currentTurn={combat.currentTurnIndex}
+            anchor={{ x: conditionPopover.x, y: conditionPopover.y }}
+            onClose={() => setConditionPopover(null)}
+            onAddCondition={(c) => addConditionTo(conditionPopover.instanceId, c)}
+            onRemoveCondition={(id) => removeConditionFrom(conditionPopover.instanceId, id)}
+            onCycleRevealed={(id) => cycleConditionRevealedOn(conditionPopover.instanceId, id)}
+          />
+        );
+      })()}
 
       <ConfirmDialog {...endCombatDialog.dialogProps} />
       <ConfirmDialog {...loadCombatDialog.dialogProps} />

@@ -11,6 +11,9 @@ import {
   CURRENT_SCHEMA_VERSION,
   compareVersions,
   getMigrationPath,
+  getMigrationHistory,
+  logMigration,
+  MIGRATION_HISTORY_KEY,
   SCHEMA_METADATA
 } from '../schemaVersioning';
 import {
@@ -23,7 +26,7 @@ import {
 describe('Schema Versioning System', () => {
   describe('Version Constants', () => {
     it('should have current schema version defined', () => {
-      expect(CURRENT_SCHEMA_VERSION).toBe('1.4.0');
+      expect(CURRENT_SCHEMA_VERSION).toBe('1.5.0');
     });
 
     it('should have metadata for all supported versions', () => {
@@ -32,6 +35,7 @@ describe('Schema Versioning System', () => {
       expect(SCHEMA_METADATA['1.2.0']).toBeDefined();
       expect(SCHEMA_METADATA['1.3.0']).toBeDefined();
       expect(SCHEMA_METADATA['1.4.0']).toBeDefined();
+      expect(SCHEMA_METADATA['1.5.0']).toBeDefined();
     });
 
     it('should include features list in metadata', () => {
@@ -159,6 +163,40 @@ describe('Schema Versioning System', () => {
       const result = migrateData(v1_3_data, '1.3.0', '1.4.0');
 
       expect(result.inventories).toEqual({ party: { id: 'party', ownerType: 'party' } });
+    });
+
+    it('should fold combat participant booleans into conditions when migrating from 1.4.0 to 1.5.0', () => {
+      const v1_4_data = {
+        currentDay: 4,
+        combatActive: {
+          id: 'combat-1',
+          participants: [
+            {
+              instanceId: 'p1',
+              isStunned: true,
+              conditions: [
+                { instanceId: 'c1', conditionId: 'poisoned', label: 'Poisoned' }
+              ]
+            }
+          ]
+        }
+      };
+
+      const result = migrateData(v1_4_data, '1.4.0', '1.5.0');
+      const participant = result.combatActive.participants[0];
+
+      expect(result.schemaVersion).toBe('1.5.0');
+      expect('isStunned' in participant).toBe(false);
+      expect(participant.conditions.some(c => c.conditionId === 'stunned')).toBe(true);
+      // Pre-existing instance gets its eye state backfilled from the catalog
+      expect(participant.conditions.find(c => c.conditionId === 'poisoned').revealed).toBe('closed');
+    });
+
+    it('should pass through 1.5.0 migration when no combat is active', () => {
+      const v1_4_data = { currentDay: 4, combatActive: null };
+      const result = migrateData(v1_4_data, '1.4.0', '1.5.0');
+      expect(result.combatActive).toBeNull();
+      expect(result.schemaVersion).toBe('1.5.0');
     });
 
     it('should perform full migration from 1.0.0 to 1.3.0', () => {
@@ -325,6 +363,31 @@ describe('Schema Versioning System', () => {
     });
   });
 
+  describe('getMigrationHistory() malformed input', () => {
+    beforeEach(() => {
+      localStorage.removeItem(MIGRATION_HISTORY_KEY);
+    });
+
+    afterEach(() => {
+      localStorage.removeItem(MIGRATION_HISTORY_KEY);
+    });
+
+    it('returns empty array when stored history is malformed JSON', () => {
+      localStorage.setItem(MIGRATION_HISTORY_KEY, '{not valid json');
+      expect(() => getMigrationHistory()).not.toThrow();
+      expect(getMigrationHistory()).toEqual([]);
+    });
+
+    it('returns empty array when storage key is absent', () => {
+      expect(getMigrationHistory()).toEqual([]);
+    });
+
+    it('logMigration recovers when prior history is malformed', () => {
+      localStorage.setItem(MIGRATION_HISTORY_KEY, 'garbage');
+      expect(() => logMigration('1.0.0', '1.1.0')).not.toThrow();
+    });
+  });
+
   describe('Backward Compatibility', () => {
     it('should mark data as needing migration if older version', () => {
       expect(compareVersions('1.0.0', '1.3.0')).toBeLessThan(0);
@@ -333,7 +396,7 @@ describe('Schema Versioning System', () => {
     });
 
     it('should have upgrade path for all old versions', () => {
-      const oldVersions = ['1.0.0', '1.1.0', '1.2.0'];
+      const oldVersions = ['1.0.0', '1.1.0', '1.2.0', '1.3.0', '1.4.0'];
 
       oldVersions.forEach(version => {
         const path = getMigrationPath(version, CURRENT_SCHEMA_VERSION);

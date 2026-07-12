@@ -13,6 +13,9 @@ import {
   getConditionInstances,
   formatConditionDuration,
   formatConditionTooltip,
+  cycleRevealed,
+  cycleConditionRevealed,
+  ensureParticipantConditionVisibility,
 } from '../conditionsEngine';
 import { ConditionId, DurationType } from '../../constants/conditions';
 
@@ -78,6 +81,152 @@ describe('createConditionInstance', () => {
     expect(instance.severity).toBe(2);
     expect(instance.source).toBe('Spider Venom');
     expect(instance.notes).toBe('save vs HT next round');
+  });
+
+  it('seeds revealed from the catalog: obvious → open', () => {
+    expect(createConditionInstance(ConditionId.BLEEDING).revealed).toBe('open');
+    expect(createConditionInstance(ConditionId.STUNNED).revealed).toBe('open');
+  });
+
+  it('seeds revealed from the catalog: concealed → closed', () => {
+    expect(createConditionInstance(ConditionId.POISONED).revealed).toBe('closed');
+    expect(createConditionInstance(ConditionId.BLINDED).revealed).toBe('closed');
+  });
+
+  it('honours an explicit revealed override (half is never a default)', () => {
+    const instance = createConditionInstance(ConditionId.POISONED, { revealed: 'half' });
+    expect(instance.revealed).toBe('half');
+  });
+});
+
+describe('cycleRevealed (12a.6 eye control)', () => {
+  it('cycles closed → half → open → closed', () => {
+    expect(cycleRevealed('closed')).toBe('half');
+    expect(cycleRevealed('half')).toBe('open');
+    expect(cycleRevealed('open')).toBe('closed');
+  });
+
+  it('treats unknown/legacy values as visible so the first click hides', () => {
+    expect(cycleRevealed(undefined)).toBe('closed');
+    expect(cycleRevealed('garbage')).toBe('closed');
+  });
+});
+
+describe('cycleConditionRevealed', () => {
+  it('cycles only the targeted instance', () => {
+    const combatant = mkCombatant({
+      conditions: [
+        { instanceId: 'c1', conditionId: ConditionId.POISONED, revealed: 'closed' },
+        { instanceId: 'c2', conditionId: ConditionId.PRONE, revealed: 'open' },
+      ],
+    });
+    const next = cycleConditionRevealed(combatant, 'c1');
+    expect(next.conditions[0].revealed).toBe('half');
+    expect(next.conditions[1].revealed).toBe('open');
+  });
+
+  it('returns the same combatant reference when the instance is missing', () => {
+    const combatant = mkCombatant({
+      conditions: [{ instanceId: 'c1', conditionId: ConditionId.PRONE, revealed: 'open' }],
+    });
+    expect(cycleConditionRevealed(combatant, 'nope')).toBe(combatant);
+  });
+
+  it('does not mutate the original combatant', () => {
+    const combatant = mkCombatant({
+      conditions: [{ instanceId: 'c1', conditionId: ConditionId.PRONE, revealed: 'open' }],
+    });
+    cycleConditionRevealed(combatant, 'c1');
+    expect(combatant.conditions[0].revealed).toBe('open');
+  });
+});
+
+describe('ensureParticipantConditionVisibility (12a.6 migration helper)', () => {
+  it('folds isStunned: true into a permanent Stunned condition and drops the bool', () => {
+    const legacy = mkCombatant({ isStunned: true });
+    const migrated = ensureParticipantConditionVisibility(legacy);
+
+    expect(migrated.isStunned).toBeUndefined();
+    expect('isStunned' in migrated).toBe(false);
+    expect(migrated.conditions).toHaveLength(1);
+    expect(migrated.conditions[0]).toMatchObject({
+      conditionId: ConditionId.STUNNED,
+      expiresAt: null,     // permanent — matches sticky bool semantics
+      revealed: 'open',    // Stunned is catalog-obvious
+    });
+  });
+
+  it('folds isUnconscious: true into an Unconscious condition', () => {
+    const migrated = ensureParticipantConditionVisibility(mkCombatant({ isUnconscious: true }));
+    expect(hasCondition(migrated, ConditionId.UNCONSCIOUS)).toBe(true);
+    expect('isUnconscious' in migrated).toBe(false);
+  });
+
+  it('drops false bools without inserting conditions', () => {
+    const migrated = ensureParticipantConditionVisibility(
+      mkCombatant({ isStunned: false, isUnconscious: false })
+    );
+    expect(migrated.conditions).toHaveLength(0);
+    expect('isStunned' in migrated).toBe(false);
+    expect('isUnconscious' in migrated).toBe(false);
+  });
+
+  it('mixed legacy: bool true AND existing condition → one condition, no double-insert', () => {
+    const legacy = mkCombatant({
+      isStunned: true,
+      conditions: [{ instanceId: 'c1', conditionId: ConditionId.STUNNED, label: 'Stunned', revealed: 'open' }],
+    });
+    const migrated = ensureParticipantConditionVisibility(legacy);
+    expect(migrated.conditions).toHaveLength(1);
+    expect(migrated.conditions[0].instanceId).toBe('c1');
+  });
+
+  it('backfills revealed on legacy instances from catalog defaults', () => {
+    const legacy = mkCombatant({
+      conditions: [
+        { instanceId: 'c1', conditionId: ConditionId.PRONE, label: 'Prone' },
+        { instanceId: 'c2', conditionId: ConditionId.POISONED, label: 'Poisoned' },
+      ],
+    });
+    const migrated = ensureParticipantConditionVisibility(legacy);
+    expect(migrated.conditions[0].revealed).toBe('open');
+    expect(migrated.conditions[1].revealed).toBe('closed');
+  });
+
+  it('preserves an already-set eye state during backfill', () => {
+    const legacy = mkCombatant({
+      isStunned: true,
+      conditions: [{ instanceId: 'c1', conditionId: ConditionId.POISONED, revealed: 'half' }],
+    });
+    const migrated = ensureParticipantConditionVisibility(legacy);
+    const poisoned = migrated.conditions.find(c => c.conditionId === ConditionId.POISONED);
+    expect(poisoned.revealed).toBe('half');
+  });
+
+  it('is idempotent — a second run returns the same reference', () => {
+    const once = ensureParticipantConditionVisibility(
+      mkCombatant({ isStunned: true, isUnconscious: true })
+    );
+    const twice = ensureParticipantConditionVisibility(once);
+    expect(twice).toBe(once);
+  });
+
+  it('returns the same reference for already-migrated participants', () => {
+    const clean = mkCombatant({
+      conditions: [{ instanceId: 'c1', conditionId: ConditionId.PRONE, revealed: 'open' }],
+    });
+    expect(ensureParticipantConditionVisibility(clean)).toBe(clean);
+  });
+
+  it('handles participants with no conditions field', () => {
+    const legacy = { instanceId: 'x', name: 'Bare', isStunned: true };
+    const migrated = ensureParticipantConditionVisibility(legacy);
+    expect(migrated.conditions).toHaveLength(1);
+  });
+
+  it('passes through null/non-object input untouched', () => {
+    expect(ensureParticipantConditionVisibility(null)).toBeNull();
+    expect(ensureParticipantConditionVisibility(undefined)).toBeUndefined();
   });
 });
 

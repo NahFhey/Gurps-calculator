@@ -146,26 +146,21 @@ function filterParticipant(participant, revealState) {
   // Notes
   filtered.notes = filterNotes(participant.notes, reveal.notes);
 
-  // Phase 4 injury system fields - only show if HP exact or if status is obvious
+  // Phase 4 injury system fields - only show if HP exact or if status is obvious.
+  // Stun/unconsciousness are absent here since 12a.6: they live in conditions[]
+  // and flow through the eye-state filter below.
   if (reveal.hp.mode === RevealMode.NUMERIC_EXACT || participant.isDead) {
     filtered.shockPenalty = participant.shockPenalty;
-    filtered.isStunned = participant.isStunned;
-    filtered.isUnconscious = participant.isUnconscious;
     filtered.isDead = participant.isDead;
     filtered.bleeding = participant.bleeding;
     filtered.crippled = participant.crippled;
   } else {
     // Show only obvious status
     filtered.isDead = participant.isDead || false;
-    filtered.isUnconscious = participant.isUnconscious || false;
   }
 
-  // Phase 6: Conditions - filter based on obviousness
-  filtered.conditions = filterConditions(
-    participant.conditions,
-    side,
-    reveal.hp.mode === RevealMode.NUMERIC_EXACT
-  );
+  // Phase 12a.6: Conditions - filter on per-instance eye state
+  filtered.conditions = filterConditions(participant.conditions, side);
 
   return filtered;
 }
@@ -367,19 +362,33 @@ function filterNotes(notes, notesReveal) {
 }
 
 /**
- * Phase 6: Filter conditions based on visibility rules
+ * Sentinel conditionId used for player-view placeholders of half-revealed
+ * conditions. Not in the catalog on purpose — it resolves to the generic
+ * "❓" icon and carries no mechanical information.
+ */
+export const CONCEALED_CONDITION_ID = '__concealed__';
+
+/**
+ * Phase 12a.6: Filter conditions on per-instance eye state
  *
  * Rules:
- * - Player/ally conditions: always show all
- * - Enemy conditions: show only "obvious" ones (prone, unconscious, burning, etc.)
- *   unless HP is revealed (exact mode)
+ * - Player/ally conditions: always shown in full (PC-side eye control is a
+ *   deferred followup).
+ * - NPC conditions follow the GM-controlled eye state on each instance:
+ *   - 'closed' → omitted entirely
+ *   - 'half'   → replaced with an anonymous "Afflicted" placeholder (one per
+ *     instance — the count is deliberately exposed so the GM can telegraph
+ *     individual effects)
+ *   - 'open'   → passed through unchanged
+ * - Instances without an eye state (unmigrated runtime data, e.g. an old
+ *   export) fall back to the catalog isObvious default, matching what the
+ *   revealed-backfill migration would seed.
  *
  * @param {array} conditions - Array of condition instances
  * @param {string} side - Combatant's side/category (player/ally/enemy)
- * @param {boolean} hpRevealed - Whether HP is in exact mode
- * @returns {array} Filtered conditions
+ * @returns {array} Filtered conditions (safe for Player View)
  */
-function filterConditions(conditions, side, hpRevealed) {
+function filterConditions(conditions, side) {
   if (!conditions || !Array.isArray(conditions)) {
     return [];
   }
@@ -389,13 +398,29 @@ function filterConditions(conditions, side, hpRevealed) {
     return conditions;
   }
 
-  // Enemy: show all if HP revealed, otherwise only obvious
-  if (hpRevealed) {
-    return conditions;
-  }
+  const visible = [];
+  for (const condition of conditions) {
+    if (!condition || typeof condition !== 'object') continue;
 
-  // Filter to obvious conditions only
-  return conditions.filter(c => isConditionObvious(c.conditionId));
+    const revealed = condition.revealed !== undefined
+      ? condition.revealed
+      : (isConditionObvious(condition.conditionId) ? 'open' : 'closed');
+
+    if (revealed === 'open') {
+      visible.push(condition);
+    } else if (revealed === 'half') {
+      // Anonymous placeholder: keeps the truth instanceId (a random id, safe
+      // to expose, stable for React keys) but no name/icon/duration/severity.
+      visible.push({
+        instanceId: condition.instanceId,
+        conditionId: CONCEALED_CONDITION_ID,
+        label: 'Afflicted',
+        placeholder: true
+      });
+    }
+    // 'closed' → omitted
+  }
+  return visible;
 }
 
 /**

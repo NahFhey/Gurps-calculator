@@ -1,39 +1,23 @@
 import { useState, ChangeEvent } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Eye, EyeOff } from 'lucide-react';
 import ConditionBadge from './ConditionBadge';
 import {
   getAllConditions,
   DurationType,
-  getCondition
+  getCondition,
+  isConditionObvious
 } from '../../constants/conditions';
 import {
   getActiveConditions,
   createConditionInstance
 } from '../../utils/conditionsEngine';
 import { ConfirmDialog, useConfirmDialog, useToast } from '../ui';
-
-interface ExpiresAt {
-  type: 'turn' | 'round' | 'endOfCombat';
-  turnsRemaining?: number;
-  round?: number;
-}
-
-interface ConditionInstance {
-  instanceId: string;
-  conditionId: string;
-  label: string;
-  severity?: number | null;
-  source?: string | null;
-  startedAtRound?: number;
-  startedAtTurn?: number;
-  duration?: unknown;
-  expiresAt?: ExpiresAt | null;
-  notes?: string | null;
-}
+import type { ConditionInstance, ConditionRevealState } from '../../types/combatTracker';
 
 interface Participant {
   id: string;
   name: string;
+  category?: string;
   conditions?: ConditionInstance[];
 }
 
@@ -43,6 +27,40 @@ interface ConditionsPanelProps {
   currentTurn: number;
   onAddCondition: (conditionInstance: ConditionInstance) => void;
   onRemoveCondition: (conditionInstanceId: string) => void;
+  /** Phase 12a.6: cycle the per-instance eye state. GM view + NPCs only. */
+  onCycleRevealed?: (conditionInstanceId: string) => void;
+}
+
+// ============================================================================
+// Phase 12a.6: three-state eye control
+// ============================================================================
+
+const EYE_TITLES: Record<ConditionRevealState, string> = {
+  closed: "Hidden from players — click to telegraph as 'Afflicted'",
+  half: "Telegraphed as 'Afflicted' — click to reveal fully",
+  open: 'Visible to players — click to hide',
+};
+
+function EyeToggle({
+  revealed,
+  onCycle,
+}: {
+  revealed: ConditionRevealState;
+  onCycle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onCycle}
+      title={EYE_TITLES[revealed]}
+      aria-label={EYE_TITLES[revealed]}
+      className="flex-none p-1 rounded hover:bg-gray-700 transition-colors"
+    >
+      {revealed === 'closed' && <EyeOff size={14} className="text-gray-500" />}
+      {revealed === 'half' && <Eye size={14} className="text-amber-400 opacity-70" />}
+      {revealed === 'open' && <Eye size={14} className="text-green-400" />}
+    </button>
+  );
 }
 
 /**
@@ -55,7 +73,8 @@ export default function ConditionsPanel({
   currentRound,
   currentTurn,
   onAddCondition,
-  onRemoveCondition
+  onRemoveCondition,
+  onCycleRevealed
 }: ConditionsPanelProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedConditionId, setSelectedConditionId] = useState('');
@@ -74,8 +93,13 @@ export default function ConditionsPanel({
     variant: 'warning',
   });
 
-  const activeConditions = getActiveConditions(participant) as ConditionInstance[];
+  const activeConditions = getActiveConditions(participant);
   const availableConditions = getAllConditions();
+
+  // Eye control is NPC-only in this phase: PCs and allies always render
+  // full-visible (matches filterConditions in combatViewFilter.js, which
+  // treats a missing category as enemy).
+  const isNPC = participant.category !== 'player' && participant.category !== 'ally';
 
   const handleAddCondition = () => {
     if (!selectedConditionId) {
@@ -110,7 +134,7 @@ export default function ConditionsPanel({
       severity: severity ? parseInt(severity, 10) : null,
       source: source || null,
       notes: notes || null
-    } as any);
+    });
 
     if (!conditionInstance) {
       showError('Failed to create condition');
@@ -118,7 +142,7 @@ export default function ConditionsPanel({
     }
 
     // Call handler
-    onAddCondition(conditionInstance as ConditionInstance);
+    onAddCondition(conditionInstance);
 
     // Reset form
     setSelectedConditionId('');
@@ -154,13 +178,24 @@ export default function ConditionsPanel({
       {activeConditions.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {activeConditions.map(condition => (
-            <ConditionBadge
-              key={condition.instanceId}
-              condition={condition}
-              currentRound={currentRound}
-              showDuration={true}
-              onRemove={() => handleRemoveCondition(condition.instanceId)}
-            />
+            <div key={condition.instanceId} className="inline-flex items-center gap-0.5">
+              <ConditionBadge
+                condition={condition}
+                mode="full"
+                currentRound={currentRound}
+                showDuration={true}
+                onRemove={() => handleRemoveCondition(condition.instanceId)}
+              />
+              {isNPC && onCycleRevealed && (
+                <EyeToggle
+                  revealed={
+                    condition.revealed ??
+                    (isConditionObvious(condition.conditionId) ? 'open' : 'closed')
+                  }
+                  onCycle={() => onCycleRevealed(condition.instanceId)}
+                />
+              )}
+            </div>
           ))}
         </div>
       ) : (

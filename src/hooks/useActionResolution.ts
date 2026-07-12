@@ -145,7 +145,11 @@ export function useActionResolution(
             if (effect.type === 'knockdownStun' && effect.success === false) {
               updatedParticipants = updatedParticipants.map((p) =>
                 p.instanceId === targetInstanceId
-                  ? (applyEffect(p, 'stunned', { stunned: true }) as Participant)
+                  ? (applyEffect(p, 'stunned', {
+                      stunned: true,
+                      round: combat.currentRound,
+                      turn: combat.currentTurnIndex,
+                    }) as Participant)
                   : p,
               );
               logEntries.push(
@@ -167,7 +171,11 @@ export function useActionResolution(
             ) {
               updatedParticipants = updatedParticipants.map((p) =>
                 p.instanceId === targetInstanceId
-                  ? (applyEffect(p, 'unconscious', { unconscious: true }) as Participant)
+                  ? (applyEffect(p, 'unconscious', {
+                      unconscious: true,
+                      round: combat.currentRound,
+                      turn: combat.currentTurnIndex,
+                    }) as Participant)
                   : p,
               );
               logEntries.push(

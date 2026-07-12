@@ -1,9 +1,163 @@
 # Phase 12a.6 — Combat Condition Visibility
 
-**Status:** Planned (not started)
+**Status:** CODE COMPLETE — session 1 (data + filter + migrations) 2026-07-04; session 2 (eye widget + badge rewrite + tooltip) 2026-07-12; session 3 (two-surface popover + overflow pills) 2026-07-12. Only live table verification remains.
 **Created:** 2026-05-03
 **Sequence:** Inserted between Phase 12a.5 (Inventory Integration Bus, planned) and Phase 12b (GCS Import Improvements, deferred)
 **Origin:** Design concept reached via grilling session 2026-05-03
+
+---
+
+## Implementation Status (as-built, session 1 — 2026-07-04)
+
+Branch `phase-12a6-condition-visibility`. Everything below the display layer is
+in; the UI surfaces (eye widget, badge rewrite, popover, overflow pills, map
+entry point) are sessions 2–3.
+
+**Done:**
+
+- **Catalog flag** — already existed as `isObvious: boolean` on every entry in
+  `src/constants/conditions.ts` (Phase 6 shipped it; the plan's `obvious` flag
+  needed no new code). `isConditionObvious()` helper reused throughout.
+- **Type consolidation** — canonical `ConditionInstance` now lives in
+  `src/types/combatTracker.ts` (with `ConditionExpiry`, `ConditionRevealState`,
+  `revealed?`, `placeholder?`); the inline duplicates in `ConditionsPanel.tsx`
+  and `ConditionBadge.tsx` import it. New `conditionsEngine.d.ts` types the JS
+  engine for TS consumers.
+- **Seeding + cycle** — `createConditionInstance` seeds `revealed` from catalog
+  `isObvious` (`open`/`closed`; half is never a default), honours an explicit
+  override. `cycleRevealed` (closed → half → open → closed; unknown → closed)
+  and `cycleConditionRevealed(combatant, instanceId)` are ready for the eye
+  widget.
+- **Filter layer** — `combatViewFilter.js` filters NPC conditions per instance:
+  closed dropped, half replaced by an `{ conditionId: '__concealed__', label:
+  'Afflicted', placeholder: true }` stand-in (truth instanceId kept for React
+  keys; no name/icon/duration leak), open passed through. Legacy instances
+  without `revealed` fall back to catalog obviousness. **Behavior change:**
+  HP-exact reveal no longer force-shows all enemy conditions — the eye state is
+  authoritative. PCs/allies always render in full. Placeholders degrade
+  gracefully through the existing badge (❓ Afflicted) until the badge rewrite.
+- **Bool fold** — `Participant.isStunned`/`isUnconscious` removed from the type
+  and all writers/readers/init sites. `effectsEngine.applyEffect` writes
+  Stunned/Unconscious conditions with **permanent duration** (sticky until
+  removed — matches old bool semantics; GURPS stun recovery is a roll, not a
+  timer). `getActiveEffects` no longer reports the two (they render as
+  condition badges — listing both would double-display). `turnContext.js`
+  derives purely from conditions (+ `isDead`). Readers switched to
+  `hasCondition`: `ActionPanel` target eligibility, `InitiativeTimeline`
+  unconscious styling, `PostCombatSummary` snapshot capture
+  (`ParticipantSummary` keeps its frozen bools, populated via `hasCondition`
+  at snapshot time).
+- **Migrations** — schema **1.5.0**. One shared per-participant helper,
+  `ensureParticipantConditionVisibility` (conditionsEngine), runs from three
+  places: `ensureConditionVisibility` in `src/persistence/dataMigration.ts`
+  wired into `hydrateCampaignState` (live session, every load, idempotent);
+  `migrateTo1_5_0` in `src/utils/dataMigrations.ts` (flat legacy
+  `combatActive` shape); and `migrateImportedCombatState` in
+  `useCombatExport` (old exported combat JSON). Combat history and
+  ParticipantSummary snapshots stay frozen, untouched.
+- **Tests** — seeding/cycle/fold/backfill units in `conditionsEngine.test.js`;
+  eye-state filter matrix in `combatViewFilter.test.js`; condition-write tests
+  in `effectsEngine.test.js`; bool-ignored tests in `turnContext.test.js`;
+  state-level migration tests in `dataMigration.test.ts`; hydrate round-trip
+  (pre-12a.6 payload → migrated, reload no-op) in `campaignStorage.test.ts`;
+  1.4.0→1.5.0 handler tests in `schemaVersioning.test.ts`. Stale duplicate
+  `schemaVersioning.test.js` deleted (its unique history malformed-input tests
+  ported to the `.ts` suite). Two pre-existing test-authoring bugs fixed in
+  passing (`useCombatStore` functional-update `round`→`currentRound` key,
+  `CombatComponents` badge-duration expectation stale since Phase 11b).
+
+## Implementation Status (as-built, session 2 — 2026-07-12)
+
+**Done:**
+
+- **Tooltip primitive** — new `src/components/ui/Tooltip.tsx`, exported from
+  the ui barrel. Hover/focus trigger, portal to `document.body` (escapes
+  overflow-clipped containers), position computed once on open (top, flipping
+  to bottom near the viewport top), `role="tooltip"`. 5 unit tests.
+- **`ConditionBadge` rewrite** — new `mode: 'full' | 'icon' | 'placeholder'`
+  prop (default `'icon'` per the new design). Icon mode renders icon-only
+  (urgency border/pulse retained; label, severity, countdown live in the
+  tooltip). Placeholder rendering is **auto-forced** whenever the condition
+  carries the player-view `placeholder: true` flag, so filtered view data is
+  safe regardless of call-site mode; explicit `mode="placeholder"` renders at
+  full density. Placeholders are grey, urgency-free, never show
+  severity/duration/quick-remove, and get the generic tooltip ("This character
+  has an unknown effect."). Rich React tooltip (name/severity, duration,
+  source, catalog description, notes) replaces the `title=` attribute. Badge
+  root carries `aria-label={label}` for icon-mode discoverability. Phase 11b
+  urgency colors, countdown, pulse, and quick-remove X all preserved.
+  Call sites: `ConditionsPanel` passes `mode="full"`; `ParticipantListView`
+  takes the icon default. Test suite rewritten (33 tests) + CombatComponents
+  badge tests updated for the mode API.
+- **Eye toggle widget** — `EyeToggle` in `ConditionsPanel.tsx`: three-state
+  button per condition row (closed `EyeOff` gray → half `Eye` amber/dimmed →
+  open `Eye` green), title/aria-label describing state + next action.
+  NPC-only (`category !== 'player' && !== 'ally'`; missing category = NPC,
+  matching `filterConditions`). Legacy instances without `revealed` fall back
+  to catalog obviousness for display. 9 panel tests.
+- **Dispatch path** — `handleCycleConditionRevealed(conditionInstanceId)`
+  added to `useCombatConditions`: cycles via `cycleRevealed`, records an
+  undoable `UPDATE_CONDITION` action, deliberately writes **no combat-log
+  entry** (reveal state is GM-secret; the log reaches player view). Threaded
+  CombatTracker → ActionPanel (`onCycleRevealed`, passed to the panel only
+  when `viewMode === ViewMode.GM`) → ConditionsPanel. 7 hook tests.
+- **Browser-verified** (dev server, GM + player view): Poisoned on an enemy
+  seeds eye-closed; cycling closed→half→open works from the tracker; player
+  view shows nothing / one anonymous ❓ "Afflicted" placeholder / the full
+  ☠️ badge respectively, with zero name leakage; tooltip renders structured
+  content on hover. No console errors.
+- **Discovered in passing:** pre-existing CharacterLibrary bug — `category`
+  dropped on save, so library characters never appear in EncounterSetup.
+  Recorded as followup #10; out of scope here.
+
+## Implementation Status (as-built, session 3 — 2026-07-12)
+
+**Done:**
+
+- **Generalized dispatch** — `useCombatConditions` gained participant-targeted
+  handlers (`addConditionTo` / `removeConditionFrom` /
+  `cycleConditionRevealedOn`); the original actor-bound handlers are now thin
+  wrappers over them. The hook accepts `combat: null` so `CombatContext` can
+  call it before its no-combat early return.
+- **`ConditionAddPopover`** — floating portaled card (viewport-clamped,
+  outside-mousedown + Escape + header-X close) that **reuses `ConditionsPanel`
+  whole** (badges + eye toggles + add form) rather than extracting just the
+  form — less duplication, same two-surface reuse the plan wanted. Hosts keep
+  the popover open across combat saves (unlike the ActionPanel workflow,
+  which resets), so multi-add flows work.
+- **Tracker surface** — `ParticipantListView` cards: urgency-sorted icon
+  badges capped at 4 + "+N" pill + a GM-only "+" manage button (rendered even
+  on condition-free participants). `sortConditionsByUrgency` exported from
+  `ConditionBadge`; new `ConditionOverflowPill` renders as a button on GM
+  surfaces and a static count in player view. Card memo comparator now also
+  checks `conditions` reference + the new callback.
+- **Timeline surface** — tokens show up to 3 urgency-sorted condition icons
+  (emoji via `getConditionIcon`, ❓ for player-view placeholders) + a compact
+  "+N" pill; pill clicks stopPropagation so they don't jump the turn.
+- **Map surface** — `CombatContext` exposes the targeted handlers;
+  `CombatMainArea` hosts the popover; `CombatMapPanel`'s token legend rows
+  get a GM-gated per-token button. **Deviation from plan:** the entry point
+  is the legend row control, not a grid-token click — `MapGrid` has no
+  token-level click API (tile clicks carry movement/placement semantics and
+  no mouse coords), so hooking tile clicks would have broken movement UX.
+  Revisit only if the legend affordance proves unfindable at the table.
+- **Hosting** — `CombatTracker` and `CombatMainArea` each own popover state
+  `{instanceId, x, y}`; both look up the **truth** participant at render and
+  gate entry points on GM view (`viewMode === GM` / `ctx.gmMode`).
+- **Tests** — popover suite (portal, add-dispatch, eye forwarding, all three
+  close paths); ParticipantListView suite (cap 4, urgency displacement, pill
+  → popover, manage-button gating, static player pill); timeline additions
+  (cap 3, urgency, pill-vs-jump propagation, static player pill); hook
+  additions (targeted handlers hit the right participant + log, unknown-id
+  and null-combat no-ops). ~30 new tests.
+- **Browser-verified** (GM + player view): manage button and both pills open
+  the same popover for the same participant; five conditions render 4+"+1"
+  in the tracker card and 3+"+2" in the timeline; adds through the popover
+  land immediately on both surfaces; Escape/outside-click close; player view
+  shows no GM entry points and eye-filtered counts only. No console errors.
+
+**Remaining:** live table verification (map surface included — the browser
+run had no linked map), then merge.
 
 ---
 

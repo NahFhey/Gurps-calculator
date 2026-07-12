@@ -115,8 +115,8 @@ describe('campaignStorage', () => {
       const session = createMockCombatSession({
         id: 'session-active',
         name: 'Battle at the Bridge',
-        round: 3,
-        turn: 2,
+        currentRound: 3,
+        currentTurn: 2,
         participants: ['fighter-1', 'mage-1', 'goblin-1'],
         log: [
           { type: 'attack', actor: 'fighter-1', target: 'goblin-1', result: 'hit' } as any,
@@ -148,6 +148,51 @@ describe('campaignStorage', () => {
 
       expect(loaded.combat.activeSession).toBeNull();
       expect(loaded.combat.active).toBe(false);
+    });
+
+    it('migrates pre-12a.6 participants on load: bools fold into conditions, revealed backfilled', async () => {
+      const state = createCampaignState();
+      state.combat.activeSession = createMockCombatSession({
+        id: 'session-legacy',
+        currentRound: 4,
+        participants: [
+          {
+            instanceId: 'ogre-1',
+            name: 'Ogre',
+            isStunned: true,
+            isUnconscious: false,
+            conditions: [
+              { instanceId: 'c1', conditionId: 'poisoned', label: 'Poisoned' },
+            ],
+          },
+        ],
+      });
+      state.combat.active = true;
+
+      await saveCampaignState(state);
+      const loaded = await loadCampaignState();
+
+      const participants = (loaded.combat.activeSession?.participants ?? []) as unknown as Array<{
+        isStunned?: boolean;
+        isUnconscious?: boolean;
+        conditions: Array<{ conditionId: string; revealed?: string }>;
+      }>;
+      const ogre = participants[0];
+
+      // Bool folded into a Stunned condition, fields removed
+      expect('isStunned' in ogre).toBe(false);
+      expect('isUnconscious' in ogre).toBe(false);
+      expect(ogre.conditions.some(c => c.conditionId === 'stunned')).toBe(true);
+
+      // Pre-existing instance got its eye state backfilled from the catalog
+      const poisoned = ogre.conditions.find(c => c.conditionId === 'poisoned');
+      expect(poisoned?.revealed).toBe('closed');
+
+      // Post-migration saves load cleanly without further changes
+      await saveCampaignState(loaded);
+      const reloaded = await loadCampaignState();
+      const reloadedOgre = (reloaded.combat.activeSession?.participants as unknown as typeof participants)[0];
+      expect(reloadedOgre).toEqual(ogre);
     });
 
     it('round-trips combat history', async () => {
@@ -263,8 +308,8 @@ describe('campaignStorage', () => {
       state.combat.activeSession = createMockCombatSession({
         id: 'current-battle',
         name: 'Forest Ambush',
-        round: 2,
-        turn: 1,
+        currentRound: 2,
+        currentTurn: 1,
         participants: ['fighter', 'mage', 'goblin'],
       });
       state.combat.active = true;

@@ -117,14 +117,15 @@ describe('buildCombatSummary', () => {
     expect(Object.keys(summary.healingEstimates)).toHaveLength(0);
   });
 
-  it('captures status flags (dead, unconscious, stunned)', () => {
+  it('captures status flags (dead, unconscious, stunned) — stun/unconsciousness derive from conditions[] since 12a.6', () => {
     const combat = makeCombat([
       makeParticipant({
         instanceId: 'p1',
         name: 'Casualty',
         isDead: true,
-        isUnconscious: true,
-        isStunned: false
+        conditions: [
+          { instanceId: 'c-ko', conditionId: 'unconscious', label: 'Unconscious', revealed: 'open' }
+        ]
       })
     ]);
     const summary = buildCombatSummary(combat);
@@ -132,6 +133,23 @@ describe('buildCombatSummary', () => {
     expect(summary.participants[0].isDead).toBe(true);
     expect(summary.participants[0].isUnconscious).toBe(true);
     expect(summary.participants[0].isStunned).toBe(false);
+  });
+
+  it('derives isStunned from a Stunned condition instance', () => {
+    const combat = makeCombat([
+      makeParticipant({
+        instanceId: 'p1',
+        name: 'Dazed',
+        conditions: [
+          { instanceId: 'c-stun', conditionId: 'stunned', label: 'Stunned', revealed: 'open' }
+        ]
+      })
+    ]);
+    const summary = buildCombatSummary(combat);
+
+    expect(summary.participants[0].isStunned).toBe(true);
+    expect(summary.participants[0].isUnconscious).toBe(false);
+    expect(summary.participants[0].isDead).toBe(false);
   });
 
   it('captures conditions and crippled locations', () => {
