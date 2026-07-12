@@ -27,6 +27,7 @@ import {
 const cc1: CombatCharacter = {
   id: 'cc1',
   name: 'Hero',
+  category: 'player',
   isNPC: false,
   hp: 12,
   maxHP: 12,
@@ -43,6 +44,7 @@ const cc1: CombatCharacter = {
 const cc2: CombatCharacter = {
   id: 'cc2',
   name: 'Goblin',
+  category: 'enemy',
   isNPC: true,
   hp: 8,
   maxHP: 8,

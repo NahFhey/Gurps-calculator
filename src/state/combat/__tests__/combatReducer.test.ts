@@ -25,6 +25,7 @@ import type { CombatCharacter, CombatSession, CombatItem } from '../../../types/
 const createMockCombatCharacter = (overrides?: Partial<CombatCharacter>): CombatCharacter => ({
   id: 'char-1',
   name: 'Test Fighter',
+  category: 'player',
   isNPC: false,
   hp: 12,
   maxHP: 12,

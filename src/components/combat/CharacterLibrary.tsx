@@ -2,7 +2,7 @@ import { useState, useMemo, ChangeEvent } from 'react';
 import { Plus, Search, Download, Upload, FileText, Users, Info } from 'lucide-react';
 import { useCombatStore } from '../../hooks/useCombatStore';
 import { COMBAT_CATEGORIES } from '../../constants';
-import { generateId } from '../../utils/combatHelpers';
+import { generateId, deriveCombatCategory } from '../../utils/combatHelpers';
 import { CharacterArraySchema, exceedsImportSizeLimit } from '../../utils/importSchemas';
 import CharacterSheet from './CharacterSheet';
 import CharacterForm from './CharacterForm';
@@ -38,11 +38,12 @@ interface LibraryCharacter {
 type CharacterData = LibraryCharacter;
 
 // Convert CombatCharacter to LibraryCharacter for display
-function combatCharacterToLibrary(char: CombatCharacter): LibraryCharacter {
+// Exported for tests.
+export function combatCharacterToLibrary(char: CombatCharacter): LibraryCharacter {
   return {
     id: char.id,
     name: char.name,
-    category: char.isNPC ? 'npc' : 'player',
+    category: deriveCombatCategory(char.category, char.isNPC),
     st: char.st,
     dx: char.dx,
     iq: char.iq,
@@ -63,11 +64,14 @@ function combatCharacterToLibrary(char: CombatCharacter): LibraryCharacter {
 }
 
 // Convert LibraryCharacter to CombatCharacter for storage
-function libraryCharacterToCombat(char: LibraryCharacter): CombatCharacter {
+// Exported for tests.
+export function libraryCharacterToCombat(char: LibraryCharacter): CombatCharacter {
+  const category = deriveCombatCategory(char.category);
   return {
     id: char.id,
     name: char.name,
-    isNPC: char.category === 'npc',
+    category,
+    isNPC: category !== 'player',
     hp: char.hp,
     maxHP: char.hp,
     fp: char.fp || 0,
@@ -231,10 +235,12 @@ export default function CharacterLibrary() {
           return;
         }
 
-        // Merge with existing, regenerating IDs to avoid conflicts
+        // Merge with existing, regenerating IDs to avoid conflicts.
+        // Pre-1.5.1 library exports carry isNPC but no category — derive it.
         const newLibChars: LibraryCharacter[] = result.data.map((char) => ({
           ...char,
           id: generateId(),
+          category: deriveCombatCategory(char.category, char.isNPC),
           currentHP: char.hp,
           currentFP: char.fp || 0,
           currentMP: char.mp || 0

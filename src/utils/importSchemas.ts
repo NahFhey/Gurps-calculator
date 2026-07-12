@@ -33,7 +33,10 @@ const AttackSchema = z.object({
 export const CharacterDataSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, 'Character must have a name'),
-  category: z.string().default('PC'),
+  // Optional (no default): absence must stay detectable so the import path
+  // can fall back to the legacy isNPC flag when deriving the category.
+  category: z.string().optional(),
+  isNPC: z.boolean().optional(),
   st: z.number(),
   dx: z.number(),
   iq: z.number(),

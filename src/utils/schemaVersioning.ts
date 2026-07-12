@@ -13,7 +13,7 @@ export interface SchemaMetadataEntry {
   migratesFrom?: string[];
 }
 
-export const CURRENT_SCHEMA_VERSION = '1.5.0';
+export const CURRENT_SCHEMA_VERSION = '1.5.1';
 
 export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
   '1.0.0': {
@@ -66,6 +66,16 @@ export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
       'legacy isStunned/isUnconscious participant booleans folded into conditions[]',
     features: ['condition_reveal_state', 'condition_bool_fold'],
     migratesFrom: ['1.4.0'],
+  },
+  '1.5.1': {
+    name: 'Combat Character Category',
+    timestamp: '2026-07-12',
+    breaking: false,
+    description:
+      'CombatCharacter persists the library form category (player/ally/enemy/object); ' +
+      'pre-1.5.1 records backfilled from isNPC so EncounterSetup library groups show them',
+    features: ['combat_character_category'],
+    migratesFrom: ['1.5.0'],
   },
 };
 

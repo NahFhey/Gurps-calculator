@@ -13,6 +13,7 @@ function createMockCombatCharacter(overrides: Record<string, unknown> = {}): Com
   return {
     id: 'combat-char-1',
     name: 'Test Combat Character',
+    category: 'player',
     isNPC: false,
     hp: 10,
     maxHP: 10,
