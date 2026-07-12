@@ -26,6 +26,9 @@ export {
   type SkeletonProps,
 } from './LoadingSpinner';
 
+// Tooltip
+export { Tooltip, type TooltipProps } from './Tooltip';
+
 // Toast Notifications
 export {
   ToastProvider,

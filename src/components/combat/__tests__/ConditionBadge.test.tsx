@@ -9,7 +9,6 @@ import ConditionBadge from '../ConditionBadge';
 
 vi.mock('../../../utils/conditionsEngine', () => ({
   formatConditionDuration: vi.fn((_condition: unknown, _round: number) => '3 rounds'),
-  formatConditionTooltip: vi.fn((_condition: unknown, _round: number) => 'Stunned tooltip text'),
 }));
 
 vi.mock('../../../constants/conditions', () => ({
@@ -21,10 +20,19 @@ vi.mock('../../../constants/conditions', () => ({
     };
     return icons[id] ?? '❓';
   }),
+  getCondition: vi.fn((id: string) => {
+    const map: Record<string, unknown> = {
+      stunned: { id: 'stunned', label: 'Stunned', icon: '💫', description: 'Cannot act' },
+    };
+    return map[id] ?? null;
+  }),
 }));
 
+// NOTE: the ui module (Tooltip) is intentionally NOT mocked — tooltip
+// behavior is part of the Phase 12a.6 badge contract and is tested below.
+
 // ---------------------------------------------------------------------------
-// Test data
+// Test data + helpers
 // ---------------------------------------------------------------------------
 
 type TestExpiresAt = {
@@ -44,36 +52,206 @@ function makeCondition(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/** The badge element itself (inside the Tooltip trigger span). */
+function getBadge(label = 'Stunned') {
+  return screen.getByLabelText(label);
+}
+
+/**
+ * React synthesizes onMouseEnter/onMouseLeave from bubbling mouseover/mouseout,
+ * so fire those rather than the non-bubbling enter/leave events.
+ */
+function hover(el: Element) {
+  fireEvent.mouseOver(el);
+}
+function unhover(el: Element) {
+  fireEvent.mouseOut(el);
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 describe('ConditionBadge', () => {
-  describe('basic rendering', () => {
+  describe('full mode', () => {
     it('renders the condition label and icon', () => {
-      render(<ConditionBadge condition={makeCondition()} />);
+      render(<ConditionBadge condition={makeCondition()} mode="full" />);
 
       expect(screen.getByText('Stunned')).toBeInTheDocument();
       expect(screen.getByText('💫')).toBeInTheDocument();
     });
 
-    it('shows tooltip from formatConditionTooltip', () => {
-      const { container } = render(<ConditionBadge condition={makeCondition()} />);
-
-      const badge = container.firstElementChild;
-      expect(badge).toHaveAttribute('title', 'Stunned tooltip text');
-    });
-
     it('renders severity when provided', () => {
-      render(<ConditionBadge condition={makeCondition({ severity: 3 })} />);
+      render(<ConditionBadge condition={makeCondition({ severity: 3 })} mode="full" />);
 
       expect(screen.getByText('×3')).toBeInTheDocument();
     });
 
     it('does not render severity when null', () => {
-      render(<ConditionBadge condition={makeCondition({ severity: null })} />);
+      render(<ConditionBadge condition={makeCondition({ severity: null })} mode="full" />);
 
       expect(screen.queryByText(/×/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('icon mode (default)', () => {
+    it('renders only the icon — no inline label', () => {
+      render(<ConditionBadge condition={makeCondition()} />);
+
+      expect(screen.getByText('💫')).toBeInTheDocument();
+      expect(screen.queryByText('Stunned')).not.toBeInTheDocument();
+      // Still discoverable for assistive tech
+      expect(getBadge()).toBeInTheDocument();
+    });
+
+    it('hides severity and countdown inline', () => {
+      render(
+        <ConditionBadge
+          condition={makeCondition({
+            severity: 3,
+            expiresAt: { type: 'turn', turnsRemaining: 1 },
+          })}
+          currentRound={1}
+        />
+      );
+
+      expect(screen.queryByText('×3')).not.toBeInTheDocument();
+      expect(screen.queryByText(/left/)).not.toBeInTheDocument();
+    });
+
+    it('keeps urgency styling on the badge', () => {
+      render(
+        <ConditionBadge
+          condition={makeCondition({ expiresAt: { type: 'turn', turnsRemaining: 0 } })}
+          currentRound={1}
+        />
+      );
+
+      expect(getBadge().className).toContain('border-red-500');
+      expect(getBadge().className).toContain('animate-pulse');
+    });
+
+    it('still offers quick-remove when onRemove is provided', () => {
+      const onRemove = vi.fn();
+      render(<ConditionBadge condition={makeCondition()} onRemove={onRemove} />);
+
+      fireEvent.click(screen.getByTitle('Remove Stunned'));
+      expect(onRemove).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('placeholder mode', () => {
+    it('renders an anonymous grey badge via mode prop', () => {
+      render(
+        <ConditionBadge
+          condition={{ conditionId: '__concealed__', label: 'Afflicted' }}
+          mode="placeholder"
+        />
+      );
+
+      expect(screen.getByText('❓')).toBeInTheDocument();
+      expect(screen.getByText('Afflicted')).toBeInTheDocument();
+      expect(getBadge('Afflicted').className).toContain('border-gray-600');
+    });
+
+    it('is auto-detected from the player-view placeholder flag', () => {
+      render(
+        <ConditionBadge
+          condition={{ conditionId: 'stunned', label: 'Afflicted', placeholder: true }}
+        />
+      );
+
+      // Placeholder forces the anonymous icon even if a real conditionId leaked
+      expect(screen.getByText('❓')).toBeInTheDocument();
+      expect(screen.queryByText('💫')).not.toBeInTheDocument();
+      expect(getBadge('Afflicted').className).toContain('border-gray-600');
+    });
+
+    it('never renders severity, duration, or quick-remove', () => {
+      const onRemove = vi.fn();
+      render(
+        <ConditionBadge
+          condition={{
+            conditionId: '__concealed__',
+            label: 'Afflicted',
+            placeholder: true,
+            severity: 3,
+            expiresAt: { type: 'turn', turnsRemaining: 1 },
+          }}
+          mode="placeholder"
+          onRemove={onRemove}
+        />
+      );
+
+      expect(screen.queryByText('×3')).not.toBeInTheDocument();
+      expect(screen.queryByText(/left/)).not.toBeInTheDocument();
+      expect(screen.queryByTitle(/Remove/)).not.toBeInTheDocument();
+    });
+
+    it('does not pulse even when the underlying condition is expiring', () => {
+      render(
+        <ConditionBadge
+          condition={{
+            conditionId: '__concealed__',
+            label: 'Afflicted',
+            placeholder: true,
+            expiresAt: { type: 'turn', turnsRemaining: 0 },
+          }}
+        />
+      );
+
+      expect(getBadge('Afflicted').className).not.toContain('animate-pulse');
+    });
+  });
+
+  describe('tooltip', () => {
+    it('is hidden until hover', () => {
+      render(<ConditionBadge condition={makeCondition()} mode="full" />);
+
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    });
+
+    it('shows name, duration, source, and description on hover', () => {
+      render(
+        <ConditionBadge
+          condition={makeCondition({ severity: 2, source: 'Goblin #1', notes: 'Save ends' })}
+          mode="full"
+        />
+      );
+
+      hover(getBadge());
+
+      const tooltip = screen.getByRole('tooltip');
+      expect(tooltip).toHaveTextContent('Stunned');
+      expect(tooltip).toHaveTextContent('×2');
+      expect(tooltip).toHaveTextContent('Duration: 3 rounds');
+      expect(tooltip).toHaveTextContent('Source: Goblin #1');
+      expect(tooltip).toHaveTextContent('Cannot act');
+      expect(tooltip).toHaveTextContent('Notes: Save ends');
+    });
+
+    it('hides again on mouse leave', () => {
+      render(<ConditionBadge condition={makeCondition()} mode="full" />);
+
+      hover(getBadge());
+      expect(screen.getByRole('tooltip')).toBeInTheDocument();
+
+      unhover(getBadge());
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    });
+
+    it('shows a generic message for placeholders', () => {
+      render(
+        <ConditionBadge
+          condition={{ conditionId: '__concealed__', label: 'Afflicted', placeholder: true }}
+        />
+      );
+
+      hover(getBadge('Afflicted'));
+
+      expect(screen.getByRole('tooltip')).toHaveTextContent(
+        'This character has an unknown effect.'
+      );
     });
   });
 
@@ -83,12 +261,9 @@ describe('ConditionBadge', () => {
         expiresAt: { type: 'turn', turnsRemaining: 0 },
       });
 
-      const { container } = render(
-        <ConditionBadge condition={condition} currentRound={5} />
-      );
+      render(<ConditionBadge condition={condition} currentRound={5} mode="full" />);
 
-      // Should have red styling and pulse animation
-      const badge = container.firstElementChild!;
+      const badge = getBadge();
       expect(badge.className).toContain('border-red-500');
       expect(badge.className).toContain('animate-pulse');
     });
@@ -98,11 +273,9 @@ describe('ConditionBadge', () => {
         expiresAt: { type: 'turn', turnsRemaining: 2 },
       });
 
-      const { container } = render(
-        <ConditionBadge condition={condition} currentRound={3} />
-      );
+      render(<ConditionBadge condition={condition} currentRound={3} mode="full" />);
 
-      const badge = container.firstElementChild!;
+      const badge = getBadge();
       expect(badge.className).toContain('border-orange-500');
       expect(badge.className).not.toContain('animate-pulse');
     });
@@ -112,22 +285,17 @@ describe('ConditionBadge', () => {
         expiresAt: { type: 'turn', turnsRemaining: 5 },
       });
 
-      const { container } = render(
-        <ConditionBadge condition={condition} currentRound={1} />
-      );
+      render(<ConditionBadge condition={condition} currentRound={1} mode="full" />);
 
-      const badge = container.firstElementChild!;
-      expect(badge.className).toContain('border-purple-700');
+      expect(getBadge().className).toContain('border-purple-700');
     });
 
     it('shows "none" urgency for permanent conditions (no expiresAt)', () => {
       const condition = makeCondition({ expiresAt: null });
 
-      const { container } = render(
-        <ConditionBadge condition={condition} currentRound={1} />
-      );
+      render(<ConditionBadge condition={condition} currentRound={1} mode="full" />);
 
-      const badge = container.firstElementChild!;
+      const badge = getBadge();
       expect(badge.className).toContain('border-purple-700');
       expect(badge.className).not.toContain('animate-pulse');
     });
@@ -138,12 +306,9 @@ describe('ConditionBadge', () => {
       });
 
       // currentRound=5, expires at round 7 → 2 remaining → "low" urgency
-      const { container } = render(
-        <ConditionBadge condition={condition} currentRound={5} />
-      );
+      render(<ConditionBadge condition={condition} currentRound={5} mode="full" />);
 
-      const badge = container.firstElementChild!;
-      expect(badge.className).toContain('border-orange-500');
+      expect(getBadge().className).toContain('border-orange-500');
     });
 
     it('treats endOfCombat as no urgency', () => {
@@ -151,12 +316,9 @@ describe('ConditionBadge', () => {
         expiresAt: { type: 'endOfCombat' },
       });
 
-      const { container } = render(
-        <ConditionBadge condition={condition} currentRound={10} />
-      );
+      render(<ConditionBadge condition={condition} currentRound={10} mode="full" />);
 
-      const badge = container.firstElementChild!;
-      expect(badge.className).toContain('border-purple-700');
+      expect(getBadge().className).toContain('border-purple-700');
     });
   });
 
@@ -166,7 +328,7 @@ describe('ConditionBadge', () => {
         expiresAt: { type: 'turn', turnsRemaining: 0 },
       });
 
-      render(<ConditionBadge condition={condition} currentRound={5} />);
+      render(<ConditionBadge condition={condition} currentRound={5} mode="full" />);
       expect(screen.getByText('expires now')).toBeInTheDocument();
     });
 
@@ -175,7 +337,7 @@ describe('ConditionBadge', () => {
         expiresAt: { type: 'turn', turnsRemaining: 1 },
       });
 
-      render(<ConditionBadge condition={condition} currentRound={5} />);
+      render(<ConditionBadge condition={condition} currentRound={5} mode="full" />);
       expect(screen.getByText('1 turn left')).toBeInTheDocument();
     });
 
@@ -184,7 +346,7 @@ describe('ConditionBadge', () => {
         expiresAt: { type: 'round', round: 7 },
       });
 
-      render(<ConditionBadge condition={condition} currentRound={5} />);
+      render(<ConditionBadge condition={condition} currentRound={5} mode="full" />);
       expect(screen.getByText('2 rounds left')).toBeInTheDocument();
     });
 
@@ -193,7 +355,7 @@ describe('ConditionBadge', () => {
         expiresAt: { type: 'turn', turnsRemaining: 5 },
       });
 
-      render(<ConditionBadge condition={condition} currentRound={1} />);
+      render(<ConditionBadge condition={condition} currentRound={1} mode="full" />);
       // Normal urgency wraps in parens — uses formatConditionDuration fallback
       expect(screen.getByText('(5 turns left)')).toBeInTheDocument();
     });
@@ -204,7 +366,7 @@ describe('ConditionBadge', () => {
       });
 
       render(
-        <ConditionBadge condition={condition} currentRound={1} showDuration={false} />
+        <ConditionBadge condition={condition} currentRound={1} showDuration={false} mode="full" />
       );
 
       expect(screen.queryByText(/left/)).not.toBeInTheDocument();
@@ -216,21 +378,21 @@ describe('ConditionBadge', () => {
       const onClick = vi.fn();
       const condition = makeCondition();
 
-      render(<ConditionBadge condition={condition} onClick={onClick} />);
+      render(<ConditionBadge condition={condition} onClick={onClick} mode="full" />);
 
       fireEvent.click(screen.getByText('Stunned'));
       expect(onClick).toHaveBeenCalledWith(condition);
     });
 
     it('does not render remove button when onRemove is not provided', () => {
-      render(<ConditionBadge condition={makeCondition()} />);
+      render(<ConditionBadge condition={makeCondition()} mode="full" />);
 
       expect(screen.queryByTitle('Remove Stunned')).not.toBeInTheDocument();
     });
 
     it('renders remove button when onRemove is provided', () => {
       const onRemove = vi.fn();
-      render(<ConditionBadge condition={makeCondition()} onRemove={onRemove} />);
+      render(<ConditionBadge condition={makeCondition()} onRemove={onRemove} mode="full" />);
 
       expect(screen.getByTitle('Remove Stunned')).toBeInTheDocument();
     });
@@ -239,7 +401,7 @@ describe('ConditionBadge', () => {
       const onRemove = vi.fn();
       const condition = makeCondition();
 
-      render(<ConditionBadge condition={condition} onRemove={onRemove} />);
+      render(<ConditionBadge condition={condition} onRemove={onRemove} mode="full" />);
 
       fireEvent.click(screen.getByTitle('Remove Stunned'));
       expect(onRemove).toHaveBeenCalledWith(condition);
@@ -251,7 +413,7 @@ describe('ConditionBadge', () => {
       const condition = makeCondition();
 
       render(
-        <ConditionBadge condition={condition} onClick={onClick} onRemove={onRemove} />
+        <ConditionBadge condition={condition} onClick={onClick} onRemove={onRemove} mode="full" />
       );
 
       fireEvent.click(screen.getByTitle('Remove Stunned'));
@@ -262,21 +424,17 @@ describe('ConditionBadge', () => {
 
   describe('compact mode', () => {
     it('applies compact styling when compact is true', () => {
-      const { container } = render(
-        <ConditionBadge condition={makeCondition()} compact={true} />
-      );
+      render(<ConditionBadge condition={makeCondition()} compact={true} mode="full" />);
 
-      const badge = container.firstElementChild!;
+      const badge = getBadge();
       expect(badge.className).toContain('px-1.5');
       expect(badge.className).toContain('py-0.5');
     });
 
     it('applies normal styling when compact is false', () => {
-      const { container } = render(
-        <ConditionBadge condition={makeCondition()} compact={false} />
-      );
+      render(<ConditionBadge condition={makeCondition()} compact={false} mode="full" />);
 
-      const badge = container.firstElementChild!;
+      const badge = getBadge();
       expect(badge.className).toContain('px-2');
       expect(badge.className).toContain('py-1');
     });

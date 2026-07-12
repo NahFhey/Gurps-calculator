@@ -7,6 +7,7 @@
 import { useCallback } from 'react';
 import { useCombatStore } from './useCombatStore';
 import { createConditionLogEntry } from '../utils/combatHelpers';
+import { cycleRevealed } from '../utils/conditionsEngine';
 import {
   createAddConditionAction,
   createRemoveConditionAction,
@@ -27,6 +28,7 @@ export interface CombatConditionHandlers {
     conditionInstanceId: string,
     newDuration: ConditionDuration,
   ) => void;
+  handleCycleConditionRevealed: (conditionInstanceId: string) => void;
 }
 
 interface CombatConditionDeps {
@@ -188,9 +190,53 @@ export function useCombatConditions(
     [combat, currentActorTruth, recordAction, saveCombatActive],
   );
 
+  // Phase 12a.6: cycle the GM-controlled eye state (closed → half → open).
+  // No combat-log entry — reveal state is GM-secret and the log reaches
+  // player view. Undo still works via the recorded update action.
+  const handleCycleConditionRevealed = useCallback(
+    (conditionInstanceId: string) => {
+      if (!currentActorTruth) return;
+
+      const conditions = currentActorTruth.conditions || [];
+      const conditionToCycle = conditions.find(
+        (c) => c.instanceId === conditionInstanceId,
+      );
+      if (!conditionToCycle) return;
+
+      const updatedCondition: ConditionInstance = {
+        ...conditionToCycle,
+        revealed: cycleRevealed(conditionToCycle.revealed),
+      };
+
+      const conditionAction = createUpdateConditionAction(
+        currentActorTruth.instanceId,
+        conditionInstanceId,
+        conditionToCycle,
+        updatedCondition,
+      );
+
+      const updatedParticipants = combat.participants.map((p) => {
+        if (p.instanceId === currentActorTruth.instanceId) {
+          return {
+            ...p,
+            conditions: (p.conditions || []).map((c) =>
+              c.instanceId === conditionInstanceId ? updatedCondition : c,
+            ),
+          };
+        }
+        return p;
+      });
+
+      saveCombatActive({ ...combat, participants: updatedParticipants });
+      recordAction(conditionAction);
+    },
+    [combat, currentActorTruth, recordAction, saveCombatActive],
+  );
+
   return {
     handleAddCondition,
     handleRemoveCondition,
     handleUpdateCondition,
+    handleCycleConditionRevealed,
   };
 }

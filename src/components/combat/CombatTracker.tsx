@@ -231,8 +231,12 @@ export default function CombatTracker() {
     recordAction,
   });
 
-  const { handleAddCondition, handleRemoveCondition, handleUpdateCondition } =
-    useCombatConditions({ combat, currentActorTruth, recordAction });
+  const {
+    handleAddCondition,
+    handleRemoveCondition,
+    handleUpdateCondition,
+    handleCycleConditionRevealed,
+  } = useCombatConditions({ combat, currentActorTruth, recordAction });
 
   const { handleAddReinforcements } = useCombatReinforcements({
     combat,
@@ -637,6 +641,7 @@ export default function CombatTracker() {
         onAddCondition={handleAddCondition}
         onRemoveCondition={handleRemoveCondition}
         onUpdateCondition={handleUpdateCondition}
+        onCycleRevealed={handleCycleConditionRevealed}
       />
 
       {showReinforcementsModal && (

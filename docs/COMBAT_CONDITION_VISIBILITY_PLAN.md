@@ -1,6 +1,6 @@
 # Phase 12a.6 — Combat Condition Visibility
 
-**Status:** IN PROGRESS — session 1 (data + filter + migrations) complete 2026-07-04; display/UI surfaces remain
+**Status:** IN PROGRESS — session 1 (data + filter + migrations) complete 2026-07-04; session 2 (eye widget + badge rewrite + tooltip) complete 2026-07-12; popover extraction, overflow pills, and table verification remain
 **Created:** 2026-05-03
 **Sequence:** Inserted between Phase 12a.5 (Inventory Integration Bus, planned) and Phase 12b (GCS Import Improvements, deferred)
 **Origin:** Design concept reached via grilling session 2026-05-03
@@ -66,11 +66,53 @@ entry point) are sessions 2–3.
   passing (`useCombatStore` functional-update `round`→`currentRound` key,
   `CombatComponents` badge-duration expectation stale since Phase 11b).
 
-**Remaining (sessions 2–3):** eye toggle widget in `ConditionsPanel` +
-condition-add popover; `ConditionBadge` rewrite (`mode: 'full' | 'icon' |
-'placeholder'`, React tooltip); `ConditionAddPopover` extraction with tracker
-and map-token entry points; "+N" overflow pills (4 in tracker rows, 3 in
-timeline); live table verification.
+## Implementation Status (as-built, session 2 — 2026-07-12)
+
+**Done:**
+
+- **Tooltip primitive** — new `src/components/ui/Tooltip.tsx`, exported from
+  the ui barrel. Hover/focus trigger, portal to `document.body` (escapes
+  overflow-clipped containers), position computed once on open (top, flipping
+  to bottom near the viewport top), `role="tooltip"`. 5 unit tests.
+- **`ConditionBadge` rewrite** — new `mode: 'full' | 'icon' | 'placeholder'`
+  prop (default `'icon'` per the new design). Icon mode renders icon-only
+  (urgency border/pulse retained; label, severity, countdown live in the
+  tooltip). Placeholder rendering is **auto-forced** whenever the condition
+  carries the player-view `placeholder: true` flag, so filtered view data is
+  safe regardless of call-site mode; explicit `mode="placeholder"` renders at
+  full density. Placeholders are grey, urgency-free, never show
+  severity/duration/quick-remove, and get the generic tooltip ("This character
+  has an unknown effect."). Rich React tooltip (name/severity, duration,
+  source, catalog description, notes) replaces the `title=` attribute. Badge
+  root carries `aria-label={label}` for icon-mode discoverability. Phase 11b
+  urgency colors, countdown, pulse, and quick-remove X all preserved.
+  Call sites: `ConditionsPanel` passes `mode="full"`; `ParticipantListView`
+  takes the icon default. Test suite rewritten (33 tests) + CombatComponents
+  badge tests updated for the mode API.
+- **Eye toggle widget** — `EyeToggle` in `ConditionsPanel.tsx`: three-state
+  button per condition row (closed `EyeOff` gray → half `Eye` amber/dimmed →
+  open `Eye` green), title/aria-label describing state + next action.
+  NPC-only (`category !== 'player' && !== 'ally'`; missing category = NPC,
+  matching `filterConditions`). Legacy instances without `revealed` fall back
+  to catalog obviousness for display. 9 panel tests.
+- **Dispatch path** — `handleCycleConditionRevealed(conditionInstanceId)`
+  added to `useCombatConditions`: cycles via `cycleRevealed`, records an
+  undoable `UPDATE_CONDITION` action, deliberately writes **no combat-log
+  entry** (reveal state is GM-secret; the log reaches player view). Threaded
+  CombatTracker → ActionPanel (`onCycleRevealed`, passed to the panel only
+  when `viewMode === ViewMode.GM`) → ConditionsPanel. 7 hook tests.
+- **Browser-verified** (dev server, GM + player view): Poisoned on an enemy
+  seeds eye-closed; cycling closed→half→open works from the tracker; player
+  view shows nothing / one anonymous ❓ "Afflicted" placeholder / the full
+  ☠️ badge respectively, with zero name leakage; tooltip renders structured
+  content on hover. No console errors.
+- **Discovered in passing:** pre-existing CharacterLibrary bug — `category`
+  dropped on save, so library characters never appear in EncounterSetup.
+  Recorded as followup #10; out of scope here.
+
+**Remaining (session 3):** `ConditionAddPopover` extraction with tracker and
+map-token entry points (eye control in the popover included); "+N" overflow
+pills (4 in tracker rows, 3 in timeline); live table verification.
 
 ---
 
