@@ -4,15 +4,35 @@
  * Renders CombatMapPanel at full height with a floating dice roller.
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useCombatContext } from './CombatContext';
 import { CombatMapPanel } from './CombatMapPanel';
+import ConditionAddPopover from './ConditionAddPopover';
 import { Dices, X, ScrollText } from 'lucide-react';
 
 export function CombatMainArea() {
   const ctx = useCombatContext();
   const [showDice, setShowDice] = useState(false);
   const [showLog, setShowLog] = useState(false);
+  // Phase 12a.6: condition popover anchor (map token entry point)
+  const [conditionPopover, setConditionPopover] = useState<{
+    instanceId: string;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const openConditionPopover = useCallback(
+    (instanceId: string, anchor: { x: number; y: number }) => {
+      setConditionPopover({ instanceId, x: anchor.x, y: anchor.y });
+    },
+    [],
+  );
+
+  const popoverTruthParticipant = conditionPopover
+    ? ctx.combat.participants.find(
+        (p) => p.instanceId === conditionPopover.instanceId,
+      )
+    : undefined;
 
   return (
     <div className="h-full w-full relative">
@@ -29,7 +49,29 @@ export function CombatMainArea() {
         onMoveTo={ctx.handleMoveTo}
         onGmPlaceToken={ctx.handleGmPlaceToken}
         losTileIds={ctx.losOverlayTileIds}
+        onOpenConditions={ctx.gmMode ? openConditionPopover : undefined}
       />
+
+      {/* Phase 12a.6: condition popover for map tokens (GM only) */}
+      {conditionPopover && ctx.gmMode && popoverTruthParticipant && (
+        <ConditionAddPopover
+          participant={{
+            ...popoverTruthParticipant,
+            id: popoverTruthParticipant.instanceId,
+          }}
+          currentRound={ctx.combat.currentRound}
+          currentTurn={ctx.combat.currentTurnIndex}
+          anchor={{ x: conditionPopover.x, y: conditionPopover.y }}
+          onClose={() => setConditionPopover(null)}
+          onAddCondition={(c) => ctx.addConditionTo(conditionPopover.instanceId, c)}
+          onRemoveCondition={(id) =>
+            ctx.removeConditionFrom(conditionPopover.instanceId, id)
+          }
+          onCycleRevealed={(id) =>
+            ctx.cycleConditionRevealedOn(conditionPopover.instanceId, id)
+          }
+        />
+      )}
 
       {/* Floating toolbar — bottom-left */}
       <div className="absolute bottom-3 left-3 z-30 flex gap-1.5">

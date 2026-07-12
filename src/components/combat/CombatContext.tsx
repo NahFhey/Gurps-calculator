@@ -15,6 +15,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useCombatStore } from '../../hooks/useCombatStore';
+import { useCombatConditions } from '../../hooks/useCombatConditions';
 import { useCampaignStore } from '../../state/campaignStore';
 import { getCombatView, ViewMode, type ViewModeType } from '../../utils/combatViewFilter';
 import { filterLogForPlayerView } from '../../utils/combatLogFilter';
@@ -105,6 +106,10 @@ export interface CombatContextValue {
   losOverlayTileIds: string[] | undefined;
   /** Resource editing */
   updateResource: (instanceId: string, resource: string, newValue: number) => void;
+  /** Phase 12a.6: participant-targeted condition handlers (map condition popover) */
+  addConditionTo: (participantInstanceId: string, conditionInstance: ConditionInstance) => void;
+  removeConditionFrom: (participantInstanceId: string, conditionInstanceId: string) => void;
+  cycleConditionRevealedOn: (participantInstanceId: string, conditionInstanceId: string) => void;
   /** Dice */
   diceExpression: string;
   setDiceExpression: (v: string) => void;
@@ -167,6 +172,13 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
     if (!combat) return;
     addAction(history, action as Record<string, unknown>, combat, reveal ?? undefined);
   };
+
+  // Phase 12a.6: participant-targeted condition dispatch for the map popover.
+  // Must be called before the no-combat early return (hooks rule); the hook
+  // tolerates combat === null. The actor-bound wrappers are unused here, so
+  // currentActorTruth stays undefined.
+  const { addConditionTo, removeConditionFrom, cycleConditionRevealedOn } =
+    useCombatConditions({ combat, currentActorTruth: undefined, recordAction });
 
   // Ensure reveal state is initialised
   useEffect(() => {
@@ -593,6 +605,9 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
     handleGmPlaceToken,
     losOverlayTileIds,
     updateResource,
+    addConditionTo,
+    removeConditionFrom,
+    cycleConditionRevealedOn,
     diceExpression,
     setDiceExpression,
     rollTarget,

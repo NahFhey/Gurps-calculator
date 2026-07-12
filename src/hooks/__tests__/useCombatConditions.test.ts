@@ -179,3 +179,93 @@ describe('useCombatConditions.handleCycleConditionRevealed', () => {
     expect(recordAction).not.toHaveBeenCalled();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Phase 12a.6 session 3: participant-targeted handlers (condition popover)
+// ---------------------------------------------------------------------------
+
+describe('useCombatConditions participant-targeted handlers', () => {
+  beforeEach(() => {
+    mockSaveCombatActive.mockClear();
+  });
+
+  it('addConditionTo appends to the targeted (non-actor) participant and logs it', () => {
+    const { result, recordAction } = setup(makeCondition());
+    const newCondition = makeCondition({ instanceId: 'ci-new', conditionId: 'stunned', label: 'Stunned' });
+
+    act(() => result.current.addConditionTo('p-2', newCondition));
+
+    // First save: condition appended to the bystander, actor untouched
+    const saved = mockSaveCombatActive.mock.calls[0][0] as CombatState;
+    const bystander = saved.participants.find((p) => p.instanceId === 'p-2')!;
+    expect(bystander.conditions?.map((c) => c.instanceId)).toContain('ci-new');
+    expect(saved.participants[0].conditions).toHaveLength(1);
+
+    // Second save: functional log append naming the target
+    const updater = mockSaveCombatActive.mock.calls[1][0] as (prev: CombatState) => CombatState;
+    const withLog = updater(saved);
+    expect(withLog.log).toHaveLength(1);
+
+    // Undoable add action + log action recorded
+    expect(recordAction).toHaveBeenCalledTimes(2);
+    const addAction = recordAction.mock.calls[0][0] as { type: string; payload: { instanceId: string } };
+    expect(addAction.type).toBe(ACTION_TYPES.ADD_CONDITION);
+    expect(addAction.payload.instanceId).toBe('p-2');
+  });
+
+  it('removeConditionFrom removes from the targeted participant', () => {
+    const { result } = setup(makeCondition());
+
+    act(() => result.current.removeConditionFrom('p-2', 'ci-other'));
+
+    const saved = mockSaveCombatActive.mock.calls[0][0] as CombatState;
+    const bystander = saved.participants.find((p) => p.instanceId === 'p-2')!;
+    expect(bystander.conditions).toHaveLength(0);
+    // Actor's condition untouched
+    expect(saved.participants[0].conditions).toHaveLength(1);
+  });
+
+  it('cycleConditionRevealedOn cycles on the targeted participant', () => {
+    const { result } = setup(makeCondition());
+
+    act(() => result.current.cycleConditionRevealedOn('p-2', 'ci-other'));
+
+    const saved = mockSaveCombatActive.mock.calls[0][0] as CombatState;
+    const bystander = saved.participants.find((p) => p.instanceId === 'p-2')!;
+    // 'open' cycles to 'closed'
+    expect(bystander.conditions?.[0].revealed).toBe('closed');
+  });
+
+  it('is a no-op for an unknown participant', () => {
+    const { result, recordAction } = setup(makeCondition());
+
+    act(() => {
+      result.current.addConditionTo('p-missing', makeCondition({ instanceId: 'ci-x' }));
+      result.current.removeConditionFrom('p-missing', 'ci-1');
+      result.current.cycleConditionRevealedOn('p-missing', 'ci-1');
+    });
+
+    expect(mockSaveCombatActive).not.toHaveBeenCalled();
+    expect(recordAction).not.toHaveBeenCalled();
+  });
+
+  it('is a no-op when combat is null (CombatContext pre-guard call)', () => {
+    const recordAction = vi.fn();
+    const { result } = renderHook(() =>
+      useCombatConditions({
+        combat: null,
+        currentActorTruth: undefined,
+        recordAction,
+      }),
+    );
+
+    act(() => {
+      result.current.addConditionTo('p-1', makeCondition());
+      result.current.removeConditionFrom('p-1', 'ci-1');
+      result.current.cycleConditionRevealedOn('p-1', 'ci-1');
+    });
+
+    expect(mockSaveCombatActive).not.toHaveBeenCalled();
+    expect(recordAction).not.toHaveBeenCalled();
+  });
+});

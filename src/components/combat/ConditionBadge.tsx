@@ -100,6 +100,30 @@ const PLACEHOLDER_STYLES = {
   durationText: 'text-gray-500',
 };
 
+/** Display order for density-capped condition rows: most urgent first. */
+const URGENCY_RANK: Record<Urgency, number> = {
+  expiring: 0,
+  low: 1,
+  normal: 2,
+  none: 3,
+};
+
+/**
+ * Sort conditions most-urgent-first for the capped icon rows (Phase 12a.6
+ * density cap). Placeholders carry no duration and sort as 'none'. Stable for
+ * equal ranks (Array.prototype.sort is stable), so insertion order breaks ties.
+ */
+export function sortConditionsByUrgency<T extends Condition>(
+  conditions: T[],
+  currentRound: number,
+): T[] {
+  return [...conditions].sort(
+    (a, b) =>
+      URGENCY_RANK[getUrgency(getRemaining(a.expiresAt, currentRound))] -
+      URGENCY_RANK[getUrgency(getRemaining(b.expiresAt, currentRound))],
+  );
+}
+
 /** Human-friendly countdown label for low-urgency conditions. */
 function urgencyLabel(remaining: number | null, expiresAt: ExpiresAt | null | undefined): string | null {
   if (remaining === null || !expiresAt) return null;

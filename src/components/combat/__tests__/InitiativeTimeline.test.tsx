@@ -142,3 +142,103 @@ describe('InitiativeTimeline', () => {
     expect(screen.getByText('5')).toBeInTheDocument(); // Goblin's speed
   });
 });
+
+// ---------------------------------------------------------------------------
+// Phase 12a.6: condition icons + overflow pill (cap 3)
+// ---------------------------------------------------------------------------
+
+describe('InitiativeTimeline condition icons (Phase 12a.6)', () => {
+  const conditions = [
+    { instanceId: 'ci-1', conditionId: 'stunned', label: 'Stunned' },
+    { instanceId: 'ci-2', conditionId: 'prone', label: 'Prone' },
+    { instanceId: 'ci-3', conditionId: 'poisoned', label: 'Poisoned' },
+    { instanceId: 'ci-4', conditionId: 'bleeding', label: 'Bleeding' },
+    { instanceId: 'ci-5', conditionId: 'grappled', label: 'Grappled' },
+  ];
+
+  function renderWithConditions(
+    conds: typeof conditions,
+    onOpenConditions?: (id: string, anchor: { x: number; y: number }) => void
+  ) {
+    const afflicted = makeParticipant({
+      instanceId: 'goblin-1',
+      name: 'Goblin',
+      category: 'enemy',
+      conditions: conds as Participant['conditions'],
+    });
+    return render(
+      <InitiativeTimeline
+        {...defaultProps}
+        participants={[alice, bob, afflicted]}
+        onOpenConditions={onOpenConditions}
+      />
+    );
+  }
+
+  it('shows at most 3 condition icons plus a "+N" pill', () => {
+    renderWithConditions(conditions, vi.fn());
+
+    expect(screen.getByLabelText('Stunned')).toBeInTheDocument();
+    expect(screen.getByLabelText('Prone')).toBeInTheDocument();
+    expect(screen.getByLabelText('Poisoned')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Bleeding')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Grappled')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('2 more conditions')).toBeInTheDocument();
+  });
+
+  it('shows no pill at 3 or fewer conditions', () => {
+    renderWithConditions(conditions.slice(0, 3), vi.fn());
+
+    expect(screen.queryByLabelText(/more condition/)).not.toBeInTheDocument();
+  });
+
+  it('sorts expiring conditions into the visible set', () => {
+    const withExpiring = [
+      ...conditions.slice(0, 3),
+      {
+        instanceId: 'ci-urgent',
+        conditionId: 'on_fire',
+        label: 'On Fire',
+        expiresAt: { type: 'turn', turnsRemaining: 0 },
+      },
+    ];
+    renderWithConditions(withExpiring as typeof conditions, vi.fn());
+
+    // The expiring condition displaces a permanent one from the visible 3
+    expect(screen.getByLabelText('On Fire')).toBeInTheDocument();
+    expect(screen.getByLabelText('1 more condition')).toBeInTheDocument();
+  });
+
+  it('pill click opens the popover and does not jump turns', () => {
+    const onOpenConditions = vi.fn();
+    const onJumpToTurn = vi.fn();
+    const afflicted = makeParticipant({
+      instanceId: 'goblin-1',
+      name: 'Goblin',
+      category: 'enemy',
+      conditions: conditions as Participant['conditions'],
+    });
+    render(
+      <InitiativeTimeline
+        {...defaultProps}
+        participants={[alice, bob, afflicted]}
+        onJumpToTurn={onJumpToTurn}
+        onOpenConditions={onOpenConditions}
+      />
+    );
+
+    fireEvent.click(screen.getByLabelText('2 more conditions'));
+    expect(onOpenConditions).toHaveBeenCalledWith(
+      'goblin-1',
+      expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) })
+    );
+    expect(onJumpToTurn).not.toHaveBeenCalled();
+  });
+
+  it('renders a static count without onOpenConditions (player view)', () => {
+    renderWithConditions(conditions, undefined);
+
+    const pill = screen.getByLabelText('2 more conditions');
+    expect(pill.tagName).toBe('SPAN');
+  });
+});

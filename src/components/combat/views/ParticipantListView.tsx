@@ -1,8 +1,10 @@
 import { useState, memo, ChangeEvent, KeyboardEvent } from 'react';
+import { Plus } from 'lucide-react';
 import { calculateHPStatus } from '../../../utils/combatHelpers';
 import { getActiveEffects } from '../../../utils/effectsEngine';
 import { getActiveConditions } from '../../../utils/conditionsEngine';
-import ConditionBadge from '../ConditionBadge';
+import ConditionBadge, { sortConditionsByUrgency } from '../ConditionBadge';
+import ConditionOverflowPill from '../ConditionOverflowPill';
 import type {
   ParticipantListViewProps,
   ParticipantCardProps,
@@ -11,6 +13,9 @@ import type {
   MPValue,
   ConditionInstance
 } from '../../../types/combatTracker';
+
+/** Phase 12a.6 density cap: max condition icons shown inline per tracker card. */
+const TRACKER_CONDITION_CAP = 4;
 
 /**
  * ParticipantListView - List of combat participants
@@ -23,7 +28,8 @@ function ParticipantListViewBase({
   participants,
   currentActorInstanceId,
   viewMode,
-  onUpdateResource
+  onUpdateResource,
+  onOpenConditions
 }: ParticipantListViewProps) {
   return (
     <div className="space-y-2">
@@ -36,6 +42,7 @@ function ParticipantListViewBase({
             viewMode={viewMode}
             isCurrent={p.instanceId === currentActorInstanceId}
             onUpdateResource={onUpdateResource}
+            onOpenConditions={onOpenConditions}
           />
         ))}
       </div>
@@ -55,7 +62,7 @@ export const ParticipantListView = memo(ParticipantListViewBase);
  * Handles both truth state (GM View) and filtered state (Player View)
  * Memoized to prevent re-renders when sibling participants change
  */
-function ParticipantCardBase({ participant, isCurrent, onUpdateResource }: ParticipantCardProps) {
+function ParticipantCardBase({ participant, isCurrent, onUpdateResource, onOpenConditions }: ParticipantCardProps) {
   const [editing, setEditing] = useState<string | null>(null); // 'HP', 'FP', or 'MP'
   const [editValue, setEditValue] = useState('');
 
@@ -280,22 +287,54 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource }: Parti
         );
       })()}
 
-      {/* Phase 6: Conditions */}
+      {/* Phase 6 conditions; Phase 12a.6 density cap (4 icons + "+N" pill) */}
       {(() => {
         const conditions = getActiveConditions(participant) as ConditionInstance[];
-        if (conditions.length === 0) return null;
+        if (conditions.length === 0 && !onOpenConditions) return null;
+        const round = participant.currentRound ?? 0;
+        const sorted = sortConditionsByUrgency(conditions, round);
+        const visible = sorted.slice(0, TRACKER_CONDITION_CAP);
+        const overflow = sorted.length - visible.length;
         return (
           <div className="mt-2 pt-2 border-t border-gray-700">
-            <div className="text-xs text-gray-400 mb-1">Conditions:</div>
-            <div className="flex flex-wrap gap-1">
-              {conditions.map(condition => (
+            <div className="flex items-center gap-1.5 mb-1">
+              <div className="text-xs text-gray-400">Conditions:</div>
+              {onOpenConditions && (
+                <button
+                  type="button"
+                  onClick={(e) =>
+                    onOpenConditions(participant.instanceId, { x: e.clientX, y: e.clientY })
+                  }
+                  aria-label={`Manage conditions for ${participant.name}`}
+                  title="Add / manage conditions"
+                  className="flex-none p-0.5 rounded bg-gray-700 hover:bg-blue-600 text-gray-300 hover:text-white transition-colors"
+                >
+                  <Plus size={11} />
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-1">
+              {visible.map(condition => (
                 <ConditionBadge
                   key={condition.instanceId}
                   condition={condition}
-                  currentRound={participant.currentRound ?? 0}
-                  showDuration={true}
+                  currentRound={round}
                 />
               ))}
+              {overflow > 0 && (
+                <ConditionOverflowPill
+                  count={overflow}
+                  onClick={
+                    onOpenConditions
+                      ? (e) =>
+                          onOpenConditions(participant.instanceId, {
+                            x: e.clientX,
+                            y: e.clientY,
+                          })
+                      : undefined
+                  }
+                />
+              )}
             </div>
           </div>
         );
@@ -323,9 +362,11 @@ const areParticipantPropsEqual = (prevProps: ParticipantCardProps, nextProps: Pa
       : true) &&
     prev.currentFP === next.currentFP &&
     prev.currentMP === next.currentMP &&
+    prev.conditions === next.conditions &&
     prevProps.isCurrent === nextProps.isCurrent &&
     prevProps.viewMode === nextProps.viewMode &&
-    prevProps.onUpdateResource === nextProps.onUpdateResource
+    prevProps.onUpdateResource === nextProps.onUpdateResource &&
+    prevProps.onOpenConditions === nextProps.onOpenConditions
   );
 };
 

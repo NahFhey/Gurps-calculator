@@ -1,6 +1,6 @@
 # Phase 12a.6 — Combat Condition Visibility
 
-**Status:** IN PROGRESS — session 1 (data + filter + migrations) complete 2026-07-04; session 2 (eye widget + badge rewrite + tooltip) complete 2026-07-12; popover extraction, overflow pills, and table verification remain
+**Status:** CODE COMPLETE — session 1 (data + filter + migrations) 2026-07-04; session 2 (eye widget + badge rewrite + tooltip) 2026-07-12; session 3 (two-surface popover + overflow pills) 2026-07-12. Only live table verification remains.
 **Created:** 2026-05-03
 **Sequence:** Inserted between Phase 12a.5 (Inventory Integration Bus, planned) and Phase 12b (GCS Import Improvements, deferred)
 **Origin:** Design concept reached via grilling session 2026-05-03
@@ -110,9 +110,54 @@ entry point) are sessions 2–3.
   dropped on save, so library characters never appear in EncounterSetup.
   Recorded as followup #10; out of scope here.
 
-**Remaining (session 3):** `ConditionAddPopover` extraction with tracker and
-map-token entry points (eye control in the popover included); "+N" overflow
-pills (4 in tracker rows, 3 in timeline); live table verification.
+## Implementation Status (as-built, session 3 — 2026-07-12)
+
+**Done:**
+
+- **Generalized dispatch** — `useCombatConditions` gained participant-targeted
+  handlers (`addConditionTo` / `removeConditionFrom` /
+  `cycleConditionRevealedOn`); the original actor-bound handlers are now thin
+  wrappers over them. The hook accepts `combat: null` so `CombatContext` can
+  call it before its no-combat early return.
+- **`ConditionAddPopover`** — floating portaled card (viewport-clamped,
+  outside-mousedown + Escape + header-X close) that **reuses `ConditionsPanel`
+  whole** (badges + eye toggles + add form) rather than extracting just the
+  form — less duplication, same two-surface reuse the plan wanted. Hosts keep
+  the popover open across combat saves (unlike the ActionPanel workflow,
+  which resets), so multi-add flows work.
+- **Tracker surface** — `ParticipantListView` cards: urgency-sorted icon
+  badges capped at 4 + "+N" pill + a GM-only "+" manage button (rendered even
+  on condition-free participants). `sortConditionsByUrgency` exported from
+  `ConditionBadge`; new `ConditionOverflowPill` renders as a button on GM
+  surfaces and a static count in player view. Card memo comparator now also
+  checks `conditions` reference + the new callback.
+- **Timeline surface** — tokens show up to 3 urgency-sorted condition icons
+  (emoji via `getConditionIcon`, ❓ for player-view placeholders) + a compact
+  "+N" pill; pill clicks stopPropagation so they don't jump the turn.
+- **Map surface** — `CombatContext` exposes the targeted handlers;
+  `CombatMainArea` hosts the popover; `CombatMapPanel`'s token legend rows
+  get a GM-gated per-token button. **Deviation from plan:** the entry point
+  is the legend row control, not a grid-token click — `MapGrid` has no
+  token-level click API (tile clicks carry movement/placement semantics and
+  no mouse coords), so hooking tile clicks would have broken movement UX.
+  Revisit only if the legend affordance proves unfindable at the table.
+- **Hosting** — `CombatTracker` and `CombatMainArea` each own popover state
+  `{instanceId, x, y}`; both look up the **truth** participant at render and
+  gate entry points on GM view (`viewMode === GM` / `ctx.gmMode`).
+- **Tests** — popover suite (portal, add-dispatch, eye forwarding, all three
+  close paths); ParticipantListView suite (cap 4, urgency displacement, pill
+  → popover, manage-button gating, static player pill); timeline additions
+  (cap 3, urgency, pill-vs-jump propagation, static player pill); hook
+  additions (targeted handlers hit the right participant + log, unknown-id
+  and null-combat no-ops). ~30 new tests.
+- **Browser-verified** (GM + player view): manage button and both pills open
+  the same popover for the same participant; five conditions render 4+"+1"
+  in the tracker card and 3+"+2" in the timeline; adds through the popover
+  land immediately on both surfaces; Escape/outside-click close; player view
+  shows no GM entry points and eye-filtered counts only. No console errors.
+
+**Remaining:** live table verification (map surface included — the browser
+run had no linked map), then merge.
 
 ---
 

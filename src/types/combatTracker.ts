@@ -387,6 +387,8 @@ export interface ParticipantListViewProps {
   currentActorInstanceId: string;
   viewMode: string;
   onUpdateResource: (instanceId: string, resource: string, value: number) => void;
+  /** GM-only (Phase 12a.6): opens the condition popover for a participant at a screen point. */
+  onOpenConditions?: (instanceId: string, anchor: { x: number; y: number }) => void;
 }
 
 export interface ParticipantCardProps {
@@ -394,6 +396,8 @@ export interface ParticipantCardProps {
   isCurrent: boolean;
   onUpdateResource: (instanceId: string, resource: string, value: number) => void;
   viewMode: string;
+  /** GM-only (Phase 12a.6): opens the condition popover for a participant at a screen point. */
+  onOpenConditions?: (instanceId: string, anchor: { x: number; y: number }) => void;
 }
 
 export interface CombatLogViewProps {
