@@ -156,7 +156,7 @@ Pattern: add `__tests__/<name>.test.ts` beside the file. Cover the exported API:
 
 - [x] Add tests for src/utils/combatHistory.ts (440 lines, zero coverage).
 - [x] Add tests for src/utils/characterImport.ts (494 lines, zero coverage; malformed and partial import payloads are the priority edge cases).
-- [ ] Add tests for src/utils/batchedStorageManager.ts (253 lines, zero coverage; cover batching/flush ordering and the write-failure path).
+- [x] Add tests for src/utils/batchedStorageManager.ts (253 lines, zero coverage; cover batching/flush ordering and the write-failure path).
 - [ ] Add tests for src/utils/cryptoLock.ts (167 lines, zero coverage).
 - [ ] Add tests for src/utils/logger.ts (59 lines, zero coverage).
 
