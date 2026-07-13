@@ -14,7 +14,7 @@ Work queue drained by the `gurps-vtt-auto-dev` scheduled task (every 4 hours).
 - Items must be small enough to fit in one ~30-minute run with **one commit max**.
 - Items must NOT require new dependencies, design decisions, or human judgment.
 - The loop never reorders or rewrites items beyond the `[ ]` → `[x]` / `[!]` mark on the line it picked.
-- When this file has zero `- [ ]` items, the loop disables itself and roars COMPLETE.
+- When this file has zero `- [ ]` items, the loop runs ONE self-refill cycle (inventory sweep → at most 15 verified mechanical items → queue-only commit → roar REFILLED), guarded by a merge-debt cap (>40 unmerged auto-dev commits → disable + roar COMPLETE for review-merge instead) and a misfire cap (≥3 recent `- [!]` deferrals → disable + roar COMPLETE). See the task's TERMINATION → SELF-REFILL protocol (2026-07-13).
 
 ## Phase 10d — Defensive JSON.parse hardening
 
