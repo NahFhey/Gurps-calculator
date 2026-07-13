@@ -27,16 +27,12 @@
       "Bash(npx vite build)",
       "Bash(del \"C:\\\\Users\\\\devin\\\\Documents\\\\GitHub\\\\Gurps-calculator\\\\src\\\\components\\\\AlchemyTab.tsx\")",
       "Bash(git stash:*)",
-<<<<<<< Updated upstream
-      "Bash(node -e:*)"
-=======
       "Bash(node -e:*)",
       "Bash(CombatMapPanel \")",
       "Bash(netstat:*)",
       "Bash(tasklist:*)",
       "Bash(wmic process where \"name=''node.exe''\" get ProcessId,CommandLine)",
       "Bash(npm run dev:*)"
->>>>>>> Stashed changes
     ]
   }
 }
