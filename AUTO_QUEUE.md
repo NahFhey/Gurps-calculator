@@ -150,6 +150,50 @@ Same bar as Phase 10c: co-located `*.test.ts` covering happy path plus at least 
 - [x] Add tests for src/persistence/dataMigration.ts.
 - [x] Add tests for src/persistence/db.ts (Dexie wrapper; use the `fake-indexeddb` polyfill already wired in `src/test/setup.ts`). [auto-deferred 2026-05-20: db.ts is a non-functional placeholder — kvStore = {} and "TODO: Install dexie" at line 11; every exported function throws at runtime. Needs human decision (install dexie or rewrite without it) before tests can be written.] [resolved 2026-06-09: human decision — db.ts deleted; nothing imported it and the app persists via the localStorage wrapper in src/utils/storage.ts. IndexedDB migration can be re-planned if storage limits ever bite.]
 
+## Phase 16t — Test coverage for untested core utils (one file per run) _(refill 2026-07-13)_
+
+Pattern: add `__tests__/<name>.test.ts` beside the file. Cover the exported API: happy path + at least one error/edge path per exported function group. Use real data patterns (see `src/__tests__/combatIntegration.test.ts`), not synthetic-clean fixtures. No `as any` in tests. Verify with a targeted vitest run.
+
+- [ ] Add tests for src/utils/combatHistory.ts (440 lines, zero coverage).
+- [ ] Add tests for src/utils/characterImport.ts (494 lines, zero coverage; malformed and partial import payloads are the priority edge cases).
+- [ ] Add tests for src/utils/batchedStorageManager.ts (253 lines, zero coverage; cover batching/flush ordering and the write-failure path).
+- [ ] Add tests for src/utils/cryptoLock.ts (167 lines, zero coverage).
+- [ ] Add tests for src/utils/logger.ts (59 lines, zero coverage).
+
+## Phase 15e-2 — JS → TS migration, second batch (one file per run) _(refill 2026-07-13)_
+
+Same pattern as Phase 15e: rename `.js` → `.ts` (or `.tsx` if JSX), add types for parameters/returns, preserve all existing exports and runtime behavior, remove any matching `.d.ts` shim, all tests still green, no `as any` introduced.
+
+- [ ] Convert src/utils/turnContext.js to TypeScript (47 lines; delete the src/utils/turnContext.d.ts shim).
+- [ ] Convert src/utils/combatViewSelectors.js to TypeScript (51 lines).
+- [ ] Convert src/utils/maneuverFilter.js to TypeScript (65 lines).
+- [ ] Convert src/utils/combatItemFilter.js to TypeScript (83 lines).
+- [ ] Convert src/utils/itemTags.js to TypeScript (122 lines).
+- [ ] Convert src/utils/injuryEngine.js to TypeScript (139 lines).
+- [ ] Convert src/utils/combatItemEffects.js to TypeScript (337 lines).
+- [ ] Convert src/utils/combatValidation.js to TypeScript (345 lines).
+- [ ] Convert src/utils/dayPlanner.js to TypeScript (348 lines).
+- [ ] Convert src/utils/effectsEngine.js to TypeScript (357 lines).
+
+## Phase 16y — `as any` reduction (one file per run) _(refill 2026-07-13)_
+
+Pattern: remove every `as any` in the target file by fixing the types at the source (`src/types/` or the relevant domain type file) per the CLAUDE.md rule. Zero runtime behavior change; tsc clean; existing tests green. If a specific cast genuinely requires a design decision, defer the item citing that cast's file:line.
+
+- [ ] Remove the 6 `as any` casts in src/hooks/useCombatHistory.ts.
+- [ ] Remove the 9 `as any` casts in src/persistence/campaignStorage.ts.
+- [ ] Remove the 10 `as any` casts in src/state/map/mapReducer.ts.
+
+## Phase 16z — ActionPanel decomposition, test-first (one extraction per run) _(refill 2026-07-13)_
+
+A reference decomposition exists on branch `migration/home-test-claude-ws` at `src/components/combat/action-panel/` (April 2026 spike). It is REFERENCE ONLY — three months stale against current combat state; adapt names/props/state access to today's code, never copy blindly. Target pattern: thin router + view (the Phase 6 convention). Every extraction: behavior identical, ActionPanel tests green, tsc clean.
+
+- [ ] Add behavior tests for src/components/combat/ActionPanel.tsx (375 lines, currently ZERO coverage): workflow selection and switching, damage workflow dispatching the expected action, conditions workflow toggling, note workflow adding a note, collapsed vs expanded rendering. This is the safety net for the extractions below.
+- [ ] Extract ActionPanelHeader and ActionPanelCollapsedView from ActionPanel.tsx into src/components/combat/action-panel/. Precondition: ActionPanel tests exist (previous item); if absent, defer with reason "prerequisite tests missing".
+- [ ] Extract ActionPanelDamageWorkflow from ActionPanel.tsx into src/components/combat/action-panel/. Same precondition.
+- [ ] Extract ActionPanelConditionsWorkflow from ActionPanel.tsx into src/components/combat/action-panel/. Same precondition.
+- [ ] Extract ActionPanelNoteWorkflow and ActionPanelItemsWorkflow from ActionPanel.tsx into src/components/combat/action-panel/. Same precondition.
+- [ ] Extract ActionPanelWorkflowSelector and ActionPanelManeuverPrompts; ActionPanel.tsx ends as a thin router (~150 lines or less). Same precondition.
+
 ## Out of scope for the loop (do NOT add these)
 
 The following are tracked elsewhere because they require design judgment or coordinated multi-file changes the loop should not attempt autonomously:
@@ -164,3 +208,5 @@ The following are tracked elsewhere because they require design judgment or coor
 - Phase 15c keyboard shortcuts, dark mode (UX design)
 - Phase 16 Electron packaging, delta sync, file format (architecture)
 - Items in docs/INVENTORY_INTEGRATION_FOLLOWUPS.md (each has open design questions)
+- The 60 `as any` casts across the three Fishing views (FishingResolutionPanel/FishingActivity/FishingTaskForm) — they share a fishing type-model problem that needs human type design, not per-cast fixes
+- JS → TS conversion of taskResolution.js (417), combatViewFilter.js (441), combatLogFilter.js (551), conditionsEngine.js (582) — 400+ lines each; queue as a third batch only after 15e-2 completes cleanly

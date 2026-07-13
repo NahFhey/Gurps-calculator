@@ -30,28 +30,21 @@ Read the project memory files to understand recent work and known issues:
 
 These carry session-to-session context: architecture decisions, known gotchas, and preferences. Memory files may be stale (check timestamps) — verify claims against current code before acting on them.
 
-## Step 3: Fix the VM environment
+## Step 3: Environment note (draken, updated 2026-07-13)
 
-The node_modules were installed on Windows but the Cowork VM runs Linux. esbuild will fail without the right platform binary. Run this before anything else:
-
-```bash
-cd /sessions/wonderful-brave-babbage/mnt/Gurps-calculator && npm install @esbuild/linux-x64 --no-save 2>&1 | tail -3
-```
-
-This is idempotent — safe to run even if already installed.
+This machine is draken (native Linux). node_modules is installed natively — root **and** `server/` — in both the main checkout (`/home/arlavale/Meta/projects/gurps-calculator`, Devin's working copy) and the auto-dev worktree (`/home/arlavale/Meta/projects/gurps-calculator-auto`, branch `auto-dev`). No esbuild platform fix is needed. If node_modules is ever missing, stop and ask a human — autonomous runs must never run npm install.
 
 ## Step 4: Run a smoke test
 
-Verify the codebase is healthy. Tests must run individually due to VM memory constraints:
+Verify the codebase is healthy:
 
 ```bash
-cd /sessions/wonderful-brave-babbage/mnt/Gurps-calculator
-NODE_OPTIONS="--max-old-space-size=256" npx vitest run src/__tests__/combatIntegration.test.ts 2>&1 | tail -8
+cd <repo root> && npx vitest run src/__tests__/combatIntegration.test.ts 2>&1 | tail -8
 ```
 
 If this passes, the core reducer pipeline is working. If it fails, investigate before doing anything else.
 
-**Important:** Never run `npx vitest run` without arguments — the full suite will OOM the VM. Always target specific test files or use small batches.
+**Note:** draken can run the full suite (`npx vitest run`, ~11 s, verified 2026-07-13) — the old Cowork-VM OOM limit no longer applies. Targeted runs are still preferred inside autonomous loops for speed and clearer failure attribution.
 
 ## Step 5: Ask the user what's next
 
