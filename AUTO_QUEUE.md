@@ -154,7 +154,7 @@ Same bar as Phase 10c: co-located `*.test.ts` covering happy path plus at least 
 
 Pattern: add `__tests__/<name>.test.ts` beside the file. Cover the exported API: happy path + at least one error/edge path per exported function group. Use real data patterns (see `src/__tests__/combatIntegration.test.ts`), not synthetic-clean fixtures. No `as any` in tests. Verify with a targeted vitest run.
 
-- [ ] Add tests for src/utils/combatHistory.ts (440 lines, zero coverage).
+- [x] Add tests for src/utils/combatHistory.ts (440 lines, zero coverage).
 - [ ] Add tests for src/utils/characterImport.ts (494 lines, zero coverage; malformed and partial import payloads are the priority edge cases).
 - [ ] Add tests for src/utils/batchedStorageManager.ts (253 lines, zero coverage; cover batching/flush ordering and the write-failure path).
 - [ ] Add tests for src/utils/cryptoLock.ts (167 lines, zero coverage).
