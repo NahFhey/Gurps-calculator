@@ -89,6 +89,10 @@ export interface Participant {
   attacks?: Attack[];
   position?: { q: number; r: number };
   shockPenalty?: number;
+  /** Legacy prone flag; superseded by the PRONE condition but still read for back-compat. */
+  isProne?: boolean;
+  /** Legacy grappled flag; superseded by the GRAPPLED condition but still read for back-compat. */
+  isGrappled?: boolean;
   isDead?: boolean;
   bleeding?: { rate: number; round: number } | null;
   crippled?: string[];
@@ -266,11 +270,13 @@ export interface ManeuverWorkflow {
 }
 
 export interface TurnContext {
+  canAct: boolean;
   isStunned: boolean;
   isProne: boolean;
   isGrappled: boolean;
   isUnconscious: boolean;
   shockPenalty: number;
+  moveAvailable: number | null;
 }
 
 export interface ManeuverSelection {

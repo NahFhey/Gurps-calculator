@@ -1,6 +1,7 @@
 import { ConditionId } from '../constants/conditions';
+import type { Participant, TurnContext } from '../types/combatTracker';
 
-const DEFAULT_TURN_CONTEXT = {
+const DEFAULT_TURN_CONTEXT: TurnContext = {
   canAct: true,
   isStunned: false,
   isProne: false,
@@ -10,7 +11,10 @@ const DEFAULT_TURN_CONTEXT = {
   moveAvailable: null
 };
 
-const hasCondition = (combatant, conditionId) => {
+const hasCondition = (
+  combatant: Participant | null | undefined,
+  conditionId: string
+): boolean => {
   const conditions = combatant?.conditions || [];
   return conditions.some(condition => condition.conditionId === conditionId);
 };
@@ -21,7 +25,9 @@ const hasCondition = (combatant, conditionId) => {
  * @param {object} combatant - Active combatant state
  * @returns {object} Turn context object
  */
-export function deriveTurnContext(combatant) {
+export function deriveTurnContext(
+  combatant: Participant | null | undefined
+): TurnContext {
   if (!combatant) {
     return { ...DEFAULT_TURN_CONTEXT };
   }

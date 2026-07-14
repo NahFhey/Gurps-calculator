@@ -164,7 +164,7 @@ Pattern: add `__tests__/<name>.test.ts` beside the file. Cover the exported API:
 
 Same pattern as Phase 15e: rename `.js` → `.ts` (or `.tsx` if JSX), add types for parameters/returns, preserve all existing exports and runtime behavior, remove any matching `.d.ts` shim, all tests still green, no `as any` introduced.
 
-- [ ] Convert src/utils/turnContext.js to TypeScript (47 lines; delete the src/utils/turnContext.d.ts shim).
+- [x] Convert src/utils/turnContext.js to TypeScript (47 lines; delete the src/utils/turnContext.d.ts shim).
 - [ ] Convert src/utils/combatViewSelectors.js to TypeScript (51 lines).
 - [ ] Convert src/utils/maneuverFilter.js to TypeScript (65 lines).
 - [ ] Convert src/utils/combatItemFilter.js to TypeScript (83 lines).
