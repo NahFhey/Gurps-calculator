@@ -2,11 +2,36 @@
  * Phase 7: Maneuver filtering based on turn context.
  */
 
+import type { Maneuver, ManeuverPrompts } from '../constants/maneuvers';
+import type { TurnContext } from '../types/combatTracker';
+
 const DEFAULT_WARNING = 'Resolve manually based on table adjudication.';
 
-export function filterManeuvers(maneuvers, turnContext, combatRulesPreset = 'standard') {
+// Callers pass the looser `Maneuver` shape from `../types/combatTracker`
+// (via `ManeuverCatalog as Maneuver[]`), which only guarantees `id`/`label`
+// and omits `requires`/`forbids`. Accept that shape while still allowing the
+// `maneuver.requires?.` read below.
+type FilterableManeuver = Partial<Maneuver> & Pick<Maneuver, 'id' | 'label'>;
+
+export interface FilteredManeuver {
+  id: string;
+  label: string;
+  group?: string;
+  disabled: boolean;
+  reason: string | null;
+  warning: string | null;
+  recommended: boolean;
+  notes?: string;
+  prompts?: ManeuverPrompts;
+}
+
+export function filterManeuvers(
+  maneuvers: FilterableManeuver[],
+  turnContext: TurnContext | null | undefined,
+  combatRulesPreset: string = 'standard'
+): FilteredManeuver[] {
   const preset = combatRulesPreset || 'standard';
-  const context = turnContext || {};
+  const context: Partial<TurnContext> = turnContext || {};
   const unconscious = Boolean(context.isUnconscious) || context.canAct === false;
   const stunned = Boolean(context.isStunned);
   const prone = Boolean(context.isProne);
@@ -25,8 +50,8 @@ export function filterManeuvers(maneuvers, turnContext, combatRulesPreset = 'sta
 
   return maneuvers.map(maneuver => {
     let disabled = false;
-    let reason = null;
-    let warning = null;
+    let reason: string | null = null;
+    let warning: string | null = null;
     let recommended = false;
 
     if (unconscious && maneuver.id !== 'do_nothing') {
