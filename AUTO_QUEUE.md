@@ -158,7 +158,7 @@ Pattern: add `__tests__/<name>.test.ts` beside the file. Cover the exported API:
 - [x] Add tests for src/utils/characterImport.ts (494 lines, zero coverage; malformed and partial import payloads are the priority edge cases).
 - [x] Add tests for src/utils/batchedStorageManager.ts (253 lines, zero coverage; cover batching/flush ordering and the write-failure path).
 - [x] Add tests for src/utils/cryptoLock.ts (167 lines, zero coverage).
-- [ ] Add tests for src/utils/logger.ts (59 lines, zero coverage).
+- [x] Add tests for src/utils/logger.ts (59 lines, zero coverage).
 
 ## Phase 15e-2 — JS → TS migration, second batch (one file per run) _(refill 2026-07-13)_
 
