@@ -33,6 +33,51 @@ When `AUTO_QUEUE.md` has zero `- [ ]` items AND seven consecutive runs find zero
 
 <!-- Daily entries are prepended directly below this line, newest first. -->
 
+## 2026-07-14 — CONCERN (30 commits: 29P, 0N, 1C)
+
+_First run on draken. Cleared the bootstrap backlog: `auto-dev:` commits merged unreviewed via PR #25/#26/#27 (2026-05-15 → 2026-05-20) plus the fresh 2026-07-13/14 batch. All 30 evaluated normally within budget._
+
+| commit | target | verdict | notes |
+| ------ | ------ | ------- | ----- |
+| 9799314 | src/components/combat/views/CombatLogView.tsx | PASS | 2 aria-labels on interactive elements; scope-clean a11y add |
+| ffe1ef2 | src/state/character/characterReducer.ts | PASS | 12 cases / 20 assertions; behavioral |
+| 3d2998e | src/state/alchemy/alchemyReducer.ts | PASS | 20 cases / 29 assertions |
+| 5d5d121 | src/state/crafting/craftingReducer.ts | PASS | 16 cases / 22 assertions |
+| e81cc19 | src/state/gathering/gatheringReducer.ts | CONCERN | 33 cases w/ no-op edge paths (good depth) but 4 `as any` casts in assertions — see Concerns |
+| d81b6f7 | src/state/inventory/inventoryReducer.ts | PASS | 33 cases / 45 assertions |
+| d6a8963 | src/state/map/mapReducer.ts | PASS | 36 cases / 61 assertions |
+| fe9f54d | src/state/character/characterActions.ts | PASS | action-creator shape coverage |
+| 21761ec | src/state/alchemy/alchemyActions.ts | PASS | 11 cases / 39 assertions |
+| 78ca76a | src/state/combat/combatActions.ts | PASS | 13 cases / 43 assertions |
+| 1579096 | src/state/crafting/craftingActions.ts | PASS | 9 cases / 31 assertions |
+| 1aab556 | src/state/gathering/gatheringActions.ts | PASS | 12 cases / 49 assertions |
+| 9d9375c | src/state/inventory/inventoryActions.ts | PASS | 11 cases / 39 assertions |
+| b0460ce | src/state/map/mapActions.ts | PASS | 14 cases / 43 assertions |
+| 6e66f68 | src/state/downtime/downtimeActions.ts | PASS | 12 cases / 27 assertions |
+| 0d682c1 | src/state/selectors/alchemySelectors.ts | PASS | selector coverage |
+| 374ce52 | src/state/selectors/characterSelectors.ts | PASS | selector coverage |
+| 50b05b0 | src/state/selectors/combatSelectors.ts | PASS | 31 cases / 36 assertions |
+| 089a035 | src/state/selectors/craftingSelectors.ts | PASS | selector coverage |
+| 2e156f8 | src/state/selectors/gatheringSelectors.ts | PASS | 25 cases / 75 assertions |
+| dbc1ed8 | src/state/selectors/inventorySelectors.ts | PASS | 19 cases / 54 assertions |
+| 9bf646f | src/state/selectors/locationSelectors.ts | PASS | 25 cases / 38 assertions |
+| 6a5f27f | src/state/campaignUtils.ts | PASS | 35 cases / 48 assertions |
+| fe2ac5d | src/persistence/dataMigration.ts | PASS | migration path coverage |
+| b730cd6 | AUTO_QUEUE.md (defer db.ts) | PASS | honest deferral — see Notes |
+| c559120 | src/utils/combatHistory.ts | PASS | 30 cases / 83 assertions |
+| d8f53bf | src/utils/characterImport.ts | PASS | strong malformed/partial-payload edge coverage |
+| 5f56abd | src/utils/batchedStorageManager.ts | PASS | batching, flush ordering, write-failure paths |
+| b3cdeb3 | src/utils/cryptoLock.ts | PASS | wrong-password, corrupted-ciphertext, KDF/cipher/iteration validation — solid error paths for security code |
+| 75d0fde | src/utils/logger.ts | PASS | 6 cases / 13 assertions |
+
+### Concerns to address
+
+**e81cc19 — `as any` casts in `gatheringReducer.test.ts`.** Four `as any` casts slipped into the test assertions: reaching into entity-union fields (`src/state/gathering/__tests__/gatheringReducer.test.ts:193` `gatheringSessions['sess-1'] as any).status`, `:281` `forageZoneProfiles['z1'] as any).name`, `:319` `forageItems['f1'] as any).name`) and one on reducer input (`:374` `handleGatheringAction(state as any, …)`). Per the type-discipline axis, ≥3 `as any` casts = CONCERN. Real risk is low — these are test-only union-narrowing/edge-input casts, not production code, and the suite is otherwise the deepest in the batch (33 cases including no-op-for-unknown-id edge paths). Fix is mechanical: replace with the concrete member type (`as GatheringSession`, `as ForageZoneProfile`, `as ForageItem`) and a typed partial for the crafted state. Not a blocker; worth a cleanup pass.
+
+### Notes
+
+**b730cd6 deferral verified honest.** The `[!]` marker on the `db.ts` queue item cites "db.ts is a non-functional placeholder — `kvStore = {}` and 'TODO: Install dexie' at line 11; every exported function throws at runtime." Confirmed against the file state at that commit: `src/persistence/db.ts` carried `// TODO: Install dexie package: npm install dexie` at line 11 with a placeholder `GurpsDB` class, and dexie is absent from `package.json`. The deferral correctly flagged this as needing a human decision; a human subsequently deleted the dead placeholder (`335612a "Delete dead db.ts Dexie placeholder"`), so the item is now moot.
+
 ## 2026-05-15 — PASS (4 commits: 4P, 0N, 0C)
 
 | commit | target | verdict | notes |
