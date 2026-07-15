@@ -5,6 +5,10 @@
  * Supports backwards compatibility with items that don't have tags.
  */
 
+export interface TaggableItem {
+  tags?: string[] | null;
+}
+
 /**
  * Normalize tags array
  *
@@ -13,7 +17,7 @@
  * @param {array|undefined} tags - Tags array (may be undefined)
  * @returns {array} Normalized tags array
  */
-export function normalizeTags(tags) {
+export function normalizeTags(tags: unknown): string[] {
   if (!Array.isArray(tags)) return [];
 
   const clean = tags
@@ -30,7 +34,7 @@ export function normalizeTags(tags) {
  * @param {string} tag - Tag to check for
  * @returns {boolean} True if item has tag
  */
-export function hasTag(item, tag) {
+export function hasTag(item: TaggableItem | null | undefined, tag: string): boolean {
   const tags = normalizeTags(item?.tags);
   return tags.includes(String(tag).toLowerCase());
 }
@@ -44,7 +48,18 @@ export function hasTag(item, tag) {
  * @param {string} tag - Tag to add
  * @returns {object} New item with tag added
  */
-export function addTag(item, tag) {
+export function addTag<T extends TaggableItem>(
+  item: T,
+  tag: string,
+): T & { tags: string[] };
+export function addTag<T extends TaggableItem>(
+  item: T | null | undefined,
+  tag: string,
+): (T & { tags: string[] }) | { tags: string[] };
+export function addTag(
+  item: TaggableItem | null | undefined,
+  tag: string,
+): { tags: string[] } {
   const tags = normalizeTags([...(item?.tags || []), tag]);
   return { ...item, tags };
 }
@@ -58,7 +73,18 @@ export function addTag(item, tag) {
  * @param {string} tag - Tag to remove
  * @returns {object} New item with tag removed
  */
-export function removeTag(item, tag) {
+export function removeTag<T extends TaggableItem>(
+  item: T,
+  tag: string,
+): T & { tags: string[] };
+export function removeTag<T extends TaggableItem>(
+  item: T | null | undefined,
+  tag: string,
+): (T & { tags: string[] }) | { tags: string[] };
+export function removeTag(
+  item: TaggableItem | null | undefined,
+  tag: string,
+): { tags: string[] } {
   const t = String(tag).toLowerCase();
   const tags = normalizeTags(item?.tags).filter(x => x !== t);
   return { ...item, tags };
@@ -73,7 +99,18 @@ export function removeTag(item, tag) {
  * @param {array} tags - Tags to set
  * @returns {object} New item with tags set
  */
-export function setTags(item, tags) {
+export function setTags<T extends TaggableItem>(
+  item: T,
+  tags: unknown,
+): T & { tags: string[] };
+export function setTags<T extends TaggableItem>(
+  item: T | null | undefined,
+  tags: unknown,
+): (T & { tags: string[] }) | { tags: string[] };
+export function setTags(
+  item: TaggableItem | null | undefined,
+  tags: unknown,
+): { tags: string[] } {
   const normalized = normalizeTags(tags);
   return { ...item, tags: normalized };
 }
@@ -85,7 +122,10 @@ export function setTags(item, tags) {
  * @param {array} tagsToCheck - Array of tags to check
  * @returns {boolean} True if item has at least one of the tags
  */
-export function hasAnyTag(item, tagsToCheck) {
+export function hasAnyTag(
+  item: TaggableItem | null | undefined,
+  tagsToCheck: unknown[],
+): boolean {
   const itemTags = normalizeTags(item?.tags);
   const checkTags = tagsToCheck.map(t => String(t).toLowerCase());
 
@@ -99,7 +139,10 @@ export function hasAnyTag(item, tagsToCheck) {
  * @param {array} tagsToCheck - Array of tags to check
  * @returns {boolean} True if item has all of the tags
  */
-export function hasAllTags(item, tagsToCheck) {
+export function hasAllTags(
+  item: TaggableItem | null | undefined,
+  tagsToCheck: unknown[],
+): boolean {
   const itemTags = normalizeTags(item?.tags);
   const checkTags = tagsToCheck.map(t => String(t).toLowerCase());
 
@@ -119,4 +162,4 @@ export const ItemTag = {
   FOOD: 'food',
   SCROLL: 'scroll',
   WAND: 'wand'
-};
+} as const;
