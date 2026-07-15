@@ -6,13 +6,18 @@
 
 import { hasTag, ItemTag } from './itemTags';
 
+export interface CombatFilterableItem {
+  name?: string;
+  tags?: string[] | null;
+}
+
 /**
  * Check if an item is combat-usable
  *
  * @param {object} item - Inventory item
  * @returns {boolean} True if item is tagged as combat-usable
  */
-export function isCombatUsable(item) {
+export function isCombatUsable(item: CombatFilterableItem): boolean {
   return hasTag(item, ItemTag.COMBAT_USABLE);
 }
 
@@ -25,7 +30,10 @@ export function isCombatUsable(item) {
  * @param {string} options.search - Search query to filter by name/tags
  * @returns {array} Filtered items
  */
-export function filterCombatItems(items, { showAll = false, search = '' } = {}) {
+export function filterCombatItems<T extends CombatFilterableItem>(
+  items: T[] | null | undefined,
+  { showAll = false, search = '' }: { showAll?: boolean; search?: string } = {},
+): T[] {
   const q = String(search).trim().toLowerCase();
 
   return (items || [])
@@ -45,8 +53,18 @@ export function filterCombatItems(items, { showAll = false, search = '' } = {}) 
  * @param {array} items - Array of inventory items
  * @returns {object} Items grouped by category
  */
-export function groupCombatItems(items) {
-  const grouped = {
+export function groupCombatItems<T extends CombatFilterableItem>(items: T[]): {
+  potions: T[];
+  consumables: T[];
+  throwables: T[];
+  other: T[];
+} {
+  const grouped: {
+    potions: T[];
+    consumables: T[];
+    throwables: T[];
+    other: T[];
+  } = {
     potions: [],
     consumables: [],
     throwables: [],
@@ -74,7 +92,7 @@ export function groupCombatItems(items) {
  * @param {array} items - Array of items
  * @returns {array} Sorted items
  */
-export function sortItemsByName(items) {
+export function sortItemsByName<T extends CombatFilterableItem>(items: T[]): T[] {
   return [...items].sort((a, b) => {
     const nameA = (a.name || '').toLowerCase();
     const nameB = (b.name || '').toLowerCase();
