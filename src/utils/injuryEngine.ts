@@ -5,11 +5,65 @@
 
 import { getLocationDR } from './hitLocations';
 import { calculateInjury, getWoundingMultiplier, getBaseWoundingMultiplier } from './wounding';
+import type { HitLocation } from './wounding';
+
+export interface InjuryTarget {
+  dr?: number;
+  drByLocation?: Record<string, number>;
+}
+
+export interface ResolveInjuryParams {
+  rawDamage: number;
+  damageType: string;
+  location: HitLocation | null;
+  target: InjuryTarget;
+  combatRulesPreset?: string;
+}
+
+export interface InjuryResolution {
+  rawDamage: number;
+  damageType: string;
+  locationDR: number;
+  penetrating: number;
+  woundingMultiplier: number;
+  baseWoundingMultiplier: number;
+  locationWoundingMultiplier: number;
+  injury: number;
+  location: {
+    key: string;
+    label: string;
+    isVital: boolean;
+    isLimb: boolean;
+    isExtremity: boolean;
+  } | null;
+}
+
+export interface InjuryBreakdown {
+  raw: number;
+  dr: number;
+  penetrating: number;
+  damageType: string;
+  woundingMultiplier: number;
+  baseWoundingMultiplier: number;
+  locationWoundingMultiplier: number;
+  locationLabel: string | null;
+  injuryApplied: number;
+}
+
+export interface HitLocationRollData {
+  dice: number[];
+  total: number;
+}
+
+export interface HitLocationLogData {
+  profileId: string;
+  locationKey: string;
+  locationLabel: string;
+  rolled: { dice: number[]; total: number } | null;
+}
 
 /**
  * Apply damage resolution pipeline
- * @param {Object} params - Damage parameters
- * @returns {Object} Complete injury breakdown
  */
 export function resolveInjury({
   rawDamage,
@@ -17,7 +71,7 @@ export function resolveInjury({
   location,
   target,
   combatRulesPreset = 'standard'
-}) {
+}: ResolveInjuryParams): InjuryResolution {
   // Step 1: Get DR for location
   const locationDR = location ? getLocationDR(target, location.key) : (target.dr || 0);
 
@@ -63,10 +117,8 @@ export function resolveInjury({
 
 /**
  * Generate injury breakdown for logging
- * @param {Object} injuryResult - Result from resolveInjury
- * @returns {Object} Structured breakdown for log entry
  */
-export function createInjuryBreakdown(injuryResult) {
+export function createInjuryBreakdown(injuryResult: InjuryResolution): InjuryBreakdown {
   return {
     raw: injuryResult.rawDamage,
     dr: injuryResult.locationDR,
@@ -82,12 +134,12 @@ export function createInjuryBreakdown(injuryResult) {
 
 /**
  * Generate hit location data for logging
- * @param {string} profileId - Hit location profile ID
- * @param {Object} location - Location object
- * @param {Object} rollData - Optional roll data if location was rolled
- * @returns {Object} Hit location log data
  */
-export function createHitLocationLog(profileId, location, rollData = null) {
+export function createHitLocationLog(
+  profileId: string,
+  location: HitLocation,
+  rollData: HitLocationRollData | null = null
+): HitLocationLogData {
   return {
     profileId,
     locationKey: location.key,
@@ -101,20 +153,15 @@ export function createHitLocationLog(profileId, location, rollData = null) {
 
 /**
  * Calculate new HP after injury
- * @param {number} currentHP - Current HP
- * @param {number} injury - Injury amount (positive for damage)
- * @returns {number} New HP value
  */
-export function applyInjuryToHP(currentHP, injury) {
+export function applyInjuryToHP(currentHP: number, injury: number): number {
   return currentHP - injury;
 }
 
 /**
  * Format injury summary for display
- * @param {Object} injuryResult - Result from resolveInjury
- * @returns {string} Human-readable summary
  */
-export function formatInjurySummary(injuryResult) {
+export function formatInjurySummary(injuryResult: InjuryResolution): string {
   const { rawDamage, locationDR, penetrating, woundingMultiplier, injury, location } = injuryResult;
 
   let summary = `${rawDamage} damage`;

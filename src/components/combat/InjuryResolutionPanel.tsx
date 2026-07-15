@@ -274,7 +274,7 @@ export default function InjuryResolutionPanel({
     // Build complete injury data
     const injuryData: InjuryData = {
       hitLocation: createHitLocationLog(profileId, selectedLocation, locationRoll || undefined) as HitLocationLog,
-      damageBreakdown: createInjuryBreakdown(injuryResult) as DamageBreakdown,
+      damageBreakdown: createInjuryBreakdown(injuryResult as unknown as ReturnType<typeof resolveInjury>) as unknown as DamageBreakdown,
       effects: resolvedEffects,
       newHP,
       targetInstanceId: target.instanceId,
