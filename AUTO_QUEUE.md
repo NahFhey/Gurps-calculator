@@ -171,7 +171,7 @@ Same pattern as Phase 15e: rename `.js` → `.ts` (or `.tsx` if JSX), add types 
 - [x] Convert src/utils/itemTags.js to TypeScript (122 lines).
 - [x] Convert src/utils/injuryEngine.js to TypeScript (139 lines).
 - [x] Convert src/utils/combatItemEffects.js to TypeScript (337 lines).
-- [ ] Convert src/utils/combatValidation.js to TypeScript (345 lines).
+- [x] Convert src/utils/combatValidation.js to TypeScript (345 lines).
 - [ ] Convert src/utils/dayPlanner.js to TypeScript (348 lines).
 - [ ] Convert src/utils/effectsEngine.js to TypeScript (357 lines).
 
