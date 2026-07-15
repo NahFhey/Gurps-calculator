@@ -33,6 +33,22 @@ When `AUTO_QUEUE.md` has zero `- [ ]` items AND seven consecutive runs find zero
 
 <!-- Daily entries are prepended directly below this line, newest first. -->
 
+## 2026-07-15 — NOTE (5 commits: 3P, 2N, 0C)
+
+| commit | target | verdict | notes |
+| ------ | ------ | ------- | ----- |
+| c1df615 | src/utils/turnContext.ts | NOTE | clean conversion, but also edited src/types/combatTracker.ts (type support outside strict target scope) |
+| 5a25bd2 | src/utils/combatViewSelectors.ts | NOTE | introduced `type AnyRecord = Record<string, any>` + several `as AnyRecord` casts |
+| f5c3a26 | src/utils/maneuverFilter.ts | PASS | — |
+| 058a763 | src/utils/combatItemFilter.ts | PASS | — |
+| d1518ec | src/utils/itemTags.ts | PASS | — |
+
+### Notes
+
+**c1df615** — Beyond renaming `turnContext.js` → `.ts` and deleting the `turnContext.d.ts` shim (both anticipated by the queue item), the commit also edited `src/types/combatTracker.ts`: added `canAct` and `moveAvailable` to the `TurnContext` interface, and `isProne`/`isGrappled` (as documented legacy back-compat flags) to `Participant`. These are pure type declarations with no runtime-logic change and are genuinely required — `const DEFAULT_TURN_CONTEXT: TurnContext` won't typecheck without the two missing fields. Flagged only for transparency that a shared types file was touched; not a scope violation in substance.
+
+**5a25bd2** — The conversion keeps the public parameter types as `unknown` (`CombatStateLike`/`RevealStateLike`), which is good, but then reaches property access via a new `type AnyRecord = Record<string, any>` alias and casts (`combatState as AnyRecord`, `(p: AnyRecord) => ...`, `revealState as AnyRecord`). This is one new `any`-bearing annotation plus several casts — pragmatic for the conversion but it drops type safety on `participants`/`defender` field access (`combatViewSelectors.ts:15`, `:34`, `:70`). A follow-up could narrow these against `CombatState`/`Participant` from `src/types/combatTracker.ts`. Not engine code, so NOTE rather than CONCERN. Not suppressed by KNOWN_ISSUES (which only grandfathers `exportImport.ts`).
+
 ## 2026-07-14 — CONCERN (30 commits: 29P, 0N, 1C)
 
 _First run on draken. Cleared the bootstrap backlog: `auto-dev:` commits merged unreviewed via PR #25/#26/#27 (2026-05-15 → 2026-05-20) plus the fresh 2026-07-13/14 batch. All 30 evaluated normally within budget._
