@@ -6,6 +6,7 @@
  */
 
 import { ConditionId, DurationType } from '../constants/conditions';
+import type { DurationTypeValue } from '../constants/conditions';
 
 /**
  * Effect application target
@@ -14,7 +15,75 @@ export const EffectTarget = {
   SELF: 'self',
   TARGET: 'target',
   AREA: 'area'  // Phase 6 doesn't implement area effects
-};
+} as const;
+
+export type EffectTargetValue = typeof EffectTarget[keyof typeof EffectTarget];
+
+export interface EffectResourceDeltaConfig {
+  HP?: number | null;
+  FP?: number | null;
+  MP?: number | null;
+}
+
+export interface EffectResourceDeltas {
+  HP: number | null;
+  FP: number | null;
+  MP: number | null;
+}
+
+export interface EffectConditionDuration {
+  type: DurationTypeValue;
+  value?: number | null;
+}
+
+export interface AddConditionConfig {
+  conditionId: string;
+  severity?: number | null;
+  duration?: EffectConditionDuration | null;
+}
+
+export interface EffectAddCondition {
+  conditionId: string;
+  severity: number | null;
+  duration: EffectConditionDuration | null;
+}
+
+export interface RemoveConditionConfig {
+  conditionId: string;
+  all?: boolean | null;
+}
+
+export interface EffectRemoveCondition {
+  conditionId: string;
+  all: boolean;
+}
+
+export interface CreateEffectConfig {
+  id: string;
+  label: string;
+  appliesTo?: EffectTargetValue;
+  resourceDeltas?: EffectResourceDeltaConfig;
+  addConditions?: AddConditionConfig[];
+  removeConditions?: RemoveConditionConfig[];
+  notes?: string;
+}
+
+export interface Effect {
+  id: string;
+  label: string;
+  appliesTo: EffectTargetValue;
+  resourceDeltas: EffectResourceDeltas;
+  addConditions: EffectAddCondition[];
+  removeConditions: EffectRemoveCondition[];
+  notes: string;
+}
+
+export interface ItemWithEffects {
+  effects?: Effect[] | null;
+  effect?: Effect | null;
+  id?: string | null;
+  name?: string | null;
+}
 
 /**
  * Create an effect definition
@@ -37,7 +106,7 @@ export function createEffect({
   addConditions = [],
   removeConditions = [],
   notes = ''
-}) {
+}: CreateEffectConfig): Effect {
   return {
     id,
     label,
@@ -66,7 +135,7 @@ export function createEffect({
  * Maps item names/types to their effects.
  * This is optional - items can also have effects stored directly on them.
  */
-export const CommonItemEffects = {
+export const CommonItemEffects: Record<string, Effect> = {
   // Healing potions
   'minor-healing-potion': createEffect({
     id: 'minor-healing-potion',
@@ -182,7 +251,7 @@ export const CommonItemEffects = {
  * @param {object} item - Inventory item
  * @returns {array} Array of effect definitions
  */
-export function getItemEffects(item) {
+export function getItemEffects(item: ItemWithEffects): Effect[] {
   // Check if item has effects defined directly
   if (item.effects && Array.isArray(item.effects)) {
     return item.effects;
@@ -211,7 +280,7 @@ export function getItemEffects(item) {
  * @param {object} item - Inventory item
  * @returns {boolean} True if item has effects
  */
-export function hasItemEffects(item) {
+export function hasItemEffects(item: ItemWithEffects): boolean {
   return getItemEffects(item).length > 0;
 }
 
@@ -223,7 +292,7 @@ export function hasItemEffects(item) {
  * @param {string} input - Manual effect string
  * @returns {object|null} Parsed effect or null if invalid
  */
-export function parseManualEffect(input) {
+export function parseManualEffect(input: string): Effect | null {
   const text = String(input).trim();
   if (!text) return null;
 
@@ -231,7 +300,7 @@ export function parseManualEffect(input) {
   const resourceMatch = text.match(/^([+-]?\d+)\s*(HP|FP|MP)$/i);
   if (resourceMatch) {
     const amount = parseInt(resourceMatch[1], 10);
-    const resource = resourceMatch[2].toUpperCase();
+    const resource = resourceMatch[2].toUpperCase() as 'HP' | 'FP' | 'MP';
 
     return createEffect({
       id: 'manual-resource',
@@ -291,8 +360,8 @@ export function parseManualEffect(input) {
  * @param {object} effect - Effect definition
  * @returns {string} Human-readable effect description
  */
-export function formatEffect(effect) {
-  const parts = [];
+export function formatEffect(effect: Effect): string {
+  const parts: string[] = [];
 
   // Resource deltas
   if (effect.resourceDeltas.HP) {
