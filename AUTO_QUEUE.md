@@ -179,7 +179,7 @@ Same pattern as Phase 15e: rename `.js` → `.ts` (or `.tsx` if JSX), add types 
 
 Pattern: remove every `as any` in the target file by fixing the types at the source (`src/types/` or the relevant domain type file) per the CLAUDE.md rule. Zero runtime behavior change; tsc clean; existing tests green. If a specific cast genuinely requires a design decision, defer the item citing that cast's file:line.
 
-- [ ] Remove the 6 `as any` casts in src/hooks/useCombatHistory.ts.
+- [!] Remove the 6 `as any` casts in src/hooks/useCombatHistory.ts. [auto-deferred 2026-07-16: casts at useCombatHistory.ts:117,147 (saveCombatReveal(syncedReveal as any)) need a design decision — syncRevealStateForParticipants returns the module-wide loose RevealStateLike (Record<string,any>) which cannot satisfy saveCombatReveal's bespoke {byInstanceId} param; removing them requires re-typing that util's return contract and/or the useCampaignStore God-node param, rippling to useCombatReinforcements.ts + tests. Casts 99/129 (createSnapshot overload) and 114/144 are cleanly fixable, but the item is all-6.]
 - [ ] Remove the 9 `as any` casts in src/persistence/campaignStorage.ts.
 - [ ] Remove the 10 `as any` casts in src/state/map/mapReducer.ts.
 
