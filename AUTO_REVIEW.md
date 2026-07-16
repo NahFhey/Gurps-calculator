@@ -33,6 +33,23 @@ When `AUTO_QUEUE.md` has zero `- [ ]` items AND seven consecutive runs find zero
 
 <!-- Daily entries are prepended directly below this line, newest first. -->
 
+## 2026-07-16 — NOTE (6 commits: 4P, 2N, 0C)
+
+| commit | target | verdict | notes |
+| ------ | ------ | ------- | ----- |
+| 71a60cc | src/utils/injuryEngine.ts | NOTE | conversion clean; consumer InjuryResolutionPanel.tsx:277 rewrites `as DamageBreakdown` into a double `as unknown as` launder over a disclosed pre-existing field-name mismatch |
+| 08448d6 | src/utils/combatItemEffects.ts | PASS | — |
+| 33f8f12 | src/utils/combatValidation.ts | PASS | — |
+| 5b6bb5a | src/utils/dayPlanner.ts | NOTE | 4 `any[]` types (dayPlanner.ts:120,121,367,368) preserved verbatim from the deleted `.d.ts` shim rather than tightened |
+| 8689a39 | src/utils/effectsEngine.ts | PASS | — |
+| cf5fc5b | AUTO_QUEUE.md (Phase 16y defer) | PASS | deferral reason accurate — all 6 `as any` line refs and both cited signatures verified |
+
+### Notes
+
+**71a60cc (injuryEngine → TS).** The engine conversion itself is faithful — precise `InjuryResolution`/`InjuryBreakdown` interfaces, logic unchanged, no `as any`. The only out-of-target edit is the consumer at [InjuryResolutionPanel.tsx:277](src/components/combat/InjuryResolutionPanel.tsx:277), where the prior `createInjuryBreakdown(injuryResult) as DamageBreakdown` became `createInjuryBreakdown(injuryResult as unknown as ReturnType<typeof resolveInjury>) as unknown as DamageBreakdown`. This is inherent to the conversion (needed to keep tsc green) and honestly disclosed in the commit message as papering over a "pre-existing latent field-name mismatch." It is not `as any`, so it clears axis (b); noted only because a double `as unknown as` launder hides a real field-name divergence between the engine's return type and the panel's local `DamageBreakdown` that would be better resolved at the type source.
+
+**5b6bb5a (dayPlanner → TS).** `CommitResult.updatedFoods/updatedMaterials` and `commitPendingDayLedger`'s `currentFoods/currentMaterials` params are typed `any[]`. These are **not** new — the deleted `src/utils/dayPlanner.d.ts` shim declared exactly these four `any[]` signatures, so the conversion preserved the prior public type contract verbatim (correct per Phase 15e-2's "preserve all existing exports"). No `FoodItem`/`MaterialItem` type exists in `src/types/` to tighten to without a design decision, so this is not a regression and does not trip axis (b)'s ≥3 threshold as a *new* introduction. Flagged as a NOTE only to record that the loose typing survived the migration and remains a future tightening opportunity.
+
 ## 2026-07-15 — NOTE (5 commits: 3P, 2N, 0C)
 
 | commit | target | verdict | notes |
