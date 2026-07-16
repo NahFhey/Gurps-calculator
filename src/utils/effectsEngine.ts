@@ -4,8 +4,82 @@
  */
 
 import { rollVsTarget } from './dice';
+import type { RollVsTargetResult } from './dice';
 import { applyCondition, removeConditionType } from './conditionsEngine';
+import type { ConditionBearer, CreateConditionOptions } from './conditionsEngine';
 import { ConditionId, DurationType } from '../constants/conditions';
+
+interface HPChecks {
+  consciousness: boolean;
+  death: boolean;
+  autoUnconsciousness: boolean;
+  autoDeath: boolean;
+}
+
+interface HitLocationLike {
+  isExtremity?: boolean;
+  isLimb?: boolean;
+  key?: string;
+  label?: string;
+}
+
+interface EffectsTarget {
+  ht?: number;
+  id?: string;
+  instanceId?: string;
+  name?: string;
+}
+
+interface GenerateEffectsParams {
+  injury: number;
+  injuryResult: {
+    injury?: number;
+    location?: HitLocationLike | null;
+  };
+  currentHP: number;
+  newHP: number;
+  maxHP: number;
+  combatRulesPreset?: string;
+  target: EffectsTarget;
+}
+
+interface EffectPrompt {
+  type: string;
+  description: string;
+  value?: number;
+  autoApply?: boolean;
+  checkType?: string;
+  target?: number;
+  penalty?: number;
+  locationKey?: string;
+  locationLabel?: string;
+  optional?: boolean;
+}
+
+interface EffectBleeding {
+  rate: number;
+  lastCheckedAtRound?: number;
+  round?: number;
+}
+
+interface EffectCombatant extends ConditionBearer {
+  shockPenalty?: number;
+  isDead?: boolean;
+  bleeding?: EffectBleeding | null;
+  crippled?: Array<string | undefined>;
+}
+
+interface EffectData {
+  round?: number;
+  turn?: number;
+  value?: number;
+  stunned?: boolean;
+  unconscious?: boolean;
+  dead?: boolean;
+  bleeding?: boolean;
+  rate?: number;
+  locationKey?: string;
+}
 
 /**
  * Combat rules presets
@@ -22,7 +96,7 @@ export const COMBAT_RULES_PRESETS = {
  * @param {number} maxHP - Maximum HP
  * @returns {number} Shock penalty (negative number, e.g., -4)
  */
-export function calculateShockPenalty(injury, maxHP) {
+export function calculateShockPenalty(injury: number, _maxHP: number): number {
   // Shock = -1 per full HP of injury, max -4
   const penalty = Math.min(4, Math.floor(injury));
   return -penalty;
@@ -34,7 +108,7 @@ export function calculateShockPenalty(injury, maxHP) {
  * @param {number} maxHP - Maximum HP
  * @returns {boolean} True if major wound
  */
-export function isMajorWound(injury, maxHP) {
+export function isMajorWound(injury: number, maxHP: number): boolean {
   // Major wound = injury > HP/2
   return injury > (maxHP / 2);
 }
@@ -45,7 +119,7 @@ export function isMajorWound(injury, maxHP) {
  * @param {number} maxHP - Maximum HP
  * @returns {boolean} True if knockdown check needed
  */
-export function requiresKnockdownCheck(injury, maxHP) {
+export function requiresKnockdownCheck(injury: number, maxHP: number): boolean {
   // Same threshold as major wound
   return isMajorWound(injury, maxHP);
 }
@@ -56,7 +130,7 @@ export function requiresKnockdownCheck(injury, maxHP) {
  * @param {number} maxHP - Maximum HP
  * @returns {Object} Check requirements
  */
-export function getHPChecks(currentHP, maxHP) {
+export function getHPChecks(currentHP: number, maxHP: number): HPChecks {
   const checks = {
     consciousness: false,
     death: false,
@@ -96,7 +170,11 @@ export function getHPChecks(currentHP, maxHP) {
  * @param {number} maxHP - Maximum HP
  * @returns {boolean} True if location crippled
  */
-export function isLocationCrippled(location, injury, maxHP) {
+export function isLocationCrippled(
+  location: HitLocationLike | null | undefined,
+  injury: number,
+  maxHP: number
+): boolean {
   if (!location) return false;
 
   // Extremities: crippled at > HP/3 injury
@@ -120,13 +198,13 @@ export function isLocationCrippled(location, injury, maxHP) {
 export function generateEffectsPrompts({
   injury,
   injuryResult,
-  currentHP,
+  currentHP: _currentHP,
   newHP,
   maxHP,
   combatRulesPreset = 'standard',
   target
-}) {
-  const prompts = [];
+}: GenerateEffectsParams): EffectPrompt[] {
+  const prompts: EffectPrompt[] = [];
 
   // Skip all effects for lite preset except HP checks
   if (combatRulesPreset === 'lite') {
@@ -244,7 +322,7 @@ export function generateEffectsPrompts({
  * @param {number} penalty - Penalty to apply (e.g., -4)
  * @returns {Object} Roll result with success/failure
  */
-export function performHTCheck(ht, penalty = 0) {
+export function performHTCheck(ht: number, penalty: number = 0): RollVsTargetResult {
   const target = ht + penalty;
   return rollVsTarget('3d6', target);
 }
@@ -262,13 +340,17 @@ export function performHTCheck(ht, penalty = 0) {
  * @param {*} effectData - Effect-specific data
  * @returns {Object} Updated combatant state
  */
-export function applyEffect(combatant, effectType, effectData) {
-  const conditionOptions = {
+export function applyEffect(
+  combatant: EffectCombatant,
+  effectType: string,
+  effectData: EffectData
+): EffectCombatant {
+  const conditionOptions: CreateConditionOptions = {
     round: effectData?.round ?? 0,
     turn: effectData?.turn ?? 0,
     duration: { type: DurationType.PERMANENT, value: null }
   };
-  const updates = { ...combatant };
+  const updates: EffectCombatant = { ...combatant };
 
   switch (effectType) {
     case 'shock':
@@ -317,7 +399,7 @@ export function applyEffect(combatant, effectType, effectData) {
  * @param {Object} combatant - Combatant object
  * @returns {Object} Updated combatant state
  */
-export function clearShock(combatant) {
+export function clearShock<T extends EffectCombatant>(combatant: T): T & { shockPenalty: number } {
   return {
     ...combatant,
     shockPenalty: 0
@@ -334,8 +416,8 @@ export function clearShock(combatant) {
  * @param {Object} combatant - Combatant object
  * @returns {Array} Array of effect descriptions
  */
-export function getActiveEffects(combatant) {
-  const effects = [];
+export function getActiveEffects(combatant: EffectCombatant): string[] {
+  const effects: string[] = [];
 
   if (combatant.shockPenalty && combatant.shockPenalty < 0) {
     effects.push(`Shock ${combatant.shockPenalty}`);

@@ -173,7 +173,7 @@ Same pattern as Phase 15e: rename `.js` → `.ts` (or `.tsx` if JSX), add types 
 - [x] Convert src/utils/combatItemEffects.js to TypeScript (337 lines).
 - [x] Convert src/utils/combatValidation.js to TypeScript (345 lines).
 - [x] Convert src/utils/dayPlanner.js to TypeScript (348 lines).
-- [ ] Convert src/utils/effectsEngine.js to TypeScript (357 lines).
+- [x] Convert src/utils/effectsEngine.js to TypeScript (357 lines).
 
 ## Phase 16y — `as any` reduction (one file per run) _(refill 2026-07-13)_
 
