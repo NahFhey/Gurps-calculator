@@ -54,7 +54,7 @@ export function handleMapAction(
 
     case MAP_CREATE: {
       const newMap = createNewMap(action.payload);
-      maps.mapsById[newMap.id] = newMap as any;
+      maps.mapsById[newMap.id] = newMap;
       // Set as active if first map
       if (!maps.activeMapId) {
         maps.activeMapId = newMap.id;
@@ -124,9 +124,9 @@ export function handleMapAction(
           map.lastPlacedTerrainId = terrainId;
         }
         // Expand map if painting near edge
-        const expanded = expandMapIfNeededForPaint(map as any);
-        if (expanded !== (map as any)) {
-          maps.mapsById[mapId] = expanded as any;
+        const expanded = expandMapIfNeededForPaint(map);
+        if (expanded !== map) {
+          maps.mapsById[mapId] = expanded;
         }
       }
       return;
@@ -272,9 +272,9 @@ export function handleMapAction(
           map.revealedTileIds.add(tileId);
         }
         // Check expansion
-        const expanded = expandMapIfNeeded(map as any);
-        if (expanded !== (map as any)) {
-          maps.mapsById[mapId] = expanded as any;
+        const expanded = expandMapIfNeeded(map);
+        if (expanded !== map) {
+          maps.mapsById[mapId] = expanded;
         }
       }
       return;
@@ -333,9 +333,9 @@ export function handleMapAction(
       }
 
       // 3. Expand map if needed
-      const expanded = expandMapIfNeeded(map as any);
-      if (expanded !== (map as any)) {
-        maps.mapsById[mapId] = expanded as any;
+      const expanded = expandMapIfNeeded(map);
+      if (expanded !== map) {
+        maps.mapsById[mapId] = expanded;
       }
 
       // 4. Clear travel wizard
