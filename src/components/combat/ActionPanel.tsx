@@ -1,4 +1,4 @@
-import { useState, useEffect, ChangeEvent } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Swords,
   Shield,
@@ -14,6 +14,8 @@ import ActionPanelHeader from './action-panel/ActionPanelHeader';
 import ActionPanelCollapsedView from './action-panel/ActionPanelCollapsedView';
 import ActionPanelDamageWorkflow from './action-panel/ActionPanelDamageWorkflow';
 import ActionPanelConditionsWorkflow from './action-panel/ActionPanelConditionsWorkflow';
+import ActionPanelNoteWorkflow from './action-panel/ActionPanelNoteWorkflow';
+import ActionPanelItemsWorkflow from './action-panel/ActionPanelItemsWorkflow';
 import { getPublicDefenderLabel } from '../../utils/combatViewSelectors';
 import { ViewMode } from '../../utils/combatViewFilter';
 import { hasCondition } from '../../utils/conditionsEngine';
@@ -329,14 +331,12 @@ export default function ActionPanel({
       )}
 
       {activeWorkflow === 'note' && (
-        <div className="border-t border-gray-700 pt-4">
-          <h4 className="text-lg font-semibold mb-3">Add Note</h4>
-          <textarea value={noteText} onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setNoteText(e.target.value)} placeholder="Enter note or description..." className="w-full px-3 py-2 bg-gray-700 rounded h-24" aria-label="Note text" />
-          <div className="flex gap-2 mt-3">
-            <button onClick={() => setActiveWorkflow(null)} className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded" aria-label="Cancel note">Cancel</button>
-            <button onClick={handleAddNote} disabled={!noteText.trim()} className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 rounded disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Submit note">Add Note</button>
-          </div>
-        </div>
+        <ActionPanelNoteWorkflow
+          noteText={noteText}
+          onNoteTextChange={setNoteText}
+          onSubmit={handleAddNote}
+          onCancel={() => setActiveWorkflow(null)}
+        />
       )}
 
       {activeWorkflow === 'conditions' && onAddCondition && onRemoveCondition && (
@@ -352,11 +352,7 @@ export default function ActionPanel({
       )}
 
       {activeWorkflow === 'items' && (
-        <div className="border-t border-gray-700 pt-4">
-          <h4 className="text-lg font-semibold mb-3">Use Item</h4>
-          <div className="text-gray-400 text-sm mb-4">Item system coming soon...</div>
-          <button onClick={() => setActiveWorkflow(null)} className="w-full px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded" aria-label="Close items panel">Close</button>
-        </div>
+        <ActionPanelItemsWorkflow onClose={() => setActiveWorkflow(null)} />
       )}
     </div>
   );
