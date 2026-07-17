@@ -9,11 +9,11 @@ import {
 } from 'lucide-react';
 import AttackAssist from './AttackAssist';
 import DefenseAssist from './DefenseAssist';
-import ConditionsPanel from './ConditionsPanel';
 import ManeuverWorkflowWidgets from './ManeuverWorkflowWidgets';
 import ActionPanelHeader from './action-panel/ActionPanelHeader';
 import ActionPanelCollapsedView from './action-panel/ActionPanelCollapsedView';
 import ActionPanelDamageWorkflow from './action-panel/ActionPanelDamageWorkflow';
+import ActionPanelConditionsWorkflow from './action-panel/ActionPanelConditionsWorkflow';
 import { getPublicDefenderLabel } from '../../utils/combatViewSelectors';
 import { ViewMode } from '../../utils/combatViewFilter';
 import { hasCondition } from '../../utils/conditionsEngine';
@@ -25,6 +25,7 @@ import type {
   ManeuverSelection,
   TurnDecision,
   ConditionDuration,
+  ConditionInstance,
 } from '../../types/combatTracker';
 
 // Local types for attack/defense data flow within the ActionPanel
@@ -105,7 +106,7 @@ interface ActionPanelProps {
   turnDecision?: TurnDecision | null;
   currentRound?: number;
   currentTurn?: number;
-  onAddCondition?: (condition: any) => void;
+  onAddCondition?: (condition: ConditionInstance) => void;
   onRemoveCondition?: (conditionInstanceId: string) => void;
   onUpdateCondition?: (
     conditionInstanceId: string,
@@ -339,10 +340,15 @@ export default function ActionPanel({
       )}
 
       {activeWorkflow === 'conditions' && onAddCondition && onRemoveCondition && (
-        <div className="border-t border-gray-700 pt-4">
-          <ConditionsPanel participant={{ ...currentActor, id: currentActor.instanceId }} currentRound={currentRound} currentTurn={currentTurn} onAddCondition={onAddCondition} onRemoveCondition={onRemoveCondition} onCycleRevealed={viewMode === ViewMode.GM ? onCycleRevealed : undefined} />
-          <button onClick={() => setActiveWorkflow(null)} className="w-full mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded" aria-label="Close conditions panel">Close</button>
-        </div>
+        <ActionPanelConditionsWorkflow
+          currentActor={currentActor}
+          currentRound={currentRound}
+          currentTurn={currentTurn}
+          onAddCondition={onAddCondition}
+          onRemoveCondition={onRemoveCondition}
+          onCycleRevealed={viewMode === ViewMode.GM ? onCycleRevealed : undefined}
+          onClose={() => setActiveWorkflow(null)}
+        />
       )}
 
       {activeWorkflow === 'items' && (

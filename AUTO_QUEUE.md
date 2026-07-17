@@ -190,7 +190,7 @@ A reference decomposition exists on branch `migration/home-test-claude-ws` at `s
 - [x] Add behavior tests for src/components/combat/ActionPanel.tsx (375 lines, currently ZERO coverage): workflow selection and switching, damage workflow dispatching the expected action, conditions workflow toggling, note workflow adding a note, collapsed vs expanded rendering. This is the safety net for the extractions below.
 - [x] Extract ActionPanelHeader and ActionPanelCollapsedView from ActionPanel.tsx into src/components/combat/action-panel/. Precondition: ActionPanel tests exist (previous item); if absent, defer with reason "prerequisite tests missing".
 - [x] Extract ActionPanelDamageWorkflow from ActionPanel.tsx into src/components/combat/action-panel/. Same precondition.
-- [ ] Extract ActionPanelConditionsWorkflow from ActionPanel.tsx into src/components/combat/action-panel/. Same precondition.
+- [x] Extract ActionPanelConditionsWorkflow from ActionPanel.tsx into src/components/combat/action-panel/. Same precondition.
 - [ ] Extract ActionPanelNoteWorkflow and ActionPanelItemsWorkflow from ActionPanel.tsx into src/components/combat/action-panel/. Same precondition.
 - [ ] Extract ActionPanelWorkflowSelector and ActionPanelManeuverPrompts; ActionPanel.tsx ends as a thin router (~150 lines or less). Same precondition.
 
