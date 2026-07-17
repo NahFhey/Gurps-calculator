@@ -33,6 +33,18 @@ When `AUTO_QUEUE.md` has zero `- [ ]` items AND seven consecutive runs find zero
 
 <!-- Daily entries are prepended directly below this line, newest first. -->
 
+## 2026-07-17 — PASS (4 commits: 4P, 0N, 0C)
+
+| commit | target | verdict | notes |
+| ------ | ------ | ------- | ----- |
+| 470263c | AUTO_QUEUE.md (defer campaignStorage) | PASS | honest deferral — cited casts verified |
+| 42f4fd8 | src/state/map/mapReducer.ts | PASS | 10 `as any` cleanly removed, no new casts |
+| dac29db | src/components/combat/__tests__/ActionPanel.test.tsx | PASS | 6 behavior tests, dispatch payloads + edge paths |
+| 87a885c | src/components/combat/ActionPanel.tsx | PASS | pure extraction, covered by parent tests |
+
+### Notes
+No concerns or notes this window. The `campaignStorage.ts` deferral (470263c) is honest: the cited casts at :90 (`(payload as any).maps`), :141-146 (six gathering fields), :148 (`alchemyReagents`), and :151 (`cookingSkills`) all exist as described, and the Extended-vs-state-type mismatch on the gathering/alchemy entities is a genuine design decision, not a doable-item punt. The loop correctly noted that :90 and :151 are individually removable but the item is all-9, so it defers as a unit — consistent with the same-day useCombatHistory.ts deferral. The `mapReducer.ts` cast removal (42f4fd8) strips exactly the 10 `as any` the item named and adds none; extractions (87a885c) are presentational-only and exercised indirectly by the ActionPanel.test.tsx safety net added in dac29db.
+
 ## 2026-07-16 — NOTE (6 commits: 4P, 2N, 0C)
 
 | commit | target | verdict | notes |
