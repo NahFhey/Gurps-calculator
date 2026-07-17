@@ -9,11 +9,11 @@ import {
 } from 'lucide-react';
 import AttackAssist from './AttackAssist';
 import DefenseAssist from './DefenseAssist';
-import InjuryResolutionPanel from './InjuryResolutionPanel';
 import ConditionsPanel from './ConditionsPanel';
 import ManeuverWorkflowWidgets from './ManeuverWorkflowWidgets';
 import ActionPanelHeader from './action-panel/ActionPanelHeader';
 import ActionPanelCollapsedView from './action-panel/ActionPanelCollapsedView';
+import ActionPanelDamageWorkflow from './action-panel/ActionPanelDamageWorkflow';
 import { getPublicDefenderLabel } from '../../utils/combatViewSelectors';
 import { ViewMode } from '../../utils/combatViewFilter';
 import { hasCondition } from '../../utils/conditionsEngine';
@@ -28,12 +28,12 @@ import type {
 } from '../../types/combatTracker';
 
 // Local types for attack/defense data flow within the ActionPanel
-interface HitLocation {
+export interface HitLocation {
   key: string;
   label: string;
 }
 
-interface LocationRoll {
+export interface LocationRoll {
   dice: number[];
   total: number;
 }
@@ -306,29 +306,25 @@ export default function ActionPanel({
       )}
 
       {activeWorkflow === 'damage' && (
-        <div className="border-t border-gray-700 pt-4">
-          <h4 className="text-lg font-semibold mb-3">Injury Workflow</h4>
-          {boundTarget && !forceTargetSelection && (
-            <div className="mb-3 bg-gray-700/40 rounded p-3">
-              <div className="text-xs text-gray-400 mb-1">Target (from attack)</div>
-              <div className="text-sm font-semibold">{getPublicDefenderLabel(combatState, revealState, boundTarget.instanceId)}</div>
-              <button onClick={() => setForceTargetSelection(true)} className="mt-2 text-xs text-blue-300 hover:text-blue-200" type="button" aria-label="Change attack target">Change Target</button>
-            </div>
-          )}
-          {(!boundTarget || forceTargetSelection) && (
-            <div className="mb-3">
-              <label className="block text-sm font-semibold mb-2">Target</label>
-              <select className="w-full px-3 py-2 bg-gray-700 rounded" value={selectedTargetId || targets[0]?.instanceId || ''} onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedTargetId(e.target.value)} aria-label="Select target">
-                {targets.map((t) => (<option key={t.instanceId} value={t.instanceId}>{t.name}</option>))}
-              </select>
-            </div>
-          )}
-          {targets.length > 0 ? (
-            <InjuryResolutionPanel attacker={{ st: currentActor.st ?? 10, name: currentActor.name }} target={(boundTargetTruth || getTruthParticipant(selectedTargetId!) || truthTargets[0]) as any} combatRulesPreset={combatRulesPreset} damageExpression={boundDamageExpression || ''} injectedDamageModifiers={maneuverWorkflow?.damage?.modifiers || []} initialLocation={boundHitLocation as any} initialLocationRoll={boundHitLocationRoll as any} onComplete={handleDamageComplete} onCancel={() => setActiveWorkflow(null)} />
-          ) : (
-            <div className="text-gray-400 text-sm">No valid targets available</div>
-          )}
-        </div>
+        <ActionPanelDamageWorkflow
+          currentActor={currentActor}
+          targets={targets}
+          selectedTargetId={selectedTargetId}
+          boundTarget={boundTarget}
+          resolvedTarget={(boundTargetTruth || getTruthParticipant(selectedTargetId!) || truthTargets[0]) ?? null}
+          combatState={combatState}
+          revealState={revealState}
+          combatRulesPreset={combatRulesPreset}
+          damageModifiers={maneuverWorkflow?.damage?.modifiers || []}
+          boundDamageExpression={boundDamageExpression}
+          boundHitLocation={boundHitLocation}
+          boundHitLocationRoll={boundHitLocationRoll}
+          forceTargetSelection={forceTargetSelection}
+          onSelectTarget={setSelectedTargetId}
+          onForceTargetSelection={() => setForceTargetSelection(true)}
+          onComplete={handleDamageComplete}
+          onCancel={() => setActiveWorkflow(null)}
+        />
       )}
 
       {activeWorkflow === 'note' && (
