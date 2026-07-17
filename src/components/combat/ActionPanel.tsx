@@ -1,21 +1,14 @@
 import { useState, useEffect } from 'react';
-import {
-  Swords,
-  Shield,
-  Zap,
-  MessageSquare,
-  Droplet,
-  Activity,
-} from 'lucide-react';
 import AttackAssist from './AttackAssist';
 import DefenseAssist from './DefenseAssist';
-import ManeuverWorkflowWidgets from './ManeuverWorkflowWidgets';
 import ActionPanelHeader from './action-panel/ActionPanelHeader';
 import ActionPanelCollapsedView from './action-panel/ActionPanelCollapsedView';
 import ActionPanelDamageWorkflow from './action-panel/ActionPanelDamageWorkflow';
 import ActionPanelConditionsWorkflow from './action-panel/ActionPanelConditionsWorkflow';
 import ActionPanelNoteWorkflow from './action-panel/ActionPanelNoteWorkflow';
 import ActionPanelItemsWorkflow from './action-panel/ActionPanelItemsWorkflow';
+import ActionPanelWorkflowSelector from './action-panel/ActionPanelWorkflowSelector';
+import ActionPanelManeuverPrompts from './action-panel/ActionPanelManeuverPrompts';
 import { getPublicDefenderLabel } from '../../utils/combatViewSelectors';
 import { ViewMode } from '../../utils/combatViewFilter';
 import { hasCondition } from '../../utils/conditionsEngine';
@@ -29,17 +22,11 @@ import type {
   ConditionDuration,
   ConditionInstance,
 } from '../../types/combatTracker';
-
-// Local types for attack/defense data flow within the ActionPanel
-export interface HitLocation {
-  key: string;
-  label: string;
-}
-
-export interface LocationRoll {
-  dice: number[];
-  total: number;
-}
+import type {
+  HitLocation,
+  LocationRoll,
+  WorkflowType,
+} from './action-panel/types';
 
 interface AttackData {
   name: string;
@@ -78,15 +65,6 @@ interface ActionData {
   targetInstanceId?: string | null;
   newHP?: number;
 }
-
-type WorkflowType =
-  | 'attack'
-  | 'defense'
-  | 'damage'
-  | 'note'
-  | 'conditions'
-  | 'items'
-  | null;
 
 interface ActionPanelProps {
   currentActor: Participant;
@@ -248,47 +226,10 @@ export default function ActionPanel({
       <ActionPanelHeader onToggleExpanded={onToggleExpanded} />
 
       {/* Maneuver-specific aim/wait widgets */}
-      {!activeWorkflow && (maneuverPrompts?.allowsAimPanel || maneuverPrompts?.allowsWaitPanel) && (
-        <ManeuverWorkflowWidgets
-          maneuverPrompts={maneuverPrompts}
-          turnDecision={turnDecision}
-          targets={targets}
-          onManeuverWorkflow={onManeuverWorkflow}
-        />
-      )}
+      {!activeWorkflow && <ActionPanelManeuverPrompts maneuverPrompts={maneuverPrompts} turnDecision={turnDecision} targets={targets} onManeuverWorkflow={onManeuverWorkflow} />}
 
       {/* Action type selection grid */}
-      {!activeWorkflow && (
-        <div>
-          <label className="block text-sm font-semibold mb-2">Choose Action</label>
-          <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => setActiveWorkflow('attack')} className="flex items-center justify-center gap-2 p-3 bg-red-600 hover:bg-red-700 rounded" disabled={!maneuverPrompts?.allowsAttackPanel} aria-label="Start attack workflow">
-              <Swords size={20} /> Attack
-            </button>
-            <button onClick={() => setActiveWorkflow('defense')} className="flex items-center justify-center gap-2 p-3 bg-blue-600 hover:bg-blue-700 rounded" disabled={!maneuverPrompts?.allowsDefensePanel} aria-label="Start defense workflow">
-              <Shield size={20} /> Defense
-            </button>
-            <button onClick={() => setActiveWorkflow('damage')} className="flex items-center justify-center gap-2 p-3 bg-orange-600 hover:bg-orange-700 rounded" aria-label="Start damage workflow">
-              <Zap size={20} /> Damage
-            </button>
-            <button onClick={() => setActiveWorkflow('note')} className="flex items-center justify-center gap-2 p-3 bg-gray-600 hover:bg-gray-500 rounded" aria-label="Add note">
-              <MessageSquare size={20} /> Note
-            </button>
-            <button onClick={() => setActiveWorkflow('items')} className="flex items-center justify-center gap-2 p-3 bg-purple-600 hover:bg-purple-700 rounded" aria-label="Use item">
-              <Droplet size={20} /> Items
-            </button>
-            <button onClick={() => setActiveWorkflow('conditions')} className="flex items-center justify-center gap-2 p-3 bg-indigo-600 hover:bg-indigo-700 rounded" aria-label="Manage conditions">
-              <Activity size={20} /> Conditions
-            </button>
-          </div>
-          {selectedManeuver && !maneuverPrompts?.allowsAttackPanel && !maneuverPrompts?.allowsDefensePanel && (
-            <div className="text-xs text-gray-400 mt-2">This maneuver doesn&apos;t open attack or defense workflows.</div>
-          )}
-          {!selectedManeuver && (
-            <div className="text-xs text-gray-400 mt-2">Select a maneuver above to enable relevant workflows.</div>
-          )}
-        </div>
-      )}
+      {!activeWorkflow && <ActionPanelWorkflowSelector selectedManeuver={selectedManeuver} allowsAttackPanel={maneuverPrompts?.allowsAttackPanel} allowsDefensePanel={maneuverPrompts?.allowsDefensePanel} onSelectWorkflow={setActiveWorkflow} />}
 
       {/* Active workflows */}
       {activeWorkflow === 'attack' && (

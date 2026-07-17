@@ -2,7 +2,7 @@ import type { ChangeEvent } from 'react';
 import InjuryResolutionPanel from '../InjuryResolutionPanel';
 import { getPublicDefenderLabel } from '../../../utils/combatViewSelectors';
 import type { Participant } from '../../../types/combatTracker';
-import type { HitLocation, LocationRoll } from '../ActionPanel';
+import type { HitLocation, LocationRoll } from './types';
 
 interface ActionPanelDamageWorkflowProps {
   currentActor: Participant;

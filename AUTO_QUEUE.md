@@ -192,7 +192,7 @@ A reference decomposition exists on branch `migration/home-test-claude-ws` at `s
 - [x] Extract ActionPanelDamageWorkflow from ActionPanel.tsx into src/components/combat/action-panel/. Same precondition.
 - [x] Extract ActionPanelConditionsWorkflow from ActionPanel.tsx into src/components/combat/action-panel/. Same precondition.
 - [x] Extract ActionPanelNoteWorkflow and ActionPanelItemsWorkflow from ActionPanel.tsx into src/components/combat/action-panel/. Same precondition.
-- [ ] Extract ActionPanelWorkflowSelector and ActionPanelManeuverPrompts; ActionPanel.tsx ends as a thin router (~150 lines or less). Same precondition.
+- [x] Extract ActionPanelWorkflowSelector and ActionPanelManeuverPrompts; ActionPanel.tsx ends as a thin router (~150 lines or less). Same precondition.
 
 ## Out of scope for the loop (do NOT add these)
 
