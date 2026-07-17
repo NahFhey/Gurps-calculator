@@ -4,8 +4,6 @@ import {
   Shield,
   Zap,
   MessageSquare,
-  ChevronDown,
-  ChevronUp,
   Droplet,
   Activity,
 } from 'lucide-react';
@@ -14,6 +12,8 @@ import DefenseAssist from './DefenseAssist';
 import InjuryResolutionPanel from './InjuryResolutionPanel';
 import ConditionsPanel from './ConditionsPanel';
 import ManeuverWorkflowWidgets from './ManeuverWorkflowWidgets';
+import ActionPanelHeader from './action-panel/ActionPanelHeader';
+import ActionPanelCollapsedView from './action-panel/ActionPanelCollapsedView';
 import { getPublicDefenderLabel } from '../../utils/combatViewSelectors';
 import { ViewMode } from '../../utils/combatViewFilter';
 import { hasCondition } from '../../utils/conditionsEngine';
@@ -236,27 +236,13 @@ export default function ActionPanel({
 
   // ---- Collapsed state ----
   if (!expanded) {
-    return (
-      <div className="bg-gray-800 rounded-lg p-3">
-        <button onClick={onToggleExpanded} className="flex items-center justify-between w-full text-left" aria-label="Expand Action Panel">
-          <span className="font-semibold">Action Panel</span>
-          <ChevronDown size={20} />
-        </button>
-      </div>
-    );
+    return <ActionPanelCollapsedView onToggleExpanded={onToggleExpanded} />;
   }
 
   // ---- Render ----
   return (
     <div className="bg-gray-800 rounded-lg p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Action Panel</h3>
-        {onToggleExpanded && (
-          <button onClick={onToggleExpanded} className="text-gray-400 hover:text-white" aria-label="Collapse Action Panel">
-            <ChevronUp size={20} />
-          </button>
-        )}
-      </div>
+      <ActionPanelHeader onToggleExpanded={onToggleExpanded} />
 
       {/* Maneuver-specific aim/wait widgets */}
       {!activeWorkflow && (maneuverPrompts?.allowsAimPanel || maneuverPrompts?.allowsWaitPanel) && (
