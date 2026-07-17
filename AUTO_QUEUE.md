@@ -187,7 +187,7 @@ Pattern: remove every `as any` in the target file by fixing the types at the sou
 
 A reference decomposition exists on branch `migration/home-test-claude-ws` at `src/components/combat/action-panel/` (April 2026 spike). It is REFERENCE ONLY — three months stale against current combat state; adapt names/props/state access to today's code, never copy blindly. Target pattern: thin router + view (the Phase 6 convention). Every extraction: behavior identical, ActionPanel tests green, tsc clean.
 
-- [ ] Add behavior tests for src/components/combat/ActionPanel.tsx (375 lines, currently ZERO coverage): workflow selection and switching, damage workflow dispatching the expected action, conditions workflow toggling, note workflow adding a note, collapsed vs expanded rendering. This is the safety net for the extractions below.
+- [x] Add behavior tests for src/components/combat/ActionPanel.tsx (375 lines, currently ZERO coverage): workflow selection and switching, damage workflow dispatching the expected action, conditions workflow toggling, note workflow adding a note, collapsed vs expanded rendering. This is the safety net for the extractions below.
 - [ ] Extract ActionPanelHeader and ActionPanelCollapsedView from ActionPanel.tsx into src/components/combat/action-panel/. Precondition: ActionPanel tests exist (previous item); if absent, defer with reason "prerequisite tests missing".
 - [ ] Extract ActionPanelDamageWorkflow from ActionPanel.tsx into src/components/combat/action-panel/. Same precondition.
 - [ ] Extract ActionPanelConditionsWorkflow from ActionPanel.tsx into src/components/combat/action-panel/. Same precondition.
