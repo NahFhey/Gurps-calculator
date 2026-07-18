@@ -194,6 +194,28 @@ A reference decomposition exists on branch `migration/home-test-claude-ws` at `s
 - [x] Extract ActionPanelNoteWorkflow and ActionPanelItemsWorkflow from ActionPanel.tsx into src/components/combat/action-panel/. Same precondition.
 - [x] Extract ActionPanelWorkflowSelector and ActionPanelManeuverPrompts; ActionPanel.tsx ends as a thin router (~150 lines or less). Same precondition.
 
+## Phase 15e-3 — JS → TS migration, third batch (one file per run) _(refill 2026-07-17)_
+
+Unblocked: Phase 15e-2 is complete and reviewed clean (AUTO_REVIEW 2026-07-15/16, all PASS/NOTE), so the four 400+ line combat/task `.js` files the out-of-scope note gated on that condition are now queueable. These are LARGER than prior 15e-2 items (417–582 lines) — budget accordingly; if a conversion cannot be finished and verified green within the run, defer it rather than leaving a half-typed file.
+
+Same pattern as Phase 15e-2: rename `.js` → `.ts`, add types for parameters/returns, preserve all existing exports and runtime behavior, remove any matching `.d.ts` shim, no `as any` introduced. Each file has an existing co-located `*.test.js` in `src/utils/__tests__/` that is the behavior safety net — it must stay green (run it targeted: `npx vitest run src/utils/__tests__/<name>.test.js`). Do NOT rewrite the test file; it keeps its `.js` extension and imports the converted module by basename.
+
+- [ ] Convert src/utils/taskResolution.js to TypeScript (417 lines; delete the src/utils/taskResolution.d.ts shim). Safety net: src/utils/__tests__/taskResolution.test.js.
+- [ ] Convert src/utils/combatViewFilter.js to TypeScript (441 lines; delete the src/utils/combatViewFilter.d.ts shim). Safety net: src/utils/__tests__/combatViewFilter.test.js.
+- [ ] Convert src/utils/combatLogFilter.js to TypeScript (551 lines; no .d.ts shim exists). Safety net: src/utils/__tests__/combatLogFilter.test.js.
+- [ ] Convert src/utils/conditionsEngine.js to TypeScript (582 lines; delete the src/utils/conditionsEngine.d.ts shim). Engine code — preserve every branch exactly. Safety net: src/utils/__tests__/conditionsEngine.test.js.
+
+## Phase 16t-2 — Test coverage for zero-coverage code (one file per run) _(refill 2026-07-17)_
+
+Same bar as Phase 16t: add `__tests__/<name>.test.ts` beside the file, covering the exported API — happy path + at least one error/edge path per exported function group. No `as any` in tests. Verify with a targeted vitest run.
+
+- [ ] Add tests for src/utils/combatReveal.ts (349 lines, zero coverage; pure util, only imports safeDeepClone). Priority edge cases: calculateHPBand at boundary HP (0, negative, currentHP > maxHP, maxHP 0), getRevealForInstance for a missing instance id, syncRevealStateForParticipants add/remove diff, hasAnyReveals on null/empty input.
+
+Hook tests below use the existing `renderHook` harness — mirror `src/hooks/__tests__/useCombatConditions.test.ts` (or another `src/hooks/__tests__/*.test.ts`). Both target hooks depend only on React (+ logger), so no store/context provider is required. If a hook turns out to need provider setup beyond what the exemplar shows, defer it with that reason rather than expanding scope.
+
+- [ ] Add tests for src/hooks/usePersistentState.ts (42 lines, zero coverage; depends only on react). Cover: initial value, setter updates state, the debounced-save callback is invoked with the new value. Use fake timers if debounce timing is asserted.
+- [ ] Add tests for src/hooks/useStorage.ts (176 lines, zero coverage; useKeyedDebouncedStorageSave, depends on react + logger). Cover: debounced save fires once after the delay, rapid successive calls coalesce, and the error path where the save throws is logged (not rethrown). Use fake timers.
+
 ## Out of scope for the loop (do NOT add these)
 
 The following are tracked elsewhere because they require design judgment or coordinated multi-file changes the loop should not attempt autonomously:
@@ -209,4 +231,4 @@ The following are tracked elsewhere because they require design judgment or coor
 - Phase 16 Electron packaging, delta sync, file format (architecture)
 - Items in docs/INVENTORY_INTEGRATION_FOLLOWUPS.md (each has open design questions)
 - The 60 `as any` casts across the three Fishing views (FishingResolutionPanel/FishingActivity/FishingTaskForm) — they share a fishing type-model problem that needs human type design, not per-cast fixes
-- JS → TS conversion of taskResolution.js (417), combatViewFilter.js (441), combatLogFilter.js (551), conditionsEngine.js (582) — 400+ lines each; queue as a third batch only after 15e-2 completes cleanly
+- ~~JS → TS conversion of taskResolution.js (417), combatViewFilter.js (441), combatLogFilter.js (551), conditionsEngine.js (582)~~ — promoted to Phase 15e-3 on 2026-07-17 now that 15e-2 completed cleanly (the gate this note named)
