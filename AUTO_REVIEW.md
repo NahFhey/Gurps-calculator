@@ -33,6 +33,21 @@ When `AUTO_QUEUE.md` has zero `- [ ]` items AND seven consecutive runs find zero
 
 <!-- Daily entries are prepended directly below this line, newest first. -->
 
+## 2026-07-18 — NOTE (5 commits: 3P, 2N, 0C)
+
+| commit | target | verdict | notes |
+| ------ | ------ | ------- | ----- |
+| 6249db1 | src/utils/taskResolution.ts | NOTE | JS→TS conversion preserves the deleted `.d.ts` shim's `any` contract (not a regression); 3 net-new internal `any` left untightened |
+| 568a91d | src/components/combat/ActionPanel.tsx | NOTE | item marked done but its "~150 lines or less" target unmet — router landed at 300 (from 361) |
+| d1c778e | src/components/combat/action-panel/ | PASS | — |
+| 80b1ef0 | src/components/combat/action-panel/ActionPanelConditionsWorkflow.tsx | PASS | — |
+| 3d5c83f | src/components/combat/action-panel/ActionPanelDamageWorkflow.tsx | PASS | three `as any` casts relocated verbatim from parent, not introduced |
+
+### Notes
+
+- **6249db1 (taskResolution → TS).** The conversion is faithful, not a type regression: the now-deleted `src/utils/taskResolution.d.ts` shim already declared `payload/task/leader/environment/tools/species/categories/items/tables` as `any`, and the `.ts` file carries those forward — the same situation `KNOWN_ISSUES.md` parks for `exportImport.ts` ("not a regression from the JS source"). Three genuinely net-new `any` slipped in beyond the shim's surface: `_categories?: any` (taskResolution.ts:56), `item?: any` (taskResolution.ts:102), and the local `const yields: any = calculateFishYields(...)` (taskResolution.ts:231). These are internal to an already-`any`-boundaried module, so this is a missed opportunity to tighten types during the migration, not fresh erosion — flagging once rather than blocking. taskResolution is not on the strict engine-code list.
+- **568a91d (WorkflowSelector + ManeuverPrompts, slim router).** The queue item's stated acceptance criterion was "ActionPanel.tsx ends as a thin router (~150 lines or less)"; the item was marked `[x]` complete, but the file landed at 300 lines (down from 361 before the extraction series). The extraction itself is legitimate — logic moved cleanly into `action-panel/` components and a shared `types.ts` — and the one cross-file edit (ActionPanelDamageWorkflow.tsx switching its `HitLocation`/`LocationRoll` import from `../ActionPanel` to `./types`) is in-scope plumbing for the shared types module. The only gap is the optimistic line-count target: 300 vs ~150 claimed. Worth noting for deferral/completion honesty; the refactor is sound.
+
 ## 2026-07-17 — PASS (4 commits: 4P, 0N, 0C)
 
 | commit | target | verdict | notes |
