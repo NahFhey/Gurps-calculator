@@ -209,7 +209,7 @@ Same pattern as Phase 15e-2: rename `.js` → `.ts`, add types for parameters/re
 
 Same bar as Phase 16t: add `__tests__/<name>.test.ts` beside the file, covering the exported API — happy path + at least one error/edge path per exported function group. No `as any` in tests. Verify with a targeted vitest run.
 
-- [ ] Add tests for src/utils/combatReveal.ts (349 lines, zero coverage; pure util, only imports safeDeepClone). Priority edge cases: calculateHPBand at boundary HP (0, negative, currentHP > maxHP, maxHP 0), getRevealForInstance for a missing instance id, syncRevealStateForParticipants add/remove diff, hasAnyReveals on null/empty input.
+- [x] Add tests for src/utils/combatReveal.ts (349 lines, zero coverage; pure util, only imports safeDeepClone). Priority edge cases: calculateHPBand at boundary HP (0, negative, currentHP > maxHP, maxHP 0), getRevealForInstance for a missing instance id, syncRevealStateForParticipants add/remove diff, hasAnyReveals on null/empty input.
 
 Hook tests below use the existing `renderHook` harness — mirror `src/hooks/__tests__/useCombatConditions.test.ts` (or another `src/hooks/__tests__/*.test.ts`). Both target hooks depend only on React (+ logger), so no store/context provider is required. If a hook turns out to need provider setup beyond what the exemplar shows, defer it with that reason rather than expanding scope.
 
