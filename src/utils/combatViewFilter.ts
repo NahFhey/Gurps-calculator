@@ -10,13 +10,21 @@ import {
   getRevealForInstance,
   calculateHPBand,
   getHPBandText
-} from './combatReveal.js';
-import { isConditionObvious } from '../constants/conditions.js';
+} from './combatReveal';
+import { isConditionObvious } from '../constants/conditions';
+
+// Loose runtime types — the canonical combat tracker types live in
+// `src/types/combatTracker.ts`, but these filtered view models are richer and
+// callers intentionally cast them to the shape they need. Keeping the runtime
+// inputs permissive preserves the original untyped behavior.
+type AnyRecord = Record<string, any>;
+
+export type ViewModeType = 'gm' | 'player';
 
 /**
  * View modes
  */
-export const ViewMode = {
+export const ViewMode: { readonly GM: 'gm'; readonly PLAYER: 'player' } = {
   GM: 'gm',
   PLAYER: 'player'
 };
@@ -29,7 +37,11 @@ export const ViewMode = {
  * @param {string} viewMode - 'gm' or 'player'
  * @returns {object} Filtered view model (safe for rendering)
  */
-export function getCombatView(combatState, revealState, viewMode) {
+export function getCombatView(
+  combatState: any,
+  revealState: any | undefined,
+  viewMode: ViewModeType
+): AnyRecord | null {
   if (!combatState) return null;
 
   // GM View: return truth state as-is (with reveal metadata attached for UI)
@@ -38,7 +50,7 @@ export function getCombatView(combatState, revealState, viewMode) {
       ...combatState,
       _viewMode: ViewMode.GM,
       _revealState: revealState, // Attach for reveal panel UI
-      participants: combatState.participants.map(p => ({
+      participants: combatState.participants.map((p: any): AnyRecord => ({
         ...p,
         _reveal: getRevealForInstance(revealState, p.instanceId, p.category || p.side)
       }))
@@ -57,7 +69,7 @@ export function getCombatView(combatState, revealState, viewMode) {
     _viewMode: ViewMode.PLAYER,
 
     // Filter participants
-    participants: combatState.participants.map(p =>
+    participants: combatState.participants.map((p: any): AnyRecord =>
       filterParticipant(p, revealState)
     ),
 
@@ -73,7 +85,7 @@ export function getCombatView(combatState, revealState, viewMode) {
  * @param {object} revealState - Reveal state
  * @returns {object} Filtered participant (safe for Player View)
  */
-function filterParticipant(participant, revealState) {
+function filterParticipant(participant: any, revealState: any): AnyRecord {
   const side = participant.category || participant.side || 'enemy'; // Use category field (category is the actual field used)
   const reveal = getRevealForInstance(
     revealState,
@@ -81,7 +93,7 @@ function filterParticipant(participant, revealState) {
     side
   );
 
-  const filtered = {
+  const filtered: AnyRecord = {
     instanceId: participant.instanceId,
     id: participant.id, // Legacy support
     side: participant.category || participant.side, // Use category as side
@@ -168,7 +180,7 @@ function filterParticipant(participant, revealState) {
 /**
  * Filter name based on reveal mode
  */
-function filterName(trueName, instanceId, nameReveal) {
+function filterName(trueName: any, instanceId: any, nameReveal: any): any {
   switch (nameReveal) {
     case RevealMode.NAME_FULL:
       return trueName;
@@ -186,7 +198,7 @@ function filterName(trueName, instanceId, nameReveal) {
 /**
  * Filter tags/keywords
  */
-function filterTags(tags, tagsReveal) {
+function filterTags(tags: any, tagsReveal: any): any {
   if (tagsReveal === RevealMode.NOTES_FULL) {
     return tags;
   }
@@ -197,7 +209,7 @@ function filterTags(tags, tagsReveal) {
  * Filter numeric resource (HP/FP/MP)
  * For HP: Always show health band for gameplay (healthy/wounded/critical/dead)
  */
-function filterNumericResource(current, max, reveal) {
+function filterNumericResource(current: any, max: any, reveal: any): AnyRecord {
   if (!reveal) {
     // Default: show band for HP (for gameplay), unknown for FP/MP
     const band = calculateHPBand(current, max);
@@ -236,10 +248,10 @@ function filterNumericResource(current, max, reveal) {
 /**
  * Filter defenses (dodge/parry/block)
  */
-function filterDefenses(truthDefenses, reveal) {
-  const filtered = {};
+function filterDefenses(truthDefenses: any, reveal: any): AnyRecord {
+  const filtered: AnyRecord = {};
 
-  ['dodge', 'parry', 'block'].forEach(defType => {
+  ['dodge', 'parry', 'block'].forEach((defType: string): void => {
     const mode = reveal?.[defType] || RevealMode.DEFENSE_UNKNOWN;
 
     switch (mode) {
@@ -272,8 +284,8 @@ function filterDefenses(truthDefenses, reveal) {
 /**
  * Filter DR (general and by location)
  */
-function filterDR(generalDR, drByLocation, reveal) {
-  const filtered = {};
+function filterDR(generalDR: any, drByLocation: any, reveal: any): AnyRecord {
+  const filtered: AnyRecord = {};
 
   // General DR
   switch (reveal?.general) {
@@ -302,7 +314,7 @@ function filterDR(generalDR, drByLocation, reveal) {
   // Location-specific DR
   filtered.byLocation = {};
   if (drByLocation) {
-    Object.keys(drByLocation).forEach(locationKey => {
+    Object.keys(drByLocation).forEach((locationKey: string): void => {
       const locationReveal = reveal?.byLocation?.[locationKey];
 
       if (!locationReveal || locationReveal.mode === RevealMode.DR_UNKNOWN) {
@@ -329,7 +341,7 @@ function filterDR(generalDR, drByLocation, reveal) {
 /**
  * Filter attacks
  */
-function filterAttacks(attacks, attacksReveal) {
+function filterAttacks(attacks: any, attacksReveal: any): any[] {
   if (!attacks || attacks.length === 0) {
     return [];
   }
@@ -339,7 +351,7 @@ function filterAttacks(attacks, attacksReveal) {
       return attacks;
 
     case RevealMode.ATTACKS_NAMES_ONLY:
-      return attacks.map(atk => ({
+      return attacks.map((atk: any): AnyRecord => ({
         name: atk.name,
         // Hide stats
         _hidden: true
@@ -354,7 +366,7 @@ function filterAttacks(attacks, attacksReveal) {
 /**
  * Filter notes
  */
-function filterNotes(notes, notesReveal) {
+function filterNotes(notes: any, notesReveal: any): any {
   if (notesReveal === RevealMode.NOTES_FULL) {
     return notes;
   }
@@ -366,7 +378,7 @@ function filterNotes(notes, notesReveal) {
  * conditions. Not in the catalog on purpose — it resolves to the generic
  * "❓" icon and carries no mechanical information.
  */
-export const CONCEALED_CONDITION_ID = '__concealed__';
+export const CONCEALED_CONDITION_ID: '__concealed__' = '__concealed__';
 
 /**
  * Phase 12a.6: Filter conditions on per-instance eye state
@@ -388,7 +400,7 @@ export const CONCEALED_CONDITION_ID = '__concealed__';
  * @param {string} side - Combatant's side/category (player/ally/enemy)
  * @returns {array} Filtered conditions (safe for Player View)
  */
-function filterConditions(conditions, side) {
+function filterConditions(conditions: any, side: any): any[] {
   if (!conditions || !Array.isArray(conditions)) {
     return [];
   }
@@ -398,7 +410,7 @@ function filterConditions(conditions, side) {
     return conditions;
   }
 
-  const visible = [];
+  const visible: any[] = [];
   for (const condition of conditions) {
     if (!condition || typeof condition !== 'object') continue;
 
@@ -427,7 +439,7 @@ function filterConditions(conditions, side) {
  * Check if participant has any hidden information
  * (useful for UI to show reveal indicators)
  */
-export function hasHiddenInfo(participant) {
+export function hasHiddenInfo(participant: any): boolean {
   const reveal = participant._reveal;
   if (!reveal) return false;
 
