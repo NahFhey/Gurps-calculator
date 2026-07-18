@@ -200,7 +200,7 @@ Unblocked: Phase 15e-2 is complete and reviewed clean (AUTO_REVIEW 2026-07-15/16
 
 Same pattern as Phase 15e-2: rename `.js` → `.ts`, add types for parameters/returns, preserve all existing exports and runtime behavior, remove any matching `.d.ts` shim, no `as any` introduced. Each file has an existing co-located `*.test.js` in `src/utils/__tests__/` that is the behavior safety net — it must stay green (run it targeted: `npx vitest run src/utils/__tests__/<name>.test.js`). Do NOT rewrite the test file; it keeps its `.js` extension and imports the converted module by basename.
 
-- [ ] Convert src/utils/taskResolution.js to TypeScript (417 lines; delete the src/utils/taskResolution.d.ts shim). Safety net: src/utils/__tests__/taskResolution.test.js.
+- [x] Convert src/utils/taskResolution.js to TypeScript (417 lines; delete the src/utils/taskResolution.d.ts shim). Safety net: src/utils/__tests__/taskResolution.test.js.
 - [ ] Convert src/utils/combatViewFilter.js to TypeScript (441 lines; delete the src/utils/combatViewFilter.d.ts shim). Safety net: src/utils/__tests__/combatViewFilter.test.js.
 - [ ] Convert src/utils/combatLogFilter.js to TypeScript (551 lines; no .d.ts shim exists). Safety net: src/utils/__tests__/combatLogFilter.test.js.
 - [ ] Convert src/utils/conditionsEngine.js to TypeScript (582 lines; delete the src/utils/conditionsEngine.d.ts shim). Engine code — preserve every branch exactly. Safety net: src/utils/__tests__/conditionsEngine.test.js.

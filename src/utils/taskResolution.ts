@@ -17,14 +17,92 @@ import {
   getToolYieldBonus,
   determineDynamicEventType
 } from './gathering';
+import type { FishingResult, TableEntry } from './gathering';
+import type { InventoryDelta } from '../types/dayplanner';
+
+interface TaskResolution {
+  payload: any;
+  inventoryDelta: InventoryDelta[];
+  notes: string;
+  warnings: string[];
+}
+
+interface ManualRolls {
+  skillRoll?: number;
+  eventCheckRoll?: number;
+  eventTableRoll?: number | null;
+  tableRoll?: number;
+}
+
+interface ResolveTaskParams {
+  task: any;
+  leader?: any;
+  environment?: any;
+  tools?: any;
+  species?: any;
+  categories?: any;
+  _categories?: any;
+  items?: any;
+  tables?: any;
+  manualRolls?: ManualRolls | null;
+}
+
+interface ToolLike {
+  bonuses?: Array<{
+    type?: string;
+    value?: number;
+  }>;
+}
+
+interface SpeciesLike {
+  id?: string;
+}
+
+interface FishingResultWithYield extends FishingResult {
+  yieldMultiplier?: number;
+}
+
+interface ForageItemLike {
+  id?: string;
+}
+
+interface ResolvedTableEntry extends TableEntry {
+  rollValue?: number;
+  resultType?: string;
+  speciesId?: string;
+  itemId?: string;
+  text?: string;
+  rawRoll?: number;
+  modifiedRoll?: number;
+  rollBonus?: number;
+}
+
+interface RollableTableLike {
+  id?: string;
+  name?: string;
+  rollMethod?: string;
+  entries: ResolvedTableEntry[];
+}
+
+interface FindResultLike {
+  type?: string;
+  itemId?: string | null;
+  item?: any;
+  source?: string;
+  text?: string;
+  tableEntry?: ResolvedTableEntry;
+}
 
 /**
  * Helper to roll on a table with manual or automatic roll
  */
-function rollOnTableWithManualValue(table, manualRoll = null) {
+function rollOnTableWithManualValue(
+  table: RollableTableLike,
+  manualRoll: number | null = null
+): ResolvedTableEntry {
   if (manualRoll !== null) {
     // Use manual roll - find matching entry
-    const entry = table.entries?.find(e => e.rollValue === manualRoll);
+    const entry = table.entries?.find((e: ResolvedTableEntry) => e.rollValue === manualRoll);
     if (entry) {
       return { ...entry, rawRoll: manualRoll, modifiedRoll: manualRoll, rollBonus: 0 };
     }
@@ -54,15 +132,15 @@ export function resolveFishingTask({
   species,
   tables,
   manualRolls = null
-}) {
-  const warnings = [];
-  const notes = [];
+}: ResolveTaskParams): TaskResolution {
+  const warnings: string[] = [];
+  const notes: string[] = [];
 
   // Get method from task intent
   const method = task.method || 'Line';
 
   // Calculate tool bonus
-  const toolBonus = tools.reduce((sum, tool) => {
+  const toolBonus = tools.reduce((sum: number, tool: ToolLike) => {
     const skillBonus = tool.bonuses?.find(b => b.type === 'skill_bonus');
     return sum + (skillBonus?.value || 0);
   }, 0);
@@ -82,13 +160,13 @@ export function resolveFishingTask({
     (Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6) + 3);
 
   // Evaluate roll
-  const rollResult = evaluateFishingRoll(roll, effectiveSkill, method);
+  const rollResult: FishingResultWithYield = evaluateFishingRoll(roll, effectiveSkill, method);
 
   notes.push(`Fishing roll: ${roll} vs ${effectiveSkill} - ${rollResult.outcome}`);
 
   // Get catch table
   const fishingDefaults = environment.defaultsByMode?.Fishing || {};
-  const catchTable = tables.find(t => t.id === fishingDefaults.randomCatchTableId);
+  const catchTable = tables.find((t: RollableTableLike) => t.id === fishingDefaults.randomCatchTableId);
 
   if (!catchTable) {
     warnings.push('No catch table configured for this environment');
@@ -118,7 +196,7 @@ export function resolveFishingTask({
       ? fishingDefaults.rareEventTableId
       : fishingDefaults.mildEventTableId;
 
-    const eventTable = tables.find(t => t.id === eventTableId);
+    const eventTable = tables.find((t: RollableTableLike) => t.id === eventTableId);
 
     if (eventTable) {
       eventResult = rollOnTableWithManualValue(eventTable, manualRolls?.eventTableRoll);
@@ -131,14 +209,14 @@ export function resolveFishingTask({
     }
   }
 
-  const inventoryDelta = [];
+  const inventoryDelta: InventoryDelta[] = [];
 
   if (tableEntry.resultType === 'species' && tableEntry.speciesId) {
-    const caughtSpecies = species.find(s => s.id === tableEntry.speciesId);
+    const caughtSpecies = species.find((s: SpeciesLike) => s.id === tableEntry.speciesId);
 
     if (caughtSpecies) {
       // Calculate yields
-      const yields = calculateFishYields(caughtSpecies);
+      const yields: any = calculateFishYields(caughtSpecies);
 
       // Apply yield multiplier from roll result
       const meatUnits = Math.floor(yields.meatUnits * (rollResult.yieldMultiplier || 1.0));
@@ -208,16 +286,18 @@ export function resolveForagingTask({
   items,
   tables,
   manualRolls = null
-}) {
-  const warnings = [];
-  const notes = [];
+}: ResolveTaskParams): TaskResolution {
+  void _categories;
+
+  const warnings: string[] = [];
+  const notes: string[] = [];
 
   // Get skill from task intent (default to Survival)
   const skillName = task.intent?.skill || 'Survival';
   const skillKey = skillName.toLowerCase().replace(/\s+/g, '');
 
   // Calculate tool bonus
-  const toolBonus = tools.reduce((sum, tool) => {
+  const toolBonus = tools.reduce((sum: number, tool: ToolLike) => {
     const skillBonus = tool.bonuses?.find(b => b.type === 'skill_bonus');
     return sum + (skillBonus?.value || 0);
   }, 0);
@@ -226,7 +306,7 @@ export function resolveForagingTask({
   const baseForagingSkill = leader.skills?.[skillKey] || 10;
 
   // Get target item rarity if targeting
-  const targetItem = task.intent?.targetItemId ? items.find(i => i.id === task.intent.targetItemId) : null;
+  const targetItem = task.intent?.targetItemId ? items.find((i: ForageItemLike) => i.id === task.intent.targetItemId) : null;
   const targetRarity = targetItem?.rarity || null;
 
   // Calculate effective skill
@@ -256,7 +336,7 @@ export function resolveForagingTask({
 
   // Get find table
   const foragingDefaults = environment.defaultsByMode?.Foraging || {};
-  const findTable = tables.find(t => t.id === foragingDefaults.randomCatchTableId);
+  const findTable = tables.find((t: RollableTableLike) => t.id === foragingDefaults.randomCatchTableId);
 
   if (!findTable) {
     warnings.push('No find table configured for this environment');
@@ -283,7 +363,7 @@ export function resolveForagingTask({
       ? foragingDefaults.rareEventTableId
       : foragingDefaults.mildEventTableId;
 
-    const eventTable = tables.find(t => t.id === eventTableId);
+    const eventTable = tables.find((t: RollableTableLike) => t.id === eventTableId);
 
     if (eventTable) {
       eventResult = rollOnTableWithManualValue(eventTable, manualRolls?.eventTableRoll);
@@ -298,7 +378,7 @@ export function resolveForagingTask({
 
   // Determine find (targetItem already declared above for rarity check)
   // Roll on find table manually if provided, otherwise determineForageFind will auto-roll
-  let findResult;
+  let findResult: FindResultLike;
   if (manualRolls?.tableRoll) {
     const tableEntry = rollOnTableWithManualValue(findTable, manualRolls.tableRoll);
     notes.push(`Find table roll: ${manualRolls.tableRoll} → ${tableEntry.resultType}`);
@@ -310,20 +390,21 @@ export function resolveForagingTask({
       text: tableEntry.text
     };
   } else {
-    findResult = determineForageFind({
+    const forageFindParams = {
       rollResult,
       findTable,
       targetCategory: null,
       targetItem
-    });
+    };
+    findResult = determineForageFind(forageFindParams);
   }
 
   notes.push(`Find result: ${findResult.type} (source: ${findResult.source || 'unknown'})`);
 
-  const inventoryDelta = [];
+  const inventoryDelta: InventoryDelta[] = [];
 
   if (findResult.type === 'item') {
-    const item = findResult.item || (findResult.itemId ? items.find(i => i.id === findResult.itemId) : null);
+    const item = findResult.item || (findResult.itemId ? items.find((i: ForageItemLike) => i.id === findResult.itemId) : null);
 
     if (item) {
       // Attach the full item to findResult for display later
@@ -398,7 +479,7 @@ export function resolveForagingTask({
  * @param {Object} params - Resolution parameters
  * @returns {Object} { payload, inventoryDelta, notes, warnings }
  */
-export function resolveTask(params) {
+export function resolveTask(params: ResolveTaskParams): TaskResolution {
   const { task } = params;
 
   switch (task.mode) {
