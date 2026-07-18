@@ -6,13 +6,40 @@
 
 import { generateId } from './combatHelpers';
 import {
-  ConditionCatalog,
   ConditionId,
   DurationType,
   StackingRule,
   getCondition,
   isConditionObvious
 } from '../constants/conditions';
+import type {
+  ConditionDuration,
+  ConditionExpiry,
+  ConditionInstance,
+  ConditionRevealState
+} from '../types/combatTracker';
+
+/** Minimal shape the engine needs from a combatant/participant. */
+export interface ConditionBearer {
+  conditions?: ConditionInstance[];
+}
+
+export interface CreateConditionOptions {
+  round?: number;
+  turn?: number;
+  duration?: ConditionDuration | null;
+  severity?: number | null;
+  source?: string | null;
+  notes?: string | null;
+  revealed?: ConditionRevealState | null;
+}
+
+interface LegacyConditionParticipant {
+  conditions?: unknown;
+  isStunned?: unknown;
+  isUnconscious?: unknown;
+  [key: string]: unknown;
+}
 
 /**
  * Create a condition instance from a condition ID
@@ -29,7 +56,10 @@ import {
  *   defaults from the catalog isObvious flag
  * @returns {object|null} Condition instance or null if invalid
  */
-export function createConditionInstance(conditionId, options = {}) {
+export function createConditionInstance(
+  conditionId: string,
+  options: CreateConditionOptions = {}
+): ConditionInstance | null {
   const definition = getCondition(conditionId);
   if (!definition) {
     console.warn(`Unknown condition ID: ${conditionId}`);
@@ -81,7 +111,9 @@ export function createConditionInstance(conditionId, options = {}) {
  * @param {string|undefined} revealed - Current reveal state
  * @returns {string} Next reveal state
  */
-export function cycleRevealed(revealed) {
+export function cycleRevealed(
+  revealed: ConditionRevealState | undefined
+): ConditionRevealState {
   switch (revealed) {
     case 'closed':
       return 'half';
@@ -99,7 +131,10 @@ export function cycleRevealed(revealed) {
  * @param {string} instanceId - Condition instance to cycle
  * @returns {object} Updated combatant (same reference if instance not found)
  */
-export function cycleConditionRevealed(combatant, instanceId) {
+export function cycleConditionRevealed<T extends ConditionBearer>(
+  combatant: T,
+  instanceId: string
+): T {
   const conditions = combatant.conditions || [];
   if (!conditions.some(c => c.instanceId === instanceId)) {
     return combatant;
@@ -126,13 +161,16 @@ export function cycleConditionRevealed(combatant, instanceId) {
  * @param {object} participant - Participant (possibly legacy-shaped)
  * @returns {object} Migrated participant (same reference if nothing to do)
  */
-export function ensureParticipantConditionVisibility(participant) {
+export function ensureParticipantConditionVisibility<T>(participant: T): T {
   if (!participant || typeof participant !== 'object') {
     return participant;
   }
 
-  const conditions = Array.isArray(participant.conditions) ? participant.conditions : [];
-  const hasLegacyBools = 'isStunned' in participant || 'isUnconscious' in participant;
+  const participantView = participant as T & LegacyConditionParticipant;
+  const conditions = Array.isArray(participantView.conditions)
+    ? participantView.conditions as ConditionInstance[]
+    : [];
+  const hasLegacyBools = 'isStunned' in participantView || 'isUnconscious' in participantView;
   const needsBackfill = conditions.some(
     c => c && typeof c === 'object' && c.revealed === undefined
   );
@@ -143,28 +181,28 @@ export function ensureParticipantConditionVisibility(participant) {
 
   let next = [...conditions];
 
-  const foldBool = (flag, conditionId) => {
+  const foldBool = (flag: unknown, conditionId: string): void => {
     if (flag !== true) return;
     if (next.some(c => c && c.conditionId === conditionId)) return;
     next.push(
       createConditionInstance(conditionId, {
         duration: { type: DurationType.PERMANENT, value: null }
-      })
+      })!
     );
   };
 
-  foldBool(participant.isStunned, ConditionId.STUNNED);
-  foldBool(participant.isUnconscious, ConditionId.UNCONSCIOUS);
+  foldBool(participantView.isStunned, ConditionId.STUNNED);
+  foldBool(participantView.isUnconscious, ConditionId.UNCONSCIOUS);
 
   next = next.map(c => {
     if (!c || typeof c !== 'object' || c.revealed !== undefined) return c;
     return { ...c, revealed: isConditionObvious(c.conditionId) ? 'open' : 'closed' };
   });
 
-  const migrated = { ...participant, conditions: next };
+  const migrated = { ...participantView, conditions: next };
   delete migrated.isStunned;
   delete migrated.isUnconscious;
-  return migrated;
+  return migrated as T;
 }
 
 /**
@@ -175,7 +213,11 @@ export function ensureParticipantConditionVisibility(participant) {
  * @param {number} currentTurn - Current turn index
  * @returns {object|null} Expiry specification or null if permanent
  */
-function calculateExpiry(duration, currentRound, currentTurn) {
+function calculateExpiry(
+  duration: ConditionDuration | null,
+  currentRound: number,
+  _currentTurn: number
+): ConditionExpiry | null {
   if (!duration) return null;
 
   switch (duration.type) {
@@ -210,7 +252,11 @@ function calculateExpiry(duration, currentRound, currentTurn) {
  * @param {object} options - Application options (round, turn, duration, etc.)
  * @returns {object} Updated combatant with condition applied
  */
-export function applyCondition(combatant, conditionId, options = {}) {
+export function applyCondition<T extends ConditionBearer>(
+  combatant: T,
+  conditionId: string,
+  options: CreateConditionOptions = {}
+): T {
   const definition = getCondition(conditionId);
   if (!definition) {
     console.warn(`Cannot apply unknown condition: ${conditionId}`);
@@ -281,7 +327,11 @@ export function applyCondition(combatant, conditionId, options = {}) {
  * @param {boolean} removeAll - If true, remove all instances of this condition type
  * @returns {object} Updated combatant with condition removed
  */
-export function removeCondition(combatant, instanceId, removeAll = false) {
+export function removeCondition<T extends ConditionBearer>(
+  combatant: T,
+  instanceId: string,
+  removeAll = false
+): T {
   const conditions = combatant.conditions || [];
 
   if (removeAll) {
@@ -310,7 +360,10 @@ export function removeCondition(combatant, instanceId, removeAll = false) {
  * @param {string} conditionId - Condition type to remove
  * @returns {object} Updated combatant
  */
-export function removeConditionType(combatant, conditionId) {
+export function removeConditionType<T extends ConditionBearer>(
+  combatant: T,
+  conditionId: string
+): T {
   const conditions = combatant.conditions || [];
   return {
     ...combatant,
@@ -328,7 +381,13 @@ export function removeConditionType(combatant, conditionId) {
  * @param {number} currentTurn - Current turn
  * @returns {object} Updated combatant
  */
-export function updateConditionDuration(combatant, instanceId, newDuration, currentRound, currentTurn) {
+export function updateConditionDuration<T extends ConditionBearer>(
+  combatant: T,
+  instanceId: string,
+  newDuration: ConditionDuration,
+  currentRound: number,
+  currentTurn: number
+): T {
   const conditions = combatant.conditions || [];
 
   return {
@@ -356,10 +415,13 @@ export function updateConditionDuration(combatant, instanceId, newDuration, curr
  * @param {number} currentRound - Current round
  * @returns {object} { combatant: updated combatant, expired: array of expired conditions }
  */
-export function tickConditionsTurn(combatant, currentRound) {
+export function tickConditionsTurn<T extends ConditionBearer>(
+  combatant: T,
+  _currentRound: number
+): { combatant: T; expired: ConditionInstance[] } {
   const conditions = combatant.conditions || [];
-  const expired = [];
-  const remaining = [];
+  const expired: ConditionInstance[] = [];
+  const remaining: ConditionInstance[] = [];
 
   for (const condition of conditions) {
     if (!condition.expiresAt) {
@@ -407,10 +469,13 @@ export function tickConditionsTurn(combatant, currentRound) {
  * @param {number} currentRound - Current round
  * @returns {object} { combatant: updated combatant, expired: array of expired conditions }
  */
-export function tickConditionsRound(combatant, currentRound) {
+export function tickConditionsRound<T extends ConditionBearer>(
+  combatant: T,
+  currentRound: number
+): { combatant: T; expired: ConditionInstance[] } {
   const conditions = combatant.conditions || [];
-  const expired = [];
-  const remaining = [];
+  const expired: ConditionInstance[] = [];
+  const remaining: ConditionInstance[] = [];
 
   for (const condition of conditions) {
     if (!condition.expiresAt) {
@@ -421,7 +486,7 @@ export function tickConditionsRound(combatant, currentRound) {
 
     if (condition.expiresAt.type === 'round') {
       // Check if expired
-      if (currentRound >= condition.expiresAt.round) {
+      if (currentRound >= condition.expiresAt.round!) {
         expired.push(condition);
       } else {
         remaining.push(condition);
@@ -449,7 +514,7 @@ export function tickConditionsRound(combatant, currentRound) {
  * @param {object} combatant - Combatant
  * @returns {object} Updated combatant
  */
-export function clearEndOfCombatConditions(combatant) {
+export function clearEndOfCombatConditions<T extends ConditionBearer>(combatant: T): T {
   const conditions = combatant.conditions || [];
 
   return {
@@ -466,7 +531,7 @@ export function clearEndOfCombatConditions(combatant) {
  * @param {object} combatant - Combatant
  * @returns {array} Array of condition instances
  */
-export function getActiveConditions(combatant) {
+export function getActiveConditions(combatant: ConditionBearer): ConditionInstance[] {
   return combatant.conditions || [];
 }
 
@@ -477,7 +542,7 @@ export function getActiveConditions(combatant) {
  * @param {string} conditionId - Condition ID to check
  * @returns {boolean} True if combatant has condition
  */
-export function hasCondition(combatant, conditionId) {
+export function hasCondition(combatant: ConditionBearer, conditionId: string): boolean {
   const conditions = combatant.conditions || [];
   return conditions.some(c => c.conditionId === conditionId);
 }
@@ -489,7 +554,10 @@ export function hasCondition(combatant, conditionId) {
  * @param {string} conditionId - Condition ID
  * @returns {array} Array of condition instances
  */
-export function getConditionInstances(combatant, conditionId) {
+export function getConditionInstances(
+  combatant: ConditionBearer,
+  conditionId: string
+): ConditionInstance[] {
   const conditions = combatant.conditions || [];
   return conditions.filter(c => c.conditionId === conditionId);
 }
@@ -500,7 +568,7 @@ export function getConditionInstances(combatant, conditionId) {
  * @param {object} conditionInstance - Condition instance
  * @returns {number} Remaining duration (higher = longer), Infinity for permanent
  */
-function getRemainingDuration(conditionInstance) {
+function getRemainingDuration(conditionInstance: ConditionInstance): number {
   if (!conditionInstance.expiresAt) {
     return Infinity;
   }
@@ -525,7 +593,10 @@ function getRemainingDuration(conditionInstance) {
  * @param {number} currentRound - Current combat round
  * @returns {string} Formatted duration string
  */
-export function formatConditionDuration(conditionInstance, currentRound = 0) {
+export function formatConditionDuration(
+  conditionInstance: Pick<ConditionInstance, 'expiresAt'>,
+  currentRound = 0
+): string {
   if (!conditionInstance.expiresAt) {
     return 'Permanent';
   }
@@ -536,7 +607,7 @@ export function formatConditionDuration(conditionInstance, currentRound = 0) {
       return `${remaining} turn${remaining !== 1 ? 's' : ''}`;
     }
     case 'round': {
-      const remaining = Math.max(0, conditionInstance.expiresAt.round - currentRound);
+      const remaining = Math.max(0, conditionInstance.expiresAt.round! - currentRound);
       return `${remaining} round${remaining !== 1 ? 's' : ''}`;
     }
     case 'endOfCombat':
@@ -553,8 +624,11 @@ export function formatConditionDuration(conditionInstance, currentRound = 0) {
  * @param {number} currentRound - Current combat round
  * @returns {string} Formatted condition description
  */
-export function formatConditionTooltip(conditionInstance, currentRound = 0) {
-  const definition = getCondition(conditionInstance.conditionId);
+export function formatConditionTooltip(
+  conditionInstance: Partial<ConditionInstance>,
+  currentRound = 0
+): string {
+  const definition = getCondition(conditionInstance.conditionId as string);
   if (!definition) return conditionInstance.label || 'Unknown';
 
   let text = `${conditionInstance.label}`;
@@ -563,7 +637,10 @@ export function formatConditionTooltip(conditionInstance, currentRound = 0) {
     text += ` (${conditionInstance.severity})`;
   }
 
-  const duration = formatConditionDuration(conditionInstance, currentRound);
+  const duration = formatConditionDuration(
+    conditionInstance as Pick<ConditionInstance, 'expiresAt'>,
+    currentRound
+  );
   text += `\nDuration: ${duration}`;
 
   if (conditionInstance.source) {

@@ -203,7 +203,7 @@ Same pattern as Phase 15e-2: rename `.js` → `.ts`, add types for parameters/re
 - [x] Convert src/utils/taskResolution.js to TypeScript (417 lines; delete the src/utils/taskResolution.d.ts shim). Safety net: src/utils/__tests__/taskResolution.test.js.
 - [x] Convert src/utils/combatViewFilter.js to TypeScript (441 lines; delete the src/utils/combatViewFilter.d.ts shim). Safety net: src/utils/__tests__/combatViewFilter.test.js.
 - [x] Convert src/utils/combatLogFilter.js to TypeScript (551 lines; no .d.ts shim exists). Safety net: src/utils/__tests__/combatLogFilter.test.js.
-- [ ] Convert src/utils/conditionsEngine.js to TypeScript (582 lines; delete the src/utils/conditionsEngine.d.ts shim). Engine code — preserve every branch exactly. Safety net: src/utils/__tests__/conditionsEngine.test.js.
+- [x] Convert src/utils/conditionsEngine.js to TypeScript (582 lines; delete the src/utils/conditionsEngine.d.ts shim). Engine code — preserve every branch exactly. Safety net: src/utils/__tests__/conditionsEngine.test.js.
 
 ## Phase 16t-2 — Test coverage for zero-coverage code (one file per run) _(refill 2026-07-17)_
 
