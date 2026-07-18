@@ -5,13 +5,19 @@
  * Implements the PLAYER-SAFE LOG REDACTION POLICY.
  */
 
-import { RevealMode } from './combatReveal.js';
-import { isConditionObvious } from '../constants/conditions.js';
+import { RevealMode } from './combatReveal';
+import { isConditionObvious } from '../constants/conditions';
+
+// Loose runtime types — the canonical combat tracker types live in
+// `src/types/combatTracker.ts`, but these filtered view models are richer and
+// callers intentionally pass/consume permissive shapes. Keeping the runtime
+// inputs permissive preserves the original untyped behavior.
+type AnyRecord = Record<string, any>;
 
 /**
  * Get participant category/side (participants use 'category', not 'side')
  */
-function getParticipantSide(participant) {
+function getParticipantSide(participant: AnyRecord | null | undefined): string {
   return participant?.category || participant?.side || 'enemy';
 }
 
@@ -23,18 +29,26 @@ function getParticipantSide(participant) {
  * @param {object} combatState - Combat state (for participant lookup)
  * @returns {array} Filtered log safe for Player View
  */
-export function filterLogForPlayerView(log, revealState, combatState) {
+export function filterLogForPlayerView(
+  log: AnyRecord[],
+  revealState: AnyRecord,
+  combatState: AnyRecord
+): AnyRecord[] {
   if (!log || log.length === 0) return [];
 
   return log
-    .map(entry => filterLogEntry(entry, revealState, combatState))
-    .filter(entry => entry !== null); // Phase 6: Filter out completely hidden entries
+    .map((entry: AnyRecord): AnyRecord | null => filterLogEntry(entry, revealState, combatState))
+    .filter((entry: AnyRecord | null): entry is AnyRecord => entry !== null); // Phase 6: Filter out completely hidden entries
 }
 
 /**
  * Filter a single log entry based on reveal state
  */
-function filterLogEntry(entry, revealState, combatState) {
+function filterLogEntry(
+  entry: AnyRecord,
+  revealState: AnyRecord,
+  combatState: AnyRecord
+): AnyRecord | null {
   // Get reveal state for actor and target
   const actorReveal = entry.actorInstanceId
     ? revealState?.byInstanceId?.[entry.actorInstanceId]
@@ -45,10 +59,10 @@ function filterLogEntry(entry, revealState, combatState) {
 
   // Get participants for name/side lookup
   const actor = entry.actorInstanceId
-    ? combatState.participants.find(p => p.instanceId === entry.actorInstanceId)
+    ? combatState.participants.find((p: AnyRecord): boolean => p.instanceId === entry.actorInstanceId)
     : null;
   const target = entry.targetInstanceId
-    ? combatState.participants.find(p => p.instanceId === entry.targetInstanceId)
+    ? combatState.participants.find((p: AnyRecord): boolean => p.instanceId === entry.targetInstanceId)
     : null;
 
   // Always show turn and note entries as-is
@@ -100,7 +114,11 @@ function filterLogEntry(entry, revealState, combatState) {
 /**
  * Filter resource change entries (HP/FP/MP deltas)
  */
-function filterResourceEntry(entry, actorReveal, actor) {
+function filterResourceEntry(
+  entry: AnyRecord,
+  actorReveal: AnyRecord | null | undefined,
+  actor: AnyRecord | null | undefined
+): AnyRecord {
   // If actor is player/ally or HP is revealed as exact, show as-is
   if (getParticipantSide(actor) === 'player' || getParticipantSide(actor) === 'ally' || actorReveal?.hp?.mode === RevealMode.NUMERIC_EXACT) {
     return {
@@ -112,6 +130,7 @@ function filterResourceEntry(entry, actorReveal, actor) {
   // Otherwise, hide exact numbers
   const name = getDisplayName(actor, actorReveal);
   const resource = entry.text.match(/HP|FP|MP/)?.[0] || 'resource';
+  void resource;
 
   let change = '';
   if (entry.hpDelta && entry.hpDelta < 0) {
@@ -136,7 +155,11 @@ function filterResourceEntry(entry, actorReveal, actor) {
 /**
  * Filter roll entries (dice rolls)
  */
-function filterRollEntry(entry, actorReveal, actor) {
+function filterRollEntry(
+  entry: AnyRecord,
+  actorReveal: AnyRecord | null | undefined,
+  actor: AnyRecord | null | undefined
+): AnyRecord {
   // If actor is player/ally, show full roll
   if (getParticipantSide(actor) === 'player' || getParticipantSide(actor) === 'ally') {
     return {
@@ -168,7 +191,13 @@ function filterRollEntry(entry, actorReveal, actor) {
 /**
  * Filter action entries (attack/defense/damage)
  */
-function filterActionEntry(entry, actorReveal, targetReveal, actor, target) {
+function filterActionEntry(
+  entry: AnyRecord,
+  actorReveal: AnyRecord | null | undefined,
+  targetReveal: AnyRecord | null | undefined,
+  actor: AnyRecord | null | undefined,
+  target: AnyRecord | null | undefined
+): AnyRecord {
   const actorName = getDisplayName(actor, actorReveal);
   const targetName = getDisplayName(target, targetReveal);
 
@@ -275,7 +304,7 @@ function filterActionEntry(entry, actorReveal, targetReveal, actor, target) {
     }
 
     // Hide exact damage/DR numbers
-    let outcome;
+    let outcome: string | undefined;
     if (damage.penetrating === 0) {
       if (drRevealed && targetReveal.dr.general === RevealMode.DR_MIN_KNOWN) {
         outcome = `armor resisted the blow (DR ≥ ${targetReveal.dr.generalMin || 0})`;
@@ -308,7 +337,13 @@ function filterActionEntry(entry, actorReveal, targetReveal, actor, target) {
 /**
  * Filter injury entries (Phase 4 injury system)
  */
-function filterInjuryEntry(entry, actorReveal, targetReveal, actor, target) {
+function filterInjuryEntry(
+  entry: AnyRecord,
+  actorReveal: AnyRecord | null | undefined,
+  targetReveal: AnyRecord | null | undefined,
+  actor: AnyRecord | null | undefined,
+  target: AnyRecord | null | undefined
+): AnyRecord {
   const targetName = getDisplayName(target, targetReveal);
 
   // Show if target is player/ally
@@ -350,7 +385,11 @@ function filterInjuryEntry(entry, actorReveal, targetReveal, actor, target) {
 /**
  * Filter effect entries (buffs/debuffs)
  */
-function filterEffectEntry(entry, actorReveal, actor) {
+function filterEffectEntry(
+  entry: AnyRecord,
+  actorReveal: AnyRecord | null | undefined,
+  actor: AnyRecord | null | undefined
+): AnyRecord {
   // Effects are generally visible (they have obvious in-game signs)
   // But hide for enemies if notes are hidden
   if (getParticipantSide(actor) === 'enemy' && actorReveal?.notes === RevealMode.NOTES_HIDDEN) {
@@ -375,7 +414,11 @@ function filterEffectEntry(entry, actorReveal, actor) {
  * - Actor is enemy and name is fully revealed
  * Otherwise, show generic action
  */
-function filterManeuverEntry(entry, actorReveal, actor) {
+function filterManeuverEntry(
+  entry: AnyRecord,
+  actorReveal: AnyRecord | null | undefined,
+  actor: AnyRecord | null | undefined
+): AnyRecord {
   const actorSide = getParticipantSide(actor);
 
   if (actorSide === 'player' || actorSide === 'ally' || actorReveal?.name === RevealMode.NAME_FULL) {
@@ -402,7 +445,12 @@ function filterManeuverEntry(entry, actorReveal, actor) {
  *
  * Hide enemy names unless fully revealed.
  */
-function filterReinforcementEntry(entry, combatState, revealState) {
+function filterReinforcementEntry(
+  entry: AnyRecord,
+  combatState: AnyRecord,
+  revealState: AnyRecord
+): AnyRecord {
+  void combatState;
   const reinforcement = entry.reinforcement;
   if (!reinforcement) {
     return entry;
@@ -413,7 +461,7 @@ function filterReinforcementEntry(entry, combatState, revealState) {
   }
 
   const shouldShowNames = Object.values(revealState?.byInstanceId || {}).some(
-    reveal => reveal.name === RevealMode.NAME_FULL
+    (reveal: any): boolean => reveal.name === RevealMode.NAME_FULL
   );
 
   if (shouldShowNames) {
@@ -433,7 +481,10 @@ function filterReinforcementEntry(entry, combatState, revealState) {
 /**
  * Get display name based on reveal state
  */
-function getDisplayName(participant, reveal) {
+function getDisplayName(
+  participant: AnyRecord | null | undefined,
+  reveal: AnyRecord | null | undefined
+): string {
   if (!participant) return 'Unknown';
 
   if (!reveal || reveal.name === RevealMode.NAME_HIDDEN) {
@@ -450,7 +501,11 @@ function getDisplayName(participant, reveal) {
 /**
  * Redact name in text string (single actor)
  */
-function redactName(text, reveal, participant) {
+function redactName(
+  text: string,
+  reveal: AnyRecord | null | undefined,
+  participant: AnyRecord | null | undefined
+): string {
   if (!participant || !reveal) return text;
 
   const trueName = participant.name;
@@ -464,7 +519,13 @@ function redactName(text, reveal, participant) {
 /**
  * Redact names in text string (actor and target)
  */
-function redactNames(text, actorReveal, targetReveal, actor, target) {
+function redactNames(
+  text: string,
+  actorReveal: AnyRecord | null | undefined,
+  targetReveal: AnyRecord | null | undefined,
+  actor: AnyRecord | null | undefined,
+  target: AnyRecord | null | undefined
+): string {
   let result = text;
 
   if (actor && actorReveal) {
@@ -493,7 +554,13 @@ function redactNames(text, actorReveal, targetReveal, actor, target) {
  * - Actor is player/ally (always show)
  * - Actor is enemy but HP revealed (show all actions)
  */
-function filterItemEntry(entry, actorReveal, targetReveal, actor, target) {
+function filterItemEntry(
+  entry: AnyRecord,
+  actorReveal: AnyRecord | null | undefined,
+  targetReveal: AnyRecord | null | undefined,
+  actor: AnyRecord | null | undefined,
+  target: AnyRecord | null | undefined
+): AnyRecord {
   const actorSide = getParticipantSide(actor);
 
   // Show if actor is player/ally or if HP revealed
@@ -527,7 +594,11 @@ function filterItemEntry(entry, actorReveal, targetReveal, actor, target) {
  * - Target is enemy and condition is "obvious" (prone, unconscious, burning, etc.)
  * - Target is enemy and HP revealed (show all conditions)
  */
-function filterConditionEntry(entry, targetReveal, target) {
+function filterConditionEntry(
+  entry: AnyRecord,
+  targetReveal: AnyRecord | null | undefined,
+  target: AnyRecord | null | undefined
+): AnyRecord | null {
   const targetSide = getParticipantSide(target);
 
   // Show if target is player/ally or if HP revealed
