@@ -216,6 +216,29 @@ Hook tests below use the existing `renderHook` harness — mirror `src/hooks/__t
 - [x] Add tests for src/hooks/usePersistentState.ts (42 lines, zero coverage; depends only on react). Cover: initial value, setter updates state, the debounced-save callback is invoked with the new value. Use fake timers if debounce timing is asserted.
 - [x] Add tests for src/hooks/useStorage.ts (176 lines, zero coverage; useKeyedDebouncedStorageSave, depends on react + logger). Cover: debounced save fires once after the delay, rapid successive calls coalesce, and the error path where the save throws is logged (not rethrown). Use fake timers.
 
+## Phase 15e-4 — JS → TS migration, fourth batch (one file per run) _(refill 2026-07-19)_
+
+Same pattern as Phase 15e-3: rename `.js` → `.ts`, add types for parameters/returns, preserve all existing exports and runtime behavior, no `as any` introduced. Only files with **no `.d.ts` shim** (untyped JS — adding types is pure gain, no shim contract to erode) AND a co-located safety-net test are queued here. The safety net must stay green (run it targeted); do NOT rewrite the test file — it keeps its extension and imports the module by basename, so it resolves to the `.ts` after rename.
+
+Deliberate exclusions (do NOT queue): `src/utils/alchemy.js` (1366 lines) and `src/utils/gathering.js` (823 lines) both carry rich `.d.ts` shims whose concrete signatures must be *inlined, not erased to `any`* — that is larger than a mechanical run and is exactly the type-erosion the 2026-07-19 AUTO_REVIEW CONCERN flagged on `combatViewFilter.ts`; leave for a human/larger effort. `src/utils/combatInventoryBridge.js` is referenced only by its own test (zero production importers) and belongs to the parked Inventory Integration phase — do not convert or delete it here.
+
+- [ ] Convert src/utils/combatActions.js to TypeScript (453 lines; no `.d.ts` shim exists; ~9 production importers). Preserve the `ACTION_TYPES` export and every action-creator export exactly. Safety net: src/utils/__tests__/combatActions.test.js (imports by basename `'../combatActions'`); keep green, do not rewrite it.
+- [ ] Convert src/utils/combatReducer.js to TypeScript (534 lines; no `.d.ts` shim exists). Preserve the `applyAction` and `applyInverse` exports exactly. Safety net: src/utils/__tests__/combatReducer.test.ts (imports `applyAction`/`applyInverse` by basename `'../combatReducer'`, plus `ACTION_TYPES` from `'../combatActions'`); keep green, do not rewrite it.
+
+## Phase 16t-3 — Test coverage for zero-coverage hooks (one file per run) _(refill 2026-07-19)_
+
+Same bar as Phase 16t-2: add `src/hooks/__tests__/<name>.test.ts` beside the hook, covering the exported API — happy path + at least one error/edge path per exported function group. No `as any` in tests. Verify with a targeted vitest run.
+
+Provider-free (mirror `src/hooks/__tests__/usePersistentState.test.ts` / `useStorage.test.ts` — no store/context wiring needed):
+
+- [ ] Add tests for src/hooks/combatUIStore.ts (56 lines, zero coverage; `useSyncExternalStore`, imports only react + a type — no provider). Cover: `useCombatUI()` returns the initial state; `setCombatUI(partial)` shallow-merges the partial and the subscribed hook re-renders with the new value; `resetCombatUI()` restores defaults.
+- [ ] Add tests for src/hooks/useBatchedStorageSave.ts (113 lines, zero coverage; depends only on `batchedStorageManager` + `logger` + react — spy/mock `batchedStorageManager`). Cover: the returned save function delegates to `batchedStorageManager`, and the error path where the underlying save throws is logged (not rethrown).
+
+Store/context-backed (mirror `src/hooks/__tests__/useTimeAdvancement.test.ts`, which drives `useCampaignStore`). If wiring the provider turns out to exceed what that exemplar shows, defer the item with that exact reason rather than expanding scope:
+
+- [ ] Add tests for src/hooks/useWeatherModifiers.ts (180 lines, zero coverage; reads `useCampaignStore`). Cover: modifier lookup for a known activity with weather set, and the default/empty-modifiers result when no current weather/location is present.
+- [ ] Add tests for src/hooks/useEffectiveRole.ts (44 lines, zero coverage; reads `useSyncContext` from `../net/SyncProvider`). Cover: the effective role returned for a connected role and the fallback when no sync context role is available. Defer with reason "SyncProvider setup exceeds exemplar" if wiring the provider is non-trivial.
+
 ## Out of scope for the loop (do NOT add these)
 
 The following are tracked elsewhere because they require design judgment or coordinated multi-file changes the loop should not attempt autonomously:
