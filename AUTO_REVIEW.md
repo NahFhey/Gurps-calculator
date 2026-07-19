@@ -33,6 +33,25 @@ When `AUTO_QUEUE.md` has zero `- [ ]` items AND seven consecutive runs find zero
 
 <!-- Daily entries are prepended directly below this line, newest first. -->
 
+## 2026-07-19 — CONCERN (6 commits: 4P, 1N, 1C)
+
+| commit | target | verdict | notes |
+| ------ | ------ | ------- | ----- |
+| d4ae57c | src/utils/combatViewFilter.ts | CONCERN | conversion deleted the typed `.d.ts` shim and replaced concrete types with 33 new `: any` on a reveal/redaction-critical filter |
+| ff630bd | src/utils/combatLogFilter.ts | NOTE | params typed as `Record<string, any>` (`AnyRecord`) instead of the canonical combatTracker types; no prior shim, so not a regression |
+| bc512d9 | src/utils/conditionsEngine.ts | PASS | model conversion — preserved `<T extends ConditionBearer>` generics, named types, and `unknown` over `any`; engine branches intact |
+| 65e910d | src/utils/combatReveal.ts | PASS | 22 it()/85 assertions; boundary HP (0/negative/over-max/zero-max), missing-id defaults, immutability, reference-vs-value all covered |
+| ee2128b | src/hooks/usePersistentState.ts | PASS | init (primitive + non-primitive), setter, debouncedSave forwarding, successive saves |
+| ffcd0a5 | src/hooks/useStorage.ts | PASS | debounce-once, rapid-save coalescing edge, and error-path (logged not rethrown) with fake timers |
+
+### Concerns to address
+
+**d4ae57c — type erosion on `combatViewFilter.ts`.** The queue item asked to "add types for parameters/returns" on the JS→TS conversion. Instead the commit deleted the existing `combatViewFilter.d.ts` shim — which declared concrete signatures like `getCombatView(combatState: CombatState, revealState: RevealState | undefined, viewMode: ViewModeType): {...} | null` over `../types/combatTracker` — and replaced every signature with `any`/`AnyRecord` (33 new `: any` annotations; `getCombatView` is now `(combatState: any, revealState: any | undefined, viewMode: ViewModeType): AnyRecord | null`). This is a net loss of pre-existing type coverage on the player-view redaction path (the module that decides what enemy info players may see), not a neutral conversion of untyped code. The sibling conversion in this same batch, `conditionsEngine.ts` (bc512d9), shows the correct pattern: it inlined the `.d.ts` interfaces and kept the generic signatures rather than erasing them. Not suppressed by `KNOWN_ISSUES.md` — the open `:any` entry there covers `exportImport.ts` only. Recommend re-typing `getCombatView`/`hasHiddenInfo`/`filterParticipant` against `CombatState`/`Participant`/`RevealState` before this pattern is copied to the remaining conversions.
+
+### Notes
+
+**ff630bd — `combatLogFilter.ts` uses `AnyRecord`.** The conversion types its params as `Record<string, any>` via an `AnyRecord` alias (plus one bare `: any` on a `.some()` callback). Because `combatLogFilter.js` had no `.d.ts` shim (untyped JS), this is not a regression, and return types/type-guards (`entry is AnyRecord`, `string`, `boolean`) are properly annotated. Flagging only so the pattern doesn't harden: the canonical `combatTracker` types would be a stronger fit for `log`/`entry`/`combatState` if a follow-up wants to tighten it.
+
 ## 2026-07-18 — NOTE (5 commits: 3P, 2N, 0C)
 
 | commit | target | verdict | notes |
