@@ -231,7 +231,7 @@ Same bar as Phase 16t-2: add `src/hooks/__tests__/<name>.test.ts` beside the hoo
 
 Provider-free (mirror `src/hooks/__tests__/usePersistentState.test.ts` / `useStorage.test.ts` — no store/context wiring needed):
 
-- [ ] Add tests for src/hooks/combatUIStore.ts (56 lines, zero coverage; `useSyncExternalStore`, imports only react + a type — no provider). Cover: `useCombatUI()` returns the initial state; `setCombatUI(partial)` shallow-merges the partial and the subscribed hook re-renders with the new value; `resetCombatUI()` restores defaults.
+- [x] Add tests for src/hooks/combatUIStore.ts (56 lines, zero coverage; `useSyncExternalStore`, imports only react + a type — no provider). Cover: `useCombatUI()` returns the initial state; `setCombatUI(partial)` shallow-merges the partial and the subscribed hook re-renders with the new value; `resetCombatUI()` restores defaults.
 - [ ] Add tests for src/hooks/useBatchedStorageSave.ts (113 lines, zero coverage; depends only on `batchedStorageManager` + `logger` + react — spy/mock `batchedStorageManager`). Cover: the returned save function delegates to `batchedStorageManager`, and the error path where the underlying save throws is logged (not rethrown).
 
 Store/context-backed (mirror `src/hooks/__tests__/useTimeAdvancement.test.ts`, which drives `useCampaignStore`). If wiring the provider turns out to exceed what that exemplar shows, defer the item with that exact reason rather than expanding scope:
