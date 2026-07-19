@@ -7,7 +7,118 @@
  */
 
 import { produce } from 'immer';
+import type { CombatState } from '../types/combatTracker';
 import { ACTION_TYPES } from './combatActions';
+
+interface CombatReducerAction {
+  type?: unknown;
+  payload?: unknown;
+  inverse?: unknown;
+  [key: string]: unknown;
+}
+
+interface WorkCondition {
+  instanceId?: string;
+}
+
+interface WorkParticipant {
+  instanceId?: string;
+  conditions?: WorkCondition[];
+}
+
+interface WorkLogEntry {
+  id?: string;
+  timestamp?: unknown;
+  text?: string;
+}
+
+interface WorkState {
+  participants: WorkParticipant[];
+  turnOrder?: string[];
+  currentTurnIndex: number;
+  currentRound: number;
+  log: WorkLogEntry[];
+  turnDecisions?: Record<string, unknown>;
+}
+
+interface TurnAdvancePayload {
+  toRound?: unknown;
+  toTurnIndex?: unknown;
+  [key: string]: unknown;
+}
+
+interface SetResourcePayload {
+  instanceId?: unknown;
+  resource?: unknown;
+  mode?: unknown;
+  to?: unknown;
+  value?: unknown;
+  previousValue?: unknown;
+  [key: string]: unknown;
+}
+
+interface LogPayload extends WorkLogEntry {
+  entry?: WorkLogEntry;
+  entryId?: string;
+  index?: number;
+  updates?: Record<string, unknown>;
+  toText?: string;
+}
+
+interface TurnDecisionPayload {
+  decisionKey?: string;
+  decision?: unknown;
+  [key: string]: unknown;
+}
+
+interface ReinforcementsPayload {
+  addedCombatants?: WorkParticipant[];
+  addedInstanceIds?: string[];
+  turnOrderAfter?: string[];
+  logEntry?: WorkLogEntry;
+  removedInstanceIds?: string[];
+  turnOrderBefore?: string[];
+  logEntryId?: string;
+  [key: string]: unknown;
+}
+
+interface ReorderTurnOrderPayload {
+  toOrder?: string[];
+  [key: string]: unknown;
+}
+
+interface LoadCombatStatePayload {
+  toSnapshot?: WorkState;
+  [key: string]: unknown;
+}
+
+interface ConditionPayload {
+  instanceId?: unknown;
+  conditionInstance?: WorkCondition;
+  conditionInstanceId?: unknown;
+  toCondition?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+interface ResourceChange {
+  instanceId?: unknown;
+  resource?: unknown;
+  to?: unknown;
+  [key: string]: unknown;
+}
+
+interface ConditionChange {
+  instanceId?: unknown;
+  conditionInstance: WorkCondition;
+  [key: string]: unknown;
+}
+
+interface UseItemPayload {
+  resourceChanges?: ResourceChange[];
+  conditionsAdded?: ConditionChange[];
+  conditionsRemoved?: ConditionChange[];
+  [key: string]: unknown;
+}
 
 /**
  * Apply an action to combat state
@@ -17,54 +128,56 @@ import { ACTION_TYPES } from './combatActions';
  * @param {object} action - Action to apply
  * @returns {object} New combat state
  */
-export function applyAction(state, action) {
+export function applyAction(state: CombatState, action: CombatReducerAction): CombatState {
   if (!state || !action) {
     throw new Error('applyAction requires state and action');
   }
 
+  const workState = state as WorkState;
+
   switch (action.type) {
     case ACTION_TYPES.TURN_ADVANCE:
-      return applyTurnAdvance(state, action.payload);
+      return applyTurnAdvance(workState, action.payload as TurnAdvancePayload) as CombatState;
 
     case ACTION_TYPES.SET_RESOURCE:
-      return applySetResource(state, action.payload);
+      return applySetResource(workState, action.payload as SetResourcePayload) as CombatState;
 
     case ACTION_TYPES.ADD_LOG_ENTRY:
-      return applyAddLogEntry(state, action.payload);
+      return applyAddLogEntry(workState, action.payload as LogPayload) as CombatState;
 
     case ACTION_TYPES.REMOVE_LOG_ENTRY:
-      return applyRemoveLogEntry(state, action.payload);
+      return applyRemoveLogEntry(workState, action.payload as LogPayload) as CombatState;
 
     case ACTION_TYPES.UPDATE_LOG_ENTRY:
-      return applyUpdateLogEntry(state, action.payload);
+      return applyUpdateLogEntry(workState, action.payload as LogPayload) as CombatState;
 
     case ACTION_TYPES.REORDER_TURN_ORDER:
-      return applyReorderTurnOrder(state, action.payload);
+      return applyReorderTurnOrder(workState, action.payload as ReorderTurnOrderPayload) as CombatState;
 
     case ACTION_TYPES.LOAD_COMBAT_STATE:
-      return applyLoadCombatState(state, action.payload);
+      return applyLoadCombatState(workState, action.payload as LoadCombatStatePayload) as CombatState;
 
     case ACTION_TYPES.SET_TURN_DECISION:
-      return applySetTurnDecision(state, action.payload);
+      return applySetTurnDecision(workState, action.payload as TurnDecisionPayload) as CombatState;
 
     case ACTION_TYPES.ADD_REINFORCEMENTS:
-      return applyAddReinforcements(state, action.payload);
+      return applyAddReinforcements(workState, action.payload as ReinforcementsPayload) as CombatState;
 
     // Phase 6 actions
     case ACTION_TYPES.ADD_CONDITION:
-      return applyAddCondition(state, action.payload);
+      return applyAddCondition(workState, action.payload as ConditionPayload) as CombatState;
 
     case ACTION_TYPES.REMOVE_CONDITION:
-      return applyRemoveCondition(state, action.payload);
+      return applyRemoveCondition(workState, action.payload as ConditionPayload) as CombatState;
 
     case ACTION_TYPES.UPDATE_CONDITION:
-      return applyUpdateCondition(state, action.payload);
+      return applyUpdateCondition(workState, action.payload as ConditionPayload) as CombatState;
 
     case ACTION_TYPES.USE_ITEM:
-      return applyUseItem(state, action.payload);
+      return applyUseItem(workState, action.payload as UseItemPayload) as CombatState;
 
     default:
-      throw new Error(`Unknown action type: ${action.type}`);
+      throw new Error(`Unknown action type: ${action.type as string}`);
   }
 }
 
@@ -76,60 +189,62 @@ export function applyAction(state, action) {
  * @param {object} action - Action to invert
  * @returns {object} New combat state
  */
-export function applyInverse(state, action) {
+export function applyInverse(state: CombatState, action: CombatReducerAction): CombatState {
   if (!state || !action) {
     throw new Error('applyInverse requires state and action');
   }
 
+  const workState = state as WorkState;
+
   switch (action.type) {
     case ACTION_TYPES.TURN_ADVANCE:
-      return applyTurnAdvance(state, action.inverse, action);
+      return applyTurnAdvance(workState, action.inverse as TurnAdvancePayload, action) as CombatState;
 
     case ACTION_TYPES.SET_RESOURCE:
       if (action.inverse) {
-        return applySetResource(state, action.inverse, action);
+        return applySetResource(workState, action.inverse as SetResourcePayload, action) as CombatState;
       }
-      return applySetResource(state, {
-        ...action.payload,
-        value: action.payload?.previousValue
-      }, action);
+      return applySetResource(workState, {
+        ...(action.payload as SetResourcePayload),
+        value: (action.payload as SetResourcePayload | undefined)?.previousValue
+      }, action) as CombatState;
 
     case ACTION_TYPES.ADD_LOG_ENTRY:
-      return applyRemoveLogEntry(state, action.inverse, action);
+      return applyRemoveLogEntry(workState, action.inverse as LogPayload, action) as CombatState;
 
     case ACTION_TYPES.REMOVE_LOG_ENTRY:
-      return applyAddLogEntry(state, action.inverse, action);
+      return applyAddLogEntry(workState, action.inverse as LogPayload, action) as CombatState;
 
     case ACTION_TYPES.UPDATE_LOG_ENTRY:
-      return applyUpdateLogEntry(state, action.inverse, action);
+      return applyUpdateLogEntry(workState, action.inverse as LogPayload, action) as CombatState;
 
     case ACTION_TYPES.REORDER_TURN_ORDER:
-      return applyReorderTurnOrder(state, action.inverse, action);
+      return applyReorderTurnOrder(workState, action.inverse as ReorderTurnOrderPayload, action) as CombatState;
 
     case ACTION_TYPES.LOAD_COMBAT_STATE:
-      return applyLoadCombatState(state, action.inverse, action);
+      return applyLoadCombatState(workState, action.inverse as LoadCombatStatePayload, action) as CombatState;
 
     case ACTION_TYPES.SET_TURN_DECISION:
-      return applySetTurnDecision(state, action.inverse, action);
+      return applySetTurnDecision(workState, action.inverse as TurnDecisionPayload, action) as CombatState;
 
     case ACTION_TYPES.ADD_REINFORCEMENTS:
-      return applyRemoveReinforcements(state, action.inverse, action);
+      return applyRemoveReinforcements(workState, action.inverse as ReinforcementsPayload, action) as CombatState;
 
     // Phase 6 inverses
     case ACTION_TYPES.ADD_CONDITION:
-      return applyRemoveCondition(state, action.inverse, action);
+      return applyRemoveCondition(workState, action.inverse as ConditionPayload, action) as CombatState;
 
     case ACTION_TYPES.REMOVE_CONDITION:
-      return applyAddCondition(state, action.inverse, action);
+      return applyAddCondition(workState, action.inverse as ConditionPayload, action) as CombatState;
 
     case ACTION_TYPES.UPDATE_CONDITION:
-      return applyUpdateCondition(state, action.inverse, action);
+      return applyUpdateCondition(workState, action.inverse as ConditionPayload, action) as CombatState;
 
     case ACTION_TYPES.USE_ITEM:
-      return applyUseItemInverse(state, action.inverse, action);
+      return applyUseItemInverse(workState, action.inverse as UseItemPayload, action) as CombatState;
 
     default:
-      throw new Error(`Unknown action type for inverse: ${action.type}`);
+      throw new Error(`Unknown action type for inverse: ${action.type as string}`);
   }
 }
 
@@ -140,7 +255,12 @@ export function applyInverse(state, action) {
 /**
  * Apply TURN_ADVANCE
  */
-function applyTurnAdvance(state, payload = {}) {
+function applyTurnAdvance(
+  state: WorkState,
+  payload?: TurnAdvancePayload,
+  action?: CombatReducerAction
+): WorkState;
+function applyTurnAdvance(state: WorkState, payload: TurnAdvancePayload = {}): WorkState {
   const { toRound, toTurnIndex } = payload;
   if (typeof toRound === 'number' && typeof toTurnIndex === 'number') {
     return {
@@ -169,8 +289,12 @@ function applyTurnAdvance(state, payload = {}) {
  * Apply SET_RESOURCE
  * Optimized with immer: O(1) lookup instead of O(n) array map
  */
-function applySetResource(state, payload, action) {
-  const resolvedPayload = payload || action?.payload;
+function applySetResource(
+  state: WorkState,
+  payload?: SetResourcePayload,
+  action?: CombatReducerAction
+): WorkState {
+  const resolvedPayload = (payload || action?.payload) as SetResourcePayload | undefined;
   const { instanceId, resource, mode, to, value, previousValue } = resolvedPayload || {};
 
   return produce(state, draft => {
@@ -179,27 +303,38 @@ function applySetResource(state, payload, action) {
       throw new Error(`Participant ${instanceId} not found`);
     }
 
-    if (participant[resource] && mode) {
-      participant[resource][mode] = to ?? value;
+    const dynamicParticipant = participant as WorkParticipant & Record<string, unknown>;
+    const resourceKey = resource as string;
+    const modeKey = mode as string;
+
+    if (dynamicParticipant[resourceKey] && mode) {
+      const bucket = dynamicParticipant[resourceKey] as Record<string, unknown>;
+      bucket[modeKey] = to ?? value;
       return;
     }
 
-    if (mode && participant[resource] && typeof participant[resource] === 'object') {
-      participant[resource][mode] = to ?? value;
+    if (
+      mode &&
+      dynamicParticipant[resourceKey] &&
+      typeof dynamicParticipant[resourceKey] === 'object'
+    ) {
+      const bucket = dynamicParticipant[resourceKey] as Record<string, unknown>;
+      bucket[modeKey] = to ?? value;
       return;
     }
 
     if (resource && mode) {
-      if (!participant[resource]) {
-        participant[resource] = {};
+      if (!dynamicParticipant[resourceKey]) {
+        dynamicParticipant[resourceKey] = {};
       }
-      participant[resource][mode] = to ?? value;
+      const bucket = dynamicParticipant[resourceKey] as Record<string, unknown>;
+      bucket[modeKey] = to ?? value;
       return;
     }
 
     const resolvedValue = to ?? value ?? previousValue;
     if (resource) {
-      participant[`current${resource}`] = resolvedValue;
+      dynamicParticipant[`current${resource as string}`] = resolvedValue;
     }
   });
 }
@@ -208,20 +343,28 @@ function applySetResource(state, payload, action) {
  * Apply ADD_LOG_ENTRY
  * Optimized with immer: no array spread needed
  */
-function applyAddLogEntry(state, payload, action) {
-  const resolvedPayload = payload || action?.payload;
+function applyAddLogEntry(
+  state: WorkState,
+  payload?: LogPayload,
+  action?: CombatReducerAction
+): WorkState {
+  const resolvedPayload = (payload || action?.payload) as LogPayload | undefined;
   const entry = resolvedPayload?.entry ?? resolvedPayload;
 
   return produce(state, draft => {
-    draft.log.push(entry);
+    draft.log.push(entry as WorkLogEntry);
   });
 }
 
 /**
  * Apply SET_TURN_DECISION
  */
-function applySetTurnDecision(state, payload, action) {
-  const resolvedPayload = payload || action?.payload;
+function applySetTurnDecision(
+  state: WorkState,
+  payload?: TurnDecisionPayload,
+  action?: CombatReducerAction
+): WorkState {
+  const resolvedPayload = (payload || action?.payload) as TurnDecisionPayload | undefined;
   const { decisionKey, decision } = resolvedPayload || {};
 
   return produce(state, draft => {
@@ -245,8 +388,12 @@ function applySetTurnDecision(state, payload, action) {
 /**
  * Apply ADD_REINFORCEMENTS
  */
-function applyAddReinforcements(state, payload, action) {
-  const resolvedPayload = payload || action?.payload;
+function applyAddReinforcements(
+  state: WorkState,
+  payload?: ReinforcementsPayload,
+  action?: CombatReducerAction
+): WorkState {
+  const resolvedPayload = (payload || action?.payload) as ReinforcementsPayload | undefined;
   const { addedCombatants, addedInstanceIds, turnOrderAfter, logEntry } = resolvedPayload || {};
 
   return produce(state, draft => {
@@ -276,14 +423,18 @@ function applyAddReinforcements(state, payload, action) {
 /**
  * Apply ADD_REINFORCEMENTS inverse
  */
-function applyRemoveReinforcements(state, payload, action) {
-  const resolvedPayload = payload || action?.payload;
+function applyRemoveReinforcements(
+  state: WorkState,
+  payload?: ReinforcementsPayload,
+  action?: CombatReducerAction
+): WorkState {
+  const resolvedPayload = (payload || action?.payload) as ReinforcementsPayload | undefined;
   const { removedInstanceIds, turnOrderBefore, logEntryId } = resolvedPayload || {};
 
   return produce(state, draft => {
     if (Array.isArray(removedInstanceIds)) {
       draft.participants = draft.participants.filter(
-        participant => !removedInstanceIds.includes(participant.instanceId)
+        participant => !removedInstanceIds.includes(participant.instanceId as string)
       );
     }
 
@@ -313,8 +464,12 @@ function applyRemoveReinforcements(state, payload, action) {
  * Apply REMOVE_LOG_ENTRY
  * Optimized with immer: efficient filtering
  */
-function applyRemoveLogEntry(state, payload, action) {
-  const resolvedPayload = payload || action?.payload;
+function applyRemoveLogEntry(
+  state: WorkState,
+  payload?: LogPayload,
+  action?: CombatReducerAction
+): WorkState {
+  const resolvedPayload = (payload || action?.payload) as LogPayload | undefined;
   const entryId = resolvedPayload?.entryId;
   const indexOverride = resolvedPayload?.index;
   const entry = resolvedPayload?.entry ?? resolvedPayload;
@@ -342,15 +497,19 @@ function applyRemoveLogEntry(state, payload, action) {
  * Apply UPDATE_LOG_ENTRY
  * Optimized with immer: direct property mutation
  */
-function applyUpdateLogEntry(state, payload, action) {
-  const resolvedPayload = payload || action?.payload;
+function applyUpdateLogEntry(
+  state: WorkState,
+  payload?: LogPayload,
+  action?: CombatReducerAction
+): WorkState {
+  const resolvedPayload = (payload || action?.payload) as LogPayload | undefined;
   const entryId = resolvedPayload?.entryId;
   const indexOverride = resolvedPayload?.index;
   const updates = resolvedPayload?.updates;
   const toText = resolvedPayload?.toText;
 
   return produce(state, draft => {
-    let entry = null;
+    let entry: (typeof draft.log)[number] | null | undefined = null;
     if (typeof indexOverride === 'number') {
       entry = draft.log[indexOverride];
     } else if (entryId) {
@@ -371,7 +530,15 @@ function applyUpdateLogEntry(state, payload, action) {
  * Apply REORDER_TURN_ORDER
  * Optimized with immer: direct array mutation
  */
-function applyReorderTurnOrder(state, payload) {
+function applyReorderTurnOrder(
+  state: WorkState,
+  payload: ReorderTurnOrderPayload,
+  action?: CombatReducerAction
+): WorkState;
+function applyReorderTurnOrder(
+  state: WorkState,
+  payload: ReorderTurnOrderPayload
+): WorkState {
   const { toOrder } = payload;
 
   return produce(state, draft => {
@@ -382,7 +549,12 @@ function applyReorderTurnOrder(state, payload) {
 /**
  * Apply LOAD_COMBAT_STATE
  */
-function applyLoadCombatState(state, payload) {
+function applyLoadCombatState(
+  state: WorkState,
+  payload: LoadCombatStatePayload,
+  action?: CombatReducerAction
+): WorkState;
+function applyLoadCombatState(state: WorkState, payload: LoadCombatStatePayload): WorkState {
   const { toSnapshot } = payload;
 
   // Replace entire state with snapshot
@@ -404,7 +576,12 @@ function applyLoadCombatState(state, payload) {
  * Apply ADD_CONDITION
  * Optimized with immer: O(1) participant lookup and direct array mutation
  */
-function applyAddCondition(state, payload) {
+function applyAddCondition(
+  state: WorkState,
+  payload: ConditionPayload,
+  action?: CombatReducerAction
+): WorkState;
+function applyAddCondition(state: WorkState, payload: ConditionPayload): WorkState {
   const { instanceId, conditionInstance } = payload;
 
   return produce(state, draft => {
@@ -413,7 +590,7 @@ function applyAddCondition(state, payload) {
       if (!participant.conditions) {
         participant.conditions = [];
       }
-      participant.conditions.push(conditionInstance);
+      participant.conditions.push(conditionInstance as WorkCondition);
     }
   });
 }
@@ -422,7 +599,12 @@ function applyAddCondition(state, payload) {
  * Apply REMOVE_CONDITION
  * Optimized with immer: efficient removal without full array copy
  */
-function applyRemoveCondition(state, payload) {
+function applyRemoveCondition(
+  state: WorkState,
+  payload: ConditionPayload,
+  action?: CombatReducerAction
+): WorkState;
+function applyRemoveCondition(state: WorkState, payload: ConditionPayload): WorkState {
   const { instanceId, conditionInstanceId } = payload;
 
   return produce(state, draft => {
@@ -440,7 +622,12 @@ function applyRemoveCondition(state, payload) {
  * Apply UPDATE_CONDITION
  * Optimized with immer: direct condition property mutation
  */
-function applyUpdateCondition(state, payload) {
+function applyUpdateCondition(
+  state: WorkState,
+  payload: ConditionPayload,
+  action?: CombatReducerAction
+): WorkState;
+function applyUpdateCondition(state: WorkState, payload: ConditionPayload): WorkState {
   const { instanceId, conditionInstanceId, toCondition } = payload;
 
   return produce(state, draft => {
@@ -464,13 +651,18 @@ function applyUpdateCondition(state, payload) {
  *
  * Note: Inventory delta is handled separately by the component layer
  */
-function applyUseItem(state, payload) {
+function applyUseItem(
+  state: WorkState,
+  payload: UseItemPayload,
+  action?: CombatReducerAction
+): WorkState;
+function applyUseItem(state: WorkState, payload: UseItemPayload): WorkState {
   const { resourceChanges, conditionsAdded, conditionsRemoved } = payload;
 
-  let updatedState = { ...state };
+  let updatedState: WorkState = { ...state };
 
   // Apply resource changes
-  for (const rc of resourceChanges) {
+  for (const rc of resourceChanges as ResourceChange[]) {
     updatedState = applySetResource(updatedState, {
       instanceId: rc.instanceId,
       resource: rc.resource,
@@ -479,7 +671,7 @@ function applyUseItem(state, payload) {
   }
 
   // Apply conditions added
-  for (const ca of conditionsAdded) {
+  for (const ca of conditionsAdded as ConditionChange[]) {
     updatedState = applyAddCondition(updatedState, {
       instanceId: ca.instanceId,
       conditionInstance: ca.conditionInstance
@@ -487,7 +679,7 @@ function applyUseItem(state, payload) {
   }
 
   // Apply conditions removed
-  for (const cr of conditionsRemoved) {
+  for (const cr of conditionsRemoved as ConditionChange[]) {
     updatedState = applyRemoveCondition(updatedState, {
       instanceId: cr.instanceId,
       conditionInstanceId: cr.conditionInstance.instanceId
@@ -500,13 +692,18 @@ function applyUseItem(state, payload) {
 /**
  * Apply USE_ITEM inverse (for undo)
  */
-function applyUseItemInverse(state, payload) {
+function applyUseItemInverse(
+  state: WorkState,
+  payload: UseItemPayload,
+  action?: CombatReducerAction
+): WorkState;
+function applyUseItemInverse(state: WorkState, payload: UseItemPayload): WorkState {
   const { resourceChanges, conditionsAdded, conditionsRemoved } = payload;
 
-  let updatedState = { ...state };
+  let updatedState: WorkState = { ...state };
 
   // Reverse resource changes
-  for (const rc of resourceChanges) {
+  for (const rc of resourceChanges as ResourceChange[]) {
     updatedState = applySetResource(updatedState, {
       instanceId: rc.instanceId,
       resource: rc.resource,
@@ -515,7 +712,7 @@ function applyUseItemInverse(state, payload) {
   }
 
   // Reverse conditions added (remove them)
-  for (const ca of conditionsAdded) {
+  for (const ca of conditionsAdded as ConditionChange[]) {
     updatedState = applyRemoveCondition(updatedState, {
       instanceId: ca.instanceId,
       conditionInstanceId: ca.conditionInstance.instanceId
@@ -523,7 +720,7 @@ function applyUseItemInverse(state, payload) {
   }
 
   // Reverse conditions removed (add them back)
-  for (const cr of conditionsRemoved) {
+  for (const cr of conditionsRemoved as ConditionChange[]) {
     updatedState = applyAddCondition(updatedState, {
       instanceId: cr.instanceId,
       conditionInstance: cr.conditionInstance
