@@ -214,7 +214,7 @@ Same bar as Phase 16t: add `__tests__/<name>.test.ts` beside the file, covering 
 Hook tests below use the existing `renderHook` harness — mirror `src/hooks/__tests__/useCombatConditions.test.ts` (or another `src/hooks/__tests__/*.test.ts`). Both target hooks depend only on React (+ logger), so no store/context provider is required. If a hook turns out to need provider setup beyond what the exemplar shows, defer it with that reason rather than expanding scope.
 
 - [x] Add tests for src/hooks/usePersistentState.ts (42 lines, zero coverage; depends only on react). Cover: initial value, setter updates state, the debounced-save callback is invoked with the new value. Use fake timers if debounce timing is asserted.
-- [ ] Add tests for src/hooks/useStorage.ts (176 lines, zero coverage; useKeyedDebouncedStorageSave, depends on react + logger). Cover: debounced save fires once after the delay, rapid successive calls coalesce, and the error path where the save throws is logged (not rethrown). Use fake timers.
+- [x] Add tests for src/hooks/useStorage.ts (176 lines, zero coverage; useKeyedDebouncedStorageSave, depends on react + logger). Cover: debounced save fires once after the delay, rapid successive calls coalesce, and the error path where the save throws is logged (not rethrown). Use fake timers.
 
 ## Out of scope for the loop (do NOT add these)
 
