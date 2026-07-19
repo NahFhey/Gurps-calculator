@@ -222,7 +222,7 @@ Same pattern as Phase 15e-3: rename `.js` → `.ts`, add types for parameters/re
 
 Deliberate exclusions (do NOT queue): `src/utils/alchemy.js` (1366 lines) and `src/utils/gathering.js` (823 lines) both carry rich `.d.ts` shims whose concrete signatures must be *inlined, not erased to `any`* — that is larger than a mechanical run and is exactly the type-erosion the 2026-07-19 AUTO_REVIEW CONCERN flagged on `combatViewFilter.ts`; leave for a human/larger effort. `src/utils/combatInventoryBridge.js` is referenced only by its own test (zero production importers) and belongs to the parked Inventory Integration phase — do not convert or delete it here.
 
-- [ ] Convert src/utils/combatActions.js to TypeScript (453 lines; no `.d.ts` shim exists; ~9 production importers). Preserve the `ACTION_TYPES` export and every action-creator export exactly. Safety net: src/utils/__tests__/combatActions.test.js (imports by basename `'../combatActions'`); keep green, do not rewrite it.
+- [x] Convert src/utils/combatActions.js to TypeScript (453 lines; no `.d.ts` shim exists; ~9 production importers). Preserve the `ACTION_TYPES` export and every action-creator export exactly. Safety net: src/utils/__tests__/combatActions.test.js (imports by basename `'../combatActions'`); keep green, do not rewrite it.
 - [ ] Convert src/utils/combatReducer.js to TypeScript (534 lines; no `.d.ts` shim exists). Preserve the `applyAction` and `applyInverse` exports exactly. Safety net: src/utils/__tests__/combatReducer.test.ts (imports `applyAction`/`applyInverse` by basename `'../combatReducer'`, plus `ACTION_TYPES` from `'../combatActions'`); keep green, do not rewrite it.
 
 ## Phase 16t-3 — Test coverage for zero-coverage hooks (one file per run) _(refill 2026-07-19)_

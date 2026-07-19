@@ -5,6 +5,68 @@
 
 import { generateId } from './combatHelpers';
 
+interface CombatUndoAction {
+  id: string;
+  ts: string;
+  type: string;
+  label: string;
+  payload: Record<string, unknown>;
+  inverse: Record<string, unknown>;
+  revealUpdate?: unknown;
+  [key: string]: unknown;
+}
+
+interface LogActionEntry {
+  entryType?: string;
+  id?: string;
+}
+
+interface AddReinforcementsActionParams {
+  addedCombatants: unknown[];
+  addedInstanceIds: string[];
+  turnOrderBefore: string[];
+  turnOrderAfter: string[];
+  logEntry?: { id?: string } | null;
+  revealUpdate?: unknown;
+}
+
+interface ConditionInstance {
+  label: string;
+  instanceId: string;
+}
+
+interface UpdatedCondition {
+  label: string;
+}
+
+interface UseItemActionParams {
+  actorInstanceId: string;
+  targetInstanceId: string;
+  item: {
+    id: string;
+    name: string;
+    quantity: number;
+    [key: string]: unknown;
+  };
+  effect: unknown;
+  inventoryDelta: {
+    quantityChange: number;
+    [key: string]: unknown;
+  };
+  resourceChanges?: Array<{
+    from: unknown;
+    to: unknown;
+    [key: string]: unknown;
+  }>;
+  conditionsAdded?: unknown[];
+  conditionsRemoved?: unknown[];
+}
+
+interface HexPosition {
+  r: number;
+  q: number;
+}
+
 /**
  * Action types
  */
@@ -37,7 +99,12 @@ export const ACTION_TYPES = {
  * @param {number} toTurnIndex - Ending turn index
  * @returns {object} Action object
  */
-export function createTurnAdvanceAction(fromRound, fromTurnIndex, toRound, toTurnIndex) {
+export function createTurnAdvanceAction(
+  fromRound: number,
+  fromTurnIndex: number,
+  toRound: number,
+  toTurnIndex: number
+): CombatUndoAction {
   return {
     id: generateId(),
     ts: new Date().toISOString(),
@@ -68,7 +135,12 @@ export function createTurnAdvanceAction(fromRound, fromTurnIndex, toRound, toTur
  * @param {number} to - New value
  * @returns {object} Action object
  */
-export function createSetResourceAction(instanceId, resource, from, to) {
+export function createSetResourceAction(
+  instanceId: string,
+  resource: string,
+  from: number,
+  to: number
+): CombatUndoAction {
   const delta = to - from;
   const deltaStr = delta > 0 ? `+${delta}` : `${delta}`;
 
@@ -99,7 +171,7 @@ export function createSetResourceAction(instanceId, resource, from, to) {
  * @param {object} entry - LogEntry object
  * @returns {object} Action object
  */
-export function createAddLogEntryAction(entry) {
+export function createAddLogEntryAction<T extends LogActionEntry>(entry: T): CombatUndoAction {
   return {
     id: generateId(),
     ts: new Date().toISOString(),
@@ -122,7 +194,10 @@ export function createAddLogEntryAction(entry) {
  * @param {object} entryBackup - Backup of the entry for undo
  * @returns {object} Action object
  */
-export function createRemoveLogEntryAction(entryId, entryBackup) {
+export function createRemoveLogEntryAction(
+  entryId: string,
+  entryBackup: unknown
+): CombatUndoAction {
   return {
     id: generateId(),
     ts: new Date().toISOString(),
@@ -147,7 +222,11 @@ export function createRemoveLogEntryAction(entryId, entryBackup) {
  * @param {string} toText - New text
  * @returns {object} Action object
  */
-export function createUpdateLogEntryAction(entryId, fromText, toText) {
+export function createUpdateLogEntryAction(
+  entryId: string,
+  fromText: string,
+  toText: string
+): CombatUndoAction {
   return {
     id: generateId(),
     ts: new Date().toISOString(),
@@ -174,7 +253,10 @@ export function createUpdateLogEntryAction(entryId, fromText, toText) {
  * @param {string[]} toOrder - New order (array of instanceIds)
  * @returns {object} Action object
  */
-export function createReorderTurnOrderAction(fromOrder, toOrder) {
+export function createReorderTurnOrderAction(
+  fromOrder: string[],
+  toOrder: string[]
+): CombatUndoAction {
   return {
     id: generateId(),
     ts: new Date().toISOString(),
@@ -199,7 +281,10 @@ export function createReorderTurnOrderAction(fromOrder, toOrder) {
  * @param {object} toSnapshot - New loaded state snapshot
  * @returns {object} Action object
  */
-export function createLoadCombatStateAction(fromSnapshot, toSnapshot) {
+export function createLoadCombatStateAction(
+  fromSnapshot: unknown,
+  toSnapshot: unknown
+): CombatUndoAction {
   return {
     id: generateId(),
     ts: new Date().toISOString(),
@@ -225,7 +310,11 @@ export function createLoadCombatStateAction(fromSnapshot, toSnapshot) {
  * @param {object|null} nextDecision - Next decision state
  * @returns {object} Action object
  */
-export function createSetTurnDecisionAction(decisionKey, previousDecision, nextDecision) {
+export function createSetTurnDecisionAction(
+  decisionKey: string,
+  previousDecision: unknown,
+  nextDecision: unknown
+): CombatUndoAction {
   return {
     id: generateId(),
     ts: new Date().toISOString(),
@@ -256,7 +345,7 @@ export function createAddReinforcementsAction({
   turnOrderAfter,
   logEntry,
   revealUpdate
-}) {
+}: AddReinforcementsActionParams): CombatUndoAction {
   return {
     id: generateId(),
     ts: new Date().toISOString(),
@@ -285,7 +374,10 @@ export function createAddReinforcementsAction({
  * @param {object} conditionInstance - Condition instance object
  * @returns {object} Action object
  */
-export function createAddConditionAction(instanceId, conditionInstance) {
+export function createAddConditionAction(
+  instanceId: string,
+  conditionInstance: ConditionInstance
+): CombatUndoAction {
   return {
     id: generateId(),
     ts: new Date().toISOString(),
@@ -310,7 +402,10 @@ export function createAddConditionAction(instanceId, conditionInstance) {
  * @param {object} conditionInstance - Condition instance being removed (for undo)
  * @returns {object} Action object
  */
-export function createRemoveConditionAction(instanceId, conditionInstance) {
+export function createRemoveConditionAction(
+  instanceId: string,
+  conditionInstance: ConditionInstance
+): CombatUndoAction {
   return {
     id: generateId(),
     ts: new Date().toISOString(),
@@ -338,7 +433,12 @@ export function createRemoveConditionAction(instanceId, conditionInstance) {
  * @param {object} toCondition - Condition after update
  * @returns {object} Action object
  */
-export function createUpdateConditionAction(instanceId, conditionInstanceId, fromCondition, toCondition) {
+export function createUpdateConditionAction(
+  instanceId: string,
+  conditionInstanceId: string,
+  fromCondition: unknown,
+  toCondition: UpdatedCondition
+): CombatUndoAction {
   return {
     id: generateId(),
     ts: new Date().toISOString(),
@@ -382,7 +482,7 @@ export function createUseItemAction({
   resourceChanges = [],
   conditionsAdded = [],
   conditionsRemoved = []
-}) {
+}: UseItemActionParams): CombatUndoAction {
   return {
     id: generateId(),
     ts: new Date().toISOString(),
@@ -429,7 +529,13 @@ export function createUseItemAction({
  * @param {number} cost - Movement cost in yards
  * @returns {object} Action object
  */
-export function createMoveParticipantAction(instanceId, fromPosition, toPosition, path = [], cost = 0) {
+export function createMoveParticipantAction(
+  instanceId: string,
+  fromPosition: HexPosition | null | undefined,
+  toPosition: HexPosition | null | undefined,
+  path: string[] = [],
+  cost: number = 0
+): CombatUndoAction {
   return {
     id: generateId(),
     ts: new Date().toISOString(),
