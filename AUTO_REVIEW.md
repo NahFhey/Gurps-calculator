@@ -33,6 +33,24 @@ When `AUTO_QUEUE.md` has zero `- [ ]` items AND seven consecutive runs find zero
 
 <!-- Daily entries are prepended directly below this line, newest first. -->
 
+## 2026-07-20 — PASS (5 commits: 5P, 0N, 0C)
+
+| commit | target | verdict | notes |
+| ------ | ------ | ------- | ----- |
+| ffea9e4 | src/utils/combatActions.ts | PASS | — |
+| 475dc6e | src/utils/combatReducer.ts | PASS | — |
+| 7303b49 | src/hooks/__tests__/combatUIStore.test.ts | PASS | — |
+| 57f94f8 | src/hooks/__tests__/useBatchedStorageSave.test.ts | PASS | — |
+| 6eb2477 | src/hooks/__tests__/useWeatherModifiers.test.ts | PASS | — |
+
+### Notes
+
+Clean window — two Phase 15e-4 JS→TS conversions and three Phase 16t-3 hook tests, all PASS.
+
+The `combatActions.js`→`.ts` (ffea9e4) and `combatReducer.js`→`.ts` (475dc6e) conversions are the two flagged 15e-4 items. Type discipline is exactly right: interfaces plus `unknown`/`Record<string, unknown>` throughout, zero new `:any`, `as any`, or `@ts-nocheck` — a deliberate contrast with the 2026-07-19 `combatViewFilter.ts` CONCERN. The `applyAction`/`applyInverse` dispatch tables and every `ACTION_TYPES` / action-creator export are preserved verbatim; the only removed lines are untyped signatures re-added with types. Safety-net suites (`combatActions.test.js`, `combatReducer.test.ts`) stay green and `tsc --noEmit` is clean for both files.
+
+The three hook-test adds all assert observable behavior rather than truthiness. `useBatchedStorageSave` (57f94f8) is notably thorough — 7 cases covering delegation plus the queue-throw, flush-rejection, and storage-unavailable error paths, each verifying logger calls without a rethrow. `combatUIStore` (7303b49) covers initial state, shallow-merge, reset, and single-key preservation. `useWeatherModifiers` (6eb2477) exercises both exported hooks with happy-path modifier math and no-location/zero-effect edge cases. All 55 tests across the five files pass. No `[!]` deferrals in the window; every commit touched only its target plus the single `AUTO_QUEUE.md` marker line.
+
 ## 2026-07-19 — CONCERN (6 commits: 4P, 1N, 1C)
 
 | commit | target | verdict | notes |
