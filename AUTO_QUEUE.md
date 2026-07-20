@@ -236,7 +236,7 @@ Provider-free (mirror `src/hooks/__tests__/usePersistentState.test.ts` / `useSto
 
 Store/context-backed (mirror `src/hooks/__tests__/useTimeAdvancement.test.ts`, which drives `useCampaignStore`). If wiring the provider turns out to exceed what that exemplar shows, defer the item with that exact reason rather than expanding scope:
 
-- [ ] Add tests for src/hooks/useWeatherModifiers.ts (180 lines, zero coverage; reads `useCampaignStore`). Cover: modifier lookup for a known activity with weather set, and the default/empty-modifiers result when no current weather/location is present.
+- [x] Add tests for src/hooks/useWeatherModifiers.ts (180 lines, zero coverage; reads `useCampaignStore`). Cover: modifier lookup for a known activity with weather set, and the default/empty-modifiers result when no current weather/location is present.
 - [ ] Add tests for src/hooks/useEffectiveRole.ts (44 lines, zero coverage; reads `useSyncContext` from `../net/SyncProvider`). Cover: the effective role returned for a connected role and the fallback when no sync context role is available. Defer with reason "SyncProvider setup exceeds exemplar" if wiring the provider is non-trivial.
 
 ## Out of scope for the loop (do NOT add these)
