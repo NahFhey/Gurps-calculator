@@ -33,6 +33,14 @@ When `AUTO_QUEUE.md` has zero `- [ ]` items AND seven consecutive runs find zero
 
 <!-- Daily entries are prepended directly below this line, newest first. -->
 
+## 2026-07-21 — PASS (1 commit: 1P, 0N, 0C)
+
+| commit | target | verdict | notes |
+| ------ | ------ | ------- | ----- |
+| 58fd809 | src/hooks/useEffectiveRole.ts (test add) | PASS | — |
+
+Non-engine hook. Five behavioral test blocks cover connected Player/GM/Spectator, the offline/no-role fallback to GM (via `it.each`), and `displayName ?? null` coalescing. Assertions track the source: `isOnline = status==='connected' && role!==null`, `canEdit = effectiveRole===GM`, undefined displayName → null. Type-clean (`vi.hoisted` mock, no `any`/`as any`/`@ts-nocheck`). Scope limited to the new test file plus the single `[ ]`→`[x]` marker flip in AUTO_QUEUE.md.
+
 ## 2026-07-20 — PASS (5 commits: 5P, 0N, 0C)
 
 | commit | target | verdict | notes |
