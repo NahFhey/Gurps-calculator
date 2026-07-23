@@ -179,8 +179,8 @@ Same pattern as Phase 15e: rename `.js` → `.ts` (or `.tsx` if JSX), add types 
 
 Pattern: remove every `as any` in the target file by fixing the types at the source (`src/types/` or the relevant domain type file) per the CLAUDE.md rule. Zero runtime behavior change; tsc clean; existing tests green. If a specific cast genuinely requires a design decision, defer the item citing that cast's file:line.
 
-- [!] Remove the 6 `as any` casts in src/hooks/useCombatHistory.ts. [auto-deferred 2026-07-16: casts at useCombatHistory.ts:117,147 (saveCombatReveal(syncedReveal as any)) need a design decision — syncRevealStateForParticipants returns the module-wide loose RevealStateLike (Record<string,any>) which cannot satisfy saveCombatReveal's bespoke {byInstanceId} param; removing them requires re-typing that util's return contract and/or the useCampaignStore God-node param, rippling to useCombatReinforcements.ts + tests. Casts 99/129 (createSnapshot overload) and 114/144 are cleanly fixable, but the item is all-6.]
-- [!] Remove the 9 `as any` casts in src/persistence/campaignStorage.ts. [auto-deferred 2026-07-16: 6 gathering casts (campaignStorage.ts:141-146) + alchemy cast (:148) assign view-shape Extended types (GatheringSpeciesExtended/GatheringToolExtended/etc. from types/gathering.ts; views.AlchemyReagent) into entities.gathering*/.alchemyReagents fields typed as the incompatible state types (GatheringSpecies etc. from types/campaign.ts) that share only id+name — divergent shapes (category/baseYield/skill vs type/tags/foodType/yieldMeatFormula). GatheringManager consumes these fields as Extended at runtime, so the entities contract genuinely holds view shapes despite its state-typed declaration; reconciling needs re-typing the campaignReducer God-node entities contract OR converting sample data to state shape (loses fields, breaks GatheringManager) — a design decision. Casts at :90 (payload.maps, spurious) and :151 (cookingSkills — a re-export of the same campaign.ts type) ARE cleanly removable, but the item is all-9.]
+- [x] Remove the 6 `as any` casts in src/hooks/useCombatHistory.ts. [resolved 2026-07-23 human review: narrowed — the 4 cleanly-fixable casts are re-queued as a Phase 16r item; the 2 saveCombatReveal casts (:117/:147) are a design decision, moved to Out of scope.] [auto-deferred 2026-07-16: casts at useCombatHistory.ts:117,147 (saveCombatReveal(syncedReveal as any)) need a design decision — syncRevealStateForParticipants returns the module-wide loose RevealStateLike (Record<string,any>) which cannot satisfy saveCombatReveal's bespoke {byInstanceId} param; removing them requires re-typing that util's return contract and/or the useCampaignStore God-node param, rippling to useCombatReinforcements.ts + tests. Casts 99/129 (createSnapshot overload) and 114/144 are cleanly fixable, but the item is all-6.]
+- [x] Remove the 9 `as any` casts in src/persistence/campaignStorage.ts. [resolved 2026-07-23 human review: narrowed — the 2 cleanly-removable casts (:90, :151) are re-queued as a Phase 16r item; the 7 gathering/alchemy Extended-type casts are a design decision, moved to Out of scope.] [auto-deferred 2026-07-16: 6 gathering casts (campaignStorage.ts:141-146) + alchemy cast (:148) assign view-shape Extended types (GatheringSpeciesExtended/GatheringToolExtended/etc. from types/gathering.ts; views.AlchemyReagent) into entities.gathering*/.alchemyReagents fields typed as the incompatible state types (GatheringSpecies etc. from types/campaign.ts) that share only id+name — divergent shapes (category/baseYield/skill vs type/tags/foodType/yieldMeatFormula). GatheringManager consumes these fields as Extended at runtime, so the entities contract genuinely holds view shapes despite its state-typed declaration; reconciling needs re-typing the campaignReducer God-node entities contract OR converting sample data to state shape (loses fields, breaks GatheringManager) — a design decision. Casts at :90 (payload.maps, spurious) and :151 (cookingSkills — a re-export of the same campaign.ts type) ARE cleanly removable, but the item is all-9.]
 - [x] Remove the 10 `as any` casts in src/state/map/mapReducer.ts.
 
 ## Phase 16z — ActionPanel decomposition, test-first (one extraction per run) _(refill 2026-07-13)_
@@ -239,6 +239,50 @@ Store/context-backed (mirror `src/hooks/__tests__/useTimeAdvancement.test.ts`, w
 - [x] Add tests for src/hooks/useWeatherModifiers.ts (180 lines, zero coverage; reads `useCampaignStore`). Cover: modifier lookup for a known activity with weather set, and the default/empty-modifiers result when no current weather/location is present.
 - [x] Add tests for src/hooks/useEffectiveRole.ts (44 lines, zero coverage; reads `useSyncContext` from `../net/SyncProvider`). Cover: the effective role returned for a connected role and the fallback when no sync context role is available. Defer with reason "SyncProvider setup exceeds exemplar" if wiring the provider is non-trivial.
 
+## Phase 16r — Review follow-ups: type tightening _(refill 2026-07-23, human review)_
+
+These items close out findings from AUTO_REVIEW 2026-07-15 → 2026-07-21 (one CONCERN, several NOTEs) plus the two narrowed 2026-07-16 deferrals. Pattern: zero runtime behavior change, tsc clean, the named safety-net tests stay green (targeted vitest run). Do NOT rewrite test files.
+
+- [ ] Re-type src/utils/combatViewFilter.ts (fixes the 2026-07-19 AUTO_REVIEW CONCERN on d4ae57c). The conversion erased the deleted `.d.ts` shim's concrete signatures into 33 `: any`/`AnyRecord` on the player-view redaction path. Recover the original contract with `git show d4ae57c^:src/utils/combatViewFilter.d.ts` and re-type `getCombatView`/`hasHiddenInfo`/`filterParticipant` and the rest against `CombatState`/`Participant`/`RevealState` from src/types/combatTracker. Zero `: any` remaining. Safety net: src/utils/__tests__/combatViewFilter.test.js.
+- [ ] Re-type src/utils/combatLogFilter.ts: replace the `AnyRecord` (`Record<string, any>`) alias and the one bare `: any` callback with the canonical src/types/combatTracker types for log/entry/combatState (AUTO_REVIEW 2026-07-19 NOTE on ff630bd). Keep the existing return-type annotations and type guards. Safety net: src/utils/__tests__/combatLogFilter.test.js.
+- [ ] Re-type src/utils/combatViewSelectors.ts: remove the `AnyRecord` alias and every `as AnyRecord` cast introduced in 5a25bd2 (AUTO_REVIEW 2026-07-15 NOTE); use src/types/combatTracker types. Safety net: src/utils/__tests__/combatViewSelectors.test.js.
+- [ ] Tighten the 3 net-new internal `any` in src/utils/taskResolution.ts flagged by AUTO_REVIEW 2026-07-18 (6249db1): `_categories?: any` (~line 44), the `item?: any` parameter, and the `const yields: any = calculateFishYields(...)` local. Leave the shim-inherited `any` fields (payload/task/leader/environment/tools/species/categories/items/tables) alone — those are grandfathered. Safety net: src/utils/__tests__/taskResolution.test.js.
+- [ ] Remove the 4 cleanly-fixable `as any` casts in src/hooks/useCombatHistory.ts at lines 99, 114, 129, 144 (createSnapshot overload / newRevealState). Do NOT touch the two `saveCombatReveal(syncedReveal as any)` casts at :117/:147 — they are Out of scope (design decision). Existing hook/combat tests stay green.
+- [ ] Remove the 2 cleanly-removable `as any` casts in src/persistence/campaignStorage.ts: line 90 (`(payload as any).maps` — spurious, payload is already typed) and line 151 (`cookingSkills` — re-export of the same campaign.ts type). Do NOT touch the gathering/alchemy casts at :141-146/:148 — they are Out of scope (design decision). Existing persistence tests stay green.
+
+## Phase 16t-4 — Test coverage for zero-coverage hooks and gcsParser _(refill 2026-07-23)_
+
+Same bar as Phase 16t-3: add `__tests__/<name>.test.ts` beside the file, covering the exported API — happy path + at least one error/edge path per exported function group. No `as any` in tests. Verify with a targeted vitest run. For store/context-backed hooks, mirror `src/hooks/__tests__/useWeatherModifiers.test.ts` / `useTimeAdvancement.test.ts`; if provider wiring exceeds what those exemplars show, defer with that exact reason rather than expanding scope.
+
+- [ ] Add tests for src/utils/gcsParser.js (238 lines, zero coverage; parses GCS character-export JSON, sole importer GCSImportModal.tsx). Priority edge cases: malformed JSON, missing/partial attribute blocks, empty skill/trait lists. This is the safety net for the Phase 15e-5 conversion below.
+- [ ] Add tests for src/hooks/useCraftingData.ts (131 lines, zero coverage).
+- [ ] Add tests for src/hooks/useCombatHistory.ts (152 lines, zero coverage; covers the Phase 16r cast removals above too).
+- [ ] Add tests for src/hooks/useAlchemyData.ts (171 lines, zero coverage).
+- [ ] Add tests for src/hooks/useCombatReinforcements.ts (188 lines, zero coverage).
+- [ ] Add tests for src/hooks/useCombatExport.ts (289 lines, zero coverage; mock file-download/clipboard side effects, assert the generated export payloads).
+- [ ] Add tests for src/hooks/useActionResolution.ts (445 lines, zero coverage; largest untested combat hook — cover the main resolution paths, defer if store wiring exceeds the exemplars).
+- [ ] Add tests for src/hooks/usePerformanceMonitoring.ts (465 lines, zero coverage; timer-heavy — use fake timers).
+- [ ] Add tests for src/hooks/useCombatSession.ts (645 lines, zero coverage; largest untested hook. Cover the primary session lifecycle paths; if full coverage doesn't fit one run, land a meaningful subset and note it — do not defer solely on size.)
+- [ ] Add tests for src/utils/performanceMonitor.js (531 lines, zero coverage; importers: PerformanceDashboard.tsx, usePerformanceMonitoring.ts. Use fake timers; test file stays `.test.js` or `.test.ts` importing by basename. This is the safety net for the Phase 15e-5 conversion below.)
+
+## Phase 15e-5 — JS → TS migration, fifth batch (one file per run) _(refill 2026-07-23)_
+
+Same pattern as Phase 15e-4: rename `.js` → `.ts` (or `.tsx` if JSX), add types for parameters/returns, preserve all existing exports and runtime behavior, no `as any` introduced, no type erosion (follow the conditionsEngine.ts pattern, NOT the combatViewFilter erosion). None of these has a `.d.ts` shim. Safety-net tests (where named) must stay green and must not be rewritten.
+
+- [ ] Convert src/version.js to TypeScript (511 lines, but almost entirely the static `CHANGELOG` data array + `VERSION` const — mechanical).
+- [ ] Convert src/components/partyToolSeed.js to TypeScript (167 lines; imported by src/state/campaignReducer.ts — preserve every export name exactly; tsc + campaignReducer tests are the safety net).
+- [ ] Convert src/utils/gcsParser.js to TypeScript (238 lines). Precondition: gcsParser tests exist (Phase 16t-4 item above); if absent, defer with reason "prerequisite tests missing".
+- [ ] Convert src/utils/performanceMonitor.js to TypeScript (531 lines). Precondition: performanceMonitor tests exist (Phase 16t-4 item above); if absent, defer with reason "prerequisite tests missing".
+
+## Phase 16y-2 — `as any` reduction, second batch (one file per run) _(refill 2026-07-23)_
+
+Same pattern as Phase 16y: remove every `as any` in the target file by fixing types at the source; zero runtime behavior change; tsc clean; existing tests green. If a specific cast genuinely requires a design decision, defer citing that cast's file:line.
+
+- [ ] Remove the 16 `as any` casts in src/components/combat/CombatTracker.tsx.
+- [ ] Remove the 10 `as any` casts in src/components/DayPlannerTab.tsx.
+- [ ] Remove the 25 `as any` casts in src/hooks/__tests__/useCombatStore.test.ts (test file — type the fixtures/mocks properly instead; all tests stay green with identical assertions).
+- [ ] Remove the 18 `as any` casts in src/utils/__tests__/combatHelpers.test.ts (same bar: properly typed fixtures, identical assertions).
+
 ## Out of scope for the loop (do NOT add these)
 
 The following are tracked elsewhere because they require design judgment or coordinated multi-file changes the loop should not attempt autonomously:
@@ -255,3 +299,10 @@ The following are tracked elsewhere because they require design judgment or coor
 - Items in docs/INVENTORY_INTEGRATION_FOLLOWUPS.md (each has open design questions)
 - The 60 `as any` casts across the three Fishing views (FishingResolutionPanel/FishingActivity/FishingTaskForm) — they share a fishing type-model problem that needs human type design, not per-cast fixes
 - ~~JS → TS conversion of taskResolution.js (417), combatViewFilter.js (441), combatLogFilter.js (551), conditionsEngine.js (582)~~ — promoted to Phase 15e-3 on 2026-07-17 now that 15e-2 completed cleanly (the gate this note named)
+- The 2 `saveCombatReveal(syncedReveal as any)` casts at useCombatHistory.ts:117/:147 — need re-typing syncRevealStateForParticipants' loose `RevealStateLike` return contract (ripples to useCombatReinforcements + the useCampaignStore God node); human type design _(from the 2026-07-16 deferral, narrowed 2026-07-23)_
+- The 7 gathering/alchemy casts at campaignStorage.ts:141-146/:148 — the `entities` contract genuinely holds view-shape Extended types despite its state-typed declaration; needs a God-node contract decision (re-type entities OR convert sample data) _(from the 2026-07-16 deferral, narrowed 2026-07-23)_
+- JS → TS conversion of src/utils/alchemy.js (1366 lines) and src/utils/gathering.js (823 lines) — rich `.d.ts` shims must be inlined not erased (the combatViewFilter CONCERN failure mode), and alchemy.js overlaps Devin's active alchemy-rules redesign (docs/GURPS_Alchemy_System_Rules.md, 2026-07); hold both for human-driven work
+- src/utils/sampleForagingData.js (361) and src/utils/performanceAnalysis.js (494) — zero production importers as of 2026-07-23; dead-code candidates needing a human keep/delete decision, do not convert or delete autonomously
+- src/utils/combatInventoryBridge.js — zero production importers, belongs to the parked Inventory Integration phase (see 15e-4 note)
+- Slimming ActionPanel.tsx below its current 300 lines toward the original ~150 target (AUTO_REVIEW 2026-07-18 NOTE on 568a91d) — what else moves out is a judgment call
+- The double `as unknown as` launder at InjuryResolutionPanel.tsx:277 (AUTO_REVIEW 2026-07-16 NOTE) — hides a real field-name divergence between injuryEngine's return type and the panel's local DamageBreakdown; needs resolution at the type source
