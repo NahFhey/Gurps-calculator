@@ -68,52 +68,52 @@ function DayPlannerTabBase() {
 
   // Derive data from normalized state
   const species = useMemo(() =>
-    denormalizeObject(state.entities.gatheringSpecies || {}) as any[],
+    denormalizeObject(state.entities.gatheringSpecies || {}),
     [state.entities.gatheringSpecies]
   );
 
   const tools = useMemo(() =>
-    denormalizeObject(state.entities.gatheringTools || {}) as any[],
+    denormalizeObject(state.entities.gatheringTools || {}),
     [state.entities.gatheringTools]
   );
 
   const tables = useMemo(() =>
-    denormalizeObject(state.entities.gatheringTables || {}) as any[],
+    denormalizeObject(state.entities.gatheringTables || {}),
     [state.entities.gatheringTables]
   );
 
   const environments = useMemo(() =>
-    denormalizeObject(state.entities.gatheringEnvironments || {}) as any[],
+    denormalizeObject(state.entities.gatheringEnvironments || {}),
     [state.entities.gatheringEnvironments]
   );
 
   const bait = useMemo(() =>
-    denormalizeObject(state.entities.gatheringBait || {}) as any[],
+    denormalizeObject(state.entities.gatheringBait || {}),
     [state.entities.gatheringBait]
   );
 
   const categories = useMemo(() =>
-    denormalizeObject(state.entities.gatheringCategories || {}) as any[],
+    denormalizeObject(state.entities.gatheringCategories || {}),
     [state.entities.gatheringCategories]
   );
 
   const items = useMemo(() =>
-    denormalizeObject(state.entities.gatheringItems || {}) as any[],
+    denormalizeObject(state.entities.gatheringItems || {}),
     [state.entities.gatheringItems]
   );
 
   const workers = useMemo(() => {
-    const chars = denormalizeObject(state.entities.characters || {}) as any[];
+    const chars = denormalizeObject(state.entities.characters || {});
     return chars.filter(c => c.work?.enabled);
   }, [state.entities.characters]);
 
   const foods = useMemo(() =>
-    denormalizeObject(state.entities.foods || {}) as any[],
+    denormalizeObject(state.entities.foods || {}),
     [state.entities.foods]
   );
 
   const materials = useMemo(() =>
-    denormalizeObject(state.entities.materials || {}) as any[],
+    denormalizeObject(state.entities.materials || {}),
     [state.entities.materials]
   );
 

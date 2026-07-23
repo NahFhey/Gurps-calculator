@@ -5,6 +5,15 @@
 
 import type { GCSCharacterData, CharacterImages } from './characterSheet';
 import type { CombatCategory } from '../constants';
+import type {
+  GatheringSpeciesExtended,
+  GatheringToolExtended,
+  GatheringTableExtended,
+  GatheringEnvironmentExtended,
+  GatheringBaitExtended,
+  GatheringCategoryExtended,
+  GatheringItemExtended,
+} from './gathering';
 
 export type Id = string;
 
@@ -496,56 +505,15 @@ export interface AlchemySettings {
 // GATHERING SYSTEM
 // ============================================================================
 
-export interface GatheringSpecies {
-  id: Id;
-  name: string;
-  category: 'fish' | 'game' | 'plant';
-  baseYield: number;
-  skill: string;
-  difficulty: number;
-  environments: string[];  // Environment IDs
-  seasonality?: string;
-  notes?: string;
-}
-
-export interface GatheringTool {
-  id: Id;
-  name: string;
-  category: string;
-  skillBonus: number;
-  yieldBonus: number;
-  durability?: number;
-  currentDurability?: number;
-}
-
-export interface GatheringTable {
-  id: Id;
-  name: string;
-  skill: string;
-  rolls: Array<{
-    min: number;
-    max: number;
-    result: string;
-    speciesId?: Id;
-    quantity?: number;
-  }>;
-}
-
-export interface GatheringEnvironment {
-  id: Id;
-  name: string;
-  description: string;
-  species: Id[];  // Species IDs
-  hazards?: string[];
-  /** Links this environment to a Location for auto-selection in downtime activities */
-  locationId?: string;
-  /** Supported gathering modes for this environment (e.g., Fishing, Foraging) */
-  supportedModes?: string[];
-  /** Skill modifier for this environment */
-  skillMod?: number;
-  /** Default values by mode for quick task setup */
-  defaultsByMode?: Record<string, any>;
-}
+// The gathering entity types are canonically defined in `./gathering` (the
+// "Extended" interfaces) — that is the shape the reducers, sample data, and
+// every view actually produce and consume. The old campaign-local interfaces
+// declared a divergent shape (category/baseYield/skill) that no code ever
+// read; they were retired 2026-07-23 in favor of these aliases.
+export type GatheringSpecies = GatheringSpeciesExtended;
+export type GatheringTool = GatheringToolExtended;
+export type GatheringTable = GatheringTableExtended;
+export type GatheringEnvironment = GatheringEnvironmentExtended;
 
 export interface GatheringSession {
   id: Id;
@@ -565,26 +533,9 @@ export interface GatheringSession {
   status: 'pending' | 'complete';
 }
 
-export interface GatheringBait {
-  id: Id;
-  name: string;
-  attractionBonus: number;
-  quantity: number;
-}
-
-export interface GatheringCategory {
-  id: Id;
-  name: string;
-  color: string;
-}
-
-export interface GatheringItem {
-  id: Id;
-  name: string;
-  categoryId: Id;
-  baseYield: number;
-  skill: string;
-}
+export type GatheringBait = GatheringBaitExtended;
+export type GatheringCategory = GatheringCategoryExtended;
+export type GatheringItem = GatheringItemExtended;
 
 export type GatheringDailyEvents = Record<string, Record<string, {
   rolled: boolean;

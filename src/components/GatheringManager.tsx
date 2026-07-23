@@ -45,35 +45,33 @@ function GatheringManagerBase() {
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState | null>(null);
 
   // Derive data from normalized state
-  // Note: We cast through unknown because the state types and view types differ
-  // but are compatible at runtime (view types are more specific)
   const species = useMemo(() =>
-    denormalizeObject(state.entities.gatheringSpecies || {}) as unknown as GatheringSpeciesExtended[],
+    denormalizeObject(state.entities.gatheringSpecies || {}),
     [state.entities.gatheringSpecies]
   );
 
   const tools = useMemo(() =>
-    denormalizeObject(state.entities.gatheringTools || {}) as unknown as GatheringToolExtended[],
+    denormalizeObject(state.entities.gatheringTools || {}),
     [state.entities.gatheringTools]
   );
 
   const tables = useMemo(() =>
-    denormalizeObject(state.entities.gatheringTables || {}) as unknown as GatheringTableExtended[],
+    denormalizeObject(state.entities.gatheringTables || {}),
     [state.entities.gatheringTables]
   );
 
   const environments = useMemo(() =>
-    denormalizeObject(state.entities.gatheringEnvironments || {}) as unknown as GatheringEnvironmentExtended[],
+    denormalizeObject(state.entities.gatheringEnvironments || {}),
     [state.entities.gatheringEnvironments]
   );
 
   const bait = useMemo(() =>
-    denormalizeObject(state.entities.gatheringBait || {}) as unknown as GatheringBaitExtended[],
+    denormalizeObject(state.entities.gatheringBait || {}),
     [state.entities.gatheringBait]
   );
 
   const items = useMemo(() =>
-    denormalizeObject(state.entities.gatheringItems || {}) as unknown as GatheringItemExtended[],
+    denormalizeObject(state.entities.gatheringItems || {}),
     [state.entities.gatheringItems]
   );
 

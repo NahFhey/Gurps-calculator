@@ -182,14 +182,12 @@ export function DowntimeProvider({
   const fishSpecies = useMemo(() => {
     const species = Object.values(campaignState.entities?.gatheringSpecies ?? {});
     return species.filter((s) => {
-      // Check both 'type' (extended) and 'category' (base) for compatibility
-      const speciesType = (s as any).type;
-      const speciesCategory = s.category;
+      // Check both 'type' (modern) and 'category' (legacy saves) for compatibility
       return (
-        speciesType === 'fish' ||
-        speciesType === 'shellfish' ||
-        speciesType === 'crustacean' ||
-        speciesCategory === 'fish'
+        s.type === 'fish' ||
+        s.type === 'shellfish' ||
+        s.type === 'crustacean' ||
+        s.category === 'fish'
       );
     });
   }, [campaignState.entities?.gatheringSpecies]);
@@ -212,7 +210,7 @@ export function DowntimeProvider({
     const allEnvs = Object.values(campaignState.entities?.gatheringEnvironments ?? {});
     return allEnvs.filter(
       (e) =>
-        (e as any).locationId === currentLocationId &&
+        e.locationId === currentLocationId &&
         (e.supportedModes?.includes('Foraging') ?? false)
     );
   }, [campaignState.entities?.gatheringEnvironments, currentLocationId]);

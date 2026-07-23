@@ -21,6 +21,7 @@ import type {
   CustomTemplates,
   EffectFamilyMap,
   CookingSkill,
+  AlchemyReagent,
   GatheringSpecies,
   GatheringTool,
   GatheringTable,
@@ -75,39 +76,9 @@ export interface Worker {
 // ALCHEMY REAGENT TYPE (Extended)
 // ============================================================================
 
-export interface AlchemyReagent {
-  id: Id;
-  name: string;
-  quantity: number;
-  aspects?: {
-    primary?: string;
-    secondary?: string;
-    tertiary?: string;
-  };
-  refinement?: 'crude' | 'prepared' | 'refined';
-  basePotency?: string;
-  concentrationSteps?: number;
-  roles?: string[];
-  primaryRole?: string;
-  hazards?: string[];
-  processingNotes?: string;
-  identificationLevel?: number;
-  analysisHistory?: unknown[];
-  falseProfile?: {
-    aspects?: {
-      primary?: string;
-      secondary?: string;
-      tertiary?: string;
-    };
-    basePotency?: string;
-    concentrationSteps?: number;
-    refinement?: string;
-    roles?: string[];
-    primaryRole?: string;
-    hazards?: string[];
-    processingNotes?: string;
-  } | null;
-}
+// Canonical AlchemyReagent lives in campaign.ts (a strict superset of the
+// interface that used to be duplicated here); re-exported like CookingSkill.
+export type { AlchemyReagent } from './campaign';
 
 // ============================================================================
 // ALCHEMY FORMULA TYPE

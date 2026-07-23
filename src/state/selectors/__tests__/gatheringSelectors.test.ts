@@ -56,41 +56,55 @@ import {
 const species: GatheringSpecies = {
   id: 'sp1',
   name: 'Trout',
-  category: 'fish',
-  baseYield: 2,
-  skill: 'Fishing',
-  difficulty: 0,
-  environments: ['env1'],
+  type: 'fish',
+  tags: ['river'],
+  foodType: 'fish-meat',
+  yieldMeatFormula: '1d',
+  secondaryMaterialType: null,
+  yieldSecondaryFormula: null,
+  secondaryNameOverride: null,
+  st: 8,
+  specialRules: [],
 };
 
 const tool: GatheringTool = {
   id: 't1',
   name: 'Rod',
-  category: 'fishing',
-  skillBonus: 1,
-  yieldBonus: 0,
+  toolType: 'rod',
+  allowedModes: ['Fishing'],
+  allowedMethods: ['angling'],
+  bonuses: [{ type: 'skill_bonus', value: 1 }],
+  durability: null,
+  notes: '',
 };
 
 const table: GatheringTable = {
   id: 'tbl1',
   name: 'River Table',
-  skill: 'Fishing',
-  rolls: [{ min: 1, max: 6, result: 'trout', speciesId: 'sp1', quantity: 1 }],
+  tableType: 'randomCatch',
+  rollMethod: '1d6',
+  entries: [
+    { id: 'e1', rollValue: 1, resultType: 'species', speciesId: 'sp1', text: 'trout' },
+  ],
 };
 
 const env1: GatheringEnvironment = {
   id: 'env1',
   name: 'River',
-  description: 'A river',
-  species: ['sp1'],
+  supportedModes: ['Fishing'],
+  defaultsByMode: {
+    Fishing: { randomCatchTableId: 'tbl1', mildEventTableId: null, rareEventTableId: null },
+  },
+  skillMod: 0,
   locationId: 'loc1',
 };
 
 const env2: GatheringEnvironment = {
   id: 'env2',
   name: 'Forest',
-  description: 'Woods',
-  species: [],
+  supportedModes: ['Foraging'],
+  defaultsByMode: {},
+  skillMod: 0,
   locationId: 'loc2',
 };
 
@@ -108,22 +122,30 @@ const session: GatheringSession = {
 const bait: GatheringBait = {
   id: 'b1',
   name: 'Worms',
-  attractionBonus: 1,
+  consumableType: 'bait',
+  baitTags: ['worm'],
+  attractsSpeciesIds: ['sp1'],
   quantity: 10,
+  rollBonus: 1,
 };
 
 const category: GatheringCategory = {
   id: 'cat1',
   name: 'Fish',
-  color: '#0000ff',
+  yieldFormula: '1d',
+  inventoryKind: 'food',
+  typeId: 'fish-meat',
+  description: '',
 };
 
 const item: GatheringItem = {
   id: 'i1',
   name: 'Trout',
-  categoryId: 'cat1',
-  baseYield: 1,
-  skill: 'Fishing',
+  inventoryKind: 'food',
+  typeId: 'fish-meat',
+  yieldFormula: '1d',
+  rarity: 'common',
+  description: '',
 };
 
 const dailyEvents: GatheringDailyEvents = {

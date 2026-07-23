@@ -87,7 +87,7 @@ export const hydrateCampaignState = (payload: CampaignState): CampaignState => {
         revealedHP: new Set(reveal.revealedHP || [])
       }
     },
-    maps: hydrateMapState((payload as any).maps),
+    maps: hydrateMapState(payload.maps),
   })));
 };
 
@@ -117,10 +117,6 @@ export async function saveCampaignState(state: CampaignState) {
 /**
  * Injects test sample data into an empty campaign state.
  * This provides persistent test samples for development and QA.
- *
- * Note: View types (Extended) and state types differ - state types are simpler
- * but runtime objects can have additional properties. We cast through 'any'
- * to match the pattern used elsewhere in the codebase.
  */
 function injectTestSampleData(state: CampaignState): CampaignState {
   if (!isStateEmpty(state)) {
@@ -136,19 +132,15 @@ function injectTestSampleData(state: CampaignState): CampaignState {
       ...state.entities,
       materials: sampleData.materials,
       foods: sampleData.foods,
-      // Gathering types: view types (Extended) have more fields than state types
-      // but are compatible at runtime, matching the pattern in GatheringManager
-      gatheringSpecies: sampleData.gatheringSpecies as any,
-      gatheringTools: sampleData.gatheringTools as any,
-      gatheringTables: sampleData.gatheringTables as any,
-      gatheringEnvironments: sampleData.gatheringEnvironments as any,
-      gatheringBait: sampleData.gatheringBait as any,
-      gatheringItems: sampleData.gatheringItems as any,
-      // Alchemy reagents: views.ts has extended type, campaign.ts has simple type
-      alchemyReagents: sampleData.alchemyReagents as any,
+      gatheringSpecies: sampleData.gatheringSpecies,
+      gatheringTools: sampleData.gatheringTools,
+      gatheringTables: sampleData.gatheringTables,
+      gatheringEnvironments: sampleData.gatheringEnvironments,
+      gatheringBait: sampleData.gatheringBait,
+      gatheringItems: sampleData.gatheringItems,
+      alchemyReagents: sampleData.alchemyReagents,
       customTemplates: sampleData.customTemplates,
-      // Cooking skills: both types have same shape but different imports
-      cookingSkills: sampleData.cookingSkills as any,
+      cookingSkills: sampleData.cookingSkills,
     },
   };
 }

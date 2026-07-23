@@ -22,18 +22,14 @@ import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/
 import type { DowntimeTask, FishingData, TaskResults } from '../../../types/downtime';
 import type { GatheringSpecies, GatheringEnvironment, GatheringTable, GatheringBait, Character } from '../../../types/campaign';
 
-// Extended type for GatheringEnvironment with additional properties used in fishing resolution
+// GatheringEnvironment is now the canonical Extended type (skillMod and
+// defaultsByMode included). Legacy pre-Extended saves stored default tables
+// under `defaultTables` instead; keep that as a typed compat field.
 interface GatheringEnvironmentExtended extends GatheringEnvironment {
-  skillMod?: number;
-  defaultsByMode?: Record<string, {
-    randomCatchTableId?: string;
-    mildEventTableId?: string;
-    rareEventTableId?: string;
-  }>;
   defaultTables?: {
-    randomCatchTableId?: string;
-    mildEventTableId?: string;
-    rareEventTableId?: string;
+    randomCatchTableId?: string | null;
+    mildEventTableId?: string | null;
+    rareEventTableId?: string | null;
   };
 }
 

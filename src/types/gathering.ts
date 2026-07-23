@@ -24,6 +24,12 @@ export interface GatheringSpeciesExtended {
   secondaryNameOverride: string | null;
   st: number | null;
   specialRules: string[];
+  /**
+   * @deprecated Legacy pre-Extended saves only ('fish' | 'game' | 'plant').
+   * Modern data uses `type`; DowntimeContext still dual-reads this for
+   * campaigns migrated from old persisted state.
+   */
+  category?: 'fish' | 'game' | 'plant';
 }
 
 // ============================================================================
@@ -48,6 +54,14 @@ export interface GatheringToolExtended {
   bonuses: ToolBonus[];
   durability: number | null;
   notes: string;
+  /**
+   * @deprecated Legacy pre-Extended saves only. Modern tools express bonuses
+   * via `bonuses: ToolBonus[]`; the foraging/mining views still dual-read
+   * these flat fields (with `?? 0` fallbacks) for migrated campaigns.
+   */
+  skillBonus?: number;
+  /** @deprecated See `skillBonus`. */
+  yieldBonus?: number;
 }
 
 // ============================================================================
