@@ -33,6 +33,8 @@ When `AUTO_QUEUE.md` has zero `- [ ]` items AND seven consecutive runs find zero
 
 <!-- Daily entries are prepended directly below this line, newest first. -->
 
+## 2026-07-23 — no auto-dev: commits since last review
+
 ## 2026-07-22 — no auto-dev: commits since last review
 
 ## 2026-07-21 — PASS (1 commit: 1P, 0N, 0C)
