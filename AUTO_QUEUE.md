@@ -245,10 +245,10 @@ These items close out findings from AUTO_REVIEW 2026-07-15 → 2026-07-21 (one C
 
 - [ ] Re-type src/utils/combatViewFilter.ts (fixes the 2026-07-19 AUTO_REVIEW CONCERN on d4ae57c). The conversion erased the deleted `.d.ts` shim's concrete signatures into 33 `: any`/`AnyRecord` on the player-view redaction path. Recover the original contract with `git show d4ae57c^:src/utils/combatViewFilter.d.ts` and re-type `getCombatView`/`hasHiddenInfo`/`filterParticipant` and the rest against `CombatState`/`Participant`/`RevealState` from src/types/combatTracker. Zero `: any` remaining. Safety net: src/utils/__tests__/combatViewFilter.test.js.
 - [ ] Re-type src/utils/combatLogFilter.ts: replace the `AnyRecord` (`Record<string, any>`) alias and the one bare `: any` callback with the canonical src/types/combatTracker types for log/entry/combatState (AUTO_REVIEW 2026-07-19 NOTE on ff630bd). Keep the existing return-type annotations and type guards. Safety net: src/utils/__tests__/combatLogFilter.test.js.
-- [ ] Re-type src/utils/combatViewSelectors.ts: remove the `AnyRecord` alias and every `as AnyRecord` cast introduced in 5a25bd2 (AUTO_REVIEW 2026-07-15 NOTE); use src/types/combatTracker types. Safety net: src/utils/__tests__/combatViewSelectors.test.js.
+- [x] Re-type src/utils/combatViewSelectors.ts: remove the `AnyRecord` alias and every `as AnyRecord` cast introduced in 5a25bd2 (AUTO_REVIEW 2026-07-15 NOTE); use src/types/combatTracker types. Safety net: src/utils/__tests__/combatViewSelectors.test.js. [resolved 2026-07-23 in the human reveal-type session (447501c) — fully typed against CombatState/Participant/RevealState.]
 - [ ] Tighten the 3 net-new internal `any` in src/utils/taskResolution.ts flagged by AUTO_REVIEW 2026-07-18 (6249db1): `_categories?: any` (~line 44), the `item?: any` parameter, and the `const yields: any = calculateFishYields(...)` local. Leave the shim-inherited `any` fields (payload/task/leader/environment/tools/species/categories/items/tables) alone — those are grandfathered. Safety net: src/utils/__tests__/taskResolution.test.js.
-- [ ] Remove the 4 cleanly-fixable `as any` casts in src/hooks/useCombatHistory.ts at lines 99, 114, 129, 144 (createSnapshot overload / newRevealState). Do NOT touch the two `saveCombatReveal(syncedReveal as any)` casts at :117/:147 — they are Out of scope (design decision). Existing hook/combat tests stay green.
-- [ ] Remove the 2 cleanly-removable `as any` casts in src/persistence/campaignStorage.ts: line 90 (`(payload as any).maps` — spurious, payload is already typed) and line 151 (`cookingSkills` — re-export of the same campaign.ts type). Do NOT touch the gathering/alchemy casts at :141-146/:148 — they are Out of scope (design decision). Existing persistence tests stay green.
+- [ ] Remove the 4 cleanly-fixable `as any` casts in src/hooks/useCombatHistory.ts at lines 99, 114, 129, 144 (createSnapshot overload / newRevealState). The two saveCombatReveal casts formerly at :117/:147 were already removed in the 2026-07-23 human reveal-type session (447501c); only these 4 remain in the file. Existing hook/combat tests stay green.
+- [x] Remove the 2 cleanly-removable `as any` casts in src/persistence/campaignStorage.ts: line 90 (`(payload as any).maps` — spurious, payload is already typed) and line 151 (`cookingSkills` — re-export of the same campaign.ts type). [resolved 2026-07-23 in the human gathering-type session (466dcbd) — the file now has ZERO `as any`; the gathering/alchemy casts fell away with the Extended-canonical fix.]
 
 ## Phase 16t-4 — Test coverage for zero-coverage hooks and gcsParser _(refill 2026-07-23)_
 
@@ -278,8 +278,8 @@ Same pattern as Phase 15e-4: rename `.js` → `.ts` (or `.tsx` if JSX), add type
 
 Same pattern as Phase 16y: remove every `as any` in the target file by fixing types at the source; zero runtime behavior change; tsc clean; existing tests green. If a specific cast genuinely requires a design decision, defer citing that cast's file:line.
 
-- [ ] Remove the 16 `as any` casts in src/components/combat/CombatTracker.tsx.
-- [ ] Remove the 10 `as any` casts in src/components/DayPlannerTab.tsx.
+- [ ] Remove the 13 `as any` casts in src/components/combat/CombatTracker.tsx (was 16; 3 removed in the 2026-07-23 human reveal-type session).
+- [x] Remove the 10 `as any` casts in src/components/DayPlannerTab.tsx. [resolved 2026-07-23 in the human gathering-type session (466dcbd) — all 10 were denormalize casts that fell away with the Extended-canonical fix.]
 - [ ] Remove the 25 `as any` casts in src/hooks/__tests__/useCombatStore.test.ts (test file — type the fixtures/mocks properly instead; all tests stay green with identical assertions).
 - [ ] Remove the 18 `as any` casts in src/utils/__tests__/combatHelpers.test.ts (same bar: properly typed fixtures, identical assertions).
 
@@ -299,8 +299,8 @@ The following are tracked elsewhere because they require design judgment or coor
 - Items in docs/INVENTORY_INTEGRATION_FOLLOWUPS.md (each has open design questions)
 - The 60 `as any` casts across the three Fishing views (FishingResolutionPanel/FishingActivity/FishingTaskForm) — they share a fishing type-model problem that needs human type design, not per-cast fixes
 - ~~JS → TS conversion of taskResolution.js (417), combatViewFilter.js (441), combatLogFilter.js (551), conditionsEngine.js (582)~~ — promoted to Phase 15e-3 on 2026-07-17 now that 15e-2 completed cleanly (the gate this note named)
-- The 2 `saveCombatReveal(syncedReveal as any)` casts at useCombatHistory.ts:117/:147 — need re-typing syncRevealStateForParticipants' loose `RevealStateLike` return contract (ripples to useCombatReinforcements + the useCampaignStore God node); human type design _(from the 2026-07-16 deferral, narrowed 2026-07-23)_
-- The 7 gathering/alchemy casts at campaignStorage.ts:141-146/:148 — the `entities` contract genuinely holds view-shape Extended types despite its state-typed declaration; needs a God-node contract decision (re-type entities OR convert sample data) _(from the 2026-07-16 deferral, narrowed 2026-07-23)_
+- ~~The 2 `saveCombatReveal(syncedReveal as any)` casts at useCombatHistory.ts:117/:147~~ — RESOLVED 2026-07-23 (447501c): RevealState/RevealEntry re-derived from runtime shape, combatReveal.ts fully typed, casts removed
+- ~~The 7 gathering/alchemy casts at campaignStorage.ts:141-146/:148~~ — RESOLVED 2026-07-23 (466dcbd): Extended types made canonical (campaign.ts aliases), casts removed
 - JS → TS conversion of src/utils/alchemy.js (1366 lines) and src/utils/gathering.js (823 lines) — rich `.d.ts` shims must be inlined not erased (the combatViewFilter CONCERN failure mode), and alchemy.js overlaps Devin's active alchemy-rules redesign (docs/GURPS_Alchemy_System_Rules.md, 2026-07); hold both for human-driven work
 - src/utils/sampleForagingData.js (361) and src/utils/performanceAnalysis.js (494) — zero production importers as of 2026-07-23; dead-code candidates needing a human keep/delete decision, do not convert or delete autonomously
 - src/utils/combatInventoryBridge.js — zero production importers, belongs to the parked Inventory Integration phase (see 15e-4 note)
