@@ -146,9 +146,9 @@ export function useCombatSession(): CombatSessionValue | null {
       const init = createInitialRevealState(combat.id, combat.participants);
       // Map encounterId to combatId for storage
       saveCombatReveal({
-        version: (init as { version?: number }).version,
+        version: init.version,
         combatId: combat.id,
-        byInstanceId: (init as { byInstanceId: Record<string, unknown> }).byInstanceId,
+        byInstanceId: init.byInstanceId,
       });
     }
   }, [combat, reveal]);

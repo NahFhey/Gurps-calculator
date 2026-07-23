@@ -114,7 +114,7 @@ export function useCombatHistory(): CombatHistoryResult {
         result.newRevealState as any,
         newState.participants,
       );
-      saveCombatReveal(syncedReveal as any);
+      saveCombatReveal(syncedReveal ?? null);
     }
   }, [saveCombatActive, saveCombatReveal]);
 
@@ -144,7 +144,7 @@ export function useCombatHistory(): CombatHistoryResult {
         result.newRevealState as any,
         newState.participants,
       );
-      saveCombatReveal(syncedReveal as any);
+      saveCombatReveal(syncedReveal ?? null);
     }
   }, [saveCombatActive, saveCombatReveal]);
 

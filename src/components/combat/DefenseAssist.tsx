@@ -4,6 +4,7 @@ import ModifierStack from './ModifierStack';
 import { DEFENSE_MODIFIERS, calculateEffective } from '../../utils/modifiers';
 import { rollVsTarget } from '../../utils/dice';
 import { getDefenderDefenseBase, getPublicDefenseLabel } from '../../utils/combatViewSelectors';
+import type { CombatState, RevealState } from '../../types/combatTracker';
 import { ViewMode } from '../../utils/combatViewFilter';
 
 interface Modifier {
@@ -49,8 +50,8 @@ interface DefenseData {
 interface DefenseAssistProps {
   defender: Defender | null;
   defenderId?: string | null;
-  combatState?: unknown;
-  revealState?: unknown;
+  combatState?: CombatState | null;
+  revealState?: RevealState | null;
   viewMode?: string;
   injectedModifiers?: Modifier[];
   onComplete: (data: { defense: DefenseData }) => void;

@@ -17,6 +17,7 @@ import {
   syncRevealStateForParticipants,
   updateReveal,
 } from '../combatReveal';
+import type { RevealState, RevealEntry } from '../../types/combatTracker';
 
 describe('combatReveal', () => {
   describe('calculateHPBand', () => {
@@ -103,7 +104,7 @@ describe('combatReveal', () => {
     });
 
     it('returns a default when byInstanceId or the requested id is absent', () => {
-      const withoutMap = getRevealForInstance({ version: 1 }, 'missing', 'player');
+      const withoutMap = getRevealForInstance({ version: 1 } as RevealState, 'missing', 'player');
       const emptyMap = getRevealForInstance({ byInstanceId: {} }, 'missing');
 
       expect(withoutMap.name).toBe(RevealMode.NAME_FULL);
@@ -151,14 +152,14 @@ describe('combatReveal', () => {
 
       expect(withEntry.byInstanceId['new-enemy'].name).toBe(RevealMode.NAME_HIDDEN);
       expect(withEntry.byInstanceId['new-enemy'].hp.mode).toBe(RevealMode.NUMERIC_BAND);
-      expect(withNestedPath.byInstanceId['new-enemy'].custom.deep.value).toBe(42);
+      expect((withNestedPath.byInstanceId['new-enemy'] as unknown as { custom: { deep: { value: number } } }).custom.deep.value).toBe(42);
       expect(original.byInstanceId).toEqual({});
     });
   });
 
   describe('entry collection helpers', () => {
     it('setRevealForInstance replaces an entry, creates the map, and preserves input', () => {
-      const original = { version: 1 };
+      const original = { version: 1 } as RevealState;
       const replacement = createDefaultRevealForInstance('ally-1', 'ally');
       const updated = setRevealForInstance(original, 'ally-1', replacement);
 
@@ -169,7 +170,7 @@ describe('combatReveal', () => {
     });
 
     it('addCombatantToReveal adds the requested side without mutating input', () => {
-      const original = { byInstanceId: { existing: { marker: 'kept' } } };
+      const original = { byInstanceId: { existing: { marker: 'kept' } } } as unknown as RevealState;
       const updated = addCombatantToReveal(original, 'player-1', 'player');
 
       expect(updated.byInstanceId['player-1'].hp.mode).toBe(RevealMode.NUMERIC_EXACT);
@@ -184,7 +185,7 @@ describe('combatReveal', () => {
           remove: { marker: 'remove' },
           keep: { marker: 'keep' },
         },
-      };
+      } as unknown as RevealState;
       const updated = removeCombatantFromReveal(original, 'remove');
 
       expect(updated.byInstanceId).toEqual({ keep: { marker: 'keep' } });
@@ -201,7 +202,7 @@ describe('combatReveal', () => {
 
       expect(revealDefenseForInstance(null, 'enemy-1', 'dodge')).toBeNull();
       expect(revealDefenseForInstance(state, '', 'dodge')).toBe(state);
-      expect(revealDefenseForInstance(state, 'enemy-1', '')).toBe(state);
+      expect(revealDefenseForInstance(state, 'enemy-1', '' as unknown as 'dodge')).toBe(state);
 
       const revealed = revealDefenseForInstance(state, 'enemy-1', 'dodge');
       expect(revealed?.byInstanceId['enemy-1'].defenses.dodge).toBe(
@@ -256,7 +257,7 @@ describe('combatReveal', () => {
           A: { marker: 'remove-me' },
           B: { marker: 'keep-me', name: RevealMode.NAME_PARTIAL },
         },
-      };
+      } as unknown as RevealState;
       const snapshot = structuredClone(original);
       const updated = syncRevealStateForParticipants(original, [
         { instanceId: 'B', side: 'enemy' },
@@ -280,7 +281,7 @@ describe('combatReveal', () => {
     });
 
     it('treats an empty object as revealed because missing fields are not hidden values', () => {
-      expect(hasAnyReveals({})).toBe(true);
+      expect(hasAnyReveals({} as RevealEntry)).toBe(true);
     });
 
     it('distinguishes a fully hidden enemy default from a player default', () => {

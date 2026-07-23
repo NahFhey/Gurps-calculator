@@ -232,15 +232,56 @@ export interface HistoryState {
   maxCheckpoints: number;
 }
 
-export interface RevealState {
-  combatId: string;
-  byInstanceId: Record<string, RevealEntry>;
+// Reveal mode literal unions. These mirror the `RevealMode` runtime consts in
+// src/utils/combatReveal.ts (the module that constructs every reveal entry via
+// createDefaultRevealForInstance) — keep the two in sync.
+export type NameRevealMode = 'hidden' | 'partial' | 'full';
+export type NumericRevealMode = 'unknown' | 'band' | 'exact';
+export type DefenseRevealMode = 'unknown' | 'approx' | 'exact';
+export type DRRevealMode = 'unknown' | 'minKnown' | 'exact';
+export type AttacksRevealMode = 'hidden' | 'namesOnly' | 'full';
+export type NotesRevealMode = 'hidden' | 'full';
+
+/**
+ * Per-participant reveal record, shaped exactly as
+ * `createDefaultRevealForInstance` builds it. The mode fields are always
+ * present on constructed entries; the auxiliary value fields (`approxValue`,
+ * `generalMin`, per-location DR) are only added when the GM reveals them.
+ */
+export interface RevealEntry {
+  name: NameRevealMode;
+  tags: NotesRevealMode;
+  hp: { mode: NumericRevealMode };
+  fp: { mode: NumericRevealMode };
+  mp: { mode: NumericRevealMode };
+  defenses: {
+    dodge: DefenseRevealMode;
+    parry: DefenseRevealMode;
+    block: DefenseRevealMode;
+    /** GM-entered approximate values shown in DEFENSE_APPROX mode. */
+    approxValue?: Partial<Record<'dodge' | 'parry' | 'block', number>>;
+  };
+  dr: {
+    general: DRRevealMode;
+    /** Known minimum shown in DR_MIN_KNOWN mode. */
+    generalMin?: number;
+    byLocation: Record<string, { mode: DRRevealMode; min?: number }>;
+  };
+  attacks: AttacksRevealMode;
+  notes: NotesRevealMode;
 }
 
-export interface RevealEntry {
-  name?: { mode: string };
-  hp?: { mode: string };
-  defenses?: { dodge?: { mode: string }; parry?: { mode: string }; block?: { mode: string } };
+/**
+ * Reveal container as persisted by the combat store. Freshly-built containers
+ * from `createInitialRevealState` carry `encounterId`; useCombatSession maps
+ * that onto `combatId` before the first save, so persisted state may hold
+ * either (or both) — hence both optional.
+ */
+export interface RevealState {
+  version?: number;
+  combatId?: string;
+  encounterId?: string;
+  byInstanceId: Record<string, RevealEntry>;
 }
 
 // ============================================================================

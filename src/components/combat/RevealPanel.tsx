@@ -1,30 +1,7 @@
 import { useState, ChangeEvent } from 'react';
 import { Eye, ChevronDown, ChevronUp } from 'lucide-react';
 import { RevealMode, updateReveal, getRevealForInstance } from '../../utils/combatReveal';
-
-interface RevealDefenses {
-  dodge: string;
-  parry: string;
-  block: string;
-}
-
-interface RevealDR {
-  general: string;
-}
-
-interface RevealHP {
-  mode: string;
-}
-
-interface RevealState {
-  name: string;
-  hp: RevealHP;
-  defenses: RevealDefenses;
-  dr: RevealDR;
-  attacks: string;
-  notes: string;
-  generalMin?: number;
-}
+import type { RevealState, RevealEntry } from '../../types/combatTracker';
 
 interface Participant {
   instanceId: string;
@@ -58,8 +35,8 @@ interface RevealControlProps {
 
 interface RevealPanelProps {
   combatActive: CombatActive | null;
-  combatReveal: Record<string, RevealState> | null;
-  saveCombatReveal: (reveal: Record<string, RevealState>) => void;
+  combatReveal: RevealState | null;
+  saveCombatReveal: (reveal: RevealState) => void;
   viewMode?: string;
 }
 
@@ -90,7 +67,7 @@ function RevealControl({ label, value, options, onChange, compact = false }: Rev
 /**
  * Get summary text for reveal state
  */
-function getRevealSummary(reveal: RevealState | null): string {
+function getRevealSummary(reveal: RevealEntry | null): string {
   if (!reveal) {
     return 'Fully Hidden';
   }
@@ -138,15 +115,14 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
   };
 
   const handleRevealChange = (instanceId: string, field: string, value: string | number) => {
-    const newReveal = updateReveal(combatReveal, instanceId, field, value) as Record<string, RevealState>;
-    saveCombatReveal(newReveal);
+    saveCombatReveal(updateReveal(combatReveal, instanceId, field, value));
   };
 
   const handleBatchRevealChange = (instanceId: string, updates: RevealUpdate[]) => {
     // Apply all updates in sequence to avoid state conflicts
-    let newReveal = combatReveal as Record<string, RevealState>;
+    let newReveal = combatReveal;
     for (const { field, value } of updates) {
-      newReveal = updateReveal(newReveal, instanceId, field, value) as Record<string, RevealState>;
+      newReveal = updateReveal(newReveal, instanceId, field, value);
     }
     saveCombatReveal(newReveal);
   };
@@ -167,7 +143,7 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
             combatReveal,
             participant.instanceId,
             participant.category || participant.side || 'enemy'
-          ) as RevealState;
+          );
           const isExpanded = expandedCombatants[participant.instanceId];
 
           return (
@@ -272,8 +248,8 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
                         <label className="text-xs text-gray-400">Minimum DR:</label>
                         <input
                           type="number"
-                          value={reveal.generalMin || 0}
-                          onChange={(e: ChangeEvent<HTMLInputElement>) => handleRevealChange(participant.instanceId, 'generalMin', parseInt(e.target.value) || 0)}
+                          value={reveal.dr.generalMin || 0}
+                          onChange={(e: ChangeEvent<HTMLInputElement>) => handleRevealChange(participant.instanceId, 'dr.generalMin', parseInt(e.target.value) || 0)}
                           className="w-20 ml-2 px-2 py-1 bg-gray-700 rounded text-sm"
                           min="0"
                         />

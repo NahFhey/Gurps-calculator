@@ -9,6 +9,7 @@ import { useMemo, useRef, useEffect } from 'react';
 import { useCampaignStore } from '../state/campaignStore';
 import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
 import type { CombatCharacter, CombatSession, CombatItem, Character, EncounterTemplate } from '../types/campaign';
+import type { RevealState } from '../types/combatTracker';
 
 /**
  * Hook to access combat state and actions from the campaign store.
@@ -127,7 +128,7 @@ export function useCombatStore() {
        * Save combat reveal state (Phase 5 structure).
        * This is stored in state.combat.revealState.
        */
-      saveCombatReveal: (revealState: { version?: number; combatId?: string; byInstanceId: Record<string, unknown> } | null) => {
+      saveCombatReveal: (revealState: RevealState | null) => {
         actions.setCombatRevealState(revealState);
       },
 

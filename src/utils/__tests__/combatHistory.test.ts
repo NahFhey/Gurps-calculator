@@ -23,6 +23,7 @@ import type {
   CombatState,
   HistoryState,
   RevealState,
+  RevealEntry,
 } from '../../types/combatTracker';
 
 // ---------------------------------------------------------------------------
@@ -78,7 +79,7 @@ function makeRevealState(): RevealState {
   return {
     combatId: 'combat-1',
     byInstanceId: {
-      e1: { hp: { mode: 'hidden' } },
+      e1: { hp: { mode: 'unknown' } } as RevealEntry,
     },
   };
 }

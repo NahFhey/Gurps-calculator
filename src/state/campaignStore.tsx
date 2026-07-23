@@ -60,6 +60,7 @@ import type {
 } from '../types/location';
 import type { DowntimeState } from '../types/downtime';
 import type { ForageZoneProfile } from '../types/foraging';
+import type { RevealState } from '../types/combatTracker';
 import type {
   MapState,
   MapId,
@@ -223,7 +224,7 @@ type CampaignStoreValue = {
     setCombatRulesPreset: (preset: string) => void;
     setCombatItems: (items: Record<Id, CombatItem>) => void;
     addCombatItem: (item: CombatItem) => void;
-    setCombatRevealState: (revealState: { version?: number; combatId?: string; byInstanceId: Record<string, unknown> } | null) => void;
+    setCombatRevealState: (revealState: RevealState | null) => void;
 
     // Encounter Template Actions (Phase 11c)
     addEncounterTemplate: (template: EncounterTemplate) => void;
@@ -516,7 +517,7 @@ export function CampaignStoreProvider({
       setCombatRulesPreset: (preset: string) => dispatch({ type: 'setCombatRulesPreset', payload: preset }),
       setCombatItems: (items: Record<Id, CombatItem>) => dispatch({ type: 'setCombatItems', payload: items }),
       addCombatItem: (item: CombatItem) => dispatch({ type: 'addCombatItem', payload: item }),
-      setCombatRevealState: (revealState: { version?: number; combatId?: string; byInstanceId: Record<string, unknown> } | null) =>
+      setCombatRevealState: (revealState: RevealState | null) =>
         dispatch({ type: 'setCombatRevealState', payload: revealState }),
 
       // Encounter Template Actions (Phase 11c)

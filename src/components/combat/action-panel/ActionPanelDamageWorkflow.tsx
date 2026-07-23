@@ -1,4 +1,5 @@
 import type { ChangeEvent } from 'react';
+import type { CombatState, RevealState } from '../../../types/combatTracker';
 import InjuryResolutionPanel from '../InjuryResolutionPanel';
 import { getPublicDefenderLabel } from '../../../utils/combatViewSelectors';
 import type { Participant } from '../../../types/combatTracker';
@@ -10,8 +11,8 @@ interface ActionPanelDamageWorkflowProps {
   selectedTargetId: string | null;
   boundTarget: Participant | null;
   resolvedTarget: Participant | null;
-  combatState?: unknown;
-  revealState?: unknown;
+  combatState?: CombatState | null;
+  revealState?: RevealState | null;
   combatRulesPreset: string;
   damageModifiers: Array<{ label: string; value: number }>;
   boundDamageExpression: string | null;

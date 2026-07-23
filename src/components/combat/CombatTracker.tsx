@@ -679,9 +679,9 @@ export default function CombatTracker() {
 
       {viewMode === ViewMode.GM && (
         <RevealPanel
-          combatActive={combat as any}
-          combatReveal={reveal as any}
-          saveCombatReveal={saveCombatReveal as any}
+          combatActive={combat}
+          combatReveal={reveal}
+          saveCombatReveal={saveCombatReveal}
           viewMode={viewMode}
         />
       )}

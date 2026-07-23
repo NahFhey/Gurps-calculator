@@ -234,11 +234,7 @@ export type CampaignState = {
       revealedDefenseValues: Record<string, { dodge?: number }>;
     };
     // New Phase 5 reveal state (per-instance reveal configuration)
-    revealState: {
-      version?: number;
-      combatId?: string;
-      byInstanceId: Record<string, unknown>;
-    } | null;
+    revealState: import('../types/combatTracker').RevealState | null;
   };
   locations: LocationState;
   downtime: DowntimeState;

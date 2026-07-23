@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { CombatState, RevealState } from '../../types/combatTracker';
 import AttackAssist from './AttackAssist';
 import DefenseAssist from './DefenseAssist';
 import ActionPanelHeader from './action-panel/ActionPanelHeader';
@@ -69,8 +70,8 @@ interface ActionData {
 interface ActionPanelProps {
   currentActor: Participant;
   participants: Participant[];
-  combatState?: unknown;
-  revealState?: unknown;
+  combatState?: CombatState | null;
+  revealState?: RevealState | null;
   viewMode?: string;
   onActionComplete: (data: ActionData) => void;
   combatRulesPreset?: string;

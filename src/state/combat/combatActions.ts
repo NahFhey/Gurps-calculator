@@ -6,7 +6,7 @@
  */
 
 import type { Id, CombatCharacter, CombatItem, CombatSession } from '../../types/campaign';
-import type { EncounterTemplate } from '../../types/combatTracker';
+import type { EncounterTemplate, RevealState } from '../../types/combatTracker';
 
 // ============================================================================
 // ACTION TYPE CONSTANTS
@@ -101,11 +101,7 @@ export type AddCombatItemAction = {
 };
 
 // Combat reveal state action type (Phase 5)
-export type RevealStatePayload = {
-  version?: number;
-  combatId?: string;
-  byInstanceId: Record<string, unknown>;
-} | null;
+export type RevealStatePayload = RevealState | null;
 export type SetCombatRevealStateAction = {
   type: typeof COMBAT_REVEAL_STATE_SET;
   payload: RevealStatePayload;
