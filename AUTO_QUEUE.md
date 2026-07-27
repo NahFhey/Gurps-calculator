@@ -305,9 +305,9 @@ Same bar as 16r: re-type against canonical domain types, zero `: any` remaining 
 
 Same bar as 16t-4: `__tests__/<name>.test.ts` beside the file, happy path + at least one error/edge path per exported function group, no `as any`, targeted vitest run green.
 
-- [ ] Add tests for src/state/downtime/downtimeErrors.ts (65 lines, zero coverage; small — cover every exported error helper).
-- [ ] Add tests for src/net/ConnectionManager.ts (373 lines, zero coverage; singleton class — mock `socket.io-client` and global fetch; cover connect/join token flow, listener re-registration on reconnect (the 10e off-before-on fix), and disconnect cleanup. Defer with reason "socket mocking exceeds one run" if the harness balloons).
-- [ ] Extend src/hooks/__tests__/useCombatSession.test.ts to cover the gaps noted 2026-07-27: previous-turn navigation, resource editing, and dice paths. Skip map movement/token placement (map harness is its own project). Same mocked-store harness the suite already uses.
+- [x] Add tests for src/state/downtime/downtimeErrors.ts (65 lines, zero coverage; small — cover every exported error helper). [2026-07-27 codex-shepherd session: 4 tests]
+- [x] Add tests for src/net/ConnectionManager.ts (373 lines, zero coverage; singleton class — mock `socket.io-client` and global fetch; cover connect/join token flow, listener re-registration on reconnect (the 10e off-before-on fix), and disconnect cleanup. Defer with reason "socket mocking exceeds one run" if the harness balloons). [2026-07-27 codex-shepherd session: 6 tests; mock socket models real on/off listener sets, so the dedup assertion is genuine]
+- [x] Extend src/hooks/__tests__/useCombatSession.test.ts to cover the gaps noted 2026-07-27: previous-turn navigation, resource editing, and dice paths. Skip map movement/token placement (map harness is its own project). Same mocked-store harness the suite already uses. [2026-07-27 codex-shepherd session: +7 tests (16 total); existing 9 untouched; previous-turn state-only behavior pinned as-is]
 
 ## Phase 16y-2b — `as any` reduction in test files, continued _(refill 2026-07-27)_
 

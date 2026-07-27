@@ -428,4 +428,225 @@ describe('useCombatSession lifecycle', () => {
     expect(result.current?.gmMode).toBe(false);
     expect(result.current?.viewMode).toBe(ViewMode.PLAYER);
   });
+
+  it('returns to the previous actor in the same round and records navigation', () => {
+    const combat = makeCombat({
+      currentRound: 3,
+      currentTurnIndex: 1,
+    });
+    const { result, saveCombatActive, recordAction } = setup({
+      combat,
+      reveal: {
+        combatId: 'combat-1',
+        byInstanceId: {},
+      },
+    });
+
+    act(() => result.current?.handlePrevTurn());
+
+    const saved = saveCombatActive.mock.calls[0][0] as CombatState;
+    expect(saved.currentRound).toBe(3);
+    expect(saved.currentTurnIndex).toBe(0);
+    expect(recordedActions(recordAction)).toEqual([
+      expect.objectContaining({
+        type: ACTION_TYPES.TURN_ADVANCE,
+        payload: expect.objectContaining({
+          fromRound: 3,
+          fromTurnIndex: 1,
+          toRound: 3,
+          toTurnIndex: 0,
+        }),
+      }),
+    ]);
+  });
+
+  it('wraps backwards from the first actor to the prior round last actor', () => {
+    const combat = makeCombat({
+      currentRound: 3,
+      currentTurnIndex: 0,
+    });
+    const { result, saveCombatActive, recordAction } = setup({
+      combat,
+      reveal: {
+        combatId: 'combat-1',
+        byInstanceId: {},
+      },
+    });
+
+    act(() => result.current?.handlePrevTurn());
+
+    const saved = saveCombatActive.mock.calls[0][0] as CombatState;
+    expect(saved.currentRound).toBe(2);
+    expect(saved.currentTurnIndex).toBe(1);
+    expect(recordedActions(recordAction)).toEqual([
+      expect.objectContaining({
+        type: ACTION_TYPES.TURN_ADVANCE,
+        payload: expect.objectContaining({
+          fromRound: 3,
+          fromTurnIndex: 0,
+          toRound: 2,
+          toTurnIndex: 1,
+        }),
+      }),
+    ]);
+  });
+
+  it('updates HP, FP, and MP through the session resource API', () => {
+    const hero = makeParticipant({
+      currentHP: 12,
+      currentFP: 11,
+      currentMP: 4,
+      maxFP: 11,
+      maxMP: 4,
+    });
+    const ogre = makeParticipant({
+      instanceId: 'ogre',
+      id: 'ogre',
+      name: 'Ogre',
+      category: 'enemy',
+      currentHP: 15,
+    });
+    const combat = makeCombat({
+      participants: [hero, ogre],
+      turnOrder: ['hero', 'ogre'],
+    });
+    const { result, saveCombatActive } = setup({
+      combat,
+      reveal: {
+        combatId: 'combat-1',
+        byInstanceId: {},
+      },
+    });
+
+    act(() => {
+      result.current?.updateResource('hero', 'HP', 8);
+      result.current?.updateResource('hero', 'FP', 7);
+      result.current?.updateResource('hero', 'MP', 2);
+    });
+
+    expect(saveCombatActive).toHaveBeenCalledTimes(3);
+    const hpState = saveCombatActive.mock.calls[0][0] as CombatState;
+    const fpState = saveCombatActive.mock.calls[1][0] as CombatState;
+    const mpState = saveCombatActive.mock.calls[2][0] as CombatState;
+    expect(
+      hpState.participants.find(
+        (participant) => participant.instanceId === 'hero',
+      )?.currentHP,
+    ).toBe(8);
+    expect(
+      fpState.participants.find(
+        (participant) => participant.instanceId === 'hero',
+      )?.currentFP,
+    ).toBe(7);
+    expect(
+      mpState.participants.find(
+        (participant) => participant.instanceId === 'hero',
+      )?.currentMP,
+    ).toBe(2);
+  });
+
+  it('does not persist an unchanged resource or an unknown participant', () => {
+    const { result, saveCombatActive } = setup({
+      reveal: {
+        combatId: 'combat-1',
+        byInstanceId: {},
+      },
+    });
+
+    act(() => {
+      result.current?.updateResource('hero', 'HP', 12);
+      result.current?.updateResource('missing', 'FP', 5);
+    });
+
+    expect(saveCombatActive).not.toHaveBeenCalled();
+  });
+
+  it('rolls a dice expression and appends the deterministic result to the log', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const combat = makeCombat();
+    const { result, saveCombatActive } = setup({
+      combat,
+      reveal: {
+        combatId: 'combat-1',
+        byInstanceId: {},
+      },
+    });
+
+    act(() => result.current?.setDiceExpression('2d6+1'));
+    act(() => result.current?.handleRoll());
+
+    expect(saveCombatActive).toHaveBeenCalledOnce();
+    const appendLog = saveCombatActive.mock.calls[0][0] as (
+      previous: CombatState,
+    ) => CombatState;
+    const rolled = appendLog(combat);
+    expect(rolled.log[rolled.log.length - 1]).toMatchObject({
+      type: 'roll',
+      round: 1,
+      turn: 0,
+      actorInstanceId: 'hero',
+      actorName: 'Aria',
+      text: 'Rolled 2d6+1 = 3',
+      data: {
+        expression: '2d6+1',
+        dice: [1, 1],
+        modifier: 1,
+        total: 3,
+        valid: true,
+      },
+    });
+  });
+
+  it('rolls against a target and records the success margin', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const combat = makeCombat();
+    const { result, saveCombatActive } = setup({
+      combat,
+      reveal: {
+        combatId: 'combat-1',
+        byInstanceId: {},
+      },
+    });
+
+    act(() => {
+      result.current?.setDiceExpression('3d6');
+      result.current?.setRollTarget('12');
+    });
+    act(() => result.current?.handleRoll());
+
+    expect(saveCombatActive).toHaveBeenCalledOnce();
+    const appendLog = saveCombatActive.mock.calls[0][0] as (
+      previous: CombatState,
+    ) => CombatState;
+    const rolled = appendLog(combat);
+    expect(rolled.log[rolled.log.length - 1]).toMatchObject({
+      type: 'roll',
+      text: 'Rolled 3d6 = 3 vs 12 → Success',
+      data: {
+        target: 12,
+        margin: 9,
+        success: true,
+        valid: true,
+      },
+    });
+  });
+
+  it('ignores invalid dice expressions and nonnumeric targets', () => {
+    const { result, saveCombatActive } = setup({
+      reveal: {
+        combatId: 'combat-1',
+        byInstanceId: {},
+      },
+    });
+
+    act(() => result.current?.setDiceExpression('not dice'));
+    act(() => result.current?.handleRoll());
+    act(() => {
+      result.current?.setDiceExpression('3d6');
+      result.current?.setRollTarget('high');
+    });
+    act(() => result.current?.handleRoll());
+
+    expect(saveCombatActive).not.toHaveBeenCalled();
+  });
 });
