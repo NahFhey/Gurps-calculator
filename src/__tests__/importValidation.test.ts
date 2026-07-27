@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Tests for import validation edge cases.
  *
@@ -13,8 +12,64 @@ import {
   splitState,
   mergeGM,
   SCHEMA_VERSION,
+  type ImportResult,
+  type ValidationResult,
 } from '../utils/exportImport';
 import { createCampaignState } from '../state/campaignReducer';
+
+type InvalidValidationResult = Extract<ValidationResult, { valid: false }>;
+type ValidValidationResult = Extract<ValidationResult, { valid: true }>;
+type FailedImportResult = Extract<ImportResult, { ok: false }>;
+type SuccessfulImportResult = Extract<ImportResult, { ok: true }>;
+
+function requireInvalidValidation(
+  result: ValidationResult
+): asserts result is InvalidValidationResult {
+  if (result.valid) {
+    throw new Error('Expected validation to fail');
+  }
+}
+
+function requireValidValidation(
+  result: ValidationResult
+): asserts result is ValidValidationResult {
+  if (!result.valid) {
+    throw new Error('Expected validation to succeed');
+  }
+}
+
+function requireFailedImport(
+  result: ImportResult
+): asserts result is FailedImportResult {
+  if (result.ok) {
+    throw new Error('Expected import to fail');
+  }
+}
+
+function requireSuccessfulImport(
+  result: ImportResult
+): asserts result is SuccessfulImportResult {
+  if (!result.ok) {
+    throw new Error('Expected import to succeed');
+  }
+}
+
+function requireLegacyMergedState(
+  value: unknown
+): asserts value is {
+  alchemyReagents: Array<{ aspects?: unknown }>;
+  gmNotes?: unknown;
+} {
+  if (
+    !value
+    || typeof value !== 'object'
+    || !('alchemyReagents' in value)
+    || !Array.isArray(value.alchemyReagents)
+    || !('gmNotes' in value)
+  ) {
+    throw new Error('Expected merged legacy state');
+  }
+}
 
 // Ensure crypto is available for tests
 beforeAll(async () => {
@@ -34,6 +89,7 @@ describe('validateImport', () => {
   it('rejects null', () => {
     const result = validateImport(null);
     expect(result.valid).toBe(false);
+    requireInvalidValidation(result);
     expect(result.error).toContain('not an object');
   });
 
@@ -60,6 +116,7 @@ describe('validateImport', () => {
   it('rejects missing schemaVersion', () => {
     const result = validateImport({ public: {}, exportType: 'unlocked' });
     expect(result.valid).toBe(false);
+    requireInvalidValidation(result);
     expect(result.error).toContain('schemaVersion');
   });
 
@@ -70,6 +127,7 @@ describe('validateImport', () => {
       exportType: 'unlocked',
     });
     expect(result.valid).toBe(false);
+    requireInvalidValidation(result);
     expect(result.error).toContain('Incompatible');
   });
 
@@ -93,6 +151,7 @@ describe('validateImport', () => {
       exportType: 'unlocked',
     });
     expect(result.valid).toBe(false);
+    requireInvalidValidation(result);
     expect(result.error).toContain('public');
   });
 
@@ -112,6 +171,7 @@ describe('validateImport', () => {
       public: { data: true },
     });
     expect(result.valid).toBe(true);
+    requireValidValidation(result);
     expect(result.warnings?.some((w) => w.includes('exportType'))).toBe(true);
   });
 
@@ -122,6 +182,7 @@ describe('validateImport', () => {
       public: { data: true },
     });
     expect(result.valid).toBe(false);
+    requireInvalidValidation(result);
     expect(result.error).toContain('gmLock');
   });
 
@@ -132,6 +193,7 @@ describe('validateImport', () => {
       public: { data: true },
     });
     expect(result.valid).toBe(true);
+    requireValidValidation(result);
     expect(result.warnings?.some((w) => w.includes('GM data'))).toBe(true);
   });
 
@@ -150,6 +212,7 @@ describe('importFile', () => {
   it('handles malformed JSON string', async () => {
     const result = await importFile('{not valid json!!!');
     expect(result.ok).toBe(false);
+    requireFailedImport(result);
     expect(result.error).toBeDefined();
   });
 
@@ -166,6 +229,7 @@ describe('importFile', () => {
   it('handles object with missing schema version', async () => {
     const result = await importFile({ public: {} });
     expect(result.ok).toBe(false);
+    requireFailedImport(result);
     expect(result.error).toContain('schemaVersion');
   });
 
@@ -174,6 +238,7 @@ describe('importFile', () => {
     const exported = exportUnlocked(state);
     const result = await importFile(exported);
     expect(result.ok).toBe(true);
+    requireSuccessfulImport(result);
     expect(result.data).toBeDefined();
     expect(result.isLocked).toBe(false);
   });
@@ -226,9 +291,11 @@ describe('splitState / mergeGM', () => {
 
   it('splitState handles missing combat reveal gracefully', () => {
     const state = createCampaignState();
-    delete state.combat.reveal;
+    const { reveal, ...combatWithoutReveal } = state.combat;
+    void reveal;
+    const stateWithoutReveal = { ...state, combat: combatWithoutReveal };
     // Should not throw
-    const { public: pub } = splitState(state);
+    const { public: pub } = splitState(stateWithoutReveal);
     expect(pub).toBeDefined();
   });
 
@@ -258,6 +325,7 @@ describe('splitState / mergeGM', () => {
     };
 
     const merged = mergeGM(publicData, gmPayload);
+    requireLegacyMergedState(merged);
     expect(merged.alchemyReagents[0].aspects).toEqual(['fire']);
     expect(merged.gmNotes).toBe('GM note');
   });

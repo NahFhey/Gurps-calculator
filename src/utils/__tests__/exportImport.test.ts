@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, expect, it, beforeAll } from 'vitest';
 import { exportLocked } from '../exportImport';
 import { createCampaignState } from '../../state/campaignReducer';

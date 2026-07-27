@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import {
   safeParse,
@@ -6,6 +5,27 @@ import {
   determineQuality,
   refundMaterialsFromProject
 } from '../helpers';
+import type { Craft, CraftConsumedMaterial, Material } from '../../types/campaign';
+
+const createProject = (
+  consumedMaterials: CraftConsumedMaterial[]
+): Pick<Craft, 'consumedMaterials'> => ({ consumedMaterials });
+
+const createMaterial = (
+  id: string,
+  name: string,
+  quantity: number
+): Material => ({ id, name, type: 'material', quantity });
+
+// TODO(types): Craft['consumedMaterials'] excludes the null value handled by refundMaterialsFromProject.
+const refundMaterialsFromNullableProject = refundMaterialsFromProject as (
+  project:
+    | Pick<Craft, 'consumedMaterials'>
+    | { consumedMaterials: null }
+    | null
+    | undefined,
+  materials: Material[]
+) => Material[];
 
 describe('helper functions', () => {
   describe('safeParse', () => {
@@ -21,7 +41,7 @@ describe('helper functions', () => {
     });
 
     it('should return fallback for null input', () => {
-      const fallback = [];
+      const fallback: unknown[] = [];
       const result = safeParse(null, fallback);
       expect(result).toEqual(fallback);
     });
@@ -33,13 +53,15 @@ describe('helper functions', () => {
     });
 
     it('should handle array JSON', () => {
-      const result = safeParse('[1, 2, 3]', []);
+      const result = safeParse<number[]>('[1, 2, 3]', []);
       expect(result).toEqual([1, 2, 3]);
     });
 
     it('should handle nested objects', () => {
       const json = '{"nested": {"key": "value"}}';
-      const result = safeParse(json, {});
+      const result = safeParse<{ nested: { key: string } }>(json, {
+        nested: { key: '' }
+      });
       expect(result.nested.key).toBe('value');
     });
 
@@ -122,16 +144,14 @@ describe('helper functions', () => {
 
   describe('refundMaterialsFromProject', () => {
     it('should refund consumed materials', () => {
-      const project = {
-        consumedMaterials: [
-          { materialId: 'mat-1', amount: 5, name: 'Wood', type: 'material' },
-          { materialId: 'mat-2', amount: 3, name: 'Iron', type: 'material' }
-        ]
-      };
+      const project = createProject([
+        { materialId: 'mat-1', amount: 5, name: 'Wood', type: 'material' },
+        { materialId: 'mat-2', amount: 3, name: 'Iron', type: 'material' }
+      ]);
 
       const materials = [
-        { id: 'mat-1', name: 'Wood', type: 'material', quantity: 10 },
-        { id: 'mat-2', name: 'Iron', type: 'material', quantity: 20 }
+        createMaterial('mat-1', 'Wood', 10),
+        createMaterial('mat-2', 'Iron', 20)
       ];
 
       const result = refundMaterialsFromProject(project, materials);
@@ -141,13 +161,11 @@ describe('helper functions', () => {
     });
 
     it('should recreate material entry if deleted', () => {
-      const project = {
-        consumedMaterials: [
-          { materialId: 'mat-1', amount: 5, name: 'Wood', type: 'material' }
-        ]
-      };
+      const project = createProject([
+        { materialId: 'mat-1', amount: 5, name: 'Wood', type: 'material' }
+      ]);
 
-      const materials = []; // Material was deleted
+      const materials: Material[] = []; // Material was deleted
 
       const result = refundMaterialsFromProject(project, materials);
 
@@ -158,14 +176,12 @@ describe('helper functions', () => {
     });
 
     it('should not modify original materials array', () => {
-      const project = {
-        consumedMaterials: [
-          { materialId: 'mat-1', amount: 5, name: 'Wood', type: 'material' }
-        ]
-      };
+      const project = createProject([
+        { materialId: 'mat-1', amount: 5, name: 'Wood', type: 'material' }
+      ]);
 
       const materials = [
-        { id: 'mat-1', name: 'Wood', type: 'material', quantity: 10 }
+        createMaterial('mat-1', 'Wood', 10)
       ];
 
       const originalQuantity = materials[0].quantity;
@@ -175,12 +191,10 @@ describe('helper functions', () => {
     });
 
     it('should handle empty consumed materials', () => {
-      const project = {
-        consumedMaterials: []
-      };
+      const project = createProject([]);
 
       const materials = [
-        { id: 'mat-1', name: 'Wood', type: 'material', quantity: 10 }
+        createMaterial('mat-1', 'Wood', 10)
       ];
 
       const result = refundMaterialsFromProject(project, materials);
@@ -194,17 +208,17 @@ describe('helper functions', () => {
       };
 
       const materials = [
-        { id: 'mat-1', name: 'Wood', type: 'material', quantity: 10 }
+        createMaterial('mat-1', 'Wood', 10)
       ];
 
-      const result = refundMaterialsFromProject(project, materials);
+      const result = refundMaterialsFromNullableProject(project, materials);
 
       expect(result).toEqual(materials);
     });
 
     it('should handle null project', () => {
       const materials = [
-        { id: 'mat-1', name: 'Wood', type: 'material', quantity: 10 }
+        createMaterial('mat-1', 'Wood', 10)
       ];
 
       const result = refundMaterialsFromProject(null, materials);
@@ -213,15 +227,13 @@ describe('helper functions', () => {
     });
 
     it('should handle multiple refunds for same material', () => {
-      const project = {
-        consumedMaterials: [
-          { materialId: 'mat-1', amount: 5, name: 'Wood', type: 'material' },
-          { materialId: 'mat-1', amount: 3, name: 'Wood', type: 'material' }
-        ]
-      };
+      const project = createProject([
+        { materialId: 'mat-1', amount: 5, name: 'Wood', type: 'material' },
+        { materialId: 'mat-1', amount: 3, name: 'Wood', type: 'material' }
+      ]);
 
       const materials = [
-        { id: 'mat-1', name: 'Wood', type: 'material', quantity: 10 }
+        createMaterial('mat-1', 'Wood', 10)
       ];
 
       const result = refundMaterialsFromProject(project, materials);

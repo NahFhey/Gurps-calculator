@@ -322,11 +322,11 @@ Same bar as the 16y-2 test-file items: properly typed fixtures/mocks, identical 
 
 These 8 test files were renamed .js→.ts in Phase 10b with `@ts-nocheck` added and "proper typing deferred to 10c" — never done. Pattern: delete the `@ts-nocheck` pragma, fix the resulting type errors properly (typed fixtures/factories, no `as any`, no `@ts-ignore`), identical assertions, suite green with unchanged counts, tsc clean.
 
-- [ ] Retire @ts-nocheck in src/utils/__tests__/helpers.test.ts.
-- [ ] Retire @ts-nocheck in src/utils/__tests__/schemaVersioning.test.ts.
-- [ ] Retire @ts-nocheck in src/__tests__/jsonParseCrashPaths.test.ts.
-- [ ] Retire @ts-nocheck in src/__tests__/importValidation.test.ts.
-- [ ] Retire @ts-nocheck in src/utils/__tests__/exportImport.test.ts (1 test; exportImport.ts is now fully typed per 16r-2, so this should be quick).
+- [x] Retire @ts-nocheck in src/utils/__tests__/helpers.test.ts. [2026-07-27 codex-shepherd session: 34 tests unchanged; 1 TODO(types) — Craft['consumedMaterials'] excludes the null that refundMaterialsFromProject handles]
+- [x] Retire @ts-nocheck in src/utils/__tests__/schemaVersioning.test.ts. [2026-07-27 codex-shepherd session: 35 tests unchanged]
+- [x] Retire @ts-nocheck in src/__tests__/jsonParseCrashPaths.test.ts. [2026-07-27 codex-shepherd session: 16 tests unchanged; 4 TODO(types) — reveal-util params exclude the malformed inputs their runtime tolerates]
+- [x] Retire @ts-nocheck in src/__tests__/importValidation.test.ts. [2026-07-27 codex-shepherd session: 25 tests unchanged]
+- [x] Retire @ts-nocheck in src/utils/__tests__/exportImport.test.ts (1 test; exportImport.ts is now fully typed per 16r-2, so this should be quick). [2026-07-27 codex-shepherd session: pragma removal only]
 - [ ] Retire @ts-nocheck in src/utils/__tests__/combatReducer.test.ts (imports the now-typed combatReducer.ts).
 - [ ] Retire @ts-nocheck in src/utils/__tests__/alchemy.test.ts (imports alchemy.js via its rich .d.ts shim — type against the shim's declared signatures; if the shim itself is too loose to type the test against, defer citing the specific signature).
 - [ ] Retire @ts-nocheck in src/utils/__tests__/gathering.test.ts (same shim caveat as alchemy).

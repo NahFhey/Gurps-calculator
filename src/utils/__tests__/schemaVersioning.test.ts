@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * @fileoverview Test suite for schema versioning system
  * 
@@ -18,10 +17,52 @@ import {
 } from '../schemaVersioning';
 import {
   migrateData,
-  validateDataForVersion,
-  getLastBackup,
-  listBackups
+  validateDataForVersion
 } from '../dataMigrations';
+
+type MigratedCondition = Record<string, unknown> & {
+  conditionId?: string;
+  revealed?: string;
+};
+
+type MigratedParticipant = Record<string, unknown> & {
+  conditions: MigratedCondition[];
+};
+
+function assertMigratedCombat(
+  data: Record<string, unknown>
+): asserts data is Record<string, unknown> & {
+  combatActive: Record<string, unknown> & { participants: MigratedParticipant[] };
+} {
+  if (
+    !data.combatActive
+    || typeof data.combatActive !== 'object'
+    || !('participants' in data.combatActive)
+    || !Array.isArray(data.combatActive.participants)
+  ) {
+    throw new Error('Expected migrated combat participants');
+  }
+
+  for (const participant of data.combatActive.participants) {
+    if (
+      !participant
+      || typeof participant !== 'object'
+      || !('conditions' in participant)
+      || !Array.isArray(participant.conditions)
+    ) {
+      throw new Error('Expected migrated participant conditions');
+    }
+  }
+}
+
+function assertArrayProperty<Key extends string>(
+  data: Record<string, unknown>,
+  key: Key
+): asserts data is Record<string, unknown> & Record<Key, unknown[]> {
+  if (!Array.isArray(data[key])) {
+    throw new Error(`Expected ${key} to be an array`);
+  }
+}
 
 describe('Schema Versioning System', () => {
   describe('Version Constants', () => {
@@ -184,13 +225,18 @@ describe('Schema Versioning System', () => {
       };
 
       const result = migrateData(v1_4_data, '1.4.0', '1.5.0');
+      assertMigratedCombat(result);
       const participant = result.combatActive.participants[0];
 
       expect(result.schemaVersion).toBe('1.5.0');
       expect('isStunned' in participant).toBe(false);
       expect(participant.conditions.some(c => c.conditionId === 'stunned')).toBe(true);
       // Pre-existing instance gets its eye state backfilled from the catalog
-      expect(participant.conditions.find(c => c.conditionId === 'poisoned').revealed).toBe('closed');
+      const poisoned = participant.conditions.find(c => c.conditionId === 'poisoned');
+      if (!poisoned) {
+        throw new Error('Expected pre-existing poisoned condition');
+      }
+      expect(poisoned.revealed).toBe('closed');
     });
 
     it('should pass through 1.5.0 migration when no combat is active', () => {
@@ -214,6 +260,8 @@ describe('Schema Versioning System', () => {
       };
 
       const result = migrateData(v1_5_data, '1.5.0', '1.5.1');
+      assertArrayProperty(result, 'combatCharacters');
+      assertArrayProperty(result, 'combatTombstones');
       const [c1, c2, c3] = result.combatCharacters;
 
       expect(result.schemaVersion).toBe('1.5.1');
@@ -364,6 +412,8 @@ describe('Schema Versioning System', () => {
         '1.0.0',
         '1.3.0'
       );
+      assertArrayProperty(migratedData, 'materials');
+      assertArrayProperty(migratedData, 'foods');
 
       // Verify migration succeeded
       expect(migratedData.schemaVersion).toBe('1.3.0');

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Tests for unprotected JSON.parse crash paths.
  *
@@ -14,47 +13,88 @@ import { describe, it, expect } from 'vitest';
 import {
   setRevealForInstance,
   addCombatantToReveal,
+  createDefaultRevealForInstance,
   syncRevealStateForParticipants,
   removeCombatantFromReveal,
 } from '../utils/combatReveal';
+import type { RevealEntry, RevealState } from '../types/combatTracker';
+
+// TODO(types): setRevealForInstance's RevealState/RevealEntry parameters exclude malformed crash-path inputs.
+const setRevealForMalformedInput = setRevealForInstance as (
+  revealState: RevealState | Record<string, unknown> | null | undefined,
+  instanceId: string,
+  nextReveal: RevealEntry | Record<string, unknown>
+) => RevealState;
+
+// TODO(types): addCombatantToReveal's RevealState parameter excludes malformed crash-path inputs.
+const addCombatantToMalformedReveal = addCombatantToReveal as (
+  revealState: unknown,
+  instanceId: string,
+  side: string
+) => RevealState;
+
+// TODO(types): syncRevealStateForParticipants's RevealState parameter excludes malformed crash-path inputs.
+const syncMalformedRevealState = syncRevealStateForParticipants as (
+  revealState: unknown,
+  participants: Parameters<typeof syncRevealStateForParticipants>[1]
+) => RevealState | null | undefined;
+
+// TODO(types): removeCombatantFromReveal's RevealState parameter excludes malformed crash-path inputs.
+const removeCombatantFromMalformedReveal = removeCombatantFromReveal as (
+  revealState: unknown,
+  instanceId: string
+) => RevealState;
+
+function requireRevealState(
+  revealState: RevealState | null | undefined
+): RevealState {
+  if (!revealState) {
+    throw new Error('Expected reveal state');
+  }
+  return revealState;
+}
 
 // ---------------------------------------------------------------------------
 // combatReveal.js — JSON.parse(JSON.stringify(revealState)) deep-clone paths
 // ---------------------------------------------------------------------------
 describe('combatReveal deep-clone crash paths', () => {
-  const validRevealState = {
+  const validRevealState: RevealState = {
     byInstanceId: {
-      'char-1': { name: 'visible', hp: { mode: 'hidden' } },
+      'char-1': createDefaultRevealForInstance('char-1', 'enemy'),
     },
   };
 
   describe('setRevealForInstance', () => {
     it('works with valid reveal state', () => {
-      const result = setRevealForInstance(validRevealState, 'char-2', { name: 'visible' });
+      const result = setRevealForMalformedInput(
+        validRevealState,
+        'char-2',
+        { name: 'visible' }
+      );
       expect(result.byInstanceId['char-2'].name).toBe('visible');
       // Original untouched
       expect(validRevealState.byInstanceId['char-2']).toBeUndefined();
     });
 
     it('initializes byInstanceId if missing', () => {
-      const result = setRevealForInstance({}, 'char-1', { name: 'visible' });
+      const result = setRevealForMalformedInput({}, 'char-1', { name: 'visible' });
       expect(result.byInstanceId['char-1'].name).toBe('visible');
     });
 
     it('throws on null input (documents crash risk)', () => {
-      expect(() => setRevealForInstance(null, 'char-1', {})).toThrow();
+      expect(() => setRevealForMalformedInput(null, 'char-1', {})).toThrow();
     });
 
     it('throws on undefined input (documents crash risk)', () => {
-      expect(() => setRevealForInstance(undefined, 'char-1', {})).toThrow();
+      expect(() => setRevealForMalformedInput(undefined, 'char-1', {})).toThrow();
     });
 
     it('handles circular reference gracefully (safeDeepClone returns original)', () => {
-      const circular = { byInstanceId: {} };
+      const circular: RevealState & { self?: RevealState } = { byInstanceId: {} };
       circular.self = circular;
       // safeDeepClone catches the JSON serialization error and returns the original reference,
       // so setRevealForInstance completes without throwing
-      const result = setRevealForInstance(circular, 'char-1', {});
+      const result = setRevealForMalformedInput(circular, 'char-1', {});
       expect(result.byInstanceId['char-1']).toBeDefined();
     });
   });
@@ -67,7 +107,7 @@ describe('combatReveal deep-clone crash paths', () => {
     });
 
     it('throws on null input (documents crash risk)', () => {
-      expect(() => addCombatantToReveal(null, 'char-1', 'enemy')).toThrow();
+      expect(() => addCombatantToMalformedReveal(null, 'char-1', 'enemy')).toThrow();
     });
   });
 
@@ -78,15 +118,19 @@ describe('combatReveal deep-clone crash paths', () => {
     });
 
     it('removes entries for missing participants', () => {
-      const result = syncRevealStateForParticipants(validRevealState, []);
+      const result = requireRevealState(
+        syncRevealStateForParticipants(validRevealState, [])
+      );
       expect(Object.keys(result.byInstanceId)).toHaveLength(0);
     });
 
     it('adds defaults for new participants', () => {
-      const result = syncRevealStateForParticipants(validRevealState, [
-        { instanceId: 'char-1', category: 'ally' },
-        { instanceId: 'new-char', category: 'enemy' },
-      ]);
+      const result = requireRevealState(
+        syncRevealStateForParticipants(validRevealState, [
+          { instanceId: 'char-1', category: 'ally' },
+          { instanceId: 'new-char', category: 'enemy' },
+        ])
+      );
       expect(result.byInstanceId['char-1']).toBeDefined();
       expect(result.byInstanceId['new-char']).toBeDefined();
     });
@@ -96,7 +140,7 @@ describe('combatReveal deep-clone crash paths', () => {
       // byInstanceId exists after deep clone but doesn't initialize it.
       // Fix target: Phase 10d
       expect(() =>
-        syncRevealStateForParticipants({}, [
+        syncMalformedRevealState({}, [
           { instanceId: 'char-1', category: 'enemy' },
         ])
       ).toThrow();
@@ -110,7 +154,7 @@ describe('combatReveal deep-clone crash paths', () => {
     });
 
     it('throws on null input (documents crash risk)', () => {
-      expect(() => removeCombatantFromReveal(null, 'char-1')).toThrow();
+      expect(() => removeCombatantFromMalformedReveal(null, 'char-1')).toThrow();
     });
 
     it('handles removing non-existent instance gracefully', () => {
@@ -128,7 +172,7 @@ describe('campaignReducer restoreCheckpoint', () => {
   it('restoreCheckpoint handles nonexistent checkpoint id', async () => {
     const { campaignReducer, createCampaignState } = await import('../state/campaignReducer');
     const state = createCampaignState();
-    state.checkpoints = { entries: [], maxEntries: 10 };
+    state.checkpoints = { entries: [], maxSize: 10 };
 
     // Should not crash, just return unchanged state
     const next = campaignReducer(state, {
@@ -163,8 +207,8 @@ describe('campaignReducer restoreCheckpoint', () => {
     };
 
     state.checkpoints = {
-      entries: [{ id: 'cp-1', label: 'Checkpoint 1', snapshot, timestamp: Date.now() }],
-      maxEntries: 10,
+      entries: [{ id: 'cp-1', label: 'Checkpoint 1', snapshot, createdAt: Date.now() }],
+      maxSize: 10,
     };
 
     const next = campaignReducer(state, {
