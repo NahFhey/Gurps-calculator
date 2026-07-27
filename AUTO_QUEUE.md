@@ -318,6 +318,41 @@ Same bar as the 16y-2 test-file items: properly typed fixtures/mocks, identical 
 - [x] Remove the 10 `as any` casts in src/hooks/__tests__/useTimeAdvancement.test.ts. [2026-07-27 codex-shepherd session: 10→0 via typed makeCampaignStore factory, 10 tests unchanged]
 - [x] Remove the 22 `as any` casts across the gathering view-test trio src/components/gathering/__tests__/EnvironmentsView.test.tsx (9), ToolsView.test.tsx (8), BaitView.test.tsx (5) — same fixture family, one run; the Extended-canonical fix should make shared typed factories straightforward. [2026-07-27 codex-shepherd session: 22→0, 38 tests unchanged]
 
+## Phase 16n — @ts-nocheck retirement (one file per run) _(refill 2026-07-27 #2, codex-shepherd session)_
+
+These 8 test files were renamed .js→.ts in Phase 10b with `@ts-nocheck` added and "proper typing deferred to 10c" — never done. Pattern: delete the `@ts-nocheck` pragma, fix the resulting type errors properly (typed fixtures/factories, no `as any`, no `@ts-ignore`), identical assertions, suite green with unchanged counts, tsc clean.
+
+- [ ] Retire @ts-nocheck in src/utils/__tests__/helpers.test.ts.
+- [ ] Retire @ts-nocheck in src/utils/__tests__/schemaVersioning.test.ts.
+- [ ] Retire @ts-nocheck in src/__tests__/jsonParseCrashPaths.test.ts.
+- [ ] Retire @ts-nocheck in src/__tests__/importValidation.test.ts.
+- [ ] Retire @ts-nocheck in src/utils/__tests__/exportImport.test.ts (1 test; exportImport.ts is now fully typed per 16r-2, so this should be quick).
+- [ ] Retire @ts-nocheck in src/utils/__tests__/combatReducer.test.ts (imports the now-typed combatReducer.ts).
+- [ ] Retire @ts-nocheck in src/utils/__tests__/alchemy.test.ts (imports alchemy.js via its rich .d.ts shim — type against the shim's declared signatures; if the shim itself is too loose to type the test against, defer citing the specific signature).
+- [ ] Retire @ts-nocheck in src/utils/__tests__/gathering.test.ts (same shim caveat as alchemy).
+
+## Phase 16t-6 — exportImport real test suite _(refill 2026-07-27 #2)_
+
+- [ ] Build a real suite for src/utils/exportImport.ts (currently 2 tests total across .test.js/.test.ts — flagged during 16r-2). Cover: splitState redaction (GM secrets absent from public payload), mergeGM round-trip restores them, validateImport paths (not-an-object, missing schemaVersion, newer/older versions, bad exportType, locked-missing-gmLock, unlocked-missing-gm warning), and importCampaign happy + malformed-JSON + version-migration paths. Use the exported envelope types from 16r-2. Target 15+ tests in the existing .test.ts (after its @ts-nocheck retirement above; precondition — defer with "prerequisite nocheck retirement missing" if not done).
+
+## Phase 16y-2c — `as any` in test files, tail sweep (grouped, one item per run) _(refill 2026-07-27 #2)_
+
+Same bar as 16y-2b: typed fixtures, identical assertions, unchanged counts.
+
+- [ ] Remove the 12 `as any` across src/__tests__/serializationRoundTrip.test.ts (8) and src/__tests__/criticalWorkflows.test.ts (4).
+- [ ] Remove the 12 `as any` across src/hooks/__tests__/useCharacterSlotSummary.test.ts (7) and src/hooks/__tests__/useWeatherModifiers.test.ts (5).
+- [ ] Remove the 16 `as any` across src/components/dayplanner/views/__tests__/DayPlannerViewComponents.test.tsx (7), src/state/gathering/__tests__/gatheringReducer.test.ts (4), src/components/combat/__tests__/PostCombatSummary.test.tsx (3), src/utils/__tests__/dice.test.ts (2).
+
+## Phase 16y-4 — `as any` production tail (grouped by subsystem, one item per run) _(refill 2026-07-27 #2)_
+
+Same bar as 16y-3: fix at the type source, zero runtime behavior change, tsc clean, subsystem suites green. Defer any cast needing a design decision, citing file:line.
+
+- [ ] Remove the 6 `as any` across src/components/downtime/views/ForagingResolutionPanel.tsx (3) and ForagingActivity.tsx (3). Foraging types are Extended-canonical since 466cbd.
+- [ ] Remove the 6 `as any` across src/components/CookingTab.tsx (3) and src/components/crafting/CraftingWorkbench.tsx (3).
+- [ ] Remove the 8 `as any` across src/components/manager/views/FormulasView.tsx (2), FacilitiesView.tsx (2), src/components/gathering/views/EnvironmentsView.tsx (2), and src/state/downtime/downtimeSelectors.ts (2).
+
+Deliberately NOT queued: src/state/campaignReducer.ts (3 casts — God node, human-only), the combat trio InjuryResolutionPanel/CombatParticipantsSidebar/CombatMapPanel (InjuryResolutionPanel's casts tangle with the out-of-scope `as unknown as` launder at :277), and the 33 production `as unknown as` launders (each hides a potential shape divergence — audit-shaped, not mechanical).
+
 ## Out of scope for the loop (do NOT add these)
 
 The following are tracked elsewhere because they require design judgment or coordinated multi-file changes the loop should not attempt autonomously:
