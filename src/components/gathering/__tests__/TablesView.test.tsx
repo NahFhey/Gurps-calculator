@@ -2,19 +2,69 @@ import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { TablesView } from '../views/TablesView';
-import type { GatheringTableExtended, GatheringSpeciesExtended, GatheringItemExtended } from '../../../types/gathering';
+import type {
+  GatheringSpeciesExtended,
+  GatheringTableExtended,
+  TableEntry,
+  TablesViewProps,
+} from '../../../types/gathering';
+
+function makeSpecies(
+  overrides: Partial<GatheringSpeciesExtended> = {},
+): GatheringSpeciesExtended {
+  return {
+    id: 'species-1',
+    name: 'Trout',
+    type: 'fish',
+    tags: [],
+    foodType: 'fish',
+    yieldMeatFormula: '1',
+    secondaryMaterialType: null,
+    yieldSecondaryFormula: null,
+    secondaryNameOverride: null,
+    st: null,
+    specialRules: [],
+    ...overrides,
+  };
+}
+
+function makeTableEntry(
+  overrides: Partial<TableEntry> = {},
+): TableEntry {
+  return {
+    id: 'entry-1',
+    rollValue: 2,
+    resultType: 'species',
+    speciesId: 'species-1',
+    text: '',
+    ...overrides,
+  };
+}
+
+function makeTable(
+  overrides: Partial<GatheringTableExtended> = {},
+): GatheringTableExtended {
+  return {
+    id: 'table-1',
+    name: 'Basic Catch',
+    tableType: 'FishingRandomCatch',
+    rollMethod: '2d6',
+    entries: [],
+    ...overrides,
+  };
+}
 
 describe('TablesView', () => {
   const mockSaveTables = vi.fn();
   const mockOnDelete = vi.fn();
 
-  const defaultProps = {
-    tables: [] as GatheringTableExtended[],
+  const defaultProps: TablesViewProps = {
+    tables: [],
     species: [
-      { id: 'species-1', name: 'Trout', type: 'fish' } as GatheringSpeciesExtended,
-      { id: 'species-2', name: 'Salmon', type: 'fish' } as GatheringSpeciesExtended
+      makeSpecies(),
+      makeSpecies({ id: 'species-2', name: 'Salmon' }),
     ],
-    items: [] as GatheringItemExtended[],
+    items: [],
     saveTables: mockSaveTables,
     onDelete: mockOnDelete
   };
@@ -30,9 +80,9 @@ describe('TablesView', () => {
 
   it('shows count in header when tables exist', () => {
     const tables = [
-      { id: '1', name: 'Basic Catch', tableType: 'FishingRandomCatch', rollMethod: '2d6', entries: [] as any },
-      { id: '2', name: 'Rare Catch', tableType: 'FishingRandomCatch', rollMethod: '2d6', entries: [] as any }
-    ] as any;
+      makeTable({ id: '1' }),
+      makeTable({ id: '2', name: 'Rare Catch' }),
+    ];
     render(<TablesView {...defaultProps} tables={tables} />);
     expect(screen.getByText('Gathering Tables (2)')).toBeInTheDocument();
   });
@@ -58,17 +108,19 @@ describe('TablesView', () => {
 
   it('renders existing tables with type and entry count', () => {
     const tables = [
-      {
+      makeTable({
         id: '1',
         name: 'Coastal Waters Catch Table',
-        tableType: 'FishingRandomCatch',
-        rollMethod: '2d6',
         entries: [
-          { roll: '2', result: { type: 'species', speciesId: 'species-1' } },
-          { roll: '3', result: { type: 'species', speciesId: 'species-2' } }
-        ] as any
-      }
-    ] as any;
+          makeTableEntry(),
+          makeTableEntry({
+            id: 'entry-2',
+            rollValue: 3,
+            speciesId: 'species-2',
+          }),
+        ],
+      }),
+    ];
 
     render(<TablesView {...defaultProps} tables={tables} />);
 
@@ -110,14 +162,11 @@ describe('TablesView', () => {
 
   it('calls onDelete with correct parameters when delete button is clicked', () => {
     const tables = [
-      {
+      makeTable({
         id: 'table-123',
         name: 'Test Table',
-        tableType: 'FishingRandomCatch',
-        rollMethod: '2d6',
-        entries: [] as any
-      }
-    ] as any;
+      }),
+    ];
 
     render(<TablesView {...defaultProps} tables={tables} />);
 
@@ -135,14 +184,11 @@ describe('TablesView', () => {
 
   it('shows table name is clickable for expansion', () => {
     const tables = [
-      {
+      makeTable({
         id: '1',
         name: 'Edit Table',
-        tableType: 'FishingRandomCatch',
-        rollMethod: '2d6',
-        entries: [] as any
-      }
-    ] as any;
+      }),
+    ];
 
     render(<TablesView {...defaultProps} tables={tables} />);
 
@@ -151,14 +197,12 @@ describe('TablesView', () => {
 
   it('displays table type in list', () => {
     const tables = [
-      {
+      makeTable({
         id: '1',
         name: 'Event Table',
         tableType: 'GatheringEvent',
-        rollMethod: '2d6',
-        entries: [] as any
-      }
-    ] as any;
+      }),
+    ];
 
     render(<TablesView {...defaultProps} tables={tables} />);
 
@@ -167,16 +211,12 @@ describe('TablesView', () => {
 
   it('renders table with entries', () => {
     const tables = [
-      {
+      makeTable({
         id: '1',
         name: 'Expandable Table',
-        tableType: 'FishingRandomCatch',
-        rollMethod: '2d6',
-        entries: [
-          { roll: '2', result: { type: 'species', speciesId: 'species-1' } }
-        ] as any
-      }
-    ] as any;
+        entries: [makeTableEntry()],
+      }),
+    ];
 
     render(<TablesView {...defaultProps} tables={tables} />);
 
@@ -186,14 +226,12 @@ describe('TablesView', () => {
 
   it('shows roll method in table details', () => {
     const tables = [
-      {
+      makeTable({
         id: '1',
         name: 'D6 Table',
-        tableType: 'FishingRandomCatch',
         rollMethod: '3d6',
-        entries: [] as any
-      }
-    ] as any;
+      }),
+    ];
 
     render(<TablesView {...defaultProps} tables={tables} />);
 

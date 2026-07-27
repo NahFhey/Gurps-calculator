@@ -1,6 +1,8 @@
 import '@testing-library/jest-dom';
+import type { ComponentProps } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import type { AlchemySettings } from '../../../types/campaign';
 
 // ---------------------------------------------------------------------------
 // Mock stores and heavy dependencies
@@ -97,6 +99,81 @@ import { ReagentsView } from '../ReagentsView';
 import { AnalysisView } from '../AnalysisView';
 import { BatchesView } from '../BatchesView';
 import { ConcentrationRefinementView } from '../ConcentrationRefinementView';
+
+type ReagentFixture = ComponentProps<
+  typeof TallyWorksheetView
+>['reagents'][number];
+type FormulaFixture = ComponentProps<
+  typeof FormulasView
+>['formulas'][number];
+type LabFixture = ComponentProps<typeof AnalysisView>['labs'][number];
+type BatchFixture = ComponentProps<typeof BatchesView>['batches'][number];
+
+function makeReagent(
+  overrides: Partial<ReagentFixture> = {},
+): ReagentFixture {
+  return {
+    id: 'reagent-1',
+    name: 'Test Reagent',
+    quantity: 10,
+    identificationLevel: 1,
+    ...overrides,
+  };
+}
+
+function makeFormula(
+  overrides: Partial<FormulaFixture> = {},
+): FormulaFixture {
+  return {
+    id: 'formula-1',
+    name: 'Test Potion',
+    tier: 1,
+    traitBudget: 10,
+    vector: 'Potion',
+    ingredients: [],
+    traits: [],
+    ...overrides,
+  };
+}
+
+function makeAlchemySettings(
+  overrides: Partial<AlchemySettings> = {},
+): AlchemySettings {
+  return {
+    defaultLabRating: 0,
+    workBlockMinutes: 60,
+    ...overrides,
+  };
+}
+
+function makeLab(
+  overrides: Partial<LabFixture> = {},
+): LabFixture {
+  return {
+    id: 'lab-1',
+    name: 'Test Lab',
+    rating: 2,
+    description: '',
+    ...overrides,
+  };
+}
+
+function makeBatch(
+  overrides: Partial<BatchFixture> = {},
+): BatchFixture {
+  return {
+    id: 'batch-1',
+    formulaId: 'formula-1',
+    formulaName: 'Test Potion',
+    status: 'brewing',
+    phase: 'brewing',
+    worker: 'worker-1',
+    startDate: '2026-07-27T00:00:00.000Z',
+    startDay: 1,
+    CP: 0,
+    ...overrides,
+  };
+}
 
 // ============================================================================
 // 1. TBBuilderPanel
@@ -204,16 +281,13 @@ describe('TallyWorksheetView', () => {
 
   it('renders with minimal props', () => {
     const mockReagents = [
-      {
+      makeReagent({
         id: 'r1',
-        name: 'Test Reagent',
-        quantity: 10,
-        identificationLevel: 1,
         aspects: { primary: 'Fire', secondary: 'Water' },
-      }
+      }),
     ];
 
-    render(<TallyWorksheetView reagents={mockReagents as any} />);
+    render(<TallyWorksheetView reagents={mockReagents} />);
     expect(screen.getByRole('heading')).toBeInTheDocument();
   });
 });
@@ -253,20 +327,14 @@ describe('FormulasView', () => {
 
   it('renders formula names', () => {
     const mockFormulas = [
-      {
+      makeFormula({
         id: 'f1',
-        name: 'Test Potion',
-        tier: 1,
-        traitBudget: 10,
-        vector: 'Potion',
-        ingredients: [],
-        traits: [],
-      }
+      }),
     ];
 
     render(
       <FormulasView
-        formulas={mockFormulas as any}
+        formulas={mockFormulas}
         reagents={[]}
         batches={[]}
         saveReagents={vi.fn()}
@@ -279,20 +347,14 @@ describe('FormulasView', () => {
 
   it('renders Start Batch buttons', () => {
     const mockFormulas = [
-      {
+      makeFormula({
         id: 'f1',
-        name: 'Test Potion',
-        tier: 1,
-        traitBudget: 10,
-        vector: 'Potion',
-        ingredients: [],
-        traits: [],
-      }
+      }),
     ];
 
     render(
       <FormulasView
-        formulas={mockFormulas as any}
+        formulas={mockFormulas}
         reagents={[]}
         batches={[]}
         saveReagents={vi.fn()}
@@ -313,7 +375,7 @@ describe('ReagentsView', () => {
     render(
       <ReagentsView
         reagents={[]}
-        alchemySettings={{ labIds: [] } as any}
+        alchemySettings={makeAlchemySettings()}
       />
     );
 
@@ -322,18 +384,15 @@ describe('ReagentsView', () => {
 
   it('renders with minimal props', () => {
     const mockReagents = [
-      {
+      makeReagent({
         id: 'r1',
-        name: 'Test Reagent',
-        quantity: 10,
-        identificationLevel: 1,
-      }
+      }),
     ];
 
     render(
       <ReagentsView
-        reagents={mockReagents as any}
-        alchemySettings={{ labIds: [] } as any}
+        reagents={mockReagents}
+        alchemySettings={makeAlchemySettings()}
       />
     );
 
@@ -342,24 +401,24 @@ describe('ReagentsView', () => {
 
   it('renders reagent names', () => {
     const mockReagents = [
-      {
+      makeReagent({
         id: 'r1',
         name: 'Reagent Alpha',
         quantity: 5,
         identificationLevel: 2,
-      },
-      {
+      }),
+      makeReagent({
         id: 'r2',
         name: 'Reagent Beta',
         quantity: 8,
         identificationLevel: 1,
-      }
+      }),
     ];
 
     render(
       <ReagentsView
-        reagents={mockReagents as any}
-        alchemySettings={{ labIds: [] } as any}
+        reagents={mockReagents}
+        alchemySettings={makeAlchemySettings()}
       />
     );
 
@@ -391,28 +450,24 @@ describe('AnalysisView', () => {
 
   it('handles complex component without crashing', () => {
     const mockReagents = [
-      {
+      makeReagent({
         id: 'r1',
-        name: 'Test Reagent',
-        quantity: 10,
         identificationLevel: 0,
         aspects: { primary: 'Fire', secondary: 'Water', tertiary: 'Earth' },
-      }
+      }),
     ];
 
     const mockLabs = [
-      {
+      makeLab({
         id: 'lab1',
-        name: 'Test Lab',
-        rating: 2,
-      }
+      }),
     ];
 
     expect(() => {
       render(
         <AnalysisView
-          reagents={mockReagents as any}
-          labs={mockLabs as any}
+          reagents={mockReagents}
+          labs={mockLabs}
           workers={[]}
           saveReagents={vi.fn()}
           downtimeState={undefined}
@@ -447,19 +502,16 @@ describe('BatchesView', () => {
 
   it('handles complex batches component without crashing', () => {
     const mockBatches = [
-      {
+      makeBatch({
         id: 'batch1',
         formulaId: 'f1',
-        status: 'in-progress',
-        createdAt: new Date().toISOString(),
-        currentCP: 0,
-      }
+      }),
     ];
 
     expect(() => {
       render(
         <BatchesView
-          batches={mockBatches as any}
+          batches={mockBatches}
           reagents={[]}
           formulas={[]}
           workers={[]}
@@ -495,28 +547,25 @@ describe('ConcentrationRefinementView', () => {
 
   it('handles complex refinement component without crashing', () => {
     const mockReagents = [
-      {
+      makeReagent({
         id: 'r1',
         name: 'Reagent to Refine',
-        quantity: 10,
         refinement: 'crude',
-        potency: 'P1',
-      }
+        basePotency: 'P1',
+      }),
     ];
 
     const mockLabs = [
-      {
+      makeLab({
         id: 'lab1',
-        name: 'Test Lab',
-        rating: 2,
-      }
+      }),
     ];
 
     expect(() => {
       render(
         <ConcentrationRefinementView
-          reagents={mockReagents as any}
-          labs={mockLabs as any}
+          reagents={mockReagents}
+          labs={mockLabs}
           workers={[]}
           saveReagents={vi.fn()}
           downtimeState={undefined}

@@ -2,8 +2,24 @@ import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { EnvironmentsView } from '../views/EnvironmentsView';
-import type { GatheringEnvironmentExtended, GatheringItemExtended, GatheringTableExtended } from '../../../types/gathering';
-import type { ForageZoneProfile } from '../../../types/foraging';
+import type {
+  EnvironmentsViewProps,
+  GatheringEnvironmentExtended,
+} from '../../../types/gathering';
+
+function makeEnvironment(
+  overrides: Partial<GatheringEnvironmentExtended> = {},
+): GatheringEnvironmentExtended {
+  return {
+    id: 'environment-1',
+    name: 'River',
+    supportedModes: ['Fishing'],
+    defaultsByMode: {},
+    skillMod: 0,
+    locationId: undefined,
+    ...overrides,
+  };
+}
 
 describe('EnvironmentsView', () => {
   const mockSaveEnvironments = vi.fn();
@@ -11,14 +27,14 @@ describe('EnvironmentsView', () => {
   const mockRemoveForageZoneProfile = vi.fn();
   const mockOnDelete = vi.fn();
 
-  const defaultProps = {
-    environments: [] as GatheringEnvironmentExtended[],
-    tables: [] as GatheringTableExtended[],
-    items: [] as GatheringItemExtended[],
+  const defaultProps: EnvironmentsViewProps = {
+    environments: [],
+    tables: [],
+    items: [],
     locations: [
-      { id: 'loc-1', name: 'Coastal Waters', type: 'water' } as any
+      { id: 'loc-1', name: 'Coastal Waters' },
     ],
-    forageZoneProfiles: [] as ForageZoneProfile[],
+    forageZoneProfiles: [],
     saveEnvironments: mockSaveEnvironments,
     saveForageZoneProfile: mockSaveForageZoneProfile,
     removeForageZoneProfile: mockRemoveForageZoneProfile,
@@ -36,8 +52,8 @@ describe('EnvironmentsView', () => {
 
   it('shows count in header when environments exist', () => {
     const environments = [
-      { id: '1', name: 'River', supportedModes: ['Fishing'], defaultsByMode: {}, skillMod: 0, locationId: undefined } as any,
-      { id: '2', name: 'Lake', supportedModes: ['Fishing'], defaultsByMode: {}, skillMod: -1, locationId: undefined } as any
+      makeEnvironment({ id: '1' }),
+      makeEnvironment({ id: '2', name: 'Lake', skillMod: -1 }),
     ];
     render(<EnvironmentsView {...defaultProps} environments={environments} />);
     expect(screen.getByText('Environments (2)')).toBeInTheDocument();
@@ -64,7 +80,13 @@ describe('EnvironmentsView', () => {
 
   it('renders existing environments with modes and skill mod', () => {
     const environments = [
-      { id: '1', name: 'Coastal Waters', supportedModes: ['Fishing', 'Foraging'], defaultsByMode: {}, skillMod: 1, locationId: 'loc-1' } as any
+      makeEnvironment({
+        id: '1',
+        name: 'Coastal Waters',
+        supportedModes: ['Fishing', 'Foraging'],
+        skillMod: 1,
+        locationId: 'loc-1',
+      }),
     ];
 
     render(<EnvironmentsView {...defaultProps} environments={environments} />);
@@ -76,7 +98,7 @@ describe('EnvironmentsView', () => {
 
   it('shows location reference for environments with locationId', () => {
     const environments = [
-      { id: '1', name: 'Test Env', supportedModes: ['Fishing'], defaultsByMode: {}, skillMod: 0, locationId: 'loc-1' } as any
+      makeEnvironment({ id: '1', name: 'Test Env', locationId: 'loc-1' }),
     ];
 
     render(<EnvironmentsView {...defaultProps} environments={environments} />);
@@ -116,7 +138,7 @@ describe('EnvironmentsView', () => {
 
   it('calls onDelete with correct parameters when delete button is clicked', () => {
     const environments = [
-      { id: 'env-123', name: 'Test Env', supportedModes: ['Fishing'], defaultsByMode: {}, skillMod: 0, locationId: undefined } as any
+      makeEnvironment({ id: 'env-123', name: 'Test Env' }),
     ];
 
     render(<EnvironmentsView {...defaultProps} environments={environments} />);
@@ -130,7 +152,7 @@ describe('EnvironmentsView', () => {
 
   it('enters edit mode when edit button is clicked', () => {
     const environments = [
-      { id: '1', name: 'Edit Env', supportedModes: ['Fishing'], defaultsByMode: {}, skillMod: 0, locationId: undefined } as any
+      makeEnvironment({ id: '1', name: 'Edit Env' }),
     ];
 
     render(<EnvironmentsView {...defaultProps} environments={environments} />);
@@ -146,7 +168,7 @@ describe('EnvironmentsView', () => {
 
   it('displays skill modifier correctly', () => {
     const environments = [
-      { id: '1', name: 'Difficult Area', supportedModes: ['Fishing'], defaultsByMode: {}, skillMod: -2, locationId: undefined } as any
+      makeEnvironment({ id: '1', name: 'Difficult Area', skillMod: -2 }),
     ];
 
     render(<EnvironmentsView {...defaultProps} environments={environments} />);
@@ -156,7 +178,11 @@ describe('EnvironmentsView', () => {
 
   it('shows supported modes in environment list', () => {
     const environments = [
-      { id: '1', name: 'Multi Mode Env', supportedModes: ['Fishing', 'Foraging', 'Hunting'], defaultsByMode: {}, skillMod: 0, locationId: undefined } as any
+      makeEnvironment({
+        id: '1',
+        name: 'Multi Mode Env',
+        supportedModes: ['Fishing', 'Foraging', 'Hunting'],
+      }),
     ];
 
     render(<EnvironmentsView {...defaultProps} environments={environments} />);

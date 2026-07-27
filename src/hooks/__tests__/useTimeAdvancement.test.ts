@@ -2,16 +2,60 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useTimeAdvancement } from '../useTimeAdvancement';
 import { downtimeInitialState } from '../../state/downtime/downtimeInitialState';
-import type { DowntimeTask, FishingData } from '../../types/downtime';
+import type {
+  DowntimeState,
+  DowntimeTask,
+  FishingData,
+} from '../../types/downtime';
 
 // Mock the campaign store
+interface MockCampaignState {
+  downtime?: DowntimeState;
+  time?: {
+    day: number;
+    slot: number;
+  };
+}
+
+interface MockCampaignStoreValue {
+  state: MockCampaignState;
+  actions: Record<string, never>;
+}
+
+const useCampaignStoreMock = vi.hoisted(
+  () => vi.fn<() => MockCampaignStoreValue>(),
+);
+
 vi.mock('../../state/campaignStore', () => ({
-  useCampaignStore: vi.fn(),
+  useCampaignStore: useCampaignStoreMock,
 }));
 
-import { useCampaignStore } from '../../state/campaignStore';
+function makeCampaignStore(
+  state: MockCampaignState,
+): MockCampaignStoreValue {
+  return {
+    state,
+    actions: {},
+  };
+}
 
-const mockedUseCampaignStore = vi.mocked(useCampaignStore);
+function makeFishingData(
+  overrides: Partial<FishingData> = {},
+): FishingData {
+  return {
+    type: 'fishing',
+    method: 'Line',
+    speciesId: 'species-1',
+    isRandomCatch: false,
+    spotId: 'spot-1',
+    toolIds: [],
+    baitId: null,
+    retryAttempt: 0,
+    skillModifier: 0,
+    targetYield: 1,
+    ...overrides,
+  };
+}
 
 function createTestTask(overrides: Partial<DowntimeTask> = {}): DowntimeTask {
   const now = Date.now();
@@ -23,14 +67,7 @@ function createTestTask(overrides: Partial<DowntimeTask> = {}): DowntimeTask {
     leaderId: 'char-1',
     helperIds: [],
     status: 'pending',
-    activityData: {
-      type: 'fishing',
-      speciesId: 'species-1',
-      spotId: 'spot-1',
-      toolIds: [],
-      skillModifier: 0,
-      targetYield: 1,
-    } as unknown as FishingData,
+    activityData: makeFishingData(),
     createdAt: now,
     updatedAt: now,
     ...overrides,
@@ -43,13 +80,12 @@ describe('useTimeAdvancement', () => {
   });
 
   it('allows advancement when downtime state is undefined', () => {
-    mockedUseCampaignStore.mockReturnValue({
-      state: {
+    useCampaignStoreMock.mockReturnValue(
+      makeCampaignStore({
         downtime: undefined,
         time: { day: 1, slot: 0 },
-      },
-      actions: {},
-    } as any);
+      }),
+    );
 
     const onJumpToTasks = vi.fn();
     const { result } = renderHook(() => useTimeAdvancement(onJumpToTasks));
@@ -59,13 +95,12 @@ describe('useTimeAdvancement', () => {
   });
 
   it('allows advancement when no tasks exist', () => {
-    mockedUseCampaignStore.mockReturnValue({
-      state: {
+    useCampaignStoreMock.mockReturnValue(
+      makeCampaignStore({
         downtime: downtimeInitialState,
         time: { day: 1, slot: 0 },
-      },
-      actions: {},
-    } as any);
+      }),
+    );
 
     const onJumpToTasks = vi.fn();
     const { result } = renderHook(() => useTimeAdvancement(onJumpToTasks));
@@ -82,17 +117,16 @@ describe('useTimeAdvancement', () => {
       slot: 0,
     });
 
-    mockedUseCampaignStore.mockReturnValue({
-      state: {
+    useCampaignStoreMock.mockReturnValue(
+      makeCampaignStore({
         downtime: {
           ...downtimeInitialState,
           tasksById: { 'task-1': task },
           taskOrder: ['task-1'],
         },
         time: { day: 1, slot: 0 },
-      },
-      actions: {},
-    } as any);
+      }),
+    );
 
     const onJumpToTasks = vi.fn();
     const { result } = renderHook(() => useTimeAdvancement(onJumpToTasks));
@@ -109,17 +143,16 @@ describe('useTimeAdvancement', () => {
       slot: 0,
     });
 
-    mockedUseCampaignStore.mockReturnValue({
-      state: {
+    useCampaignStoreMock.mockReturnValue(
+      makeCampaignStore({
         downtime: {
           ...downtimeInitialState,
           tasksById: { 'task-1': task },
           taskOrder: ['task-1'],
         },
         time: { day: 1, slot: 0 },
-      },
-      actions: {},
-    } as any);
+      }),
+    );
 
     const onJumpToTasks = vi.fn();
     const { result } = renderHook(() => useTimeAdvancement(onJumpToTasks));
@@ -136,17 +169,16 @@ describe('useTimeAdvancement', () => {
       slot: 0,
     });
 
-    mockedUseCampaignStore.mockReturnValue({
-      state: {
+    useCampaignStoreMock.mockReturnValue(
+      makeCampaignStore({
         downtime: {
           ...downtimeInitialState,
           tasksById: { 'task-1': task },
           taskOrder: ['task-1'],
         },
         time: { day: 1, slot: 0 },
-      },
-      actions: {},
-    } as any);
+      }),
+    );
 
     const onJumpToTasks = vi.fn();
     const { result } = renderHook(() => useTimeAdvancement(onJumpToTasks));
@@ -163,17 +195,16 @@ describe('useTimeAdvancement', () => {
       slot: 0,
     });
 
-    mockedUseCampaignStore.mockReturnValue({
-      state: {
+    useCampaignStoreMock.mockReturnValue(
+      makeCampaignStore({
         downtime: {
           ...downtimeInitialState,
           tasksById: { 'task-1': task },
           taskOrder: ['task-1'],
         },
         time: { day: 1, slot: 0 },
-      },
-      actions: {},
-    } as any);
+      }),
+    );
 
     const onJumpToTasks = vi.fn();
     const { result } = renderHook(() => useTimeAdvancement(onJumpToTasks));
@@ -183,13 +214,12 @@ describe('useTimeAdvancement', () => {
   });
 
   it('calls onJumpToTasks when jumpToBlockingTasks is called', () => {
-    mockedUseCampaignStore.mockReturnValue({
-      state: {
+    useCampaignStoreMock.mockReturnValue(
+      makeCampaignStore({
         downtime: downtimeInitialState,
         time: { day: 1, slot: 0 },
-      },
-      actions: {},
-    } as any);
+      }),
+    );
 
     const onJumpToTasks = vi.fn();
     const { result } = renderHook(() => useTimeAdvancement(onJumpToTasks));
@@ -209,17 +239,16 @@ describe('useTimeAdvancement', () => {
       slot: 0,
     });
 
-    mockedUseCampaignStore.mockReturnValue({
-      state: {
+    useCampaignStoreMock.mockReturnValue(
+      makeCampaignStore({
         downtime: {
           ...downtimeInitialState,
           tasksById: { 'task-1': task },
           taskOrder: ['task-1'],
         },
         time: undefined,
-      },
-      actions: {},
-    } as any);
+      }),
+    );
 
     const onJumpToTasks = vi.fn();
     const { result } = renderHook(() => useTimeAdvancement(onJumpToTasks));
@@ -238,17 +267,16 @@ describe('useTimeAdvancement', () => {
       slot: 1,
     });
 
-    mockedUseCampaignStore.mockReturnValue({
-      state: {
+    useCampaignStoreMock.mockReturnValue(
+      makeCampaignStore({
         downtime: {
           ...downtimeInitialState,
           tasksById: { 'task-1': task },
           taskOrder: ['task-1'],
         },
         time: { day: 1, slot: 0 },
-      },
-      actions: {},
-    } as any);
+      }),
+    );
 
     const onJumpToTasks = vi.fn();
     const { result } = renderHook(() => useTimeAdvancement(onJumpToTasks));
@@ -265,17 +293,16 @@ describe('useTimeAdvancement', () => {
       slot: 0,
     });
 
-    mockedUseCampaignStore.mockReturnValue({
-      state: {
+    useCampaignStoreMock.mockReturnValue(
+      makeCampaignStore({
         downtime: {
           ...downtimeInitialState,
           tasksById: { 'task-1': task },
           taskOrder: ['task-1'],
         },
         time: { day: 1, slot: 0 },
-      },
-      actions: {},
-    } as any);
+      }),
+    );
 
     const onJumpToTasks = vi.fn();
     const { result } = renderHook(() => useTimeAdvancement(onJumpToTasks));

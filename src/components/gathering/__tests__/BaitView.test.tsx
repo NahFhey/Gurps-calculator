@@ -2,17 +2,55 @@ import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { BaitView } from '../views/BaitView';
-import type { GatheringBaitExtended, GatheringSpeciesExtended } from '../../../types/gathering';
+import type {
+  BaitViewProps,
+  GatheringBaitExtended,
+  GatheringSpeciesExtended,
+} from '../../../types/gathering';
+
+function makeSpecies(
+  overrides: Partial<GatheringSpeciesExtended> = {},
+): GatheringSpeciesExtended {
+  return {
+    id: 'species-1',
+    name: 'Trout',
+    type: 'fish',
+    tags: [],
+    foodType: 'fish',
+    yieldMeatFormula: '1',
+    secondaryMaterialType: null,
+    yieldSecondaryFormula: null,
+    secondaryNameOverride: null,
+    st: null,
+    specialRules: [],
+    ...overrides,
+  };
+}
+
+function makeBait(
+  overrides: Partial<GatheringBaitExtended> = {},
+): GatheringBaitExtended {
+  return {
+    id: 'bait-1',
+    name: 'Worms',
+    consumableType: 'bait',
+    baitTags: [],
+    attractsSpeciesIds: ['species-1'],
+    quantity: 10,
+    rollBonus: 1,
+    ...overrides,
+  };
+}
 
 describe('BaitView', () => {
   const mockSaveBait = vi.fn();
   const mockOnDelete = vi.fn();
 
-  const defaultProps = {
-    bait: [] as GatheringBaitExtended[],
+  const defaultProps: BaitViewProps = {
+    bait: [],
     species: [
-      { id: 'species-1', name: 'Trout', type: 'fish' } as GatheringSpeciesExtended,
-      { id: 'species-2', name: 'Salmon', type: 'fish' } as GatheringSpeciesExtended
+      makeSpecies(),
+      makeSpecies({ id: 'species-2', name: 'Salmon' }),
     ],
     saveBait: mockSaveBait,
     onDelete: mockOnDelete
@@ -29,9 +67,9 @@ describe('BaitView', () => {
 
   it('shows count in header when bait exist', () => {
     const bait = [
-      { id: '1', name: 'Worms', consumableType: 'bait', baitTags: [], attractsSpeciesIds: ['species-1'], quantity: 10, rollBonus: 1 },
-      { id: '2', name: 'Flies', consumableType: 'bait', baitTags: [], attractsSpeciesIds: ['species-1'], quantity: 5, rollBonus: 2 }
-    ] as any;
+      makeBait({ id: '1' }),
+      makeBait({ id: '2', name: 'Flies', quantity: 5, rollBonus: 2 }),
+    ];
     render(<BaitView {...defaultProps} bait={bait} />);
     expect(screen.getByText('Bait (2)')).toBeInTheDocument();
   });
@@ -57,8 +95,13 @@ describe('BaitView', () => {
 
   it('renders existing bait with quantity and roll bonus', () => {
     const bait = [
-      { id: '1', name: 'Glowing Worms', consumableType: 'bait', baitTags: [], attractsSpeciesIds: ['species-1'], quantity: 15, rollBonus: 2 }
-    ] as any;
+      makeBait({
+        id: '1',
+        name: 'Glowing Worms',
+        quantity: 15,
+        rollBonus: 2,
+      }),
+    ];
 
     render(<BaitView {...defaultProps} bait={bait} />);
 
@@ -115,8 +158,8 @@ describe('BaitView', () => {
 
   it('calls onDelete with correct parameters when delete button is clicked', () => {
     const bait = [
-      { id: 'bait-123', name: 'Test Bait', consumableType: 'bait', baitTags: [], attractsSpeciesIds: ['species-1'], quantity: 10, rollBonus: 1 }
-    ] as any;
+      makeBait({ id: 'bait-123', name: 'Test Bait' }),
+    ];
 
     render(<BaitView {...defaultProps} bait={bait} />);
 
@@ -129,8 +172,8 @@ describe('BaitView', () => {
 
   it('enters edit mode when edit button is clicked', () => {
     const bait = [
-      { id: '1', name: 'Edit Bait', consumableType: 'bait', baitTags: [], attractsSpeciesIds: ['species-1'], quantity: 10, rollBonus: 1 }
-    ] as any;
+      makeBait({ id: '1', name: 'Edit Bait' }),
+    ];
 
     render(<BaitView {...defaultProps} bait={bait} />);
 
@@ -145,8 +188,12 @@ describe('BaitView', () => {
 
   it('displays bait tags when present', () => {
     const bait = [
-      { id: '1', name: 'Tagged Bait', consumableType: 'bait', baitTags: ['Organic', 'Scented'], attractsSpeciesIds: ['species-1'], quantity: 10, rollBonus: 1 }
-    ] as any;
+      makeBait({
+        id: '1',
+        name: 'Tagged Bait',
+        baitTags: ['Organic', 'Scented'],
+      }),
+    ];
 
     render(<BaitView {...defaultProps} bait={bait} />);
 

@@ -2,14 +2,33 @@ import '@testing-library/jest-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ToolsView } from '../views/ToolsView';
-import type { GatheringToolExtended } from '../../../types/gathering';
+import type {
+  GatheringToolExtended,
+  ToolsViewProps,
+} from '../../../types/gathering';
+
+function makeTool(
+  overrides: Partial<GatheringToolExtended> = {},
+): GatheringToolExtended {
+  return {
+    id: 'tool-1',
+    name: 'Fishing Rod',
+    toolType: 'fishing_rod',
+    allowedModes: ['Fishing'],
+    allowedMethods: [],
+    bonuses: [],
+    durability: null,
+    notes: '',
+    ...overrides,
+  };
+}
 
 describe('ToolsView', () => {
   const mockSaveTools = vi.fn();
   const mockOnDelete = vi.fn();
 
-  const defaultProps = {
-    tools: [] as GatheringToolExtended[],
+  const defaultProps: ToolsViewProps = {
+    tools: [],
     foodTypes: ['fish', 'shellfish'],
     materialTypes: ['scales', 'shells'],
     saveTools: mockSaveTools,
@@ -27,8 +46,8 @@ describe('ToolsView', () => {
 
   it('shows count in header when tools exist', () => {
     const tools = [
-      { id: '1', name: 'Fishing Rod', toolType: 'fishing_rod', allowedModes: ['Fishing'], allowedMethods: [], bonuses: [], durability: null, notes: '' } as any,
-      { id: '2', name: 'Net', toolType: 'net', allowedModes: ['Fishing'], allowedMethods: [], bonuses: [], durability: null, notes: '' } as any
+      makeTool({ id: '1' }),
+      makeTool({ id: '2', name: 'Net', toolType: 'net' }),
     ];
     render(<ToolsView {...defaultProps} tools={tools} />);
     expect(screen.getByText('Gathering Tools (2)')).toBeInTheDocument();
@@ -55,16 +74,11 @@ describe('ToolsView', () => {
 
   it('renders existing tools with type and skill bonus', () => {
     const tools = [
-      {
+      makeTool({
         id: '1',
         name: 'Quality Fishing Rod',
-        toolType: 'fishing_rod',
-        allowedModes: ['Fishing'],
-        allowedMethods: [],
         bonuses: [{ type: 'skill_bonus', skill: 'Fishing', value: 2 }],
-        durability: null,
-        notes: ''
-      } as any
+      }),
     ];
 
     render(<ToolsView {...defaultProps} tools={tools} />);
@@ -104,16 +118,10 @@ describe('ToolsView', () => {
 
   it('calls onDelete with correct parameters when delete button is clicked', () => {
     const tools = [
-      {
+      makeTool({
         id: 'tool-123',
         name: 'Test Tool',
-        toolType: 'fishing_rod',
-        allowedModes: ['Fishing'],
-        allowedMethods: [],
-        bonuses: [],
-        durability: null,
-        notes: ''
-      } as any
+      }),
     ];
 
     render(<ToolsView {...defaultProps} tools={tools} />);
@@ -127,16 +135,10 @@ describe('ToolsView', () => {
 
   it('enters edit mode when edit button is clicked', () => {
     const tools = [
-      {
+      makeTool({
         id: '1',
         name: 'Edit Tool',
-        toolType: 'fishing_rod',
-        allowedModes: ['Fishing'],
-        allowedMethods: [],
-        bonuses: [],
-        durability: null,
-        notes: ''
-      } as any
+      }),
     ];
 
     render(<ToolsView {...defaultProps} tools={tools} />);
@@ -152,16 +154,11 @@ describe('ToolsView', () => {
 
   it('displays tool type in list', () => {
     const tools = [
-      {
+      makeTool({
         id: '1',
         name: 'Basic Net',
         toolType: 'net',
-        allowedModes: ['Fishing'],
-        allowedMethods: [],
-        bonuses: [],
-        durability: null,
-        notes: ''
-      } as any
+      }),
     ];
 
     render(<ToolsView {...defaultProps} tools={tools} />);
@@ -171,16 +168,13 @@ describe('ToolsView', () => {
 
   it('shows skill bonus when present', () => {
     const tools = [
-      {
+      makeTool({
         id: '1',
         name: 'Enchanted Rod',
-        toolType: 'fishing_rod',
-        allowedModes: ['Fishing'],
-        allowedMethods: [],
         bonuses: [{ type: 'skill_bonus', skill: 'Fishing', value: 3 }],
         durability: 50,
-        notes: 'Magical'
-      } as any
+        notes: 'Magical',
+      }),
     ];
 
     render(<ToolsView {...defaultProps} tools={tools} />);
@@ -191,16 +185,11 @@ describe('ToolsView', () => {
 
   it('displays durability when present', () => {
     const tools = [
-      {
+      makeTool({
         id: '1',
         name: 'Durable Rod',
-        toolType: 'fishing_rod',
-        allowedModes: ['Fishing'],
-        allowedMethods: [],
-        bonuses: [],
         durability: 100,
-        notes: ''
-      } as any
+      }),
     ];
 
     render(<ToolsView {...defaultProps} tools={tools} />);

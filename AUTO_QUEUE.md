@@ -313,10 +313,10 @@ Same bar as 16t-4: `__tests__/<name>.test.ts` beside the file, happy path + at l
 
 Same bar as the 16y-2 test-file items: properly typed fixtures/mocks, identical assertions, all tests green with unchanged counts.
 
-- [ ] Remove the 15 `as any` casts in src/components/gathering/__tests__/TablesView.test.tsx.
-- [ ] Remove the 13 `as any` casts in src/components/alchemy/__tests__/AlchemyComponents.test.tsx.
-- [ ] Remove the 10 `as any` casts in src/hooks/__tests__/useTimeAdvancement.test.ts.
-- [ ] Remove the 22 `as any` casts across the gathering view-test trio src/components/gathering/__tests__/EnvironmentsView.test.tsx (9), ToolsView.test.tsx (8), BaitView.test.tsx (5) — same fixture family, one run; the Extended-canonical fix should make shared typed factories straightforward.
+- [x] Remove the 15 `as any` casts in src/components/gathering/__tests__/TablesView.test.tsx. [2026-07-27 codex-shepherd session: 15→0, 13 tests unchanged]
+- [x] Remove the 13 `as any` casts in src/components/alchemy/__tests__/AlchemyComponents.test.tsx. [2026-07-27 codex-shepherd session: 13→0, 21 tests unchanged]
+- [x] Remove the 10 `as any` casts in src/hooks/__tests__/useTimeAdvancement.test.ts. [2026-07-27 codex-shepherd session: 10→0 via typed makeCampaignStore factory, 10 tests unchanged]
+- [x] Remove the 22 `as any` casts across the gathering view-test trio src/components/gathering/__tests__/EnvironmentsView.test.tsx (9), ToolsView.test.tsx (8), BaitView.test.tsx (5) — same fixture family, one run; the Extended-canonical fix should make shared typed factories straightforward. [2026-07-27 codex-shepherd session: 22→0, 38 tests unchanged]
 
 ## Out of scope for the loop (do NOT add these)
 
