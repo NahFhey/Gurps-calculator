@@ -158,6 +158,9 @@ export function CraftingWorkbench({
         recipeId: current?.template || '',
         materialInstanceIds: [],
         toolInstanceIds: [],
+        // TODO(types): Craft.currentQuality admits arbitrary legacy strings while
+        // CraftingData.qualityTarget is a finite union; mapping between them is a
+        // design decision (see AUTO_QUEUE 16y-4 note).
         qualityTarget: (qualityTarget as any) || 'standard',
         skillModifier: 0,
       },
@@ -327,7 +330,7 @@ export function CraftingWorkbench({
 
     // Check time slot availability and mark character as busy
     const shiftMessage = `Craft shift: ${current.phase === 'design' ? 'Design' : 'Craft'} on ${current.template || 'Unknown'}`;
-    if (!tryReserveSlot(shiftMessage, current.currentQuality as string)) return;
+    if (!tryReserveSlot(shiftMessage, current.currentQuality)) return;
 
     const eff = s + stats.totalDifficulty;
     let hrs = 0, qc = 0, res = '';
@@ -343,7 +346,7 @@ export function CraftingWorkbench({
       else { const m = r - eff; hrs = 4; qc = m <= 2 ? 0 : m <= 4 ? -1 : -2; res = `Fail by ${m}`; }
       if (r >= 18 || (r === 17 && eff <= 15)) {
         alert('Crit Fail! Project destroyed. Materials refunded.');
-        const refunded = refundMaterialsFromProject(current as any, materials) as Material[];
+        const refunded = refundMaterialsFromProject(current, materials);
         saveMaterials(refunded);
         saveCrafts(removeCraft(crafts, current.id) as Craft[]);
         setCurrent(null);
@@ -446,7 +449,7 @@ export function CraftingWorkbench({
               <button
                 onClick={() => {
                   try {
-                    const refunded = refundMaterialsFromProject(current as any, materials) as Material[];
+                    const refunded = refundMaterialsFromProject(current, materials);
                     saveMaterials(refunded);
                     saveCrafts(removeCraft(crafts, current?.id || '') as Craft[]);
                   } catch (error) {

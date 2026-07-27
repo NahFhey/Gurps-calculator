@@ -31,6 +31,7 @@ import type {
   Recipe,
   Material,
   Facility,
+  LegacyCharacterSkillSource,
 } from '../../types/campaign';
 import type { ForageZoneProfile, ForageItem, ForagingConfig } from '../../types/foraging';
 import type { GatheringItemExtended } from '../../types/gathering';
@@ -46,7 +47,7 @@ interface DowntimeContextValue {
   /** Dispatch function for downtime actions */
   dispatch: React.Dispatch<DowntimeAction>;
   /** All party characters */
-  characters: Character[];
+  characters: Array<Character & LegacyCharacterSkillSource>;
   /** Available fishing spots (environments at current location with Fishing mode) */
   fishingSpots: GatheringEnvironment[];
   /** All fish species */

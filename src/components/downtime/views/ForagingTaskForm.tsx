@@ -198,7 +198,7 @@ export function ForagingTaskForm({
       type: 'foraging',
       zoneId,
       mode,
-      targetCategory: mode === 'category' ? (targetCategory as string) : undefined,
+      targetCategory: mode === 'category' && targetCategory !== '' ? targetCategory : undefined,
       targetItemId: mode === 'specific' ? targetItemId : undefined,
       skillUsed,
       toolIds: selectedToolIds,

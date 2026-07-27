@@ -347,9 +347,9 @@ Same bar as 16y-2b: typed fixtures, identical assertions, unchanged counts.
 
 Same bar as 16y-3: fix at the type source, zero runtime behavior change, tsc clean, subsystem suites green. Defer any cast needing a design decision, citing file:line.
 
-- [ ] Remove the 6 `as any` across src/components/downtime/views/ForagingResolutionPanel.tsx (3) and ForagingActivity.tsx (3). Foraging types are Extended-canonical since 466cbd.
-- [ ] Remove the 6 `as any` across src/components/CookingTab.tsx (3) and src/components/crafting/CraftingWorkbench.tsx (3).
-- [ ] Remove the 8 `as any` across src/components/manager/views/FormulasView.tsx (2), FacilitiesView.tsx (2), src/components/gathering/views/EnvironmentsView.tsx (2), and src/state/downtime/downtimeSelectors.ts (2).
+- [x] Remove the 6 `as any` across src/components/downtime/views/ForagingResolutionPanel.tsx (3) and ForagingActivity.tsx (3). Foraging types are Extended-canonical since 466cbd. [2026-07-27 codex-shepherd session: 6→0; canonical forage literals + typed ForageSkill]
+- [x] Remove the 6 `as any` across src/components/CookingTab.tsx (3) and src/components/crafting/CraftingWorkbench.tsx (3). [2026-07-27 codex-shepherd session: 6→1; survivor at CraftingWorkbench.tsx:~161 documented in-code — Craft.currentQuality admits arbitrary legacy strings vs CraftingData.qualityTarget's finite union; mapping is a design decision]
+- [x] Remove the 8 `as any` across src/components/manager/views/FormulasView.tsx (2), FacilitiesView.tsx (2), src/components/gathering/views/EnvironmentsView.tsx (2), and src/state/downtime/downtimeSelectors.ts (2). [2026-07-27 codex-shepherd session: 8→0]
 
 Deliberately NOT queued: src/state/campaignReducer.ts (3 casts — God node, human-only), the combat trio InjuryResolutionPanel/CombatParticipantsSidebar/CombatMapPanel (InjuryResolutionPanel's casts tangle with the out-of-scope `as unknown as` launder at :277), and the 33 production `as unknown as` launders (each hides a potential shape divergence — audit-shaped, not mechanical).
 

@@ -96,8 +96,8 @@ function resolveForagingTask(
   for (const helperId of task.helperIds) {
     const helper = ctx.characters.find((c) => c.id === helperId);
     if (helper) {
-      const helperSkills = (helper as any).skills ?? (helper as any).characterSheet?.skills ?? [];
-      const found = helperSkills.find?.((s: any) => {
+      const helperSkills = helper.skills ?? helper.characterSheet?.skills ?? [];
+      const found = helperSkills.find((s) => {
         const name = typeof s === 'string' ? s : (s.name ?? '');
         return name.toLowerCase().includes('survival') ||
                name.toLowerCase().includes('naturalist') ||
@@ -128,9 +128,9 @@ function resolveForagingTask(
     actorId: task.leaderId,
     zoneId: data.zoneId,
     mode: data.mode ?? 'general',
-    targetCategory: data.targetCategory as any,
+    targetCategory: data.targetCategory,
     targetItemId: data.targetItemId,
-    skillUsed: (data.skillUsed as any) ?? 'survival',
+    skillUsed: data.skillUsed ?? 'survival',
     baseSkillLevel: data.leaderSkill ?? 10,
     contextFlags: flags,
     toolIds,

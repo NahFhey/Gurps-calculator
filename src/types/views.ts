@@ -98,8 +98,10 @@ export interface FormulaIngredient {
 }
 
 export interface FormulaTrait {
+  id?: Id;
   name: string;
   cost: number;
+  notes?: string;
 }
 
 export interface AlchemyFormula {

@@ -10,10 +10,23 @@ import type {
   DowntimeTask,
   DowntimeActivityType,
   TaskStatus,
-  ActivityData,
   TaskLockKey,
   ForagingData,
 } from '../../types/downtime';
+
+type TargetKeyActivityData =
+  | { type: 'fishing'; speciesId: string }
+  | {
+      type: 'foraging';
+      mode: ForagingData['mode'];
+      targetCategory?: ForagingData['targetCategory'];
+      targetItemId?: string;
+      nodeId?: string;
+    }
+  | { type: 'mining'; siteId?: string; targetResourceId?: string }
+  | { type: 'alchemy'; recipeId: string }
+  | { type: 'crafting'; recipeId: string }
+  | { type: 'rest'; restType: string };
 
 // ============================================================================
 // BASIC SELECTORS
@@ -244,7 +257,7 @@ export function selectTaskCountsByStatusForDay(
 // ============================================================================
 
 /**
- * Check if a slot has any unresolved tasks (pending or in_progress).
+ * Check whether a slot contains unresolved tasks (pending or in_progress).
  */
 export function selectSlotHasUnresolvedTasks(
   state: DowntimeState,
@@ -344,7 +357,7 @@ export function selectAvailableCharacterIdsForSlot(
  */
 export function getTargetKeyFromActivityData(
   activityType: DowntimeActivityType,
-  activityData: ActivityData
+  activityData: TargetKeyActivityData
 ): string {
   switch (activityType) {
     case 'fishing':
@@ -356,7 +369,7 @@ export function getTargetKeyFromActivityData(
       if (fd.mode === 'category') return `forage:cat:${fd.targetCategory ?? 'unknown'}`;
       if (fd.mode === 'specific') return `forage:item:${fd.targetItemId ?? fd.nodeId ?? 'unknown'}`;
       // Legacy fallback
-      return `node:${(fd as any).nodeId ?? 'unknown'}`;
+      return `node:${fd.nodeId ?? 'unknown'}`;
     }
     case 'mining': {
       const md = activityData as import('../../types/downtime').MiningData;

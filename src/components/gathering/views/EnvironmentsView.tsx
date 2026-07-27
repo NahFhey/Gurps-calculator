@@ -406,15 +406,15 @@ export function EnvironmentsView({
     setNewEnvName(e.name);
     setNewEnvModes(e.supportedModes || ['Fishing']);
 
-    const fishingDefaults = e.defaultsByMode?.Fishing || ({} as any);
-    setNewEnvCatchTableId(fishingDefaults.randomCatchTableId || '');
-    setNewEnvMildTableId(fishingDefaults.mildEventTableId || '');
-    setNewEnvRareTableId(fishingDefaults.rareEventTableId || '');
+    const fishingDefaults = e.defaultsByMode?.Fishing;
+    setNewEnvCatchTableId(fishingDefaults?.randomCatchTableId || '');
+    setNewEnvMildTableId(fishingDefaults?.mildEventTableId || '');
+    setNewEnvRareTableId(fishingDefaults?.rareEventTableId || '');
 
-    const foragingDefaults = e.defaultsByMode?.Foraging || ({} as any);
-    setNewEnvForagingFindTableId(foragingDefaults.randomCatchTableId || '');
-    setNewEnvForagingMildTableId(foragingDefaults.mildEventTableId || '');
-    setNewEnvForagingRareTableId(foragingDefaults.rareEventTableId || '');
+    const foragingDefaults = e.defaultsByMode?.Foraging;
+    setNewEnvForagingFindTableId(foragingDefaults?.randomCatchTableId || '');
+    setNewEnvForagingMildTableId(foragingDefaults?.mildEventTableId || '');
+    setNewEnvForagingRareTableId(foragingDefaults?.rareEventTableId || '');
 
     setNewEnvSkillMod(String(e.skillMod || 0));
     setNewEnvLocationId(e.locationId || '');

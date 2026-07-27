@@ -6,6 +6,11 @@ import { useCampaignStore } from '../state/campaignStore';
 import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
 import { cookingLog } from '../utils/activityLogger';
 import { useWeatherModifiers } from '../hooks/useWeatherModifiers';
+import type {
+  CookingRecipe as Recipe,
+  CookingRecipeIngredient as RecipeIngredient,
+  RecipeCreationLog as CreationLog,
+} from '../types/campaign';
 
 // ============================================================================
 // Types
@@ -37,37 +42,6 @@ interface CookingSkill {
   id: string;
   name: string;
   [key: string]: unknown;
-}
-
-interface RecipeIngredient {
-  foodId: string;
-  foodName: string;
-  foodTypes: string[];
-  amount: number;
-}
-
-interface CreationLog {
-  id: string;
-  date: string;
-  worker: string;
-  kitchen: string;
-  cookingSkill: number;
-  kitchenBonus: number;
-  effectiveSkill: number;
-  roll: number;
-  mos: number;
-  result: string;
-  substitutes: Array<{ original: string; replacement: string; amount: number }>;
-}
-
-interface Recipe {
-  id: string;
-  name: string;
-  ingredients: RecipeIngredient[];
-  difficulty: number;
-  skills: string[];
-  criticalSuccess: boolean;
-  creationHistory: CreationLog[];
 }
 
 interface SelectedIngredient {
@@ -144,8 +118,8 @@ export function CookingTab() {
     Object.values(state.entities.characters).map((character) => ({
       id: character.id,
       name: character.name,
-      skills: (character as any).work?.skills || {},
-      st: (character as any).st
+      skills: character.work.skills || {},
+      st: character.st
     })) as Worker[],
     [state.entities.characters]
   );
@@ -156,7 +130,7 @@ export function CookingTab() {
   }, [actions]);
 
   const saveRecipes = useCallback((recipesArray: Recipe[]) => {
-    actions.setRecipes(normalizeArray(recipesArray as any));
+    actions.setRecipes(normalizeArray(recipesArray));
   }, [actions]);
 
   // Local state

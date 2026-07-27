@@ -6,6 +6,14 @@
  * fishing, foraging, alchemy, crafting, and rest.
  */
 
+import type {
+  ForageCategoryId,
+  ForageContextFlags,
+  ForageMode,
+  ForageSkill,
+} from './foraging';
+import type { CraftQuality } from './campaign';
+
 // ============================================================================
 // TYPE ALIASES
 // ============================================================================
@@ -103,13 +111,13 @@ export interface ForagingData {
   /** Zone profile ID where foraging occurs */
   zoneId: string;
   /** Foraging mode: general (no target), category, or specific item */
-  mode: 'general' | 'category' | 'specific';
+  mode: ForageMode;
   /** Target category when mode='category' (e.g., 'mushrooms', 'herbs_spices') */
-  targetCategory?: string;
+  targetCategory?: ForageCategoryId;
   /** Target item ID when mode='specific' */
   targetItemId?: string;
   /** Skill used for this forage (survival, naturalist, herbLore) */
-  skillUsed: string;
+  skillUsed: ForageSkill;
   /** Equipment being used (baskets, knives, etc.) */
   toolIds: string[];
   /** Leader's base foraging skill level (Survival, Naturalist, or Herb Lore) */
@@ -117,14 +125,7 @@ export interface ForagingData {
   /** Cumulative skill modifier from tools, helpers, weather, etc. (not including base skill) */
   skillModifier: number;
   /** Context flags snapshot from task creation */
-  contextFlags?: {
-    hasMapOrGuide: boolean;
-    isUnfamiliarOrHostile: boolean;
-    isPeakSeason: boolean;
-    isOffSeason: boolean;
-    hasProperTools: boolean;
-    isDenseOrDangerousTerrain: boolean;
-  };
+  contextFlags?: ForageContextFlags;
 
   // --- Legacy fields (kept for backward compatibility with existing saved data) ---
   /** @deprecated Use zoneId instead */
@@ -143,7 +144,7 @@ export interface LegacyForagingDataV1 {
   type: 'foraging';
   biomeId?: string;
   nodeId?: string;
-  skillUsed?: string;
+  skillUsed?: ForageSkill;
   toolIds?: string[];
   leaderSkill?: number;
   skillModifier?: number;
@@ -271,7 +272,7 @@ export interface CraftingData {
   /** Inventory item IDs for tools being used */
   toolInstanceIds: string[];
   /** Target quality level for the crafted item */
-  qualityTarget: 'basic' | 'standard' | 'fine' | 'masterwork';
+  qualityTarget: CraftQuality | 'basic' | 'standard' | 'masterwork';
   /** Cumulative skill modifier from conditions, equipment, etc. */
   skillModifier: number;
 }

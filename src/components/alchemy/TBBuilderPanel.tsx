@@ -7,7 +7,7 @@ import { toNumberOr } from '../../utils/helpers';
 // ============================================================================
 
 export interface Trait {
-  id: string;
+  id?: string;
   name: string;
   cost: number;
   notes?: string;
@@ -58,13 +58,13 @@ export function TBBuilderPanel({ traitBudget, initialTraits = [], onUpdate }: TB
     setShowAdd(false);
   }
 
-  function removeTrait(id: string) {
+  function removeTrait(id: Trait['id']) {
     const updatedTraits = traits.filter(t => t.id !== id);
     setTraits(updatedTraits);
     if (onUpdate) onUpdate(updatedTraits);
   }
 
-  function updateTrait(id: string, field: keyof Trait, value: string | number) {
+  function updateTrait(id: Trait['id'], field: keyof Trait, value: string | number) {
     const updatedTraits = traits.map(t => {
       if (t.id === id) {
         return { ...t, [field]: field === 'cost' ? toNumberOr(value, 0) : value };

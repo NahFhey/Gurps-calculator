@@ -85,16 +85,9 @@ export function FacilitiesView() {
   );
 
   const saveFacilities = useCallback((facilitiesList: Facility[]) => {
-    // We need to add a setFacilities action to the store
-    // For now, we'll use the normalized array approach
     const normalized = normalizeArray(facilitiesList);
-    // Since there's no direct setFacilities action, we'll update through the state
-    // This would need a store action to be added
     console.log('Saving facilities:', normalized);
-    // Temporary: dispatch a custom action or use a workaround
-    if ((actions as any).setFacilities) {
-      (actions as any).setFacilities(normalized);
-    }
+    actions.setFacilities(normalized);
   }, [actions]);
 
   function resetForm() {

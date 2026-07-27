@@ -21,6 +21,26 @@ export type Id = string;
 // SHARED TYPES
 // ============================================================================
 
+/**
+ * Skill summary stored by legacy pre-GCS character saves.
+ * Modern characters use `work.skills` and `gcsData.skills`.
+ */
+export interface LegacyCharacterSkill {
+  name?: string;
+  level?: number;
+  points?: number;
+}
+
+export type LegacyCharacterSkillEntry = string | LegacyCharacterSkill;
+
+/** Optional legacy skill containers still dual-read by downtime foraging. */
+export interface LegacyCharacterSkillSource {
+  skills?: LegacyCharacterSkillEntry[];
+  characterSheet?: {
+    skills?: LegacyCharacterSkillEntry[];
+  };
+}
+
 export interface Character {
   id: Id;
   name: string;
@@ -85,20 +105,59 @@ export interface MaterialType {
   hpMod: number;  // HP modifier percentage
 }
 
+export interface RecipeIngredient {
+  type: 'food' | 'material';
+  id: Id;
+  amount: number;
+}
+
+export interface CookingRecipeIngredient {
+  foodId: Id;
+  foodName: string;
+  foodTypes: string[];
+  amount: number;
+}
+
+export interface RecipeCreationLog {
+  id: Id;
+  date: string;
+  worker: string;
+  kitchen: string;
+  cookingSkill: number;
+  kitchenBonus: number;
+  effectiveSkill: number;
+  roll: number;
+  mos: number;
+  result: string;
+  substitutes: Array<{ original: string; replacement: string; amount: number }>;
+}
+
+/**
+ * Persisted recipe entity. The collection contains both inventory-style
+ * recipes and CookingTab recipes, so format-specific fields are optional while
+ * their ingredient arrays remain fully structured.
+ */
 export interface Recipe {
   id: Id;
   name: string;
-  ingredients: Array<{
-    type: 'food' | 'material';
-    id: Id;
-    amount: number;
-  }>;
-  skill: string;
+  ingredients: RecipeIngredient[] | CookingRecipeIngredient[];
   difficulty: number;
-  prepTime: number;  // In minutes
-  servings: number;
+  skill?: string;
+  prepTime?: number;  // In minutes
+  servings?: number;
   effects?: string;
   notes?: string;
+  skills?: string[];
+  criticalSuccess?: boolean;
+  creationHistory?: RecipeCreationLog[];
+}
+
+/** Recipe shape created and consumed by CookingTab. */
+export interface CookingRecipe extends Recipe {
+  ingredients: CookingRecipeIngredient[];
+  skills: string[];
+  criticalSuccess: boolean;
+  creationHistory: RecipeCreationLog[];
 }
 
 // ============================================================================
