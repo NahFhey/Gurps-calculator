@@ -52,6 +52,26 @@ describe('CharacterLibrary category mapping', () => {
     expect(combatCharacterToLibrary(legacyNPC as CombatCharacter).category).toBe('enemy');
   });
 
+  it('uses currentHP/currentFP for the combatant pools when present (GCS mid-campaign import)', () => {
+    const combat = libraryCharacterToCombat({
+      ...libraryChar('player'),
+      currentHP: 9,
+      currentFP: 6,
+    });
+    expect(combat.hp).toBe(9);
+    expect(combat.maxHP).toBe(12);
+    expect(combat.fp).toBe(6);
+    expect(combat.maxFP).toBe(10);
+  });
+
+  it('starts the combatant at full pools when no current values are provided', () => {
+    const combat = libraryCharacterToCombat(libraryChar('player'));
+    expect(combat.hp).toBe(12);
+    expect(combat.maxHP).toBe(12);
+    expect(combat.fp).toBe(10);
+    expect(combat.maxFP).toBe(10);
+  });
+
   it('preserves combat stats across the round trip', () => {
     const combat = libraryCharacterToCombat(libraryChar('enemy'));
     const lib = combatCharacterToLibrary(combat);

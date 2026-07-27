@@ -72,9 +72,9 @@ export function libraryCharacterToCombat(char: LibraryCharacter): CombatCharacte
     name: char.name,
     category,
     isNPC: category !== 'player',
-    hp: char.hp,
+    hp: char.currentHP ?? char.hp,
     maxHP: char.hp,
-    fp: char.fp || 0,
+    fp: char.currentFP ?? char.fp ?? 0,
     maxFP: char.fp || 0,
     st: char.st,
     dx: char.dx,
@@ -143,8 +143,8 @@ export default function CharacterLibrary() {
     const newLibChar: LibraryCharacter = {
       ...characterData,
       id: generateId(),
-      currentHP: characterData.hp,
-      currentFP: characterData.fp || 0,
+      currentHP: characterData.currentHP ?? characterData.hp,
+      currentFP: characterData.currentFP ?? characterData.fp ?? 0,
       currentMP: characterData.mp || 0
     };
     const newCombatChar = libraryCharacterToCombat(newLibChar);

@@ -143,22 +143,22 @@ export function parseGCSText(text: string | null | undefined): GCSParseResult {
   // Extract Point Pools - GCS format: "Point Pools: FP 11 / 11 [0]; HP 14 / 14 [0];"
   const poolsLine = lines.find(line => line.toLowerCase().includes('point pools:'));
   if (poolsLine) {
-    // HP format: "HP 14 / 14 [0]" - we want the max (second number)
-    const hpMatch = poolsLine.match(/HP\s+\d+\s*\/\s*(\d+)/i);
+    // HP format: "HP 9 / 13 [4]" - current / max (current can be negative mid-campaign)
+    const hpMatch = poolsLine.match(/HP\s+(-?\d+)\s*\/\s*(\d+)/i);
     if (hpMatch) {
-      result.data.hp = parseInt(hpMatch[1]);
-      result.data.currentHP = result.data.hp;
+      result.data.hp = parseInt(hpMatch[2]);
+      result.data.currentHP = parseInt(hpMatch[1]);
     } else {
       result.data.hp = result.data.ht;
       result.data.currentHP = result.data.ht;
       result.issues.push('HP not found, using HT');
     }
 
-    // FP format: "FP 11 / 11 [0]" - we want the max (second number)
-    const fpMatch = poolsLine.match(/FP\s+\d+\s*\/\s*(\d+)/i);
+    // FP format: "FP 8 / 11 [0]" - current / max (current can be negative mid-campaign)
+    const fpMatch = poolsLine.match(/FP\s+(-?\d+)\s*\/\s*(\d+)/i);
     if (fpMatch) {
-      result.data.fp = parseInt(fpMatch[1]);
-      result.data.currentFP = result.data.fp;
+      result.data.fp = parseInt(fpMatch[2]);
+      result.data.currentFP = parseInt(fpMatch[1]);
     } else {
       result.data.fp = result.data.ht;
       result.data.currentFP = result.data.ht;

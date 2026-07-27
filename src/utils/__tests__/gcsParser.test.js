@@ -45,8 +45,8 @@ describe('parseGCSText', () => {
         block: 8,
         dr: 0,
         notes: '',
-        currentHP: 13,
-        currentFP: 11
+        currentHP: 9,
+        currentFP: 8
       },
       issues: [
         'Dodge calculated from Basic Speed',
@@ -209,8 +209,22 @@ describe('parseGCSText', () => {
     expect(result.data.hp).toBe(12);
     expect(result.data.currentHP).toBe(12);
     expect(result.data.fp).toBe(14);
-    expect(result.data.currentFP).toBe(14);
+    expect(result.data.currentFP).toBe(6);
     expect(result.issues).toContain('HP not found, using HT');
+  });
+
+  it('preserves a negative current HP for a character imported mid-death-check', () => {
+    const result = parseGCSText(`
+      Name: Osric Vane (200)
+      Primary Attributes: ST 12 [20]; DX 11 [20]; IQ 10 [0]; HT 12 [20];
+      Secondary Attributes: Basic Speed 5.75 [0]; Basic Move 5 [0];
+      Point Pools: FP 3 / 12 [0]; HP -4 / 14 [4];
+    `);
+
+    expect(result.data.hp).toBe(14);
+    expect(result.data.currentHP).toBe(-4);
+    expect(result.data.fp).toBe(12);
+    expect(result.data.currentFP).toBe(3);
   });
 });
 
