@@ -10,7 +10,9 @@ export default defineConfig({
     setupFiles: [],
     // The server suite runs under its own node-environment config
     // (server/vitest.config.ts); sweeping it into jsdom breaks jose.
-    exclude: [...configDefaults.exclude, 'server/**'],
+    // Session worktrees under .claude/worktrees/ carry their own copies of
+    // the suite but not their own node_modules — never collect from them.
+    exclude: [...configDefaults.exclude, 'server/**', '.claude/worktrees/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
