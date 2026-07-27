@@ -254,7 +254,7 @@ These items close out findings from AUTO_REVIEW 2026-07-15 → 2026-07-21 (one C
 
 Same bar as Phase 16t-3: add `__tests__/<name>.test.ts` beside the file, covering the exported API — happy path + at least one error/edge path per exported function group. No `as any` in tests. Verify with a targeted vitest run. For store/context-backed hooks, mirror `src/hooks/__tests__/useWeatherModifiers.test.ts` / `useTimeAdvancement.test.ts`; if provider wiring exceeds what those exemplars show, defer with that exact reason rather than expanding scope.
 
-- [ ] Add tests for src/utils/gcsParser.js (238 lines, zero coverage; parses GCS character-export JSON, sole importer GCSImportModal.tsx). Priority edge cases: malformed JSON, missing/partial attribute blocks, empty skill/trait lists. This is the safety net for the Phase 15e-5 conversion below.
+- [x] Add tests for src/utils/gcsParser.js (238 lines, zero coverage; parses GCS character-export JSON, sole importer GCSImportModal.tsx). Priority edge cases: malformed JSON, missing/partial attribute blocks, empty skill/trait lists. This is the safety net for the Phase 15e-5 conversion below. [2026-07-27 codex-shepherd session: 16 tests; pinned parser behavior — pool "current" values are discarded (HP 9/13 → currentHP 13), possible upstream bug worth a look]
 - [ ] Add tests for src/hooks/useCraftingData.ts (131 lines, zero coverage).
 - [ ] Add tests for src/hooks/useCombatHistory.ts (152 lines, zero coverage; covers the Phase 16r cast removals above too).
 - [ ] Add tests for src/hooks/useAlchemyData.ts (171 lines, zero coverage).
@@ -263,7 +263,7 @@ Same bar as Phase 16t-3: add `__tests__/<name>.test.ts` beside the file, coverin
 - [ ] Add tests for src/hooks/useActionResolution.ts (445 lines, zero coverage; largest untested combat hook — cover the main resolution paths, defer if store wiring exceeds the exemplars).
 - [ ] Add tests for src/hooks/usePerformanceMonitoring.ts (465 lines, zero coverage; timer-heavy — use fake timers).
 - [ ] Add tests for src/hooks/useCombatSession.ts (645 lines, zero coverage; largest untested hook. Cover the primary session lifecycle paths; if full coverage doesn't fit one run, land a meaningful subset and note it — do not defer solely on size.)
-- [ ] Add tests for src/utils/performanceMonitor.js (531 lines, zero coverage; importers: PerformanceDashboard.tsx, usePerformanceMonitoring.ts. Use fake timers; test file stays `.test.js` or `.test.ts` importing by basename. This is the safety net for the Phase 15e-5 conversion below.)
+- [x] Add tests for src/utils/performanceMonitor.js (531 lines, zero coverage; importers: PerformanceDashboard.tsx, usePerformanceMonitoring.ts. Use fake timers; test file stays `.test.js` or `.test.ts` importing by basename. This is the safety net for the Phase 15e-5 conversion below.) [2026-07-27 codex-shepherd session: 13 tests; pinned latent bug — getPerformanceReport() throws "Cannot read properties of null (reading 'avg')" when a comparison date has no memory readings]
 
 ## Phase 15e-5 — JS → TS migration, fifth batch (one file per run) _(refill 2026-07-23)_
 
