@@ -255,10 +255,10 @@ These items close out findings from AUTO_REVIEW 2026-07-15 → 2026-07-21 (one C
 Same bar as Phase 16t-3: add `__tests__/<name>.test.ts` beside the file, covering the exported API — happy path + at least one error/edge path per exported function group. No `as any` in tests. Verify with a targeted vitest run. For store/context-backed hooks, mirror `src/hooks/__tests__/useWeatherModifiers.test.ts` / `useTimeAdvancement.test.ts`; if provider wiring exceeds what those exemplars show, defer with that exact reason rather than expanding scope.
 
 - [x] Add tests for src/utils/gcsParser.js (238 lines, zero coverage; parses GCS character-export JSON, sole importer GCSImportModal.tsx). Priority edge cases: malformed JSON, missing/partial attribute blocks, empty skill/trait lists. This is the safety net for the Phase 15e-5 conversion below. [2026-07-27 codex-shepherd session: 16 tests; pinned parser behavior — pool "current" values are discarded (HP 9/13 → currentHP 13), possible upstream bug worth a look]
-- [ ] Add tests for src/hooks/useCraftingData.ts (131 lines, zero coverage).
-- [ ] Add tests for src/hooks/useCombatHistory.ts (152 lines, zero coverage; covers the Phase 16r cast removals above too).
-- [ ] Add tests for src/hooks/useAlchemyData.ts (171 lines, zero coverage).
-- [ ] Add tests for src/hooks/useCombatReinforcements.ts (188 lines, zero coverage).
+- [x] Add tests for src/hooks/useCraftingData.ts (131 lines, zero coverage). [2026-07-27 codex-shepherd session: 3 tests]
+- [x] Add tests for src/hooks/useCombatHistory.ts (152 lines, zero coverage; covers the Phase 16r cast removals above too). [2026-07-27 codex-shepherd session: 5 tests incl. full undo/redo round-trip + reveal sync]
+- [x] Add tests for src/hooks/useAlchemyData.ts (171 lines, zero coverage). [2026-07-27 codex-shepherd session: 4 tests; pinned legacy phase/status conversion]
+- [x] Add tests for src/hooks/useCombatReinforcements.ts (188 lines, zero coverage). [2026-07-27 codex-shepherd session: 6 tests; pinned objects entering combat without joining turn order]
 - [ ] Add tests for src/hooks/useCombatExport.ts (289 lines, zero coverage; mock file-download/clipboard side effects, assert the generated export payloads).
 - [ ] Add tests for src/hooks/useActionResolution.ts (445 lines, zero coverage; largest untested combat hook — cover the main resolution paths, defer if store wiring exceeds the exemplars).
 - [ ] Add tests for src/hooks/usePerformanceMonitoring.ts (465 lines, zero coverage; timer-heavy — use fake timers).
