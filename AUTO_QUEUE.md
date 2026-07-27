@@ -283,6 +283,41 @@ Same pattern as Phase 16y: remove every `as any` in the target file by fixing ty
 - [x] Remove the 25 `as any` casts in src/hooks/__tests__/useCombatStore.test.ts (test file — type the fixtures/mocks properly instead; all tests stay green with identical assertions). [2026-07-27 codex-shepherd session: 25→0, 46 tests green, identical assertions]
 - [x] Remove the 18 `as any` casts in src/utils/__tests__/combatHelpers.test.ts (same bar: properly typed fixtures, identical assertions). [2026-07-27 codex-shepherd session: 18→0 via new TurnOrderCombatant input type on generateTurnOrder; 114 tests green]
 
+## Phase 16y-3 — `as any` reduction, third batch (one file per run) _(refill 2026-07-27, codex-shepherd session)_
+
+Same pattern as 16y-2: remove every `as any` by fixing types at the source; zero runtime behavior change; tsc clean; named safety nets green. If a specific cast genuinely requires a design decision, defer citing that cast's file:line.
+
+- [ ] Remove the 6 `as any` casts in src/components/GatheringManager.tsx (:112-:132, normalizeArray calls on gathering setters). The 2026-07-23 Extended-canonical fix (466cbd) likely makes these cleanly fixable — the setters should now accept the Extended array shapes. Safety net: tsc + src/components/gathering/__tests__/.
+- [ ] Remove the 5 `as any` casts in src/components/GatheringTab.tsx (:529/:532/:601/:624/:626 — rollOnCatchTable/rollNetCatch/findTable args). Fix the declared param types in src/utils/gathering.d.ts honestly (inline the real table shapes, no erasure). Safety net: tsc + gathering component tests.
+- [ ] Remove the 6 `as any` casts in src/hooks/useActionResolution.ts (:106/:107/:255/:256/:258/:350 — hitLocation, damageBreakdown, locationKey/Label, attack). Safety net now exists: src/hooks/__tests__/useActionResolution.test.ts (7 tests, added 2026-07-27).
+- [ ] Remove the 4 `as any` casts in src/components/combat/EncounterSetup.tsx. No dedicated component test — safety net is tsc + the full combat suite green.
+- [ ] Remove the 4 `as any` casts in src/components/crafting/CraftingProjectList.tsx. Safety net: src/components/crafting/__tests__/CraftingComponents.test.tsx.
+- [ ] Remove the 4 `as any` casts in src/state/downtime/downtimeMigration.ts. Safety net: src/state/downtime/__tests__/downtimeMigration.test.ts.
+
+## Phase 16r-2 — bare `: any` erosion cleanup (one item per run) _(refill 2026-07-27)_
+
+Same bar as 16r: re-type against canonical domain types, zero `: any` remaining in the target file(s), zero runtime behavior change, tsc clean, safety nets green, do NOT rewrite test files.
+
+- [ ] Re-type src/utils/exportImport.ts — 33 bare `: any`, the largest remaining erosion (same failure mode the 16r combatViewFilter CONCERN covered). Type against campaign/schema types in src/types/ and src/utils/schemaVersioning.ts. Safety net: src/utils/__tests__/exportImport.test.js AND exportImport.test.ts (both must stay green).
+- [ ] Tighten the 4 bare `: any` in src/utils/dayPlanner.ts and the 3 in src/utils/foraging.ts (small sibling items, one run). Safety nets: their co-located suites in src/utils/__tests__/.
+
+## Phase 16t-5 — test coverage refill _(refill 2026-07-27)_
+
+Same bar as 16t-4: `__tests__/<name>.test.ts` beside the file, happy path + at least one error/edge path per exported function group, no `as any`, targeted vitest run green.
+
+- [ ] Add tests for src/state/downtime/downtimeErrors.ts (65 lines, zero coverage; small — cover every exported error helper).
+- [ ] Add tests for src/net/ConnectionManager.ts (373 lines, zero coverage; singleton class — mock `socket.io-client` and global fetch; cover connect/join token flow, listener re-registration on reconnect (the 10e off-before-on fix), and disconnect cleanup. Defer with reason "socket mocking exceeds one run" if the harness balloons).
+- [ ] Extend src/hooks/__tests__/useCombatSession.test.ts to cover the gaps noted 2026-07-27: previous-turn navigation, resource editing, and dice paths. Skip map movement/token placement (map harness is its own project). Same mocked-store harness the suite already uses.
+
+## Phase 16y-2b — `as any` reduction in test files, continued _(refill 2026-07-27)_
+
+Same bar as the 16y-2 test-file items: properly typed fixtures/mocks, identical assertions, all tests green with unchanged counts.
+
+- [ ] Remove the 15 `as any` casts in src/components/gathering/__tests__/TablesView.test.tsx.
+- [ ] Remove the 13 `as any` casts in src/components/alchemy/__tests__/AlchemyComponents.test.tsx.
+- [ ] Remove the 10 `as any` casts in src/hooks/__tests__/useTimeAdvancement.test.ts.
+- [ ] Remove the 22 `as any` casts across the gathering view-test trio src/components/gathering/__tests__/EnvironmentsView.test.tsx (9), ToolsView.test.tsx (8), BaitView.test.tsx (5) — same fixture family, one run; the Extended-canonical fix should make shared typed factories straightforward.
+
 ## Out of scope for the loop (do NOT add these)
 
 The following are tracked elsewhere because they require design judgment or coordinated multi-file changes the loop should not attempt autonomously:
