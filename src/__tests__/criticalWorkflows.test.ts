@@ -9,12 +9,12 @@
  */
 import { describe, it, expect } from 'vitest';
 import { campaignReducer, createCampaignState } from '../state/campaignReducer';
-import type { CampaignState } from '../state/campaignReducer';
+import type { CampaignAction, CampaignState } from '../state/campaignReducer';
 import type { CombatCharacter, CombatSession, Craft } from '../types/campaign';
 
 // Helper to dispatch a sequence of actions
-function dispatchAll(initial: CampaignState, actions: Array<{ type: string; payload?: unknown }>): CampaignState {
-  return actions.reduce((state, action) => campaignReducer(state, action as any), initial);
+function dispatchAll(initial: CampaignState, actions: CampaignAction[]): CampaignState {
+  return actions.reduce((state, action) => campaignReducer(state, action), initial);
 }
 
 // ---------------------------------------------------------------------------
@@ -223,7 +223,7 @@ describe('Time advancement', () => {
     expect(state.time.day).toBe(1);
     expect(state.time.slot).toBe(0);
 
-    const next = campaignReducer(state, { type: 'advanceTime' } as any);
+    const next = campaignReducer(state, { type: 'advanceTime' });
     expect(next.time.slot).toBe(1);
     expect(next.time.day).toBe(1);
   });
@@ -234,7 +234,7 @@ describe('Time advancement', () => {
     // Time system typically has a fixed number of slots per day
     const maxSlots = 6; // common in GURPS downtime
     for (let i = 0; i < maxSlots; i++) {
-      const next = campaignReducer(state, { type: 'advanceTime' } as any);
+      const next = campaignReducer(state, { type: 'advanceTime' });
       if (next.time.day > state.time.day) {
         // Day rolled over
         expect(next.time.slot).toBe(0);
@@ -251,7 +251,7 @@ describe('Time advancement', () => {
     // Simulate a paused activity blocking time
     state.activities.pausedSessionIds = ['paused-1'];
 
-    const next = campaignReducer(state, { type: 'advanceTime' } as any);
+    const next = campaignReducer(state, { type: 'advanceTime' });
     expect(next.ui.blockingError).toBeDefined();
     expect(next.ui.blockingError?.type).toBe('pausedActivities');
     // Time should NOT have advanced

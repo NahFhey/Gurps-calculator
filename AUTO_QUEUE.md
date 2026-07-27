@@ -339,9 +339,9 @@ These 8 test files were renamed .js→.ts in Phase 10b with `@ts-nocheck` added 
 
 Same bar as 16y-2b: typed fixtures, identical assertions, unchanged counts.
 
-- [ ] Remove the 12 `as any` across src/__tests__/serializationRoundTrip.test.ts (8) and src/__tests__/criticalWorkflows.test.ts (4).
-- [ ] Remove the 12 `as any` across src/hooks/__tests__/useCharacterSlotSummary.test.ts (7) and src/hooks/__tests__/useWeatherModifiers.test.ts (5).
-- [ ] Remove the 16 `as any` across src/components/dayplanner/views/__tests__/DayPlannerViewComponents.test.tsx (7), src/state/gathering/__tests__/gatheringReducer.test.ts (4), src/components/combat/__tests__/PostCombatSummary.test.tsx (3), src/utils/__tests__/dice.test.ts (2).
+- [x] Remove the 12 `as any` across src/__tests__/serializationRoundTrip.test.ts (8) and src/__tests__/criticalWorkflows.test.ts (4). [2026-07-27 codex-shepherd session: 8+14 tests unchanged]
+- [x] Remove the 12 `as any` across src/hooks/__tests__/useCharacterSlotSummary.test.ts (7) and src/hooks/__tests__/useWeatherModifiers.test.ts (5). [2026-07-27 codex-shepherd session: 7+5 tests unchanged]
+- [x] Remove the 16 `as any` across src/components/dayplanner/views/__tests__/DayPlannerViewComponents.test.tsx (7), src/state/gathering/__tests__/gatheringReducer.test.ts (4), src/components/combat/__tests__/PostCombatSummary.test.tsx (3), src/utils/__tests__/dice.test.ts (2). [2026-07-27 codex-shepherd session: 13+33+10+28 tests unchanged. Shepherd note: Codex laundered 3 crash-path casts through Reflect.apply (evades typing AND untype the result); replaced with the documented TODO(types) widened-signature pattern from the 16n batch.]
 
 ## Phase 16y-4 — `as any` production tail (grouped by subsystem, one item per run) _(refill 2026-07-27 #2)_
 

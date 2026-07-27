@@ -1,6 +1,12 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { produce } from 'immer';
 import { handleGatheringAction } from '../gatheringReducer';
+
+// TODO(types): handleGatheringAction's action parameter excludes the unknown-type action its runtime rejects by returning false.
+const handleUnknownGatheringAction = handleGatheringAction as (
+  state: Parameters<typeof handleGatheringAction>[0],
+  action: { type: string }
+) => ReturnType<typeof handleGatheringAction>;
 import {
   GATHERING_SPECIES_SET,
   GATHERING_SPECIES_ADD,
@@ -32,7 +38,10 @@ import {
   FORAGING_CONFIG_UPDATE,
   type GatheringAction,
 } from '../gatheringActions';
-import type { CampaignState } from '../../campaignReducer';
+import {
+  createCampaignState,
+  type CampaignState,
+} from '../../campaignReducer';
 import type {
   GatheringSpecies,
   GatheringTool,
@@ -48,39 +57,109 @@ import type { ForageZoneProfile, ForageItem, ForagingConfig } from '../../../typ
 import { DEFAULT_FORAGING_CONFIG } from '../../../constants/foraging';
 
 const species = (id: string, overrides: Partial<GatheringSpecies> = {}): GatheringSpecies =>
-  ({ id, name: `species-${id}`, ...overrides }) as GatheringSpecies;
-const tool = (id: string): GatheringTool => ({ id, name: `tool-${id}` }) as GatheringTool;
-const table = (id: string): GatheringTable => ({ id, name: `table-${id}` }) as GatheringTable;
-const environment = (id: string): GatheringEnvironment =>
-  ({ id, name: `env-${id}` }) as GatheringEnvironment;
-const session = (id: string, overrides: Partial<GatheringSession> = {}): GatheringSession =>
-  ({ id, status: 'pending', ...overrides }) as unknown as GatheringSession;
-const bait = (id: string): GatheringBait => ({ id, name: `bait-${id}` }) as GatheringBait;
-const category = (id: string): GatheringCategory =>
-  ({ id, name: `cat-${id}` }) as GatheringCategory;
-const item = (id: string): GatheringItem => ({ id, name: `item-${id}` }) as GatheringItem;
-const zoneProfile = (id: string, overrides: Partial<ForageZoneProfile> = {}): ForageZoneProfile =>
-  ({ id, name: `zone-${id}`, ...overrides }) as ForageZoneProfile;
-const forageItem = (id: string, overrides: Partial<ForageItem> = {}): ForageItem =>
-  ({ id, name: `forage-${id}`, ...overrides }) as ForageItem;
-
-const createMinimalCampaignState = (): CampaignState =>
   ({
-    entities: {
-      gatheringSpecies: {},
-      gatheringTools: {},
-      gatheringTables: {},
-      gatheringEnvironments: {},
-      gatheringSessions: {},
-      gatheringDailyEvents: {} as GatheringDailyEvents,
-      gatheringBait: {},
-      gatheringCategories: {},
-      gatheringItems: {},
-      forageZoneProfiles: {},
-      forageItems: {},
-      foragingConfig: undefined as ForagingConfig | undefined,
-    },
-  }) as unknown as CampaignState;
+    id,
+    name: `species-${id}`,
+    type: 'fish',
+    tags: [],
+    foodType: 'meat',
+    yieldMeatFormula: '1d6',
+    secondaryMaterialType: null,
+    yieldSecondaryFormula: null,
+    secondaryNameOverride: null,
+    st: null,
+    specialRules: [],
+    ...overrides,
+  });
+const tool = (id: string): GatheringTool => ({
+  id,
+  name: `tool-${id}`,
+  toolType: 'fishing',
+  allowedModes: [],
+  allowedMethods: [],
+  bonuses: [],
+  durability: null,
+  notes: '',
+});
+const table = (id: string): GatheringTable => ({
+  id,
+  name: `table-${id}`,
+  tableType: 'fishing',
+  rollMethod: '1d6',
+  entries: [],
+});
+const environment = (id: string): GatheringEnvironment => ({
+  id,
+  name: `env-${id}`,
+  supportedModes: [],
+  defaultsByMode: {},
+  skillMod: 0,
+});
+const session = (id: string, overrides: Partial<GatheringSession> = {}): GatheringSession =>
+  ({
+    id,
+    type: 'fishing',
+    worker: 'worker-1',
+    day: 1,
+    slot: 0,
+    environmentId: 'environment-1',
+    results: [],
+    status: 'pending',
+    ...overrides,
+  });
+const bait = (id: string): GatheringBait => ({
+  id,
+  name: `bait-${id}`,
+  consumableType: 'bait',
+  baitTags: [],
+  attractsSpeciesIds: [],
+  quantity: 1,
+  rollBonus: 0,
+});
+const category = (id: string): GatheringCategory => ({
+  id,
+  name: `cat-${id}`,
+  yieldFormula: '1d6',
+  inventoryKind: 'food',
+  typeId: 'raw',
+  description: '',
+});
+const item = (id: string): GatheringItem => ({
+  id,
+  name: `item-${id}`,
+  inventoryKind: 'material',
+  typeId: 'herb',
+  yieldFormula: '1d6',
+  rarity: 'common',
+  description: '',
+});
+const zoneProfile = (id: string, overrides: Partial<ForageZoneProfile> = {}): ForageZoneProfile =>
+  ({
+    id,
+    name: `zone-${id}`,
+    commonCategories: [],
+    uncommonCategories: [],
+    rareCategories: [],
+    tags: [],
+    ...overrides,
+  });
+const forageItem = (id: string, overrides: Partial<ForageItem> = {}): ForageItem =>
+  ({
+    id,
+    name: `forage-${id}`,
+    categoryId: 'fruits',
+    tier: 'common',
+    yieldFormula: '1d6',
+    inventoryKind: 'food',
+    typeId: 'raw',
+    ...overrides,
+  });
+
+const createMinimalCampaignState = (): CampaignState => {
+  const state = createCampaignState();
+  Reflect.deleteProperty(state.entities, 'foragingConfig');
+  return state;
+};
 
 function applyAction(state: CampaignState, action: GatheringAction): CampaignState {
   return produce(state, draft => {
@@ -163,15 +242,15 @@ describe('gatheringReducer', () => {
       state = applyAction(state, { type: GATHERING_SESSION_ADD, payload: s });
       const next = applyAction(state, {
         type: GATHERING_SESSION_UPDATE,
-        payload: { id: 'sess-1', changes: { status: 'complete' } as Partial<GatheringSession> },
+        payload: { id: 'sess-1', changes: { status: 'complete' } },
       });
-      expect((next.entities.gatheringSessions['sess-1'] as any).status).toBe('complete');
+      expect(next.entities.gatheringSessions['sess-1'].status).toBe('complete');
     });
 
     it('GATHERING_SESSION_UPDATE is a no-op for unknown ids', () => {
       const next = applyAction(state, {
         type: GATHERING_SESSION_UPDATE,
-        payload: { id: 'missing', changes: { status: 'complete' } as Partial<GatheringSession> },
+        payload: { id: 'missing', changes: { status: 'complete' } },
       });
       expect(next.entities.gatheringSessions['missing']).toBeUndefined();
     });
@@ -185,7 +264,7 @@ describe('gatheringReducer', () => {
 
   describe('daily events', () => {
     it('GATHERING_DAILY_EVENTS_SET replaces daily events', () => {
-      const payload = { '2026-01-01': [] } as unknown as GatheringDailyEvents;
+      const payload: GatheringDailyEvents = { '2026-01-01': {} };
       const next = applyAction(state, { type: GATHERING_DAILY_EVENTS_SET, payload });
       expect(next.entities.gatheringDailyEvents).toEqual(payload);
     });
@@ -247,19 +326,19 @@ describe('gatheringReducer', () => {
     });
 
     it('FORAGE_ZONE_PROFILE_UPDATE merges changes into existing profile', () => {
-      const z = zoneProfile('z1', { name: 'original' } as Partial<ForageZoneProfile>);
+      const z = zoneProfile('z1', { name: 'original' });
       state = applyAction(state, { type: FORAGE_ZONE_PROFILE_ADD, payload: z });
       const next = applyAction(state, {
         type: FORAGE_ZONE_PROFILE_UPDATE,
-        payload: { id: 'z1', changes: { name: 'updated' } as Partial<ForageZoneProfile> },
+        payload: { id: 'z1', changes: { name: 'updated' } },
       });
-      expect((next.entities.forageZoneProfiles['z1'] as any).name).toBe('updated');
+      expect(next.entities.forageZoneProfiles['z1'].name).toBe('updated');
     });
 
     it('FORAGE_ZONE_PROFILE_UPDATE is a no-op for unknown ids', () => {
       const next = applyAction(state, {
         type: FORAGE_ZONE_PROFILE_UPDATE,
-        payload: { id: 'missing', changes: { name: 'x' } as Partial<ForageZoneProfile> },
+        payload: { id: 'missing', changes: { name: 'x' } },
       });
       expect(next.entities.forageZoneProfiles['missing']).toBeUndefined();
     });
@@ -285,19 +364,19 @@ describe('gatheringReducer', () => {
     });
 
     it('FORAGE_ITEM_UPDATE merges changes into existing item', () => {
-      const f = forageItem('f1', { name: 'original' } as Partial<ForageItem>);
+      const f = forageItem('f1', { name: 'original' });
       state = applyAction(state, { type: FORAGE_ITEM_ADD, payload: f });
       const next = applyAction(state, {
         type: FORAGE_ITEM_UPDATE,
-        payload: { id: 'f1', changes: { name: 'updated' } as Partial<ForageItem> },
+        payload: { id: 'f1', changes: { name: 'updated' } },
       });
-      expect((next.entities.forageItems['f1'] as any).name).toBe('updated');
+      expect(next.entities.forageItems['f1'].name).toBe('updated');
     });
 
     it('FORAGE_ITEM_UPDATE is a no-op for unknown ids', () => {
       const next = applyAction(state, {
         type: FORAGE_ITEM_UPDATE,
-        payload: { id: 'missing', changes: { name: 'x' } as Partial<ForageItem> },
+        payload: { id: 'missing', changes: { name: 'x' } },
       });
       expect(next.entities.forageItems['missing']).toBeUndefined();
     });
@@ -346,9 +425,9 @@ describe('gatheringReducer', () => {
   describe('unhandled actions', () => {
     it('returns false for unknown action types without mutating state', () => {
       const before = JSON.stringify(state);
-      const handled = handleGatheringAction(state as any, {
+      const handled = handleUnknownGatheringAction(state, {
         type: 'unknown/action',
-      } as unknown as GatheringAction);
+      });
       expect(handled).toBe(false);
       expect(JSON.stringify(state)).toBe(before);
     });

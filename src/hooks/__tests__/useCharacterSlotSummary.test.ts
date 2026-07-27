@@ -5,16 +5,39 @@ import {
   useAllCharacterSlotSummaries,
 } from '../useCharacterSlotSummary';
 import { downtimeInitialState } from '../../state/downtime/downtimeInitialState';
-import type { DowntimeTask, FishingData } from '../../types/downtime';
+import type {
+  DowntimeState,
+  DowntimeTask,
+  FishingData,
+} from '../../types/downtime';
 
-// Mock the campaign store
+interface MockCampaignStoreValue {
+  state: {
+    downtime?: DowntimeState;
+    time?: {
+      day: number;
+      slot: number;
+    };
+  };
+  actions: Record<string, never>;
+}
+
+const useCampaignStoreMock = vi.hoisted(
+  () => vi.fn<() => MockCampaignStoreValue>(),
+);
+
 vi.mock('../../state/campaignStore', () => ({
-  useCampaignStore: vi.fn(),
+  useCampaignStore: useCampaignStoreMock,
 }));
 
-import { useCampaignStore } from '../../state/campaignStore';
-
-const mockedUseCampaignStore = vi.mocked(useCampaignStore);
+function makeStore(
+  state: MockCampaignStoreValue['state'],
+): MockCampaignStoreValue {
+  return {
+    state,
+    actions: {},
+  };
+}
 
 function createTestTask(overrides: Partial<DowntimeTask> = {}): DowntimeTask {
   const now = Date.now();
@@ -28,12 +51,16 @@ function createTestTask(overrides: Partial<DowntimeTask> = {}): DowntimeTask {
     status: 'pending',
     activityData: {
       type: 'fishing',
+      method: 'Line',
       speciesId: 'species-1',
+      isRandomCatch: false,
       spotId: 'spot-1',
       toolIds: [],
+      baitId: null,
+      retryAttempt: 0,
       skillModifier: 0,
       targetYield: 1,
-    } as unknown as FishingData,
+    } satisfies FishingData,
     createdAt: now,
     updatedAt: now,
     ...overrides,
@@ -46,13 +73,10 @@ describe('useCharacterSlotSummary', () => {
   });
 
   it('returns null when downtime state is undefined', () => {
-    mockedUseCampaignStore.mockReturnValue({
-      state: {
-        downtime: undefined,
-        time: { day: 1, slot: 0 },
-      },
-      actions: {},
-    } as any);
+    useCampaignStoreMock.mockReturnValue(makeStore({
+      downtime: undefined,
+      time: { day: 1, slot: 0 },
+    }));
 
     const { result } = renderHook(() => useCharacterSlotSummary('char-1'));
 
@@ -60,13 +84,10 @@ describe('useCharacterSlotSummary', () => {
   });
 
   it('returns summary when downtime state exists', () => {
-    mockedUseCampaignStore.mockReturnValue({
-      state: {
-        downtime: downtimeInitialState,
-        time: { day: 1, slot: 0 },
-      },
-      actions: {},
-    } as any);
+    useCampaignStoreMock.mockReturnValue(makeStore({
+      downtime: downtimeInitialState,
+      time: { day: 1, slot: 0 },
+    }));
 
     const { result } = renderHook(() => useCharacterSlotSummary('char-1'));
 
@@ -84,17 +105,14 @@ describe('useCharacterSlotSummary', () => {
       slot: 0,
     });
 
-    mockedUseCampaignStore.mockReturnValue({
-      state: {
-        downtime: {
-          ...downtimeInitialState,
-          tasksById: { 'task-1': task },
-          taskOrder: ['task-1'],
-        },
-        time: { day: 1, slot: 0 },
+    useCampaignStoreMock.mockReturnValue(makeStore({
+      downtime: {
+        ...downtimeInitialState,
+        tasksById: { 'task-1': task },
+        taskOrder: ['task-1'],
       },
-      actions: {},
-    } as any);
+      time: { day: 1, slot: 0 },
+    }));
 
     const { result } = renderHook(() => useCharacterSlotSummary('char-1'));
 
@@ -104,13 +122,10 @@ describe('useCharacterSlotSummary', () => {
   });
 
   it('defaults to day 1 slot 0 when time is undefined', () => {
-    mockedUseCampaignStore.mockReturnValue({
-      state: {
-        downtime: downtimeInitialState,
-        time: undefined,
-      },
-      actions: {},
-    } as any);
+    useCampaignStoreMock.mockReturnValue(makeStore({
+      downtime: downtimeInitialState,
+      time: undefined,
+    }));
 
     const { result } = renderHook(() => useCharacterSlotSummary('char-1'));
 
@@ -126,13 +141,10 @@ describe('useAllCharacterSlotSummaries', () => {
   });
 
   it('returns empty map when downtime state is undefined', () => {
-    mockedUseCampaignStore.mockReturnValue({
-      state: {
-        downtime: undefined,
-        time: { day: 1, slot: 0 },
-      },
-      actions: {},
-    } as any);
+    useCampaignStoreMock.mockReturnValue(makeStore({
+      downtime: undefined,
+      time: { day: 1, slot: 0 },
+    }));
 
     const { result } = renderHook(() =>
       useAllCharacterSlotSummaries(['char-1', 'char-2'])
@@ -142,13 +154,10 @@ describe('useAllCharacterSlotSummaries', () => {
   });
 
   it('returns map with all character summaries', () => {
-    mockedUseCampaignStore.mockReturnValue({
-      state: {
-        downtime: downtimeInitialState,
-        time: { day: 1, slot: 0 },
-      },
-      actions: {},
-    } as any);
+    useCampaignStoreMock.mockReturnValue(makeStore({
+      downtime: downtimeInitialState,
+      time: { day: 1, slot: 0 },
+    }));
 
     const { result } = renderHook(() =>
       useAllCharacterSlotSummaries(['char-1', 'char-2', 'char-3'])
@@ -169,17 +178,14 @@ describe('useAllCharacterSlotSummaries', () => {
       slot: 0,
     });
 
-    mockedUseCampaignStore.mockReturnValue({
-      state: {
-        downtime: {
-          ...downtimeInitialState,
-          tasksById: { 'task-1': task },
-          taskOrder: ['task-1'],
-        },
-        time: { day: 1, slot: 0 },
+    useCampaignStoreMock.mockReturnValue(makeStore({
+      downtime: {
+        ...downtimeInitialState,
+        tasksById: { 'task-1': task },
+        taskOrder: ['task-1'],
       },
-      actions: {},
-    } as any);
+      time: { day: 1, slot: 0 },
+    }));
 
     const { result } = renderHook(() =>
       useAllCharacterSlotSummaries(['char-1', 'char-2', 'char-3'])

@@ -89,10 +89,10 @@ describe('buildCombatSummary', () => {
       maxHP: 14,
       currentHP: 6,
       maxFP: 12,
-      currentFP: 9
-    }) as any;
-    p.isFromParty = true;
-    p.partyCharacterId = 'char-1';
+      currentFP: 9,
+      isFromParty: true,
+      partyCharacterId: 'char-1',
+    });
 
     const combat = makeCombat([p]);
     const summary = buildCombatSummary(combat);
@@ -210,20 +210,20 @@ describe('buildCombatSummary', () => {
       name: 'Tank',
       category: 'player',
       maxHP: 16,
-      currentHP: 4
-    }) as any;
-    p1.isFromParty = true;
-    p1.partyCharacterId = 'char-1';
+      currentHP: 4,
+      isFromParty: true,
+      partyCharacterId: 'char-1',
+    });
 
     const p2 = makeParticipant({
       instanceId: 'p2',
       name: 'Mage',
       category: 'player',
       maxHP: 10,
-      currentHP: 9
-    }) as any;
-    p2.isFromParty = true;
-    p2.partyCharacterId = 'char-2';
+      currentHP: 9,
+      isFromParty: true,
+      partyCharacterId: 'char-2',
+    });
 
     const combat = makeCombat([p1, p2]);
     const summary = buildCombatSummary(combat);

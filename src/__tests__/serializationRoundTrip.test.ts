@@ -12,6 +12,44 @@ import {
   loadCampaignState,
   saveCampaignState,
 } from '../persistence/campaignStorage';
+import type { CampaignState } from '../state/campaignReducer';
+import type { MapModel } from '../types/map';
+
+type SerializedCampaignState = ReturnType<typeof serializeCampaignState>;
+
+function hydrateSerializedState(
+  serialized: SerializedCampaignState,
+): CampaignState {
+  const hydrationPayload = Object.assign(createCampaignState(), serialized);
+  return hydrateCampaignState(hydrationPayload);
+}
+
+function makeMap(overrides: Partial<MapModel> = {}): MapModel {
+  return {
+    id: 'map-1',
+    name: 'Test Map',
+    scaleMilesPerTile: 12,
+    rows: 1,
+    cols: 1,
+    grid: [['tile-1']],
+    tilesById: {
+      'tile-1': {
+        id: 'tile-1',
+        terrainId: null,
+        markerIds: [],
+        linkIds: [],
+      },
+    },
+    terrainById: {},
+    markersById: {},
+    linksById: {},
+    revealedTileIds: new Set(),
+    partyTileId: null,
+    lastSelectedTerrainId: '',
+    lastPlacedTerrainId: '',
+    ...overrides,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Direct serialize → hydrate round-trip
@@ -24,10 +62,10 @@ describe('serializeCampaignState / hydrateCampaignState round-trip', () => {
 
     const serialized = serializeCampaignState(state);
     // Serialized Sets should be arrays
-    expect(Array.isArray((serialized as any).combat.reveal.revealedTargets)).toBe(true);
-    expect(Array.isArray((serialized as any).combat.reveal.revealedHP)).toBe(true);
+    expect(Array.isArray(serialized.combat.reveal.revealedTargets)).toBe(true);
+    expect(Array.isArray(serialized.combat.reveal.revealedHP)).toBe(true);
 
-    const hydrated = hydrateCampaignState(serialized as any);
+    const hydrated = hydrateSerializedState(serialized);
     expect(hydrated.combat.reveal.revealedTargets).toBeInstanceOf(Set);
     expect(hydrated.combat.reveal.revealedTargets.size).toBe(0);
     expect(hydrated.combat.reveal.revealedHP).toBeInstanceOf(Set);
@@ -55,17 +93,9 @@ describe('serializeCampaignState / hydrateCampaignState round-trip', () => {
   it('round-trips map revealedTileIds Set', () => {
     const state = createCampaignState();
     // Add a map with revealedTileIds
-    state.maps.mapsById['map-1'] = {
-      id: 'map-1',
-      name: 'Test Map',
-      width: 10,
-      height: 10,
-      tileSize: 32,
-      tiles: {},
-      markers: [],
-      links: [],
+    state.maps.mapsById['map-1'] = makeMap({
       revealedTileIds: new Set(['tile-1', 'tile-2', 'tile-3']),
-    } as any;
+    });
 
     const serialized = serializeCampaignState(state);
     const json = JSON.stringify(serialized);
@@ -132,9 +162,13 @@ describe('save / load round-trip via localStorage', () => {
     // Simulate data from older version without reveal
     const state = createCampaignState();
     const serialized = serializeCampaignState(state);
-    delete (serialized as any).combat.reveal;
+    const { reveal: _reveal, ...combatWithoutReveal } = serialized.combat;
+    const legacySerialized = {
+      ...serialized,
+      combat: combatWithoutReveal,
+    };
 
-    localStorage.setItem('campaignState', JSON.stringify(serialized));
+    localStorage.setItem('campaignState', JSON.stringify(legacySerialized));
 
     const loaded = await loadCampaignState();
     expect(loaded.combat.reveal.revealedTargets).toBeInstanceOf(Set);
@@ -144,10 +178,19 @@ describe('save / load round-trip via localStorage', () => {
   it('handles hydration when reveal arrays are null', async () => {
     const state = createCampaignState();
     const serialized = serializeCampaignState(state);
-    (serialized as any).combat.reveal.revealedTargets = null;
-    (serialized as any).combat.reveal.revealedHP = null;
+    const serializedWithNullReveal = {
+      ...serialized,
+      combat: {
+        ...serialized.combat,
+        reveal: {
+          ...serialized.combat.reveal,
+          revealedTargets: null,
+          revealedHP: null,
+        },
+      },
+    };
 
-    localStorage.setItem('campaignState', JSON.stringify(serialized));
+    localStorage.setItem('campaignState', JSON.stringify(serializedWithNullReveal));
 
     const loaded = await loadCampaignState();
     expect(loaded.combat.reveal.revealedTargets).toBeInstanceOf(Set);
@@ -159,9 +202,9 @@ describe('save / load round-trip via localStorage', () => {
   it('handles hydration when maps field is missing', async () => {
     const state = createCampaignState();
     const serialized = serializeCampaignState(state);
-    delete (serialized as any).maps;
+    const { maps: _maps, ...serializedWithoutMaps } = serialized;
 
-    localStorage.setItem('campaignState', JSON.stringify(serialized));
+    localStorage.setItem('campaignState', JSON.stringify(serializedWithoutMaps));
 
     const loaded = await loadCampaignState();
     expect(loaded.maps).toBeDefined();

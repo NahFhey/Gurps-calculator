@@ -3,7 +3,20 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { DayHeaderBar } from '../DayHeaderBar';
 import { DaySummaryPanel } from '../DaySummaryPanel';
-import type { DayHeaderBarProps, PendingDayLedger } from '../../../../types/dayplanner';
+import type {
+  DayHeaderBarProps,
+  PendingDayLedger,
+  TaskSummary,
+} from '../../../../types/dayplanner';
+
+function makeTaskSummary(overrides: Partial<TaskSummary> = {}): TaskSummary {
+  return {
+    taskId: 'task-1',
+    mode: 'Fishing',
+    result: 'success',
+    ...overrides,
+  };
+}
 
 // ============================================================================
 // DayHeaderBar
@@ -89,8 +102,8 @@ describe('DaySummaryPanel', () => {
     const ledger: PendingDayLedger = {
       dayKey: 5,
       taskSummaries: [
-        { taskId: 't1', mode: 'fishing' as any, result: 'success' },
-        { taskId: 't2', mode: 'foraging' as any, result: 'success' },
+        makeTaskSummary({ taskId: 't1' }),
+        makeTaskSummary({ taskId: 't2', mode: 'Foraging' }),
       ],
       pendingInventoryDelta: [],
       committed: false,
@@ -104,7 +117,7 @@ describe('DaySummaryPanel', () => {
     const ledger: PendingDayLedger = {
       dayKey: 5,
       taskSummaries: [
-        { taskId: 't1', mode: 'fishing' as any, result: 'success' },
+        makeTaskSummary({ taskId: 't1' }),
       ],
       pendingInventoryDelta: [
         { type: 'food', speciesName: 'Trout', foodType: 'raw', units: 3 },
@@ -121,7 +134,7 @@ describe('DaySummaryPanel', () => {
     const ledger: PendingDayLedger = {
       dayKey: 5,
       taskSummaries: [
-        { taskId: 't1', mode: 'mining' as any, result: 'success' },
+        makeTaskSummary({ taskId: 't1', mode: 'Foraging' }),
       ],
       pendingInventoryDelta: [
         { type: 'material', name: 'Iron Ore', materialType: 'ore', units: 5 },
@@ -136,7 +149,7 @@ describe('DaySummaryPanel', () => {
     const ledger: PendingDayLedger = {
       dayKey: 5,
       taskSummaries: [
-        { taskId: 't1', mode: 'fishing' as any, result: 'failure' },
+        makeTaskSummary({ taskId: 't1', result: 'failure' }),
       ],
       pendingInventoryDelta: [],
       committed: false,
@@ -149,8 +162,8 @@ describe('DaySummaryPanel', () => {
     const ledger: PendingDayLedger = {
       dayKey: 5,
       taskSummaries: [
-        { taskId: 't1', mode: 'fishing' as any, result: 'success' },
-        { taskId: 't2', mode: 'fishing' as any, result: 'success' },
+        makeTaskSummary({ taskId: 't1' }),
+        makeTaskSummary({ taskId: 't2' }),
       ],
       pendingInventoryDelta: [
         { type: 'food', speciesName: 'Trout', foodType: 'raw', units: 2 },

@@ -3,17 +3,35 @@ import { renderHook } from '@testing-library/react';
 import { useAllWeatherModifiers, useWeatherModifiers } from '../useWeatherModifiers';
 import { createInitialLocationState } from '../../utils/weatherSystem';
 import type { ActivityType } from '../useWeatherModifiers';
-import type { WeatherEffects, LocationModifiers } from '../../types/location';
+import type {
+  LocationState,
+  WeatherEffects,
+  LocationModifiers,
+} from '../../types/location';
+
+interface MockCampaignStoreValue {
+  state: {
+    locations: LocationState;
+  };
+  actions: Record<string, never>;
+}
+
+const useCampaignStoreMock = vi.hoisted(
+  () => vi.fn<() => MockCampaignStoreValue>(),
+);
 
 vi.mock('../../state/campaignStore', () => ({
-  useCampaignStore: vi.fn(),
+  useCampaignStore: useCampaignStoreMock,
 }));
 
-import { useCampaignStore } from '../../state/campaignStore';
-
-const mockedUseCampaignStore = vi.mocked(useCampaignStore);
-
 type ActivityEffects = Pick<WeatherEffects, ActivityType>;
+
+function makeStore(locations: LocationState): MockCampaignStoreValue {
+  return {
+    state: { locations },
+    actions: {},
+  };
+}
 
 function makeLocationsSlice(opts?: {
   weatherEffects?: Partial<ActivityEffects>;
@@ -55,7 +73,7 @@ function makeLocationsSlice(opts?: {
   return slice;
 }
 
-function makeEmptyLocationsSlice() {
+function makeEmptyLocationsSlice(): LocationState {
   return {
     currentLocationId: null,
     locations: {},
@@ -76,10 +94,7 @@ describe('useWeatherModifiers', () => {
       description: 'Fresh woodland breeze',
     });
 
-    mockedUseCampaignStore.mockReturnValue({
-      state: { locations },
-      actions: {},
-    } as any);
+    useCampaignStoreMock.mockReturnValue(makeStore(locations));
 
     const { result } = renderHook(() => useWeatherModifiers('gathering'));
 
@@ -95,10 +110,7 @@ describe('useWeatherModifiers', () => {
   });
 
   it('returns the empty result when there is no current location', () => {
-    mockedUseCampaignStore.mockReturnValue({
-      state: { locations: makeEmptyLocationsSlice() },
-      actions: {},
-    } as any);
+    useCampaignStoreMock.mockReturnValue(makeStore(makeEmptyLocationsSlice()));
 
     const { result } = renderHook(() => useWeatherModifiers('gathering'));
 
@@ -119,10 +131,7 @@ describe('useWeatherModifiers', () => {
       description: 'Helpful weather in difficult terrain',
     });
 
-    mockedUseCampaignStore.mockReturnValue({
-      state: { locations },
-      actions: {},
-    } as any);
+    useCampaignStoreMock.mockReturnValue(makeStore(locations));
 
     const { result } = renderHook(() => useWeatherModifiers('gathering'));
 
@@ -148,10 +157,7 @@ describe('useAllWeatherModifiers', () => {
       description: 'Mixed conditions',
     });
 
-    mockedUseCampaignStore.mockReturnValue({
-      state: { locations },
-      actions: {},
-    } as any);
+    useCampaignStoreMock.mockReturnValue(makeStore(locations));
 
     const { result } = renderHook(() => useAllWeatherModifiers());
 
@@ -170,10 +176,7 @@ describe('useAllWeatherModifiers', () => {
   });
 
   it('returns zero effects when there is no current location', () => {
-    mockedUseCampaignStore.mockReturnValue({
-      state: { locations: makeEmptyLocationsSlice() },
-      actions: {},
-    } as any);
+    useCampaignStoreMock.mockReturnValue(makeStore(makeEmptyLocationsSlice()));
 
     const { result } = renderHook(() => useAllWeatherModifiers());
 

@@ -6,6 +6,17 @@ import {
   formatRoll,
 } from '../dice';
 
+// TODO(types): parseDiceExpression's expression parameter excludes the null crash-path input its runtime rejects gracefully.
+const parseMalformedDiceExpression = parseDiceExpression as (
+  expression: unknown
+) => ReturnType<typeof parseDiceExpression>;
+
+// TODO(types): rollVsTarget's target parameter excludes the non-numeric crash-path input its runtime rejects gracefully.
+const rollVsMalformedTarget = rollVsTarget as (
+  expression: string,
+  target: unknown
+) => ReturnType<typeof rollVsTarget>;
+
 describe('parseDiceExpression', () => {
   it('parses a standard XdY expression', () => {
     const result = parseDiceExpression('3d6');
@@ -68,8 +79,7 @@ describe('parseDiceExpression', () => {
   });
 
   it('rejects a non-string input', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = parseDiceExpression(null as any);
+    const result = parseMalformedDiceExpression(null);
     expect(result.valid).toBe(false);
     expect(result.error).toBe('Invalid expression');
   });
@@ -180,8 +190,7 @@ describe('rollVsTarget', () => {
   });
 
   it('rejects a non-numeric target', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = rollVsTarget('3d6', 'high' as any);
+    const result = rollVsMalformedTarget('3d6', 'high');
     expect(result.valid).toBe(false);
     expect(result.success).toBe(false);
     expect(result.error).toBe('Invalid target number');
