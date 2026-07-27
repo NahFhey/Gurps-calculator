@@ -298,8 +298,8 @@ Same pattern as 16y-2: remove every `as any` by fixing types at the source; zero
 
 Same bar as 16r: re-type against canonical domain types, zero `: any` remaining in the target file(s), zero runtime behavior change, tsc clean, safety nets green, do NOT rewrite test files.
 
-- [ ] Re-type src/utils/exportImport.ts — 33 bare `: any`, the largest remaining erosion (same failure mode the 16r combatViewFilter CONCERN covered). Type against campaign/schema types in src/types/ and src/utils/schemaVersioning.ts. Safety net: src/utils/__tests__/exportImport.test.js AND exportImport.test.ts (both must stay green).
-- [ ] Tighten the 4 bare `: any` in src/utils/dayPlanner.ts and the 3 in src/utils/foraging.ts (small sibling items, one run). Safety nets: their co-located suites in src/utils/__tests__/.
+- [x] Re-type src/utils/exportImport.ts — 33 bare `: any`, the largest remaining erosion (same failure mode the 16r combatViewFilter CONCERN covered). Type against campaign/schema types in src/types/ and src/utils/schemaVersioning.ts. Safety net: src/utils/__tests__/exportImport.test.js AND exportImport.test.ts (both must stay green). [2026-07-27 codex-shepherd session: 33→0; envelope/legacy/serialized types exported; ValidationResult is now a discriminated union. NOTE: the safety net is only 2 tests total — exportImport deserves a real suite; queue candidate for next refill.]
+- [x] Tighten the 4 bare `: any` in src/utils/dayPlanner.ts and the 3 in src/utils/foraging.ts (small sibling items, one run). Safety nets: their co-located suites in src/utils/__tests__/. [2026-07-27 codex-shepherd session: 7→0; dayPlanner 32 + foraging 57 tests green]
 
 ## Phase 16t-5 — test coverage refill _(refill 2026-07-27)_
 

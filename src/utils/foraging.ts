@@ -27,6 +27,7 @@ import type {
   TierOutcome,
   ForagingConfig,
   ForageEvent,
+  ForageEventEffect,
   FoundStack,
   WeightedCategory,
   ZoneTierCategory,
@@ -61,9 +62,15 @@ import {
  * Safe to call on already-migrated profiles.
  */
 export function migrateZoneProfileCategories(zone: ForageZoneProfile): ForageZoneProfile {
-  function migrateCategories(cats: any[]): ZoneTierCategory[] {
+  type MigratableZoneCategory = WeightedCategory & {
+    items?: ZoneTierCategory['items'];
+  };
+
+  function migrateCategories(
+    cats: MigratableZoneCategory[]
+  ): ZoneTierCategory[] {
     if (!Array.isArray(cats)) return [];
-    return cats.map((c: any) => ({
+    return cats.map((c) => ({
       categoryId: c.categoryId,
       weight: c.weight ?? 1,
       items: Array.isArray(c.items) ? c.items : [],
@@ -444,7 +451,7 @@ export function resolveEvent(
   return {
     severity,
     name: eventTemplate.name,
-    effects: eventTemplate.effects.map((e: any) => ({
+    effects: eventTemplate.effects.map((e: ForageEventEffect) => ({
       kind: e.kind,
       value: e.value,
       diceFormula: e.diceFormula,

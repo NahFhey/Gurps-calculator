@@ -1,5 +1,6 @@
 import { SLOTS_PER_DAY, SLOT_NAMES, SLOT_STATUS, TASK_STATUS, LEDGER_STATUS } from '../constants';
 import type { TimeSlot, TaskAssignment, PendingDayLedger } from '../types/dayplanner';
+import type { Food, Material } from '../types/campaign';
 
 export type { TimeSlot, TaskAssignment, PendingDayLedger };
 
@@ -25,8 +26,8 @@ export interface NextSlotResult {
 }
 
 export interface CommitResult {
-  updatedFoods: any[];
-  updatedMaterials: any[];
+  updatedFoods: Food[];
+  updatedMaterials: Material[];
   committedLedger: PendingDayLedger;
 }
 
@@ -369,8 +370,8 @@ export function addTaskSummaryToLedger(
  */
 export function commitPendingDayLedger(
   ledger: PendingDayLedger,
-  currentFoods: any[],
-  currentMaterials: any[]
+  currentFoods: Food[],
+  currentMaterials: Material[]
 ): CommitResult {
   const updatedFoods = [...currentFoods];
   const updatedMaterials = [...currentMaterials];
@@ -380,7 +381,7 @@ export function commitPendingDayLedger(
     if (delta.type === 'food') {
       // Food items use name and types array in inventory
       const existingIndex = updatedFoods.findIndex(
-        f => f.name === delta.speciesName && f.types?.includes(delta.foodType)
+        f => f.name === delta.speciesName && f.types?.includes(delta.foodType!)
       );
 
       if (existingIndex >= 0) {
@@ -391,9 +392,9 @@ export function commitPendingDayLedger(
       } else {
         updatedFoods.push({
           id: crypto.randomUUID(),
-          name: delta.speciesName,
+          name: delta.speciesName!,
           quantity: delta.units,
-          types: [delta.foodType]
+          types: [delta.foodType!]
         });
       }
     } else if (delta.type === 'material') {
@@ -409,8 +410,8 @@ export function commitPendingDayLedger(
       } else {
         updatedMaterials.push({
           id: crypto.randomUUID(),
-          name: delta.name,
-          type: delta.materialType,
+          name: delta.name!,
+          type: delta.materialType!,
           quantity: delta.units
         });
       }

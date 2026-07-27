@@ -23,56 +23,293 @@ import {
 import { migrateData, validateDataForVersion } from './dataMigrations';
 import { logger } from './logger';
 import { CampaignImportSchema, exceedsImportSizeLimit } from './importSchemas';
+import type { CampaignState } from '../state/campaignReducer';
+import type {
+  AlchemyBatch,
+  AlchemyFormula,
+  AlchemyReagent,
+  AlchemySettings,
+  Craft,
+  CraftDesign,
+  CustomTemplates,
+  EffectFamilyMap,
+  Food,
+  FoodType,
+  Material,
+  MaterialType,
+  Recipe,
+} from '../types/campaign';
+import type { Worker } from '../types/views';
 
 /** Current schema version - synchronized with schemaVersioning.ts */
 export const SCHEMA_VERSION: string = CURRENT_SCHEMA_VERSION;
 
-export interface ImportResult {
-  ok: boolean;
-  error?: string;
-  data?: any;
-  warnings?: string[];
-  isLocked?: boolean;
+export interface MigrationInfo {
+  sourceVersion: string;
+  targetVersion: string;
+  path: string[];
+  timestamp: string;
 }
 
-export interface ExportData {
-  schemaVersion: string;
-  exportDate: string;
-  exportType: 'locked' | 'unlocked';
-  public: any;
-  gm?: any;
-  gmLock?: GMLock;
-  migrationInfo?: {
-    sourceVersion: string;
-    targetVersion: string;
-    path: string[];
-    timestamp: string;
+type SerializedCombatReveal = Omit<
+  CampaignState['combat']['reveal'],
+  'revealedTargets' | 'revealedHP'
+> & {
+  revealedTargets: string[];
+  revealedHP: string[];
+};
+
+/** JSON-safe normalized campaign state used inside export envelopes. */
+export type SerializedCampaignState = Omit<CampaignState, 'combat'> & {
+  combat: Omit<CampaignState['combat'], 'reveal'> & {
+    reveal?: SerializedCombatReveal;
+  };
+};
+
+export type LegacyAlchemyReagent = Omit<AlchemyReagent, 'aspects'> & {
+  aspects?: AlchemyReagent['aspects'] | string[];
+};
+
+export interface LegacyAlchemyFormula extends AlchemyFormula {
+  coherent?: boolean;
+  activeAspectCount?: number;
+  conflicts?: unknown;
+  hazardCount?: number;
+  createdDate?: string;
+  hazardEvaluation?: unknown;
+}
+
+export interface LegacyAlchemyBatch extends AlchemyBatch {
+  gmNotes?: string;
+}
+
+/** Flat pre-CampaignStore state accepted for backward-compatible exports. */
+export interface LegacyCampaignState {
+  materials?: Material[];
+  foods?: Food[];
+  recipes?: Recipe[];
+  crafts?: Craft[];
+  foodTypes?: FoodType[];
+  materialTypes?: MaterialType[];
+  workers?: Worker[];
+  customTemplates?: CustomTemplates;
+  craftDesigns?: CraftDesign[];
+  alchemySettings?: Partial<AlchemySettings>;
+  effectFamilyMap?: EffectFamilyMap;
+  alchemyReagents?: LegacyAlchemyReagent[];
+  alchemyFormulas?: LegacyAlchemyFormula[];
+  alchemyBatches?: LegacyAlchemyBatch[];
+  gmNotes?: string;
+  gmCustomRules?: unknown[];
+  [key: string]: unknown;
+}
+
+export interface PublicAlchemyReagent {
+  id: string;
+  name: string;
+  quantity: number;
+  refinement: NonNullable<AlchemyReagent['refinement']>;
+  basePotency: string;
+  concentrationSteps: number;
+  identificationLevel: number;
+  aspects: LegacyAlchemyReagent['aspects'] | null;
+  hazards: string[] | undefined;
+  roles: string[];
+  analysisHistory: unknown[];
+}
+
+export interface PublicAlchemyFormula {
+  id: string;
+  name: string;
+  ingredients: AlchemyFormula['ingredients'];
+  vector: AlchemyFormula['vector'];
+  tier: AlchemyFormula['tier'];
+  baseWR: AlchemyFormula['baseWR'];
+  baseDM: AlchemyFormula['baseDM'];
+  dominantAspect: AlchemyFormula['dominantAspect'];
+  secondaryAspect: AlchemyFormula['secondaryAspect'];
+  basePotency: AlchemyFormula['basePotency'];
+  finalPotency: AlchemyFormula['finalPotency'];
+  concentrationSteps: AlchemyFormula['concentrationSteps'];
+  traitBudget: AlchemyFormula['traitBudget'];
+  traits: NonNullable<AlchemyFormula['traits']>;
+  hasMatchingStabilizer: AlchemyFormula['hasMatchingStabilizer'];
+  coherent: boolean | undefined;
+  activeAspectCount: number | undefined;
+  conflicts: unknown;
+  hazardCount: number | undefined;
+  createdDate: string | undefined;
+}
+
+export interface PublicAlchemyBatch {
+  id: string;
+  formulaId: string;
+  formulaName: AlchemyBatch['formulaName'];
+  phase: AlchemyBatch['phase'];
+  consumedIngredients: AlchemyBatch['consumedIngredients'];
+  tier: AlchemyBatch['tier'];
+  vector: AlchemyBatch['vector'];
+  WR: AlchemyBatch['WR'];
+  DM: AlchemyBatch['DM'];
+  PP: AlchemyBatch['PP'];
+  CP: AlchemyBatch['CP'];
+  dominantAspect: AlchemyBatch['dominantAspect'];
+  secondaryAspect: AlchemyBatch['secondaryAspect'];
+  basePotency: AlchemyBatch['basePotency'];
+  finalPotency: AlchemyBatch['finalPotency'];
+  concentrationSteps: AlchemyBatch['concentrationSteps'];
+  traitBudget: AlchemyBatch['traitBudget'];
+  traits: NonNullable<AlchemyBatch['traits']>;
+  forecast: AlchemyBatch['forecast'];
+  microAssay: AlchemyBatch['microAssay'];
+  hasMatchingStabilizer: AlchemyBatch['hasMatchingStabilizer'];
+  hazardsPublic: NonNullable<AlchemyBatch['hazardsPublic']>;
+  shifts: NonNullable<AlchemyBatch['shifts']>;
+  quality: AlchemyBatch['quality'];
+  startDate: string;
+  completedDate: AlchemyBatch['completedDate'];
+  completionHazards: AlchemyBatch['completionHazards'];
+}
+
+export interface LegacyPublicState {
+  materials: Material[];
+  foods: Food[];
+  recipes: Recipe[];
+  crafts: Craft[];
+  foodTypes: FoodType[];
+  materialTypes: MaterialType[];
+  workers: Worker[];
+  customTemplates: CustomTemplates | Record<string, never>;
+  craftDesigns: CraftDesign[];
+  alchemySettings: {
+    defaultLabRating: number;
+    workBlockMinutes: number;
+    showObviousRoles: boolean;
+  };
+  effectFamilyMap: EffectFamilyMap;
+  alchemyReagents: PublicAlchemyReagent[];
+  alchemyFormulas: PublicAlchemyFormula[];
+  alchemyBatches: PublicAlchemyBatch[];
+}
+
+export interface ReagentSecret {
+  id: string;
+  aspects: LegacyAlchemyReagent['aspects'];
+  hazards: string[];
+  roles: string[];
+  falseProfile: AlchemyReagent['falseProfile'] | null;
+  notes: string;
+}
+
+export interface FormulaSecret {
+  id: string;
+  notes: string;
+  hazardEvaluation: unknown;
+}
+
+export interface BatchSecret {
+  id: string;
+  gmHazards: unknown[];
+  hazardDetails: unknown[];
+  gmNotes: string;
+}
+
+export interface LegacyGMPayload {
+  reagentSecrets: ReagentSecret[];
+  formulaSecrets: FormulaSecret[];
+  batchSecrets: BatchSecret[];
+  gmSettings: {
+    notes: string;
+    customRules: unknown[];
   };
 }
 
-export interface ValidationResult {
-  valid: boolean;
-  error?: string;
-  warnings?: string[];
+export interface CampaignSplitStateResult {
+  public: SerializedCampaignState;
+  gm: SerializedCampaignState;
 }
 
-export interface SplitStateResult {
-  public: any;
-  gm: any;
+export interface LegacySplitStateResult {
+  public: LegacyPublicState;
+  gm: LegacyGMPayload;
 }
 
-export interface UnlockResult {
-  ok: boolean;
-  gmData?: any;
-  error?: string;
+export type SplitStateResult = CampaignSplitStateResult | LegacySplitStateResult;
+export type ExportPublicPayload = SerializedCampaignState | LegacyPublicState;
+export type ExportGMPayload = SerializedCampaignState | LegacyGMPayload;
+
+interface ExportEnvelopeMetadata {
+  schemaVersion: string;
+  exportDate: string;
+  migrationInfo?: MigrationInfo;
 }
 
-const isCampaignState = (state: any): boolean =>
-  Boolean(state && state.ui && state.meta && state.entities && state.time);
+export interface UnlockedExportData extends ExportEnvelopeMetadata {
+  exportType: 'unlocked';
+  public: ExportPublicPayload;
+  gm: ExportGMPayload;
+}
 
-const toSerializableCampaignState = (state: any): any => {
+export interface LockedExportData extends ExportEnvelopeMetadata {
+  exportType: 'locked';
+  public: ExportPublicPayload;
+  gmLock: GMLock;
+}
+
+export type ExportData = UnlockedExportData | LockedExportData;
+
+export interface CampaignImportEnvelope {
+  schemaVersion: string | number;
+  exportDate?: string;
+  exportType?: string;
+  public: Record<string, unknown>;
+  gm?: Record<string, unknown>;
+  gmLock?: GMLock & { encryptedData?: string };
+  migrationInfo?: MigrationInfo;
+  [key: string]: unknown;
+}
+
+export type ImportResult =
+  | {
+      ok: true;
+      data: CampaignImportEnvelope & {
+        exportType: 'locked';
+        gmLock: GMLock & { encryptedData?: string };
+      };
+      warnings: string[];
+      isLocked: true;
+    }
+  | {
+      ok: true;
+      data: CampaignImportEnvelope;
+      warnings: string[];
+      isLocked: false;
+    }
+  | {
+      ok: false;
+      error: string;
+    };
+
+export type ValidationResult =
+  | { valid: true; warnings: string[] }
+  | { valid: false; error: string };
+
+export type UnlockResult =
+  | { ok: true; gmData: unknown }
+  | { ok: false; error: string };
+
+const isCampaignState = (state: unknown): state is CampaignState =>
+  Boolean(
+    state
+    && (state as Partial<CampaignState>).ui
+    && (state as Partial<CampaignState>).meta
+    && (state as Partial<CampaignState>).entities
+    && (state as Partial<CampaignState>).time
+  );
+
+const toSerializableCampaignState = (state: CampaignState): SerializedCampaignState => {
   if (!state?.combat?.reveal) {
-    return state;
+    return state as unknown as SerializedCampaignState;
   }
   return {
     ...state,
@@ -87,7 +324,9 @@ const toSerializableCampaignState = (state: any): any => {
   };
 };
 
-const stripSchemaVersion = (state: any): any => {
+const stripSchemaVersion = (
+  state: Record<string, unknown>
+): Record<string, unknown> => {
   if (!state || typeof state !== 'object') {
     return state;
   }
@@ -100,7 +339,11 @@ const stripSchemaVersion = (state: any): any => {
  * Public data: visible to all users
  * GM data: should only be visible in GM mode
  */
-export function splitState(state: any): SplitStateResult {
+export function splitState(state: CampaignState): CampaignSplitStateResult;
+export function splitState(state: LegacyCampaignState): LegacySplitStateResult;
+export function splitState(
+  state: CampaignState | LegacyCampaignState
+): SplitStateResult {
   if (isCampaignState(state)) {
     const serializedState = toSerializableCampaignState(state);
     return {
@@ -130,7 +373,7 @@ export function splitState(state: any): SplitStateResult {
   } = state;
 
   // Public data: inventory, recipes, workers (without GM notes), etc.
-  const publicData: any = {
+  const publicData = {
     materials: materials || [],
     foods: foods || [],
     recipes: recipes || [],
@@ -146,11 +389,11 @@ export function splitState(state: any): SplitStateResult {
       showObviousRoles: alchemySettings?.showObviousRoles ?? true
     },
     effectFamilyMap: effectFamilyMap || {}
-  };
+  } as LegacyPublicState;
 
   // Process reagents: public gets masked versions, GM gets full data
-  const reagents: any[] = state.alchemyReagents || [];
-  publicData.alchemyReagents = reagents.map((r: any) => ({
+  const reagents: LegacyAlchemyReagent[] = state.alchemyReagents || [];
+  publicData.alchemyReagents = reagents.map((r) => ({
     id: r.id,
     name: r.name,
     quantity: r.quantity,
@@ -158,15 +401,15 @@ export function splitState(state: any): SplitStateResult {
     basePotency: r.basePotency || 'P1',
     concentrationSteps: r.concentrationSteps || 0,
     identificationLevel: r.identificationLevel || 0,
-    aspects: r.identificationLevel >= 4 ? r.aspects : null,
-    hazards: r.identificationLevel >= 3 ? r.hazards : [],
+    aspects: r.identificationLevel! >= 4 ? r.aspects : null,
+    hazards: r.identificationLevel! >= 3 ? r.hazards : [],
     roles: r.roles || [],
     analysisHistory: r.analysisHistory || []
   }));
 
   // Process formulas: public gets basic info, GM gets hidden notes
-  const formulas: any[] = state.alchemyFormulas || [];
-  publicData.alchemyFormulas = formulas.map((f: any) => ({
+  const formulas: LegacyAlchemyFormula[] = state.alchemyFormulas || [];
+  publicData.alchemyFormulas = formulas.map((f) => ({
     id: f.id,
     name: f.name,
     ingredients: f.ingredients,
@@ -190,8 +433,8 @@ export function splitState(state: any): SplitStateResult {
   }));
 
   // Process batches: public gets player-visible data, GM gets full hazards
-  const batches: any[] = state.alchemyBatches || [];
-  publicData.alchemyBatches = batches.map((b: any) => ({
+  const batches: LegacyAlchemyBatch[] = state.alchemyBatches || [];
+  publicData.alchemyBatches = batches.map((b) => ({
     id: b.id,
     formulaId: b.formulaId,
     formulaName: b.formulaName,
@@ -223,7 +466,7 @@ export function splitState(state: any): SplitStateResult {
 
   // GM data: hidden information, secret notes, full hazard details
   const gmData = {
-    reagentSecrets: reagents.map((r: any) => ({
+    reagentSecrets: reagents.map((r) => ({
       id: r.id,
       aspects: r.aspects,
       hazards: r.hazards || [],
@@ -231,12 +474,12 @@ export function splitState(state: any): SplitStateResult {
       falseProfile: r.falseProfile || null,
       notes: r.notes || ''
     })),
-    formulaSecrets: formulas.map((f: any) => ({
+    formulaSecrets: formulas.map((f) => ({
       id: f.id,
       notes: f.notes || '',
       hazardEvaluation: f.hazardEvaluation || null
     })),
-    batchSecrets: batches.map((b: any) => ({
+    batchSecrets: batches.map((b) => ({
       id: b.id,
       gmHazards: b.gmHazards || [],
       hazardDetails: b.hazardDetails || [],
@@ -255,15 +498,28 @@ export function splitState(state: any): SplitStateResult {
  * Merges GM data back into public state.
  * Used after decrypting a locked import or loading an unlocked export.
  */
-export function mergeGM(publicState: any, gmPayload: any): any {
+export function mergeGM(
+  publicState: SerializedCampaignState,
+  gmPayload: SerializedCampaignState
+): SerializedCampaignState;
+export function mergeGM(
+  publicState: LegacyPublicState,
+  gmPayload: LegacyGMPayload
+): LegacyPublicState & { gmNotes: string; gmCustomRules: unknown[] };
+export function mergeGM(publicState: unknown, gmPayload: unknown): unknown;
+export function mergeGM(publicState: unknown, gmPayload: unknown): unknown {
   if (isCampaignState(publicState)) {
     return gmPayload || publicState;
   }
-  const merged: any = { ...publicState };
+  const merged: LegacyPublicState & {
+    gmNotes?: string;
+    gmCustomRules?: unknown[];
+  } = { ...(publicState as LegacyPublicState) };
+  const gmData = gmPayload as LegacyGMPayload;
 
-  if (gmPayload.reagentSecrets && merged.alchemyReagents) {
-    merged.alchemyReagents = merged.alchemyReagents.map((r: any) => {
-      const secret = gmPayload.reagentSecrets.find((s: any) => s.id === r.id);
+  if (gmData.reagentSecrets && merged.alchemyReagents) {
+    merged.alchemyReagents = merged.alchemyReagents.map((r) => {
+      const secret = gmData.reagentSecrets.find((s) => s.id === r.id);
       if (secret) {
         return {
           ...r,
@@ -278,9 +534,9 @@ export function mergeGM(publicState: any, gmPayload: any): any {
     });
   }
 
-  if (gmPayload.formulaSecrets && merged.alchemyFormulas) {
-    merged.alchemyFormulas = merged.alchemyFormulas.map((f: any) => {
-      const secret = gmPayload.formulaSecrets.find((s: any) => s.id === f.id);
+  if (gmData.formulaSecrets && merged.alchemyFormulas) {
+    merged.alchemyFormulas = merged.alchemyFormulas.map((f) => {
+      const secret = gmData.formulaSecrets.find((s) => s.id === f.id);
       if (secret) {
         return {
           ...f,
@@ -292,9 +548,9 @@ export function mergeGM(publicState: any, gmPayload: any): any {
     });
   }
 
-  if (gmPayload.batchSecrets && merged.alchemyBatches) {
-    merged.alchemyBatches = merged.alchemyBatches.map((b: any) => {
-      const secret = gmPayload.batchSecrets.find((s: any) => s.id === b.id);
+  if (gmData.batchSecrets && merged.alchemyBatches) {
+    merged.alchemyBatches = merged.alchemyBatches.map((b) => {
+      const secret = gmData.batchSecrets.find((s) => s.id === b.id);
       if (secret) {
         return {
           ...b,
@@ -307,9 +563,9 @@ export function mergeGM(publicState: any, gmPayload: any): any {
     });
   }
 
-  if (gmPayload.gmSettings) {
-    merged.gmNotes = gmPayload.gmSettings.notes || '';
-    merged.gmCustomRules = gmPayload.gmSettings.customRules || [];
+  if (gmData.gmSettings) {
+    merged.gmNotes = gmData.gmSettings.notes || '';
+    merged.gmCustomRules = gmData.gmSettings.customRules || [];
   }
 
   return merged;
@@ -319,7 +575,9 @@ export function mergeGM(publicState: any, gmPayload: any): any {
  * Exports full application state as unlocked JSON.
  * WARNING: Contains all GM data in plaintext. For GM use only.
  */
-export function exportUnlocked(state: any): ExportData {
+export function exportUnlocked(
+  state: CampaignState | LegacyCampaignState
+): UnlockedExportData {
   const { public: publicData, gm: gmData } = splitState(state);
 
   return {
@@ -336,10 +594,10 @@ export function exportUnlocked(state: any): ExportData {
  * Safe to share with players - GM content requires password to decrypt.
  */
 export async function exportLocked(
-  state: any,
+  state: CampaignState | LegacyCampaignState,
   password: string,
   options: EncryptOptions = {}
-): Promise<ExportData> {
+): Promise<LockedExportData> {
   const { public: publicData, gm: gmData } = splitState(state);
 
   const gmLock = await encryptJSON(gmData, password, options);
@@ -357,18 +615,19 @@ export async function exportLocked(
  * Validates imported data structure.
  * Checks schema version and required fields.
  */
-export function validateImport(data: any): ValidationResult {
+export function validateImport(data: unknown): ValidationResult {
   const warnings: string[] = [];
 
   if (!data || typeof data !== 'object') {
     return { valid: false, error: 'Invalid import data: not an object' };
   }
+  const envelope = data as Record<string, unknown>;
 
-  if (!('schemaVersion' in data)) {
+  if (!('schemaVersion' in envelope)) {
     return { valid: false, error: 'Missing schemaVersion field' };
   }
 
-  const importedVersion = String(data.schemaVersion);
+  const importedVersion = String(envelope.schemaVersion);
 
   if (compareVersions(importedVersion, SCHEMA_VERSION) > 0) {
     return {
@@ -381,25 +640,28 @@ export function validateImport(data: any): ValidationResult {
     warnings.push(`Old schema version ${importedVersion} (current: ${SCHEMA_VERSION}). Migration will be attempted.`);
   }
 
-  if (!data.exportType || !['locked', 'unlocked'].includes(data.exportType)) {
+  if (
+    typeof envelope.exportType !== 'string'
+    || !['locked', 'unlocked'].includes(envelope.exportType)
+  ) {
     warnings.push('Unknown or missing exportType field');
   }
 
-  if (!data.public || typeof data.public !== 'object') {
+  if (!envelope.public || typeof envelope.public !== 'object') {
     return { valid: false, error: 'Missing or invalid public data section' };
   }
 
-  if (data.exportType === 'locked') {
-    if (!data.gmLock) {
+  if (envelope.exportType === 'locked') {
+    if (!envelope.gmLock) {
       return { valid: false, error: 'Locked export missing gmLock' };
     }
-    const lockValidation = validateGMLock(data.gmLock);
+    const lockValidation = validateGMLock(envelope.gmLock);
     if (!lockValidation.valid) {
       return { valid: false, error: `Invalid gmLock: ${lockValidation.error}` };
     }
   }
 
-  if (data.exportType === 'unlocked' && !data.gm) {
+  if (envelope.exportType === 'unlocked' && !envelope.gm) {
     warnings.push('Unlocked export missing GM data section');
   }
 
@@ -410,7 +672,9 @@ export function validateImport(data: any): ValidationResult {
  * Migrates imported data from old schema versions to current version.
  * Handles version normalization and applies necessary migrations.
  */
-export function migrateImport(data: any): any {
+export function migrateImport(
+  data: CampaignImportEnvelope
+): CampaignImportEnvelope {
   const importedVersion = String(data.schemaVersion);
 
   if (importedVersion === SCHEMA_VERSION) {
@@ -439,14 +703,18 @@ export function migrateImport(data: any): any {
       logger.warn('Migrated data has validation issues:', validation.issues);
     }
 
-    const { public: migratedPublic, gm: migratedGm } = splitState(migratedState);
+    const { public: migratedPublic, gm: migratedGm } = splitState(
+      migratedState as unknown as CampaignState | LegacyCampaignState
+    );
 
     const migrationPath = getMigrationPath(importedVersion, SCHEMA_VERSION);
 
     return {
       ...data,
-      public: migratedPublic,
-      ...(data.exportType === 'unlocked' ? { gm: migratedGm } : {}),
+      public: migratedPublic as unknown as Record<string, unknown>,
+      ...(data.exportType === 'unlocked'
+        ? { gm: migratedGm as unknown as Record<string, unknown> }
+        : {}),
       schemaVersion: SCHEMA_VERSION,
       migrationInfo: {
         sourceVersion: importedVersion,
@@ -469,13 +737,14 @@ export function migrateImport(data: any): any {
  * Imports data from JSON file/string.
  * Validates, migrates, and returns state ready for loading.
  */
-export async function importFile(jsonInput: string | any): Promise<ImportResult> {
+export async function importFile(jsonInput: unknown): Promise<ImportResult> {
   try {
     if (typeof jsonInput === 'string' && exceedsImportSizeLimit(jsonInput)) {
       return { ok: false, error: 'Import file too large (max 50 MB)' };
     }
 
-    const data = typeof jsonInput === 'string' ? JSON.parse(jsonInput) : jsonInput;
+    const data: unknown =
+      typeof jsonInput === 'string' ? JSON.parse(jsonInput) : jsonInput;
 
     const zodResult = CampaignImportSchema.safeParse(data);
     if (!zodResult.success) {
@@ -484,12 +753,13 @@ export async function importFile(jsonInput: string | any): Promise<ImportResult>
       return { ok: false, error: `Import validation error${path ? ` at ${path}` : ''}: ${issue?.message}` };
     }
 
-    const validation = validateImport(data);
+    const importData = data as CampaignImportEnvelope;
+    const validation = validateImport(importData);
     if (!validation.valid) {
       return { ok: false, error: validation.error };
     }
 
-    const migrated = migrateImport(data);
+    const migrated = migrateImport(importData);
 
     const sanitized = {
       ...migrated,
@@ -497,11 +767,23 @@ export async function importFile(jsonInput: string | any): Promise<ImportResult>
       ...(migrated.gm ? { gm: stripSchemaVersion(migrated.gm) } : {})
     };
 
+    if (migrated.exportType === 'locked') {
+      return {
+        ok: true,
+        data: sanitized as CampaignImportEnvelope & {
+          exportType: 'locked';
+          gmLock: GMLock & { encryptedData?: string };
+        },
+        warnings: validation.warnings,
+        isLocked: true
+      };
+    }
+
     return {
       ok: true,
       data: sanitized,
-      warnings: validation.warnings || [],
-      isLocked: migrated.exportType === 'locked'
+      warnings: validation.warnings,
+      isLocked: false
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -516,13 +798,17 @@ export async function importFile(jsonInput: string | any): Promise<ImportResult>
  * Unlocks a locked import by decrypting the GM data.
  * Call this after importFile() when user enters password for GM mode.
  */
-export async function unlockGMData(importData: any, password: string): Promise<UnlockResult> {
-  if (!importData.gmLock) {
+export async function unlockGMData(
+  importData: unknown,
+  password: string
+): Promise<UnlockResult> {
+  const envelope = importData as { gmLock?: GMLock };
+  if (!envelope.gmLock) {
     return { ok: false, error: 'No gmLock present in import data' };
   }
 
   try {
-    const gmData = await decryptJSON(importData.gmLock, password);
+    const gmData = await decryptJSON(envelope.gmLock, password);
     return { ok: true, gmData };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
