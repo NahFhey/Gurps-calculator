@@ -95,6 +95,15 @@ export interface RollResult {
   success?: boolean;
 }
 
+export interface TurnOrderCombatant {
+  instanceId?: string;
+  id?: string;
+  name: string;
+  category?: string;
+  basicSpeed: number;
+  dx: number;
+}
+
 export interface ActionLogEntryParams {
   round: number;
   turn: number;
@@ -222,7 +231,7 @@ export function calculateHPStatus(currentHP: number, maxHP: number): HPStatusVal
  * @param {Array} combatants - Array of combatant objects
  * @returns {Array} Sorted array of combatant IDs
  */
-export function generateTurnOrder(combatants: Participant[]): string[] {
+export function generateTurnOrder(combatants: TurnOrderCombatant[]): string[] {
   // Filter out objects - they don't take turns
   const activeCombatants = combatants.filter(c => c.category !== 'object');
 
@@ -529,7 +538,7 @@ interface ExtendedDefenseData {
   rollTotal?: number | null;
   effectiveDefense?: number;
   margin?: number | null;
-  success?: boolean;
+  success?: boolean | null;
   modifiers?: { label: string; value: number }[];
 }
 

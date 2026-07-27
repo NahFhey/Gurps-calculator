@@ -60,6 +60,7 @@ import type {
   TurnContext,
   ConditionInstance,
 } from '../../types/combatTracker';
+import type { RollResult, RollVsTargetResult } from '../../utils/dice';
 
 
 // ============================================================================
@@ -145,7 +146,7 @@ export default function CombatTracker() {
   // Initialize reveal state if missing
   useEffect(() => {
     if (combat && !reveal) {
-      const initialReveal = createInitialRevealState(combat.id, combat.participants) as any;
+      const initialReveal = createInitialRevealState(combat.id, combat.participants);
       saveCombatReveal(initialReveal);
     }
   }, [combat, reveal]);
@@ -316,7 +317,7 @@ export default function CombatTracker() {
 
     const logEntries: LogEntry[] = [];
     if (isNewRound) {
-      const roundLogEntry = createTurnLogEntry(toRound, toTurnIndex, null as any, `=== Round ${toRound} ===`);
+      const roundLogEntry = createTurnLogEntry(toRound, toTurnIndex, null, `=== Round ${toRound} ===`);
       recordAction(createAddLogEntryAction(roundLogEntry));
       logEntries.push(roundLogEntry);
     }
@@ -494,19 +495,19 @@ export default function CombatTracker() {
 
   const handleRoll = () => {
     if (!diceExpression.trim()) return;
-    let rollResult: any;
+    let rollResult: RollResult | RollVsTargetResult;
     if (rollTarget && rollTarget.trim()) {
       const target = parseInt(rollTarget);
       if (isNaN(target)) { alert('Invalid target number'); return; }
-      rollResult = rollVsTarget(diceExpression, target) as any;
+      rollResult = rollVsTarget(diceExpression, target);
     } else {
-      rollResult = roll(diceExpression) as any;
+      rollResult = roll(diceExpression);
     }
     if (!rollResult.valid) { alert(`Roll error: ${rollResult.error}`); return; }
 
     const logEntry = createRollLogEntry(
       combat.currentRound, combat.currentTurnIndex,
-      currentActorInstanceId, currentActor?.name || 'Unknown', rollResult as any
+      currentActorInstanceId, currentActor?.name || 'Unknown', rollResult
     );
     saveCombatActive((prev: CombatState) => ({ ...prev, log: [...prev.log, logEntry] }));
     recordAction(createAddLogEntryAction(logEntry));
@@ -545,8 +546,11 @@ export default function CombatTracker() {
     };
 
     // Save to history
-    const newHistory = [endedCombat, ...(combatHistory as unknown as CombatState[])].slice(0, MAX_COMBAT_HISTORY) as any;
-    saveCombatHistory(newHistory);
+    const newHistory = [endedCombat, ...combatHistory].slice(0, MAX_COMBAT_HISTORY);
+    // Persistence still declares legacy CombatSession[], while the tracker
+    // archives canonical CombatState snapshots. Resolving this requires a
+    // migration of every legacy combat-history consumer.
+    saveCombatHistory(newHistory as any);
 
     // Enter post-combat flow — keep combat active in store until flow completes
     // so CombatTab continues to render CombatTracker
@@ -643,16 +647,16 @@ export default function CombatTracker() {
       )}
 
       <ActionPanel
-        currentActor={currentActor as any}
-        participants={combatView.participants as any}
+        currentActor={currentActor}
+        participants={combatView.participants}
         combatState={combat}
         revealState={reveal}
         viewMode={viewMode}
-        onActionComplete={handleActionComplete as any}
+        onActionComplete={handleActionComplete}
         combatRulesPreset={(combatRulesPreset as string) || 'standard'}
         expanded={showActionPanel}
         onToggleExpanded={() => setShowActionPanel(!showActionPanel)}
-        maneuverSelection={isEnemyInPlayerView ? { selectedId: null, prompts: {}, workflow: {} } : maneuverSelection as any}
+        maneuverSelection={isEnemyInPlayerView ? { selectedId: null, prompts: {}, workflow: {} } : maneuverSelection}
         onManeuverWorkflow={handleManeuverWorkflowUpdate}
         turnDecision={isEnemyInPlayerView ? null : currentTurnDecision}
         currentRound={combat.currentRound}
@@ -667,11 +671,11 @@ export default function CombatTracker() {
         <ReinforcementsModal
           onClose={() => setShowReinforcementsModal(false)}
           onConfirm={(data) => {
-            handleAddReinforcements(data as any);
+            handleAddReinforcements(data);
             setShowReinforcementsModal(false);
           }}
-          combatCharacters={combatCharacters as any}
-          participants={combat.participants as any}
+          combatCharacters={combatCharacters}
+          participants={combat.participants}
           turnOrder={combat.turnOrder}
           currentActorInstanceId={currentActorInstanceId}
         />

@@ -68,7 +68,7 @@ interface ActionData {
 }
 
 interface ActionPanelProps {
-  currentActor: Participant;
+  currentActor: Participant | undefined;
   participants: Participant[];
   combatState?: CombatState | null;
   revealState?: RevealState | null;
@@ -101,7 +101,7 @@ interface ActionPanelProps {
  * Main action interface for the active combatant.
  */
 export default function ActionPanel({
-  currentActor,
+  currentActor: currentActorProp,
   participants,
   combatState,
   revealState,
@@ -120,6 +120,10 @@ export default function ActionPanel({
   // onUpdateCondition is not used in this component
   onCycleRevealed,
 }: ActionPanelProps) {
+  // The tracker can transiently have no matching actor while persisted turn
+  // data is being reconciled. Keep the existing runtime contract while the
+  // prop type truthfully represents the value supplied by Array.find().
+  const currentActor = currentActorProp!;
   const [activeWorkflow, setActiveWorkflow] = useState<WorkflowType>(null);
   const [noteText, setNoteText] = useState('');
   const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);

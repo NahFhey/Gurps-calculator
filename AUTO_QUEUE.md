@@ -278,10 +278,10 @@ Same pattern as Phase 15e-4: rename `.js` → `.ts` (or `.tsx` if JSX), add type
 
 Same pattern as Phase 16y: remove every `as any` in the target file by fixing types at the source; zero runtime behavior change; tsc clean; existing tests green. If a specific cast genuinely requires a design decision, defer citing that cast's file:line.
 
-- [ ] Remove the 13 `as any` casts in src/components/combat/CombatTracker.tsx (was 16; 3 removed in the 2026-07-23 human reveal-type session).
+- [x] Remove the 13 `as any` casts in src/components/combat/CombatTracker.tsx (was 16; 3 removed in the 2026-07-23 human reveal-type session). [2026-07-27 codex-shepherd session: 13→1. The 1 remaining (`saveCombatHistory(newHistory as any)`, now ~:553) is a design decision — persistence declares legacy CombatSession[] while the tracker archives canonical CombatState snapshots; resolving needs a migration of every legacy combat-history consumer. Documented in-code.]
 - [x] Remove the 10 `as any` casts in src/components/DayPlannerTab.tsx. [resolved 2026-07-23 in the human gathering-type session (466dcbd) — all 10 were denormalize casts that fell away with the Extended-canonical fix.]
-- [ ] Remove the 25 `as any` casts in src/hooks/__tests__/useCombatStore.test.ts (test file — type the fixtures/mocks properly instead; all tests stay green with identical assertions).
-- [ ] Remove the 18 `as any` casts in src/utils/__tests__/combatHelpers.test.ts (same bar: properly typed fixtures, identical assertions).
+- [x] Remove the 25 `as any` casts in src/hooks/__tests__/useCombatStore.test.ts (test file — type the fixtures/mocks properly instead; all tests stay green with identical assertions). [2026-07-27 codex-shepherd session: 25→0, 46 tests green, identical assertions]
+- [x] Remove the 18 `as any` casts in src/utils/__tests__/combatHelpers.test.ts (same bar: properly typed fixtures, identical assertions). [2026-07-27 codex-shepherd session: 18→0 via new TurnOrderCombatant input type on generateTurnOrder; 114 tests green]
 
 ## Out of scope for the loop (do NOT add these)
 

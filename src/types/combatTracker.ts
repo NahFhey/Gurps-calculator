@@ -173,7 +173,7 @@ export interface AttackActionData {
 
 export interface DefenseActionData {
   type?: string;
-  success?: boolean;
+  success?: boolean | null;
   modifiers?: { label: string; value: number }[];
 }
 
@@ -335,7 +335,7 @@ export interface ReinforcementData {
   category: string;
   previewNames: string[];
   insertionMode: string;
-  manualOrder?: string[];
+  manualOrder?: string[] | null;
 }
 
 export interface Character {

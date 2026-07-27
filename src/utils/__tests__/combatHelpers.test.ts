@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect } from 'vitest';
 import {
   calculateHPStatus,
@@ -23,6 +22,34 @@ import {
   createConditionLogEntry,
   createMovementLogEntry,
 } from '../combatHelpers';
+import type {
+  EnemyTemplate,
+  TurnOrderCombatant,
+} from '../combatHelpers';
+import type {
+  CombatState,
+  LogEntry,
+  Participant,
+  RollData,
+} from '../../types/combatTracker';
+
+function createParticipant(overrides: Partial<Participant> = {}): Participant {
+  return {
+    instanceId: 'participant-1',
+    name: 'Test Participant',
+    category: 'player',
+    st: 10,
+    dx: 10,
+    iq: 10,
+    ht: 10,
+    hp: 10,
+    fp: 10,
+    mp: 0,
+    basicSpeed: 5,
+    basicMove: 5,
+    ...overrides,
+  };
+}
 
 describe('combatHelpers', () => {
   describe('calculateHPStatus', () => {
@@ -54,75 +81,83 @@ describe('combatHelpers', () => {
 
   describe('generateTurnOrder', () => {
     it('sorts by basic speed descending', () => {
-      const combatants = [
-        { instanceId: 'a', name: 'A', basicSpeed: 5, dx: 10 },
-        { instanceId: 'b', name: 'B', basicSpeed: 7, dx: 10 },
-        { instanceId: 'c', name: 'C', basicSpeed: 6, dx: 10 },
+      const combatants: Participant[] = [
+        createParticipant({ instanceId: 'a', name: 'A', basicSpeed: 5 }),
+        createParticipant({ instanceId: 'b', name: 'B', basicSpeed: 7 }),
+        createParticipant({ instanceId: 'c', name: 'C', basicSpeed: 6 }),
       ];
-      expect(generateTurnOrder(combatants as any)).toEqual(['b', 'c', 'a']);
+      expect(generateTurnOrder(combatants)).toEqual(['b', 'c', 'a']);
     });
 
     it('breaks tied basic speed by DX descending', () => {
-      const combatants = [
-        { instanceId: 'a', name: 'A', basicSpeed: 5, dx: 10 },
-        { instanceId: 'b', name: 'B', basicSpeed: 5, dx: 14 },
-        { instanceId: 'c', name: 'C', basicSpeed: 5, dx: 12 },
+      const combatants: Participant[] = [
+        createParticipant({ instanceId: 'a', name: 'A', dx: 10 }),
+        createParticipant({ instanceId: 'b', name: 'B', dx: 14 }),
+        createParticipant({ instanceId: 'c', name: 'C', dx: 12 }),
       ];
-      expect(generateTurnOrder(combatants as any)).toEqual(['b', 'c', 'a']);
+      expect(generateTurnOrder(combatants)).toEqual(['b', 'c', 'a']);
     });
 
     it('breaks ties by name ascending', () => {
-      const combatants = [
-        { instanceId: 'b', name: 'Charlie', basicSpeed: 5, dx: 10 },
-        { instanceId: 'a', name: 'Alice', basicSpeed: 5, dx: 10 },
-        { instanceId: 'c', name: 'Bob', basicSpeed: 5, dx: 10 },
+      const combatants: Participant[] = [
+        createParticipant({ instanceId: 'b', name: 'Charlie' }),
+        createParticipant({ instanceId: 'a', name: 'Alice' }),
+        createParticipant({ instanceId: 'c', name: 'Bob' }),
       ];
-      expect(generateTurnOrder(combatants as any)).toEqual(['a', 'c', 'b']);
+      expect(generateTurnOrder(combatants)).toEqual(['a', 'c', 'b']);
     });
 
     it('filters out objects', () => {
-      const combatants = [
-        { instanceId: 'a', name: 'PC', basicSpeed: 5, dx: 10, category: 'pc' },
-        { instanceId: 'obj', name: 'Door', basicSpeed: 0, dx: 0, category: 'object' },
+      const combatants: Participant[] = [
+        createParticipant({ instanceId: 'a', name: 'PC' }),
+        createParticipant({
+          instanceId: 'obj',
+          name: 'Door',
+          basicSpeed: 0,
+          dx: 0,
+          category: 'object',
+        }),
       ];
-      expect(generateTurnOrder(combatants as any)).toEqual(['a']);
+      expect(generateTurnOrder(combatants)).toEqual(['a']);
     });
 
     it('falls back to id when no instanceId', () => {
-      const combatants = [{ id: 'fallback', name: 'X', basicSpeed: 5, dx: 10 }];
-      expect(generateTurnOrder(combatants as any)).toEqual(['fallback']);
+      const combatants: TurnOrderCombatant[] = [
+        { id: 'fallback', name: 'X', basicSpeed: 5, dx: 10 },
+      ];
+      expect(generateTurnOrder(combatants)).toEqual(['fallback']);
     });
   });
 
   describe('formatLogEntry', () => {
     it('formats Phase 2 structured entries with timestamp + text', () => {
       const ts = Date.now();
-      const result = formatLogEntry({ entryType: 'note', text: 'Hello', timestamp: ts } as any);
+      const result = formatLogEntry({ entryType: 'note', text: 'Hello', timestamp: ts });
       expect(result).toContain('Hello');
       expect(result).toMatch(/^\[/);
     });
 
     it('formats Phase 1 combat_start', () => {
-      const result = formatLogEntry({ type: 'combat_start', timestamp: Date.now() } as any);
+      const result = formatLogEntry({ type: 'combat_start', timestamp: Date.now() });
       expect(result).toContain('Combat started');
     });
 
     it('formats Phase 1 round_change', () => {
-      const result = formatLogEntry({ type: 'round_change', round: 3, timestamp: Date.now() } as any);
+      const result = formatLogEntry({ type: 'round_change', round: 3, timestamp: Date.now() });
       expect(result).toContain('Round 3');
     });
 
     it('formats hp_change', () => {
       const result = formatLogEntry({
         type: 'hp_change', actorName: 'Bob', oldValue: 10, newValue: 7, timestamp: Date.now()
-      } as any);
+      });
       expect(result).toContain('Bob');
       expect(result).toContain('10');
       expect(result).toContain('7');
     });
 
     it('returns Unknown event for unrecognized type', () => {
-      const result = formatLogEntry({ type: 'mystery', timestamp: Date.now() } as any);
+      const result = formatLogEntry({ type: 'mystery', timestamp: Date.now() });
       expect(result).toContain('Unknown event');
     });
   });
@@ -142,11 +177,11 @@ describe('combatHelpers', () => {
 
     it('formats each entry on its own line', () => {
       const ts = Date.now();
-      const entries = [
+      const entries: LogEntry[] = [
         { entryType: 'note', text: 'A', timestamp: ts },
         { entryType: 'note', text: 'B', timestamp: ts },
       ];
-      const result = exportCombatLog(entries as any, {});
+      const result = exportCombatLog(entries, {});
       expect(result).toContain('A');
       expect(result).toContain('B');
     });
@@ -154,15 +189,18 @@ describe('combatHelpers', () => {
 
   describe('exportActiveCombat / parseImportedCombat', () => {
     it('round-trips a minimal valid combat state', () => {
-      const combatState = {
-        active: false,
-        round: 1,
+      const combatState: CombatState = {
+        id: 'combat-1',
+        name: 'Test Combat',
+        startTime: 1,
+        participants: [],
         currentTurnIndex: 0,
-        combatants: [],
+        currentRound: 1,
         turnOrder: [],
+        turnDecisions: {},
         log: [],
       };
-      const json = exportActiveCombat(combatState as any, null);
+      const json = exportActiveCombat(combatState, null);
       const parsed = JSON.parse(json);
       expect(parsed.version).toBe(1);
       expect(parsed.combatState).toEqual(combatState);
@@ -207,8 +245,16 @@ describe('combatHelpers', () => {
     });
 
     it('includes roll when provided', () => {
-      const roll = { expression: '3d6', dice: [3, 4, 5], total: 12 };
-      const e = createLogEntry({ entryType: 'roll', round: 1, turn: 1, text: 't', roll: roll as any });
+      const roll: RollData = {
+        expression: '3d6',
+        dice: [3, 4, 5],
+        modifier: 0,
+        total: 12,
+        target: null,
+        margin: 0,
+        success: false,
+      };
+      const e = createLogEntry({ entryType: 'roll', round: 1, turn: 1, text: 't', roll });
       expect(e.roll).toEqual(roll);
     });
   });
@@ -315,19 +361,22 @@ describe('combatHelpers', () => {
 
   describe('createNumberedEnemies', () => {
     it('numbers enemies when quantity > 1', () => {
-      const result = createNumberedEnemies('Goblin', 3, { hp: 10 } as any);
+      const template: EnemyTemplate = { hp: 10 };
+      const result = createNumberedEnemies('Goblin', 3, template);
       expect(result).toHaveLength(3);
       expect(result[0].name).toBe('Goblin #1');
       expect(result[2].name).toBe('Goblin #3');
     });
 
     it('does not number a singleton', () => {
-      const result = createNumberedEnemies('Boss', 1, { hp: 30 } as any);
+      const template: EnemyTemplate = { hp: 30 };
+      const result = createNumberedEnemies('Boss', 1, template);
       expect(result[0].name).toBe('Boss');
     });
 
     it('applies template defaults', () => {
-      const result = createNumberedEnemies('Goblin', 1, { hp: 5 } as any);
+      const template: EnemyTemplate = { hp: 5 };
+      const result = createNumberedEnemies('Goblin', 1, template);
       const g = result[0];
       expect(g.hp).toBe(5);
       expect(g.currentHP).toBe(5);
@@ -339,7 +388,8 @@ describe('combatHelpers', () => {
     });
 
     it('produces unique instance IDs', () => {
-      const result = createNumberedEnemies('Goblin', 5, { hp: 10 } as any);
+      const template: EnemyTemplate = { hp: 10 };
+      const result = createNumberedEnemies('Goblin', 5, template);
       const ids = new Set(result.map(r => r.instanceId));
       expect(ids.size).toBe(5);
     });
@@ -389,7 +439,7 @@ describe('combatHelpers', () => {
 
   describe('createManeuverLogEntry', () => {
     it('encodes maneuver id and label', () => {
-      const e: any = createManeuverLogEntry({
+      const e = createManeuverLogEntry({
         round: 2, turn: 1, actorInstanceId: 'a', actorName: 'Alice',
         maneuverId: 'aim', maneuverLabel: 'Aim'
       });
@@ -480,7 +530,7 @@ describe('combatHelpers', () => {
     it('falls back to default for unknown changeType', () => {
       const e = createConditionLogEntry({
         round: 1, turn: 0, targetInstanceId: 'a', targetName: 'Bob',
-        changeType: 'mutated' as any, conditionId: 'x', conditionLabel: 'X'
+        changeType: 'mutated', conditionId: 'x', conditionLabel: 'X'
       });
       expect(e.text).toContain('mutated');
     });

@@ -2,77 +2,131 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useCombatStore } from '../useCombatStore';
 import type { CombatCharacter, CombatSession, CombatItem, Character } from '../../types/campaign';
+import type { RevealState } from '../../types/combatTracker';
 
 // Mock the campaign store
+interface MockCampaignState {
+  entities: {
+    combatCharacters: Record<string, CombatCharacter>;
+    combatItems: Record<string, CombatItem>;
+    characters: Record<string, Character>;
+    combatHistory: CombatSession[];
+    combatTombstones: CombatCharacter[];
+    encounterTemplates?: Record<string, never>;
+  };
+  combat: {
+    activeSession: CombatSession | null;
+    rulesPreset: string;
+    reveal: Record<string, unknown>;
+    revealState?: RevealState | null;
+  };
+}
+
+interface MockCampaignStoreValue {
+  state: MockCampaignState;
+  actions: ReturnType<typeof createMockActions>;
+}
+
+const useCampaignStoreMock = vi.hoisted(
+  () => vi.fn<() => MockCampaignStoreValue>(),
+);
+
 vi.mock('../../state/campaignStore', () => ({
-  useCampaignStore: vi.fn(),
+  useCampaignStore: useCampaignStoreMock,
 }));
 
-import { useCampaignStore } from '../../state/campaignStore';
-
-const mockedUseCampaignStore = vi.mocked(useCampaignStore);
+const mockedUseCampaignStore = useCampaignStoreMock;
 
 // ============================================================================
 // TEST FIXTURES
 // ============================================================================
 
-function createMockCombatCharacter(overrides: Record<string, unknown> = {}): CombatCharacter {
+function createMockCombatCharacter(
+  overrides: Partial<CombatCharacter> = {},
+): CombatCharacter {
   return {
     id: 'combat-char-1',
     name: 'Test Combat Character',
+    category: 'player',
+    isNPC: false,
     hp: 10,
-    maxHp: 10,
+    maxHP: 10,
     fp: 10,
-    maxFp: 10,
-    speed: 5,
-    move: 5,
+    maxFP: 10,
+    st: 10,
     dx: 10,
     iq: 10,
     ht: 10,
-    will: 10,
-    per: 10,
     dodge: 8,
     parry: 8,
     block: 0,
     dr: 0,
+    skills: {},
+    weapons: [],
     ...overrides,
-  } as unknown as CombatCharacter;
+  };
 }
 
-function createMockCombatSession(overrides: Record<string, unknown> = {}): CombatSession {
+function createMockCombatSession(
+  overrides: Partial<CombatSession> = {},
+): CombatSession {
   return {
     id: 'session-1',
     name: 'Test Combat Session',
-    round: 1,
-    turn: 0,
     participants: [],
+    currentRound: 1,
+    currentTurn: 0,
     log: [],
-    startedAt: Date.now(),
-    isActive: true,
+    startDate: '2026-01-01',
     ...overrides,
-  } as unknown as CombatSession;
+  };
 }
 
-function createMockCombatItem(overrides: Record<string, unknown> = {}): CombatItem {
+function createMockCombatItem(
+  overrides: Partial<CombatItem> = {},
+): CombatItem {
   return {
     id: 'item-1',
     name: 'Test Item',
+    type: 'tool',
+    stats: {},
     quantity: 1,
-    notes: '',
     ...overrides,
-  } as unknown as CombatItem;
+  };
 }
 
-function createMockCharacter(overrides: Record<string, unknown> = {}): Character {
+function createMockCharacter(
+  overrides: Partial<Character> = {},
+): Character {
   return {
     id: 'party-char-1',
     name: 'Test Party Character',
     isPlayer: true,
+    work: {
+      enabled: true,
+      skills: {},
+    },
     ...overrides,
-  } as unknown as Character;
+  };
 }
 
-function createMockCampaignState(overrides: any = {}) {
+function createLegacyRevealState(
+  showEnemyHP: boolean,
+): RevealState & { showEnemyHP: boolean } {
+  const revealState = {
+    showEnemyHP,
+    byInstanceId: {},
+  };
+  Object.defineProperty(revealState, 'byInstanceId', { enumerable: false });
+  return revealState;
+}
+
+function createMockCampaignState(
+  overrides: {
+    entities?: Partial<MockCampaignState['entities']>;
+    combat?: Partial<MockCampaignState['combat']>;
+  } = {},
+): MockCampaignState {
   return {
     entities: {
       combatCharacters: {},
@@ -80,15 +134,16 @@ function createMockCampaignState(overrides: any = {}) {
       characters: {},
       combatHistory: [],
       combatTombstones: [],
+      encounterTemplates: {},
       ...overrides.entities,
     },
     combat: {
       activeSession: null,
       rulesPreset: 'standard',
       reveal: {},
+      revealState: null,
       ...overrides.combat,
     },
-    ...overrides,
   };
 }
 
@@ -123,7 +178,7 @@ describe('useCombatStore', () => {
       mockedUseCampaignStore.mockReturnValue({
         state: createMockCampaignState(),
         actions: mockActions,
-      } as any);
+      });
 
       const { result } = renderHook(() => useCombatStore());
 
@@ -151,7 +206,7 @@ describe('useCombatStore', () => {
           },
         }),
         actions: mockActions,
-      } as any);
+      });
 
       const { result } = renderHook(() => useCombatStore());
 
@@ -177,7 +232,7 @@ describe('useCombatStore', () => {
           },
         }),
         actions: mockActions,
-      } as any);
+      });
 
       const { result } = renderHook(() => useCombatStore());
 
@@ -198,7 +253,7 @@ describe('useCombatStore', () => {
           },
         }),
         actions: mockActions,
-      } as any);
+      });
 
       const { result } = renderHook(() => useCombatStore());
 
@@ -210,7 +265,7 @@ describe('useCombatStore', () => {
       mockedUseCampaignStore.mockReturnValue({
         state: createMockCampaignState(),
         actions: mockActions,
-      } as any);
+      });
 
       const { result } = renderHook(() => useCombatStore());
 
@@ -218,7 +273,7 @@ describe('useCombatStore', () => {
     });
 
     it('returns combat history', () => {
-      const historySession = createMockCombatSession({ id: 'past-session', isActive: false });
+      const historySession = createMockCombatSession({ id: 'past-session' });
 
       const mockActions = createMockActions();
       mockedUseCampaignStore.mockReturnValue({
@@ -232,7 +287,7 @@ describe('useCombatStore', () => {
           },
         }),
         actions: mockActions,
-      } as any);
+      });
 
       const { result } = renderHook(() => useCombatStore());
 
@@ -255,7 +310,7 @@ describe('useCombatStore', () => {
           },
         }),
         actions: mockActions,
-      } as any);
+      });
 
       const { result } = renderHook(() => useCombatStore());
 
@@ -274,7 +329,7 @@ describe('useCombatStore', () => {
           },
         }),
         actions: mockActions,
-      } as any);
+      });
 
       const { result } = renderHook(() => useCombatStore());
 
@@ -282,7 +337,7 @@ describe('useCombatStore', () => {
     });
 
     it('returns combat reveal state', () => {
-      const revealState = { showEnemyHP: true, showEnemyStats: false };
+      const revealState: RevealState = { byInstanceId: {} };
 
       const mockActions = createMockActions();
       mockedUseCampaignStore.mockReturnValue({
@@ -295,7 +350,7 @@ describe('useCombatStore', () => {
           },
         }),
         actions: mockActions,
-      } as any);
+      });
 
       const { result } = renderHook(() => useCombatStore());
 
@@ -321,7 +376,7 @@ describe('useCombatStore', () => {
           },
         }),
         actions: mockActions,
-      } as any);
+      });
 
       const { result } = renderHook(() => useCombatStore());
 
@@ -341,7 +396,7 @@ describe('useCombatStore', () => {
       mockedUseCampaignStore.mockReturnValue({
         state: createMockCampaignState(),
         actions: mockActions,
-      } as any);
+      });
 
       const { result } = renderHook(() => useCombatStore());
 
@@ -364,7 +419,7 @@ describe('useCombatStore', () => {
       mockedUseCampaignStore.mockReturnValue({
         state: createMockCampaignState(),
         actions: mockActions,
-      } as any);
+      });
 
       const { result } = renderHook(() => useCombatStore());
 
@@ -382,7 +437,7 @@ describe('useCombatStore', () => {
       mockedUseCampaignStore.mockReturnValue({
         state: createMockCampaignState(),
         actions: mockActions,
-      } as any);
+      });
 
       const { result } = renderHook(() => useCombatStore());
 
@@ -401,7 +456,7 @@ describe('useCombatStore', () => {
       mockedUseCampaignStore.mockReturnValue({
         state: createMockCampaignState(),
         actions: mockActions,
-      } as any);
+      });
 
       const { result } = renderHook(() => useCombatStore());
 
@@ -427,7 +482,7 @@ describe('useCombatStore', () => {
           },
         }),
         actions: mockActions,
-      } as any);
+      });
 
       const { result } = renderHook(() => useCombatStore());
 
@@ -448,11 +503,11 @@ describe('useCombatStore', () => {
       mockedUseCampaignStore.mockReturnValue({
         state: createMockCampaignState(),
         actions: mockActions,
-      } as any);
+      });
 
       const { result } = renderHook(() => useCombatStore());
 
-      let receivedValue: any = 'not-called';
+      let receivedValue: CombatSession | null | 'not-called' = 'not-called';
       act(() => {
         result.current.saveCombatActive((prev: CombatSession | null) => {
           receivedValue = prev;
@@ -470,7 +525,7 @@ describe('useCombatStore', () => {
       mockedUseCampaignStore.mockReturnValue({
         state: createMockCampaignState(),
         actions: mockActions,
-      } as any);
+      });
 
       const { result } = renderHook(() => useCombatStore());
 
@@ -494,7 +549,7 @@ describe('useCombatStore', () => {
       mockedUseCampaignStore.mockReturnValue({
         state: createMockCampaignState(),
         actions: mockActions,
-      } as any);
+      });
 
       const { result } = renderHook(() => useCombatStore());
 
@@ -515,7 +570,7 @@ describe('useCombatStore', () => {
       mockedUseCampaignStore.mockReturnValue({
         state: createMockCampaignState(),
         actions: mockActions,
-      } as any);
+      });
 
       const { result } = renderHook(() => useCombatStore());
 
@@ -534,7 +589,7 @@ describe('useCombatStore', () => {
       mockedUseCampaignStore.mockReturnValue({
         state: createMockCampaignState(),
         actions: mockActions,
-      } as any);
+      });
 
       const { result } = renderHook(() => useCombatStore());
 
@@ -559,12 +614,12 @@ describe('useCombatStore', () => {
       mockedUseCampaignStore.mockReturnValue({
         state: createMockCampaignState(),
         actions: mockActions,
-      } as any);
+      });
 
       const { result } = renderHook(() => useCombatStore());
 
       act(() => {
-        result.current.saveCombatReveal({ showEnemyHP: true } as any);
+        result.current.saveCombatReveal(createLegacyRevealState(true));
       });
 
       expect(mockActions.setCombatRevealState).toHaveBeenCalledWith({ showEnemyHP: true });
@@ -583,7 +638,7 @@ describe('useCombatStore', () => {
       mockedUseCampaignStore.mockReturnValue({
         state: mockState,
         actions: mockActions,
-      } as any);
+      });
 
       const { result, rerender } = renderHook(() => useCombatStore());
       const firstResult = result.current;
@@ -602,7 +657,7 @@ describe('useCombatStore', () => {
       mockedUseCampaignStore.mockReturnValue({
         state: mockState,
         actions: mockActions,
-      } as any);
+      });
 
       const { result, rerender } = renderHook(() => useCombatStore());
       const firstResult = result.current;
@@ -623,7 +678,7 @@ describe('useCombatStore', () => {
       mockedUseCampaignStore.mockReturnValue({
         state: mockState,
         actions: mockActions,
-      } as any);
+      });
 
       rerender();
       const secondResult = result.current;
