@@ -10,6 +10,7 @@ import type {
   Material,
   MaterialType,
   CustomTemplates,
+  CraftingTemplateDetails,
 } from '../../types/campaign';
 import type { CraftingWorker } from '../../hooks/useCraftingData';
 
@@ -36,7 +37,8 @@ export function CraftingProjectList({
   const [expandedCrafts, setExpandedCrafts] = useState<Record<string, boolean>>({});
 
   function computeStats(c: Craft) {
-    const t = customTemplates[c.templateType]?.[c.template] || { weight: 0, hp: 0 };
+    const t: CraftingTemplateDetails =
+      customTemplates[c.templateType]?.[c.template] || { weight: 0, hp: 0 };
     const q = QUALITIES[c.currentQuality as keyof typeof QUALITIES] || QUALITIES['good'] || { htBonus: 0 };
 
     let avgHT = 10, avgWeightMod = 0, avgHPMod = 0;
@@ -136,7 +138,7 @@ export function CraftingProjectList({
                   </div>
                 </div>
                 <div className="text-sm text-gray-400">Materials: {materialList}</div>
-                <div className="text-sm text-gray-400 mb-2">W: {finalWeight} lbs | HP: {finalHP} | HT: {avgHT + (q as any).htBonus}</div>
+                <div className="text-sm text-gray-400 mb-2">W: {finalWeight} lbs | HP: {finalHP} | HT: {avgHT + q.htBonus}</div>
                 {c.phase !== 'setup' && (
                   <div className="w-full bg-gray-600 rounded-full h-2">
                     <div
@@ -161,8 +163,7 @@ export function CraftingProjectList({
           {crafts.filter(c => c.completed).map(c => {
             if (!c.templateType || !c.template) return null;
 
-            const { t: rawT, q, avgHT, finalWeight, finalHP } = computeStats(c);
-            const t = rawT as any;
+            const { t, q, avgHT, finalWeight, finalHP } = computeStats(c);
             const materialList = getMaterialList(c, true);
 
             return (
@@ -177,7 +178,7 @@ export function CraftingProjectList({
                   </div>
                   <div className="text-sm text-gray-400">
                     <div>W: {finalWeight} lbs</div>
-                    <div>HP: {finalHP} | HT: {avgHT + (q as any).htBonus}</div>
+                    <div>HP: {finalHP} | HT: {avgHT + q.htBonus}</div>
                   </div>
                   <button
                     onClick={(e) => {
@@ -225,7 +226,7 @@ export function CraftingProjectList({
                         <div>Materials Used: <span className="text-gray-300">{materialList}</span></div>
                         <div>Base Weight: <span className="text-gray-300">{t.weight} lbs</span> &rarr; Final: <span className="text-blue-300">{finalWeight} lbs</span></div>
                         <div>Base HP: <span className="text-gray-300">{t.hp}</span> &rarr; Final: <span className="text-blue-300">{finalHP}</span></div>
-                        <div>Final HT: <span className="text-gray-300">{avgHT + (q as any).htBonus}</span></div>
+                        <div>Final HT: <span className="text-gray-300">{avgHT + q.htBonus}</span></div>
 
                         {c.templateType === 'weapons' && (
                           <>

@@ -100,7 +100,7 @@ export interface TurnOrderCombatant {
   id?: string;
   name: string;
   category?: string;
-  basicSpeed: number;
+  basicSpeed?: number;
   dx: number;
 }
 
@@ -121,7 +121,7 @@ export interface InjuryLogEntryParams {
   targetInstanceId: string;
   targetName: string;
   hitLocation?: {
-    locationLabel?: string;
+    locationLabel?: string | null;
     locationKey?: string;
   } | null;
   damageBreakdown: {
@@ -133,7 +133,7 @@ export interface InjuryLogEntryParams {
     baseWoundingMultiplier?: number;
     locationWoundingMultiplier?: number;
     woundingMultiplier?: number;
-    locationLabel?: string;
+    locationLabel?: string | null;
   };
   effects?: unknown[] | null;
   currentHP?: number | null;
@@ -205,7 +205,13 @@ export interface EnemyTemplate {
   hp: number;
   fp?: number;
   mp?: number;
-  [key: string]: unknown;
+  category?: string;
+  st?: number;
+  dx?: number;
+  iq?: number;
+  ht?: number;
+  basicSpeed?: number;
+  basicMove?: number;
 }
 
 /**
@@ -239,7 +245,7 @@ export function generateTurnOrder(combatants: TurnOrderCombatant[]): string[] {
   const sorted = [...activeCombatants].sort((a, b) => {
     // Primary: Basic Speed (descending)
     if (b.basicSpeed !== a.basicSpeed) {
-      return b.basicSpeed - a.basicSpeed;
+      return b.basicSpeed! - a.basicSpeed!;
     }
 
     // Secondary: DX (descending)
@@ -645,12 +651,25 @@ export function createActionLogEntry({
  * @param {Object} template - Template object with character data
  * @returns {Array} Array of character objects with numbered names
  */
-export function createNumberedEnemies(
+type InitializedEnemy<T extends EnemyTemplate> = T & Participant & {
+  instanceId: string;
+  id: string;
+  currentHP: number;
+  currentFP: number;
+  currentMP: number;
+  shockPenalty: number;
+  isDead: boolean;
+  bleeding: null;
+  crippled: string[];
+  conditions: [];
+};
+
+export function createNumberedEnemies<T extends EnemyTemplate>(
   baseName: string,
   quantity: number,
-  template: EnemyTemplate
-): Participant[] {
-  const enemies: Participant[] = [];
+  template: T
+): Array<InitializedEnemy<T>> {
+  const enemies: Array<InitializedEnemy<T>> = [];
 
   for (let i = 1; i <= quantity; i++) {
     enemies.push({

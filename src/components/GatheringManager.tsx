@@ -106,30 +106,28 @@ function GatheringManagerBase() {
   }, [materialTypes]);
 
   // Save callbacks that normalize arrays back to records
-  // Note: We cast through any because the view types and state types differ
-  // but are compatible at runtime
   const saveSpecies = useCallback((speciesArray: GatheringSpeciesExtended[]) => {
-    actions.setGatheringSpecies(normalizeArray(speciesArray as any));
+    actions.setGatheringSpecies(normalizeArray(speciesArray));
   }, [actions]);
 
   const saveTools = useCallback((toolsArray: GatheringToolExtended[]) => {
-    actions.setGatheringTools(normalizeArray(toolsArray as any));
+    actions.setGatheringTools(normalizeArray(toolsArray));
   }, [actions]);
 
   const saveTables = useCallback((tablesArray: GatheringTableExtended[]) => {
-    actions.setGatheringTables(normalizeArray(tablesArray as any));
+    actions.setGatheringTables(normalizeArray(tablesArray));
   }, [actions]);
 
   const saveEnvironments = useCallback((environmentsArray: GatheringEnvironmentExtended[]) => {
-    actions.setGatheringEnvironments(normalizeArray(environmentsArray as any));
+    actions.setGatheringEnvironments(normalizeArray(environmentsArray));
   }, [actions]);
 
   const saveBait = useCallback((baitArray: GatheringBaitExtended[]) => {
-    actions.setGatheringBait(normalizeArray(baitArray as any));
+    actions.setGatheringBait(normalizeArray(baitArray));
   }, [actions]);
 
   const saveItems = useCallback((itemsArray: GatheringItemExtended[]) => {
-    actions.setGatheringItems(normalizeArray(itemsArray as any));
+    actions.setGatheringItems(normalizeArray(itemsArray));
   }, [actions]);
 
   const saveForageZoneProfile = useCallback((profile: ForageZoneProfile) => {

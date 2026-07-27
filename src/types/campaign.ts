@@ -187,7 +187,36 @@ export interface CustomTemplates {
   armor: Record<string, ArmorTemplate>;
   ranged: Record<string, RangedTemplate>;
   explosives: Record<string, ExplosiveTemplate>;
-  [key: string]: Record<string, any>;
+  [key: string]: Record<string, CraftingTemplateDetails>;
+}
+
+/** Common readable fields shared by every crafting template category. */
+export interface CraftingTemplateDetails {
+  [key: string]: unknown;
+  name?: string;
+  weight: number;
+  hp?: number;
+  materials?: Array<{
+    type: string;
+    amount: number;
+  }>;
+  damage?: string | number | null;
+  reach?: string | number | null;
+  parry?: string | number | null;
+  cost?: string | number | null;
+  ST?: string | number | null;
+  notes?: string | number | null;
+  Acc?: string | number | null;
+  range?: string | number | null;
+  RoF?: string | number | null;
+  shots?: string | number | null;
+  bulk?: string | number | null;
+  RCl?: string | number | null;
+  LC?: string | number | null;
+  location?: string | number | null;
+  DR?: string | number | null;
+  dr?: string | number | null;
+  fuse?: string | number | null;
 }
 
 export interface WeaponTemplate {
@@ -596,6 +625,8 @@ export interface CombatCharacter {
   maxHP: number;
   fp?: number;
   maxFP?: number;
+  mp?: number;
+  maxMP?: number;
   st: number;
   dx: number;
   iq: number;
@@ -604,6 +635,16 @@ export interface CombatCharacter {
   parry?: number;
   block?: number;
   dr: number;
+  basicSpeed?: number;
+  basicMove?: number;
+  hitLocationProfileId?: string;
+  drByLocation?: Record<string, number>;
+  attacks?: Array<{
+    name: string;
+    skill: number;
+    damage?: string;
+    notes?: string;
+  }>;
   skills: Record<string, number>;
   weapons: Array<{
     name: string;

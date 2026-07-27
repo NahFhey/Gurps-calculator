@@ -136,6 +136,21 @@ export interface ForagingData {
 }
 
 /**
+ * Persisted foraging payload from downtime schema V1.
+ * Used only as the input contract for the V1-to-V2 migration.
+ */
+export interface LegacyForagingDataV1 {
+  type: 'foraging';
+  biomeId?: string;
+  nodeId?: string;
+  skillUsed?: string;
+  toolIds?: string[];
+  leaderSkill?: number;
+  skillModifier?: number;
+  tableId?: string;
+}
+
+/**
  * Mining method type - determines action cost and risk level.
  * - Surface Prospecting: 1 slot (locate + harvest combined), low yield, low danger
  * - Deep Mining: requires mapped site, 1 slot per extraction, higher yield, higher danger

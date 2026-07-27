@@ -24,6 +24,11 @@ import {
   evaluateForagingRoll,
   determineForageFind
 } from '../utils/gathering';
+import type {
+  ForageFind,
+  GatheringSession,
+  TableEntry as RolledTableEntry,
+} from '../utils/gathering';
 
 // ============================================================================
 // Types
@@ -51,7 +56,16 @@ export interface GatheringTool {
 export interface GatheringTable {
   id: string;
   name: string;
-  entries?: unknown[];
+  entries: Array<{
+    id: string;
+    rollValue: number;
+    resultType: 'species' | 'item' | 'nothing' | 'event' | 'special' | 'category';
+    speciesId: string | null;
+    itemId?: string | null;
+    categoryId?: string | null;
+    text: string;
+  }>;
+  rollMethod: '1d6' | '2d6' | '3d6';
 }
 
 export interface GatheringEnvironment {
@@ -69,36 +83,6 @@ export interface GatheringEnvironment {
     randomCatchTableId?: string;
     mildEventTableId?: string;
     rareEventTableId?: string;
-  };
-}
-
-export interface GatheringSession {
-  id: string;
-  mode: string;
-  environmentId: string;
-  method: string;
-  leaderCharacterId: string;
-  helperCharacterIds: string[];
-  dateKey?: number;
-  tablesResolved?: {
-    randomCatchTableId?: string;
-    mildEventTableId?: string;
-    rareEventTableId?: string;
-  };
-  modifiers?: EffectiveSkillResult;
-  dailyEvent?: EventResult;
-  resolution?: SessionResolution;
-  committedToInventory?: boolean;
-  completedAt?: string;
-}
-
-export interface SessionResolution {
-  fishingRoll?: FishingResult;
-  fishCaught?: CaughtFish[];
-  yields?: YieldResult[];
-  inventoryDelta?: {
-    foods: Record<string, number>;
-    materials: Record<string, number>;
   };
 }
 
@@ -193,13 +177,6 @@ export interface ForagingResult {
   description: string;
   yieldMultiplier: number;
   hazard?: string;
-}
-
-export interface ForageFind {
-  type: 'category' | 'item' | 'nothing' | 'special';
-  categoryId?: string;
-  itemId?: string;
-  text?: string;
 }
 
 export interface CaughtFish {
@@ -494,7 +471,7 @@ function GatheringTabBase({
       selectedToolIds,
       selectedConsumableIds: selectedBaitId ? [selectedBaitId] : [],
       currentDay
-    }) as unknown as GatheringSession;
+    });
 
     session.tablesResolved = {
       randomCatchTableId: resolvedTables.randomCatch?.id,
@@ -522,14 +499,14 @@ function GatheringTabBase({
     const roll = eventRoll.total;
     const eventType = determineDynamicEventType(roll) as 'rare' | 'mild' | 'none';
 
-    let eventEntry: { id?: string; text?: string } | null = null;
+    let eventEntry: RolledTableEntry | null = null;
     let eventText: string | null = null;
 
     if (eventType === 'rare' && resolvedTables.rareEvent) {
-      eventEntry = rollOnCatchTable(resolvedTables.rareEvent as any) as { id?: string; text?: string };
+      eventEntry = rollOnCatchTable(resolvedTables.rareEvent);
       eventText = eventEntry?.text || 'Rare event occurred!';
     } else if (eventType === 'mild' && resolvedTables.mildEvent) {
-      eventEntry = rollOnCatchTable(resolvedTables.mildEvent as any) as { id?: string; text?: string };
+      eventEntry = rollOnCatchTable(resolvedTables.mildEvent);
       eventText = eventEntry?.text || 'Mild event occurred!';
     }
 
@@ -598,10 +575,10 @@ function GatheringTabBase({
 
     const findResult = determineForageFind({
       rollResult: result,
-      findTable: resolvedTables.randomCatch as any,
+      findTable: resolvedTables.randomCatch,
       _targetCategory: targetCategory?.id || undefined,
       targetItem
-    }) as ForageFind;
+    });
 
     setForageFind(findResult);
     setSessionPhase('yield');
@@ -618,12 +595,12 @@ function GatheringTabBase({
       ? (selectedBaitItem.rollBonus || 0)
       : 0;
 
-    let entry: { resultType?: string; speciesId?: string };
+    let entry: RolledTableEntry;
     try {
       if (selectedMethod === 'Net') {
-        entry = rollNetCatch(resolvedTables.randomCatch as any, species) as { resultType?: string; speciesId?: string };
+        entry = rollNetCatch(resolvedTables.randomCatch, species);
       } else {
-        entry = rollOnCatchTable(resolvedTables.randomCatch as any, baitRollBonus) as { resultType?: string; speciesId?: string };
+        entry = rollOnCatchTable(resolvedTables.randomCatch, baitRollBonus);
       }
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Unknown error');

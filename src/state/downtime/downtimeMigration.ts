@@ -13,6 +13,7 @@ import type {
   ActivityData,
   FishingData,
   ForagingData,
+  LegacyForagingDataV1,
   RestData,
 } from '../../types/downtime';
 import { downtimeInitialState, DOWNTIME_SCHEMA_VERSION } from './downtimeInitialState';
@@ -453,30 +454,30 @@ export function migrateV1ToV2(state: DowntimeState): MigrationResult {
     const task = state.tasksById[taskId];
     if (!task || task.activityType !== 'foraging') continue;
 
-    const data = task.activityData as ForagingData;
+    const data = task.activityData as ForagingData | LegacyForagingDataV1;
 
     // Already migrated (has mode field)
-    if (data.mode) {
+    if ('mode' in data && data.mode) {
       continue;
     }
 
     try {
-      const legacyBiomeId = (data as any).biomeId ?? '';
-      const legacyNodeId = (data as any).nodeId ?? '';
+      const legacyBiomeId = data.biomeId ?? '';
+      const legacyNodeId = data.nodeId ?? '';
 
       const migratedData: ForagingData = {
         type: 'foraging',
         zoneId: legacyBiomeId,
         mode: legacyNodeId ? 'specific' : 'general',
         targetItemId: legacyNodeId || undefined,
-        skillUsed: (data as any).skillUsed ?? 'survival',
+        skillUsed: data.skillUsed ?? 'survival',
         toolIds: data.toolIds ?? [],
         leaderSkill: data.leaderSkill ?? 10,
         skillModifier: data.skillModifier ?? 0,
         // Preserve legacy fields
         biomeId: legacyBiomeId,
         nodeId: legacyNodeId || undefined,
-        tableId: (data as any).tableId,
+        tableId: data.tableId,
       };
 
       result.state.tasksById[taskId] = {

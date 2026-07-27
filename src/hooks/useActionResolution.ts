@@ -103,8 +103,8 @@ export function useActionResolution(
           turn: combat.currentTurnIndex,
           targetInstanceId,
           targetName: (target?.name ?? 'Unknown') as string,
-          hitLocation: injury.hitLocation as any,
-          damageBreakdown: injury.damageBreakdown as any,
+          hitLocation: injury.hitLocation,
+          damageBreakdown: injury.damageBreakdown!,
           effects: null,
           currentHP: target?.currentHP ?? null,
           newHP,
@@ -252,10 +252,10 @@ export function useActionResolution(
                   targetName: (target?.name ?? 'Unknown') as string,
                   effectType: 'crippling',
                   effectData: {
-                    locationKey: effect.locationKey as any,
-                    locationLabel: effect.locationLabel as any,
+                    locationKey: effect.locationKey,
+                    locationLabel: effect.locationLabel,
                   },
-                  text: `${target?.name ?? 'Unknown'}: ${(effect.locationLabel as any) ?? 'unknown location'} crippled!`,
+                  text: `${target?.name ?? 'Unknown'}: ${effect.locationLabel ?? 'unknown location'} crippled!`,
                 }),
               );
             }
@@ -347,7 +347,7 @@ export function useActionResolution(
         targetInstanceId,
         targetName: target?.name ?? undefined,
         maneuver,
-        action: { kind, attack: attack as any, defense },
+        action: { kind, attack, defense },
       });
 
       let newCombat: CombatState = {

@@ -4,7 +4,11 @@ import { useCombatStore } from '../../hooks/useCombatStore';
 import { useCampaignStore } from '../../state/campaignStore';
 import { generateTurnOrder, createNumberedEnemies, generateId, createLogEntry, createTurnLogEntry } from '../../utils/combatHelpers';
 import type { Character as PartyCharacter } from '../../types/campaign';
-import type { EncounterTemplate, EncounterTemplateParticipant } from '../../types/combatTracker';
+import type {
+  ConditionInstance,
+  EncounterTemplate,
+  EncounterTemplateParticipant,
+} from '../../types/combatTracker';
 import { DEFAULT_HIT_LOCATION_PROFILE } from '../../types/characterSheet';
 import { calculateCharacterEncumbrance, calculateLocationDR } from '../../utils/encumbrance';
 import { COMBAT_CATEGORIES } from '../../constants';
@@ -13,7 +17,7 @@ import { ConfirmDialog, useConfirmDialog, useToast } from '../ui';
 interface Attack {
   name: string;
   skill: number;
-  damage: string;
+  damage?: string;
   notes?: string;
 }
 
@@ -26,13 +30,13 @@ interface Character {
   iq: number;
   ht: number;
   hp: number;
-  fp: number;
-  mp: number;
-  basicSpeed: number;
-  basicMove: number;
+  fp?: number;
+  mp?: number;
+  basicSpeed?: number;
+  basicMove?: number;
   dodge: number;
-  parry: number;
-  block: number;
+  parry?: number;
+  block?: number;
   dr: number;
   hitLocationProfileId?: string;
   drByLocation?: Record<string, number>;
@@ -113,7 +117,7 @@ function partyCharacterToCombat(partyChar: PartyCharacter): Character {
 }
 
 interface Participant extends Character {
-  libraryId: string;
+  libraryId?: string;
   currentHP: number;
   currentFP: number;
   currentMP: number;
@@ -122,7 +126,7 @@ interface Participant extends Character {
   isDead: boolean;
   bleeding: null;
   crippled: string[];
-  conditions: unknown[];
+  conditions: ConditionInstance[];
   // Party character tracking
   isFromParty?: boolean;
   partyCharacterId?: string;
@@ -172,7 +176,7 @@ export default function EncounterSetup() {
   });
 
   // Categorize combat library characters
-  const characters = (combatCharacters || []) as unknown as Character[];
+  const characters: Character[] = combatCharacters || [];
   const players = characters.filter(c => c.category === 'player');
   const allies = characters.filter(c => c.category === 'ally');
   const enemies = characters.filter(c => c.category === 'enemy');
@@ -281,7 +285,7 @@ export default function EncounterSetup() {
   const addCharacter = (character: Character, quantity = 1) => {
     if (character.category === 'enemy' && quantity > 1) {
       // Create numbered enemies
-      const numbered = createNumberedEnemies(character.name, quantity, character as unknown as any) as Participant[];
+      const numbered = createNumberedEnemies(character.name, quantity, character);
       setParticipants([...participants, ...numbered]);
     } else {
       // Add single character
@@ -314,7 +318,7 @@ export default function EncounterSetup() {
 
   // Generate turn order preview
   const handleGenerateTurnOrder = () => {
-    const order = generateTurnOrder(participants as any) as string[];
+    const order = generateTurnOrder(participants);
     setTurnOrder(order);
     setShowTurnOrderPreview(true);
   };
@@ -352,11 +356,11 @@ export default function EncounterSetup() {
       ...p,
       instanceId: p.id, // Use the encounter-generated ID as instanceId
       id: p.id // Keep for backward compatibility
-    })) as any;
+    }));
 
     // Get first actor
     const firstActorInstanceId = turnOrder[0];
-    const firstActor = migratedParticipants.find((p: any) => p.instanceId === firstActorInstanceId);
+    const firstActor = migratedParticipants.find(p => p.instanceId === firstActorInstanceId);
 
     // Create Phase 2 combat state
     const combat = {
@@ -364,7 +368,7 @@ export default function EncounterSetup() {
       id: generateId(),
       name: encounterName || `Combat ${Date.now()}`,
       startTime: Date.now(),
-      participants: migratedParticipants as any,
+      participants: migratedParticipants,
       turnOrder: turnOrder, // Already uses instanceIds
       currentTurnIndex: 0,
       currentRound: 1,

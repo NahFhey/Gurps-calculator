@@ -74,8 +74,9 @@ interface ForageItemLike {
 interface ResolvedTableEntry extends TableEntry {
   rollValue?: number;
   resultType?: string;
-  speciesId?: string;
-  itemId?: string;
+  speciesId?: string | null;
+  itemId?: string | null;
+  categoryId?: string | null;
   text?: string;
   rawRoll?: number;
   modifiedRoll?: number;

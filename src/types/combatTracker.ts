@@ -168,11 +168,32 @@ export interface ActionData {
 }
 
 export interface AttackActionData {
+  name?: string;
+  skill?: number;
+  damage?: string;
+  hitLocation?: {
+    key: string;
+    label: string;
+    drKey?: string;
+    toHitPenalty?: number;
+  } | null;
+  hitLocationRoll?: {
+    dice: number[];
+    total: number;
+  } | null;
+  rollTotal?: number | null;
+  effectiveSkill?: number;
+  margin?: number | null;
+  success?: boolean;
   modifiers?: { label: string; value: number }[];
 }
 
 export interface DefenseActionData {
   type?: string;
+  baseDefense?: number;
+  effectiveDefense?: number;
+  rollTotal?: number | null;
+  margin?: number | null;
   success?: boolean | null;
   modifiers?: { label: string; value: number }[];
 }
@@ -181,6 +202,7 @@ export interface DamageActionData {
   expression?: string;
   rolledDamage?: number;
   generalDRUsed?: number;
+  penetrating?: number | null;
 }
 
 // ============================================================================
@@ -371,8 +393,23 @@ export interface InjuryEffect {
 }
 
 export interface InjuryData {
-  hitLocation?: unknown;
-  damageBreakdown?: unknown;
+  hitLocation?: {
+    profileId?: string;
+    locationKey?: string;
+    locationLabel?: string;
+    rolled?: { dice: number[]; total: number } | null;
+  } | null;
+  damageBreakdown?: {
+    raw?: number;
+    dr?: number;
+    penetrating?: number;
+    damageType?: string;
+    woundingMultiplier?: number;
+    baseWoundingMultiplier?: number;
+    locationWoundingMultiplier?: number;
+    locationLabel?: string | null;
+    injuryApplied: number;
+  };
   effects?: InjuryEffect[];
   newHP?: number;
   targetInstanceId?: string;
@@ -381,9 +418,9 @@ export interface InjuryData {
 export interface ActionCompleteData {
   maneuver?: string | null;
   kind: string;
-  attack?: unknown;
+  attack?: AttackActionData;
   defense?: DefenseActionData;
-  damage?: unknown;
+  damage?: DamageActionData;
   injury?: InjuryData;
   note?: string;
   targetInstanceId?: string | null;

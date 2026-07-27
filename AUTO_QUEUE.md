@@ -287,12 +287,12 @@ Same pattern as Phase 16y: remove every `as any` in the target file by fixing ty
 
 Same pattern as 16y-2: remove every `as any` by fixing types at the source; zero runtime behavior change; tsc clean; named safety nets green. If a specific cast genuinely requires a design decision, defer citing that cast's file:line.
 
-- [ ] Remove the 6 `as any` casts in src/components/GatheringManager.tsx (:112-:132, normalizeArray calls on gathering setters). The 2026-07-23 Extended-canonical fix (466cbd) likely makes these cleanly fixable — the setters should now accept the Extended array shapes. Safety net: tsc + src/components/gathering/__tests__/.
-- [ ] Remove the 5 `as any` casts in src/components/GatheringTab.tsx (:529/:532/:601/:624/:626 — rollOnCatchTable/rollNetCatch/findTable args). Fix the declared param types in src/utils/gathering.d.ts honestly (inline the real table shapes, no erasure). Safety net: tsc + gathering component tests.
-- [ ] Remove the 6 `as any` casts in src/hooks/useActionResolution.ts (:106/:107/:255/:256/:258/:350 — hitLocation, damageBreakdown, locationKey/Label, attack). Safety net now exists: src/hooks/__tests__/useActionResolution.test.ts (7 tests, added 2026-07-27).
-- [ ] Remove the 4 `as any` casts in src/components/combat/EncounterSetup.tsx. No dedicated component test — safety net is tsc + the full combat suite green.
-- [ ] Remove the 4 `as any` casts in src/components/crafting/CraftingProjectList.tsx. Safety net: src/components/crafting/__tests__/CraftingComponents.test.tsx.
-- [ ] Remove the 4 `as any` casts in src/state/downtime/downtimeMigration.ts. Safety net: src/state/downtime/__tests__/downtimeMigration.test.ts.
+- [x] Remove the 6 `as any` casts in src/components/GatheringManager.tsx (:112-:132, normalizeArray calls on gathering setters). The 2026-07-23 Extended-canonical fix (466cbd) likely makes these cleanly fixable — the setters should now accept the Extended array shapes. Safety net: tsc + src/components/gathering/__tests__/. [2026-07-27 codex-shepherd session: 6→0]
+- [x] Remove the 5 `as any` casts in src/components/GatheringTab.tsx (:529/:532/:601/:624/:626 — rollOnCatchTable/rollNetCatch/findTable args). Fix the declared param types in src/utils/gathering.d.ts honestly (inline the real table shapes, no erasure). Safety net: tsc + gathering component tests. [2026-07-27 codex-shepherd session: 5→0; gathering.d.ts table/session signatures inlined]
+- [x] Remove the 6 `as any` casts in src/hooks/useActionResolution.ts (:106/:107/:255/:256/:258/:350 — hitLocation, damageBreakdown, locationKey/Label, attack). Safety net now exists: src/hooks/__tests__/useActionResolution.test.ts (7 tests, added 2026-07-27). [2026-07-27 codex-shepherd session: 6→0; InjuryData/AttackActionData/DefenseActionData structured in combatTracker.ts]
+- [x] Remove the 4 `as any` casts in src/components/combat/EncounterSetup.tsx. No dedicated component test — safety net is tsc + the full combat suite green. [2026-07-27 codex-shepherd session: 4→0; CombatCharacter extended with mp/basicSpeed/drByLocation/attacks]
+- [x] Remove the 4 `as any` casts in src/components/crafting/CraftingProjectList.tsx. Safety net: src/components/crafting/__tests__/CraftingComponents.test.tsx. [2026-07-27 codex-shepherd session: 4→0; CraftingTemplateDetails added to campaign.ts]
+- [x] Remove the 4 `as any` casts in src/state/downtime/downtimeMigration.ts. Safety net: src/state/downtime/__tests__/downtimeMigration.test.ts. [2026-07-27 codex-shepherd session: 4→0; legacy V1 foraging type made explicit]
 
 ## Phase 16r-2 — bare `: any` erosion cleanup (one item per run) _(refill 2026-07-27)_
 

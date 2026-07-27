@@ -4,17 +4,27 @@
 
 import type { GatheringItem } from '../types/campaign';
 
-/** Minimal table shape matching what the JS functions actually access */
+/** Table shape matching what the JS rolling functions actually access. */
 interface RollableTable {
-  entries: Array<{ rollValue?: number; resultType?: string; speciesId?: string | null; itemId?: string | null; text?: string }>;
+  entries: Array<{
+    id?: string;
+    rollValue?: number;
+    resultType?: string;
+    speciesId?: string | null;
+    itemId?: string | null;
+    categoryId?: string | null;
+    text?: string;
+  }>;
   rollMethod?: string;
 }
 
 // Roll result types
 export interface TableEntry {
+  id?: string;
   resultType?: string;
-  speciesId?: string;
-  itemId?: string;
+  speciesId?: string | null;
+  itemId?: string | null;
+  categoryId?: string | null;
   result?: string;
   rerollCount?: number;
   rawRoll?: number;
@@ -24,12 +34,13 @@ export interface TableEntry {
 }
 
 export interface ForageFind {
-  type: 'item' | 'nothing' | string;
+  type: 'species' | 'item' | 'nothing' | 'event' | 'special' | 'category';
+  categoryId?: string | null;
   itemId?: string | null;
   item?: GatheringItem | null;
   source?: string;
   text?: string;
-  tableEntry?: any;
+  tableEntry?: TableEntry;
 }
 
 export interface FishingResult {
@@ -92,19 +103,41 @@ export interface GatheringSession {
   id: string;
   dateKey: number;
   mode: string;
-  environmentId: string | null;
-  method: string | null;
+  environmentId: string;
+  method: string;
   leaderCharacterId: string;
   helperCharacterIds: string[];
   intent: { targetedSpeciesId: string | null; randomCatch: boolean };
   selectedToolIds: string[];
   selectedConsumableIds: string[];
-  modifiers: any;
-  tablesResolved: { randomCatchTableId: string | null; mildEventTableId: string | null; rareEventTableId: string | null };
-  dailyEvent: { rolled: boolean; resultType: string | null; eventEntryId: string | null; eventText: string | null };
-  resolution: { fishingRoll: any; fishCaught: any[]; yields: any[]; inventoryDelta: any[] };
+  modifiers: {
+    effectiveSkill: number;
+    breakdown: Record<string, number | undefined>;
+  } | null;
+  tablesResolved: {
+    randomCatchTableId: string | null | undefined;
+    mildEventTableId: string | null | undefined;
+    rareEventTableId: string | null | undefined;
+  };
+  dailyEvent: {
+    rolled: boolean;
+    roll?: number;
+    resultType: string | null;
+    eventEntryId?: string | null;
+    eventText?: string | null;
+  };
+  resolution: {
+    fishingRoll: FishingResult | null | undefined;
+    fishCaught: unknown[];
+    yields: unknown[];
+    inventoryDelta: unknown[] | {
+      foods: Record<string, number>;
+      materials: Record<string, number>;
+    };
+  };
   committedToInventory: boolean;
   createdAt: string;
+  completedAt?: string;
 }
 
 // Dice utilities
@@ -144,7 +177,20 @@ export function calculateForageYields(params: { category?: any; item?: any; yiel
 export function getToolYieldBonus(tools: any[], typeId: string): number;
 
 // Session management
-export function createGatheringSession(data: any): GatheringSession;
+export function createGatheringSession(data: {
+  mode: string;
+  environmentId: string;
+  method: string;
+  leaderCharacterId: string;
+  helperCharacterIds?: string[];
+  intent?: {
+    targetedSpeciesId?: string | null;
+    randomCatch?: boolean;
+  };
+  selectedToolIds?: string[];
+  selectedConsumableIds?: string[];
+  currentDay: number;
+}): GatheringSession;
 export function generateGroupKey(leaderId: string, helperIds?: string[]): string;
 export function hasDailyEventBeenRolled(dailyEventLog: any, currentDay: any, groupKey: any): boolean;
 export function determineDynamicEventType(roll?: number): 'rare' | 'mild' | 'none';
