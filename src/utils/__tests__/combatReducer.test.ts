@@ -1,32 +1,89 @@
-// @ts-nocheck
 import { describe, it, expect, beforeEach } from 'vitest';
-import { applyAction, applyInverse } from '../combatReducer';
+import {
+  applyAction as applyCombatAction,
+  applyInverse as applyCombatInverse
+} from '../combatReducer';
 import { ACTION_TYPES } from '../combatActions';
+import type {
+  CombatState,
+  LogEntry,
+  Participant
+} from '../../types/combatTracker';
+
+interface TestResource {
+  mode: 'exact';
+  current: number;
+  max: number;
+}
+
+type TestParticipant = Omit<Participant, 'hp' | 'fp' | 'mp'> & {
+  hp: TestResource;
+  fp: TestResource;
+  mp: TestResource;
+};
+
+type TestCombatState = Omit<CombatState, 'participants' | 'log'> & {
+  participants: TestParticipant[];
+  log: Array<LogEntry & { type?: string }>;
+};
+
+type CombatAction = Parameters<typeof applyCombatAction>[1];
+
+function applyAction(
+  state: TestCombatState | null,
+  action: CombatAction | null
+): TestCombatState {
+  return applyCombatAction(state!, action!) as TestCombatState;
+}
+
+function applyInverse(
+  state: TestCombatState,
+  action: CombatAction
+): TestCombatState {
+  return applyCombatInverse(state, action) as TestCombatState;
+}
 
 describe('combatReducer', () => {
-  let testState;
+  let testState: TestCombatState;
 
   beforeEach(() => {
     testState = {
       id: 'combat-1',
+      name: 'Test Combat',
       version: 3,
+      startTime: 1,
       currentTurnIndex: 0,
       currentRound: 1,
       turnOrder: ['p1', 'p2', 'p3'],
+      turnDecisions: {},
       participants: [
         {
           instanceId: 'p1',
           name: 'Player 1',
           category: 'player',
-          hp: { current: 10, max: 10, mode: 'current' },
-          fp: { current: 10, max: 10, mode: 'current' }
+          st: 10,
+          dx: 10,
+          iq: 10,
+          ht: 10,
+          basicSpeed: 5,
+          basicMove: 5,
+          hp: { current: 10, max: 10, mode: 'exact' },
+          fp: { current: 10, max: 10, mode: 'exact' },
+          mp: { current: 0, max: 0, mode: 'exact' }
         },
         {
           instanceId: 'p2',
           name: 'Enemy 1',
           category: 'enemy',
-          hp: { current: 8, max: 8, mode: 'current' },
-          fp: { current: 8, max: 8, mode: 'current' }
+          st: 10,
+          dx: 10,
+          iq: 10,
+          ht: 10,
+          basicSpeed: 5,
+          basicMove: 5,
+          hp: { current: 8, max: 8, mode: 'exact' },
+          fp: { current: 8, max: 8, mode: 'exact' },
+          mp: { current: 0, max: 0, mode: 'exact' }
         }
       ],
       log: []
