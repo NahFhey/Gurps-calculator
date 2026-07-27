@@ -269,10 +269,10 @@ Same bar as Phase 16t-3: add `__tests__/<name>.test.ts` beside the file, coverin
 
 Same pattern as Phase 15e-4: rename `.js` → `.ts` (or `.tsx` if JSX), add types for parameters/returns, preserve all existing exports and runtime behavior, no `as any` introduced, no type erosion (follow the conditionsEngine.ts pattern, NOT the combatViewFilter erosion). None of these has a `.d.ts` shim. Safety-net tests (where named) must stay green and must not be rewritten.
 
-- [ ] Convert src/version.js to TypeScript (511 lines, but almost entirely the static `CHANGELOG` data array + `VERSION` const — mechanical).
-- [ ] Convert src/components/partyToolSeed.js to TypeScript (167 lines; imported by src/state/campaignReducer.ts — preserve every export name exactly; tsc + campaignReducer tests are the safety net).
-- [ ] Convert src/utils/gcsParser.js to TypeScript (238 lines). Precondition: gcsParser tests exist (Phase 16t-4 item above); if absent, defer with reason "prerequisite tests missing".
-- [ ] Convert src/utils/performanceMonitor.js to TypeScript (531 lines). Precondition: performanceMonitor tests exist (Phase 16t-4 item above); if absent, defer with reason "prerequisite tests missing".
+- [x] Convert src/version.js to TypeScript (511 lines, but almost entirely the static `CHANGELOG` data array + `VERSION` const — mechanical). [2026-07-27 codex-shepherd session]
+- [x] Convert src/components/partyToolSeed.js to TypeScript (167 lines; imported by src/state/campaignReducer.ts — preserve every export name exactly; tsc + campaignReducer tests are the safety net). [2026-07-27 codex-shepherd session: item was stale — a typed partyToolSeed.ts already existed and shadowed the .js (TS resolution prefers .ts, so the reducer was already importing it); deleted the dead .js and tightened the existing .ts (removed an `as Record` cast, added PartyToolSeedState return interface)]
+- [x] Convert src/utils/gcsParser.js to TypeScript (238 lines). Precondition: gcsParser tests exist (Phase 16t-4 item above); if absent, defer with reason "prerequisite tests missing". [2026-07-27 codex-shepherd session: also deleted extractStat — dead code in the original JS (defined, never called, never exported)]
+- [x] Convert src/utils/performanceMonitor.js to TypeScript (531 lines). Precondition: performanceMonitor tests exist (Phase 16t-4 item above); if absent, defer with reason "prerequisite tests missing". [2026-07-27 codex-shepherd session: full public-API typing (PerformanceMetric, SessionSummary, PerformanceReport, ...); null-memory report throw preserved as-is]
 
 ## Phase 16y-2 — `as any` reduction, second batch (one file per run) _(refill 2026-07-23)_
 

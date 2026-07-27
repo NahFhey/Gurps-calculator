@@ -4,13 +4,50 @@
  * Returns parsed data with confidence level and issue flags
  */
 
+export type GCSParseConfidence = 'high' | 'medium' | 'low' | 'none';
+
+export interface GCSParsedCharacter {
+  name: string;
+  category: string;
+  st: number;
+  dx: number;
+  iq: number;
+  ht: number;
+  hp: number;
+  fp: number;
+  mp: number;
+  basicSpeed: number;
+  basicMove: number;
+  dodge: number;
+  parry: number;
+  block: number;
+  dr: number;
+  notes: string;
+  currentHP?: number;
+  currentFP?: number;
+}
+
+export interface GCSParseResult {
+  data: GCSParsedCharacter;
+  issues: string[];
+  confidence: GCSParseConfidence;
+  needsReview: boolean;
+}
+
+export interface GCSCharacterValidationInput {
+  name?: string;
+  hp?: number;
+  basicSpeed?: number;
+  dx?: number;
+}
+
 /**
  * Parse GCS text format and extract combat-relevant fields
- * @param {string} text - Raw GCS text content
- * @returns {Object} Parsed data with { data, issues, confidence }
+ * @param text - Raw GCS text content
+ * @returns Parsed data with { data, issues, confidence }
  */
-export function parseGCSText(text) {
-  const result = {
+export function parseGCSText(text: string | null | undefined): GCSParseResult {
+  const result: GCSParseResult = {
     data: {
       name: '',
       category: 'player',
@@ -41,7 +78,7 @@ export function parseGCSText(text) {
     return result;
   }
 
-  const lines = text.split('\n').map(line => line.trim());
+  const lines = text.split('\n').map((line: string) => line.trim());
 
   // Extract character name - GCS format: "Name: Character Name (points)"
   const nameLine = lines.find(line => line.toLowerCase().startsWith('name:'));
@@ -147,7 +184,7 @@ export function parseGCSText(text) {
   result.issues.push('DR using default (0) - check equipment/advantages manually');
 
   // Determine confidence level
-  const criticalIssues = result.issues.filter(i =>
+  const criticalIssues = result.issues.filter((i: string) =>
     i.includes('not found') && !i.includes('calculated') && !i.includes('default (8)') && !i.includes('default (0)')
   );
 
@@ -171,66 +208,27 @@ export function parseGCSText(text) {
 }
 
 /**
- * Helper function to extract a stat value from GCS semicolon-separated format
- * Note: This is a legacy function, kept for potential future use with alternate formats
- *
- * @param {Array<string>} lines - Array of text lines
- * @param {Array<string>} labels - Possible labels for this stat
- * @returns {number|null} Extracted value or null if not found
- */
-function extractStat(lines, labels) {
-  for (const label of labels) {
-    for (const line of lines) {
-      // GCS semicolon format: "Label value [cost];"
-      const gcsPattern = new RegExp(`${label}[:\\s]+([\d.]+)(?:\\s*\\[|;)`, 'i');
-      const gcsMatch = line.match(gcsPattern);
-      if (gcsMatch) {
-        return parseFloat(gcsMatch[1]);
-      }
-
-      // Legacy patterns for other formats
-      const pattern1 = new RegExp(`^${label}[:\\s]+([\\d.]+)`, 'i');
-      const match1 = line.match(pattern1);
-      if (match1) {
-        return parseFloat(match1[1]);
-      }
-
-      const parts = line.split('\t');
-      for (let i = 0; i < parts.length - 1; i++) {
-        if (parts[i].toLowerCase().includes(label.toLowerCase())) {
-          const value = parseFloat(parts[i + 1]);
-          if (!isNaN(value)) {
-            return value;
-          }
-        }
-      }
-    }
-  }
-
-  return null;
-}
-
-/**
  * Validate a parsed character for combat readiness
- * @param {Object} character - Parsed character data
- * @returns {Array<string>} Array of validation errors (empty if valid)
+ * @param character - Parsed character data
+ * @returns Array of validation errors (empty if valid)
  */
-export function validateCharacter(character) {
-  const errors = [];
+export function validateCharacter(character: GCSCharacterValidationInput): string[] {
+  const errors: string[] = [];
 
   if (!character.name || character.name.trim() === '') {
     errors.push('Character must have a name');
   }
 
-  if (character.hp <= 0) {
+  // Absent numeric fields are not errors — only explicitly invalid values are.
+  if (character.hp !== undefined && character.hp <= 0) {
     errors.push('HP must be greater than 0');
   }
 
-  if (character.basicSpeed <= 0) {
+  if (character.basicSpeed !== undefined && character.basicSpeed <= 0) {
     errors.push('Basic Speed must be greater than 0');
   }
 
-  if (character.dx < 1 || character.dx > 20) {
+  if (character.dx !== undefined && (character.dx < 1 || character.dx > 20)) {
     errors.push('DX must be between 1 and 20');
   }
 

@@ -17,7 +17,7 @@
 import { logger } from './logger';
 
 // Performance metric thresholds (ms)
-const THRESHOLDS = {
+const THRESHOLDS: Readonly<Record<string, number>> = {
   RENDER: 16,        // 60fps target
   STORAGE_READ: 5,
   STORAGE_WRITE: 10,
@@ -43,12 +43,156 @@ export const METRIC_TYPES = {
   API_CALL: 'api_call',
   MEMORY: 'memory',
   COMPONENT: 'component'
+} as const;
+
+export type MetricType = typeof METRIC_TYPES[keyof typeof METRIC_TYPES];
+
+export interface PerformanceMetric {
+  [key: string]: unknown;
+  type: string;
+  duration: number;
+  timestamp: number;
+  date: string;
+  sessionTime: number;
+  exceededThreshold: boolean;
+  component?: string;
+  label?: string;
+  status?: string | number;
+  error?: unknown;
+  usedMB?: string;
+  limitMB?: string;
+  percentUsed?: string;
+  avg?: number | string;
+}
+
+export interface MetricMetadata {
+  [key: string]: unknown;
+  type?: string;
+  duration?: number;
+  timestamp?: number;
+  date?: string;
+  sessionTime?: number;
+  exceededThreshold?: boolean;
+  component?: string;
+  label?: string;
+  status?: string | number;
+  error?: unknown;
+  usedMB?: string;
+  limitMB?: string;
+  percentUsed?: string;
+}
+
+export interface MeasureMetadata {
+  component?: string;
+  label?: string;
+  [key: string]: unknown;
+}
+
+export interface MetricStats {
+  count: number;
+  avg: number | string;
+  min: number | string;
+  max: number | string;
+  total: number | string;
+  exceeded: number;
+}
+
+export interface MemoryReading {
+  used: number;
+  limit: number;
+  percent: string;
+}
+
+export interface LatestMemory {
+  usedMB: string | undefined;
+  limitMB: string | undefined;
+  percentUsed: string | undefined;
+}
+
+interface SessionMetrics {
+  renders: PerformanceMetric[];
+  storageOps: PerformanceMetric[];
+  stateUpdates: PerformanceMetric[];
+  apiCalls: PerformanceMetric[];
+  memory: PerformanceMetric[];
+  other?: PerformanceMetric[];
+}
+
+type SessionMetricCategory = keyof SessionMetrics;
+
+export interface SessionSummary {
+  sessionDuration: number;
+  metricsCount: number;
+  renders: MetricStats;
+  storageOps: MetricStats;
+  stateUpdates: MetricStats;
+  apiCalls: MetricStats;
+  memory: LatestMemory | null;
+}
+
+export interface DailyMetrics {
+  renders: MetricStats;
+  storageOps: MetricStats;
+  stateUpdates: MetricStats;
+  apiCalls: MetricStats;
+  memory: PerformanceMetric | null;
+}
+
+export type PerformanceDate = string | number | Date;
+
+export type DatedMetrics = DailyMetrics & {
+  date: PerformanceDate;
 };
+
+export interface MetricImprovement {
+  percent: string;
+  isImprovement: boolean;
+}
+
+export type MetricImprovements = Record<string, MetricImprovement>;
+
+export interface PerformanceMemoryInfo {
+  usedJSHeapSize: number;
+  totalJSHeapSize?: number;
+  jsHeapSizeLimit: number;
+}
+
+type PerformanceWithMemory = Performance & {
+  memory?: PerformanceMemoryInfo;
+};
+
+export interface MetricsComparison {
+  date1: DatedMetrics;
+  date2: DatedMetrics;
+  improvement: MetricImprovements;
+}
+
+export interface PerformanceReport {
+  generatedAt: string;
+  session: SessionSummary;
+  today: DailyMetrics;
+  yesterday: DailyMetrics;
+  comparison: MetricsComparison;
+  thresholds: Readonly<Record<string, number>>;
+}
+
+export interface PerformanceExport {
+  exportedAt: string;
+  metrics: PerformanceMetric[];
+  summary: SessionSummary;
+  report: PerformanceReport;
+}
 
 /**
  * Core performance monitor class
  */
 class PerformanceMonitor {
+  metrics: PerformanceMetric[];
+  sessionStartTime: number;
+  sessionMetrics: SessionMetrics;
+  isEnabled: boolean;
+  maxMetricsPerSession: number;
+
   constructor() {
     this.metrics = [];
     this.sessionStartTime = Date.now();
@@ -69,10 +213,14 @@ class PerformanceMonitor {
   /**
    * Record a performance metric
    */
-  recordMetric(type, duration, metadata = {}) {
+  recordMetric(
+    type: string,
+    duration: number,
+    metadata: MetricMetadata = {}
+  ): PerformanceMetric | undefined {
     if (!this.isEnabled) return;
 
-    const metric = {
+    const metric: PerformanceMetric = {
       type,
       duration,
       timestamp: Date.now(),
@@ -83,7 +231,7 @@ class PerformanceMonitor {
     };
 
     this.metrics.push(metric);
-    this.sessionMetrics[this.getMetricsCategory(type)].push(metric);
+    this.sessionMetrics[this.getMetricsCategory(type)]!.push(metric);
 
     // Prevent memory bloat
     if (this.metrics.length > this.maxMetricsPerSession) {
@@ -104,7 +252,7 @@ class PerformanceMonitor {
   /**
    * Measure a synchronous operation
    */
-  measure(name, fn, metadata = {}) {
+  measure<T>(name: string, fn: () => T, metadata: MeasureMetadata = {}): T {
     if (!this.isEnabled) return fn();
 
     const start = performance.now();
@@ -125,7 +273,7 @@ class PerformanceMonitor {
         component: metadata.component,
         label: metadata.label,
         status: 'error',
-        error: error.message
+        error: (error as Error).message
       });
       throw error;
     }
@@ -134,7 +282,11 @@ class PerformanceMonitor {
   /**
    * Measure an async operation
    */
-  async measureAsync(name, fn, metadata = {}) {
+  async measureAsync<T>(
+    name: string,
+    fn: () => Promise<T>,
+    metadata: MeasureMetadata = {}
+  ): Promise<T> {
     if (!this.isEnabled) return fn();
 
     const start = performance.now();
@@ -155,7 +307,7 @@ class PerformanceMonitor {
         component: metadata.component,
         label: metadata.label,
         status: 'error',
-        error: error.message
+        error: (error as Error).message
       });
       throw error;
     }
@@ -164,7 +316,11 @@ class PerformanceMonitor {
   /**
    * Track component render time
    */
-  trackRender(componentName, duration, props = {}) {
+  trackRender(
+    componentName: string,
+    duration: number,
+    props: Record<string, unknown> = {}
+  ): PerformanceMetric | undefined {
     return this.recordMetric(METRIC_TYPES.RENDER, duration, {
       component: componentName,
       propCount: Object.keys(props).length
@@ -174,7 +330,12 @@ class PerformanceMonitor {
   /**
    * Track storage operations
    */
-  trackStorageOp(operation, key, duration, size = 0) {
+  trackStorageOp(
+    operation: string,
+    key: string,
+    duration: number,
+    size: number = 0
+  ): PerformanceMetric | undefined {
     const type = operation === 'read' ? METRIC_TYPES.STORAGE_READ : METRIC_TYPES.STORAGE_WRITE;
     return this.recordMetric(type, duration, {
       operation,
@@ -187,7 +348,11 @@ class PerformanceMonitor {
   /**
    * Track state update operations
    */
-  trackStateUpdate(actionType, duration, componentCount = 0) {
+  trackStateUpdate(
+    actionType: string,
+    duration: number,
+    componentCount: number = 0
+  ): PerformanceMetric | undefined {
     return this.recordMetric(METRIC_TYPES.STATE_UPDATE, duration, {
       action: actionType,
       componentCount
@@ -197,7 +362,12 @@ class PerformanceMonitor {
   /**
    * Track API calls
    */
-  trackApiCall(endpoint, duration, status = 200, responseSize = 0) {
+  trackApiCall(
+    endpoint: string,
+    duration: number,
+    status: number = 200,
+    responseSize: number = 0
+  ): PerformanceMetric | undefined {
     return this.recordMetric(METRIC_TYPES.API_CALL, duration, {
       endpoint,
       status,
@@ -209,13 +379,15 @@ class PerformanceMonitor {
   /**
    * Track memory usage
    */
-  trackMemory() {
-    if (performance.memory) {
+  trackMemory(): MemoryReading | null {
+    const browserPerformance = performance as PerformanceWithMemory;
+    if (browserPerformance.memory) {
       const memory = {
-        used: performance.memory.usedJSHeapSize,
-        limit: performance.memory.jsHeapSizeLimit,
+        used: browserPerformance.memory.usedJSHeapSize,
+        limit: browserPerformance.memory.jsHeapSizeLimit,
         percent: (
-          (performance.memory.usedJSHeapSize / performance.memory.jsHeapSizeLimit) * 100
+          (browserPerformance.memory.usedJSHeapSize /
+            browserPerformance.memory.jsHeapSizeLimit) * 100
         ).toFixed(2)
       };
 
@@ -234,8 +406,8 @@ class PerformanceMonitor {
   /**
    * Get metrics category for internal tracking
    */
-  getMetricsCategory(type) {
-    const categoryMap = {
+  getMetricsCategory(type: string): SessionMetricCategory {
+    const categoryMap: Partial<Record<string, SessionMetricCategory>> = {
       render: 'renders',
       storage_read: 'storageOps',
       storage_write: 'storageOps',
@@ -250,7 +422,7 @@ class PerformanceMonitor {
   /**
    * Get current session summary
    */
-  getSessionSummary() {
+  getSessionSummary(): SessionSummary {
     return {
       sessionDuration: Date.now() - this.sessionStartTime,
       metricsCount: this.metrics.length,
@@ -265,7 +437,7 @@ class PerformanceMonitor {
   /**
    * Calculate statistics for a metric group
    */
-  getMetricStats(metrics) {
+  getMetricStats(metrics: PerformanceMetric[]): MetricStats {
     if (metrics.length === 0) {
       return { count: 0, avg: 0, min: 0, max: 0, total: 0, exceeded: 0 };
     }
@@ -287,7 +459,7 @@ class PerformanceMonitor {
   /**
    * Get latest memory reading
    */
-  getLatestMemory() {
+  getLatestMemory(): LatestMemory | null {
     if (this.sessionMetrics.memory.length === 0) return null;
     const latest = this.sessionMetrics.memory[this.sessionMetrics.memory.length - 1];
     return {
@@ -300,9 +472,12 @@ class PerformanceMonitor {
   /**
    * Get metrics by date range
    */
-  getMetricsByDateRange(startDate, endDate) {
-    const start = new Date(startDate).getTime();
-    const end = new Date(endDate).getTime();
+  getMetricsByDateRange(
+    startDate: PerformanceDate,
+    endDate: PerformanceDate
+  ): PerformanceMetric[] {
+    const start = new Date(startDate as string | number).getTime();
+    const end = new Date(endDate as string | number).getTime();
 
     return this.metrics.filter(m => {
       const metricTime = new Date(m.timestamp).getTime();
@@ -313,14 +488,14 @@ class PerformanceMonitor {
   /**
    * Get metrics by type
    */
-  getMetricsByType(type) {
+  getMetricsByType(type: string): PerformanceMetric[] {
     return this.metrics.filter(m => m.type === type);
   }
 
   /**
    * Compare metrics between two dates
    */
-  compareMetrics(date1, date2) {
+  compareMetrics(date1: PerformanceDate, date2: PerformanceDate): MetricsComparison {
     const stats1 = this.getMetricsForDate(date1);
     const stats2 = this.getMetricsForDate(date2);
 
@@ -340,8 +515,10 @@ class PerformanceMonitor {
   /**
    * Get metrics aggregated by date
    */
-  getMetricsForDate(date) {
-    const dateStr = typeof date === 'string' ? date : new Date(date).toISOString().split('T')[0];
+  getMetricsForDate(date: PerformanceDate): DailyMetrics {
+    const dateStr = typeof date === 'string'
+      ? date
+      : new Date(date as number).toISOString().split('T')[0];
     const dayMetrics = this.metrics.filter(m => m.date === dateStr);
 
     return {
@@ -356,17 +533,18 @@ class PerformanceMonitor {
   /**
    * Calculate improvement percentage
    */
-  calculateImprovement(stats1, stats2) {
-    const improvement = {};
+  calculateImprovement(stats1: DailyMetrics, stats2: DailyMetrics): MetricImprovements {
+    const improvement: MetricImprovements = {};
 
-    Object.keys(stats1).forEach(key => {
-      if (stats1[key].avg && stats2[key]?.avg) {
+    (Object.keys(stats1) as Array<keyof DailyMetrics>).forEach(key => {
+      if (stats1[key]!.avg && stats2[key]?.avg) {
         const percent = (
-          ((stats1[key].avg - stats2[key].avg) / stats1[key].avg) * 100
+          (((stats1[key]!.avg as number) - (stats2[key]?.avg as number)) /
+            (stats1[key]!.avg as number)) * 100
         ).toFixed(2);
         improvement[key] = {
           percent,
-          isImprovement: percent > 0
+          isImprovement: Number(percent) > 0
         };
       }
     });
@@ -377,7 +555,7 @@ class PerformanceMonitor {
   /**
    * Get performance report
    */
-  getPerformanceReport() {
+  getPerformanceReport(): PerformanceReport {
     const today = new Date().toISOString().split('T')[0];
     const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
 
@@ -394,7 +572,7 @@ class PerformanceMonitor {
   /**
    * Get top slow operations
    */
-  getSlowOperations(limit = 10) {
+  getSlowOperations(limit: number = 10): PerformanceMetric[] {
     return this.metrics
       .filter(m => m.exceededThreshold)
       .sort((a, b) => b.duration - a.duration)
@@ -404,7 +582,7 @@ class PerformanceMonitor {
   /**
    * Clear old metrics (older than X days)
    */
-  clearOldMetrics(daysToKeep = 30) {
+  clearOldMetrics(daysToKeep: number = 30): number {
     const cutoffTime = Date.now() - daysToKeep * 86400000;
     const beforeCount = this.metrics.length;
 
@@ -419,7 +597,7 @@ class PerformanceMonitor {
   /**
    * Save metrics to localStorage
    */
-  persistMetrics() {
+  persistMetrics(): void {
     try {
       localStorage.setItem(PERF_KEYS.METRICS, JSON.stringify(this.metrics));
       localStorage.setItem(PERF_KEYS.SUMMARY, JSON.stringify(this.getSessionSummary()));
@@ -435,11 +613,11 @@ class PerformanceMonitor {
   /**
    * Load metrics from localStorage
    */
-  loadPersistedData() {
+  loadPersistedData(): void {
     try {
       const stored = localStorage.getItem(PERF_KEYS.METRICS);
       if (stored) {
-        this.metrics = JSON.parse(stored);
+        this.metrics = JSON.parse(stored) as PerformanceMetric[];
       }
     } catch (error) {
       logger.error('Failed to load performance metrics:', error);
@@ -449,7 +627,7 @@ class PerformanceMonitor {
   /**
    * Export metrics as CSV
    */
-  exportAsCSV() {
+  exportAsCSV(): string {
     if (this.metrics.length === 0) {
       return 'No metrics to export';
     }
@@ -476,7 +654,7 @@ class PerformanceMonitor {
   /**
    * Export metrics as JSON
    */
-  exportAsJSON() {
+  exportAsJSON(): PerformanceExport {
     return {
       exportedAt: new Date().toISOString(),
       metrics: this.metrics,
@@ -488,7 +666,7 @@ class PerformanceMonitor {
   /**
    * Enable/disable monitoring
    */
-  setEnabled(enabled) {
+  setEnabled(enabled: boolean): void {
     this.isEnabled = enabled;
     logger.log(`Performance monitoring ${enabled ? 'enabled' : 'disabled'}`);
   }
@@ -496,7 +674,7 @@ class PerformanceMonitor {
   /**
    * Reset all metrics
    */
-  reset() {
+  reset(): void {
     this.metrics = [];
     this.sessionMetrics = {
       renders: [],
@@ -517,14 +695,22 @@ export const performanceMonitor = new PerformanceMonitor();
 /**
  * Convenience function to measure synchronous operations
  */
-export function measurePerf(name, fn, metadata) {
+export function measurePerf<T>(
+  name: string,
+  fn: () => T,
+  metadata?: MeasureMetadata
+): T {
   return performanceMonitor.measure(name, fn, metadata);
 }
 
 /**
  * Convenience function to measure async operations
  */
-export async function measurePerfAsync(name, fn, metadata) {
+export async function measurePerfAsync<T>(
+  name: string,
+  fn: () => Promise<T>,
+  metadata?: MeasureMetadata
+): Promise<T> {
   return performanceMonitor.measureAsync(name, fn, metadata);
 }
 

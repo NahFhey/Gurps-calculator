@@ -1,7 +1,19 @@
 // Version and changelog information
 export const VERSION = '2.5.0';
 
-export const CHANGELOG = [
+export interface ChangelogCategory {
+  category: string;
+  items: string[];
+}
+
+export interface ChangelogEntry {
+  version: string;
+  date: string;
+  title: string;
+  changes: ChangelogCategory[];
+}
+
+export const CHANGELOG: ChangelogEntry[] = [
   {
     version: '2.5.0',
     date: '2026-01-23',

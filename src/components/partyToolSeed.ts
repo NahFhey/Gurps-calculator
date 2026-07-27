@@ -1,14 +1,24 @@
 import type {
   Character,
-  ToolTemplate,
-  ToolInstance,
-  Facility,
-  Inventory,
   CurrencyLog,
+  Facility,
+  Id,
+  Inventory,
+  ToolInstance,
+  ToolTemplate,
 } from '../types/campaign';
 
-export const createPartyToolState = () => {
-  const toolTemplates: Record<string, ToolTemplate> = {
+export interface PartyToolSeedState {
+  characters: Record<Id, Character>;
+  inventories: Record<Id, Inventory>;
+  toolTemplates: Record<Id, ToolTemplate>;
+  toolInstances: Record<Id, ToolInstance>;
+  facilities: Record<Id, Facility>;
+  currencyLogs: CurrencyLog[];
+}
+
+export const createPartyToolState = (): PartyToolSeedState => {
+  const toolTemplates: Record<Id, ToolTemplate> = {
     'template-hammer': {
       templateId: 'template-hammer',
       name: 'Forge Hammer',
@@ -41,7 +51,7 @@ export const createPartyToolState = () => {
     },
   };
 
-  const toolInstances: Record<string, ToolInstance> = {
+  const toolInstances: Record<Id, ToolInstance> = {
     'tool-hammer-a': {
       toolId: 'tool-hammer-a',
       templateId: 'template-hammer',
@@ -64,8 +74,7 @@ export const createPartyToolState = () => {
     },
   };
 
-  return {
-    characters: {
+  const characters: Record<Id, Character> = {
       'char-rina': {
         id: 'char-rina',
         name: 'Rina',
@@ -102,11 +111,12 @@ export const createPartyToolState = () => {
           skills: { crafting: 14, designing: 12 },
         },
       },
-    } as Record<string, Character>,
-    inventories: {
+  };
+
+  const inventories: Record<Id, Inventory> = {
       'inv-party': {
         id: 'inv-party',
-        ownerType: 'party' as const,
+        ownerType: 'party',
         ownerId: null,
         currency: { credits: 120, silver: 40 },
         items: [
@@ -119,7 +129,7 @@ export const createPartyToolState = () => {
       },
       'inv-rina': {
         id: 'inv-rina',
-        ownerType: 'character' as const,
+        ownerType: 'character',
         ownerId: 'char-rina',
         currency: { credits: 30 },
         items: [{ id: 'item-thread', name: 'Thread Spool', quantity: 3 }],
@@ -129,7 +139,7 @@ export const createPartyToolState = () => {
       },
       'inv-soren': {
         id: 'inv-soren',
-        ownerType: 'character' as const,
+        ownerType: 'character',
         ownerId: 'char-soren',
         currency: { credits: 20 },
         items: [{ id: 'item-gear', name: 'Precision Gear', quantity: 1 }],
@@ -139,7 +149,7 @@ export const createPartyToolState = () => {
       },
       'inv-mira': {
         id: 'inv-mira',
-        ownerType: 'character' as const,
+        ownerType: 'character',
         ownerId: 'char-mira',
         currency: { credits: 15 },
         items: [{ id: 'item-flask', name: 'Crystal Flask', quantity: 2 }],
@@ -147,33 +157,37 @@ export const createPartyToolState = () => {
         materials: [],
         food: [],
       },
-    } as Record<string, Inventory>,
+  };
+
+  // These legacy seed objects intentionally predate Facility.facilityType/rating.
+  // The assertion is type-only so the migrated module retains the exact seed shape.
+  const facilities = {
+    'facility-workbench': {
+      id: 'facility-workbench',
+      name: 'Workbench Bay',
+      conditionId: 'Good',
+      activityCategories: {
+        crafting: { skillBonus: 1, qualityModifier: 1 },
+        engineering: { skillBonus: 1, timeBonus: -1 },
+      },
+    },
+    'facility-lab': {
+      id: 'facility-lab',
+      name: 'Alchemy Corner',
+      conditionId: 'Broken',
+      activityCategories: {
+        alchemy: { skillBonus: 2, yieldPercent: 15, riskModifier: -2 },
+      },
+    },
+  } as unknown as Record<Id, Facility>;
+
+  return {
+    characters,
+    inventories,
     toolTemplates,
     toolInstances,
-    facilities: {
-      'facility-workbench': {
-        id: 'facility-workbench',
-        name: 'Workbench Bay',
-        facilityType: 'workshop' as const,
-        rating: 1,
-        conditionId: 'Good',
-        activityCategories: {
-          crafting: { skillBonus: 1, qualityModifier: 1 },
-          engineering: { skillBonus: 1, timeBonus: -1 },
-        },
-      },
-      'facility-lab': {
-        id: 'facility-lab',
-        name: 'Alchemy Corner',
-        facilityType: 'lab' as const,
-        rating: 2,
-        conditionId: 'Broken',
-        activityCategories: {
-          alchemy: { skillBonus: 2, yieldPercent: 15, riskModifier: -2 },
-        },
-      },
-    } as Record<string, Facility>,
-    currencyLogs: [] as CurrencyLog[],
+    facilities,
+    currencyLogs: [],
   };
 };
 
