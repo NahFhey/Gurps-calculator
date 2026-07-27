@@ -9,6 +9,7 @@ import type {
   CombatState,
   HistoryCheckpoint,
   HistoryState,
+  RevealEntry,
   RevealState,
 } from '../types/combatTracker';
 
@@ -30,12 +31,14 @@ const DEFAULT_CONFIG: Required<HistoryConfig> = {
 
 type HistoryAction = Record<string, unknown>;
 
+type CombatSnapshot = Omit<CombatState, 'history'> & { history?: unknown };
+
 interface SnapshotWithReveal {
-  combatState: Omit<CombatState, 'history'> & { history?: unknown };
+  combatState: CombatSnapshot;
   revealState: RevealState;
 }
 
-type Snapshot = SnapshotWithReveal | (Omit<CombatState, 'history'> & { history?: unknown });
+type Snapshot = SnapshotWithReveal | CombatSnapshot;
 
 export interface RebuildResult {
   combatState: CombatState;
@@ -49,8 +52,8 @@ export interface UndoRedoResult {
 }
 
 interface RevealUpdate {
-  add?: Record<string, unknown>;
-  set?: Record<string, unknown>;
+  add?: Record<string, RevealEntry>;
+  set?: Record<string, RevealEntry>;
   remove?: string[];
 }
 
@@ -77,6 +80,18 @@ export function createHistoryState(config: HistoryConfig = {}): HistoryState {
  * Create a snapshot of combat state (without history metadata).
  * Phase 5: Can optionally include reveal state.
  */
+export function createSnapshot(
+  combatState: CombatState,
+  revealState?: null,
+): CombatSnapshot;
+export function createSnapshot(
+  combatState: CombatState,
+  revealState: RevealState,
+): SnapshotWithReveal;
+export function createSnapshot(
+  combatState: CombatState,
+  revealState: RevealState | null,
+): Snapshot;
 export function createSnapshot(
   combatState: CombatState,
   revealState: RevealState | null = null,
@@ -287,13 +302,13 @@ function applyRevealUpdate(
 
   if (revealUpdate.add) {
     for (const [instanceId, reveal] of Object.entries(revealUpdate.add)) {
-      updated.byInstanceId[instanceId] = reveal as RevealState['byInstanceId'][string];
+      updated.byInstanceId[instanceId] = reveal;
     }
   }
 
   if (revealUpdate.set) {
     for (const [instanceId, reveal] of Object.entries(revealUpdate.set)) {
-      updated.byInstanceId[instanceId] = reveal as RevealState['byInstanceId'][string];
+      updated.byInstanceId[instanceId] = reveal;
     }
   }
 
@@ -337,7 +352,7 @@ export function undo(
   if (!canUndo(historyState)) {
     const result: UndoRedoResult = {
       newHistory: historyState,
-      newCombatState: (currentCombatState || baseState) as CombatState,
+      newCombatState: currentCombatState || baseState,
     };
     if (baseRevealState) result.newRevealState = baseRevealState;
     return result;
@@ -378,7 +393,7 @@ export function redo(
   if (!canRedo(historyState)) {
     const result: UndoRedoResult = {
       newHistory: historyState,
-      newCombatState: (currentCombatState || baseState) as CombatState,
+      newCombatState: currentCombatState || baseState,
     };
     if (baseRevealState) result.newRevealState = baseRevealState;
     return result;

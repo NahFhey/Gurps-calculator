@@ -9,15 +9,118 @@ import {
   RevealMode,
   getRevealForInstance,
   calculateHPBand,
-  getHPBandText
+  getHPBandText,
 } from './combatReveal';
 import { isConditionObvious } from '../constants/conditions';
+import type {
+  Attack,
+  CombatState,
+  ConditionInstance,
+  DefenseRevealMode,
+  DRRevealMode,
+  NameRevealMode,
+  NumericRevealMode,
+  Participant,
+  RevealEntry,
+  RevealState,
+} from '../types/combatTracker';
+import type { HPBandValue } from './combatReveal';
 
-// Loose runtime types — the canonical combat tracker types live in
-// `src/types/combatTracker.ts`, but these filtered view models are richer and
-// callers intentionally cast them to the shape they need. Keeping the runtime
-// inputs permissive preserves the original untyped behavior.
-type AnyRecord = Record<string, any>;
+type DefenseKey = 'dodge' | 'parry' | 'block';
+type NumericTruthValue = Participant['hp'] | Participant['fp'] | Participant['mp'];
+
+interface ParticipantWithLegacyFields extends Participant {
+  side?: string;
+  tags?: string[];
+  drByLocation?: Record<string, number>;
+  notes?: string;
+}
+
+interface RevealedParticipant extends Participant {
+  _reveal: RevealEntry;
+}
+
+interface FilteredNumericResource {
+  mode: NumericRevealMode;
+  current?: number;
+  max?: NumericTruthValue;
+  band?: HPBandValue;
+  bandText?: string;
+}
+
+interface FilteredDefense {
+  mode: DefenseRevealMode;
+  value?: number;
+}
+
+type FilteredDefenses = Record<DefenseKey, FilteredDefense>;
+
+interface FilteredDRValue {
+  mode: DRRevealMode;
+  value?: number;
+  min?: number;
+}
+
+interface FilteredDR {
+  general: FilteredDRValue;
+  byLocation: Record<string, FilteredDRValue>;
+}
+
+interface HiddenAttack {
+  name: string;
+  _hidden: true;
+}
+
+interface FilteredParticipant {
+  instanceId: string;
+  id: string | undefined;
+  side: string | undefined;
+  category: string;
+  _reveal: RevealEntry;
+  basicSpeed?: number;
+  dx?: number;
+  maxHP?: NumericTruthValue;
+  maxFP?: NumericTruthValue;
+  maxMP?: NumericTruthValue;
+  name?: string;
+  tags?: string[];
+  hp?: FilteredNumericResource;
+  fp?: FilteredNumericResource;
+  mp?: FilteredNumericResource;
+  defenses?: FilteredDefenses;
+  dr?: FilteredDR;
+  attacks?: Array<Attack | HiddenAttack>;
+  notes?: string;
+  shockPenalty?: number;
+  isDead?: boolean;
+  bleeding?: Participant['bleeding'];
+  crippled?: string[];
+  conditions?: ConditionInstance[];
+}
+
+interface GMCombatView extends Omit<CombatState, 'participants'> {
+  _viewMode: 'gm';
+  _revealState: RevealState | undefined;
+  participants: RevealedParticipant[];
+}
+
+interface PlayerCombatView {
+  version: CombatState['version'];
+  id: string;
+  name: string;
+  startTime: number;
+  currentTurnIndex: number;
+  currentRound: number;
+  turnOrder: string[];
+  _viewMode: 'player';
+  participants: FilteredParticipant[];
+  log: CombatState['log'];
+}
+
+type CombatViewImplementation =
+  | GMCombatView
+  | PlayerCombatView
+  | { participants: Participant[] };
 
 export type ViewModeType = 'gm' | 'player';
 
@@ -38,10 +141,15 @@ export const ViewMode: { readonly GM: 'gm'; readonly PLAYER: 'player' } = {
  * @returns {object} Filtered view model (safe for rendering)
  */
 export function getCombatView(
-  combatState: any,
-  revealState: any | undefined,
+  combatState: CombatState,
+  revealState: RevealState | undefined,
   viewMode: ViewModeType
-): AnyRecord | null {
+): { participants: Participant[] } | null;
+export function getCombatView(
+  combatState: CombatState | null,
+  revealState: RevealState | undefined,
+  viewMode: ViewModeType
+): CombatViewImplementation | null {
   if (!combatState) return null;
 
   // GM View: return truth state as-is (with reveal metadata attached for UI)
@@ -50,7 +158,7 @@ export function getCombatView(
       ...combatState,
       _viewMode: ViewMode.GM,
       _revealState: revealState, // Attach for reveal panel UI
-      participants: combatState.participants.map((p: any): AnyRecord => ({
+      participants: combatState.participants.map((p: ParticipantWithLegacyFields): RevealedParticipant => ({
         ...p,
         _reveal: getRevealForInstance(revealState, p.instanceId, p.category || p.side)
       }))
@@ -69,7 +177,7 @@ export function getCombatView(
     _viewMode: ViewMode.PLAYER,
 
     // Filter participants
-    participants: combatState.participants.map((p: any): AnyRecord =>
+    participants: combatState.participants.map((p: ParticipantWithLegacyFields): FilteredParticipant =>
       filterParticipant(p, revealState)
     ),
 
@@ -85,7 +193,10 @@ export function getCombatView(
  * @param {object} revealState - Reveal state
  * @returns {object} Filtered participant (safe for Player View)
  */
-function filterParticipant(participant: any, revealState: any): AnyRecord {
+function filterParticipant(
+  participant: ParticipantWithLegacyFields,
+  revealState: RevealState | undefined
+): FilteredParticipant {
   const side = participant.category || participant.side || 'enemy'; // Use category field (category is the actual field used)
   const reveal = getRevealForInstance(
     revealState,
@@ -93,7 +204,7 @@ function filterParticipant(participant: any, revealState: any): AnyRecord {
     side
   );
 
-  const filtered: AnyRecord = {
+  const filtered: FilteredParticipant = {
     instanceId: participant.instanceId,
     id: participant.id, // Legacy support
     side: participant.category || participant.side, // Use category as side
@@ -180,7 +291,7 @@ function filterParticipant(participant: any, revealState: any): AnyRecord {
 /**
  * Filter name based on reveal mode
  */
-function filterName(trueName: any, instanceId: any, nameReveal: any): any {
+function filterName(trueName: string, instanceId: string, nameReveal: NameRevealMode): string {
   switch (nameReveal) {
     case RevealMode.NAME_FULL:
       return trueName;
@@ -198,7 +309,7 @@ function filterName(trueName: any, instanceId: any, nameReveal: any): any {
 /**
  * Filter tags/keywords
  */
-function filterTags(tags: any, tagsReveal: any): any {
+function filterTags(tags: string[] | undefined, tagsReveal: RevealEntry['tags']): string[] | undefined {
   if (tagsReveal === RevealMode.NOTES_FULL) {
     return tags;
   }
@@ -209,10 +320,14 @@ function filterTags(tags: any, tagsReveal: any): any {
  * Filter numeric resource (HP/FP/MP)
  * For HP: Always show health band for gameplay (healthy/wounded/critical/dead)
  */
-function filterNumericResource(current: any, max: any, reveal: any): AnyRecord {
+function filterNumericResource(
+  current: number | undefined,
+  max: NumericTruthValue,
+  reveal: RevealEntry['hp'] | undefined
+): FilteredNumericResource {
   if (!reveal) {
     // Default: show band for HP (for gameplay), unknown for FP/MP
-    const band = calculateHPBand(current, max);
+    const band = calculateHPBand(current!, max as number);
     return {
       mode: RevealMode.NUMERIC_BAND,
       band,
@@ -229,7 +344,7 @@ function filterNumericResource(current: any, max: any, reveal: any): AnyRecord {
       };
 
     case RevealMode.NUMERIC_BAND:
-      const band = calculateHPBand(current, max);
+      const band = calculateHPBand(current!, max as number);
       return {
         mode: RevealMode.NUMERIC_BAND,
         band,
@@ -248,10 +363,13 @@ function filterNumericResource(current: any, max: any, reveal: any): AnyRecord {
 /**
  * Filter defenses (dodge/parry/block)
  */
-function filterDefenses(truthDefenses: any, reveal: any): AnyRecord {
-  const filtered: AnyRecord = {};
+function filterDefenses(
+  truthDefenses: Partial<Record<DefenseKey, number>>,
+  reveal: RevealEntry['defenses'] | undefined
+): FilteredDefenses {
+  const filtered = {} as FilteredDefenses;
 
-  ['dodge', 'parry', 'block'].forEach((defType: string): void => {
+  (['dodge', 'parry', 'block'] as const).forEach((defType): void => {
     const mode = reveal?.[defType] || RevealMode.DEFENSE_UNKNOWN;
 
     switch (mode) {
@@ -265,7 +383,7 @@ function filterDefenses(truthDefenses: any, reveal: any): AnyRecord {
       case RevealMode.DEFENSE_APPROX:
         filtered[defType] = {
           mode: RevealMode.DEFENSE_APPROX,
-          value: reveal.approxValue?.[defType] || truthDefenses[defType]
+          value: reveal?.approxValue?.[defType] || truthDefenses[defType]
         };
         break;
 
@@ -284,20 +402,23 @@ function filterDefenses(truthDefenses: any, reveal: any): AnyRecord {
 /**
  * Filter DR (general and by location)
  */
-function filterDR(generalDR: any, drByLocation: any, reveal: any): AnyRecord {
-  const filtered: AnyRecord = {};
+function filterDR(
+  generalDR: number | undefined,
+  drByLocation: Record<string, number> | undefined,
+  reveal: RevealEntry['dr'] | undefined
+): FilteredDR {
+  let general: FilteredDRValue;
 
-  // General DR
   switch (reveal?.general) {
     case RevealMode.DR_EXACT:
-      filtered.general = {
+      general = {
         mode: RevealMode.DR_EXACT,
         value: generalDR
       };
       break;
 
     case RevealMode.DR_MIN_KNOWN:
-      filtered.general = {
+      general = {
         mode: RevealMode.DR_MIN_KNOWN,
         min: reveal.generalMin || 0
       };
@@ -305,29 +426,29 @@ function filterDR(generalDR: any, drByLocation: any, reveal: any): AnyRecord {
 
     case RevealMode.DR_UNKNOWN:
     default:
-      filtered.general = {
+      general = {
         mode: RevealMode.DR_UNKNOWN
       };
       break;
   }
 
   // Location-specific DR
-  filtered.byLocation = {};
+  const byLocation: Record<string, FilteredDRValue> = {};
   if (drByLocation) {
     Object.keys(drByLocation).forEach((locationKey: string): void => {
       const locationReveal = reveal?.byLocation?.[locationKey];
 
       if (!locationReveal || locationReveal.mode === RevealMode.DR_UNKNOWN) {
-        filtered.byLocation[locationKey] = {
+        byLocation[locationKey] = {
           mode: RevealMode.DR_UNKNOWN
         };
       } else if (locationReveal.mode === RevealMode.DR_MIN_KNOWN) {
-        filtered.byLocation[locationKey] = {
+        byLocation[locationKey] = {
           mode: RevealMode.DR_MIN_KNOWN,
           min: locationReveal.min || 0
         };
       } else if (locationReveal.mode === RevealMode.DR_EXACT) {
-        filtered.byLocation[locationKey] = {
+        byLocation[locationKey] = {
           mode: RevealMode.DR_EXACT,
           value: drByLocation[locationKey]
         };
@@ -335,13 +456,16 @@ function filterDR(generalDR: any, drByLocation: any, reveal: any): AnyRecord {
     });
   }
 
-  return filtered;
+  return { general, byLocation };
 }
 
 /**
  * Filter attacks
  */
-function filterAttacks(attacks: any, attacksReveal: any): any[] {
+function filterAttacks(
+  attacks: Attack[] | undefined,
+  attacksReveal: RevealEntry['attacks']
+): Array<Attack | HiddenAttack> {
   if (!attacks || attacks.length === 0) {
     return [];
   }
@@ -351,7 +475,7 @@ function filterAttacks(attacks: any, attacksReveal: any): any[] {
       return attacks;
 
     case RevealMode.ATTACKS_NAMES_ONLY:
-      return attacks.map((atk: any): AnyRecord => ({
+      return attacks.map((atk): HiddenAttack => ({
         name: atk.name,
         // Hide stats
         _hidden: true
@@ -366,7 +490,7 @@ function filterAttacks(attacks: any, attacksReveal: any): any[] {
 /**
  * Filter notes
  */
-function filterNotes(notes: any, notesReveal: any): any {
+function filterNotes(notes: string | undefined, notesReveal: RevealEntry['notes']): string | undefined {
   if (notesReveal === RevealMode.NOTES_FULL) {
     return notes;
   }
@@ -400,7 +524,10 @@ export const CONCEALED_CONDITION_ID: '__concealed__' = '__concealed__';
  * @param {string} side - Combatant's side/category (player/ally/enemy)
  * @returns {array} Filtered conditions (safe for Player View)
  */
-function filterConditions(conditions: any, side: any): any[] {
+function filterConditions(
+  conditions: ConditionInstance[] | undefined,
+  side: string
+): ConditionInstance[] {
   if (!conditions || !Array.isArray(conditions)) {
     return [];
   }
@@ -410,7 +537,7 @@ function filterConditions(conditions: any, side: any): any[] {
     return conditions;
   }
 
-  const visible: any[] = [];
+  const visible: ConditionInstance[] = [];
   for (const condition of conditions) {
     if (!condition || typeof condition !== 'object') continue;
 
@@ -436,11 +563,11 @@ function filterConditions(conditions: any, side: any): any[] {
 }
 
 /**
- * Check if participant has any hidden information
+ * Check whether a participant contains hidden information
  * (useful for UI to show reveal indicators)
  */
-export function hasHiddenInfo(participant: any): boolean {
-  const reveal = participant._reveal;
+export function hasHiddenInfo(participant: Participant): boolean {
+  const reveal = (participant as Participant & { _reveal?: RevealEntry })._reveal;
   if (!reveal) return false;
 
   return (

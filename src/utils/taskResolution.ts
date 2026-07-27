@@ -41,7 +41,7 @@ interface ResolveTaskParams {
   tools?: any;
   species?: any;
   categories?: any;
-  _categories?: any;
+  _categories?: unknown;
   items?: any;
   tables?: any;
   manualRolls?: ManualRolls | null;
@@ -64,6 +64,11 @@ interface FishingResultWithYield extends FishingResult {
 
 interface ForageItemLike {
   id?: string;
+  name: string;
+  rarity?: string;
+  typeId?: string;
+  yieldFormula?: string;
+  inventoryKind?: string;
 }
 
 interface ResolvedTableEntry extends TableEntry {
@@ -87,7 +92,7 @@ interface RollableTableLike {
 interface FindResultLike {
   type?: string;
   itemId?: string | null;
-  item?: any;
+  item?: ForageItemLike | null;
   source?: string;
   text?: string;
   tableEntry?: ResolvedTableEntry;
@@ -216,11 +221,12 @@ export function resolveFishingTask({
 
     if (caughtSpecies) {
       // Calculate yields
-      const yields: any = calculateFishYields(caughtSpecies);
+      const yields: ReturnType<typeof calculateFishYields> = calculateFishYields(caughtSpecies);
+      const meatYield = Array.isArray(yields) ? undefined : yields;
 
       // Apply yield multiplier from roll result
-      const meatUnits = Math.floor(yields.meatUnits * (rollResult.yieldMultiplier || 1.0));
-      const secondaryUnits = Math.floor(yields.secondaryUnits * (rollResult.yieldMultiplier || 1.0));
+      const meatUnits = Math.floor(Number(meatYield?.meatUnits) * (rollResult.yieldMultiplier || 1.0));
+      const secondaryUnits = Math.floor(Number(meatYield?.secondaryUnits) * (rollResult.yieldMultiplier || 1.0));
 
       notes.push(`Caught ${caughtSpecies.name}: ${meatUnits} meat`);
 
@@ -232,13 +238,13 @@ export function resolveFishingTask({
         units: meatUnits
       });
 
-      // Add secondary material if any
-      if (secondaryUnits > 0 && yields.secondaryType) {
-        const secondaryName = caughtSpecies.secondaryNameOverride || `${caughtSpecies.name} ${yields.secondaryType}`;
+      // Add secondary material when present
+      if (secondaryUnits > 0 && meatYield?.secondaryType) {
+        const secondaryName = caughtSpecies.secondaryNameOverride || `${caughtSpecies.name} ${meatYield.secondaryType}`;
         inventoryDelta.push({
           type: 'material',
           name: secondaryName,
-          materialType: yields.secondaryType,
+          materialType: meatYield.secondaryType,
           units: secondaryUnits
         });
         notes.push(`Also collected ${secondaryUnits} ${secondaryName}`);

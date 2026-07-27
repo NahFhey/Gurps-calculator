@@ -25,6 +25,7 @@ import type {
   HistoryState,
   RevealState,
 } from '../types/combatTracker';
+import type { UndoRedoResult } from '../utils/combatHistory';
 
 export interface CombatHistoryResult {
   /** Current history state (for UI display — canUndo, canRedo, counts) */
@@ -95,8 +96,8 @@ export function useCombatHistory(): CombatHistoryResult {
     if (!currentCombat || !currentHistory || !histCanUndo(currentHistory)) return;
 
     const baseState = createSnapshot(currentCombat);
-    const result: any = histUndo(
-      baseState as any,
+    const result: UndoRedoResult = histUndo(
+      baseState,
       currentHistory,
       currentCombat,
       currentReveal ?? undefined,
@@ -111,7 +112,7 @@ export function useCombatHistory(): CombatHistoryResult {
 
     if (result.newRevealState) {
       const syncedReveal = syncRevealStateForParticipants(
-        result.newRevealState as any,
+        result.newRevealState,
         newState.participants,
       );
       saveCombatReveal(syncedReveal ?? null);
@@ -125,8 +126,8 @@ export function useCombatHistory(): CombatHistoryResult {
     if (!currentCombat || !currentHistory || !histCanRedo(currentHistory)) return;
 
     const baseState = createSnapshot(currentCombat);
-    const result: any = histRedo(
-      baseState as any,
+    const result: UndoRedoResult = histRedo(
+      baseState,
       currentHistory,
       currentCombat,
       currentReveal ?? undefined,
@@ -141,7 +142,7 @@ export function useCombatHistory(): CombatHistoryResult {
 
     if (result.newRevealState) {
       const syncedReveal = syncRevealStateForParticipants(
-        result.newRevealState as any,
+        result.newRevealState,
         newState.participants,
       );
       saveCombatReveal(syncedReveal ?? null);
