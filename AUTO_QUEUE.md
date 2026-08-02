@@ -1,5 +1,7 @@
 # AUTO_QUEUE.md
 
+> **SUPERSEDED 2026-08-02.** This copy is a stale fork from ~2026-07-25. The live queue moved to the main checkout (`gurps-calculator`, branch `claude/gurps-party-management-tool-Juono`), where codex-shepherd sessions drained all 21 items still open here (verified item-by-item on 2026-08-02: Phase 16r via dfaeef6, 16t-4 via 56364c8/3438385/142c0aa, 15e-5 via ed56695, 16y-2 via 32f9ad1 — CombatTracker deliberately narrowed to 1 documented design-decision cast). Do not drain this file; see the main checkout's AUTO_QUEUE.md.
+
 Work queue drained by the `gurps-vtt-auto-dev` scheduled task (every 4 hours).
 
 ## Format
