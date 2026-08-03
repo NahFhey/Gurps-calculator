@@ -1,6 +1,8 @@
 # AUTO_QUEUE.md
 
 > **SUPERSEDED 2026-08-02.** This copy is a stale fork from ~2026-07-25. The live queue moved to the main checkout (`gurps-calculator`, branch `claude/gurps-party-management-tool-Juono`), where codex-shepherd sessions drained all 21 items still open here (verified item-by-item on 2026-08-02: Phase 16r via dfaeef6, 16t-4 via 56364c8/3438385/142c0aa, 15e-5 via ed56695, 16y-2 via 32f9ad1 — CombatTracker deliberately narrowed to 1 documented design-decision cast). Do not drain this file; see the main checkout's AUTO_QUEUE.md.
+>
+> Those 21 items were flipped `- [ ]` → `- [x]` on 2026-08-02 so this file reports **0 open**. They were closed on Juono by hand, **not by the loop** — the `[x]` marks here are a bookkeeping reconciliation, not a run record. This matters for the `gurps-vtt-auto-review` retirement runbook: its step 3 ("re-enable `gurps-vtt-auto-dev` to refill the queue") would otherwise hand the loop 21 already-implemented items.
 
 Work queue drained by the `gurps-vtt-auto-dev` scheduled task (every 4 hours).
 
@@ -245,45 +247,45 @@ Store/context-backed (mirror `src/hooks/__tests__/useTimeAdvancement.test.ts`, w
 
 These items close out findings from AUTO_REVIEW 2026-07-15 → 2026-07-21 (one CONCERN, several NOTEs) plus the two narrowed 2026-07-16 deferrals. Pattern: zero runtime behavior change, tsc clean, the named safety-net tests stay green (targeted vitest run). Do NOT rewrite test files.
 
-- [ ] Re-type src/utils/combatViewFilter.ts (fixes the 2026-07-19 AUTO_REVIEW CONCERN on d4ae57c). The conversion erased the deleted `.d.ts` shim's concrete signatures into 33 `: any`/`AnyRecord` on the player-view redaction path. Recover the original contract with `git show d4ae57c^:src/utils/combatViewFilter.d.ts` and re-type `getCombatView`/`hasHiddenInfo`/`filterParticipant` and the rest against `CombatState`/`Participant`/`RevealState` from src/types/combatTracker. Zero `: any` remaining. Safety net: src/utils/__tests__/combatViewFilter.test.js.
-- [ ] Re-type src/utils/combatLogFilter.ts: replace the `AnyRecord` (`Record<string, any>`) alias and the one bare `: any` callback with the canonical src/types/combatTracker types for log/entry/combatState (AUTO_REVIEW 2026-07-19 NOTE on ff630bd). Keep the existing return-type annotations and type guards. Safety net: src/utils/__tests__/combatLogFilter.test.js.
+- [x] Re-type src/utils/combatViewFilter.ts (fixes the 2026-07-19 AUTO_REVIEW CONCERN on d4ae57c). The conversion erased the deleted `.d.ts` shim's concrete signatures into 33 `: any`/`AnyRecord` on the player-view redaction path. Recover the original contract with `git show d4ae57c^:src/utils/combatViewFilter.d.ts` and re-type `getCombatView`/`hasHiddenInfo`/`filterParticipant` and the rest against `CombatState`/`Participant`/`RevealState` from src/types/combatTracker. Zero `: any` remaining. Safety net: src/utils/__tests__/combatViewFilter.test.js.
+- [x] Re-type src/utils/combatLogFilter.ts: replace the `AnyRecord` (`Record<string, any>`) alias and the one bare `: any` callback with the canonical src/types/combatTracker types for log/entry/combatState (AUTO_REVIEW 2026-07-19 NOTE on ff630bd). Keep the existing return-type annotations and type guards. Safety net: src/utils/__tests__/combatLogFilter.test.js.
 - [x] Re-type src/utils/combatViewSelectors.ts: remove the `AnyRecord` alias and every `as AnyRecord` cast introduced in 5a25bd2 (AUTO_REVIEW 2026-07-15 NOTE); use src/types/combatTracker types. Safety net: src/utils/__tests__/combatViewSelectors.test.js. [resolved 2026-07-23 in the human reveal-type session (447501c) — fully typed against CombatState/Participant/RevealState.]
-- [ ] Tighten the 3 net-new internal `any` in src/utils/taskResolution.ts flagged by AUTO_REVIEW 2026-07-18 (6249db1): `_categories?: any` (~line 44), the `item?: any` parameter, and the `const yields: any = calculateFishYields(...)` local. Leave the shim-inherited `any` fields (payload/task/leader/environment/tools/species/categories/items/tables) alone — those are grandfathered. Safety net: src/utils/__tests__/taskResolution.test.js.
-- [ ] Remove the 4 cleanly-fixable `as any` casts in src/hooks/useCombatHistory.ts at lines 99, 114, 129, 144 (createSnapshot overload / newRevealState). The two saveCombatReveal casts formerly at :117/:147 were already removed in the 2026-07-23 human reveal-type session (447501c); only these 4 remain in the file. Existing hook/combat tests stay green.
+- [x] Tighten the 3 net-new internal `any` in src/utils/taskResolution.ts flagged by AUTO_REVIEW 2026-07-18 (6249db1): `_categories?: any` (~line 44), the `item?: any` parameter, and the `const yields: any = calculateFishYields(...)` local. Leave the shim-inherited `any` fields (payload/task/leader/environment/tools/species/categories/items/tables) alone — those are grandfathered. Safety net: src/utils/__tests__/taskResolution.test.js.
+- [x] Remove the 4 cleanly-fixable `as any` casts in src/hooks/useCombatHistory.ts at lines 99, 114, 129, 144 (createSnapshot overload / newRevealState). The two saveCombatReveal casts formerly at :117/:147 were already removed in the 2026-07-23 human reveal-type session (447501c); only these 4 remain in the file. Existing hook/combat tests stay green.
 - [x] Remove the 2 cleanly-removable `as any` casts in src/persistence/campaignStorage.ts: line 90 (`(payload as any).maps` — spurious, payload is already typed) and line 151 (`cookingSkills` — re-export of the same campaign.ts type). [resolved 2026-07-23 in the human gathering-type session (466dcbd) — the file now has ZERO `as any`; the gathering/alchemy casts fell away with the Extended-canonical fix.]
 
 ## Phase 16t-4 — Test coverage for zero-coverage hooks and gcsParser _(refill 2026-07-23)_
 
 Same bar as Phase 16t-3: add `__tests__/<name>.test.ts` beside the file, covering the exported API — happy path + at least one error/edge path per exported function group. No `as any` in tests. Verify with a targeted vitest run. For store/context-backed hooks, mirror `src/hooks/__tests__/useWeatherModifiers.test.ts` / `useTimeAdvancement.test.ts`; if provider wiring exceeds what those exemplars show, defer with that exact reason rather than expanding scope.
 
-- [ ] Add tests for src/utils/gcsParser.js (238 lines, zero coverage; parses GCS character-export JSON, sole importer GCSImportModal.tsx). Priority edge cases: malformed JSON, missing/partial attribute blocks, empty skill/trait lists. This is the safety net for the Phase 15e-5 conversion below.
-- [ ] Add tests for src/hooks/useCraftingData.ts (131 lines, zero coverage).
-- [ ] Add tests for src/hooks/useCombatHistory.ts (152 lines, zero coverage; covers the Phase 16r cast removals above too).
-- [ ] Add tests for src/hooks/useAlchemyData.ts (171 lines, zero coverage).
-- [ ] Add tests for src/hooks/useCombatReinforcements.ts (188 lines, zero coverage).
-- [ ] Add tests for src/hooks/useCombatExport.ts (289 lines, zero coverage; mock file-download/clipboard side effects, assert the generated export payloads).
-- [ ] Add tests for src/hooks/useActionResolution.ts (445 lines, zero coverage; largest untested combat hook — cover the main resolution paths, defer if store wiring exceeds the exemplars).
-- [ ] Add tests for src/hooks/usePerformanceMonitoring.ts (465 lines, zero coverage; timer-heavy — use fake timers).
-- [ ] Add tests for src/hooks/useCombatSession.ts (645 lines, zero coverage; largest untested hook. Cover the primary session lifecycle paths; if full coverage doesn't fit one run, land a meaningful subset and note it — do not defer solely on size.)
-- [ ] Add tests for src/utils/performanceMonitor.js (531 lines, zero coverage; importers: PerformanceDashboard.tsx, usePerformanceMonitoring.ts. Use fake timers; test file stays `.test.js` or `.test.ts` importing by basename. This is the safety net for the Phase 15e-5 conversion below.)
+- [x] Add tests for src/utils/gcsParser.js (238 lines, zero coverage; parses GCS character-export JSON, sole importer GCSImportModal.tsx). Priority edge cases: malformed JSON, missing/partial attribute blocks, empty skill/trait lists. This is the safety net for the Phase 15e-5 conversion below.
+- [x] Add tests for src/hooks/useCraftingData.ts (131 lines, zero coverage).
+- [x] Add tests for src/hooks/useCombatHistory.ts (152 lines, zero coverage; covers the Phase 16r cast removals above too).
+- [x] Add tests for src/hooks/useAlchemyData.ts (171 lines, zero coverage).
+- [x] Add tests for src/hooks/useCombatReinforcements.ts (188 lines, zero coverage).
+- [x] Add tests for src/hooks/useCombatExport.ts (289 lines, zero coverage; mock file-download/clipboard side effects, assert the generated export payloads).
+- [x] Add tests for src/hooks/useActionResolution.ts (445 lines, zero coverage; largest untested combat hook — cover the main resolution paths, defer if store wiring exceeds the exemplars).
+- [x] Add tests for src/hooks/usePerformanceMonitoring.ts (465 lines, zero coverage; timer-heavy — use fake timers).
+- [x] Add tests for src/hooks/useCombatSession.ts (645 lines, zero coverage; largest untested hook. Cover the primary session lifecycle paths; if full coverage doesn't fit one run, land a meaningful subset and note it — do not defer solely on size.)
+- [x] Add tests for src/utils/performanceMonitor.js (531 lines, zero coverage; importers: PerformanceDashboard.tsx, usePerformanceMonitoring.ts. Use fake timers; test file stays `.test.js` or `.test.ts` importing by basename. This is the safety net for the Phase 15e-5 conversion below.)
 
 ## Phase 15e-5 — JS → TS migration, fifth batch (one file per run) _(refill 2026-07-23)_
 
 Same pattern as Phase 15e-4: rename `.js` → `.ts` (or `.tsx` if JSX), add types for parameters/returns, preserve all existing exports and runtime behavior, no `as any` introduced, no type erosion (follow the conditionsEngine.ts pattern, NOT the combatViewFilter erosion). None of these has a `.d.ts` shim. Safety-net tests (where named) must stay green and must not be rewritten.
 
-- [ ] Convert src/version.js to TypeScript (511 lines, but almost entirely the static `CHANGELOG` data array + `VERSION` const — mechanical).
-- [ ] Convert src/components/partyToolSeed.js to TypeScript (167 lines; imported by src/state/campaignReducer.ts — preserve every export name exactly; tsc + campaignReducer tests are the safety net).
-- [ ] Convert src/utils/gcsParser.js to TypeScript (238 lines). Precondition: gcsParser tests exist (Phase 16t-4 item above); if absent, defer with reason "prerequisite tests missing".
-- [ ] Convert src/utils/performanceMonitor.js to TypeScript (531 lines). Precondition: performanceMonitor tests exist (Phase 16t-4 item above); if absent, defer with reason "prerequisite tests missing".
+- [x] Convert src/version.js to TypeScript (511 lines, but almost entirely the static `CHANGELOG` data array + `VERSION` const — mechanical).
+- [x] Convert src/components/partyToolSeed.js to TypeScript (167 lines; imported by src/state/campaignReducer.ts — preserve every export name exactly; tsc + campaignReducer tests are the safety net).
+- [x] Convert src/utils/gcsParser.js to TypeScript (238 lines). Precondition: gcsParser tests exist (Phase 16t-4 item above); if absent, defer with reason "prerequisite tests missing".
+- [x] Convert src/utils/performanceMonitor.js to TypeScript (531 lines). Precondition: performanceMonitor tests exist (Phase 16t-4 item above); if absent, defer with reason "prerequisite tests missing".
 
 ## Phase 16y-2 — `as any` reduction, second batch (one file per run) _(refill 2026-07-23)_
 
 Same pattern as Phase 16y: remove every `as any` in the target file by fixing types at the source; zero runtime behavior change; tsc clean; existing tests green. If a specific cast genuinely requires a design decision, defer citing that cast's file:line.
 
-- [ ] Remove the 13 `as any` casts in src/components/combat/CombatTracker.tsx (was 16; 3 removed in the 2026-07-23 human reveal-type session).
+- [x] Remove the 13 `as any` casts in src/components/combat/CombatTracker.tsx (was 16; 3 removed in the 2026-07-23 human reveal-type session).
 - [x] Remove the 10 `as any` casts in src/components/DayPlannerTab.tsx. [resolved 2026-07-23 in the human gathering-type session (466dcbd) — all 10 were denormalize casts that fell away with the Extended-canonical fix.]
-- [ ] Remove the 25 `as any` casts in src/hooks/__tests__/useCombatStore.test.ts (test file — type the fixtures/mocks properly instead; all tests stay green with identical assertions).
-- [ ] Remove the 18 `as any` casts in src/utils/__tests__/combatHelpers.test.ts (same bar: properly typed fixtures, identical assertions).
+- [x] Remove the 25 `as any` casts in src/hooks/__tests__/useCombatStore.test.ts (test file — type the fixtures/mocks properly instead; all tests stay green with identical assertions).
+- [x] Remove the 18 `as any` casts in src/utils/__tests__/combatHelpers.test.ts (same bar: properly typed fixtures, identical assertions).
 
 ## Out of scope for the loop (do NOT add these)
 
