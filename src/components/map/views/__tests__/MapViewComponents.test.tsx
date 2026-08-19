@@ -2,9 +2,10 @@ import '@testing-library/jest-dom';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MapHeader } from '../MapHeader';
-import { MapTile } from '../MapTile';
+import { Map3DView } from '../Map3DView';
 import { MapCreateDialog } from '../MapCreateDialog';
 import { MapContextMenu } from '../MapContextMenu';
+import { ElevationDialog } from '../ElevationDialog';
 import { TerrainPalette } from '../TerrainPalette';
 import { MarkerEditor } from '../MarkerEditor';
 import { MarkerIcon } from '../MarkerIcon';
@@ -73,6 +74,7 @@ const mockMap: MapModel = ({
   id: mockMapId1,
   name: 'Thornwood Region',
   description: 'A lush forest region',
+  visionMode: 'lineOfSight',
   scaleMilesPerTile: 12,
   rows: 3,
   cols: 3,
@@ -228,113 +230,43 @@ describe('MapHeader', () => {
 
     expect(onSelectMap).toHaveBeenCalledWith(mockMapId2);
   });
+
+  it('updates vision mode and sight range from the GM settings popover', () => {
+    const onUpdateMapSettings = vi.fn();
+    render(
+      <MapHeader
+        maps={mockMaps}
+        activeMapId={mockMapId1}
+        isGmMode={true}
+        onSelectMap={vi.fn()}
+        onCreateMap={vi.fn()}
+        onUpdateMapSettings={onUpdateMapSettings}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Map settings' }));
+    fireEvent.change(screen.getByLabelText('Vision'), { target: { value: 'open' } });
+    fireEvent.change(screen.getByLabelText('Sight range'), { target: { value: '12' } });
+    expect(onUpdateMapSettings).toHaveBeenCalledWith({ visionMode: 'open' });
+    expect(onUpdateMapSettings).toHaveBeenCalledWith({ sightRangeTiles: 12 });
+  });
 });
 
 // ============================================================================
-// MAPTILE
+// THREE-DIMENSIONAL MAP
 // ============================================================================
 
-describe('MapTile', () => {
-  it('renders with terrain color', () => {
-    const { container } = render(
-      <MapTile
-        terrain={mockTerrain[mockTerrainId1]}
-        isRevealed={true}
-        isVisible={true}
-        isPartyHere={false}
+describe('three-dimensional map view', () => {
+  it('shows the WebGL-unavailable fallback under jsdom without crashing', async () => {
+    render(
+      <Map3DView
+        map={mockMap}
         isGmMode={true}
-        markers={[]}
-        hasLinks={false}
-        row={0}
-        col={0}
+        visionMode="lineOfSight"
+        paintModeActive={false}
+        placingParty={false}
       />
     );
-
-    const tile = container.firstChild as HTMLElement;
-    expect(tile.style.backgroundColor).toBe('rgb(34, 197, 94)');
-  });
-
-  it('displays party indicator when isPartyHere is true', () => {
-    const { container } = render(
-      <MapTile
-        terrain={mockTerrain[mockTerrainId1]}
-        isRevealed={true}
-        isVisible={true}
-        isPartyHere={true}
-        isGmMode={true}
-        markers={[]}
-        hasLinks={false}
-        row={0}
-        col={0}
-      />
-    );
-
-    const partyIndicator = container.querySelector('.bg-white.rounded-full');
-    expect(partyIndicator).toBeInTheDocument();
-  });
-
-  it('shows marker count in title when markers present', () => {
-    const marker: MarkerModel = {
-      id: 'marker-1',
-      tileId: 'tile-1',
-      type: 'note',
-      label: 'Test',
-      visibility: 'player',
-    };
-
-    const { container } = render(
-      <MapTile
-        terrain={mockTerrain[mockTerrainId1]}
-        isRevealed={true}
-        isVisible={true}
-        isPartyHere={false}
-        isGmMode={true}
-        markers={[marker]}
-        hasLinks={false}
-        row={0}
-        col={0}
-      />
-    );
-
-    const tile = container.firstChild as HTMLElement;
-    expect(tile.title).toContain('1 marker(s)');
-  });
-
-  it('displays null terrain indicator "?" for GM when terrain is null', () => {
-    const { container } = render(
-      <MapTile
-        terrain={null}
-        isRevealed={true}
-        isVisible={true}
-        isPartyHere={false}
-        isGmMode={true}
-        markers={[]}
-        hasLinks={false}
-        row={0}
-        col={0}
-      />
-    );
-
-    expect(container.textContent).toContain('?');
-  });
-
-  it('renders void tile for players when unrevealed and not visible', () => {
-    const { container } = render(
-      <MapTile
-        terrain={mockTerrain[mockTerrainId1]}
-        isRevealed={false}
-        isVisible={false}
-        isPartyHere={false}
-        isGmMode={false}
-        markers={[]}
-        hasLinks={false}
-        row={0}
-        col={0}
-      />
-    );
-
-    const tile = container.firstChild as HTMLElement;
-    expect(tile.style.backgroundColor).toBe('rgb(10, 10, 10)');
+    expect(await screen.findByText('3D map unavailable — WebGL could not start.')).toBeInTheDocument();
   });
 });
 
@@ -421,6 +353,7 @@ describe('MapContextMenu', () => {
         onStampSelection={vi.fn()}
         onAddMarker={vi.fn()}
         onAddLink={vi.fn()}
+        onSetElevation={vi.fn()}
         onClose={vi.fn()}
       />
     );
@@ -438,6 +371,7 @@ describe('MapContextMenu', () => {
         onStampSelection={vi.fn()}
         onAddMarker={vi.fn()}
         onAddLink={vi.fn()}
+        onSetElevation={vi.fn()}
         onClose={vi.fn()}
       />
     );
@@ -458,6 +392,7 @@ describe('MapContextMenu', () => {
         onStampSelection={vi.fn()}
         onAddMarker={onAddMarker}
         onAddLink={vi.fn()}
+        onSetElevation={vi.fn()}
         onClose={vi.fn()}
       />
     );
@@ -478,11 +413,59 @@ describe('MapContextMenu', () => {
         onStampSelection={vi.fn()}
         onAddMarker={vi.fn()}
         onAddLink={vi.fn()}
+        onSetElevation={vi.fn()}
         onClose={vi.fn()}
       />
     );
 
     expect(screen.getByText(/Apply Forest to 2 tile\(s\)/)).toBeInTheDocument();
+  });
+
+  it('sets elevation for the containing selection', () => {
+    const onSetElevation = vi.fn();
+    render(
+      <MapContextMenu
+        state={{ tileId: 'tile-1', row: 0, col: 0, x: 100, y: 100 }}
+        selectedTileIds={new Set(['tile-1', 'tile-2'])}
+        selectedTerrainId={null}
+        terrains={mockTerrain}
+        onStampSelection={vi.fn()}
+        onAddMarker={vi.fn()}
+        onAddLink={vi.fn()}
+        onSetElevation={onSetElevation}
+        onClose={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByText('Set Elevation…'));
+    expect(onSetElevation).toHaveBeenCalledWith(['tile-1', 'tile-2']);
+  });
+});
+
+describe('ElevationDialog', () => {
+  it('confirms an integer elevation', () => {
+    const onConfirm = vi.fn();
+    render(<ElevationDialog tileCount={2} onConfirm={onConfirm} onCancel={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText('Elevation level'), { target: { value: '6' } });
+    fireEvent.click(screen.getByText('Confirm'));
+    expect(onConfirm).toHaveBeenCalledWith(6);
+    expect(screen.getByText(/affects 2 tiles/)).toBeInTheDocument();
+  });
+
+  it('confirms null after clearing the override', () => {
+    const onConfirm = vi.fn();
+    render(<ElevationDialog tileCount={1} onConfirm={onConfirm} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByText('Clear override (use terrain elevation)'));
+    fireEvent.click(screen.getByText('Confirm'));
+    expect(onConfirm).toHaveBeenCalledWith(null);
+  });
+
+  it('cancels without confirming', () => {
+    const onCancel = vi.fn();
+    const onConfirm = vi.fn();
+    render(<ElevationDialog tileCount={1} onConfirm={onConfirm} onCancel={onCancel} />);
+    fireEvent.click(screen.getByText('Cancel'));
+    expect(onCancel).toHaveBeenCalledOnce();
+    expect(onConfirm).not.toHaveBeenCalled();
   });
 });
 

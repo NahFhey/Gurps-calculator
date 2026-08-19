@@ -14,7 +14,6 @@ import {
   expandMapIfNeeded,
   checkPaintExpansionNeeded,
   expandMapIfNeededForPaint,
-  getVisibleTileIds,
   createNewMap,
   resolveLocationTerrain,
 } from '../mapUtils';
@@ -23,7 +22,7 @@ import {
   INITIAL_CENTER,
   EXPANSION_BUFFER,
 } from '../../constants/map';
-import type { MapModel, TerrainModel, TileId } from '../../types/map';
+import type { MapModel, TerrainModel } from '../../types/map';
 
 describe('createTile', () => {
   it('returns a tile with a unique id and null terrain by default', () => {
@@ -262,35 +261,6 @@ describe('paint-based expansion', () => {
   });
 });
 
-describe('getVisibleTileIds', () => {
-  it('returns empty set when party tile is absent', () => {
-    const map = buildMap();
-    map.partyTileId = null as unknown as TileId;
-    expect(getVisibleTileIds(map).size).toBe(0);
-  });
-
-  it('returns empty set when party tile id is not on the grid', () => {
-    const map = buildMap();
-    map.partyTileId = 'orphan';
-    expect(getVisibleTileIds(map).size).toBe(0);
-  });
-
-  it('excludes already-revealed tiles', () => {
-    const map = buildMap();
-    const visible = getVisibleTileIds(map);
-    expect(visible.has(map.partyTileId!)).toBe(false);
-    expect(visible.size).toBeGreaterThan(0);
-  });
-
-  it('honors the activeMode parameter (airship sees more than foot at scale 12)', () => {
-    const map = buildMap();
-    const foot = getVisibleTileIds(map, 'foot').size;
-    const airship = getVisibleTileIds(map, 'airship').size;
-    // Airship has more miles/slot so it covers more tiles (capped by grid).
-    expect(airship).toBeGreaterThanOrEqual(foot);
-  });
-});
-
 describe('createNewMap', () => {
   it('produces a fully-formed MapModel', () => {
     const map = createNewMap({
@@ -308,6 +278,7 @@ describe('createNewMap', () => {
     expect(map.lastPlacedTerrainId).toBe('terrain-water');
     expect(map.partyTileId).toBeTruthy();
     expect(map.revealedTileIds.size).toBe(1);
+    expect(map.visionMode).toBe('lineOfSight');
     expect(Object.keys(map.terrainById).length).toBeGreaterThan(0);
   });
 });

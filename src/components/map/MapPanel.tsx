@@ -3,13 +3,14 @@
  * Entry point for the Map module in the shell.
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useCampaignStore } from '../../state/campaignStore';
 import type { MapScale, TerrainId, TerrainModel, TileId, MarkerModel, LinkModel, TravelMode } from '../../types/map';
 import { SCALE_TO_MODES } from '../../constants/map';
 import { findRoute, getReachableTiles } from '../../utils/mapRouter';
-import { getVisibleTileIds } from '../../utils/mapUtils';
-import { MapGrid } from './views/MapGrid';
+import { computeVisibleTiles } from '../../utils/lineOfSight';
+import { Map3DView } from './views/Map3DView';
+import type { TilePointerEvent } from './three/MapScene';
 import { MapHeader } from './views/MapHeader';
 import { MapCreateDialog } from './views/MapCreateDialog';
 import { TerrainPalette } from './views/TerrainPalette';
@@ -20,6 +21,7 @@ import { LinkEditor } from './views/LinkEditor';
 import { LinksMenu } from './views/LinksMenu';
 import { TravelWizard } from './views/TravelWizard';
 import { TerrainAssignmentModal } from './views/TerrainAssignmentModal';
+import { ElevationDialog } from './views/ElevationDialog';
 import { Map as MapIcon, ExternalLink } from 'lucide-react';
 
 /** Interaction mode for the map */
@@ -36,8 +38,8 @@ export function MapPanel() {
   const [interactionMode, setInteractionMode] = useState<MapInteractionMode>('view');
   const [selectedTerrainId, setSelectedTerrainId] = useState<TerrainId | null>(null);
   const [selectedTileIds, setSelectedTileIds] = useState<Set<TileId>>(new Set());
-  const [isPainting, setIsPainting] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [elevationDialogTileIds, setElevationDialogTileIds] = useState<TileId[] | null>(null);
 
   // Marker/Link editor state
   const [markerEditorTileId, setMarkerEditorTileId] = useState<TileId | null>(null);
@@ -80,14 +82,10 @@ export function MapPanel() {
     return reachable.size > 0 ? reachable : undefined;
   }, [showTravelWizard, travelStep, travelMode, activeMap, isGmMode]);
 
-  // Visible-but-unexplored tiles for player vision (computed from party position)
-  // When travel wizard is active with a mode, expands vision to that mode's range + 2
-  const activeTravelModeForVision = showTravelWizard && travelStep >= 2 && travelMode ? travelMode : undefined;
   const visibleTileIds = useMemo(() => {
-    if (!activeMap || isGmMode) return undefined;
-    const visible = getVisibleTileIds(activeMap, activeTravelModeForVision);
-    return visible.size > 0 ? visible : undefined;
-  }, [activeMap, isGmMode, activeTravelModeForVision]);
+    if (!activeMap || isGmMode || activeMap.visionMode === 'open') return undefined;
+    return computeVisibleTiles(activeMap, activeMap.partyTileId ? [activeMap.partyTileId] : []);
+  }, [activeMap, isGmMode]);
 
   // Select map
   const handleSelectMap = useCallback(
@@ -144,12 +142,10 @@ export function MapPanel() {
     [activeMap, maps.activeMapId, interactionMode, selectedTerrainId, isGmMode, actions, showTravelWizard, travelStep, travelMode, isPlacingParty]
   );
 
-  // Tile mouse down (start painting)
-  const handleTileMouseDown = useCallback(
-    (tileId: TileId, _row: number, _col: number, e: React.MouseEvent) => {
+  const handleTilePaintStart = useCallback(
+    (tileId: TileId) => {
       if (showTravelWizard) return; // Disable painting during travel
-      if (interactionMode === 'paint' && selectedTerrainId && isGmMode && e.button === 0) {
-        setIsPainting(true);
+      if (interactionMode === 'paint' && selectedTerrainId && isGmMode) {
         if (maps.activeMapId) {
           actions.mapSetTileTerrain(maps.activeMapId, tileId, selectedTerrainId);
         }
@@ -158,30 +154,18 @@ export function MapPanel() {
     [interactionMode, selectedTerrainId, isGmMode, maps.activeMapId, actions, showTravelWizard]
   );
 
-  // Tile mouse enter (painting drag)
-  const handleTileMouseEnter = useCallback(
-    (tileId: TileId, _row: number, _col: number, _e: React.MouseEvent) => {
-      if (isPainting && selectedTerrainId && isGmMode && maps.activeMapId) {
+  const handleTilePaintEnter = useCallback(
+    (tileId: TileId) => {
+      if (!showTravelWizard && selectedTerrainId && isGmMode && maps.activeMapId) {
         actions.mapSetTileTerrain(maps.activeMapId, tileId, selectedTerrainId);
       }
     },
-    [isPainting, selectedTerrainId, isGmMode, maps.activeMapId, actions]
+    [showTravelWizard, selectedTerrainId, isGmMode, maps.activeMapId, actions]
   );
-
-  // Global mouse up (stop painting)
-  React.useEffect(() => {
-    const handleMouseUp = () => {
-      if (isPainting) {
-        setIsPainting(false);
-      }
-    };
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => window.removeEventListener('mouseup', handleMouseUp);
-  }, [isPainting]);
 
   // Context menu
   const handleTileContextMenu = useCallback(
-    (tileId: TileId, row: number, col: number, e: React.MouseEvent) => {
+    (tileId: TileId, row: number, col: number, e: TilePointerEvent) => {
       e.preventDefault();
       if (!isGmMode) return;
       setContextMenu({ tileId, row, col, x: e.clientX, y: e.clientY });
@@ -192,6 +176,13 @@ export function MapPanel() {
   const handleCloseContextMenu = useCallback(() => {
     setContextMenu(null);
   }, []);
+
+  const handleConfirmElevation = useCallback((elevation: number | null) => {
+    if (maps.activeMapId && elevationDialogTileIds) {
+      actions.mapSetTileElevation(maps.activeMapId, elevationDialogTileIds, elevation);
+    }
+    setElevationDialogTileIds(null);
+  }, [actions, elevationDialogTileIds, maps.activeMapId]);
 
   // Context menu: stamp terrain to selection
   const handleStampSelection = useCallback(() => {
@@ -347,6 +338,7 @@ export function MapPanel() {
         onPlaceParty={() => setIsPlacingParty(true)}
         isPlacingParty={isPlacingParty}
         onCancelPlaceParty={() => setIsPlacingParty(false)}
+        onUpdateMapSettings={(changes) => actions.mapUpdateMap(activeMap.id, changes)}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -362,18 +354,21 @@ export function MapPanel() {
           />
         )}
 
-        {/* Map grid */}
-        <MapGrid
+        {/* Three-dimensional map scene */}
+        <Map3DView
           map={activeMap}
           isGmMode={isGmMode}
+          visionMode={activeMap.visionMode}
           selectedTileIds={selectedTileIds.size > 0 ? selectedTileIds : undefined}
           routeTileIds={travelRoute.length > 1 ? travelRoute : undefined}
           reachableTileIds={reachableTileIds}
           visibleTileIds={visibleTileIds}
+          paintModeActive={interactionMode === 'paint' && !!selectedTerrainId && isGmMode && !showTravelWizard}
+          placingParty={isPlacingParty}
           onTileClick={handleTileClick}
           onTileContextMenu={handleTileContextMenu}
-          onTileMouseDown={handleTileMouseDown}
-          onTileMouseEnter={handleTileMouseEnter}
+          onTilePaintStart={handleTilePaintStart}
+          onTilePaintEnter={handleTilePaintEnter}
         />
 
         {/* Travel wizard panel */}
@@ -428,6 +423,7 @@ export function MapPanel() {
           onStampSelection={handleStampSelection}
           onAddMarker={handleAddMarker}
           onAddLink={handleAddLink}
+          onSetElevation={setElevationDialogTileIds}
           onClose={handleCloseContextMenu}
         />
       )}
@@ -465,6 +461,14 @@ export function MapPanel() {
         <TerrainEditor
           onConfirm={handleAddCustomTerrain}
           onCancel={() => setShowTerrainEditor(false)}
+        />
+      )}
+
+      {elevationDialogTileIds && (
+        <ElevationDialog
+          tileCount={elevationDialogTileIds.length}
+          onConfirm={handleConfirmElevation}
+          onCancel={() => setElevationDialogTileIds(null)}
         />
       )}
 

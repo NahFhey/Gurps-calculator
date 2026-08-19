@@ -4,7 +4,7 @@
 
 import { useEffect, useRef } from 'react';
 import type { TileId, TerrainId, TerrainModel } from '../../../types/map';
-import { Paintbrush, MapPin, LinkIcon } from 'lucide-react';
+import { Paintbrush, MapPin, LinkIcon, Mountain } from 'lucide-react';
 
 export interface ContextMenuState {
   tileId: TileId;
@@ -22,6 +22,7 @@ interface MapContextMenuProps {
   onStampSelection: () => void;
   onAddMarker: (tileId: TileId) => void;
   onAddLink: (tileId: TileId) => void;
+  onSetElevation: (tileIds: TileId[]) => void;
   onClose: () => void;
 }
 
@@ -33,6 +34,7 @@ export function MapContextMenu({
   onStampSelection,
   onAddMarker,
   onAddLink,
+  onSetElevation,
   onClose,
 }: MapContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -80,6 +82,21 @@ export function MapContextMenu({
 
       {/* Separator */}
       <div className="border-t border-gray-700 my-1" />
+
+      {/* Set elevation */}
+      <button
+        className="w-full px-3 py-1.5 text-sm text-left text-gray-200 hover:bg-gray-700/50 flex items-center gap-2"
+        onClick={() => {
+          const targets = selectedTileIds.size > 0 && selectedTileIds.has(menuState.tileId)
+            ? Array.from(selectedTileIds)
+            : [menuState.tileId];
+          onSetElevation(targets);
+          onClose();
+        }}
+      >
+        <Mountain className="w-3.5 h-3.5 text-gray-400" />
+        Set Elevation…
+      </button>
 
       {/* Add marker */}
       <button

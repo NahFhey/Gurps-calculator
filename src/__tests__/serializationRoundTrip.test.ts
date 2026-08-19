@@ -28,6 +28,7 @@ function makeMap(overrides: Partial<MapModel> = {}): MapModel {
   return {
     id: 'map-1',
     name: 'Test Map',
+    visionMode: 'lineOfSight',
     scaleMilesPerTile: 12,
     rows: 1,
     cols: 1,

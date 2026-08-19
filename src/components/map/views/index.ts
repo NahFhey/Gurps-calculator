@@ -1,5 +1,4 @@
-export { MapGrid } from './MapGrid';
-export { MapTile } from './MapTile';
+export { Map3DView } from './Map3DView';
 export { MapHeader } from './MapHeader';
 export { MapCreateDialog } from './MapCreateDialog';
 export { TerrainPalette } from './TerrainPalette';
@@ -14,3 +13,4 @@ export { TravelStep2Route } from './TravelStep2Route';
 export { TravelStep3Confirm } from './TravelStep3Confirm';
 export { TravelBlockerList } from './TravelBlockerList';
 export { TerrainAssignmentModal } from './TerrainAssignmentModal';
+export { ElevationDialog } from './ElevationDialog';

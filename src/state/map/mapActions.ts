@@ -16,6 +16,7 @@ import type {
   LinkModel,
   TravelWizardState,
   TravelMode,
+  MapModel,
 } from '../../types/map';
 
 // ============================================================================
@@ -31,6 +32,7 @@ export const MAP_SET_ACTIVE = 'map/setActiveMap' as const;
 // Terrain editing (tile assignment)
 export const MAP_SET_TILE_TERRAIN = 'map/setTileTerrain' as const;
 export const MAP_STAMP_TERRAIN = 'map/stampTerrain' as const;
+export const MAP_SET_TILE_ELEVATION = 'map/setTileElevation' as const;
 
 // Terrain definitions
 export const MAP_ADD_TERRAIN = 'map/addTerrain' as const;
@@ -82,7 +84,10 @@ export type DeleteMapAction = {
 
 export type UpdateMapAction = {
   type: typeof MAP_UPDATE;
-  payload: { mapId: MapId; changes: { name?: string; description?: string } };
+  payload: {
+    mapId: MapId;
+    changes: Partial<Pick<MapModel, 'name' | 'description' | 'visionMode' | 'sightRangeTiles'>>;
+  };
 };
 
 export type SetActiveMapAction = {
@@ -98,6 +103,11 @@ export type SetTileTerrainAction = {
 export type StampTerrainAction = {
   type: typeof MAP_STAMP_TERRAIN;
   payload: { mapId: MapId; tileIds: TileId[]; terrainId: TerrainId };
+};
+
+export type SetTileElevationAction = {
+  type: typeof MAP_SET_TILE_ELEVATION;
+  payload: { mapId: MapId; tileIds: TileId[]; elevation: number | null };
 };
 
 export type AddTerrainAction = {
@@ -190,6 +200,7 @@ export type MapAction =
   | SetActiveMapAction
   | SetTileTerrainAction
   | StampTerrainAction
+  | SetTileElevationAction
   | AddTerrainAction
   | UpdateTerrainAction
   | RemoveTerrainAction
@@ -217,6 +228,7 @@ const MAP_ACTION_TYPES = new Set<string>([
   MAP_SET_ACTIVE,
   MAP_SET_TILE_TERRAIN,
   MAP_STAMP_TERRAIN,
+  MAP_SET_TILE_ELEVATION,
   MAP_ADD_TERRAIN,
   MAP_UPDATE_TERRAIN,
   MAP_REMOVE_TERRAIN,

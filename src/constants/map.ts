@@ -41,6 +41,15 @@ export const SLOTS_PER_DAY = 3;
 /** Hours per slot */
 export const HOURS_PER_SLOT = 8;
 
+/** Default terrain elevation in levels. */
+export const DEFAULT_TERRAIN_ELEVATION = 1;
+
+/** Maximum terrain or tile elevation in levels. */
+export const MAX_ELEVATION = 20;
+
+/** Default line-of-sight radius in tiles. */
+export const DEFAULT_SIGHT_RANGE_TILES = 8;
+
 // ============================================================================
 // TRAVEL MODE DEFINITIONS
 // ============================================================================
@@ -98,6 +107,7 @@ export function createPresetTerrains(): TerrainModel[] {
       id: 'terrain-plains',
       name: 'Plains',
       color: '#4ade80',
+      elevation: 1,
       locationTerrain: 'plains',
       perMode: {
         foot: { passable: true, speedModifier: 1.0 },
@@ -109,6 +119,7 @@ export function createPresetTerrains(): TerrainModel[] {
       id: 'terrain-forest',
       name: 'Forest',
       color: '#166534',
+      elevation: 2,
       locationTerrain: 'forest',
       perMode: {
         foot: { passable: true, speedModifier: 0.8 },
@@ -120,6 +131,7 @@ export function createPresetTerrains(): TerrainModel[] {
       id: 'terrain-hills',
       name: 'Hills',
       color: '#a3a23a',
+      elevation: 2,
       locationTerrain: 'plains',
       perMode: {
         foot: { passable: true, speedModifier: 0.7 },
@@ -131,6 +143,7 @@ export function createPresetTerrains(): TerrainModel[] {
       id: 'terrain-mountains',
       name: 'Mountains',
       color: '#6b7280',
+      elevation: 4,
       locationTerrain: 'mountains',
       perMode: {
         foot: { passable: false, speedModifier: 1.0 },
@@ -142,6 +155,7 @@ export function createPresetTerrains(): TerrainModel[] {
       id: 'terrain-swamp',
       name: 'Swamp',
       color: '#7e22ce',
+      elevation: 1,
       locationTerrain: 'swamp',
       perMode: {
         foot: { passable: true, speedModifier: 0.5 },
@@ -153,6 +167,7 @@ export function createPresetTerrains(): TerrainModel[] {
       id: 'terrain-desert',
       name: 'Desert',
       color: '#eab308',
+      elevation: 1,
       locationTerrain: 'desert',
       perMode: {
         foot: { passable: true, speedModifier: 0.7 },
@@ -164,6 +179,7 @@ export function createPresetTerrains(): TerrainModel[] {
       id: 'terrain-water',
       name: 'Water',
       color: '#3b82f6',
+      elevation: 0,
       perMode: {
         foot: { passable: false, speedModifier: 1.0 },
         boat: { passable: true, speedModifier: 1.0 },
@@ -174,6 +190,7 @@ export function createPresetTerrains(): TerrainModel[] {
       id: 'terrain-urban',
       name: 'Urban',
       color: '#92400e',
+      elevation: 1,
       locationTerrain: 'urban',
       perMode: {
         foot: { passable: true, speedModifier: 1.0 },
@@ -185,6 +202,7 @@ export function createPresetTerrains(): TerrainModel[] {
       id: 'terrain-road',
       name: 'Road',
       color: '#d4a574',
+      elevation: 1,
       perMode: {
         foot: { passable: true, speedModifier: 1.2 },
         boat: { passable: false, speedModifier: 1.0 },

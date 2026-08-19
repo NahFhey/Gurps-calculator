@@ -12,7 +12,6 @@ import type {
   TerrainId,
   TerrainModel,
   MapScale,
-  TravelMode,
 } from '../types/map';
 import type { TerrainType } from '../types/location';
 import {
@@ -20,8 +19,6 @@ import {
   INITIAL_CENTER,
   EXPANSION_BUFFER,
   createPresetTerrains,
-  SCALE_TO_MODES,
-  getTravelModeDefinition,
 } from '../constants/map';
 
 // ============================================================================
@@ -373,47 +370,6 @@ export function expandMapIfNeededForPaint(map: MapModel): MapModel {
   return expandMap(map, sides);
 }
 
-/**
- * Get tile IDs visible to the party but not yet explored.
- * Vision radius = ceil(milesPerSlot / scaleMilesPerTile) + 2 tiles
- * using Chebyshev distance (8-directional).
- *
- * When activeMode is provided (e.g., during travel wizard), uses that mode's
- * milesPerSlot for the radius. Otherwise defaults to the slowest available mode.
- *
- * Returns only tiles that are NOT in revealedTileIds (i.e., visible but unexplored).
- */
-export function getVisibleTileIds(map: MapModel, activeMode?: TravelMode): Set<TileId> {
-  if (!map.partyTileId) return new Set();
-
-  const partyPos = findTileGridPos(map, map.partyTileId);
-  if (!partyPos) return new Set();
-
-  // Compute vision radius: use active mode if provided, otherwise slowest mode
-  let milesForVision: number;
-  if (activeMode) {
-    milesForVision = getTravelModeDefinition(activeMode).milesPerSlot;
-  } else {
-    const modes = SCALE_TO_MODES[map.scaleMilesPerTile];
-    milesForVision = Math.min(
-      ...modes.map((m) => getTravelModeDefinition(m).milesPerSlot)
-    );
-  }
-  const visionRadiusTiles = Math.ceil(milesForVision / map.scaleMilesPerTile) + 2;
-
-  const visible = new Set<TileId>();
-  for (let r = partyPos.row - visionRadiusTiles; r <= partyPos.row + visionRadiusTiles; r++) {
-    for (let c = partyPos.col - visionRadiusTiles; c <= partyPos.col + visionRadiusTiles; c++) {
-      const tileId = getTileIdAt(map, r, c);
-      if (tileId && !map.revealedTileIds.has(tileId)) {
-        visible.add(tileId);
-      }
-    }
-  }
-
-  return visible;
-}
-
 // ============================================================================
 // MAP CREATION HELPER
 // ============================================================================
@@ -436,6 +392,7 @@ export function createNewMap(params: {
     id: crypto.randomUUID(),
     name: params.name,
     description: params.description,
+    visionMode: 'lineOfSight',
     scaleMilesPerTile: params.scaleMilesPerTile,
     rows: INITIAL_GRID_SIZE,
     cols: INITIAL_GRID_SIZE,

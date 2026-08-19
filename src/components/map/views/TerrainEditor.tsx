@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import type { TerrainModel, TravelMode } from '../../../types/map';
 import { X } from 'lucide-react';
+import { DEFAULT_TERRAIN_ELEVATION, MAX_ELEVATION } from '../../../constants/map';
 
 /** Preset location terrain types for weather system integration */
 const LOCATION_TERRAIN_OPTIONS: { value: string; label: string }[] = [
@@ -46,6 +47,7 @@ export function TerrainEditor({ existing, onConfirm, onCancel }: TerrainEditorPr
   const [name, setName] = useState(existing?.name ?? '');
   const [color, setColor] = useState(existing?.color ?? '#22c55e');
   const [locationTerrain, setLocationTerrain] = useState(existing?.locationTerrain ?? '');
+  const [elevation, setElevation] = useState(existing?.elevation ?? DEFAULT_TERRAIN_ELEVATION);
 
   const [footPassable, setFootPassable] = useState(existing?.perMode.foot.passable ?? true);
   const [footSpeed, setFootSpeed] = useState(existing?.perMode.foot.speedModifier ?? 1.0);
@@ -66,6 +68,7 @@ export function TerrainEditor({ existing, onConfirm, onCancel }: TerrainEditorPr
       id,
       name: name.trim(),
       color,
+      elevation: Math.max(0, Math.min(MAX_ELEVATION, Math.round(elevation))),
       perMode: {
         foot: { passable: footPassable, speedModifier: footSpeed },
         boat: { passable: boatPassable, speedModifier: boatSpeed },
@@ -147,6 +150,23 @@ export function TerrainEditor({ existing, onConfirm, onCancel }: TerrainEditorPr
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Elevation */}
+          <div>
+            <label htmlFor="terrain-elevation" className="block text-sm font-medium text-gray-300 mb-1">
+              Elevation
+            </label>
+            <input
+              id="terrain-elevation"
+              type="number"
+              value={elevation}
+              min={0}
+              max={MAX_ELEVATION}
+              step={1}
+              onChange={(event) => setElevation(event.target.valueAsNumber || 0)}
+              className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
 
           {/* Travel Mode Modifiers */}

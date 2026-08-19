@@ -57,6 +57,7 @@ function makeUniformMap(
   return {
     id: 'map-1',
     name: 'test',
+    visionMode: 'lineOfSight',
     scaleMilesPerTile: scale,
     rows,
     cols,

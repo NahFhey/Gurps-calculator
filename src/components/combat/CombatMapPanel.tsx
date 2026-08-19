@@ -1,19 +1,18 @@
 /**
- * CombatMapPanel — renders the MapGrid with participant token overlays for combat.
+ * CombatMapPanel — renders the shared three-dimensional map surface for combat.
  *
- * Bridges combat data (participants with positions) to the existing MapGrid
- * component, adding coloured token circles at each participant's grid position.
+ * Bridges combat data (participants with positions) to the map surface.
  */
 
 import { useCallback, useMemo } from 'react';
 import { Sparkles } from 'lucide-react';
 import type { MapModel, TileId } from '../../types/map';
 import type { Participant, CombatState } from '../../types/combatTracker';
-import { MapGrid } from '../map/views/MapGrid';
+import { Map3DView } from '../map/views/Map3DView';
 import { useCombatSession } from '../../hooks/useCombatSession';
 import { useEffectiveRole } from '../../hooks/useEffectiveRole';
 import { useCampaignStore } from '../../state/campaignStore';
-import { computePlayerVisibleTiles } from '../../utils/fogOfWar';
+import { computeVisibleTiles } from '../../utils/lineOfSight';
 
 /** Returns Tailwind class string for category colours (used in legend). */
 function categoryColorClass(cat: string): string {
@@ -82,7 +81,7 @@ export function CombatMapPanel({
       }
     }
     if (positions.length === 0) return undefined;
-    return computePlayerVisibleTiles(linkedMap, positions);
+    return computeVisibleTiles(linkedMap, positions);
   }, [linkedMap, isPlayer, isGmMode, displayName, (state as any).multiplayer?.playerCharacters, participants]);
 
   if (!linkedMap) {
@@ -133,16 +132,19 @@ export function CombatMapPanel({
 
   return (
     <div className="flex-1 w-full min-h-0 relative flex flex-col">
-      {/* The grid fills the container */}
-      <MapGrid
+      {/* The map surface fills the container */}
+      <Map3DView
         map={linkedMap}
         isGmMode={isGmMode}
+        visionMode={linkedMap.visionMode}
         routeTileIds={losTileIds}
         visibleTileIds={visibleTileIds}
+        paintModeActive={false}
+        placingParty={false}
         onTileClick={handleTileClick}
       />
 
-      {/* Token legend — positioned absolutely over the MapGrid */}
+      {/* Token legend — positioned absolutely over the map surface */}
       <TokenOverlay
         participants={participants}
         currentActorInstanceId={currentActorInstanceId}
@@ -157,7 +159,7 @@ export function CombatMapPanel({
 
 /**
  * TokenOverlay — floating legend panel showing placed/unplaced participant list.
- * The actual token circles on the grid are rendered by MapGrid via tokenOverlays.
+ * Participant placement is summarized here while the shared surface owns terrain.
  */
 function TokenOverlay({
   participants,

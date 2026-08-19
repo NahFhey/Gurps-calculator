@@ -37,6 +37,9 @@ export type LinkId = string;
  */
 export type TravelMode = 'foot' | 'boat' | 'airship';
 
+/** Player visibility regime for an overworld map. */
+export type VisionMode = 'lineOfSight' | 'open';
+
 // ============================================================================
 // MAP SCALES
 // ============================================================================
@@ -74,6 +77,8 @@ export interface TerrainModel {
   color: string;
   /** Travel properties per mode */
   perMode: Record<TravelMode, TerrainModeProps>;
+  /** Elevation in levels (integer >= 0). Omitted = default terrain elevation. */
+  elevation?: number;
   /** Location terrain type for weather system mapping (e.g., 'forest', 'plains').
    *  Used to sync map terrain with the location/weather system.
    *  Context-dependent terrains like Water and Road omit this and use adjacency logic instead. */
@@ -96,6 +101,8 @@ export interface TileModel {
   markerIds: MarkerId[];
   /** Link IDs attached to this tile */
   linkIds: LinkId[];
+  /** Per-tile elevation override. Omitted = use terrain elevation. */
+  elevationOverride?: number;
 }
 
 // ============================================================================
@@ -177,6 +184,11 @@ export interface MapModel {
   name: string;
   /** Optional description */
   description?: string;
+
+  /** Vision regime for players. */
+  visionMode: VisionMode;
+  /** Sight range in tiles (Chebyshev). Omitted = default sight range. */
+  sightRangeTiles?: number;
 
   /** Fixed scale: miles per tile */
   scaleMilesPerTile: MapScale;

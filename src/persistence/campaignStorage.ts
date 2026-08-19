@@ -46,6 +46,7 @@ const hydrateMapState = (maps: any): CampaignState['maps'] => {
   for (const [mapId, map] of Object.entries(maps.mapsById as Record<string, any>)) {
     hydratedMaps[mapId] = {
       ...map,
+      visionMode: map.visionMode ?? 'lineOfSight',
       revealedTileIds: new Set(map.revealedTileIds || []),
     };
   }

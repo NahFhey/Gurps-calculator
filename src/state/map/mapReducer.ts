@@ -15,6 +15,7 @@ import {
   MAP_SET_ACTIVE,
   MAP_SET_TILE_TERRAIN,
   MAP_STAMP_TERRAIN,
+  MAP_SET_TILE_ELEVATION,
   MAP_ADD_TERRAIN,
   MAP_UPDATE_TERRAIN,
   MAP_REMOVE_TERRAIN,
@@ -36,6 +37,8 @@ import {
   expandMapIfNeeded,
   expandMapIfNeededForPaint,
 } from '../../utils/mapUtils';
+import { MAX_ELEVATION } from '../../constants/map';
+import { computeVisibleTiles } from '../../utils/lineOfSight';
 
 /**
  * Process map actions on the campaign state draft.
@@ -101,6 +104,11 @@ export function handleMapAction(
       if (map) {
         if (changes.name !== undefined) map.name = changes.name;
         if (changes.description !== undefined) map.description = changes.description;
+        if (changes.visionMode !== undefined) map.visionMode = changes.visionMode;
+        if (changes.sightRangeTiles !== undefined) {
+          const range = Number.isFinite(changes.sightRangeTiles) ? changes.sightRangeTiles : 1;
+          map.sightRangeTiles = Math.max(1, Math.min(30, Math.round(range)));
+        }
       }
       return;
     }
@@ -143,6 +151,24 @@ export function handleMapAction(
           }
         }
         map.lastPlacedTerrainId = terrainId;
+      }
+      return;
+    }
+
+    case MAP_SET_TILE_ELEVATION: {
+      const { mapId, tileIds, elevation } = action.payload;
+      const map = maps.mapsById[mapId];
+      if (map) {
+        for (const tileId of tileIds) {
+          const tile = map.tilesById[tileId];
+          if (!tile) continue;
+          if (elevation === null) {
+            delete tile.elevationOverride;
+          } else {
+            const level = Number.isFinite(elevation) ? elevation : 0;
+            tile.elevationOverride = Math.max(0, Math.min(MAX_ELEVATION, Math.round(level)));
+          }
+        }
       }
       return;
     }
@@ -291,6 +317,13 @@ export function handleMapAction(
       const map = maps.mapsById[mapId];
       if (map) {
         map.partyTileId = tileId;
+        if (tileId && map.visionMode === 'lineOfSight') {
+          for (const visibleTileId of computeVisibleTiles(map, [tileId])) {
+            map.revealedTileIds.add(visibleTileId);
+          }
+          const expanded = expandMapIfNeeded(map);
+          if (expanded !== map) maps.mapsById[mapId] = expanded;
+        }
       }
       return;
     }
@@ -330,6 +363,11 @@ export function handleMapAction(
       // 2. Reveal all route tiles
       for (const tileId of routeTileIds) {
         map.revealedTileIds.add(tileId);
+      }
+      if (map.visionMode === 'lineOfSight') {
+        for (const visibleTileId of computeVisibleTiles(map, [destinationTileId])) {
+          map.revealedTileIds.add(visibleTileId);
+        }
       }
 
       // 3. Expand map if needed

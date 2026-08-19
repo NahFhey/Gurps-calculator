@@ -8,6 +8,7 @@ import {
   MAP_SET_ACTIVE,
   MAP_SET_TILE_TERRAIN,
   MAP_STAMP_TERRAIN,
+  MAP_SET_TILE_ELEVATION,
   MAP_ADD_TERRAIN,
   MAP_UPDATE_TERRAIN,
   MAP_REMOVE_TERRAIN,
@@ -85,6 +86,7 @@ function makeMinimalMap(id: string, terrainId = 't-plains'): MapModel {
   return {
     id,
     name: `map-${id}`,
+    visionMode: 'lineOfSight',
     scaleMilesPerTile: 12,
     rows: 1,
     cols: 3,
@@ -184,6 +186,21 @@ describe('mapReducer', () => {
       expect(next.maps.mapsById['m1'].description).toBe('desc');
     });
 
+    it('MAP_UPDATE applies vision settings and clamps the integer sight range', () => {
+      state.maps.mapsById = { m1: makeMinimalMap('m1') };
+      const next = applyAction(state, {
+        type: MAP_UPDATE,
+        payload: { mapId: 'm1', changes: { visionMode: 'open', sightRangeTiles: 40.7 } },
+      });
+      expect(next.maps.mapsById.m1.visionMode).toBe('open');
+      expect(next.maps.mapsById.m1.sightRangeTiles).toBe(30);
+      const lower = applyAction(next, {
+        type: MAP_UPDATE,
+        payload: { mapId: 'm1', changes: { sightRangeTiles: -4 } },
+      });
+      expect(lower.maps.mapsById.m1.sightRangeTiles).toBe(1);
+    });
+
     it('MAP_UPDATE is a no-op when mapId does not exist', () => {
       const next = applyAction(state, {
         type: MAP_UPDATE,
@@ -237,6 +254,29 @@ describe('mapReducer', () => {
         payload: { mapId: 'm1', tileIds: ['ghost'], terrainId: 't-stamp' },
       });
       expect(next.maps.mapsById['m1'].lastPlacedTerrainId).toBe('t-stamp');
+    });
+
+    it('MAP_SET_TILE_ELEVATION sets and clamps one tile', () => {
+      const next = applyAction(state, {
+        type: MAP_SET_TILE_ELEVATION,
+        payload: { mapId: 'm1', tileIds: ['m1-a'], elevation: 23.8 },
+      });
+      expect(next.maps.mapsById.m1.tilesById['m1-a'].elevationOverride).toBe(20);
+    });
+
+    it('MAP_SET_TILE_ELEVATION updates many tiles and clears overrides', () => {
+      const set = applyAction(state, {
+        type: MAP_SET_TILE_ELEVATION,
+        payload: { mapId: 'm1', tileIds: ['m1-a', 'm1-c'], elevation: 3.4 },
+      });
+      expect(set.maps.mapsById.m1.tilesById['m1-a'].elevationOverride).toBe(3);
+      expect(set.maps.mapsById.m1.tilesById['m1-c'].elevationOverride).toBe(3);
+      const cleared = applyAction(set, {
+        type: MAP_SET_TILE_ELEVATION,
+        payload: { mapId: 'm1', tileIds: ['m1-a', 'm1-c'], elevation: null },
+      });
+      expect(cleared.maps.mapsById.m1.tilesById['m1-a'].elevationOverride).toBeUndefined();
+      expect(cleared.maps.mapsById.m1.tilesById['m1-c'].elevationOverride).toBeUndefined();
     });
   });
 
@@ -391,6 +431,26 @@ describe('mapReducer', () => {
       expect(next.maps.mapsById['m1'].partyTileId).toBe('m1-c');
       expect(next.maps.mapsById['m2'].partyTileId).toBeNull();
     });
+
+    it('MAP_SET_PARTY_TILE reveals LOS-visible tiles in line-of-sight mode', () => {
+      state.maps.mapsById.m1.revealedTileIds = new Set(['m1-a']);
+      const next = applyAction(state, {
+        type: MAP_SET_PARTY_TILE,
+        payload: { mapId: 'm1', tileId: 'm1-c' },
+      });
+      expect(next.maps.mapsById.m1.revealedTileIds.has('m1-b')).toBe(true);
+      expect(next.maps.mapsById.m1.revealedTileIds.has('m1-c')).toBe(true);
+    });
+
+    it('MAP_SET_PARTY_TILE does not auto-reveal in open mode', () => {
+      state.maps.mapsById.m1.visionMode = 'open';
+      state.maps.mapsById.m1.revealedTileIds = new Set(['m1-a']);
+      const next = applyAction(state, {
+        type: MAP_SET_PARTY_TILE,
+        payload: { mapId: 'm1', tileId: 'm1-c' },
+      });
+      expect(next.maps.mapsById.m1.revealedTileIds).toEqual(new Set(['m1-a']));
+    });
   });
 
   describe('travel wizard', () => {
@@ -462,6 +522,21 @@ describe('mapReducer', () => {
         },
       });
       expect(next.maps.pendingTerrainAssignment).toEqual(['m1-b']);
+    });
+
+    it('reveals tiles visible from the destination in line-of-sight mode', () => {
+      state.maps.mapsById.m1.revealedTileIds = new Set(['m1-a']);
+      const next = applyAction(state, {
+        type: MAP_EXECUTE_TRAVEL,
+        payload: {
+          mapId: 'm1',
+          routeTileIds: ['m1-a', 'm1-c'],
+          destinationTileId: 'm1-c',
+          mode: 'foot',
+          gmOverride: false,
+        },
+      });
+      expect(next.maps.mapsById.m1.revealedTileIds.has('m1-b')).toBe(true);
     });
 
     it('is a no-op when mapId does not exist', () => {

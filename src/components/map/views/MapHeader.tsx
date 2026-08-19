@@ -4,8 +4,8 @@
 
 import { useState } from 'react';
 import type { MapModel, MapId } from '../../../types/map';
-import { MAP_SCALES } from '../../../constants/map';
-import { Plus, Map as MapIcon, ChevronDown, Navigation, MapPinned } from 'lucide-react';
+import { DEFAULT_SIGHT_RANGE_TILES, MAP_SCALES } from '../../../constants/map';
+import { Plus, Map as MapIcon, ChevronDown, Navigation, MapPinned, Settings } from 'lucide-react';
 
 interface MapHeaderProps {
   maps: Record<MapId, MapModel>;
@@ -25,6 +25,9 @@ interface MapHeaderProps {
   isPlacingParty?: boolean;
   /** Called to cancel party-placement mode */
   onCancelPlaceParty?: () => void;
+  onUpdateMapSettings?: (
+    changes: Partial<Pick<MapModel, 'visionMode' | 'sightRangeTiles'>>
+  ) => void;
 }
 
 export function MapHeader({
@@ -39,8 +42,10 @@ export function MapHeader({
   onPlaceParty,
   isPlacingParty,
   onCancelPlaceParty,
+  onUpdateMapSettings,
 }: MapHeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const activeMap = activeMapId ? maps[activeMapId] : null;
   const mapList = Object.values(maps);
 
@@ -146,6 +151,59 @@ export function MapHeader({
             Move to Map
           </button>
         ) : null
+      )}
+
+      {/* Map settings popover (GM only) */}
+      {isGmMode && activeMap && (
+        <div className="relative">
+          <button
+            type="button"
+            aria-label="Map settings"
+            title="Map settings"
+            onClick={() => setSettingsOpen((open) => !open)}
+            className="rounded p-2 text-gray-300 hover:bg-gray-700/70 hover:text-white"
+          >
+            <Settings className="h-4 w-4" />
+          </button>
+          {settingsOpen && (
+            <>
+              <div className="fixed inset-0 z-20" onClick={() => setSettingsOpen(false)} />
+              <div className="absolute right-0 top-full z-30 mt-1 w-64 space-y-3 rounded-lg border border-gray-600 bg-gray-800 p-3 shadow-xl">
+                <div>
+                  <label htmlFor="map-vision-mode" className="mb-1 block text-xs font-medium text-gray-300">
+                    Vision
+                  </label>
+                  <select
+                    id="map-vision-mode"
+                    value={activeMap.visionMode ?? 'lineOfSight'}
+                    onChange={(event) => onUpdateMapSettings?.({
+                      visionMode: event.target.value === 'open' ? 'open' : 'lineOfSight',
+                    })}
+                    className="w-full rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-sm text-gray-200"
+                  >
+                    <option value="lineOfSight">Line of sight</option>
+                    <option value="open">Open</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="map-sight-range" className="mb-1 block text-xs font-medium text-gray-300">
+                    Sight range
+                  </label>
+                  <input
+                    id="map-sight-range"
+                    type="number"
+                    min={1}
+                    max={30}
+                    step={1}
+                    value={activeMap.sightRangeTiles ?? DEFAULT_SIGHT_RANGE_TILES}
+                    onChange={(event) => onUpdateMapSettings?.({ sightRangeTiles: event.target.valueAsNumber })}
+                    className="w-full rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-sm text-gray-200"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       )}
 
       {/* Create map button (GM only) */}
