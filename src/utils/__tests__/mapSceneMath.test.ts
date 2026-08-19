@@ -44,18 +44,18 @@ describe('map scene camera math', () => {
     expect(input).toEqual(state());
   });
 
-  it('converts drag pixels to opposite world movement at azimuth zero', () => {
+  it('moves the camera target with the drag direction at azimuth zero', () => {
     const input = { ...state(), azimuth: 0, distance: 10 };
     const result = dragPan(input, 100, 50, 1000, 45, 30, 30);
-    expect(result.targetX).toBeLessThan(input.targetX);
-    expect(result.targetZ).toBeLessThan(input.targetZ);
-    expect(input.targetX - result.targetX).toBeCloseTo(2 * (input.targetZ - result.targetZ), 5);
+    expect(result.targetX).toBeGreaterThan(input.targetX);
+    expect(result.targetZ).toBeGreaterThan(input.targetZ);
+    expect(result.targetX - input.targetX).toBeCloseTo(2 * (result.targetZ - input.targetZ), 5);
   });
 
   it('rotates drag-pan movement by azimuth', () => {
     const input = { ...state(), azimuth: Math.PI / 2, distance: 10 };
     const result = dragPan(input, 100, 0, 1000, 45, 30, 30);
-    expect(result.targetZ).toBeLessThan(input.targetZ);
+    expect(result.targetZ).toBeGreaterThan(input.targetZ);
     expect(result.targetX).toBeCloseTo(input.targetX, 5);
   });
 

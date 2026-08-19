@@ -5,6 +5,7 @@ import { getEffectiveElevation } from '../../../utils/lineOfSight';
 import {
   MapScene,
   type MapSceneCallbacks,
+  type MapToken,
   type TilePointerEvent,
 } from '../three/MapScene';
 
@@ -16,6 +17,8 @@ interface Map3DViewProps {
   selectedTileIds?: Set<TileId>;
   routeTileIds?: TileId[];
   reachableTileIds?: Set<TileId>;
+  /** Combat/actor tokens rendered on tiles (category-colored spheres). */
+  tokens?: MapToken[];
   paintModeActive: boolean;
   placingParty: boolean;
   onTileClick?: (tileId: TileId, row: number, col: number) => void;
@@ -93,6 +96,7 @@ export function Map3DView(props: Map3DViewProps) {
       selectedTileIds: props.selectedTileIds ?? null,
       routeTileIds: props.routeTileIds ?? null,
       reachableTileIds: props.reachableTileIds ?? null,
+      tokens: props.tokens ?? null,
       paintModeActive: props.paintModeActive,
       placingParty: props.placingParty,
     });
@@ -104,6 +108,7 @@ export function Map3DView(props: Map3DViewProps) {
     props.selectedTileIds,
     props.routeTileIds,
     props.reachableTileIds,
+    props.tokens,
     props.paintModeActive,
     props.placingParty,
     sceneReady,

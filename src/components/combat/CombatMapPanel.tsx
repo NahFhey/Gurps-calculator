@@ -9,6 +9,7 @@ import { Sparkles } from 'lucide-react';
 import type { MapModel, TileId } from '../../types/map';
 import type { Participant, CombatState } from '../../types/combatTracker';
 import { Map3DView } from '../map/views/Map3DView';
+import type { MapToken } from '../map/three/MapScene';
 import { useCombatSession } from '../../hooks/useCombatSession';
 import { useEffectiveRole } from '../../hooks/useEffectiveRole';
 import { useCampaignStore } from '../../state/campaignStore';
@@ -27,6 +28,22 @@ function categoryColorClass(cat: string): string {
       return 'bg-yellow-500 border-yellow-300';
     default:
       return 'bg-gray-500 border-gray-300';
+  }
+}
+
+/** Hex color for a participant category's 3D token. */
+function categoryTokenColor(cat: string): string {
+  switch (cat) {
+    case 'pc':
+      return '#3b82f6';
+    case 'ally':
+      return '#22c55e';
+    case 'enemy':
+      return '#ef4444';
+    case 'neutral':
+      return '#eab308';
+    default:
+      return '#9ca3af';
   }
 }
 
@@ -84,6 +101,24 @@ export function CombatMapPanel({
     return computeVisibleTiles(linkedMap, positions);
   }, [linkedMap, isPlayer, isGmMode, displayName, (state as any).multiplayer?.playerCharacters, participants]);
 
+  // 3D tokens for placed participants (participants prop is already view-filtered)
+  const tokens = useMemo<MapToken[] | undefined>(() => {
+    if (!linkedMap) return undefined;
+    const result: MapToken[] = [];
+    for (const p of participants) {
+      if (!p.position) continue;
+      const tileId = linkedMap.grid[p.position.r]?.[p.position.q];
+      if (!tileId) continue;
+      result.push({
+        tileId,
+        color: categoryTokenColor(p.category),
+        isCurrent: p.instanceId === currentActorInstanceId,
+        isSelected: p.instanceId === selectedParticipantId,
+      });
+    }
+    return result.length > 0 ? result : undefined;
+  }, [linkedMap, participants, currentActorInstanceId, selectedParticipantId]);
+
   if (!linkedMap) {
     return (
       <div className="h-full w-full flex items-center justify-center text-gray-500 text-sm">
@@ -139,6 +174,7 @@ export function CombatMapPanel({
         visionMode={linkedMap.visionMode}
         routeTileIds={losTileIds}
         visibleTileIds={visibleTileIds}
+        tokens={tokens}
         paintModeActive={false}
         placingParty={false}
         onTileClick={handleTileClick}

@@ -286,7 +286,7 @@ export default function EncounterSetup() {
     if (character.category === 'enemy' && quantity > 1) {
       // Create numbered enemies
       const numbered = createNumberedEnemies(character.name, quantity, character);
-      setParticipants([...participants, ...numbered]);
+      setParticipants(prev => [...prev, ...numbered]);
     } else {
       // Add single character
       const participant: Participant = {
@@ -307,7 +307,7 @@ export default function EncounterSetup() {
         isFromParty: character.isFromParty || false,
         partyCharacterId: character.partyCharacterId
       };
-      setParticipants([...participants, participant]);
+      setParticipants(prev => [...prev, participant]);
     }
   };
 

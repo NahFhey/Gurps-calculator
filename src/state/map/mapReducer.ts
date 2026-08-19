@@ -123,13 +123,16 @@ export function handleMapAction(
     // ========================================================================
 
     case MAP_SET_TILE_TERRAIN: {
-      const { mapId, tileId, terrainId } = action.payload;
+      const { mapId, tileId, terrainId, elevationOverride } = action.payload;
       const map = maps.mapsById[mapId];
       if (map) {
         const tile = map.tilesById[tileId];
         if (tile) {
           tile.terrainId = terrainId;
           map.lastPlacedTerrainId = terrainId;
+          if (elevationOverride !== undefined && Number.isFinite(elevationOverride)) {
+            tile.elevationOverride = Math.max(0, Math.min(MAX_ELEVATION, Math.round(elevationOverride)));
+          }
         }
         // Expand map if painting near edge
         const expanded = expandMapIfNeededForPaint(map);

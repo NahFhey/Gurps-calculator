@@ -648,6 +648,29 @@ function PartyStashView({
       return;
     }
 
+    // Phase 12a.5 user story #4: item transfers to a character-owned
+    // inventory flow through the inventory bus's itemRetagged action, which
+    // moves the ItemInstance to the character's inventory record (creating it
+    // if missing). Tools and currency have no bus action and use the manual
+    // path below.
+    const retaggedItemId = transferState.type === 'item' ? transferState.itemId : undefined;
+    if (retaggedItemId && targetInv.ownerType === 'character' && targetInv.ownerId) {
+      const item = sourceInv.items.find(i => i.id === retaggedItemId);
+      if (!item) {
+        alert('Item not found in source inventory');
+        return;
+      }
+      actions.retagItem(retaggedItemId, targetInv.ownerId);
+      actions.addLogEntry(inventoryLog.itemTransferred(
+        item.name ?? 'Unknown',
+        getInventoryLabel(sourceInv, characters),
+        getInventoryLabel(targetInv, characters),
+        item.quantity
+      ));
+      setTransferState(null);
+      return;
+    }
+
     // Create updated inventories
     let updatedSource = { ...sourceInv };
     let updatedTarget = { ...targetInv };
@@ -901,7 +924,7 @@ function PartyStashView({
                 className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
               >
                 <option value="">Select destination</option>
-                {partyInventories
+                {inventories
                   .filter((inv) => inv.id !== transferState.sourceInventoryId)
                   .map((inv) => (
                     <option key={inv.id} value={inv.id}>

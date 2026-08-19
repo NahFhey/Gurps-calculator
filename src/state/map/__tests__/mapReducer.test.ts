@@ -228,6 +228,21 @@ describe('mapReducer', () => {
       });
       expect(next.maps.mapsById['m1'].tilesById['m1-b'].terrainId).toBe('t-new');
       expect(next.maps.mapsById['m1'].lastPlacedTerrainId).toBe('t-new');
+      expect(next.maps.mapsById['m1'].tilesById['m1-b'].elevationOverride).toBeUndefined();
+    });
+
+    it('MAP_SET_TILE_TERRAIN paints a clamped elevation override when provided', () => {
+      const next = applyAction(state, {
+        type: MAP_SET_TILE_TERRAIN,
+        payload: { mapId: 'm1', tileId: 'm1-b', terrainId: 't-new', elevationOverride: 25.6 },
+      });
+      expect(next.maps.mapsById['m1'].tilesById['m1-b'].elevationOverride).toBe(20);
+      const repaint = applyAction(next, {
+        type: MAP_SET_TILE_TERRAIN,
+        payload: { mapId: 'm1', tileId: 'm1-b', terrainId: 't-plains' },
+      });
+      // Painting without an elevation leaves the existing override alone
+      expect(repaint.maps.mapsById['m1'].tilesById['m1-b'].elevationOverride).toBe(20);
     });
 
     it('MAP_SET_TILE_TERRAIN is a no-op for unknown map', () => {

@@ -1,6 +1,6 @@
 # Phase 12a.5 — Inventory Integration Bus
 
-**Status:** Implemented 2026-06-09 (code + tests complete; table verification session pending)
+**Status:** Implemented 2026-06-09 (code + tests complete). **Table-verified 2026-08-19** (browser table session, seed campaign): crafting completion → party stash, gathering (fishing) success → food pool with correct type, loot distribution → party pool + individual inventory all confirmed end-to-end with no hand-editing. One gap: in-scope user story #4 (hand-retag party → character) has no UI path — the Party Stash Transfer Console filters destinations to `ownerType === 'party'` only (InventoryTab.tsx ~629), leaving an empty destination list; the `itemRetagged` reducer action works but is unreachable. Fix in progress 2026-08-19.
 **Created:** 2026-04-28
 **Sequence:** Inserted between Phase 12a (complete) and Phase 12b (deferred)
 **Origin:** Design concept reached via grilling session 2026-04-28
@@ -187,7 +187,7 @@ Phase 12a.5 adds an `owner` field to inventory items. Existing saves predate thi
 - [x] Migration round-trip test + idempotency test passing. (dataMigration.test.ts + campaignStorage.test.ts)
 - [x] `tsc --noEmit` clean.
 - [x] `ROADMAP.md` updated to insert Phase 12a.5 section between 12a and 12b. (was already present; status updated)
-- [ ] A live session at the table where crafting / gathering / loot all produce visible inventory changes without hand-editing.
+- [x] A live session at the table where crafting / gathering / loot all produce visible inventory changes without hand-editing. (2026-08-19, browser table session: short-sword → party stash, River Trout Meat → food pool, Ogre Hide → party pool, Healing Potion → Mira's inventory. Story #4 hand-retag gap found — see Status.)
 
 ---
 

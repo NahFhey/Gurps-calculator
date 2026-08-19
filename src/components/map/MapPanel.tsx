@@ -37,6 +37,8 @@ export function MapPanel() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [interactionMode, setInteractionMode] = useState<MapInteractionMode>('view');
   const [selectedTerrainId, setSelectedTerrainId] = useState<TerrainId | null>(null);
+  /** Elevation to paint with; null = terrain default (leave overrides alone). */
+  const [paintElevation, setPaintElevation] = useState<number | null>(null);
   const [selectedTileIds, setSelectedTileIds] = useState<Set<TileId>>(new Set());
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [elevationDialogTileIds, setElevationDialogTileIds] = useState<TileId[] | null>(null);
@@ -147,20 +149,20 @@ export function MapPanel() {
       if (showTravelWizard) return; // Disable painting during travel
       if (interactionMode === 'paint' && selectedTerrainId && isGmMode) {
         if (maps.activeMapId) {
-          actions.mapSetTileTerrain(maps.activeMapId, tileId, selectedTerrainId);
+          actions.mapSetTileTerrain(maps.activeMapId, tileId, selectedTerrainId, paintElevation ?? undefined);
         }
       }
     },
-    [interactionMode, selectedTerrainId, isGmMode, maps.activeMapId, actions, showTravelWizard]
+    [interactionMode, selectedTerrainId, isGmMode, maps.activeMapId, actions, showTravelWizard, paintElevation]
   );
 
   const handleTilePaintEnter = useCallback(
     (tileId: TileId) => {
       if (!showTravelWizard && selectedTerrainId && isGmMode && maps.activeMapId) {
-        actions.mapSetTileTerrain(maps.activeMapId, tileId, selectedTerrainId);
+        actions.mapSetTileTerrain(maps.activeMapId, tileId, selectedTerrainId, paintElevation ?? undefined);
       }
     },
-    [showTravelWizard, selectedTerrainId, isGmMode, maps.activeMapId, actions]
+    [showTravelWizard, selectedTerrainId, isGmMode, maps.activeMapId, actions, paintElevation]
   );
 
   // Context menu
@@ -348,6 +350,8 @@ export function MapPanel() {
             terrains={Object.values(activeMap.terrainById)}
             selectedTerrainId={selectedTerrainId}
             interactionMode={interactionMode}
+            paintElevation={paintElevation}
+            onSetPaintElevation={setPaintElevation}
             onSelectTerrain={handleSelectTerrain}
             onSetMode={setInteractionMode}
             onAddTerrain={() => setShowTerrainEditor(true)}

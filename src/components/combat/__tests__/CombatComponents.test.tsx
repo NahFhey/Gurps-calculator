@@ -99,6 +99,7 @@ vi.mock('../../../types/characterSheet', () => ({
 
 import { useCombatStore } from '../../../hooks/useCombatStore';
 import { useCampaignStore } from '../../../state/campaignStore';
+import { generateId } from '../../../utils/combatHelpers';
 import ViewModeToggle from '../ViewModeToggle';
 import ConditionBadge from '../ConditionBadge';
 import CombatHistory from '../CombatHistory';
@@ -427,5 +428,30 @@ describe('EncounterSetup', () => {
 
     const clearButton = screen.getByText('Clear');
     expect(clearButton).toBeDisabled();
+  });
+
+  it('adds all party characters to the encounter when Add All is clicked', () => {
+    // Unique ids per participant so React keys don't collide
+    let idCounter = 0;
+    vi.mocked(generateId).mockImplementation(() => `participant-${++idCounter}`);
+
+    const names = ['Aria', 'Brom', 'Cira', 'Dorn'];
+    setupCombatStore({
+      partyCharacters: names.map((name, i) => ({ id: `party-${i + 1}`, name })),
+    });
+
+    render(<EncounterSetup />);
+
+    fireEvent.click(screen.getByTitle('Add all party characters to encounter'));
+
+    // Empty-encounter placeholder is gone
+    expect(
+      screen.queryByText('Add participants from the party or library')
+    ).not.toBeInTheDocument();
+
+    // Each character appears twice: once in the party list, once in Current Encounter
+    for (const name of names) {
+      expect(screen.getAllByText(name)).toHaveLength(2);
+    }
   });
 });

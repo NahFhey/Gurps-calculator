@@ -97,7 +97,8 @@ export type SetActiveMapAction = {
 
 export type SetTileTerrainAction = {
   type: typeof MAP_SET_TILE_TERRAIN;
-  payload: { mapId: MapId; tileId: TileId; terrainId: TerrainId };
+  /** elevationOverride: absent = leave the tile's override alone; a number = paint that elevation. */
+  payload: { mapId: MapId; tileId: TileId; terrainId: TerrainId; elevationOverride?: number };
 };
 
 export type StampTerrainAction = {

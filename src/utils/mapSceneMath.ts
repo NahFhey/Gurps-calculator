@@ -50,8 +50,8 @@ export function dragPan(
 ): CameraState {
   if (viewportHeightPx <= 0) return { ...s };
   const worldPerPx = 2 * s.distance * Math.tan((fovDeg * Math.PI / 180) / 2) / viewportHeightPx;
-  const localX = -dxPx * worldPerPx;
-  const localZ = -dyPx * worldPerPx;
+  const localX = dxPx * worldPerPx;
+  const localZ = dyPx * worldPerPx;
   const cos = Math.cos(s.azimuth);
   const sin = Math.sin(s.azimuth);
   return pan(s, localX * cos - localZ * sin, localX * sin + localZ * cos, cols, rows);

@@ -31,6 +31,17 @@ export interface MapSceneCallbacks {
 
 export type FogMode = 'gm' | 'player-los' | 'player-open';
 
+/** A combat/actor token rendered on a tile (distinct from the overworld party sphere). */
+export interface MapToken {
+  tileId: TileId;
+  /** CSS color for the token body (e.g. category color). */
+  color: string;
+  /** Current actor: rendered larger with a white base ring. */
+  isCurrent?: boolean;
+  /** Selected token: yellow base ring. */
+  isSelected?: boolean;
+}
+
 export interface MapSceneFrameData {
   map: MapModel;
   fog: FogMode;
@@ -38,6 +49,7 @@ export interface MapSceneFrameData {
   selectedTileIds: Set<TileId> | null;
   routeTileIds: TileId[] | null;
   reachableTileIds: Set<TileId> | null;
+  tokens: MapToken[] | null;
   paintModeActive: boolean;
   placingParty: boolean;
 }
@@ -78,6 +90,7 @@ export class MapScene {
   private partyGroup: THREE.Group | null = null;
   private markerGroup: THREE.Group | null = null;
   private linkGroup: THREE.Group | null = null;
+  private tokenGroup: THREE.Group | null = null;
   private markerTexture: THREE.CanvasTexture | null = null;
   private pickEntries: PickEntry[] = [];
   private renderedTileIds = new Set<TileId>();
@@ -127,7 +140,8 @@ export class MapScene {
       || oldData.map.rows !== data.map.rows
       || oldData.map.cols !== data.map.cols
       || oldData.fog !== data.fog
-      || oldData.visibleTileIds !== data.visibleTileIds;
+      || oldData.visibleTileIds !== data.visibleTileIds
+      || oldData.tokens !== data.tokens;
     if (rebuildTiles) this.rebuildWorld();
     else this.rebuildOverlays();
     this.applyCamera();
@@ -396,6 +410,7 @@ export class MapScene {
     this.buildTiles();
     this.buildMarkersAndLinks();
     this.buildParty();
+    this.buildTokens();
     this.rebuildOverlays();
   }
 
@@ -551,6 +566,43 @@ export class MapScene {
     this.scene.add(group);
   }
 
+  private buildTokens(): void {
+    if (!this.data?.tokens?.length) return;
+    const group = new THREE.Group();
+    for (const token of this.data.tokens) {
+      if (!this.renderedTileIds.has(token.tileId)) continue;
+      const position = findTileGridPos(this.data.map, token.tileId);
+      if (!position) continue;
+      const height = this.tileHeight(token.tileId);
+      const radius = token.isCurrent ? 0.26 : 0.2;
+      const sphere = new THREE.Mesh(
+        new THREE.SphereGeometry(radius, 16, 12),
+        new THREE.MeshBasicMaterial({ color: token.color })
+      );
+      sphere.position.set(position.col + 0.5, height + radius, position.row + 0.5);
+      group.add(sphere);
+      if (token.isCurrent || token.isSelected) {
+        const ring = new THREE.Mesh(
+          new THREE.RingGeometry(radius + 0.04, radius + 0.12, 24),
+          new THREE.MeshBasicMaterial({
+            color: token.isCurrent ? '#ffffff' : '#facc15',
+            transparent: true,
+            opacity: 0.85,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+          })
+        );
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.set(position.col + 0.5, height + 0.015, position.row + 0.5);
+        group.add(ring);
+      }
+    }
+    if (group.children.length > 0) {
+      this.tokenGroup = group;
+      this.scene.add(group);
+    }
+  }
+
   private buildMarkersAndLinks(): void {
     if (!this.data) return;
     const markerGroup = new THREE.Group();
@@ -642,9 +694,11 @@ export class MapScene {
     this.disposeGroup(this.partyGroup);
     this.disposeGroup(this.markerGroup);
     this.disposeGroup(this.linkGroup);
+    this.disposeGroup(this.tokenGroup);
     this.partyGroup = null;
     this.markerGroup = null;
     this.linkGroup = null;
+    this.tokenGroup = null;
     this.pickEntries = [];
     this.renderedTileIds.clear();
   }

@@ -278,7 +278,7 @@ type CampaignStoreValue = {
     mapDeleteMap: (mapId: MapId) => void;
     mapUpdateMap: (mapId: MapId, changes: Partial<Pick<MapModel, 'name' | 'description' | 'visionMode' | 'sightRangeTiles'>>) => void;
     mapSetActiveMap: (mapId: MapId | null) => void;
-    mapSetTileTerrain: (mapId: MapId, tileId: TileId, terrainId: TerrainId) => void;
+    mapSetTileTerrain: (mapId: MapId, tileId: TileId, terrainId: TerrainId, elevationOverride?: number) => void;
     mapStampTerrain: (mapId: MapId, tileIds: TileId[], terrainId: TerrainId) => void;
     mapSetTileElevation: (mapId: MapId, tileIds: TileId[], elevation: number | null) => void;
     mapAddTerrain: (mapId: MapId, terrain: TerrainModel) => void;
@@ -592,8 +592,8 @@ export function CampaignStoreProvider({
       mapUpdateMap: (mapId: MapId, changes: Partial<Pick<MapModel, 'name' | 'description' | 'visionMode' | 'sightRangeTiles'>>) =>
         dispatch({ type: 'map/updateMap', payload: { mapId, changes } }),
       mapSetActiveMap: (mapId: MapId | null) => dispatch({ type: 'map/setActiveMap', payload: mapId }),
-      mapSetTileTerrain: (mapId: MapId, tileId: TileId, terrainId: TerrainId) =>
-        dispatch({ type: 'map/setTileTerrain', payload: { mapId, tileId, terrainId } }),
+      mapSetTileTerrain: (mapId: MapId, tileId: TileId, terrainId: TerrainId, elevationOverride?: number) =>
+        dispatch({ type: 'map/setTileTerrain', payload: { mapId, tileId, terrainId, elevationOverride } }),
       mapStampTerrain: (mapId: MapId, tileIds: TileId[], terrainId: TerrainId) =>
         dispatch({ type: 'map/stampTerrain', payload: { mapId, tileIds, terrainId } }),
       mapSetTileElevation: (mapId: MapId, tileIds: TileId[], elevation: number | null) =>

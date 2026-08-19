@@ -1,6 +1,6 @@
 # Phase 12a.6 — Combat Condition Visibility
 
-**Status:** CODE COMPLETE — session 1 (data + filter + migrations) 2026-07-04; session 2 (eye widget + badge rewrite + tooltip) 2026-07-12; session 3 (two-surface popover + overflow pills) 2026-07-12. Only live table verification remains.
+**Status:** CODE COMPLETE — session 1 (data + filter + migrations) 2026-07-04; session 2 (eye widget + badge rewrite + tooltip) 2026-07-12; session 3 (two-surface popover + overflow pills) 2026-07-12. **Table-verified 2026-08-19** (browser table session, seed campaign) on the tracker and timeline surfaces: catalog-seeded eye defaults, three-state cycle, NPC-only eyes, player-view filtering (closed omitted / half → "Afflicted" / open full), log filtering, density caps 4+"+1" and 3+"+2", pills → popover — all confirmed. **The map surface is unreachable:** `combat.mapId` has no writer anywhere in src/, so CombatMainArea and the token-legend condition button are dead code until a combat↔map link exists. Design decision needed before this phase can fully close.
 **Created:** 2026-05-03
 **Sequence:** Inserted between Phase 12a.5 (Inventory Integration Bus, planned) and Phase 12b (GCS Import Improvements, deferred)
 **Origin:** Design concept reached via grilling session 2026-05-03
@@ -156,8 +156,10 @@ entry point) are sessions 2–3.
   land immediately on both surfaces; Escape/outside-click close; player view
   shows no GM entry points and eye-filtered counts only. No console errors.
 
-**Remaining:** live table verification (map surface included — the browser
-run had no linked map), then merge.
+**Remaining:** the map surface — table verification 2026-08-19 found it
+unreachable (no writer for `combat.mapId` in src/; no UI links a combat to a
+map, so the token-legend entry point cannot render). Needs a combat↔map link
+design decision. Tracker + timeline surfaces are fully verified.
 
 ---
 

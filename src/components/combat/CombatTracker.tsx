@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Map as MapIcon } from 'lucide-react';
+import { useCampaignStore } from '../../state/campaignStore';
 import { useCombatStore } from '../../hooks/useCombatStore';
 import { useCombatExport } from '../../hooks/useCombatExport';
 import { useActionResolution } from '../../hooks/useActionResolution';
@@ -78,6 +80,8 @@ export default function CombatTracker() {
     combatReveal,
     saveCombatReveal,
   } = useCombatStore();
+  const { state: campaignState } = useCampaignStore();
+  const availableMaps = Object.values(campaignState.maps.mapsById);
 
   // Post-combat flow state (Phase 11c)
   type PostCombatPhase = 'active' | 'summary' | 'loot';
@@ -620,6 +624,30 @@ export default function CombatTracker() {
         gmMode={gmMode}
         setGmMode={setGmMode}
       />
+
+      {/* Battle map link (GM only) — linking switches the shell into map-combat layout */}
+      {gmMode && (
+        <div className="flex items-center gap-2 bg-gray-800 rounded-lg px-3 py-2">
+          <MapIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-300">Battle Map</span>
+          <select
+            aria-label="Battle map"
+            value={combat.mapId ?? ''}
+            onChange={(e) =>
+              saveCombatActive({ ...combat, mapId: e.target.value || undefined })
+            }
+            className="flex-1 min-w-0 rounded border border-gray-600 bg-gray-900 px-2 py-1 text-sm text-gray-200"
+          >
+            <option value="">None (tracker only)</option>
+            {availableMaps.map((m) => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
+          {!combat.mapId && (
+            <span className="text-xs text-gray-500">tokens, movement &amp; LOS need a map</span>
+          )}
+        </div>
+      )}
 
       <InitiativeTimeline
         participants={combatView.participants}
