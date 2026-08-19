@@ -54,6 +54,14 @@ export function useSyncContext(): SyncContextValue {
   return ctx;
 }
 
+/**
+ * Like useSyncContext, but returns null when no <SyncProvider> is mounted
+ * (offline / single-machine play). Consumers must treat null as "not connected".
+ */
+export function useSyncContextOptional(): SyncContextValue | null {
+  return useContext(SyncContext);
+}
+
 // ---------------------------------------------------------------------------
 // Provider
 // ---------------------------------------------------------------------------

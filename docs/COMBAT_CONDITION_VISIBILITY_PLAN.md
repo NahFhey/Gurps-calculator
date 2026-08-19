@@ -161,6 +161,19 @@ unreachable (no writer for `combat.mapId` in src/; no UI links a combat to a
 map, so the token-legend entry point cannot render). Needs a combat↔map link
 design decision. Tracker + timeline surfaces are fully verified.
 
+**Update (2026-08-19, later):** 6cea50a added a GM-only Battle Map selector, so
+the `combat.mapId` writer now exists. Linking a map exposed a latent crash —
+CombatMapPanel's `useEffectiveRole` threw `useSyncContext must be used inside
+<SyncProvider>` because no SyncProvider is mounted anywhere; fixed by adding
+`useSyncContextOptional` and falling back to offline-GM defaults. Re-verified:
+the map layout now mounts and renders, but the condition entry point is STILL
+unreachable — CombatMainArea gates `onOpenConditions` on `ctx.gmMode`
+(CombatContext-local state, default false) and nothing in the map layout calls
+`setGmMode`, so the layout is permanently player-locked (the GM also sees
+anonymized enemy names there). Needs a decision on which GM-mode source the
+map layout respects (`ui.gmModeEnabled` vs combatUIStore view mode) before the
+map surface can be table-verified.
+
 ---
 
 ## Problem

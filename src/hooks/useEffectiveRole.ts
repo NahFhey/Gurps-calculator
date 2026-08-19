@@ -6,7 +6,7 @@
  */
 
 import { useMemo } from 'react';
-import { useSyncContext } from '../net/SyncProvider';
+import { useSyncContextOptional } from '../net/SyncProvider';
 import { Role } from '../../shared/session';
 
 export interface EffectiveRoleInfo {
@@ -25,7 +25,12 @@ export interface EffectiveRoleInfo {
 }
 
 export function useEffectiveRole(): EffectiveRoleInfo {
-  const { status, role, displayName } = useSyncContext();
+  // No <SyncProvider> mounted (offline / single-machine play) behaves the same
+  // as a disconnected provider: effective role falls back to GM.
+  const sync = useSyncContextOptional();
+  const status = sync?.status ?? 'disconnected';
+  const role = sync?.role ?? null;
+  const displayName = sync?.displayName ?? null;
 
   return useMemo(() => {
     const isOnline = status === 'connected' && role !== null;

@@ -11,6 +11,7 @@ const { mockUseSyncContext } = vi.hoisted(() => ({
 
 vi.mock('../../net/SyncProvider', () => ({
   useSyncContext: mockUseSyncContext,
+  useSyncContextOptional: mockUseSyncContext,
 }));
 
 import { useEffectiveRole } from '../useEffectiveRole';
@@ -105,6 +106,17 @@ describe('useEffectiveRole', () => {
 
     const { result } = renderHook(() => useEffectiveRole());
 
+    expect(result.current.displayName).toBeNull();
+  });
+
+  it('falls back to offline GM defaults when no SyncProvider is mounted', () => {
+    mockUseSyncContext.mockReturnValue(null);
+
+    const { result } = renderHook(() => useEffectiveRole());
+
+    expect(result.current.effectiveRole).toBe(Role.GM);
+    expect(result.current.isOnline).toBe(false);
+    expect(result.current.canEdit).toBe(true);
     expect(result.current.displayName).toBeNull();
   });
 });
