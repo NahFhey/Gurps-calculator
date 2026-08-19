@@ -47,3 +47,6 @@ fix_tests.sh
 *.skill
 eval-review-vtt-skill.html
 zinxKdJt
+
+# graphify knowledge graph (generated, local to a checkout)
+graphify-out/

@@ -20,6 +20,7 @@ import compression from 'compression';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
+import { pathToFileURL } from 'url';
 import { initDB, setDataDir, saveDB } from './db.js';
 import { setupRoutes } from './routes.js';
 import { setupSocket } from './socket.js';
@@ -174,9 +175,8 @@ export async function startServer(options?: StartServerOptions): Promise<ServerH
 }
 
 // Auto-start when run directly (not imported by Electron)
-const entryArg = process.argv[1]?.replace(/\\/g, '/');
-const thisUrl = import.meta.url.replace('file:///', '').replace('file://', '');
-if (entryArg && (thisUrl.endsWith(entryArg) || entryArg.endsWith('index.js'))) {
+const entryArg = process.argv[1];
+if (entryArg && import.meta.url === pathToFileURL(entryArg).href) {
   startServer().catch((err) => {
     console.error('[Server] Failed to start:', err);
     process.exit(1);

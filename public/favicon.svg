@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="42%" r="65%">
+      <stop offset="0%" stop-color="#3b2440"/>
+      <stop offset="100%" stop-color="#171226"/>
+    </radialGradient>
+    <linearGradient id="faceTop" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffb347"/>
+      <stop offset="100%" stop-color="#ff8c42"/>
+    </linearGradient>
+    <linearGradient id="faceLeft" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e2571a"/>
+      <stop offset="100%" stop-color="#b83e12"/>
+    </linearGradient>
+    <linearGradient id="faceRight" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#a03410"/>
+      <stop offset="100%" stop-color="#7c260c"/>
+    </linearGradient>
+  </defs>
+
+  <!-- rounded-square badge -->
+  <rect x="4" y="4" width="120" height="120" rx="26" fill="url(#glow)"/>
+  <rect x="4" y="4" width="120" height="120" rx="26" fill="none"
+        stroke="#ff8c42" stroke-opacity="0.35" stroke-width="3"/>
+
+  <!-- isometric d6 -->
+  <g stroke="#171226" stroke-width="2.5" stroke-linejoin="round">
+    <!-- top face -->
+    <path d="M64 26 L96 44 L64 62 L32 44 Z" fill="url(#faceTop)"/>
+    <!-- left face -->
+    <path d="M32 44 L64 62 L64 100 L32 82 Z" fill="url(#faceLeft)"/>
+    <!-- right face -->
+    <path d="M96 44 L64 62 L64 100 L96 82 Z" fill="url(#faceRight)"/>
+  </g>
+
+  <!-- pips: 1 on top, 2 on left, 3 on right -->
+  <g fill="#171226">
+    <ellipse cx="64" cy="44" rx="6.5" ry="4"/>
+  </g>
+  <g fill="#ffd9a8">
+    <ellipse cx="42" cy="60" rx="4" ry="5" transform="rotate(-12 42 60)"/>
+    <ellipse cx="54" cy="84" rx="4" ry="5" transform="rotate(-12 54 84)"/>
+    <ellipse cx="86" cy="60" rx="4" ry="5" transform="rotate(12 86 60)"/>
+    <ellipse cx="80" cy="72" rx="4" ry="5" transform="rotate(12 80 72)"/>
+    <ellipse cx="74" cy="84" rx="4" ry="5" transform="rotate(12 74 84)"/>
+  </g>
+
+  <!-- ember spark above the die -->
+  <path d="M64 12 C61 17 66 19 64 23 C69 21 68 16 64 12 Z"
+        fill="#ffb347" fill-opacity="0.9"/>
+</svg>
