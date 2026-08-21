@@ -31,6 +31,37 @@ function categoryColorClass(cat: string): string {
   }
 }
 
+/** The participant whose token occupies the given grid cell, if any. */
+export function findOccupantAt(
+  participants: Participant[],
+  row: number,
+  col: number,
+): Participant | undefined {
+  return participants.find((p) => p.position?.r === row && p.position?.q === col);
+}
+
+/**
+ * Whether a token may be picked up by drag.
+ * GM: any token. Player: only the current actor, with movement available.
+ */
+export function canDragToken(
+  occupant: Participant | undefined,
+  opts: {
+    isGmMode: boolean;
+    currentActorInstanceId: string;
+    movementBudgetYards: number;
+    hasMovedThisTurn: boolean;
+  },
+): boolean {
+  if (!occupant) return false;
+  if (opts.isGmMode) return true;
+  return (
+    occupant.instanceId === opts.currentActorInstanceId &&
+    !opts.hasMovedThisTurn &&
+    opts.movementBudgetYards > 0
+  );
+}
+
 /** Hex color for a participant category's 3D token. */
 function categoryTokenColor(cat: string): string {
   switch (cat) {
@@ -80,16 +111,23 @@ export function CombatMapPanel({
   const { isPlayer, displayName } = useEffectiveRole();
   const { state } = useCampaignStore();
 
-  // Per-player fog-of-war: compute visible tiles from player's character positions
+  // Per-player fog-of-war: compute visible tiles from player's character positions.
+  // With no multiplayer assignment (offline hotseat), the whole party provides
+  // vision — otherwise the player view is a black void with nothing pickable.
   const visibleTileIds = useMemo(() => {
-    if (!linkedMap || !isPlayer || isGmMode) return undefined;
+    // Keyed off the VIEW, not the multiplayer role: offline hotseat has no
+    // Player role (effective role is GM), but player view still needs vision.
+    if (!linkedMap || isGmMode) return undefined;
     const assignedCharIds = displayName
       ? (state as any).multiplayer?.playerCharacters[displayName] ?? []
       : [];
-    // Find positions of assigned characters among participants
+    const isVisionSource = (p: Participant): boolean =>
+      assignedCharIds.length > 0
+        ? !!p.id && assignedCharIds.includes(p.id)
+        : p.category === 'player' || p.category === 'ally';
     const positions: TileId[] = [];
     for (const p of participants) {
-      if (p.position && p.id && assignedCharIds.includes(p.id)) {
+      if (p.position && isVisionSource(p)) {
         const row = p.position.r;
         const col = p.position.q;
         if (linkedMap.grid[row]?.[col]) {
@@ -165,6 +203,53 @@ export function CombatMapPanel({
     ],
   );
 
+  // Drag-to-move: pointer-down on a draggable token starts a drag (empty terrain still orbits).
+  const handleTokenDragStart = useCallback(
+    (_tileId: TileId, row: number, col: number) => {
+      const occupant = findOccupantAt(participants, row, col);
+      const draggable = canDragToken(occupant, {
+        isGmMode,
+        currentActorInstanceId,
+        movementBudgetYards,
+        hasMovedThisTurn,
+      });
+      if (draggable) onSelectParticipant(occupant!.instanceId);
+      return draggable;
+    },
+    [
+      participants,
+      isGmMode,
+      currentActorInstanceId,
+      movementBudgetYards,
+      hasMovedThisTurn,
+      onSelectParticipant,
+    ],
+  );
+
+  const handleTokenDrop = useCallback(
+    (from: { tileId: TileId; row: number; col: number }, to: { tileId: TileId; row: number; col: number }) => {
+      const occupant = findOccupantAt(participants, from.row, from.col);
+      if (!occupant) return;
+      // No stacking: dropping onto an occupied tile cancels the drag.
+      if (findOccupantAt(participants, to.row, to.col)) return;
+      if (isGmMode) {
+        onGmPlaceToken(occupant.instanceId, to.tileId, to.row, to.col);
+      } else if (occupant.instanceId === currentActorInstanceId) {
+        // Same cost model as click-to-move.
+        onMoveTo(to.tileId, [to.tileId], 1);
+      }
+      onSelectParticipant(null);
+    },
+    [
+      participants,
+      isGmMode,
+      currentActorInstanceId,
+      onGmPlaceToken,
+      onMoveTo,
+      onSelectParticipant,
+    ],
+  );
+
   return (
     <div className="flex-1 w-full min-h-0 relative flex flex-col">
       {/* The map surface fills the container */}
@@ -178,6 +263,8 @@ export function CombatMapPanel({
         paintModeActive={false}
         placingParty={false}
         onTileClick={handleTileClick}
+        onTokenDragStart={handleTokenDragStart}
+        onTokenDrop={handleTokenDrop}
       />
 
       {/* Token legend — positioned absolutely over the map surface */}

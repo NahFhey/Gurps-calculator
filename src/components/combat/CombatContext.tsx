@@ -144,11 +144,17 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
     combatReveal,
     saveCombatReveal,
   } = useCombatStore();
-  const { state: campaignState } = useCampaignStore();
+  const { state: campaignState, actions: campaignActions } = useCampaignStore();
+
+  // GM mode follows the app-wide toggle (Manager tab); the map combat layout
+  // has no toggle of its own, so this is what unlocks its GM surfaces.
+  const gmMode = campaignState.ui.gmModeEnabled;
+  const setGmMode = campaignActions.setGmMode;
 
   // Local UI state
-  const [viewMode, setViewMode] = useState<ViewModeType>(ViewMode.PLAYER);
-  const [gmMode, setGmMode] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewModeType>(
+    gmMode ? ViewMode.GM : ViewMode.PLAYER,
+  );
   const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
   const [diceExpression, setDiceExpression] = useState('3d6');
   const [rollTarget, setRollTarget] = useState('');
@@ -188,9 +194,11 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
     }
   }, [combat, reveal]);
 
-  // GM mode sync
+  // View follows GM mode: full truth when the app-wide GM toggle is on,
+  // player view otherwise. setViewMode stays exposed for a future in-layout
+  // spoiler-check toggle.
   useEffect(() => {
-    if (!gmMode && viewMode === ViewMode.GM) setViewMode(ViewMode.PLAYER);
+    setViewMode(gmMode ? ViewMode.GM : ViewMode.PLAYER);
   }, [gmMode]);
 
   // Early return — render children with null context if no combat

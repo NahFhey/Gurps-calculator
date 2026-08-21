@@ -24,6 +24,12 @@ export type MarkerId = string;
 /** Unique identifier for a link (portal) */
 export type LinkId = string;
 
+/** Unique identifier for an image layer */
+export type ImageLayerId = string;
+
+/** Unique identifier for a structure layer */
+export type StructureLayerId = string;
+
 // ============================================================================
 // TRAVEL MODES
 // ============================================================================
@@ -170,6 +176,68 @@ export interface LinkModel {
 }
 
 // ============================================================================
+// IMAGE LAYERS
+// ============================================================================
+
+/**
+ * Where an image layer renders relative to the tile geometry.
+ * - "underlay": skins the floor at its elevation (play visual; raised tiles poke through)
+ * - "overlay": always drawn on top of the scene (tracing reference while authoring)
+ */
+export type ImageLayerPlacement = 'underlay' | 'overlay';
+
+/**
+ * An imported image (e.g. a battlemap) positioned on the map grid.
+ * Stored as a base64 data URL, downscaled on import.
+ */
+export interface MapImageLayer {
+  id: ImageLayerId;
+  name: string;
+  /** Base64 data URL of the (downscaled) image */
+  src: string;
+  placement: ImageLayerPlacement;
+  /** Render opacity, 0..1 */
+  opacity: number;
+  visible: boolean;
+  /** Only rendered for the GM (tracing references that players should never see) */
+  gmOnly: boolean;
+  /** Top-left corner in tile units: x = column, y = row */
+  x: number;
+  y: number;
+  /** Size in tile units */
+  width: number;
+  height: number;
+  /** Elevation (in levels) of the floor this image sits on/above */
+  elevation: number;
+}
+
+// ============================================================================
+// STRUCTURE LAYERS
+// ============================================================================
+
+/**
+ * A structure layer: a sparse sheet of terrain-painted cells floating at an
+ * elevation offset above the ground grid. Layers stack to build multi-story
+ * structures (upper floors, bridges, walkways) on top of the base heightfield.
+ *
+ * Cells are keyed by the ground tile's stable TileId, so layers survive map
+ * expansion. Structure layers are visual/tactical only in v1 — they do not
+ * affect travel routing or line-of-sight.
+ */
+export interface StructureLayer {
+  id: StructureLayerId;
+  /** Display name (e.g. "Second Floor", "Bridge") */
+  name: string;
+  /** Bottom of the layer, in elevation levels above 0 */
+  baseElevation: number;
+  /** Slab thickness in levels (integer >= 1) */
+  heightLevels: number;
+  /** Painted cells: ground TileId -> terrain used for the cell */
+  cells: Record<TileId, TerrainId>;
+  visible: boolean;
+}
+
+// ============================================================================
 // MAP MODEL
 // ============================================================================
 
@@ -215,6 +283,12 @@ export interface MapModel {
 
   /** Links keyed by LinkId */
   linksById: Record<LinkId, LinkModel>;
+
+  /** Imported image under/overlays, in render order. Absent on older maps. */
+  imageLayers?: MapImageLayer[];
+
+  /** Structure layers stacked above the ground grid, bottom to top. Absent on older maps. */
+  structureLayers?: StructureLayer[];
 
   /**
    * Set of revealed tile IDs (global reveal for the map).

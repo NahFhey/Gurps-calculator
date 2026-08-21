@@ -10,10 +10,14 @@ import type {
   TerrainId,
   MarkerId,
   LinkId,
+  ImageLayerId,
+  StructureLayerId,
   MapScale,
   TerrainModel,
   MarkerModel,
   LinkModel,
+  MapImageLayer,
+  StructureLayer,
   TravelWizardState,
   TravelMode,
   MapModel,
@@ -47,6 +51,17 @@ export const MAP_REMOVE_MARKER = 'map/removeMarker' as const;
 // Links
 export const MAP_ADD_LINK = 'map/addLink' as const;
 export const MAP_REMOVE_LINK = 'map/removeLink' as const;
+
+// Image layers
+export const MAP_ADD_IMAGE_LAYER = 'map/addImageLayer' as const;
+export const MAP_UPDATE_IMAGE_LAYER = 'map/updateImageLayer' as const;
+export const MAP_REMOVE_IMAGE_LAYER = 'map/removeImageLayer' as const;
+
+// Structure layers
+export const MAP_ADD_STRUCTURE_LAYER = 'map/addStructureLayer' as const;
+export const MAP_UPDATE_STRUCTURE_LAYER = 'map/updateStructureLayer' as const;
+export const MAP_REMOVE_STRUCTURE_LAYER = 'map/removeStructureLayer' as const;
+export const MAP_SET_STRUCTURE_CELLS = 'map/setStructureCells' as const;
 
 // Reveal & position
 export const MAP_REVEAL_TILES = 'map/revealTiles' as const;
@@ -151,6 +166,46 @@ export type RemoveLinkAction = {
   payload: { mapId: MapId; linkId: LinkId };
 };
 
+export type AddImageLayerAction = {
+  type: typeof MAP_ADD_IMAGE_LAYER;
+  payload: { mapId: MapId; layer: MapImageLayer };
+};
+
+export type UpdateImageLayerAction = {
+  type: typeof MAP_UPDATE_IMAGE_LAYER;
+  payload: { mapId: MapId; layerId: ImageLayerId; changes: Partial<Omit<MapImageLayer, 'id'>> };
+};
+
+export type RemoveImageLayerAction = {
+  type: typeof MAP_REMOVE_IMAGE_LAYER;
+  payload: { mapId: MapId; layerId: ImageLayerId };
+};
+
+export type AddStructureLayerAction = {
+  type: typeof MAP_ADD_STRUCTURE_LAYER;
+  payload: { mapId: MapId; layer: StructureLayer };
+};
+
+export type UpdateStructureLayerAction = {
+  type: typeof MAP_UPDATE_STRUCTURE_LAYER;
+  payload: {
+    mapId: MapId;
+    layerId: StructureLayerId;
+    changes: Partial<Omit<StructureLayer, 'id' | 'cells'>>;
+  };
+};
+
+export type RemoveStructureLayerAction = {
+  type: typeof MAP_REMOVE_STRUCTURE_LAYER;
+  payload: { mapId: MapId; layerId: StructureLayerId };
+};
+
+export type SetStructureCellsAction = {
+  type: typeof MAP_SET_STRUCTURE_CELLS;
+  /** terrainId null = erase the cells from the layer */
+  payload: { mapId: MapId; layerId: StructureLayerId; tileIds: TileId[]; terrainId: TerrainId | null };
+};
+
 export type RevealTilesAction = {
   type: typeof MAP_REVEAL_TILES;
   payload: { mapId: MapId; tileIds: TileId[] };
@@ -210,6 +265,13 @@ export type MapAction =
   | RemoveMarkerAction
   | AddLinkAction
   | RemoveLinkAction
+  | AddImageLayerAction
+  | UpdateImageLayerAction
+  | RemoveImageLayerAction
+  | AddStructureLayerAction
+  | UpdateStructureLayerAction
+  | RemoveStructureLayerAction
+  | SetStructureCellsAction
   | RevealTilesAction
   | SetPartyTileAction
   | SetTravelWizardAction
@@ -238,6 +300,13 @@ const MAP_ACTION_TYPES = new Set<string>([
   MAP_REMOVE_MARKER,
   MAP_ADD_LINK,
   MAP_REMOVE_LINK,
+  MAP_ADD_IMAGE_LAYER,
+  MAP_UPDATE_IMAGE_LAYER,
+  MAP_REMOVE_IMAGE_LAYER,
+  MAP_ADD_STRUCTURE_LAYER,
+  MAP_UPDATE_STRUCTURE_LAYER,
+  MAP_REMOVE_STRUCTURE_LAYER,
+  MAP_SET_STRUCTURE_CELLS,
   MAP_REVEAL_TILES,
   MAP_SET_PARTY_TILE,
   MAP_SET_TRAVEL_WIZARD,

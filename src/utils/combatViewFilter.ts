@@ -79,6 +79,7 @@ interface FilteredParticipant {
   _reveal: RevealEntry;
   basicSpeed?: number;
   dx?: number;
+  position?: Participant['position'];
   maxHP?: NumericTruthValue;
   maxFP?: NumericTruthValue;
   maxMP?: NumericTruthValue;
@@ -215,6 +216,10 @@ function filterParticipant(
   // Copy non-secret combat stats (always visible for UI purposes)
   filtered.basicSpeed = participant.basicSpeed;
   filtered.dx = participant.dx;
+  // Board position is public — a token on the shared map is visible to everyone;
+  // concealment is fog/LOS's job, not field-stripping (dropping it made player
+  // view render zero tokens).
+  filtered.position = participant.position;
   filtered.maxHP = participant.maxHP || participant.hp;
   filtered.maxFP = participant.maxFP || participant.fp;
   filtered.maxMP = participant.maxMP || participant.mp;

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { MapModel, TileId } from '../../../types/map';
+import type { MapImageLayer, MapModel, TerrainId, TileId } from '../../../types/map';
 import { getEffectiveElevation } from '../../../utils/lineOfSight';
 import {
   cameraPosition,
@@ -25,8 +25,21 @@ export interface MapSceneCallbacks {
   onTilePaintStart(tileId: TileId, row: number, col: number, ev: TilePointerEvent): void;
   onTilePaintEnter(tileId: TileId, row: number, col: number, ev: TilePointerEvent): void;
   onHoverTile(info: { tileId: TileId; row: number; col: number; clientX: number; clientY: number } | null): void;
+  /**
+   * Return true to begin dragging the token on this tile (left-drag).
+   * When false/absent, a left-drag on the tile orbits the camera as usual.
+   */
+  onTokenDragStart?(tileId: TileId, row: number, col: number): boolean;
+  /** A token drag ended over a different tile. */
+  onTokenDrop?(from: TokenDragTile, to: TokenDragTile): void;
   onContextLost?(): void;
   onContextRestored?(): void;
+}
+
+export interface TokenDragTile {
+  tileId: TileId;
+  row: number;
+  col: number;
 }
 
 export type FogMode = 'gm' | 'player-los' | 'player-open';
@@ -68,6 +81,8 @@ interface PointerDrag {
   lastY: number;
   dragged: boolean;
   lastPaintedTileId: TileId | null;
+  /** Set when the drag started on a draggable token — moves the token, not the camera. */
+  tokenFrom: PickEntry | null;
 }
 
 const TILE_LIFT = 0.35;
@@ -87,6 +102,10 @@ export class MapScene {
   private data: MapSceneFrameData | null = null;
   private tileMesh: THREE.InstancedMesh | null = null;
   private overlayMesh: THREE.InstancedMesh | null = null;
+  private structureMesh: THREE.InstancedMesh | null = null;
+  private imageGroup: THREE.Group | null = null;
+  /** Data-URL textures cached per image layer so paint rebuilds don't re-decode. */
+  private readonly imageTextures = new Map<string, { src: string; texture: THREE.Texture }>();
   private partyGroup: THREE.Group | null = null;
   private markerGroup: THREE.Group | null = null;
   private linkGroup: THREE.Group | null = null;
@@ -180,6 +199,8 @@ export class MapScene {
     cancelAnimationFrame(this.animationFrame);
     this.unbindEvents();
     this.disposeWorld();
+    for (const entry of this.imageTextures.values()) entry.texture.dispose();
+    this.imageTextures.clear();
     this.markerTexture?.dispose();
     this.markerTexture = null;
     this.renderer?.dispose();
@@ -259,12 +280,19 @@ export class MapScene {
       lastY: event.clientY,
       dragged: false,
       lastPaintedTileId: null,
+      tokenFrom: null,
     };
     if (event.button === 0 && this.data?.paintModeActive) {
       const hit = this.pick(event.clientX, event.clientY);
       if (hit) {
         this.pointerDrag.lastPaintedTileId = hit.tileId;
         this.callbacks.onTilePaintStart(hit.tileId, hit.row, hit.col, event);
+      }
+    } else if (event.button === 0 && this.callbacks.onTokenDragStart) {
+      const hit = this.pick(event.clientX, event.clientY);
+      if (hit && this.callbacks.onTokenDragStart(hit.tileId, hit.row, hit.col)) {
+        this.pointerDrag.tokenFrom = hit;
+        this.canvas.style.cursor = 'grabbing';
       }
     }
   };
@@ -285,6 +313,9 @@ export class MapScene {
         drag.lastPaintedTileId = hit.tileId;
         this.callbacks.onTilePaintEnter(hit.tileId, hit.row, hit.col, event);
       }
+    } else if (drag.tokenFrom) {
+      // Token drag: the hover ring tracks the drop target; the camera stays put.
+      this.updateHover(event.clientX, event.clientY);
     } else if (drag.dragged && this.data) {
       const dx = event.clientX - drag.lastX;
       const dy = event.clientY - drag.lastY;
@@ -319,7 +350,13 @@ export class MapScene {
     this.pointerDrag = null;
     if (!drag) return;
     this.canvas.releasePointerCapture?.(event.pointerId);
-    if (!drag.dragged && !(drag.button === 0 && this.data?.paintModeActive)) {
+    if (drag.tokenFrom) this.canvas.style.cursor = '';
+    if (drag.tokenFrom && drag.dragged) {
+      const hit = this.pick(event.clientX, event.clientY);
+      if (hit && hit.tileId !== drag.tokenFrom.tileId) {
+        this.callbacks.onTokenDrop?.(drag.tokenFrom, hit);
+      }
+    } else if (!drag.dragged && !(drag.button === 0 && this.data?.paintModeActive)) {
       const hit = this.pick(event.clientX, event.clientY);
       if (hit && drag.button === 0) {
         this.callbacks.onTileClick(hit.tileId, hit.row, hit.col, event);
@@ -408,6 +445,8 @@ export class MapScene {
     if (!this.data) return;
     this.disposeWorld();
     this.buildTiles();
+    this.buildStructures();
+    this.buildImageLayers();
     this.buildMarkersAndLinks();
     this.buildParty();
     this.buildTokens();
@@ -484,7 +523,12 @@ export class MapScene {
     if (!this.data) return;
     const tile = this.data.map.tilesById[tileId];
     const terrain = tile?.terrainId ? this.data.map.terrainById[tile.terrainId] : null;
-    color.setStyle(terrain?.color ?? '#1f2937');
+    this.setTerrainColorWithFog(color, terrain?.color ?? '#1f2937', tileId);
+  }
+
+  private setTerrainColorWithFog(color: THREE.Color, style: string, tileId: TileId): void {
+    if (!this.data) return;
+    color.setStyle(style);
     if (this.data.fog === 'gm' && !this.data.map.revealedTileIds.has(tileId)) {
       color.multiplyScalar(0.4);
     } else if (
@@ -495,6 +539,111 @@ export class MapScene {
       const luminance = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;
       color.lerp(new THREE.Color(luminance, luminance, luminance), 0.7).multiplyScalar(0.5);
     }
+  }
+
+  private buildStructures(): void {
+    if (!this.data) return;
+    const cells: Array<{ row: number; col: number; terrainId: TerrainId; base: number; height: number }> = [];
+    for (const layer of this.data.map.structureLayers ?? []) {
+      if (!layer.visible) continue;
+      for (const [tileId, terrainId] of Object.entries(layer.cells)) {
+        if (!this.renderedTileIds.has(tileId)) continue;
+        const position = findTileGridPos(this.data.map, tileId);
+        if (!position) continue;
+        cells.push({
+          ...position,
+          terrainId,
+          base: layer.baseElevation,
+          height: Math.max(1, layer.heightLevels),
+        });
+      }
+    }
+    if (cells.length === 0) return;
+
+    const geometry = this.createTileGeometry();
+    const material = new THREE.MeshBasicMaterial({ vertexColors: true });
+    const mesh = new THREE.InstancedMesh(geometry, material, cells.length);
+    const dummy = new THREE.Object3D();
+    const color = new THREE.Color();
+    cells.forEach((cell, index) => {
+      const top = (cell.base + cell.height) * TILE_LIFT;
+      dummy.position.set(cell.col + 0.5, top, cell.row + 0.5);
+      dummy.scale.set(0.98, cell.height * TILE_LIFT, 0.98);
+      dummy.rotation.set(0, 0, 0);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(index, dummy.matrix);
+      const tileId = this.data!.map.grid[cell.row][cell.col];
+      const terrain = this.data!.map.terrainById[cell.terrainId];
+      this.setTerrainColorWithFog(color, terrain?.color ?? '#6b7280', tileId);
+      mesh.setColorAt(index, color);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    this.structureMesh = mesh;
+    this.scene.add(mesh);
+  }
+
+  private imageLayerIsRendered(layer: MapImageLayer): boolean {
+    if (!this.data || !layer.visible) return false;
+    // Player LOS fog can't clip an image plane, so images would leak hidden
+    // map areas — skip them entirely in that regime.
+    if (this.data.fog === 'player-los') return false;
+    if (layer.gmOnly && this.data.fog !== 'gm') return false;
+    return true;
+  }
+
+  private getImageTexture(layer: MapImageLayer): THREE.Texture {
+    const cached = this.imageTextures.get(layer.id);
+    if (cached && cached.src === layer.src) return cached.texture;
+    cached?.texture.dispose();
+    const texture = new THREE.TextureLoader().load(layer.src, () => {
+      this.needsRender = true;
+    });
+    texture.colorSpace = THREE.SRGBColorSpace;
+    this.imageTextures.set(layer.id, { src: layer.src, texture });
+    return texture;
+  }
+
+  private buildImageLayers(): void {
+    if (!this.data) return;
+    const layers = (this.data.map.imageLayers ?? []).filter((layer) => this.imageLayerIsRendered(layer));
+    // Drop cached textures for layers that no longer exist.
+    const liveIds = new Set((this.data.map.imageLayers ?? []).map((layer) => layer.id));
+    for (const [id, entry] of this.imageTextures) {
+      if (!liveIds.has(id)) {
+        entry.texture.dispose();
+        this.imageTextures.delete(id);
+      }
+    }
+    if (layers.length === 0) return;
+
+    const group = new THREE.Group();
+    layers.forEach((layer, index) => {
+      const overlay = layer.placement === 'overlay';
+      const material = new THREE.MeshBasicMaterial({
+        map: this.getImageTexture(layer),
+        transparent: true,
+        opacity: Math.max(0, Math.min(1, layer.opacity)),
+        depthWrite: false,
+        depthTest: !overlay,
+        side: THREE.DoubleSide,
+      });
+      const plane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
+      plane.rotation.x = -Math.PI / 2;
+      plane.scale.set(layer.width, layer.height, 1);
+      // Skin the tops of tiles at this elevation (same floor formula as tileHeight),
+      // so an underlay at the map's ground level draws over the ground tiles.
+      plane.position.set(
+        layer.x + layer.width / 2,
+        Math.max(layer.elevation * TILE_LIFT, BASE_PLATE) + 0.01 + index * 0.001,
+        layer.y + layer.height / 2
+      );
+      // Overlays skip the depth test; renderOrder keeps them above everything.
+      plane.renderOrder = overlay ? 1000 + index : 0;
+      group.add(plane);
+    });
+    this.imageGroup = group;
+    this.scene.add(group);
   }
 
   private rebuildOverlays(): void {
@@ -690,6 +839,24 @@ export class MapScene {
       this.overlayMesh.geometry.dispose();
       this.disposeMaterial(this.overlayMesh.material);
       this.overlayMesh = null;
+    }
+    if (this.structureMesh) {
+      this.scene.remove(this.structureMesh);
+      this.structureMesh.geometry.dispose();
+      this.disposeMaterial(this.structureMesh.material);
+      this.structureMesh = null;
+    }
+    if (this.imageGroup) {
+      // Materials are disposed here; the shared textures live in imageTextures
+      // and are released in dispose() or when their layer disappears.
+      this.scene.remove(this.imageGroup);
+      this.imageGroup.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          object.geometry.dispose();
+          this.disposeMaterial(object.material);
+        }
+      });
+      this.imageGroup = null;
     }
     this.disposeGroup(this.partyGroup);
     this.disposeGroup(this.markerGroup);

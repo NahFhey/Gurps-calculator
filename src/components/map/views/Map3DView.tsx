@@ -7,6 +7,7 @@ import {
   type MapSceneCallbacks,
   type MapToken,
   type TilePointerEvent,
+  type TokenDragTile,
 } from '../three/MapScene';
 
 interface Map3DViewProps {
@@ -25,6 +26,9 @@ interface Map3DViewProps {
   onTileContextMenu?: (tileId: TileId, row: number, col: number, e: TilePointerEvent) => void;
   onTilePaintStart?: (tileId: TileId, row: number, col: number) => void;
   onTilePaintEnter?: (tileId: TileId, row: number, col: number) => void;
+  /** Return true to begin dragging the token on this tile (left-drag moves it instead of orbiting). */
+  onTokenDragStart?: (tileId: TileId, row: number, col: number) => boolean;
+  onTokenDrop?: (from: TokenDragTile, to: TokenDragTile) => void;
 }
 
 interface HoverInfo {
@@ -61,6 +65,9 @@ export function Map3DView(props: Map3DViewProps) {
         propsRef.current.onTilePaintEnter?.(tileId, row, col);
       },
       onHoverTile: setHover,
+      onTokenDragStart: (tileId, row, col) =>
+        propsRef.current.onTokenDragStart?.(tileId, row, col) ?? false,
+      onTokenDrop: (from, to) => propsRef.current.onTokenDrop?.(from, to),
       onContextLost: () => setUnavailable(true),
       onContextRestored: () => setUnavailable(false),
     };

@@ -5,8 +5,8 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useCampaignStore } from '../../state/campaignStore';
-import type { MapScale, TerrainId, TerrainModel, TileId, MarkerModel, LinkModel, TravelMode } from '../../types/map';
-import { SCALE_TO_MODES } from '../../constants/map';
+import type { MapScale, StructureLayer, StructureLayerId, TerrainId, TerrainModel, TileId, MarkerModel, LinkModel, TravelMode } from '../../types/map';
+import { MAX_ELEVATION, SCALE_TO_MODES } from '../../constants/map';
 import { findRoute, getReachableTiles } from '../../utils/mapRouter';
 import { computeVisibleTiles } from '../../utils/lineOfSight';
 import { Map3DView } from './views/Map3DView';
@@ -22,6 +22,7 @@ import { LinksMenu } from './views/LinksMenu';
 import { TravelWizard } from './views/TravelWizard';
 import { TerrainAssignmentModal } from './views/TerrainAssignmentModal';
 import { ElevationDialog } from './views/ElevationDialog';
+import { ImageLayersDialog } from './views/ImageLayersDialog';
 import { Map as MapIcon, ExternalLink } from 'lucide-react';
 
 /** Interaction mode for the map */
@@ -43,6 +44,13 @@ export function MapPanel() {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [elevationDialogTileIds, setElevationDialogTileIds] = useState<TileId[] | null>(null);
 
+  // Structure layer painting state (null = paint the ground grid)
+  const [activeStructureLayerId, setActiveStructureLayerId] = useState<StructureLayerId | null>(null);
+  const [structureEraseMode, setStructureEraseMode] = useState(false);
+
+  // Image layers dialog
+  const [showImageLayers, setShowImageLayers] = useState(false);
+
   // Marker/Link editor state
   const [markerEditorTileId, setMarkerEditorTileId] = useState<TileId | null>(null);
   const [linkEditorTileId, setLinkEditorTileId] = useState<TileId | null>(null);
@@ -53,6 +61,12 @@ export function MapPanel() {
 
   // Party placement state (when party is not yet on this map)
   const [isPlacingParty, setIsPlacingParty] = useState(false);
+
+  // The structure layer painting currently targets (guards against stale ids after map switch/delete)
+  const activeStructureLayer = useMemo(
+    () => activeMap?.structureLayers?.find((l) => l.id === activeStructureLayerId) ?? null,
+    [activeMap, activeStructureLayerId]
+  );
 
   // Travel wizard state
   const [showTravelWizard, setShowTravelWizard] = useState(false);
@@ -127,7 +141,14 @@ export function MapPanel() {
         return;
       }
 
-      if (interactionMode === 'paint' && selectedTerrainId && isGmMode) {
+      if (interactionMode === 'paint' && isGmMode && activeStructureLayer && (structureEraseMode || selectedTerrainId)) {
+        actions.mapSetStructureCells(
+          maps.activeMapId,
+          activeStructureLayer.id,
+          [tileId],
+          structureEraseMode ? null : selectedTerrainId
+        );
+      } else if (interactionMode === 'paint' && selectedTerrainId && isGmMode) {
         actions.mapSetTileTerrain(maps.activeMapId, tileId, selectedTerrainId);
       } else if (interactionMode === 'select') {
         setSelectedTileIds((prev) => {
@@ -141,28 +162,40 @@ export function MapPanel() {
         });
       }
     },
-    [activeMap, maps.activeMapId, interactionMode, selectedTerrainId, isGmMode, actions, showTravelWizard, travelStep, travelMode, isPlacingParty]
+    [activeMap, maps.activeMapId, interactionMode, selectedTerrainId, isGmMode, actions, showTravelWizard, travelStep, travelMode, isPlacingParty, activeStructureLayer, structureEraseMode]
+  );
+
+  const paintTile = useCallback(
+    (tileId: TileId) => {
+      if (!maps.activeMapId) return;
+      if (activeStructureLayer) {
+        if (!structureEraseMode && !selectedTerrainId) return;
+        actions.mapSetStructureCells(
+          maps.activeMapId,
+          activeStructureLayer.id,
+          [tileId],
+          structureEraseMode ? null : selectedTerrainId
+        );
+      } else if (selectedTerrainId) {
+        actions.mapSetTileTerrain(maps.activeMapId, tileId, selectedTerrainId, paintElevation ?? undefined);
+      }
+    },
+    [maps.activeMapId, activeStructureLayer, structureEraseMode, selectedTerrainId, actions, paintElevation]
   );
 
   const handleTilePaintStart = useCallback(
     (tileId: TileId) => {
       if (showTravelWizard) return; // Disable painting during travel
-      if (interactionMode === 'paint' && selectedTerrainId && isGmMode) {
-        if (maps.activeMapId) {
-          actions.mapSetTileTerrain(maps.activeMapId, tileId, selectedTerrainId, paintElevation ?? undefined);
-        }
-      }
+      if (interactionMode === 'paint' && isGmMode) paintTile(tileId);
     },
-    [interactionMode, selectedTerrainId, isGmMode, maps.activeMapId, actions, showTravelWizard, paintElevation]
+    [interactionMode, isGmMode, showTravelWizard, paintTile]
   );
 
   const handleTilePaintEnter = useCallback(
     (tileId: TileId) => {
-      if (!showTravelWizard && selectedTerrainId && isGmMode && maps.activeMapId) {
-        actions.mapSetTileTerrain(maps.activeMapId, tileId, selectedTerrainId, paintElevation ?? undefined);
-      }
+      if (!showTravelWizard && isGmMode) paintTile(tileId);
     },
-    [showTravelWizard, selectedTerrainId, isGmMode, maps.activeMapId, actions, paintElevation]
+    [showTravelWizard, isGmMode, paintTile]
   );
 
   // Context menu
@@ -209,6 +242,45 @@ export function MapPanel() {
     },
     [maps.activeMapId, actions]
   );
+
+  // Structure layers
+  const handleAddStructureLayer = useCallback(() => {
+    if (!maps.activeMapId || !activeMap) return;
+    const layers = activeMap.structureLayers ?? [];
+    const nextBase = layers.length > 0
+      ? Math.max(...layers.map((l) => l.baseElevation + l.heightLevels))
+      : 1;
+    const layer: StructureLayer = {
+      id: `struct_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      name: `Level ${layers.length + 1}`,
+      baseElevation: Math.min(nextBase, MAX_ELEVATION),
+      heightLevels: 1,
+      cells: {},
+      visible: true,
+    };
+    actions.mapAddStructureLayer(maps.activeMapId, layer);
+    setActiveStructureLayerId(layer.id);
+  }, [maps.activeMapId, activeMap, actions]);
+
+  const handleUpdateStructureLayer = useCallback(
+    (layerId: StructureLayerId, changes: Partial<Omit<StructureLayer, 'id' | 'cells'>>) => {
+      if (maps.activeMapId) actions.mapUpdateStructureLayer(maps.activeMapId, layerId, changes);
+    },
+    [maps.activeMapId, actions]
+  );
+
+  const handleRemoveStructureLayer = useCallback(
+    (layerId: StructureLayerId) => {
+      if (maps.activeMapId) actions.mapRemoveStructureLayer(maps.activeMapId, layerId);
+      setActiveStructureLayerId((current) => (current === layerId ? null : current));
+    },
+    [maps.activeMapId, actions]
+  );
+
+  const handleSelectStructureLayer = useCallback((layerId: StructureLayerId | null) => {
+    setActiveStructureLayerId(layerId);
+    if (layerId === null) setStructureEraseMode(false);
+  }, []);
 
   // Add marker
   const handleAddMarker = useCallback((tileId: TileId) => {
@@ -341,6 +413,7 @@ export function MapPanel() {
         isPlacingParty={isPlacingParty}
         onCancelPlaceParty={() => setIsPlacingParty(false)}
         onUpdateMapSettings={(changes) => actions.mapUpdateMap(activeMap.id, changes)}
+        onOpenImages={() => setShowImageLayers(true)}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -355,6 +428,14 @@ export function MapPanel() {
             onSelectTerrain={handleSelectTerrain}
             onSetMode={setInteractionMode}
             onAddTerrain={() => setShowTerrainEditor(true)}
+            structureLayers={activeMap.structureLayers ?? []}
+            activeStructureLayerId={activeStructureLayer?.id ?? null}
+            structureEraseMode={structureEraseMode}
+            onSelectStructureLayer={handleSelectStructureLayer}
+            onAddStructureLayer={handleAddStructureLayer}
+            onUpdateStructureLayer={handleUpdateStructureLayer}
+            onRemoveStructureLayer={handleRemoveStructureLayer}
+            onSetStructureEraseMode={setStructureEraseMode}
           />
         )}
 
@@ -367,7 +448,10 @@ export function MapPanel() {
           routeTileIds={travelRoute.length > 1 ? travelRoute : undefined}
           reachableTileIds={reachableTileIds}
           visibleTileIds={visibleTileIds}
-          paintModeActive={interactionMode === 'paint' && !!selectedTerrainId && isGmMode && !showTravelWizard}
+          paintModeActive={
+            interactionMode === 'paint' && isGmMode && !showTravelWizard
+            && (!!selectedTerrainId || (!!activeStructureLayer && structureEraseMode))
+          }
           placingParty={isPlacingParty}
           onTileClick={handleTileClick}
           onTileContextMenu={handleTileContextMenu}
@@ -465,6 +549,17 @@ export function MapPanel() {
         <TerrainEditor
           onConfirm={handleAddCustomTerrain}
           onCancel={() => setShowTerrainEditor(false)}
+        />
+      )}
+
+      {/* Image layers dialog (GM only) */}
+      {showImageLayers && isGmMode && maps.activeMapId && (
+        <ImageLayersDialog
+          map={activeMap}
+          onAddLayer={(layer) => actions.mapAddImageLayer(activeMap.id, layer)}
+          onUpdateLayer={(layerId, changes) => actions.mapUpdateImageLayer(activeMap.id, layerId, changes)}
+          onRemoveLayer={(layerId) => actions.mapRemoveImageLayer(activeMap.id, layerId)}
+          onClose={() => setShowImageLayers(false)}
         />
       )}
 

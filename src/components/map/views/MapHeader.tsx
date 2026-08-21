@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import type { MapModel, MapId } from '../../../types/map';
 import { DEFAULT_SIGHT_RANGE_TILES, MAP_SCALES } from '../../../constants/map';
-import { Plus, Map as MapIcon, ChevronDown, Navigation, MapPinned, Settings } from 'lucide-react';
+import { Plus, Map as MapIcon, ChevronDown, Navigation, MapPinned, Settings, Image as ImageIcon } from 'lucide-react';
 
 interface MapHeaderProps {
   maps: Record<MapId, MapModel>;
@@ -28,6 +28,8 @@ interface MapHeaderProps {
   onUpdateMapSettings?: (
     changes: Partial<Pick<MapModel, 'visionMode' | 'sightRangeTiles'>>
   ) => void;
+  /** Called when GM clicks the Images button (opens the image layers dialog) */
+  onOpenImages?: () => void;
 }
 
 export function MapHeader({
@@ -43,6 +45,7 @@ export function MapHeader({
   isPlacingParty,
   onCancelPlaceParty,
   onUpdateMapSettings,
+  onOpenImages,
 }: MapHeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -151,6 +154,19 @@ export function MapHeader({
             Move to Map
           </button>
         ) : null
+      )}
+
+      {/* Image layers (GM only) */}
+      {isGmMode && activeMap && onOpenImages && (
+        <button
+          type="button"
+          aria-label="Map images"
+          title="Map images (under/overlays)"
+          onClick={onOpenImages}
+          className="rounded p-2 text-gray-300 hover:bg-gray-700/70 hover:text-white"
+        >
+          <ImageIcon className="h-4 w-4" />
+        </button>
       )}
 
       {/* Map settings popover (GM only) */}

@@ -24,6 +24,13 @@ import {
   MAP_REMOVE_MARKER,
   MAP_ADD_LINK,
   MAP_REMOVE_LINK,
+  MAP_ADD_IMAGE_LAYER,
+  MAP_UPDATE_IMAGE_LAYER,
+  MAP_REMOVE_IMAGE_LAYER,
+  MAP_ADD_STRUCTURE_LAYER,
+  MAP_UPDATE_STRUCTURE_LAYER,
+  MAP_REMOVE_STRUCTURE_LAYER,
+  MAP_SET_STRUCTURE_CELLS,
   MAP_REVEAL_TILES,
   MAP_SET_PARTY_TILE,
   MAP_SET_TRAVEL_WIZARD,
@@ -209,6 +216,14 @@ export function handleMapAction(
             tile.terrainId = null;
           }
         }
+        // Clear structure cells painted with it
+        for (const layer of map.structureLayers ?? []) {
+          for (const [tileId, cellTerrainId] of Object.entries(layer.cells)) {
+            if (cellTerrainId === terrainId) {
+              delete layer.cells[tileId];
+            }
+          }
+        }
       }
       return;
     }
@@ -284,6 +299,95 @@ export function handleMapAction(
             tile.linkIds = tile.linkIds.filter((id) => id !== linkId);
           }
           delete map.linksById[linkId];
+        }
+      }
+      return;
+    }
+
+    // ========================================================================
+    // IMAGE LAYERS
+    // ========================================================================
+
+    case MAP_ADD_IMAGE_LAYER: {
+      const { mapId, layer } = action.payload;
+      const map = maps.mapsById[mapId];
+      if (map) {
+        map.imageLayers = map.imageLayers ?? [];
+        map.imageLayers.push(layer);
+      }
+      return;
+    }
+
+    case MAP_UPDATE_IMAGE_LAYER: {
+      const { mapId, layerId, changes } = action.payload;
+      const layer = maps.mapsById[mapId]?.imageLayers?.find((l) => l.id === layerId);
+      if (layer) {
+        Object.assign(layer, changes);
+        layer.opacity = Math.max(0, Math.min(1, layer.opacity));
+        layer.elevation = Math.max(0, Math.min(MAX_ELEVATION, Math.round(layer.elevation)));
+        layer.width = Math.max(0.1, layer.width);
+        layer.height = Math.max(0.1, layer.height);
+      }
+      return;
+    }
+
+    case MAP_REMOVE_IMAGE_LAYER: {
+      const { mapId, layerId } = action.payload;
+      const map = maps.mapsById[mapId];
+      if (map?.imageLayers) {
+        map.imageLayers = map.imageLayers.filter((l) => l.id !== layerId);
+      }
+      return;
+    }
+
+    // ========================================================================
+    // STRUCTURE LAYERS
+    // ========================================================================
+
+    case MAP_ADD_STRUCTURE_LAYER: {
+      const { mapId, layer } = action.payload;
+      const map = maps.mapsById[mapId];
+      if (map) {
+        map.structureLayers = map.structureLayers ?? [];
+        map.structureLayers.push(layer);
+        map.structureLayers.sort((a, b) => a.baseElevation - b.baseElevation);
+      }
+      return;
+    }
+
+    case MAP_UPDATE_STRUCTURE_LAYER: {
+      const { mapId, layerId, changes } = action.payload;
+      const map = maps.mapsById[mapId];
+      const layer = map?.structureLayers?.find((l) => l.id === layerId);
+      if (map && layer) {
+        Object.assign(layer, changes);
+        layer.baseElevation = Math.max(0, Math.min(MAX_ELEVATION, Math.round(layer.baseElevation)));
+        layer.heightLevels = Math.max(1, Math.round(layer.heightLevels));
+        map.structureLayers?.sort((a, b) => a.baseElevation - b.baseElevation);
+      }
+      return;
+    }
+
+    case MAP_REMOVE_STRUCTURE_LAYER: {
+      const { mapId, layerId } = action.payload;
+      const map = maps.mapsById[mapId];
+      if (map?.structureLayers) {
+        map.structureLayers = map.structureLayers.filter((l) => l.id !== layerId);
+      }
+      return;
+    }
+
+    case MAP_SET_STRUCTURE_CELLS: {
+      const { mapId, layerId, tileIds, terrainId } = action.payload;
+      const map = maps.mapsById[mapId];
+      const layer = map?.structureLayers?.find((l) => l.id === layerId);
+      if (!map || !layer) return;
+      for (const tileId of tileIds) {
+        if (!map.tilesById[tileId]) continue;
+        if (terrainId === null) {
+          delete layer.cells[tileId];
+        } else if (map.terrainById[terrainId]) {
+          layer.cells[tileId] = terrainId;
         }
       }
       return;

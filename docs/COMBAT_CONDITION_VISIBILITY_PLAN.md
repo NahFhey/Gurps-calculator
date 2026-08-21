@@ -174,6 +174,19 @@ anonymized enemy names there). Needs a decision on which GM-mode source the
 map layout respects (`ui.gmModeEnabled` vs combatUIStore view mode) before the
 map surface can be table-verified.
 
+**RESOLVED (2026-08-21):** Devin chose `ui.gmModeEnabled`. CombatContext now
+derives `gmMode` from it (setGmMode dispatches the campaign action) and syncs
+`viewMode` to follow it — GM view when the app-wide toggle is on, player view
+otherwise. **Map surface table-verified** via headless Chrome + SwiftShader +
+CDP (the in-app pane has no WebGL): GM mode on → true names, token placed by
+canvas raycast click, legend sparkles button renders, ConditionAddPopover
+opens with existing conditions, and a condition was added through the map
+surface; GM mode off → names anonymize ("Unknown Foe"), sparkles gone, no
+crash. Screenshots in session records. **All three 12a.6 surfaces are now
+verified — the phase is complete.** One UX note for a followup: while the map
+combat layout is active the rail is replaced, so the Manager tab (and thus the
+GM-mode toggle) is unreachable without ending combat or unlinking the map.
+
 ---
 
 ## Problem

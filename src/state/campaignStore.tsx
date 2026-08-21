@@ -69,10 +69,14 @@ import type {
   TerrainId,
   MarkerId,
   LinkId,
+  ImageLayerId,
+  StructureLayerId,
   MapScale,
   TerrainModel,
   MarkerModel,
   LinkModel,
+  MapImageLayer,
+  StructureLayer,
   TravelWizardState,
   TravelMode,
 } from '../types/map';
@@ -289,6 +293,13 @@ type CampaignStoreValue = {
     mapRemoveMarker: (mapId: MapId, markerId: MarkerId) => void;
     mapAddLink: (link: LinkModel) => void;
     mapRemoveLink: (mapId: MapId, linkId: LinkId) => void;
+    mapAddImageLayer: (mapId: MapId, layer: MapImageLayer) => void;
+    mapUpdateImageLayer: (mapId: MapId, layerId: ImageLayerId, changes: Partial<Omit<MapImageLayer, 'id'>>) => void;
+    mapRemoveImageLayer: (mapId: MapId, layerId: ImageLayerId) => void;
+    mapAddStructureLayer: (mapId: MapId, layer: StructureLayer) => void;
+    mapUpdateStructureLayer: (mapId: MapId, layerId: StructureLayerId, changes: Partial<Omit<StructureLayer, 'id' | 'cells'>>) => void;
+    mapRemoveStructureLayer: (mapId: MapId, layerId: StructureLayerId) => void;
+    mapSetStructureCells: (mapId: MapId, layerId: StructureLayerId, tileIds: TileId[], terrainId: TerrainId | null) => void;
     mapRevealTiles: (mapId: MapId, tileIds: TileId[]) => void;
     mapSetPartyTile: (mapId: MapId, tileId: TileId | null) => void;
     mapSetTravelWizard: (wizard: TravelWizardState) => void;
@@ -613,6 +624,20 @@ export function CampaignStoreProvider({
       mapAddLink: (link: LinkModel) => dispatch({ type: 'map/addLink', payload: { link } }),
       mapRemoveLink: (mapId: MapId, linkId: LinkId) =>
         dispatch({ type: 'map/removeLink', payload: { mapId, linkId } }),
+      mapAddImageLayer: (mapId: MapId, layer: MapImageLayer) =>
+        dispatch({ type: 'map/addImageLayer', payload: { mapId, layer } }),
+      mapUpdateImageLayer: (mapId: MapId, layerId: ImageLayerId, changes: Partial<Omit<MapImageLayer, 'id'>>) =>
+        dispatch({ type: 'map/updateImageLayer', payload: { mapId, layerId, changes } }),
+      mapRemoveImageLayer: (mapId: MapId, layerId: ImageLayerId) =>
+        dispatch({ type: 'map/removeImageLayer', payload: { mapId, layerId } }),
+      mapAddStructureLayer: (mapId: MapId, layer: StructureLayer) =>
+        dispatch({ type: 'map/addStructureLayer', payload: { mapId, layer } }),
+      mapUpdateStructureLayer: (mapId: MapId, layerId: StructureLayerId, changes: Partial<Omit<StructureLayer, 'id' | 'cells'>>) =>
+        dispatch({ type: 'map/updateStructureLayer', payload: { mapId, layerId, changes } }),
+      mapRemoveStructureLayer: (mapId: MapId, layerId: StructureLayerId) =>
+        dispatch({ type: 'map/removeStructureLayer', payload: { mapId, layerId } }),
+      mapSetStructureCells: (mapId: MapId, layerId: StructureLayerId, tileIds: TileId[], terrainId: TerrainId | null) =>
+        dispatch({ type: 'map/setStructureCells', payload: { mapId, layerId, tileIds, terrainId } }),
       mapRevealTiles: (mapId: MapId, tileIds: TileId[]) =>
         dispatch({ type: 'map/revealTiles', payload: { mapId, tileIds } }),
       mapSetPartyTile: (mapId: MapId, tileId: TileId | null) =>

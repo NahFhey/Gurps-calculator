@@ -379,6 +379,28 @@ describe('getCombatView', () => {
     });
   });
 
+  describe('Player view — board position', () => {
+    it('preserves position for enemies with everything else hidden (tokens must render)', () => {
+      const participant = mkParticipant({ position: { q: 4, r: 2 } });
+      const view = getCombatView(
+        mkCombatState({ participants: [participant] }),
+        undefined, // default reveal: enemy fully hidden
+        ViewMode.PLAYER
+      );
+      expect(view.participants[0].position).toEqual({ q: 4, r: 2 });
+      expect(view.participants[0].name).toBe('Unknown Foe');
+    });
+
+    it('leaves position undefined for unplaced participants', () => {
+      const view = getCombatView(
+        mkCombatState({ participants: [mkParticipant()] }),
+        undefined,
+        ViewMode.PLAYER
+      );
+      expect(view.participants[0].position).toBeUndefined();
+    });
+  });
+
   describe('Player view — injury fields', () => {
     it('exposes injury fields when HP exact (stun flows through conditions, not a bool)', () => {
       const p = mkParticipant({ shockPenalty: -2, bleeding: true, crippled: { leftArm: true } });
