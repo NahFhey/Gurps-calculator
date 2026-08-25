@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseCharacterText } from '../characterImport';
+import { parseCharacterText, parsePartyText, splitPartyTextBlocks } from '../characterImport';
 
 function parseWithData(text: string) {
   const character = parseCharacterText(text);
@@ -215,5 +215,40 @@ describe('parseCharacterText full GCS imports', () => {
     expect(gcsData.equipment).toEqual([]);
     expect(gcsData.otherEquipment).toBe('Bedroll, flint and steel');
     expect(gcsData.notes).toBe('Corvi alchemist and reluctant adventurer.');
+  });
+});
+
+describe('parsePartyText', () => {
+  it('splits multiple Name blocks into separate characters', () => {
+    const characters = parsePartyText(`
+Name: Ari (100)
+Primary Attributes: ST 11 [10]; DX 10 [0]; IQ 10 [0]; HT 10 [0];
+Name: Bea (125)
+Primary Attributes: ST 9 [-10]; DX 12 [40]; IQ 11 [20]; HT 10 [0];
+`);
+
+    expect(characters).toHaveLength(2);
+    expect(characters.map((character) => character.name)).toEqual(['Ari', 'Bea']);
+    expect(characters.map((character) => character.gcsData?.totalPoints)).toEqual([100, 125]);
+  });
+
+  it('returns one character for ordinary single-character text', () => {
+    const characters = parsePartyText('Name: Solo (50)\nSkills: Stealth DX+0 [2]-11;');
+    expect(characters).toHaveLength(1);
+    expect(characters[0]?.name).toBe('Solo');
+  });
+
+  it('retains legacy default parsing when no Name boundary exists', () => {
+    const characters = parsePartyText('Primary Attributes: ST 14 [40];');
+    expect(characters).toHaveLength(1);
+    expect(characters[0]?.name).toBe('Unknown');
+    expect(characters[0]?.st).toBe(14);
+  });
+
+  it('recognizes indented Name boundaries and discards preamble text', () => {
+    const blocks = splitPartyTextBlocks('Exported party\n  Name: One (10)\nNotes: First\n\tName: Two (20)');
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0]).not.toContain('Exported party');
+    expect(parsePartyText(blocks.join('\n')).map((character) => character.name)).toEqual(['One', 'Two']);
   });
 });

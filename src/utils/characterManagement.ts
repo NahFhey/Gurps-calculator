@@ -255,6 +255,41 @@ export function importCharacterJSON(jsonString: string): Character {
 }
 
 /**
+ * Import either a single JSON character or a top-level array of characters.
+ * Each imported entry goes through the existing single-character path so IDs
+ * are regenerated and work skills stay synchronized exactly as before.
+ */
+export function importCharactersJSON(jsonString: string): Character[] {
+  const MAX_IMPORT_SIZE = 50 * 1024 * 1024;
+  if (jsonString.length > MAX_IMPORT_SIZE) {
+    throw new Error('Character data exceeds maximum import size (50MB)');
+  }
+
+  let data: unknown;
+  try {
+    data = JSON.parse(jsonString);
+  } catch (err) {
+    throw new Error(`Invalid character JSON: ${err instanceof Error ? err.message : 'parse failed'}`);
+  }
+
+  if (!Array.isArray(data)) {
+    return [importCharacterJSON(jsonString)];
+  }
+  if (data.length === 0) {
+    throw new Error('Invalid character data: expected at least one character');
+  }
+
+  return data.map((entry, index) => {
+    try {
+      return importCharacterJSON(JSON.stringify(entry));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'invalid character data';
+      throw new Error(`Invalid character at index ${index}: ${message}`);
+    }
+  });
+}
+
+/**
  * Download character as JSON file
  * Triggers a browser download of the character data
  */

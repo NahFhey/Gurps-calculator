@@ -90,6 +90,30 @@ export function parseCharacterText(text: string): Character {
 }
 
 /**
+ * Parse one or more text-exported characters from a single file.
+ * Each Name line begins a new character block. Inputs without a Name line retain
+ * the legacy single-character parser behaviour and produce one default/partial
+ * character.
+ */
+export function splitPartyTextBlocks(text: string): string[] {
+  const nameBoundary = /^[\t ]*Name:/gm;
+  const starts = Array.from(text.matchAll(nameBoundary), (match) => match.index);
+
+  if (starts.length === 0) {
+    return [text];
+  }
+
+  return starts.map((start, index) => {
+    const end = starts[index + 1] ?? text.length;
+    return text.slice(start, end);
+  });
+}
+
+export function parsePartyText(text: string): Character[] {
+  return splitPartyTextBlocks(text).map(parseCharacterText);
+}
+
+/**
  * Parse name line: "Name: Bertok (Dusty) Darkwing (169)"
  */
 function parseName(line: string): { name: string; totalPoints: number } {
