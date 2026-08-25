@@ -17,18 +17,13 @@ ROADMAP.md
 
 It contains phases 10–16 with specific sub-tasks, status markers, and estimated effort. Pay attention to which items are marked ✅ vs remaining — the roadmap is updated each session.
 
-## Step 2: Check auto-memory
+## Step 2: Check session-to-session context
 
-Read the project memory files to understand recent work and known issues:
+There is no `.auto-memory/` directory — that store is gone. Session-to-session context now lives in three places:
 
-```
-.auto-memory/project_gurps_vtt.md
-.auto-memory/project_test_memory_limits.md
-.auto-memory/feedback_type_fixes.md
-.auto-memory/feedback_verify_agent_work.md
-```
-
-These carry session-to-session context: architecture decisions, known gotchas, and preferences. Memory files may be stale (check timestamps) — verify claims against current code before acting on them.
+- **`ROADMAP.md`** — already read in Step 1. Its status markers are the per-session record of what's done and what's in flight.
+- **Phase plan docs in `docs/`** — `<FEATURE>_PLAN.md` / `<FEATURE>_FOLLOWUPS.md` pairs (e.g. `COMBAT_PARTY_INTEGRATION_PLAN.md`, `INVENTORY_INTEGRATION_PLAN.md`) plus `docs/TODO.md`. Read the ones for the subsystem you're about to touch.
+- **Claude's auto-memory for this project** — loaded automatically into context at session start; nothing to read manually. Verify recalled claims against current code before acting on them.
 
 ## Step 3: Environment note (draken, updated 2026-07-13)
 
