@@ -45,6 +45,10 @@ export interface Character {
   id: Id;
   name: string;
   isPlayer?: boolean;
+  /** Can't eat a meal when it contains any of these food types; absent/empty is unrestricted. */
+  dietExcludedFoodTypes?: string[];
+  /** Can't eat unless a meal contains at least one of these food types; absent/empty is unrestricted. */
+  dietRequiredFoodTypes?: string[];
   work: {
     enabled?: boolean;
     skills: Record<string, number>;
@@ -165,6 +169,8 @@ export interface MealBuff {
   recipeId: string;
   recipeName: string;
   skills: string[];
+  /** Party characters who could not eat this meal, snapshotted when it was cooked. */
+  excludedCharacterIds?: Id[];
 }
 
 // ============================================================================

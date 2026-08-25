@@ -7,6 +7,7 @@ import type {
   RecipeCreationLog as CreationLog,
 } from '../../types/campaign';
 import { cookingLog } from '../../utils/activityLogger';
+import { computeExcludedCharacterIds, getMealFoodTypes } from '../../utils/dietaryRestrictions';
 import { toNumberOr } from '../../utils/helpers';
 import type {
   CookingSkill,
@@ -109,11 +110,16 @@ export function CookingTab() {
       difficulty: stats.diff, skills, criticalSuccess: crit, creationHistory: [creationLog],
     };
     if (result === 'Success' || result === 'Critical Success') {
+      const mealFoodTypes = getMealFoodTypes(recipe.ingredients);
       actions.setMealBuff({
         day: state.time.day,
         recipeId: recipe.id,
         recipeName: recipe.name,
         skills: [...recipe.skills],
+        excludedCharacterIds: computeExcludedCharacterIds(
+          Object.values(state.entities.characters),
+          mealFoodTypes,
+        ),
       });
     }
     saveRecipes([...recipes, recipe]);
@@ -221,11 +227,16 @@ export function CookingTab() {
     else if (isCritFail) result = 'Critical Failure';
     else if (mos >= 0) result = 'Success';
     if ((result === 'Success' || result === 'Critical Success') && selectedRecipe) {
+      const mealFoodTypes = getMealFoodTypes(selectedRecipe.ingredients);
       actions.setMealBuff({
         day: state.time.day,
         recipeId: selectedRecipe.id,
         recipeName: selectedRecipe.name,
         skills: [...selectedRecipe.skills],
+        excludedCharacterIds: computeExcludedCharacterIds(
+          Object.values(state.entities.characters),
+          mealFoodTypes,
+        ),
       });
     }
     const substitutes: Array<{ original: string; replacement: string; amount: number }> = [];

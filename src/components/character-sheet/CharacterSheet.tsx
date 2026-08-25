@@ -17,6 +17,7 @@ import { EquipmentSection } from './EquipmentSection';
 import { EncumbranceSection } from './EncumbranceSection';
 import { ModifiersSection } from './ModifiersSection';
 import { NotesSection } from './NotesSection';
+import { DietSection } from './DietSection';
 
 interface CharacterSheetProps {
   character: Character;
@@ -37,6 +38,12 @@ export function CharacterSheet({ character }: CharacterSheetProps) {
   const [draftImages, setDraftImages] = useState<CharacterImages>(
     character.images || {}
   );
+  const [draftDietExcludedFoodTypes, setDraftDietExcludedFoodTypes] = useState<string[]>(
+    character.dietExcludedFoodTypes || []
+  );
+  const [draftDietRequiredFoodTypes, setDraftDietRequiredFoodTypes] = useState<string[]>(
+    character.dietRequiredFoodTypes || []
+  );
 
   // Reset draft when character changes
   React.useEffect(() => {
@@ -44,7 +51,9 @@ export function CharacterSheet({ character }: CharacterSheetProps) {
     setDraftGcsData(character.gcsData || createDefaultGCSData());
     setDraftHitLocationProfileId(character.hitLocationProfileId || DEFAULT_HIT_LOCATION_PROFILE);
     setDraftImages(character.images || {});
-  }, [character.id, character.name, character.gcsData, character.hitLocationProfileId, character.images]);
+    setDraftDietExcludedFoodTypes(character.dietExcludedFoodTypes || []);
+    setDraftDietRequiredFoodTypes(character.dietRequiredFoodTypes || []);
+  }, [character.id, character.name, character.gcsData, character.hitLocationProfileId, character.images, character.dietExcludedFoodTypes, character.dietRequiredFoodTypes]);
 
   const handleSave = useCallback(() => {
     // Sync work.skills from the updated GCS data
@@ -56,21 +65,25 @@ export function CharacterSheet({ character }: CharacterSheetProps) {
       st: draftGcsData.attributes.ST,
       hitLocationProfileId: draftHitLocationProfileId,
       images: draftImages,
+      dietExcludedFoodTypes: draftDietExcludedFoodTypes,
+      dietRequiredFoodTypes: draftDietRequiredFoodTypes,
       work: {
         ...character.work,
         skills: workSkills,
       },
     });
     setEditMode(false);
-  }, [actions, character.id, character.work, draftName, draftGcsData, draftHitLocationProfileId, draftImages]);
+  }, [actions, character.id, character.work, draftName, draftGcsData, draftHitLocationProfileId, draftImages, draftDietExcludedFoodTypes, draftDietRequiredFoodTypes]);
 
   const handleCancel = useCallback(() => {
     setDraftName(character.name);
     setDraftGcsData(character.gcsData || createDefaultGCSData());
     setDraftHitLocationProfileId(character.hitLocationProfileId || DEFAULT_HIT_LOCATION_PROFILE);
     setDraftImages(character.images || {});
+    setDraftDietExcludedFoodTypes(character.dietExcludedFoodTypes || []);
+    setDraftDietRequiredFoodTypes(character.dietRequiredFoodTypes || []);
     setEditMode(false);
-  }, [character.name, character.gcsData, character.hitLocationProfileId, character.images]);
+  }, [character.name, character.gcsData, character.hitLocationProfileId, character.images, character.dietExcludedFoodTypes, character.dietRequiredFoodTypes]);
 
   // GCS data to display (draft when editing, actual when viewing)
   const displayData = editMode ? draftGcsData : (character.gcsData || createDefaultGCSData());
@@ -254,6 +267,16 @@ export function CharacterSheet({ character }: CharacterSheetProps) {
           onQuirksChange={(quirks) => {
             setDraftGcsData((prev) => ({ ...prev, quirks }));
           }}
+        />
+
+        {/* Dietary Restrictions */}
+        <DietSection
+          character={{ ...character, gcsData: displayData }}
+          excludedFoodTypes={editMode ? draftDietExcludedFoodTypes : (character.dietExcludedFoodTypes || [])}
+          requiredFoodTypes={editMode ? draftDietRequiredFoodTypes : (character.dietRequiredFoodTypes || [])}
+          editMode={editMode}
+          onExcludedFoodTypesChange={setDraftDietExcludedFoodTypes}
+          onRequiredFoodTypesChange={setDraftDietRequiredFoodTypes}
         />
 
         {/* Skills */}

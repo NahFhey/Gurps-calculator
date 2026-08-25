@@ -61,8 +61,10 @@ function StateProbe({ capture }: { capture: (state: CampaignState) => void }) {
 function renderRouter(
   withRecipe = false,
   existingBuff: MealBuff | null = null,
+  customizeState?: (state: CampaignState) => void,
 ): { getState: () => CampaignState } {
   let latest = makeState(withRecipe, existingBuff);
+  customizeState?.(latest);
   render(
     <CampaignStoreProvider initialCampaignState={latest}>
       <StateProbe capture={state => { latest = state; }} />
@@ -97,6 +99,7 @@ describe('CookingTab meal buff dispatches', () => {
       day: 7,
       recipeName: 'Carrot Plate',
       skills: ['Cryptography', 'Guns'],
+      excludedCharacterIds: [],
     });
     expect(getState().mealBuff?.recipeId).toBe(Object.values(getState().entities.recipes)[0].id);
   });
@@ -117,6 +120,35 @@ describe('CookingTab meal buff dispatches', () => {
     completeCreateForm(16);
 
     expect(getState().mealBuff).toBeNull();
+  });
+
+  it('snapshots characters excluded by any present type or an absent required type', () => {
+    const { getState } = renderRouter(false, null, state => {
+      state.entities.characters.soren = {
+        id: 'soren',
+        name: 'Soren',
+        work: { skills: {} },
+        dietExcludedFoodTypes: [' VEGETABLE '],
+      };
+      state.entities.characters.rina = {
+        id: 'rina',
+        name: 'Rina',
+        work: { skills: {} },
+        dietRequiredFoodTypes: ['meat'],
+      };
+    });
+
+    completeCreateForm(10);
+
+    expect(getState().mealBuff?.excludedCharacterIds).toEqual(['soren', 'rina']);
+  });
+
+  it('snapshots an empty excluded list for an unrestricted party', () => {
+    const { getState } = renderRouter();
+
+    completeCreateForm(10);
+
+    expect(getState().mealBuff?.excludedCharacterIds).toEqual([]);
   });
 
   it('does not clear a previous buff after a critical failure', () => {
@@ -140,7 +172,26 @@ describe('CookingTab meal buff dispatches', () => {
       recipeId: 'root-stew',
       recipeName: 'Root Stew',
       skills: ['Cryptography', 'Guns'],
+      excludedCharacterIds: [],
     });
     expect(getState().mealBuff?.skills).not.toBe(rootStew.skills);
+  });
+
+  it('uses stored recipe ingredient types for the remake exclusion snapshot', () => {
+    const { getState } = renderRouter(true, null, state => {
+      state.entities.characters.soren = {
+        id: 'soren',
+        name: 'Soren',
+        work: { skills: {} },
+        dietExcludedFoodTypes: ['root'],
+      };
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Library (1)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Make Recipe' }));
+    fireEvent.change(screen.getByDisplayValue('Select worker...'), { target: { value: 'Alice' } });
+    fireEvent.change(screen.getByPlaceholderText('3-18'), { target: { value: '10' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cook Recipe (Difficulty: 0)' }));
+
+    expect(getState().mealBuff?.excludedCharacterIds).toEqual(['soren']);
   });
 });
