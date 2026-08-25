@@ -165,13 +165,19 @@ with the who-ate-subset question parked in followup #5's orbit.
 
 ---
 
-## 11. Owner-Attributed Material Holdings (Recorded during followup #3 completion design, 2026-08-25)
+## 11. Owner-Attributed Material Holdings — 📐 DESIGNED 2026-08-25 (same day as recorded)
 
 **Context:** Pooled materials/food have advisory owner refs only; the pool is
 authoritative and consumption is owner-blind (followup #8's resolution, which parked
 owner-attributed consumption here via #3). Followup #3's completion design scoped
 itself to items-only, so the question is now its own future phase: real per-owner
 material holdings, owner-attributed `MATERIAL_CONSUME`/`FOOD_CONSUME`, and the
-crafting/cooking/alchemy consume-path changes that follow. A phase, not a followup —
-touches every consuming subsystem. No current session pressure; design when a table
-moment demands "whose herbs are these" to have a mechanical answer.
+crafting/cooking/alchemy consume-path changes that follow. Designed same day — see
+[`OWNER_ATTRIBUTED_MATERIALS_PLAN.md`](./OWNER_ATTRIBUTED_MATERIALS_PLAN.md):
+possession model, Inventory.materials/.food promoted to authoritative (global
+pools deleted, compat summing selector), party-seeded migration with refs
+discarded (schema 1.5.4), party-only consumption via a real owner-aware action
+replacing the wholesale SET recomputes (recon found MATERIAL_CONSUME/FOOD_CONSUME
+were dead code — never dispatched), Transfer Console quantity-give for
+stackables. New followup: "personal-stake activities" (source picker + gathering
+leader attribution). Alchemy's missing consumption path noted as its own gap.
