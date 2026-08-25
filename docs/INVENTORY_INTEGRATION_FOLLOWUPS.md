@@ -51,9 +51,9 @@ Ready to spec for implementation.
 
 ---
 
-## 3. "Take from Shared" UI for Crafted / Gathered Items — ⚙️ FIRST SLICE SHIPPED 2026-08-25
+## 3. "Take from Shared" UI for Crafted / Gathered Items — ⚙️ SLICE SHIPPED + 📐 REMAINDER DESIGNED 2026-08-25
 
-**Shipped (2026-08-25, codex-shepherd):** inline "Give to…" select on every party-stash item row (sorted party characters, no default preselect) dispatching `retagItem` + transfer log. One-click party→character assignment, browser-verified. **Still open:** bulk operations ("give all herbs to A"), crafter-default preselection, and a dedicated claim view outside the inventory tab.
+**Shipped (2026-08-25, codex-shepherd):** inline "Give to…" select on every party-stash item row (sorted party characters, no default preselect) dispatching `retagItem` + transfer log. One-click party→character assignment, browser-verified. **Remainder designed same day** — see [`TAKE_FROM_SHARED_COMPLETION_PLAN.md`](./TAKE_FROM_SHARED_COMPLETION_PLAN.md): items-only scope (materials → followup #11), checkbox+action-bar bulk give, `crafterId` plumbing with completing-shift attribution and preselection, dedicated claim view WONTFIXed (needs timestamps → note in #6).
 
 **Context:** Phase 12a.5 ships acquire + retag at the data layer, but only loot has a UI that wires retag end-to-end (the existing `LootDistribution.tsx`). Crafted and gathered items land in shared inventory and require manual retag for now.
 
@@ -105,6 +105,9 @@ AFTER the attunement lane merges (same reducer surface).
 - Existing items default to `{ kind: "legacy" }` or read the string label as a kind discriminator on a discriminated union.
 - Append-only metadata; old consumers that read `source` as a string break, so the migration includes consumer updates.
 - No current UX need; do not pre-build.
+- Note (2026-08-25, from followup #3's completion design): an `acquiredAt` timestamp
+  here would unlock a "new arrivals" claim grouping in the stash view — record it as
+  part of any structured-provenance widening.
 
 ---
 
@@ -153,3 +156,16 @@ write path; explicitly deferred so v1 keeps its "everyone eats" invariant.
 
 **Notes:** Depends on the cooking buff write path shipping first. Pairs naturally
 with the who-ate-subset question parked in followup #5's orbit.
+
+---
+
+## 11. Owner-Attributed Material Holdings (Recorded during followup #3 completion design, 2026-08-25)
+
+**Context:** Pooled materials/food have advisory owner refs only; the pool is
+authoritative and consumption is owner-blind (followup #8's resolution, which parked
+owner-attributed consumption here via #3). Followup #3's completion design scoped
+itself to items-only, so the question is now its own future phase: real per-owner
+material holdings, owner-attributed `MATERIAL_CONSUME`/`FOOD_CONSUME`, and the
+crafting/cooking/alchemy consume-path changes that follow. A phase, not a followup —
+touches every consuming subsystem. No current session pressure; design when a table
+moment demands "whose herbs are these" to have a mechanical answer.
