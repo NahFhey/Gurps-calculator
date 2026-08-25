@@ -6,13 +6,13 @@ See [`INVENTORY_INTEGRATION_PLAN.md`](./INVENTORY_INTEGRATION_PLAN.md) for the i
 
 ---
 
-## 1. Cooking Buff Write Path — 📐 DESIGNED 2026-08-25
+## 1. Cooking Buff Write Path — ✅ SHIPPED 2026-08-25
 
 **Design complete:** all five open questions below resolved in a grill-me session — see
 [`COOKING_BUFF_WRITE_PATH_PLAN.md`](./COOKING_BUFF_WRITE_PATH_PLAN.md) for the full
 decision list (flat +1 per `Recipe.skills` entry, party-wide, one slot latest-wins,
 calendar-day lazy expiry, top-level nullable snapshot field, display-only banner,
-cook = eat). Ready to spec for implementation. A new side-followup came out of the
+cook = eat). Implemented same day via codex-shepherd (schema 1.5.2, 18 tests, browser-verified). A new side-followup came out of the
 session: **dietary restrictions** (see item #10 below).
 
 **Context:** Cooking applies a temporary daily party-wide buff. Cooked food is never stored as an inventory item. The buff write path itself does not exist yet (or is partial).
