@@ -25,6 +25,8 @@ import {
   INVENTORY_SET,
   ITEM_ACQUIRED,
   ITEM_RETAGGED,
+  ITEM_ATTUNEMENT_SET,
+  ITEM_MAGICAL_SET,
   type InventoryAction,
 } from '../inventoryActions';
 import type { CampaignState } from '../../campaignReducer';
@@ -475,6 +477,34 @@ describe('inventoryReducer', () => {
       ]);
     });
 
+    it('equipment acquisition carries the magical flag', () => {
+      const next = applyAction(state, {
+        type: ITEM_ACQUIRED,
+        payload: {
+          item: { kind: 'equipment', id: 'wand-1', name: 'Oak Wand', quantity: 1, magical: true },
+          owner: 'char-1',
+          source: 'loot',
+        },
+      });
+      const charInv = Object.values(next.entities.inventories).find(
+        i => i.ownerType === 'character' && i.ownerId === 'char-1'
+      );
+      expect(charInv?.items[0].magical).toBe(true);
+    });
+
+    it('other acquisition carries an explicit false magical flag', () => {
+      const next = applyAction(state, {
+        type: ITEM_ACQUIRED,
+        payload: {
+          item: { kind: 'other', id: 'trinket-1', name: 'Trinket', quantity: 1, magical: false },
+          owner: 'party',
+          source: 'loot',
+        },
+      });
+      const party = Object.values(next.entities.inventories).find(i => i.ownerType === 'party');
+      expect(party?.items[0].magical).toBe(false);
+    });
+
     it('auto-creates a missing owner inventory record (always-succeed)', () => {
       expect(Object.keys(state.entities.inventories)).toHaveLength(0);
       const next = applyAction(state, {
@@ -531,7 +561,64 @@ describe('inventoryReducer', () => {
       const charInv = Object.values(next.entities.inventories).find(
         i => i.ownerType === 'character' && i.ownerId === 'char-1'
       );
-      expect(charInv?.items).toEqual([{ id: 'sword-1', name: 'Longsword', quantity: 1 }]);
+      expect(charInv?.items).toEqual([
+        { id: 'sword-1', name: 'Longsword', quantity: 1, attuned: false },
+      ]);
+    });
+
+    it('clears attunement when moving an item from party to character', () => {
+      state.entities.inventories['party'] = inventory('party', {
+        items: [{ id: 'wand-1', name: 'Wand', quantity: 1, magical: true, attuned: true }],
+      });
+      const next = applyAction(state, {
+        type: ITEM_RETAGGED,
+        payload: { itemId: 'wand-1', newOwner: 'char-1' },
+      });
+      const target = Object.values(next.entities.inventories).find(
+        i => i.ownerType === 'character' && i.ownerId === 'char-1'
+      );
+      expect(target?.items[0].attuned).toBe(false);
+    });
+
+    it('clears attunement when moving an item from character to party', () => {
+      state.entities.inventories['inv-char-1'] = inventory('inv-char-1', {
+        ownerType: 'character',
+        ownerId: 'char-1',
+        items: [{ id: 'wand-1', name: 'Wand', quantity: 1, magical: true, attuned: true }],
+      });
+      const next = applyAction(state, {
+        type: ITEM_RETAGGED,
+        payload: { itemId: 'wand-1', newOwner: 'party' },
+      });
+      const target = Object.values(next.entities.inventories).find(i => i.ownerType === 'party');
+      expect(target?.items[0].attuned).toBe(false);
+    });
+
+    it('clears attunement when moving an item between characters', () => {
+      state.entities.inventories['inv-char-1'] = inventory('inv-char-1', {
+        ownerType: 'character',
+        ownerId: 'char-1',
+        items: [{ id: 'wand-1', name: 'Wand', quantity: 1, magical: true, attuned: true }],
+      });
+      const next = applyAction(state, {
+        type: ITEM_RETAGGED,
+        payload: { itemId: 'wand-1', newOwner: 'char-2' },
+      });
+      const target = Object.values(next.entities.inventories).find(
+        i => i.ownerType === 'character' && i.ownerId === 'char-2'
+      );
+      expect(target?.items[0].attuned).toBe(false);
+    });
+
+    it('clears attunement on a same-owner retag', () => {
+      state.entities.inventories['party'] = inventory('party', {
+        items: [{ id: 'wand-1', name: 'Wand', quantity: 1, magical: true, attuned: true }],
+      });
+      const next = applyAction(state, {
+        type: ITEM_RETAGGED,
+        payload: { itemId: 'wand-1', newOwner: 'party' },
+      });
+      expect(next.entities.inventories['party'].items[0].attuned).toBe(false);
     });
 
     it('moves a material quantity ref between inventories, merging on arrival', () => {
@@ -587,6 +674,83 @@ describe('inventoryReducer', () => {
       expect(JSON.stringify(twice.entities.inventories)).toBe(
         JSON.stringify(once.entities.inventories)
       );
+    });
+  });
+
+  describe('ITEM_ATTUNEMENT_SET', () => {
+    beforeEach(() => {
+      state.entities.inventories['party'] = inventory('party', {
+        items: [{ id: 'wand-1', name: 'Wand', quantity: 1, magical: true }],
+      });
+    });
+
+    it('sets and unsets attunement explicitly', () => {
+      const set = applyAction(state, {
+        type: ITEM_ATTUNEMENT_SET,
+        payload: { itemId: 'wand-1', attuned: true },
+      });
+      expect(set.entities.inventories['party'].items[0].attuned).toBe(true);
+
+      const unset = applyAction(set, {
+        type: ITEM_ATTUNEMENT_SET,
+        payload: { itemId: 'wand-1', attuned: false },
+      });
+      expect(unset.entities.inventories['party'].items[0].attuned).toBe(false);
+    });
+
+    it('is idempotent when setting the same value twice', () => {
+      const once = applyAction(state, {
+        type: ITEM_ATTUNEMENT_SET,
+        payload: { itemId: 'wand-1', attuned: true },
+      });
+      const twice = applyAction(once, {
+        type: ITEM_ATTUNEMENT_SET,
+        payload: { itemId: 'wand-1', attuned: true },
+      });
+      expect(twice).toEqual(once);
+    });
+
+    it('silently ignores a missing item', () => {
+      const next = applyAction(state, {
+        type: ITEM_ATTUNEMENT_SET,
+        payload: { itemId: 'missing', attuned: true },
+      });
+      expect(next).toEqual(state);
+    });
+
+    it('accepts an attunement write for a mundane item', () => {
+      state.entities.inventories['party'].items[0].magical = false;
+      const next = applyAction(state, {
+        type: ITEM_ATTUNEMENT_SET,
+        payload: { itemId: 'wand-1', attuned: true },
+      });
+      expect(next.entities.inventories['party'].items[0].attuned).toBe(true);
+    });
+  });
+
+  describe('ITEM_MAGICAL_SET', () => {
+    it('sets and unsets the magical flag', () => {
+      state.entities.inventories['party'] = inventory('party', {
+        items: [{ id: 'wand-1', name: 'Wand', quantity: 1 }],
+      });
+      const set = applyAction(state, {
+        type: ITEM_MAGICAL_SET,
+        payload: { itemId: 'wand-1', magical: true },
+      });
+      expect(set.entities.inventories['party'].items[0].magical).toBe(true);
+      const unset = applyAction(set, {
+        type: ITEM_MAGICAL_SET,
+        payload: { itemId: 'wand-1', magical: false },
+      });
+      expect(unset.entities.inventories['party'].items[0].magical).toBe(false);
+    });
+
+    it('silently ignores a missing item', () => {
+      const next = applyAction(state, {
+        type: ITEM_MAGICAL_SET,
+        payload: { itemId: 'missing', magical: true },
+      });
+      expect(next).toEqual(state);
     });
   });
 });

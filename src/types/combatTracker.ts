@@ -602,6 +602,8 @@ export interface LootItem {
    * (legacy behavior). See INVENTORY_INTEGRATION_FOLLOWUPS.md #9.
    */
   materialType?: string;
+  /** Whether equipment/other loot should arrive marked as magical. */
+  magical?: boolean;
 }
 
 export interface LootDistributionEntry {

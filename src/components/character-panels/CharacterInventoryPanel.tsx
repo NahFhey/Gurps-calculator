@@ -1,6 +1,11 @@
 import { useState, useMemo, useCallback } from 'react';
-import { ArrowLeft, Plus, Trash2, Package } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Package, Sparkles, Wand2 } from 'lucide-react';
 import { useCampaignStore } from '../../state/campaignStore';
+import {
+  selectAttunedItems,
+  selectAttunementCapacity,
+  selectMageryLevel,
+} from '../../state/selectors/inventorySelectors';
 import type { Character, Inventory, ItemInstance, ToolTemplate } from '../../types/campaign';
 
 interface CharacterInventoryPanelProps {
@@ -15,6 +20,9 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
   const [newCurrencyAmount, setNewCurrencyAmount] = useState(0);
 
   const toolTemplates = state.entities.toolTemplates as Record<string, ToolTemplate>;
+  const mageryLevel = selectMageryLevel(state, character.id);
+  const attunementCapacity = selectAttunementCapacity(state, character.id);
+  const attunedItems = selectAttunedItems(state, character.id);
 
   // Find the character's inventory
   const characterInventory = useMemo(() => {
@@ -69,6 +77,14 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
     });
   }, [actions, characterInventory]);
 
+  const handleMagicalSet = useCallback((itemId: string, magical: boolean) => {
+    actions.setItemMagical(itemId, magical);
+  }, [actions]);
+
+  const handleAttunementSet = useCallback((itemId: string, attuned: boolean) => {
+    actions.setItemAttunement(itemId, attuned);
+  }, [actions]);
+
   // Add currency
   const handleAddCurrency = useCallback(() => {
     if (!characterInventory || !newCurrencyKey.trim() || newCurrencyAmount <= 0) return;
@@ -119,9 +135,16 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
           </button>
           <div className="flex items-center gap-2">
             <Package size={20} className="text-amber-400" />
-            <h2 className="text-lg font-semibold text-gray-100">
-              {character.name}'s Inventory
-            </h2>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-100">
+                {character.name}'s Inventory
+              </h2>
+              {(attunementCapacity > 0 || characterInventory?.items.some((item) => item.magical)) && (
+                <div className="text-xs text-gray-400">
+                  Attuned {attunedItems.length}/{attunementCapacity}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -186,12 +209,53 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
                         {item.name}
                         <span className="text-gray-400 ml-2">x{item.quantity}</span>
                       </span>
-                      <button
-                        onClick={() => handleRemoveItem(item.id)}
-                        className="p-1 hover:bg-gray-600 rounded text-red-400"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleMagicalSet(item.id, !item.magical)}
+                          className={`p-1 rounded hover:bg-gray-600 ${
+                            item.magical ? 'text-violet-300' : 'text-gray-500 hover:text-gray-300'
+                          }`}
+                          title={item.magical ? 'Mark as mundane' : 'Mark as magical'}
+                          aria-label={`${item.magical ? 'Mark as mundane' : 'Mark as magical'}: ${item.name ?? 'item'}`}
+                        >
+                          <Wand2 size={14} />
+                        </button>
+                        {item.magical && (() => {
+                          const atCapacity = attunedItems.length >= attunementCapacity;
+                          const disabled = !item.attuned && atCapacity;
+                          const title = mageryLevel === null
+                            ? 'Requires Magery'
+                            : disabled
+                              ? 'Attunement cap reached (Magery + 1)'
+                              : item.attuned
+                                ? 'Unattune item'
+                                : 'Attune item';
+                          return (
+                            <button
+                              onClick={() => handleAttunementSet(item.id, !item.attuned)}
+                              disabled={disabled}
+                              className={`p-1 rounded hover:bg-gray-600 disabled:cursor-not-allowed ${
+                                item.attuned
+                                  ? 'text-amber-300'
+                                  : disabled
+                                    ? 'text-gray-600'
+                                    : 'text-gray-400 hover:text-amber-200'
+                              }`}
+                              title={title}
+                              aria-label={`${item.attuned ? 'Unattune' : 'Attune'}: ${item.name ?? 'item'}`}
+                            >
+                              <Sparkles size={14} fill={item.attuned ? 'currentColor' : 'none'} />
+                            </button>
+                          );
+                        })()}
+                        <button
+                          onClick={() => handleRemoveItem(item.id)}
+                          className="p-1 hover:bg-gray-600 rounded text-red-400"
+                          title="Remove"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>

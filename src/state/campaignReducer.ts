@@ -645,6 +645,8 @@ export type CampaignAction =
   // Inventory integration bus actions (Phase 12a.5)
   | { type: 'inventory/itemAcquired'; payload: { item: AcquiredItem; owner: InventoryOwner; source: AcquisitionSource } }
   | { type: 'inventory/itemRetagged'; payload: { itemId: Id; newOwner: InventoryOwner } }
+  | { type: 'inventory/itemAttunementSet'; payload: { itemId: Id; attuned: boolean } }
+  | { type: 'inventory/itemMagicalSet'; payload: { itemId: Id; magical: boolean } }
   // Location & Weather actions
   | { type: 'setLocationsState'; payload: Partial<LocationState> }
   | { type: 'addLocation'; payload: Location }

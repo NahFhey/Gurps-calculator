@@ -34,6 +34,8 @@ export {
   INVENTORY_SET,
   ITEM_ACQUIRED,
   ITEM_RETAGGED,
+  ITEM_ATTUNEMENT_SET,
+  ITEM_MAGICAL_SET,
   // Type guard
   isInventoryAction,
   // Types
@@ -60,7 +62,9 @@ export {
   type UpdateInventoryAction,
   type SetInventoriesAction,
   type ItemAcquiredAction,
-  type ItemRetaggedAction
+  type ItemRetaggedAction,
+  type ItemAttunementSetAction,
+  type ItemMagicalSetAction
 } from './inventoryActions';
 
 // Re-export selectors from central location
@@ -94,6 +98,9 @@ export {
   selectInventoryByOwner,
   selectCharacterInventory,
   selectPartyInventory,
+  selectMageryLevel,
+  selectAttunementCapacity,
+  selectAttunedItems,
   // UI state
   selectInventoryActiveTab
 } from '../selectors/inventorySelectors';

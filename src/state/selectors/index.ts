@@ -56,6 +56,9 @@ export {
   selectInventoryByOwner,
   selectCharacterInventory,
   selectPartyInventory,
+  selectMageryLevel,
+  selectAttunementCapacity,
+  selectAttunedItems,
   // UI state
   selectInventoryActiveTab
 } from './inventorySelectors';

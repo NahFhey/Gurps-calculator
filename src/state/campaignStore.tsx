@@ -254,6 +254,10 @@ type CampaignStoreValue = {
     acquireItem: (item: AcquiredItem, owner: InventoryOwner, source: AcquisitionSource) => void;
     /** Inventory bus (Phase 12a.5): move an item/ref to a new owner. Always succeeds. */
     retagItem: (itemId: Id, newOwner: InventoryOwner) => void;
+    /** Explicitly set an item's attunement flag. Always succeeds. */
+    setItemAttunement: (itemId: Id, attuned: boolean) => void;
+    /** Explicitly set an item's magical flag. Always succeeds. */
+    setItemMagical: (itemId: Id, magical: boolean) => void;
 
     // Location & Weather Actions
     setLocationsState: (payload: Partial<LocationState>) => void;
@@ -563,6 +567,10 @@ export function CampaignStoreProvider({
         dispatch({ type: 'inventory/itemAcquired', payload: { item, owner, source } }),
       retagItem: (itemId: Id, newOwner: InventoryOwner) =>
         dispatch({ type: 'inventory/itemRetagged', payload: { itemId, newOwner } }),
+      setItemAttunement: (itemId: Id, attuned: boolean) =>
+        dispatch({ type: 'inventory/itemAttunementSet', payload: { itemId, attuned } }),
+      setItemMagical: (itemId: Id, magical: boolean) =>
+        dispatch({ type: 'inventory/itemMagicalSet', payload: { itemId, magical } }),
 
       // Location & Weather Actions
       setLocationsState: (payload: Partial<LocationState>) =>
