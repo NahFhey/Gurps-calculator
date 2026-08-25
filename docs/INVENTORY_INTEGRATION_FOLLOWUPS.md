@@ -144,7 +144,13 @@ as disadvantages/features). Certain characters can't or won't eat certain meals,
 should exclude them from that meal's buff. Surfaced while designing the cooking buff
 write path; explicitly deferred so v1 keeps its "everyone eats" invariant.
 
-**Open questions:**
+**Design complete:** see [`DIETARY_RESTRICTIONS_PLAN.md`](./DIETARY_RESTRICTIONS_PLAN.md).
+Key calls: explicit two-list per-character config (excluded types + required
+any-of types) with trait parsing demoted to a nudge, character-sheet UI,
+cook-time snapshot of excluded characters onto the MealBuff, display-only
+"(X abstains)" banner clause. Sequence after take-from-shared merges.
+
+**Original open questions (all resolved):**
 - Trait detection — match against free-text advantage/disadvantage names in
   `gcsData`? Naming convention? (Same fragility class as attunement's
   Magery-sourcing question, followup #2.)
