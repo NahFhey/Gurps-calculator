@@ -1,6 +1,6 @@
 # Attunement State Machine — Design Concept
 
-**Status:** Designed 2026-08-25 (grill-me session, Devin + Fable). Not yet implemented.
+**Status:** Designed AND implemented 2026-08-25 (grill-me session → codex-shepherd, same day). Browser-verified: wand → attune → Attuned 1/3 on Magery 2.
 **Origin:** [`INVENTORY_INTEGRATION_FOLLOWUPS.md`](./INVENTORY_INTEGRATION_FOLLOWUPS.md) item #2.
 
 ## Premise correction (recon finding, 2026-08-25)

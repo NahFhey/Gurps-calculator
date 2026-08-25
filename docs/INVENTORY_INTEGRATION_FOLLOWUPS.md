@@ -28,7 +28,7 @@ session: **dietary restrictions** (see item #10 below).
 
 ---
 
-## 2. Attunement State Machine — 📐 DESIGNED 2026-08-25
+## 2. Attunement State Machine — ✅ SHIPPED 2026-08-25
 
 **Design complete:** all open questions resolved in a grill-me session — see
 [`ATTUNEMENT_STATE_MACHINE_PLAN.md`](./ATTUNEMENT_STATE_MACHINE_PLAN.md). Key calls:
