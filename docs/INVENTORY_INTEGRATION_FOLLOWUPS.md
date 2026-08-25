@@ -65,7 +65,14 @@ Ready to spec for implementation.
 
 ---
 
-## 4. Combat Consumables Consumption Path
+## 4. Combat Consumables Consumption Path — 📐 DESIGNED 2026-08-25
+
+**Design complete:** see [`COMBAT_CONSUMABLES_PLAN.md`](./COMBAT_CONSUMABLES_PLAN.md).
+Key calls: ItemInstance model (CombatItem library stays legacy), party participants
+only, NO combat-undo coupling in v1 — per-entry manual "undo use" with snapshot-based
+restore via itemAcquired instead; itemConsumed always-succeed with delete-at-zero;
+fills the existing ActionPanelItemsWorkflow stub; no effect automation. Implement
+AFTER the attunement lane merges (same reducer surface).
 
 **Context:** Healing potions, traps, bombs, ammo are consumed from **individual** inventory during combat. Phase 12a.5 does not touch this — it's a separate write path.
 
