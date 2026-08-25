@@ -8,6 +8,8 @@
 import type { Draft } from 'immer';
 import type { CampaignState } from '../campaignReducer';
 import type {
+  AcquiredItem,
+  AcquisitionSource,
   Food,
   Id,
   Inventory,
@@ -15,6 +17,7 @@ import type {
   Material,
   MaterialEntry
 } from '../../types/campaign';
+import type { CombatState } from '../../types/combatTracker';
 import {
   type InventoryAction,
   MATERIAL_ADD,
@@ -41,7 +44,9 @@ import {
   ITEM_ACQUIRED,
   ITEM_RETAGGED,
   ITEM_ATTUNEMENT_SET,
-  ITEM_MAGICAL_SET
+  ITEM_MAGICAL_SET,
+  ITEM_CONSUMED,
+  ITEM_CONSUMPTION_REVERTED
 } from './inventoryActions';
 
 // ============================================================================
@@ -128,6 +133,67 @@ function upsertEntryRef(entries: Draft<MaterialEntry>[], id: Id, quantity: numbe
     existing.quantity += quantity;
   } else {
     entries.push({ id, quantity });
+  }
+}
+
+/**
+ * Land an acquired item using the inventory bus rules. Revert calls this same
+ * helper so a restore remains an acquire-semantic write inside one reducer pass.
+ */
+function acquireInventoryItem(
+  draft: Draft<CampaignState>,
+  item: AcquiredItem,
+  owner: InventoryOwner,
+  source: AcquisitionSource
+): void {
+  const inventory = ensureInventoryRecord(draft, owner);
+
+  switch (item.kind) {
+    case 'material': {
+      const materialId = stackMaterial(draft, {
+        id: item.id,
+        name: item.name,
+        type: item.type,
+        quantity: item.quantity,
+        source: item.source ?? source,
+        notes: item.notes
+      });
+      upsertEntryRef(inventory.materials, materialId, item.quantity);
+      return;
+    }
+    case 'food': {
+      const foodId = stackFood(draft, {
+        id: item.id,
+        name: item.name,
+        types: item.types,
+        quantity: item.quantity,
+        source: item.source ?? source,
+        notes: item.notes
+      });
+      upsertEntryRef(inventory.food, foodId, item.quantity);
+      return;
+    }
+    case 'equipment':
+    case 'other': {
+      const existing = inventory.items.find((candidate) => candidate.id === item.id);
+      if (existing) {
+        existing.quantity = (existing.quantity ?? 0) + item.quantity;
+        return;
+      }
+      inventory.items.push({
+        id: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        ...(item.magical !== undefined ? { magical: item.magical } : {}),
+        value: item.value,
+        notes: item.notes,
+        source: item.source ?? source
+      });
+      return;
+    }
+    case 'currency':
+      inventory.currency[item.currencyKey] =
+        (inventory.currency[item.currencyKey] ?? 0) + item.amount;
   }
 }
 
@@ -284,50 +350,7 @@ export function handleInventoryAction(
     // ========================================================================
     case ITEM_ACQUIRED: {
       const { item, owner, source } = action.payload;
-      const inventory = ensureInventoryRecord(draft, owner);
-
-      switch (item.kind) {
-        case 'material': {
-          const materialId = stackMaterial(draft, {
-            id: item.id,
-            name: item.name,
-            type: item.type,
-            quantity: item.quantity,
-            source: item.source ?? source,
-            notes: item.notes
-          });
-          upsertEntryRef(inventory.materials, materialId, item.quantity);
-          return true;
-        }
-        case 'food': {
-          const foodId = stackFood(draft, {
-            id: item.id,
-            name: item.name,
-            types: item.types,
-            quantity: item.quantity,
-            source: item.source ?? source,
-            notes: item.notes
-          });
-          upsertEntryRef(inventory.food, foodId, item.quantity);
-          return true;
-        }
-        case 'equipment':
-        case 'other':
-          inventory.items.push({
-            id: item.id,
-            name: item.name,
-            quantity: item.quantity,
-            ...(item.magical !== undefined ? { magical: item.magical } : {}),
-            value: item.value,
-            notes: item.notes,
-            source
-          });
-          return true;
-        case 'currency':
-          inventory.currency[item.currencyKey] =
-            (inventory.currency[item.currencyKey] ?? 0) + item.amount;
-          return true;
-      }
+      acquireInventoryItem(draft, item, owner, source);
       return true;
     }
 
@@ -394,6 +417,72 @@ export function handleInventoryAction(
         }
       }
       return true;
+
+    case ITEM_CONSUMED: {
+      for (const inventory of Object.values(draft.entities.inventories)) {
+        const itemIndex = inventory.items.findIndex(
+          (candidate) => candidate.id === action.payload.itemId
+        );
+        if (itemIndex < 0) continue;
+
+        const item = inventory.items[itemIndex];
+        const itemSnapshot = { ...item };
+        const currentQuantity = item.quantity ?? 0;
+        const requestedQuantity = action.payload.quantity ?? 1;
+        const consumedQuantity = Math.min(requestedQuantity, currentQuantity);
+        item.quantity = Math.max(0, currentQuantity - requestedQuantity);
+        if (item.quantity === 0) {
+          inventory.items.splice(itemIndex, 1);
+        }
+
+        // combat.activeSession is declared as the legacy CombatSession but holds the
+        // tracker's CombatState at runtime (see useCombatStore.ts saveCombatActive note).
+        const activeSession = draft.combat.activeSession as unknown as Draft<CombatState> | null;
+        if (action.payload.combat && activeSession) {
+          const { participantId, participantName, round } = action.payload.combat;
+          activeSession.consumptions ??= [];
+          activeSession.consumptions.push({
+            id: `consumption-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            participantId,
+            participantName,
+            characterId: inventory.ownerId ?? participantId,
+            itemSnapshot,
+            quantity: consumedQuantity,
+            round
+          });
+        }
+        return true;
+      }
+      return true;
+    }
+
+    case ITEM_CONSUMPTION_REVERTED: {
+      // Same legacy CombatSession/CombatState seam as ITEM_CONSUMED above.
+      const activeSession = draft.combat.activeSession as unknown as Draft<CombatState> | null;
+      const entryIndex = activeSession?.consumptions?.findIndex(
+        (entry) => entry.id === action.payload.entryId
+      ) ?? -1;
+      if (!activeSession?.consumptions || entryIndex < 0) return true;
+
+      const entry = activeSession.consumptions[entryIndex];
+      acquireInventoryItem(
+        draft,
+        {
+          kind: 'equipment',
+          id: entry.itemSnapshot.id,
+          name: entry.itemSnapshot.name ?? 'Unnamed item',
+          quantity: entry.quantity,
+          magical: entry.itemSnapshot.magical,
+          value: entry.itemSnapshot.value,
+          notes: entry.itemSnapshot.notes,
+          source: entry.itemSnapshot.source
+        },
+        entry.characterId,
+        'loot'
+      );
+      activeSession.consumptions.splice(entryIndex, 1);
+      return true;
+    }
 
     default:
       return false;

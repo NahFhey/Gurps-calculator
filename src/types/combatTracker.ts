@@ -5,6 +5,8 @@
  * Extracted from CombatTracker.tsx for better organization and reusability.
  */
 
+import type { Id, ItemInstance } from './campaign';
+
 // ============================================================================
 // CORE COMBAT TYPES
 // ============================================================================
@@ -209,6 +211,16 @@ export interface DamageActionData {
 // COMBAT STATE TYPES
 // ============================================================================
 
+export interface ConsumptionEntry {
+  id: Id;
+  participantId: Id;
+  participantName: string;
+  characterId: Id;
+  itemSnapshot: ItemInstance;
+  quantity: number;
+  round: number;
+}
+
 export interface CombatState {
   version?: number;
   id: string;
@@ -222,6 +234,7 @@ export interface CombatState {
   currentRound: number;
   turnDecisions: Record<string, TurnDecision>;
   log: LogEntry[];
+  consumptions?: ConsumptionEntry[];
 }
 
 export interface MovementRecord {

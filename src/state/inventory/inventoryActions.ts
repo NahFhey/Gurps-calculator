@@ -58,6 +58,8 @@ export const ITEM_ACQUIRED = 'inventory/itemAcquired' as const;
 export const ITEM_RETAGGED = 'inventory/itemRetagged' as const;
 export const ITEM_ATTUNEMENT_SET = 'inventory/itemAttunementSet' as const;
 export const ITEM_MAGICAL_SET = 'inventory/itemMagicalSet' as const;
+export const ITEM_CONSUMED = 'inventory/itemConsumed' as const;
+export const ITEM_CONSUMPTION_REVERTED = 'inventory/itemConsumptionReverted' as const;
 
 // ============================================================================
 // ACTION TYPES
@@ -139,6 +141,18 @@ export type ItemMagicalSetAction = {
   type: typeof ITEM_MAGICAL_SET;
   payload: { itemId: Id; magical: boolean };
 };
+export type ItemConsumedAction = {
+  type: typeof ITEM_CONSUMED;
+  payload: {
+    itemId: Id;
+    quantity?: number;
+    combat?: { participantId: Id; participantName: string; round: number };
+  };
+};
+export type ItemConsumptionRevertedAction = {
+  type: typeof ITEM_CONSUMPTION_REVERTED;
+  payload: { entryId: Id };
+};
 
 // ============================================================================
 // UNION TYPE
@@ -175,7 +189,9 @@ export type InventoryAction =
   | ItemAcquiredAction
   | ItemRetaggedAction
   | ItemAttunementSetAction
-  | ItemMagicalSetAction;
+  | ItemMagicalSetAction
+  | ItemConsumedAction
+  | ItemConsumptionRevertedAction;
 
 // ============================================================================
 // TYPE GUARD
@@ -206,7 +222,9 @@ const INVENTORY_ACTION_TYPES = new Set([
   ITEM_ACQUIRED,
   ITEM_RETAGGED,
   ITEM_ATTUNEMENT_SET,
-  ITEM_MAGICAL_SET
+  ITEM_MAGICAL_SET,
+  ITEM_CONSUMED,
+  ITEM_CONSUMPTION_REVERTED
 ]);
 
 /**

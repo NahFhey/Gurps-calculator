@@ -171,6 +171,16 @@ export const inventoryLog = {
       message: quantity
         ? `Removed ${quantity}x "${itemName}" from ${inventoryName}`
         : `Removed "${itemName}" from ${inventoryName}`
+    }),
+
+  itemConsumed: (itemName: string, characterName: string) =>
+    createActivityLogEntry('inventory', 'item_consumed', {
+      message: `${characterName} used "${itemName}"`
+    }),
+
+  itemConsumptionReverted: (itemName: string, characterName: string) =>
+    createActivityLogEntry('inventory', 'item_consumption_reverted', {
+      message: `Restored "${itemName}" to ${characterName}`
     })
 };
 
