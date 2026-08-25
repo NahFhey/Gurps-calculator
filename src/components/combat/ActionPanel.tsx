@@ -298,7 +298,12 @@ export default function ActionPanel({
       )}
 
       {activeWorkflow === 'items' && (
-        <ActionPanelItemsWorkflow onClose={() => setActiveWorkflow(null)} />
+        <ActionPanelItemsWorkflow
+          currentActor={currentActor}
+          currentRound={currentRound}
+          currentTurn={currentTurn}
+          onClose={() => setActiveWorkflow(null)}
+        />
       )}
     </div>
   );

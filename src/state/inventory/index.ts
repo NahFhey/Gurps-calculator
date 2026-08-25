@@ -36,6 +36,8 @@ export {
   ITEM_RETAGGED,
   ITEM_ATTUNEMENT_SET,
   ITEM_MAGICAL_SET,
+  ITEM_CONSUMED,
+  ITEM_CONSUMPTION_REVERTED,
   // Type guard
   isInventoryAction,
   // Types
@@ -64,7 +66,9 @@ export {
   type ItemAcquiredAction,
   type ItemRetaggedAction,
   type ItemAttunementSetAction,
-  type ItemMagicalSetAction
+  type ItemMagicalSetAction,
+  type ItemConsumedAction,
+  type ItemConsumptionRevertedAction
 } from './inventoryActions';
 
 // Re-export selectors from central location

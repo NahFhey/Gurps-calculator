@@ -647,6 +647,8 @@ export type CampaignAction =
   | { type: 'inventory/itemRetagged'; payload: { itemId: Id; newOwner: InventoryOwner } }
   | { type: 'inventory/itemAttunementSet'; payload: { itemId: Id; attuned: boolean } }
   | { type: 'inventory/itemMagicalSet'; payload: { itemId: Id; magical: boolean } }
+  | { type: 'inventory/itemConsumed'; payload: { itemId: Id; quantity?: number; combat?: { participantId: Id; participantName: string; round: number } } }
+  | { type: 'inventory/itemConsumptionReverted'; payload: { entryId: Id } }
   // Location & Weather actions
   | { type: 'setLocationsState'; payload: Partial<LocationState> }
   | { type: 'addLocation'; payload: Location }

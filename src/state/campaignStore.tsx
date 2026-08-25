@@ -258,6 +258,10 @@ type CampaignStoreValue = {
     setItemAttunement: (itemId: Id, attuned: boolean) => void;
     /** Explicitly set an item's magical flag. Always succeeds. */
     setItemMagical: (itemId: Id, magical: boolean) => void;
+    /** Consume an item and optionally record it in the active combat session. Always succeeds. */
+    consumeItem: (itemId: Id, quantity?: number, combat?: { participantId: Id; participantName: string; round: number }) => void;
+    /** Restore a recorded combat consumption through acquire semantics. Always succeeds. */
+    revertItemConsumption: (entryId: Id) => void;
 
     // Location & Weather Actions
     setLocationsState: (payload: Partial<LocationState>) => void;
@@ -571,6 +575,10 @@ export function CampaignStoreProvider({
         dispatch({ type: 'inventory/itemAttunementSet', payload: { itemId, attuned } }),
       setItemMagical: (itemId: Id, magical: boolean) =>
         dispatch({ type: 'inventory/itemMagicalSet', payload: { itemId, magical } }),
+      consumeItem: (itemId: Id, quantity?: number, combat?: { participantId: Id; participantName: string; round: number }) =>
+        dispatch({ type: 'inventory/itemConsumed', payload: { itemId, quantity, combat } }),
+      revertItemConsumption: (entryId: Id) =>
+        dispatch({ type: 'inventory/itemConsumptionReverted', payload: { entryId } }),
 
       // Location & Weather Actions
       setLocationsState: (payload: Partial<LocationState>) =>
