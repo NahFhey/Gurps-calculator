@@ -14,7 +14,8 @@ import {
   createCampaignState,
   type CampaignAction,
 } from '../state/campaignReducer';
-import type { CombatCharacter, CombatSession } from '../types/campaign';
+import type { CombatCharacter } from '../types/campaign';
+import type { CombatState, Participant } from '../types/combatTracker';
 
 // ============================================================================
 // TEST FIXTURES
@@ -42,30 +43,57 @@ function createCombatCharacter(overrides?: Partial<CombatCharacter>): CombatChar
   };
 }
 
-function createCombatSession(overrides?: Partial<CombatSession>): CombatSession {
+function createParticipant(overrides?: Partial<Participant>): Participant {
+  return {
+    instanceId: 'inst-fighter',
+    libraryId: 'char-fighter',
+    name: 'Test Fighter',
+    category: 'player',
+    st: 12,
+    dx: 13,
+    iq: 10,
+    ht: 11,
+    hp: 12,
+    fp: 11,
+    mp: 0,
+    maxHP: 12,
+    currentHP: 12,
+    basicSpeed: 6.25,
+    basicMove: 6,
+    isDead: false,
+    conditions: [],
+    ...overrides,
+  };
+}
+
+function createCombatSession(overrides?: Partial<CombatState>): CombatState {
   return {
     id: 'session-1',
     name: 'Test Encounter',
+    startTime: 1767225600000,
     participants: [
-      {
-        characterId: 'char-fighter',
-        team: 'ally',
-        initiative: 6.25,
-        currentHP: 12,
-        status: 'active',
-      },
-      {
-        characterId: 'char-goblin',
-        team: 'enemy',
-        initiative: 5.5,
+      createParticipant(),
+      createParticipant({
+        instanceId: 'inst-goblin',
+        libraryId: 'char-goblin',
+        name: 'Goblin',
+        category: 'enemy',
+        st: 9,
+        dx: 12,
+        iq: 8,
+        ht: 9,
+        hp: 8,
+        maxHP: 8,
         currentHP: 8,
-        status: 'active',
-      },
+        basicSpeed: 5.5,
+        basicMove: 5,
+      }),
     ],
+    turnOrder: ['inst-fighter', 'inst-goblin'],
+    currentTurnIndex: 0,
     currentRound: 1,
-    currentTurn: 0,
+    turnDecisions: {},
     log: [],
-    startDate: '2026-01-01',
     ...overrides,
   };
 }
@@ -148,7 +176,7 @@ describe('Combat Round Integration', () => {
       expect(state.combat.activeSession).not.toBeNull();
       expect(state.combat.activeSession!.participants).toHaveLength(2);
       expect(state.combat.activeSession!.currentRound).toBe(1);
-      expect(state.combat.activeSession!.currentTurn).toBe(0);
+      expect(state.combat.activeSession!.currentTurnIndex).toBe(0);
 
       // 4. End combat by nulling the session
       state = campaignReducer(state, {
@@ -178,10 +206,10 @@ describe('Combat Round Integration', () => {
       // Advance to turn 1 (second participant)
       state = campaignReducer(state, {
         type: 'updateCombatActive' as CampaignAction['type'],
-        payload: { currentTurn: 1 },
+        payload: { currentTurnIndex: 1 },
       } as CampaignAction);
 
-      expect(state.combat.activeSession!.currentTurn).toBe(1);
+      expect(state.combat.activeSession!.currentTurnIndex).toBe(1);
       expect(state.combat.activeSession!.currentRound).toBe(1);
     });
 
@@ -198,10 +226,10 @@ describe('Combat Round Integration', () => {
       // Simulate round advancement: turn wraps back to 0, round increments
       state = campaignReducer(state, {
         type: 'updateCombatActive' as CampaignAction['type'],
-        payload: { currentTurn: 0, currentRound: 2 },
+        payload: { currentTurnIndex: 0, currentRound: 2 },
       } as CampaignAction);
 
-      expect(state.combat.activeSession!.currentTurn).toBe(0);
+      expect(state.combat.activeSession!.currentTurnIndex).toBe(0);
       expect(state.combat.activeSession!.currentRound).toBe(2);
     });
 
@@ -309,10 +337,10 @@ describe('Combat Round Integration', () => {
         payload: session,
       } as CampaignAction);
 
-      // Mark goblin as unconscious
+      // Mark goblin as dead at 0 HP
       const updatedParticipants = state.combat.activeSession!.participants.map((p) =>
-        p.characterId === 'char-goblin'
-          ? { ...p, status: 'unconscious' as const, currentHP: 0 }
+        p.instanceId === 'inst-goblin'
+          ? { ...p, isDead: true, currentHP: 0 }
           : p
       );
 
@@ -322,9 +350,9 @@ describe('Combat Round Integration', () => {
       } as CampaignAction);
 
       const goblin = state.combat.activeSession!.participants.find(
-        (p) => p.characterId === 'char-goblin'
+        (p) => p.instanceId === 'inst-goblin'
       );
-      expect(goblin!.status).toBe('unconscious');
+      expect(goblin!.isDead).toBe(true);
       expect(goblin!.currentHP).toBe(0);
     });
 
@@ -341,19 +369,19 @@ describe('Combat Round Integration', () => {
       // Round 1: advance through both turns
       state = campaignReducer(state, {
         type: 'updateCombatActive' as CampaignAction['type'],
-        payload: { currentTurn: 1 },
+        payload: { currentTurnIndex: 1 },
       } as CampaignAction);
 
       // Round 2: wrap back
       state = campaignReducer(state, {
         type: 'updateCombatActive' as CampaignAction['type'],
-        payload: { currentTurn: 0, currentRound: 2 },
+        payload: { currentTurnIndex: 0, currentRound: 2 },
       } as CampaignAction);
 
       // Round 2: second turn + damage
       state = campaignReducer(state, {
         type: 'updateCombatActive' as CampaignAction['type'],
-        payload: { currentTurn: 1 },
+        payload: { currentTurnIndex: 1 },
       } as CampaignAction);
 
       state = campaignReducer(state, {
@@ -364,7 +392,7 @@ describe('Combat Round Integration', () => {
       // Round 3
       state = campaignReducer(state, {
         type: 'updateCombatActive' as CampaignAction['type'],
-        payload: { currentTurn: 0, currentRound: 3 },
+        payload: { currentTurnIndex: 0, currentRound: 3 },
       } as CampaignAction);
 
       expect(state.combat.activeSession!.currentRound).toBe(3);

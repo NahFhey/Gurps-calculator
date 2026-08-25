@@ -9,7 +9,8 @@ import {
   ensureCombatCharacterCategories,
 } from '../dataMigration';
 import { createCampaignState } from '../../state/campaignReducer';
-import type { Character, CombatCharacter, CombatSession, Inventory } from '../../types/campaign';
+import type { Character, CombatCharacter, Inventory } from '../../types/campaign';
+import type { CombatState } from '../../types/combatTracker';
 
 // ============================================================================
 // In-memory mock for window.storage
@@ -322,12 +323,12 @@ describe('ensureInventoryRecords', () => {
 
 describe('ensureConditionVisibility', () => {
   /**
-   * Runtime combat sessions carry the richer CombatState participant shape
-   * (conditions as instance objects, legacy status booleans) despite the
-   * narrower declared CombatSession type — a known boundary-type gap. Tests
-   * build the runtime shape and cast, matching production data.
+   * These tests simulate loaded persistence blobs: pre-migration sessions
+   * still carry legacy keys (currentTurn, startDate, string participants)
+   * that ensureConditionVisibility must tolerate, so the fixtures build the
+   * raw shape and cast to the declared CombatState type.
    */
-  const runtimeSession = (participants: unknown[]): CombatSession =>
+  const runtimeSession = (participants: unknown[]): CombatState =>
     ({
       id: 's1',
       name: 'Skirmish',
@@ -336,7 +337,7 @@ describe('ensureConditionVisibility', () => {
       participants,
       log: [],
       startDate: '2026-07-04',
-    }) as unknown as CombatSession;
+    }) as unknown as CombatState;
 
   type RuntimeParticipant = {
     instanceId: string;

@@ -46,7 +46,7 @@ export function useCombatHistory(): CombatHistoryResult {
     saveCombatReveal,
   } = useCombatStore();
 
-  const combat = combatActive as CombatState | null;
+  const combat = combatActive;
   const reveal = combatReveal as RevealState | null;
 
   const [history, setHistory] = useState<HistoryState>(

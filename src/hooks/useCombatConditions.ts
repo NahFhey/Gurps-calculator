@@ -104,10 +104,7 @@ export function useCombatConditions(
         source: conditionInstance.source,
       });
 
-      saveCombatActive((prev: CombatState) => ({
-        ...prev,
-        log: [...prev.log, logEntry],
-      }));
+      saveCombatActive((prev) => (prev ? { ...prev, log: [...prev.log, logEntry] } : prev));
 
       recordAction(createAddLogEntryAction(logEntry));
     },
@@ -163,10 +160,7 @@ export function useCombatConditions(
         conditionLabel: conditionToRemove.label,
       });
 
-      saveCombatActive((prev: CombatState) => ({
-        ...prev,
-        log: [...prev.log, logEntry],
-      }));
+      saveCombatActive((prev) => (prev ? { ...prev, log: [...prev.log, logEntry] } : prev));
 
       recordAction(createAddLogEntryAction(logEntry));
     },

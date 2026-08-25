@@ -7,6 +7,7 @@
 
 import type { CampaignState } from '../campaignReducer';
 import type { Id, CombatCharacter, CombatItem, CombatSession } from '../../types/campaign';
+import type { CombatState } from '../../types/combatTracker';
 
 // ============================================================================
 // COMBAT CHARACTER SELECTORS
@@ -79,7 +80,7 @@ export const selectCombatEncounterId = (state: CampaignState): string | null =>
 /**
  * Select active combat session
  */
-export const selectActiveCombatSession = (state: CampaignState): CombatSession | null =>
+export const selectActiveCombatSession = (state: CampaignState): CombatState | null =>
   state.combat.activeSession;
 
 /**

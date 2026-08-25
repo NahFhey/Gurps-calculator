@@ -19,7 +19,8 @@ import {
   isCombatAction,
   type CombatAction
 } from '../combatActions';
-import type { CombatCharacter, CombatSession, CombatItem } from '../../../types/campaign';
+import type { CombatCharacter, CombatItem } from '../../../types/campaign';
+import type { CombatState } from '../../../types/combatTracker';
 import type { EncounterTemplate } from '../../../types/combatTracker';
 
 const mockCombatCharacter = (overrides?: Partial<CombatCharacter>): CombatCharacter =>
@@ -32,16 +33,19 @@ const mockCombatCharacter = (overrides?: Partial<CombatCharacter>): CombatCharac
     ...overrides
   } as unknown as CombatCharacter);
 
-const mockCombatSession = (overrides?: Partial<CombatSession>): CombatSession =>
+const mockCombatSession = (overrides?: Partial<CombatState>): CombatState =>
   ({
     id: 'session-1',
     name: 'Test Battle',
+    startTime: 1767225600000,
     participants: [],
+    turnOrder: [],
+    currentTurnIndex: 0,
     currentRound: 1,
-    currentTurn: 0,
+    turnDecisions: {},
     log: [],
     ...overrides
-  } as unknown as CombatSession);
+  } as CombatState);
 
 const mockCombatItem = (overrides?: Partial<CombatItem>): CombatItem =>
   ({

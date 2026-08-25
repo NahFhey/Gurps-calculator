@@ -6,7 +6,7 @@
  */
 
 import type { Id, CombatCharacter, CombatItem, CombatSession } from '../../types/campaign';
-import type { EncounterTemplate, RevealState } from '../../types/combatTracker';
+import type { CombatState, EncounterTemplate, RevealState } from '../../types/combatTracker';
 
 // ============================================================================
 // ACTION TYPE CONSTANTS
@@ -67,11 +67,11 @@ export type SetCombatCharactersAction = {
 // Combat session action types
 export type SetCombatActiveAction = {
   type: typeof COMBAT_ACTIVE_SET;
-  payload: CombatSession | null;
+  payload: CombatState | null;
 };
 export type UpdateCombatActiveAction = {
   type: typeof COMBAT_ACTIVE_UPDATE;
-  payload: Partial<CombatSession>;
+  payload: Partial<CombatState>;
 };
 
 // Combat history action types

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createCampaignState } from '../../state/campaignReducer';
 import { loadCampaignState, saveCampaignState } from '../campaignStorage';
 import type { CombatCharacter, CombatSession, CombatItem } from '../../types/campaign';
+import type { CombatState } from '../../types/combatTracker';
 
 // ============================================================================
 // TEST FIXTURES
@@ -44,6 +45,21 @@ function createMockCombatSession(overrides: Record<string, unknown> = {}): Comba
     startDate: new Date().toISOString(),
     ...overrides,
   } as CombatSession;
+}
+
+function createMockCombatState(overrides: Record<string, unknown> = {}): CombatState {
+  return {
+    id: 'session-1',
+    name: 'Test Combat Session',
+    startTime: 1767225600000,
+    currentRound: 1,
+    currentTurnIndex: 0,
+    turnOrder: [],
+    turnDecisions: {},
+    participants: [],
+    log: [],
+    ...overrides,
+  } as CombatState;
 }
 
 function createMockCombatItem(overrides: Record<string, unknown> = {}): CombatItem {
@@ -113,11 +129,11 @@ describe('campaignStorage', () => {
 
     it('round-trips active combat session', async () => {
       const state = createCampaignState();
-      const session = createMockCombatSession({
+      const session = createMockCombatState({
         id: 'session-active',
         name: 'Battle at the Bridge',
         currentRound: 3,
-        currentTurn: 2,
+        currentTurnIndex: 2,
         participants: ['fighter-1', 'mage-1', 'goblin-1'],
         log: [
           { type: 'attack', actor: 'fighter-1', target: 'goblin-1', result: 'hit' } as any,
@@ -134,7 +150,7 @@ describe('campaignStorage', () => {
       expect(loaded.combat.activeSession?.id).toBe('session-active');
       expect(loaded.combat.activeSession?.name).toBe('Battle at the Bridge');
       expect(loaded.combat.activeSession?.currentRound).toBe(3);
-      expect(loaded.combat.activeSession?.currentTurn).toBe(2);
+      expect(loaded.combat.activeSession?.currentTurnIndex).toBe(2);
       expect(loaded.combat.activeSession?.participants).toEqual(['fighter-1', 'mage-1', 'goblin-1']);
       expect(loaded.combat.active).toBe(true);
     });
@@ -153,7 +169,7 @@ describe('campaignStorage', () => {
 
     it('migrates pre-12a.6 participants on load: bools fold into conditions, revealed backfilled', async () => {
       const state = createCampaignState();
-      state.combat.activeSession = createMockCombatSession({
+      state.combat.activeSession = createMockCombatState({
         id: 'session-legacy',
         currentRound: 4,
         participants: [
@@ -306,11 +322,11 @@ describe('campaignStorage', () => {
       };
 
       // Active session
-      state.combat.activeSession = createMockCombatSession({
+      state.combat.activeSession = createMockCombatState({
         id: 'current-battle',
         name: 'Forest Ambush',
         currentRound: 2,
-        currentTurn: 1,
+        currentTurnIndex: 1,
         participants: ['fighter', 'mage', 'goblin'],
       });
       state.combat.active = true;

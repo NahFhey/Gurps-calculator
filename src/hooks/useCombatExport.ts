@@ -71,7 +71,7 @@ export function useCombatExport(
   } = useCombatStore();
   const { error: showError } = useToast();
 
-  const combat = combatActive as CombatState | null;
+  const combat = combatActive;
   const reveal = combatReveal as RevealState | null;
   // Use provided history or a minimal empty object for export compatibility
   const hist = history ?? ({ version: 1, actions: [], cursor: 0, checkpoints: [], checkpointEvery: 25, maxActions: 500, maxCheckpoints: 30 } as unknown as HistoryState);

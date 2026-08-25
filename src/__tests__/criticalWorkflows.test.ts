@@ -11,6 +11,7 @@ import { describe, it, expect } from 'vitest';
 import { campaignReducer, createCampaignState } from '../state/campaignReducer';
 import type { CampaignAction, CampaignState } from '../state/campaignReducer';
 import type { CombatCharacter, CombatSession, Craft } from '../types/campaign';
+import type { CombatState, Participant } from '../types/combatTracker';
 
 // Helper to dispatch a sequence of actions
 function dispatchAll(initial: CampaignState, actions: CampaignAction[]): CampaignState {
@@ -59,6 +60,57 @@ describe('Combat round lifecycle', () => {
     notes: '',
   };
 
+  const makeParticipant = (overrides?: Partial<Participant>): Participant => ({
+    instanceId: 'fighter-1',
+    libraryId: 'fighter-1',
+    name: 'Sir Roderick',
+    category: 'player',
+    st: 13,
+    dx: 12,
+    iq: 10,
+    ht: 12,
+    hp: 14,
+    fp: 12,
+    mp: 0,
+    maxHP: 14,
+    currentHP: 14,
+    basicSpeed: 6,
+    basicMove: 6,
+    isDead: false,
+    conditions: [],
+    ...overrides,
+  });
+
+  const makeSession = (overrides?: Partial<CombatState>): CombatState => ({
+    id: 'session-1',
+    name: 'Battle',
+    startTime: 1767225600000,
+    currentRound: 1,
+    currentTurnIndex: 0,
+    participants: [
+      makeParticipant(),
+      makeParticipant({
+        instanceId: 'goblin-1',
+        libraryId: 'goblin-1',
+        name: 'Goblin Scout',
+        category: 'enemy',
+        st: 9,
+        dx: 11,
+        iq: 8,
+        ht: 9,
+        hp: 8,
+        maxHP: 8,
+        currentHP: 8,
+        basicSpeed: 5,
+        basicMove: 5,
+      }),
+    ],
+    turnOrder: ['fighter-1', 'goblin-1'],
+    turnDecisions: {},
+    log: [],
+    ...overrides,
+  });
+
   it('adds characters to the library', () => {
     const state = createCampaignState();
     const next = dispatchAll(state, [
@@ -84,18 +136,7 @@ describe('Combat round lifecycle', () => {
     expect(state.combat.encounterId).toBeDefined();
 
     // Then set the session details
-    const session: CombatSession = {
-      id: 'session-1',
-      name: 'Ambush!',
-      currentRound: 1,
-      currentTurn: 0,
-      participants: [
-        { characterId: 'fighter-1', team: 'ally', initiative: 12, currentHP: 14, status: 'active' },
-        { characterId: 'goblin-1', team: 'enemy', initiative: 11, currentHP: 8, status: 'active' },
-      ],
-      log: [],
-      startDate: new Date().toISOString(),
-    };
+    const session = makeSession({ name: 'Ambush!' });
     state = campaignReducer(state, { type: 'setCombatActive', payload: session });
     expect(state.combat.activeSession?.name).toBe('Ambush!');
     expect(state.combat.activeSession?.participants).toHaveLength(2);
@@ -108,35 +149,24 @@ describe('Combat round lifecycle', () => {
       { type: 'addCombatCharacter', payload: goblin },
     ]);
 
-    const session: CombatSession = {
-      id: 'session-1',
-      name: 'Battle',
-      currentRound: 1,
-      currentTurn: 0,
-      participants: [
-        { characterId: 'fighter-1', team: 'ally', initiative: 12, currentHP: 14, status: 'active' },
-        { characterId: 'goblin-1', team: 'enemy', initiative: 11, currentHP: 8, status: 'active' },
-      ],
-      log: [],
-      startDate: new Date().toISOString(),
-    };
+    const session = makeSession();
 
     state = campaignReducer(state, { type: 'setCombatActive', payload: session });
 
     // Advance turn: fighter acts, now goblin's turn
     state = campaignReducer(state, {
       type: 'updateCombatActive',
-      payload: { currentTurn: 1 },
+      payload: { currentTurnIndex: 1 },
     });
-    expect(state.combat.activeSession?.currentTurn).toBe(1);
+    expect(state.combat.activeSession?.currentTurnIndex).toBe(1);
 
     // Advance to next round
     state = campaignReducer(state, {
       type: 'updateCombatActive',
-      payload: { currentRound: 2, currentTurn: 0 },
+      payload: { currentRound: 2, currentTurnIndex: 0 },
     });
     expect(state.combat.activeSession?.currentRound).toBe(2);
-    expect(state.combat.activeSession?.currentTurn).toBe(0);
+    expect(state.combat.activeSession?.currentTurnIndex).toBe(0);
   });
 
   it('applies damage and tracks HP changes', () => {
@@ -146,24 +176,13 @@ describe('Combat round lifecycle', () => {
       { type: 'addCombatCharacter', payload: goblin },
     ]);
 
-    const session: CombatSession = {
-      id: 'session-1',
-      name: 'Battle',
-      currentRound: 1,
-      currentTurn: 0,
-      participants: [
-        { characterId: 'fighter-1', team: 'ally', initiative: 12, currentHP: 14, status: 'active' },
-        { characterId: 'goblin-1', team: 'enemy', initiative: 11, currentHP: 8, status: 'active' },
-      ],
-      log: [],
-      startDate: new Date().toISOString(),
-    };
+    const session = makeSession();
 
     state = campaignReducer(state, { type: 'setCombatActive', payload: session });
 
     // Goblin takes 5 damage
     const updatedParticipants = state.combat.activeSession!.participants.map((p) =>
-      p.characterId === 'goblin-1' ? { ...p, currentHP: p.currentHP - 5 } : p
+      p.instanceId === 'goblin-1' ? { ...p, currentHP: (p.currentHP ?? 0) - 5 } : p
     );
     state = campaignReducer(state, {
       type: 'updateCombatActive',
@@ -171,7 +190,7 @@ describe('Combat round lifecycle', () => {
     });
 
     const goblinParticipant = state.combat.activeSession!.participants.find(
-      (p) => p.characterId === 'goblin-1'
+      (p) => p.instanceId === 'goblin-1'
     );
     expect(goblinParticipant?.currentHP).toBe(3);
   });
@@ -183,25 +202,19 @@ describe('Combat round lifecycle', () => {
       { type: 'addCombatCharacter', payload: goblin },
     ]);
 
-    const session: CombatSession = {
-      id: 'session-1',
-      name: 'Battle',
-      currentRound: 3,
-      currentTurn: 0,
-      participants: [
-        { characterId: 'fighter-1', team: 'ally', initiative: 12, currentHP: 10, status: 'active' },
-        { characterId: 'goblin-1', team: 'enemy', initiative: 11, currentHP: 0, status: 'dead' },
-      ],
-      log: [],
-      startDate: new Date().toISOString(),
-    };
+    const session = makeSession({ currentRound: 3 });
+    session.participants = session.participants.map((p) =>
+      p.instanceId === 'goblin-1' ? { ...p, currentHP: 0, isDead: true } : { ...p, currentHP: 10 }
+    );
 
     state = campaignReducer(state, { type: 'setCombatActive', payload: session });
 
-    // Archive the session to history
+    // Archive the session to history.  entities.combatHistory still carries the
+    // legacy CombatSession[] declaration while holding CombatState snapshots at
+    // runtime — same bridge production end-combat code uses.
     state = campaignReducer(state, {
       type: 'setCombatHistory',
-      payload: [session],
+      payload: [session] as unknown as CombatSession[],
     });
 
     // End combat
