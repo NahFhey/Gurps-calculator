@@ -853,6 +853,8 @@ export interface ItemInstance {
   id: Id;
   name?: string;
   quantity?: number;
+  /** Character who completed the crafting project; absent for non-crafted items or unresolved workers. */
+  crafterId?: Id;
   /** Whether this item is magical. Absent is treated as false. */
   magical?: boolean;
   /** Whether this item is attuned. Absent is treated as false. */
@@ -926,7 +928,7 @@ export type AcquisitionSource = 'crafting' | 'gathering' | 'loot';
 export type AcquiredItem =
   | { kind: 'material'; id: Id; name: string; type: string; quantity: number; source?: string; notes?: string }
   | { kind: 'food'; id: Id; name: string; types?: string[]; quantity: number; source?: string; notes?: string }
-  | { kind: 'equipment' | 'other'; id: Id; name: string; quantity: number; value?: number; notes?: string; magical?: boolean; source?: string }
+  | { kind: 'equipment' | 'other'; id: Id; name: string; quantity: number; crafterId?: Id; value?: number; notes?: string; magical?: boolean; source?: string }
   | { kind: 'currency'; currencyKey: string; amount: number };
 
 export interface CurrencyLog {

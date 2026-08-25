@@ -399,6 +399,7 @@ export function CraftingWorkbench({
       newCur.completedDate = currentDate;
       newCur.completedDay = currentDay;
       saveCrafts(upsertCraft(crafts, newCur) as Craft[]);
+      const completingWorkerId = workers.find(worker => worker.name === newShift.worker)?.id;
       // Inventory bus (Phase 12a.5): completed craft lands in the party pool
       campaignActions.acquireItem(
         {
@@ -406,6 +407,7 @@ export function CraftingWorkbench({
           id: `crafted-${newCur.id}`,
           name: newCur.name || newCur.template || 'Crafted Item',
           quantity: 1,
+          ...(completingWorkerId ? { crafterId: completingWorkerId } : {}),
           notes: `${(newCur.currentQuality as string) || 'standard'} quality ${newCur.templateType}`
         },
         'party',
