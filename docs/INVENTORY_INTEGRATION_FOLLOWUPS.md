@@ -165,7 +165,7 @@ with the who-ate-subset question parked in followup #5's orbit.
 
 ---
 
-## 11. Owner-Attributed Material Holdings — 📐 DESIGNED 2026-08-25 (same day as recorded)
+## 11. Owner-Attributed Material Holdings — ✅ SHIPPED 2026-08-25 (recorded, designed, and implemented same day)
 
 **Context:** Pooled materials/food have advisory owner refs only; the pool is
 authoritative and consumption is owner-blind (followup #8's resolution, which parked
@@ -181,3 +181,15 @@ replacing the wholesale SET recomputes (recon found MATERIAL_CONSUME/FOOD_CONSUM
 were dead code — never dispatched), Transfer Console quantity-give for
 stackables. New followup: "personal-stake activities" (source picker + gathering
 leader attribution). Alchemy's missing consumption path noted as its own gap.
+
+---
+
+## 12. Personal-Stake Activities (Recorded during followup #11 design, 2026-08-25)
+
+**Context:** Two deferred faces of one feature: a per-activity consumption source
+picker (spend a character's personal materials instead of party stock) and
+gathering leader attribution (hauls land on `task.leaderId` instead of party).
+Both deliberately excluded from the owner-attributed-materials phase to keep the
+gather→craft loop frictionless. Design when a table moment wants personal stock
+spent directly. Also noted there: alchemy has NO material-consumption path at all
+— its own gap, not part of this item.

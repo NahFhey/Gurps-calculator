@@ -1,6 +1,6 @@
 # Owner-Attributed Material Holdings — Design Concept (Phase)
 
-**Status:** Designed 2026-08-25 (grill-me session, Devin + Fable). Not yet implemented.
+**Status:** Designed AND implemented 2026-08-25 (grill-me → codex-shepherd, same day). Schema 1.5.4. Live-verified: migration seeded party holdings with consumption history intact; 10 Wood Stock transferred party→Rina via the console; overview badge 'party 90, Rina 10'; post-merge cook consumed party food through foodsConsumed.
 **Origin:** [`INVENTORY_INTEGRATION_FOLLOWUPS.md`](./INVENTORY_INTEGRATION_FOLLOWUPS.md) item #11
 (the deferred half of followup #8's resolution, formally parked by #3's completion design).
 
