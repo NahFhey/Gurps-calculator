@@ -1,6 +1,6 @@
 # Combat Consumables Consumption Path — Design Concept
 
-**Status:** Designed 2026-08-25 (grill-me session, Devin + Fable). Not yet implemented.
+**Status:** Designed AND implemented 2026-08-25 (grill-me → codex-shepherd, same day). Live-verified: use → decrement + encounter entry, undo use → restored. Shepherd fix: player-view filter now preserves partyCharacterId (was stripping it, breaking the workflow for PCs in player view).
 **Origin:** [`INVENTORY_INTEGRATION_FOLLOWUPS.md`](./INVENTORY_INTEGRATION_FOLLOWUPS.md) item #4.
 
 ## Problem

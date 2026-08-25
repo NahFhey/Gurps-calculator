@@ -65,7 +65,7 @@ Ready to spec for implementation.
 
 ---
 
-## 4. Combat Consumables Consumption Path — 📐 DESIGNED 2026-08-25
+## 4. Combat Consumables Consumption Path — ✅ SHIPPED 2026-08-25
 
 **Design complete:** see [`COMBAT_CONSUMABLES_PLAN.md`](./COMBAT_CONSUMABLES_PLAN.md).
 Key calls: ItemInstance model (CombatItem library stays legacy), party participants
