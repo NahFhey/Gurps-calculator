@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useWeatherModifiers } from '../../hooks/useWeatherModifiers';
 import { denormalizeObject, normalizeArray } from '../../state/campaignUtils';
+import { selectAllFoods } from '../../state/selectors/inventorySelectors';
 import { useCampaignStore } from '../../state/campaignStore';
 import type {
   CookingRecipe as Recipe,
@@ -26,7 +27,7 @@ import { RemakeView } from './views/RemakeView';
 export function CookingTab() {
   const { state, actions } = useCampaignStore();
   const { hasEffect, effectDescription, locationName } = useWeatherModifiers('cooking');
-  const foods = useMemo(() => denormalizeObject(state.entities.foods) as Food[], [state.entities.foods]);
+  const foods = useMemo(() => selectAllFoods(state) as Food[], [state]);
   const recipes = useMemo(() => denormalizeObject(state.entities.recipes) as unknown as Recipe[], [state.entities.recipes]);
   const kitchens = useMemo(() => denormalizeObject(state.entities.kitchens) as unknown as Kitchen[], [state.entities.kitchens]);
   const cookingSkills = state.entities.cookingSkills as CookingSkill[];
@@ -36,7 +37,6 @@ export function CookingTab() {
     skills: character.work.skills || {},
     st: character.st,
   })) as Worker[], [state.entities.characters]);
-  const saveFoods = useCallback((value: Food[]) => actions.setFoods(normalizeArray(value)), [actions]);
   const saveRecipes = useCallback((value: Recipe[]) => actions.setRecipes(normalizeArray(value)), [actions]);
 
   const [view, setView] = useState<CookingView>('create');
@@ -124,11 +124,13 @@ export function CookingTab() {
     }
     saveRecipes([...recipes, recipe]);
     actions.addLogEntry(cookingLog.mealPrepared(name, result, selectedWorker));
-    saveFoods(foods.map(food => {
-      const ingredient = selected.find(item => item.foodId === food.id || String(item.foodId) === food.id || item.foodId === String(food.id));
-      if (!ingredient) return food;
-      const quantity = food.quantity - ingredient.amount;
-      return { ...food, quantity: quantity < 0 ? 0 : quantity };
+    actions.consumeFoods('party', selected.map(ingredient => {
+      const food = foods.find(item => item.id === ingredient.foodId || String(item.id) === ingredient.foodId);
+      return {
+        name: food?.name,
+        type: food?.types.join(','),
+        quantity: ingredient.amount,
+      };
     }));
     setSelected([]);
     setName('');
@@ -251,18 +253,19 @@ export function CookingTab() {
       kitchen: selectedKitchen.name, cookingSkill: skillValue, kitchenBonus,
       effectiveSkill, roll: rollValue, mos, result, substitutes,
     };
-    const newFoods = [...foods];
+    const consumedFoods: Array<{ name?: string; type?: string; quantity: number }> = [];
     remakeIngredients.forEach(ingredient => {
       const used = ingredient.useOriginal ? [{ foodId: ingredient.original.foodId, amount: ingredient.original.amount }] : ingredient.substitutes;
       used.forEach(item => {
-        const index = newFoods.findIndex(food => food.id === item.foodId || String(food.id) === item.foodId || food.id === String(item.foodId));
-        if (index !== -1) {
-          newFoods[index].quantity -= item.amount;
-          if (newFoods[index].quantity < 0) newFoods[index].quantity = 0;
-        }
+        const food = foods.find(entry => entry.id === item.foodId || String(entry.id) === item.foodId);
+        consumedFoods.push({
+          name: food?.name,
+          type: food?.types.join(','),
+          quantity: item.amount,
+        });
       });
     });
-    saveFoods(newFoods);
+    actions.consumeFoods('party', consumedFoods);
     saveRecipes(recipes.map(recipe => recipe.id === selectedRecipe?.id
       ? { ...recipe, creationHistory: [...(recipe.creationHistory || []), remakeLog] }
       : recipe));

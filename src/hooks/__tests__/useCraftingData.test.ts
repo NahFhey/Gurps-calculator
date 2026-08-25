@@ -8,6 +8,7 @@ import type {
   CustomTemplates,
   Material,
   MaterialType,
+  Inventory,
 } from '../../types/campaign';
 
 interface MockWeatherResult {
@@ -18,7 +19,7 @@ interface MockWeatherResult {
 }
 
 interface MockCraftingEntities {
-  materials: Record<string, Material>;
+  inventories: Record<string, Inventory>;
   materialTypes?: MaterialType[];
   crafts: Record<string, Craft>;
   craftDesigns: Record<string, CraftDesign>;
@@ -28,7 +29,9 @@ interface MockCraftingEntities {
 
 function createMockActions() {
   return {
-    setMaterials: vi.fn<(value: Record<string, Material>) => void>(),
+    addMaterial: vi.fn<(value: Material) => void>(),
+    updateMaterial: vi.fn<(id: string, value: Partial<Material>) => void>(),
+    removeMaterial: vi.fn<(id: string) => void>(),
     setCrafts: vi.fn<(value: Record<string, Craft>) => void>(),
     setCraftDesigns: vi.fn<(value: Record<string, CraftDesign>) => void>(),
     addLogEntry: vi.fn<(entry: LogEntry) => void>(),
@@ -112,7 +115,12 @@ function makeEntities(
   overrides: Partial<MockCraftingEntities> = {},
 ): MockCraftingEntities {
   return {
-    materials: {},
+    inventories: {
+      party: {
+        id: 'party', ownerType: 'party', ownerId: null, currency: {}, items: [], tools: [],
+        materials: [], food: [],
+      },
+    },
     materialTypes: [],
     crafts: {},
     craftDesigns: {},
@@ -165,7 +173,12 @@ describe('useCraftingData', () => {
     useCampaignStoreMock.mockReturnValue({
       state: {
         entities: makeEntities({
-          materials: { [material.id]: material },
+          inventories: {
+            party: {
+              id: 'party', ownerType: 'party', ownerId: null, currency: {}, items: [], tools: [],
+              materials: [material], food: [],
+            },
+          },
           materialTypes: [materialType],
           crafts: {
             [activeCraft.id]: activeCraft,
@@ -252,7 +265,7 @@ describe('useCraftingData', () => {
       result.current.addLogEntry(logEntry);
     });
 
-    expect(actions.setMaterials).toHaveBeenCalledWith({ [material.id]: material });
+    expect(actions.addMaterial).toHaveBeenCalledWith(material);
     expect(actions.setCrafts).toHaveBeenCalledWith({ [craft.id]: craft });
     expect(actions.setCraftDesigns).toHaveBeenCalledWith({ [design.id]: design });
     expect(actions.addLogEntry).toHaveBeenCalledWith(logEntry);

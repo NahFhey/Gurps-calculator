@@ -238,14 +238,10 @@ function migrateEntities(state: CampaignState, legacy: Record<string, any>): voi
   state.entities.characters = mergeCharacters(workers, state.entities.characters);
   console.log(`[Migration] Migrated ${Object.keys(state.entities.characters).length} characters`);
 
-  // Materials
+  // Materials and foods become authoritative party holdings.
   const materials = ensureIds(legacy.materials || []);
-  state.entities.materials = normalizeArray(materials) as Record<Id, Material>;
-  console.log(`[Migration] Migrated ${materials.length} materials`);
-
-  // Foods
   const foods = ensureIds(legacy.foods || []);
-  state.entities.foods = normalizeArray(foods) as Record<Id, Food>;
+  console.log(`[Migration] Migrated ${materials.length} materials`);
   console.log(`[Migration] Migrated ${foods.length} foods`);
 
   // Recipes
@@ -319,9 +315,11 @@ function migrateEntities(state: CampaignState, legacy: Record<string, any>): voi
 
   // Create unified inventories
   const partyInventory = createPartyInventory(
-    materials as Array<{ id: Id; quantity: number }>,
-    foods as Array<{ id: Id; quantity: number }>
+    [],
+    []
   );
+  partyInventory.materials = materials as Material[];
+  partyInventory.food = foods as Food[];
   const characterInventories = createCharacterInventories(state.entities.characters);
 
   state.entities.inventories = {
@@ -474,6 +472,69 @@ export function ensureInventoryRecords(state: CampaignState): CampaignState {
       ...state.entities,
       inventories
     }
+  };
+}
+
+/**
+ * Schema 1.5.4: promote legacy global pools to authoritative party holdings.
+ * Existing per-owner arrays were advisory refs and are discarded. Pure and
+ * idempotent: once the legacy keys are absent, the state is returned unchanged.
+ */
+export function ensureOwnerAttributedHoldings(state: CampaignState): CampaignState {
+  type LegacyEntities = CampaignState['entities'] & {
+    materials?: Record<Id, Material>;
+    foods?: Record<Id, Food>;
+  };
+  const migrateEntities = (entities: LegacyEntities): CampaignState['entities'] => {
+    const hasMaterials = Object.prototype.hasOwnProperty.call(entities, 'materials');
+    const hasFoods = Object.prototype.hasOwnProperty.call(entities, 'foods');
+    if (!hasMaterials && !hasFoods) return entities;
+
+    const inventories: Record<Id, Inventory> = {};
+    for (const [id, inventory] of Object.entries(entities.inventories ?? {})) {
+      inventories[id] = { ...inventory, materials: [], food: [] };
+    }
+    let party = Object.values(inventories).find((inventory) => inventory.ownerType === 'party');
+    if (!party) {
+      party = {
+        id: 'party', ownerType: 'party', ownerId: null, currency: {}, items: [], tools: [],
+        materials: [], food: [],
+      };
+      inventories.party = party;
+    }
+    for (const character of Object.values(entities.characters ?? {})) {
+      if (!Object.values(inventories).some(inventory =>
+        inventory.ownerType === 'character' && inventory.ownerId === character.id
+      )) {
+        const id = inventories[character.id] ? `inv-${character.id}` : character.id;
+        inventories[id] = {
+          id, ownerType: 'character', ownerId: character.id, currency: {}, items: [], tools: [],
+          materials: [], food: [],
+        };
+      }
+    }
+    party.materials = Object.values(entities.materials ?? {});
+    party.food = Object.values(entities.foods ?? {});
+    const { materials: _materials, foods: _foods, ...currentEntities } = entities;
+    return { ...currentEntities, inventories };
+  };
+
+  const entities = migrateEntities(state.entities as LegacyEntities);
+  let checkpointsChanged = false;
+  const checkpointEntries = state.checkpoints.entries.map((entry) => {
+    const snapshotEntities = entry.snapshot.entities as LegacyEntities;
+    const migratedEntities = migrateEntities(snapshotEntities);
+    if (migratedEntities === snapshotEntities) return entry;
+    checkpointsChanged = true;
+    return { ...entry, snapshot: { ...entry.snapshot, entities: migratedEntities } };
+  });
+  if (entities === state.entities && !checkpointsChanged) return state;
+  return {
+    ...state,
+    entities,
+    checkpoints: checkpointsChanged
+      ? { ...state.checkpoints, entries: checkpointEntries }
+      : state.checkpoints,
   };
 }
 

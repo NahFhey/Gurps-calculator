@@ -13,7 +13,7 @@ export interface SchemaMetadataEntry {
   migratesFrom?: string[];
 }
 
-export const CURRENT_SCHEMA_VERSION = '1.5.3';
+export const CURRENT_SCHEMA_VERSION = '1.5.4';
 
 export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
   '1.0.0': {
@@ -94,6 +94,14 @@ export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
       'CombatSession records (characterId/team participants, startDate strings) upgraded on load',
     features: ['combat_history_combat_state'],
     migratesFrom: ['1.5.2'],
+  },
+  '1.5.4': {
+    name: 'Owner-Attributed Material Holdings',
+    timestamp: '2026-08-25',
+    breaking: true,
+    description: 'Materials and foods are authoritative per-owner Inventory holdings',
+    features: ['owner_material_holdings', 'owner_food_holdings'],
+    migratesFrom: ['1.5.3'],
   },
 };
 

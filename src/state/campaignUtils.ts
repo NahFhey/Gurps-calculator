@@ -3,7 +3,7 @@
  * Helper functions for normalizing/denormalizing data and migrating legacy state
  */
 
-import type { Id, Character, CustomTemplates, ToolTemplate } from '../types/campaign';
+import type { Id, Character, CustomTemplates, ToolTemplate, Inventory, MaterialEntry, FoodEntry } from '../types/campaign';
 
 // ============================================================================
 // NORMALIZATION UTILITIES
@@ -134,18 +134,9 @@ export function migrateLegacyTemplates(customTemplates: CustomTemplates): Record
  * Create party inventory from legacy materials and foods
  */
 export function createPartyInventory(
-  materials: Array<{ id: Id; quantity: number }>,
-  foods: Array<{ id: Id; quantity: number }>
-): {
-  id: 'party';
-  ownerType: 'party';
-  ownerId: null;
-  currency: Record<string, number>;
-  items: [];
-  tools: [];
-  materials: Array<{ id: Id; quantity: number }>;
-  food: Array<{ id: Id; quantity: number }>;
-} {
+  materials: MaterialEntry[],
+  foods: FoodEntry[]
+): Inventory {
   return {
     id: 'party',
     ownerType: 'party',
@@ -157,8 +148,8 @@ export function createPartyInventory(
     },
     items: [],
     tools: [],
-    materials: materials.map(m => ({ id: m.id, quantity: m.quantity })),
-    food: foods.map(f => ({ id: f.id, quantity: f.quantity }))
+    materials: materials.map(material => ({ ...material })),
+    food: foods.map(food => ({ ...food }))
   };
 }
 

@@ -137,15 +137,15 @@ describe('campaignUtils', () => {
   describe('createPartyInventory', () => {
     it('builds the party inventory from materials and foods', () => {
       const result = createPartyInventory(
-        [{ id: 'iron', quantity: 5 }],
-        [{ id: 'bread', quantity: 3 }]
+        [{ id: 'iron', name: 'Iron', type: 'metal', quantity: 5 }],
+        [{ id: 'bread', name: 'Bread', types: ['grain'], quantity: 3 }]
       );
       expect(result).toMatchObject({
         id: 'party',
         ownerType: 'party',
         ownerId: null,
-        materials: [{ id: 'iron', quantity: 5 }],
-        food: [{ id: 'bread', quantity: 3 }],
+        materials: [{ id: 'iron', name: 'Iron', type: 'metal', quantity: 5 }],
+        food: [{ id: 'bread', name: 'Bread', types: ['grain'], quantity: 3 }],
         items: [],
         tools: []
       });

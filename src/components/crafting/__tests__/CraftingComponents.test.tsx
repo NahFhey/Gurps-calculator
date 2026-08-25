@@ -34,9 +34,15 @@ vi.mock('../../../state/downtime/downtimeSelectors', () => ({
 }));
 
 // Mock campaign store (inventory bus dispatch on craft completion)
-const { acquireItemMock } = vi.hoisted(() => ({ acquireItemMock: vi.fn() }));
+const { acquireItemMock, consumeMaterialsMock } = vi.hoisted(() => ({
+  acquireItemMock: vi.fn(),
+  consumeMaterialsMock: vi.fn(),
+}));
 vi.mock('../../../state/campaignStore', () => ({
-  useCampaignStore: () => ({ actions: { acquireItem: acquireItemMock } }),
+  useCampaignStore: () => ({ actions: {
+    acquireItem: acquireItemMock,
+    consumeMaterials: consumeMaterialsMock,
+  } }),
 }));
 
 // ============================================================================
@@ -236,6 +242,34 @@ describe('CraftingWorkbench', () => {
     render(<CraftingWorkbench {...defaultProps} craft={craft} />);
     expect(screen.getByText('Template Type')).toBeInTheDocument();
     expect(screen.getByText('Target Quality')).toBeInTheDocument();
+  });
+
+  it('starts design with the same three-pound material consumption as the legacy recompute', () => {
+    consumeMaterialsMock.mockClear();
+    const craft = makeInProgressCraft({ phase: 'setup' });
+    const saveMaterials = vi.fn();
+    render(<CraftingWorkbench {...defaultProps} craft={craft} saveMaterials={saveMaterials} />);
+    fireEvent.click(screen.getByText('Start Design'));
+    expect(consumeMaterialsMock).toHaveBeenCalledWith('party', [{
+      name: 'Iron Bar', type: 'metal', quantity: 3,
+    }]);
+    expect(10 - consumeMaterialsMock.mock.calls[0][1][0].quantity).toBe(7);
+    expect(saveMaterials).not.toHaveBeenCalled();
+  });
+
+  it('keeps insufficient-stock gating ahead of consumption', () => {
+    consumeMaterialsMock.mockClear();
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
+    const craft = makeInProgressCraft({ phase: 'setup' });
+    render(<CraftingWorkbench
+      {...defaultProps}
+      craft={craft}
+      materials={[{ ...baseMaterials[0], quantity: 2 }]}
+    />);
+    fireEvent.click(screen.getByText('Start Design'));
+    expect(alertSpy).toHaveBeenCalledWith('Not enough metal. Need 3 lbs.');
+    expect(consumeMaterialsMock).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
   });
 
   it('dispatches acquireItem to the party pool on craft completion', () => {

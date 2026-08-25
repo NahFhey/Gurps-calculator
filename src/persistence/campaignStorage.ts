@@ -3,7 +3,7 @@ import { createCampaignState, type CampaignState } from '../state/campaignReduce
 import { generateAllTestSampleData, isStateEmpty } from '../utils/testSampleData';
 import { initialMapState } from '../types/map';
 import { logger } from '../utils/logger';
-import { ensureInventoryRecords, ensureConditionVisibility, ensureCombatCharacterCategories, ensureCombatHistoryShape } from './dataMigration';
+import { ensureInventoryRecords, ensureOwnerAttributedHoldings, ensureConditionVisibility, ensureCombatCharacterCategories, ensureCombatHistoryShape } from './dataMigration';
 
 const CAMPAIGN_STORAGE_KEY = 'campaignState';
 
@@ -60,7 +60,7 @@ const hydrateMapState = (maps: any): CampaignState['maps'] => {
 export const hydrateCampaignState = (payload: CampaignState): CampaignState => {
   const base = createCampaignState();
   const reveal = payload.combat?.reveal ?? base.combat.reveal;
-  return ensureCombatHistoryShape(ensureCombatCharacterCategories(ensureConditionVisibility(ensureInventoryRecords({
+  return ensureCombatHistoryShape(ensureCombatCharacterCategories(ensureConditionVisibility(ensureOwnerAttributedHoldings(ensureInventoryRecords({
     ...base,
     ...payload,
     // Ensure all nested structures have proper defaults
@@ -89,7 +89,7 @@ export const hydrateCampaignState = (payload: CampaignState): CampaignState => {
       }
     },
     maps: hydrateMapState(payload.maps),
-  }))));
+  }))))) ;
 };
 
 export async function saveCampaignState(state: CampaignState) {
@@ -127,12 +127,21 @@ function injectTestSampleData(state: CampaignState): CampaignState {
   console.log('[CampaignStorage] Empty state detected - loading test sample data...');
   const sampleData = generateAllTestSampleData();
 
+  const partyInventory = Object.values(state.entities.inventories).find(
+    (inventory) => inventory.ownerType === 'party'
+  );
   return {
     ...state,
     entities: {
       ...state.entities,
-      materials: sampleData.materials,
-      foods: sampleData.foods,
+      inventories: partyInventory ? {
+        ...state.entities.inventories,
+        [partyInventory.id]: {
+          ...partyInventory,
+          materials: Object.values(sampleData.materials),
+          food: Object.values(sampleData.foods),
+        },
+      } : state.entities.inventories,
       gatheringSpecies: sampleData.gatheringSpecies,
       gatheringTools: sampleData.gatheringTools,
       gatheringTables: sampleData.gatheringTables,

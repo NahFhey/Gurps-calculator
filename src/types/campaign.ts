@@ -872,28 +872,11 @@ export interface ItemInstance {
   source?: string;
 }
 
-/**
- * Per-owner quantity ref into the global material pool (`entities.materials`).
- *
- * ADVISORY / PROVENANCE-GRADE, NOT AUTHORITATIVE. `itemAcquired` increments the
- * matching entry ("this owner has received N of material X"), but the consume
- * paths (`MATERIAL_CONSUME`, used by crafting/cooking/alchemy) decrement only the
- * global pool — they carry no owner attribution, so refs are never decremented
- * and will drift above real holdings over a campaign. The authoritative quantity
- * of any material is always the pool total (`entities.materials[id].quantity`).
- * Do not sum these refs as if they were holdings without first resolving
- * owner-attributed consumption (INVENTORY_INTEGRATION_FOLLOWUPS.md #8).
- */
-export interface MaterialEntry {
-  id: Id;
-  quantity: number;
-}
+/** Authoritative material holding for one owner. There is no global material pool. */
+export interface MaterialEntry extends Material {}
 
-/** Per-owner quantity ref into the global food pool. Advisory, not authoritative — see {@link MaterialEntry}. */
-export interface FoodEntry {
-  id: Id;
-  quantity: number;
-}
+/** Authoritative food holding for one owner. There is no global food pool. */
+export interface FoodEntry extends Food {}
 
 export interface Inventory {
   id: Id;
@@ -903,9 +886,9 @@ export interface Inventory {
   /** Authoritative equipment/other holdings for this owner. */
   items: ItemInstance[];
   tools: ToolInstance[];
-  /** Advisory provenance refs into the global pool — NOT authoritative. See {@link MaterialEntry}. */
+  /** Authoritative material holdings for this owner. */
   materials: MaterialEntry[];
-  /** Advisory provenance refs into the global pool — NOT authoritative. See {@link FoodEntry}. */
+  /** Authoritative food holdings for this owner. */
   food: FoodEntry[];
 }
 
@@ -923,12 +906,12 @@ export type AcquisitionSource = 'crafting' | 'gathering' | 'loot';
  * Item payload for the `inventory/itemAcquired` bus action.
  *
  * Discriminated on `kind`, mapping each acquirable thing onto existing storage:
- * - material/food → stack into the global pools (entities.materials/foods, existing
- *   name+type stack rules) plus a quantity ref in the owner's Inventory record
+ * - material/food → stack into the owner's authoritative Inventory holdings using
+ *   the existing name+type rules
  * - equipment/other → ItemInstance in the owner's Inventory record
  * - currency → owner's Inventory currency map
  *
- * `source` on material/food is the descriptive label stored on the pool record
+ * `source` on material/food is the descriptive label stored on the holding
  * (e.g. "Foraging at Greenwood"); when omitted, the action-level source is used.
  */
 export type AcquiredItem =

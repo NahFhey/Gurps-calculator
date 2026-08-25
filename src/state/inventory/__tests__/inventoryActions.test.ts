@@ -3,13 +3,13 @@ import {
   MATERIAL_ADD,
   MATERIAL_UPDATE,
   MATERIAL_REMOVE,
-  MATERIAL_CONSUME,
-  MATERIAL_SET,
+  MATERIALS_CONSUMED,
+  MATERIAL_TRANSFERRED,
   FOOD_ADD,
   FOOD_UPDATE,
   FOOD_REMOVE,
-  FOOD_CONSUME,
-  FOOD_SET,
+  FOODS_CONSUMED,
+  FOOD_TRANSFERRED,
   RECIPE_ADD,
   RECIPE_UPDATE,
   RECIPE_REMOVE,
@@ -71,13 +71,13 @@ describe('inventoryActions', () => {
       expect(MATERIAL_ADD).toBe('addMaterial');
       expect(MATERIAL_UPDATE).toBe('updateMaterial');
       expect(MATERIAL_REMOVE).toBe('removeMaterial');
-      expect(MATERIAL_CONSUME).toBe('consumeMaterials');
-      expect(MATERIAL_SET).toBe('setMaterials');
+      expect(MATERIALS_CONSUMED).toBe('inventory/materialsConsumed');
+      expect(MATERIAL_TRANSFERRED).toBe('inventory/materialTransferred');
       expect(FOOD_ADD).toBe('addFood');
       expect(FOOD_UPDATE).toBe('updateFood');
       expect(FOOD_REMOVE).toBe('removeFood');
-      expect(FOOD_CONSUME).toBe('consumeFoods');
-      expect(FOOD_SET).toBe('setFoods');
+      expect(FOODS_CONSUMED).toBe('inventory/foodsConsumed');
+      expect(FOOD_TRANSFERRED).toBe('inventory/foodTransferred');
       expect(RECIPE_ADD).toBe('addRecipe');
       expect(RECIPE_UPDATE).toBe('updateRecipe');
       expect(RECIPE_REMOVE).toBe('removeRecipe');
@@ -100,13 +100,13 @@ describe('inventoryActions', () => {
         MATERIAL_ADD,
         MATERIAL_UPDATE,
         MATERIAL_REMOVE,
-        MATERIAL_CONSUME,
-        MATERIAL_SET,
+        MATERIALS_CONSUMED,
+        MATERIAL_TRANSFERRED,
         FOOD_ADD,
         FOOD_UPDATE,
         FOOD_REMOVE,
-        FOOD_CONSUME,
-        FOOD_SET,
+        FOODS_CONSUMED,
+        FOOD_TRANSFERRED,
         RECIPE_ADD,
         RECIPE_UPDATE,
         RECIPE_REMOVE,
@@ -133,8 +133,8 @@ describe('inventoryActions', () => {
         { type: MATERIAL_ADD, payload: mockMaterial() },
         { type: MATERIAL_UPDATE, payload: { id: 'mat-1', changes: { name: 'Steel' } } },
         { type: MATERIAL_REMOVE, payload: 'mat-1' },
-        { type: MATERIAL_CONSUME, payload: [{ id: 'mat-1', amount: 2 }] },
-        { type: MATERIAL_SET, payload: { 'mat-1': mockMaterial() } }
+        { type: MATERIALS_CONSUMED, payload: { owner: 'party', entries: [{ name: 'Iron Ingot', quantity: 2 }] } },
+        { type: MATERIAL_TRANSFERRED, payload: { sourceOwner: 'party', targetOwner: 'char-1', entryId: 'mat-1', quantity: 1 } }
       ];
       for (const action of actions) {
         expect(isInventoryAction(action)).toBe(true);
@@ -146,8 +146,8 @@ describe('inventoryActions', () => {
         { type: FOOD_ADD, payload: mockFood() },
         { type: FOOD_UPDATE, payload: { id: 'food-1', changes: { name: 'Loaf' } } },
         { type: FOOD_REMOVE, payload: 'food-1' },
-        { type: FOOD_CONSUME, payload: [{ id: 'food-1', amount: 1 }] },
-        { type: FOOD_SET, payload: { 'food-1': mockFood() } }
+        { type: FOODS_CONSUMED, payload: { owner: 'party', entries: [{ name: 'Bread', quantity: 1 }] } },
+        { type: FOOD_TRANSFERRED, payload: { sourceOwner: 'party', targetOwner: 'char-1', entryId: 'food-1', quantity: 1 } }
       ];
       for (const action of actions) {
         expect(isInventoryAction(action)).toBe(true);

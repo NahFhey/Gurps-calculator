@@ -21,6 +21,10 @@ import {
   selectFoodById,
   selectFoodsByType,
   selectFoodQuantityByType,
+  selectOwnerMaterialHoldings,
+  selectOwnerFoodHoldings,
+  selectMaterialOwnerBreakdown,
+  selectFoodOwnerBreakdown,
   selectRecipesRecord,
   selectAllRecipes,
   selectRecipeById,
@@ -132,8 +136,8 @@ const partyInv: Inventory = {
   currency: { gp: 100 },
   items: [],
   tools: [],
-  materials: [],
-  food: [],
+  materials: [ironOre, moreIron, oakWood],
+  food: [apple, trailMix, breadLoaf],
 };
 
 const aliceInv: Inventory = {
@@ -164,8 +168,6 @@ function buildState(): CampaignState {
     ...base,
     entities: {
       ...base.entities,
-      materials: { mat1: ironOre, mat2: moreIron, mat3: oakWood },
-      foods: { food1: apple, food2: trailMix, food3: breadLoaf },
       recipes: { rec1: stew, rec2: sword },
       foodTypes: [fruitType, grainType],
       materialTypes: [metalType, woodType],
@@ -230,6 +232,31 @@ describe('inventorySelectors — materials', () => {
     expect(selectMaterialsByType(initialCampaignState, 'metal')).toEqual([]);
     expect(selectMaterialQuantityByType(initialCampaignState, 'metal')).toBe(0);
   });
+
+  it('sums compatible totals across owners', () => {
+    const state = buildState();
+    state.entities.inventories['inv-alice'] = {
+      ...aliceInv,
+      materials: [{ ...ironOre, id: 'alice-iron', quantity: 4 }],
+    };
+    expect(selectMaterialQuantityByType(state, 'metal')).toBe(12);
+    expect(selectAllMaterials(state).find(entry => entry.name === 'Iron Ore')?.quantity).toBe(9);
+  });
+
+  it('selects one owner material holdings without aggregation', () => {
+    const state = buildState();
+    expect(selectOwnerMaterialHoldings(state, 'party')).toEqual([ironOre, moreIron, oakWood]);
+    expect(selectOwnerMaterialHoldings(state, 'char-alice')).toEqual([]);
+    expect(selectOwnerMaterialHoldings(state, 'missing')).toEqual([]);
+  });
+
+  it('builds a material owner breakdown with character labels', () => {
+    const state = buildAttunementState();
+    state.entities.inventories['inv-alice'].materials = [{ ...ironOre, id: 'alice-iron', quantity: 4 }];
+    expect(selectMaterialOwnerBreakdown(state, 'Iron Ore', 'metal')).toEqual([
+      { ownerLabel: 'party', quantity: 5 }, { ownerLabel: 'Alice', quantity: 4 },
+    ]);
+  });
 });
 
 describe('inventorySelectors — foods', () => {
@@ -259,6 +286,26 @@ describe('inventorySelectors — foods', () => {
     expect(selectFoodQuantityByType(state, 'nut')).toBe(2);
     expect(selectFoodQuantityByType(state, 'grain')).toBe(6);
     expect(selectFoodQuantityByType(state, 'missing')).toBe(0);
+  });
+
+  it('sums food totals across owners', () => {
+    const state = buildState();
+    state.entities.inventories['inv-bob'] = {
+      ...bobInv,
+      food: [{ ...apple, id: 'bob-apple', quantity: 3 }],
+    };
+    expect(selectFoodQuantityByType(state, 'fruit')).toBe(9);
+    expect(selectAllFoods(state).find(entry => entry.name === 'Apple')?.quantity).toBe(7);
+  });
+
+  it('selects owner foods and builds a food breakdown', () => {
+    const state = buildState();
+    state.entities.characters['char-bob'] = { id: 'char-bob', name: 'Bob', work: { skills: {} } };
+    state.entities.inventories['inv-bob'] = { ...bobInv, food: [{ ...apple, id: 'bob-apple', quantity: 3 }] };
+    expect(selectOwnerFoodHoldings(state, 'char-bob')[0].quantity).toBe(3);
+    expect(selectFoodOwnerBreakdown(state, 'Apple', 'fruit')).toEqual([
+      { ownerLabel: 'party', quantity: 4 }, { ownerLabel: 'Bob', quantity: 3 },
+    ]);
   });
 });
 

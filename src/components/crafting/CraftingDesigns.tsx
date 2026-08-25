@@ -13,6 +13,7 @@ import type {
   CustomTemplates,
 } from '../../types/campaign';
 import type { CraftingWorker } from '../../hooks/useCraftingData';
+import { useCampaignStore } from '../../state/campaignStore';
 
 interface CraftingDesignsProps {
   craftDesigns: CraftDesign[];
@@ -41,7 +42,8 @@ export function CraftingDesigns({
   addLogEntry,
   onStartFromDesign,
 }: CraftingDesignsProps) {
-  void _workers; // reserved for future use
+  void _workers; void saveMaterials; // reserved/refund-compatible props
+  const { actions } = useCampaignStore();
   return (
     <div className="bg-gray-800 rounded-lg p-6">
       <h2 className="text-xl font-bold mb-4 text-purple-400">Saved Craft Designs</h2>
@@ -96,14 +98,16 @@ export function CraftingDesigns({
                         return;
                       }
 
-                      const newMaterials = materials.map(m => {
-                        const used = requiredMaterials.find(req => req.selectedMaterialId === m.id || req.selectedMaterialId === String(m.id));
-                        if (used) {
-                          return { ...m, quantity: m.quantity - used.requiredAmount };
-                        }
-                        return m;
-                      });
-                      saveMaterials(newMaterials);
+                      actions.consumeMaterials('party', requiredMaterials.map(required => {
+                        const material = materials.find(entry =>
+                          entry.id === required.selectedMaterialId || String(entry.id) === required.selectedMaterialId
+                        );
+                        return {
+                          name: material?.name,
+                          type: material?.type ?? required.requiredType,
+                          quantity: required.requiredAmount,
+                        };
+                      }));
 
                       const today = new Date().toISOString().split('T')[0];
                       const newCraft: Craft = {

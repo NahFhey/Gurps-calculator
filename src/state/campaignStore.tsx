@@ -125,15 +125,15 @@ type CampaignStoreValue = {
     addMaterial: (material: Material) => void;
     updateMaterial: (id: Id, changes: Partial<Material>) => void;
     removeMaterial: (id: Id) => void;
-    consumeMaterials: (materials: Array<{ id: Id; amount: number }>) => void;
-    setMaterials: (materials: Record<Id, Material>) => void;
+    consumeMaterials: (owner: InventoryOwner, entries: Array<{ name?: string; type?: string; quantity: number }>) => void;
+    transferMaterial: (sourceOwner: InventoryOwner, targetOwner: InventoryOwner, entryId: Id, quantity: number) => void;
 
     // Food Actions
     addFood: (food: Food) => void;
     updateFood: (id: Id, changes: Partial<Food>) => void;
     removeFood: (id: Id) => void;
-    consumeFoods: (foods: Array<{ id: Id; amount: number }>) => void;
-    setFoods: (foods: Record<Id, Food>) => void;
+    consumeFoods: (owner: InventoryOwner, entries: Array<{ name?: string; type?: string; quantity: number }>) => void;
+    transferFood: (sourceOwner: InventoryOwner, targetOwner: InventoryOwner, entryId: Id, quantity: number) => void;
 
     // Recipe Actions
     addRecipe: (recipe: Recipe) => void;
@@ -391,18 +391,20 @@ export function CampaignStoreProvider({
       updateMaterial: (id: Id, changes: Partial<Material>) =>
         dispatch({ type: 'updateMaterial', payload: { id, changes } }),
       removeMaterial: (id: Id) => dispatch({ type: 'removeMaterial', payload: id }),
-      consumeMaterials: (materials: Array<{ id: Id; amount: number }>) =>
-        dispatch({ type: 'consumeMaterials', payload: materials }),
-      setMaterials: (materials: Record<Id, Material>) => dispatch({ type: 'setMaterials', payload: materials }),
+      consumeMaterials: (owner: InventoryOwner, entries: Array<{ name?: string; type?: string; quantity: number }>) =>
+        dispatch({ type: 'inventory/materialsConsumed', payload: { owner, entries } }),
+      transferMaterial: (sourceOwner: InventoryOwner, targetOwner: InventoryOwner, entryId: Id, quantity: number) =>
+        dispatch({ type: 'inventory/materialTransferred', payload: { sourceOwner, targetOwner, entryId, quantity } }),
 
       // Food Actions
       addFood: (food: Food) => dispatch({ type: 'addFood', payload: food }),
       updateFood: (id: Id, changes: Partial<Food>) =>
         dispatch({ type: 'updateFood', payload: { id, changes } }),
       removeFood: (id: Id) => dispatch({ type: 'removeFood', payload: id }),
-      consumeFoods: (foods: Array<{ id: Id; amount: number }>) =>
-        dispatch({ type: 'consumeFoods', payload: foods }),
-      setFoods: (foods: Record<Id, Food>) => dispatch({ type: 'setFoods', payload: foods }),
+      consumeFoods: (owner: InventoryOwner, entries: Array<{ name?: string; type?: string; quantity: number }>) =>
+        dispatch({ type: 'inventory/foodsConsumed', payload: { owner, entries } }),
+      transferFood: (sourceOwner: InventoryOwner, targetOwner: InventoryOwner, entryId: Id, quantity: number) =>
+        dispatch({ type: 'inventory/foodTransferred', payload: { sourceOwner, targetOwner, entryId, quantity } }),
 
       // Recipe Actions
       addRecipe: (recipe: Recipe) => dispatch({ type: 'addRecipe', payload: recipe }),

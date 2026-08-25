@@ -30,10 +30,11 @@ const makeDietTraitCharacter = (): Character => {
 
 function renderSection(character: Character, editMode = false) {
   const state = createCampaignState();
-  state.entities.foods = {
-    beef: { id: 'beef', name: 'Beef', types: ['meat', 'protein'], quantity: 2 },
-    carrot: { id: 'carrot', name: 'Carrot', types: ['root', 'vegetable'], quantity: 3 },
-  };
+  const party = Object.values(state.entities.inventories).find(inventory => inventory.ownerType === 'party');
+  if (party) party.food = [
+    { id: 'beef', name: 'Beef', types: ['meat', 'protein'], quantity: 2 },
+    { id: 'carrot', name: 'Carrot', types: ['root', 'vegetable'], quantity: 3 },
+  ];
   return render(
     <CampaignStoreProvider initialCampaignState={state}>
       <DietSection
@@ -117,10 +118,11 @@ describe('DietSection', () => {
     const character = makeCharacter({ dietExcludedFoodTypes: ['meat'] });
     const state = createCampaignState();
     state.entities.characters = { soren: character };
-    state.entities.foods = {
-      carrot: { id: 'carrot', name: 'Carrot', types: ['root'], quantity: 3 },
-      beef: { id: 'beef', name: 'Beef', types: ['meat'], quantity: 2 },
-    };
+    const party = Object.values(state.entities.inventories).find(inventory => inventory.ownerType === 'party');
+    if (party) party.food = [
+      { id: 'carrot', name: 'Carrot', types: ['root'], quantity: 3 },
+      { id: 'beef', name: 'Beef', types: ['meat'], quantity: 2 },
+    ];
     let latestState = state;
 
     render(
