@@ -192,6 +192,7 @@ describe('campaignReducer restoreCheckpoint', () => {
       meta: state.meta,
       entities: state.entities,
       legacy: state.legacy,
+      mealBuff: null,
       time: { ...state.time, day: 5 },
       inventory: state.inventory,
       crafting: state.crafting,

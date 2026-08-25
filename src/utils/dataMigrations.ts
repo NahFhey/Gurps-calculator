@@ -58,6 +58,7 @@ const migrationHandlers: Record<string, MigrationHandler> = {
   '1.3.0:1.4.0': migrateTo1_4_0,
   '1.4.0:1.5.0': migrateTo1_5_0,
   '1.5.0:1.5.1': migrateTo1_5_1,
+  '1.5.1:1.5.2': migrateTo1_5_2,
 };
 
 /**
@@ -287,6 +288,14 @@ function migrateTo1_5_1(data: MigratableData): MigratableData {
     next.combatTombstones = backfill(data.combatTombstones);
   }
   return next;
+}
+
+/** Migration: 1.5.1 → 1.5.2 (Party meal buff) */
+function migrateTo1_5_2(data: MigratableData): MigratableData {
+  return {
+    ...data,
+    mealBuff: data.mealBuff ?? null,
+  };
 }
 
 /**

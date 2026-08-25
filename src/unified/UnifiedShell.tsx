@@ -19,7 +19,7 @@ import {
 import { CharacterStatusBadge } from '../components/downtime/views/CharacterStatusBadge';
 import { duplicateCharacter, downloadCharacterJSON } from '../utils/characterManagement';
 import { parseCharacterText } from '../utils/characterImport';
-import { WeatherWidget, TimeDisplay, TimeControls } from '../components/header';
+import { WeatherWidget, MealBuffWidget, TimeDisplay, TimeControls } from '../components/header';
 import { CombatTile } from '../components/combat/CombatTile';
 import { CombatTab } from '../components/CombatTab';
 import { CombatContextProvider } from '../components/combat/CombatContext';
@@ -294,6 +294,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           {/* Left: Weather Widget */}
           <div className="flex items-center gap-4">
             <WeatherWidget compact />
+            <MealBuffWidget compact />
           </div>
 
           {/* Center: Time Display and Controls */}
