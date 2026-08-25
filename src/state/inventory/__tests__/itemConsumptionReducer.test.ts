@@ -273,6 +273,25 @@ describe('combat item consumption reversal reducer', () => {
     expect(reverted.entities.inventories['inv-char-1'].items[0]).toEqual(original);
   });
 
+  it('preserves crafter attribution through a consume-to-zero reversal', () => {
+    const craftedItem = {
+      ...baseItem,
+      quantity: 1,
+      source: 'crafting',
+      crafterId: 'char-smith',
+    };
+    state.entities.inventories = { 'inv-char-1': makeInventory(craftedItem) };
+    setActiveCombat(state, makeCombat());
+    const consumed = consume(state);
+    const entryId = (consumed.combat.activeSession as unknown as CombatState).consumptions?.[0].id;
+    if (!entryId) throw new Error('expected a consumption entry');
+    const reverted = campaignReducer(consumed, {
+      type: ITEM_CONSUMPTION_REVERTED,
+      payload: { entryId },
+    });
+    expect(reverted.entities.inventories['inv-char-1'].items[0].crafterId).toBe('char-smith');
+  });
+
   it('registers both consumption actions with the inventory action guard', () => {
     expect(isInventoryAction({ type: ITEM_CONSUMED })).toBe(true);
     expect(isInventoryAction({ type: ITEM_CONSUMPTION_REVERTED })).toBe(true);

@@ -492,6 +492,38 @@ describe('inventoryReducer', () => {
       expect(charInv?.items[0].magical).toBe(true);
     });
 
+    it('equipment acquisition carries crafter attribution', () => {
+      const next = applyAction(state, {
+        type: ITEM_ACQUIRED,
+        payload: {
+          item: {
+            kind: 'equipment',
+            id: 'crafted-blade-1',
+            name: 'Crafted Blade',
+            quantity: 1,
+            crafterId: 'char-smith',
+          },
+          owner: 'party',
+          source: 'crafting',
+        },
+      });
+      const party = Object.values(next.entities.inventories).find(i => i.ownerType === 'party');
+      expect(party?.items[0].crafterId).toBe('char-smith');
+    });
+
+    it('equipment acquisition omits crafter attribution when it is not provided', () => {
+      const next = applyAction(state, {
+        type: ITEM_ACQUIRED,
+        payload: {
+          item: { kind: 'equipment', id: 'loot-blade-1', name: 'Looted Blade', quantity: 1 },
+          owner: 'party',
+          source: 'loot',
+        },
+      });
+      const party = Object.values(next.entities.inventories).find(i => i.ownerType === 'party');
+      expect(party?.items[0]).not.toHaveProperty('crafterId');
+    });
+
     it('other acquisition carries an explicit false magical flag', () => {
       const next = applyAction(state, {
         type: ITEM_ACQUIRED,
@@ -564,6 +596,26 @@ describe('inventoryReducer', () => {
       expect(charInv?.items).toEqual([
         { id: 'sword-1', name: 'Longsword', quantity: 1, attuned: false },
       ]);
+    });
+
+    it('preserves crafter attribution when moving an item', () => {
+      state.entities.inventories['party'] = inventory('party', {
+        items: [{
+          id: 'crafted-blade-1',
+          name: 'Crafted Blade',
+          quantity: 1,
+          source: 'crafting',
+          crafterId: 'char-smith',
+        }],
+      });
+      const next = applyAction(state, {
+        type: ITEM_RETAGGED,
+        payload: { itemId: 'crafted-blade-1', newOwner: 'char-1' },
+      });
+      const characterInventory = Object.values(next.entities.inventories).find(
+        i => i.ownerType === 'character' && i.ownerId === 'char-1'
+      );
+      expect(characterInventory?.items[0].crafterId).toBe('char-smith');
     });
 
     it('clears attunement when moving an item from party to character', () => {

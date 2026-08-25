@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import type { Character, Inventory, ToolTemplate } from '../../../types/campaign';
 import { getInventoryLabel } from '../labels';
 import type { TransferState } from '../types';
@@ -13,6 +14,11 @@ export interface PartyStashViewProps {
   onGiveItem: (inventoryId: string, itemId: string, characterId: string) => void;
 }
 
+interface SelectedItemRef {
+  inventoryId: string;
+  itemId: string;
+}
+
 export function PartyStashView({
   inventories,
   characters,
@@ -22,14 +28,99 @@ export function PartyStashView({
   onConfirmTransfer,
   onGiveItem,
 }: PartyStashViewProps) {
+  const [selectedItems, setSelectedItems] = useState<SelectedItemRef[]>([]);
+  const [bulkCharacterChoice, setBulkCharacterChoice] = useState<string | null>(null);
   const partyInventories = inventories.filter((inventory) => inventory.ownerType === 'party');
   const sortedCharacters = Object.values(characters).sort((left, right) =>
     left.name.localeCompare(right.name)
   );
+  const selectedInventoryItems = useMemo(
+    () => selectedItems.flatMap((selection) => {
+      const inventory = partyInventories.find(candidate => candidate.id === selection.inventoryId);
+      const item = inventory?.items.find(candidate => candidate.id === selection.itemId);
+      return item ? [{ inventoryId: selection.inventoryId, item }] : [];
+    }),
+    [partyInventories, selectedItems]
+  );
+  const bulkCrafterId = useMemo(() => {
+    if (selectedInventoryItems.length !== selectedItems.length || selectedInventoryItems.length === 0) {
+      return '';
+    }
+    const firstCrafterId = selectedInventoryItems[0].item.crafterId;
+    if (
+      !firstCrafterId ||
+      !characters[firstCrafterId] ||
+      !selectedInventoryItems.every(({ item }) =>
+        item.source === 'crafting' && item.crafterId === firstCrafterId
+      )
+    ) {
+      return '';
+    }
+    return firstCrafterId;
+  }, [characters, selectedInventoryItems, selectedItems.length]);
+  const bulkCharacterId = bulkCharacterChoice ?? bulkCrafterId;
+
+  function setItemSelected(inventoryId: string, itemId: string, checked: boolean) {
+    setSelectedItems(current => {
+      if (checked) {
+        return current.some(item => item.inventoryId === inventoryId && item.itemId === itemId)
+          ? current
+          : [...current, { inventoryId, itemId }];
+      }
+      return current.filter(item => item.inventoryId !== inventoryId || item.itemId !== itemId);
+    });
+    setBulkCharacterChoice(null);
+  }
+
+  function clearSelection() {
+    setSelectedItems([]);
+    setBulkCharacterChoice(null);
+  }
+
+  function giveSelectedItems() {
+    if (!bulkCharacterId) return;
+    selectedInventoryItems.forEach(({ inventoryId, item }) => {
+      onGiveItem(inventoryId, item.id, bulkCharacterId);
+    });
+    clearSelection();
+  }
 
   return (
     <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
       <div className="space-y-6">
+        {selectedItems.length > 0 && (
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-3 text-sm text-indigo-100">
+            <span>{selectedItems.length} selected — Give to</span>
+            <select
+              aria-label="Give selected items to character"
+              value={bulkCharacterId}
+              onChange={(event) => setBulkCharacterChoice(event.target.value)}
+              className="max-w-40 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-white"
+            >
+              <option value="">Give to…</option>
+              {sortedCharacters.map((character) => (
+                <option key={character.id} value={character.id}>
+                  {character.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={giveSelectedItems}
+              disabled={!bulkCharacterId}
+              className="rounded-full bg-indigo-500 px-3 py-1 text-xs text-white hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Give
+            </button>
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="rounded-full bg-slate-700 px-3 py-1 text-xs text-slate-200 hover:bg-slate-600"
+            >
+              Clear
+            </button>
+          </div>
+        )}
         {partyInventories.map((inventory) => (
           <div
             key={inventory.id}
@@ -50,13 +141,30 @@ export function PartyStashView({
                       key={item.id}
                       className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2"
                     >
-                      <span>
-                        {item.name} <span className="text-slate-400">x{item.quantity}</span>
+                      <span className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${item.name}`}
+                          checked={selectedItems.some(selection =>
+                            selection.inventoryId === inventory.id && selection.itemId === item.id
+                          )}
+                          onChange={(event) =>
+                            setItemSelected(inventory.id, item.id, event.target.checked)
+                          }
+                          className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-indigo-500"
+                        />
+                        <span>
+                          {item.name} <span className="text-slate-400">x{item.quantity}</span>
+                        </span>
                       </span>
                       <span className="flex items-center gap-2">
                         <select
                           aria-label={`Give ${item.name} to character`}
-                          value=""
+                          value={
+                            item.source === 'crafting' && item.crafterId && characters[item.crafterId]
+                              ? item.crafterId
+                              : ''
+                          }
                           onChange={(event) => {
                             if (event.target.value) {
                               onGiveItem(inventory.id, item.id, event.target.value);

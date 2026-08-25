@@ -156,6 +156,79 @@ describe('PartyStashView', () => {
     expect(screen.queryByLabelText(/cp/)).not.toBeInTheDocument();
   });
 
+  it('renders selection checkboxes on party item rows only', () => {
+    renderPartyStash();
+
+    expect(screen.getAllByRole('checkbox')).toHaveLength(2);
+    expect(screen.getByRole('checkbox', { name: 'Select Magic Sword' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Select Rope' })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: /Unknown Tool|cp/ })).not.toBeInTheDocument();
+  });
+
+  it('shows the bulk action bar with the selected item count', () => {
+    renderPartyStash();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Magic Sword' }));
+    expect(screen.getByText('1 selected — Give to')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Rope' }));
+    expect(screen.getByText('2 selected — Give to')).toBeInTheDocument();
+  });
+
+  it('sorts the bulk character options by name', () => {
+    renderPartyStash();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Magic Sword' }));
+
+    const select = screen.getByLabelText('Give selected items to character');
+    expect(within(select).getAllByRole('option').map(option => option.textContent)).toEqual([
+      'Give to…',
+      'Alice',
+      'Zara',
+    ]);
+  });
+
+  it('gives every selected item through the existing callback', () => {
+    const onGiveItem = vi.fn();
+    renderPartyStash({ onGiveItem });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Magic Sword' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Rope' }));
+    fireEvent.change(screen.getByLabelText('Give selected items to character'), {
+      target: { value: 'char-a' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Give' }));
+
+    expect(onGiveItem.mock.calls).toEqual([
+      ['party', 'sword-1', 'char-a'],
+      ['party', 'rope-1', 'char-a'],
+    ]);
+  });
+
+  it('clears selection after a bulk give', () => {
+    renderPartyStash();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Magic Sword' }));
+    fireEvent.change(screen.getByLabelText('Give selected items to character'), {
+      target: { value: 'char-a' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Give' }));
+
+    expect(screen.queryByText(/selected — Give to/)).not.toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Select Magic Sword' })).not.toBeChecked();
+  });
+
+  it('clears selection without giving items', () => {
+    const onGiveItem = vi.fn();
+    renderPartyStash({ onGiveItem });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Magic Sword' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+
+    expect(onGiveItem).not.toHaveBeenCalled();
+    expect(screen.queryByText(/selected — Give to/)).not.toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Select Magic Sword' })).not.toBeChecked();
+  });
+
   it('sorts quick-assign character options by name', () => {
     renderPartyStash();
 
@@ -175,6 +248,107 @@ describe('PartyStashView', () => {
       target: { value: 'char-a' },
     });
 
+    expect(onGiveItem).toHaveBeenCalledWith('party', 'sword-1', 'char-a');
+  });
+
+  it('preselects a resolvable crafter for a crafting-sourced quick assignment', () => {
+    const inventories = makeInventories();
+    inventories[0].items[0] = {
+      ...inventories[0].items[0],
+      source: 'crafting',
+      crafterId: 'char-a',
+    };
+    renderPartyStash({ inventories });
+
+    expect(screen.getByLabelText('Give Magic Sword to character')).toHaveValue('char-a');
+  });
+
+  it('gives to a preselected quick-assign crafter like a manual pick', () => {
+    const inventories = makeInventories();
+    inventories[0].items[0] = {
+      ...inventories[0].items[0],
+      source: 'crafting',
+      crafterId: 'char-a',
+    };
+    const onGiveItem = vi.fn();
+    renderPartyStash({ inventories, onGiveItem });
+
+    fireEvent.change(screen.getByLabelText('Give Magic Sword to character'), {
+      target: { value: 'char-a' },
+    });
+
+    expect(onGiveItem).toHaveBeenCalledWith('party', 'sword-1', 'char-a');
+  });
+
+  it('keeps a loot quick assignment neutral even if it has a crafter id', () => {
+    const inventories = makeInventories();
+    inventories[0].items[0] = {
+      ...inventories[0].items[0],
+      source: 'loot',
+      crafterId: 'char-a',
+    };
+    renderPartyStash({ inventories });
+
+    expect(screen.getByLabelText('Give Magic Sword to character')).toHaveValue('');
+  });
+
+  it('keeps a mixed bulk selection neutral', () => {
+    const inventories = makeInventories();
+    inventories[0].items[0] = {
+      ...inventories[0].items[0],
+      source: 'crafting',
+      crafterId: 'char-a',
+    };
+    inventories[0].items[1] = {
+      ...inventories[0].items[1],
+      source: 'loot',
+      crafterId: 'char-a',
+    };
+    renderPartyStash({ inventories });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Magic Sword' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Rope' }));
+
+    expect(screen.getByLabelText('Give selected items to character')).toHaveValue('');
+  });
+
+  it('preselects the shared crafter for a uniform crafting bulk selection', () => {
+    const inventories = makeInventories();
+    inventories[0].items = inventories[0].items.map(item => ({
+      ...item,
+      source: 'crafting',
+      crafterId: 'char-a',
+    }));
+    renderPartyStash({ inventories });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Magic Sword' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Rope' }));
+
+    expect(screen.getByLabelText('Give selected items to character')).toHaveValue('char-a');
+  });
+
+  it('silently skips a selected item that vanished before bulk give', () => {
+    const onGiveItem = vi.fn();
+    const props = {
+      inventories: makeInventories(),
+      characters,
+      toolTemplates: {},
+      transferState: null,
+      onTransferStateChange: vi.fn(),
+      onConfirmTransfer: vi.fn(),
+      onGiveItem,
+    };
+    const { rerender } = render(<PartyStashView {...props} />);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Magic Sword' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Rope' }));
+
+    const updatedInventories = makeInventories();
+    updatedInventories[0].items = updatedInventories[0].items.filter(item => item.id !== 'rope-1');
+    rerender(<PartyStashView {...props} inventories={updatedInventories} />);
+    fireEvent.change(screen.getByLabelText('Give selected items to character'), {
+      target: { value: 'char-a' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Give' }));
+
+    expect(onGiveItem).toHaveBeenCalledOnce();
     expect(onGiveItem).toHaveBeenCalledWith('party', 'sword-1', 'char-a');
   });
 
@@ -230,6 +404,36 @@ describe('PartyStashView', () => {
     expect(latest?.logs.entries[0]?.payload.message).toBe(
       `Transferred 1x "Magic Sword" from Party Stash to Alice's Pack`
     );
+  });
+
+  it('retags and logs every bulk assignment through the router and real store', () => {
+    const snapshots: CampaignStateSnapshot[] = [];
+    render(
+      <CampaignStoreProvider>
+        <SeedStash />
+        <StateProbe snapshots={snapshots} />
+        <InventoryTab />
+      </CampaignStoreProvider>
+    );
+    fireEvent.click(screen.getByText('Party Stash'));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Magic Sword' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select Rope' }));
+    fireEvent.change(screen.getByLabelText('Give selected items to character'), {
+      target: { value: 'char-a' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Give' }));
+
+    const latest = snapshots[snapshots.length - 1];
+    const inventories = latest.entities.inventories as Record<string, Inventory>;
+    expect(inventories.party.items).toEqual([]);
+    expect(inventories['inv-char-a'].items.map(item => item.id)).toEqual(
+      expect.arrayContaining(['sword-1', 'rope-1'])
+    );
+    expect(latest.logs.entries.map(entry => entry.payload.message)).toEqual(expect.arrayContaining([
+      `Transferred 1x "Magic Sword" from Party Stash to Alice's Pack`,
+      `Transferred 2x "Rope" from Party Stash to Alice's Pack`,
+    ]));
   });
 });
 
