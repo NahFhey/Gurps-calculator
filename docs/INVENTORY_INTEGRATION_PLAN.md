@@ -1,6 +1,6 @@
 # Phase 12a.5 — Inventory Integration Bus
 
-**Status:** Implemented 2026-06-09 (code + tests complete). **Table-verified 2026-08-19** (browser table session, seed campaign): crafting completion → party stash, gathering (fishing) success → food pool with correct type, loot distribution → party pool + individual inventory all confirmed end-to-end with no hand-editing. One gap: in-scope user story #4 (hand-retag party → character) has no UI path — the Party Stash Transfer Console filters destinations to `ownerType === 'party'` only (InventoryTab.tsx ~629), leaving an empty destination list; the `itemRetagged` reducer action works but is unreachable. Fix in progress 2026-08-19.
+**Status:** Implemented 2026-06-09 (code + tests complete). **Table-verified 2026-08-19** (browser table session, seed campaign): crafting completion → party stash, gathering (fishing) success → food pool with correct type, loot distribution → party pool + individual inventory all confirmed end-to-end with no hand-editing. The story #4 gap (hand-retag party → character had no UI path) is closed: the Transfer Console destination fix landed in 6cea50a (2026-08-19), and an inline "Give to…" quick-assign on party-stash item rows shipped 2026-08-25 (codex-shepherd, browser-verified: retag + changelog entry, one click).
 **Created:** 2026-04-28
 **Sequence:** Inserted between Phase 12a (complete) and Phase 12b (deferred)
 **Origin:** Design concept reached via grilling session 2026-04-28

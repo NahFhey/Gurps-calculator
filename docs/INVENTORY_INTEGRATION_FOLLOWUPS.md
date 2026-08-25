@@ -35,7 +35,9 @@ See [`INVENTORY_INTEGRATION_PLAN.md`](./INVENTORY_INTEGRATION_PLAN.md) for the i
 
 ---
 
-## 3. "Take from Shared" UI for Crafted / Gathered Items
+## 3. "Take from Shared" UI for Crafted / Gathered Items — ⚙️ FIRST SLICE SHIPPED 2026-08-25
+
+**Shipped (2026-08-25, codex-shepherd):** inline "Give to…" select on every party-stash item row (sorted party characters, no default preselect) dispatching `retagItem` + transfer log. One-click party→character assignment, browser-verified. **Still open:** bulk operations ("give all herbs to A"), crafter-default preselection, and a dedicated claim view outside the inventory tab.
 
 **Context:** Phase 12a.5 ships acquire + retag at the data layer, but only loot has a UI that wires retag end-to-end (the existing `LootDistribution.tsx`). Crafted and gathered items land in shared inventory and require manual retag for now.
 

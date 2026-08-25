@@ -216,7 +216,7 @@
 - `src/components/combat/views/InitiativeTimeline.tsx` — token image in avatar circle
 
 ### 12a.5: Inventory Integration Bus ✅ CODE COMPLETE
-**Status:** Implemented 2026-06-09; **table-verified 2026-08-19** — crafting/gathering/loot all write to inventory end-to-end; one gap: party→character hand-retag has no UI path (Transfer Console destination filter; fix in progress). See [`docs/INVENTORY_INTEGRATION_PLAN.md`](./docs/INVENTORY_INTEGRATION_PLAN.md) (including the As-Built section) and [`docs/INVENTORY_INTEGRATION_FOLLOWUPS.md`](./docs/INVENTORY_INTEGRATION_FOLLOWUPS.md) for discovered side-issues (now 9 items).
+**Status:** Implemented 2026-06-09; **table-verified 2026-08-19** — crafting/gathering/loot all write to inventory end-to-end. The party→character hand-retag gap closed in two steps: Transfer Console destination fix (6cea50a, 2026-08-19) and an inline "Give to…" quick-assign on party-stash item rows (2026-08-25, codex-shepherd; browser-verified). See [`docs/INVENTORY_INTEGRATION_PLAN.md`](./docs/INVENTORY_INTEGRATION_PLAN.md) (including the As-Built section) and [`docs/INVENTORY_INTEGRATION_FOLLOWUPS.md`](./docs/INVENTORY_INTEGRATION_FOLLOWUPS.md) for discovered side-issues (now 9 items).
 **Shipped:** `inventory/itemAcquired` + `inventory/itemRetagged` always-succeed bus actions; ownership via existing `Inventory` records (party + per-character, auto-created); crafting completion, 10 gathering write sites, and loot distribution all dispatch through the bus; schema 1.4.0 with `ensureInventoryRecords` load-time backfill; 36+ new tests across reducer/actions/migration/dispatch sites.
 
 **Why this is wedged here:** Crafting / gathering / loot all record intent without writing to inventory state. The gap is biting at every session that exercises these subsystems (current arc does). Originally bundled in Phase 15 cross-system integration; pulled forward as a narrow carve-out.
@@ -254,11 +254,12 @@
 
 **Estimated effort:** 2-3 sessions.
 
-### 12b: GCS Import Improvements
+### 12b: GCS Import Improvements — first slice ✅ (2026-08-25, codex-shepherd)
 - Broader GCS format support (validate against real exports)
-- Import validation with diff preview ("here's what will change")
-- Batch import for entire party files
+- ✅ Import validation with diff preview ("here's what will change") — `validateCharacterText` (line-level errors/warnings, wipe-guard for sections that parse empty), `diffCharacters` + grouped preview, update-vs-create choice on name match with narrow non-destructive merge (`buildCharacterImportUpdate`). Browser-verified end-to-end.
+- ✅ Batch import for entire party files — `parsePartyText` (Name:-block split) + JSON arrays, selectable batch preview with new/update badges.
 - Export back to GCS-compatible format
+- Known parser gap (pre-existing, confirmed): equipment entries split at the cost/weight semicolon — sample sheet parses zero equipment; merge logic prevents data loss on update.
 
 ### 12c: Character Lifecycle
 - Character creation wizard with template support (warrior, mage, thief archetypes)
@@ -275,7 +276,8 @@
 **Goal:** The downtime system is the killer differentiator — make it flawless.
 
 ### 13a: Decompose Remaining Monoliths
-- CookingTab.tsx (1,001 lines) -> thin router + views
+- ✅ CookingTab.tsx (978 lines) -> thin router + views (2026-08-25, codex-shepherd: `src/components/cooking/`, 337-line router + 3 views + 14 characterization tests; re-export shim keeps consumers untouched)
+- ✅ InventoryTab.tsx (968 lines) -> thin router + views (2026-08-25, codex-shepherd: `src/components/inventory/`, router + OverviewView/PartyStashView/TransferConsole; done alongside the Give-to quick-assign)
 - CraftingTab.tsx (currently gone but crafting logic) — verify decomposition state
 - LocationManager.tsx (1,091 lines) -> thin router + views
 
