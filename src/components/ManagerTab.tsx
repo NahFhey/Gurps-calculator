@@ -4,6 +4,7 @@ import { refundMaterialsFromProject } from '../utils/helpers';
 import { unlockGMData, mergeGM } from '../utils/exportImport';
 import { useCampaignStore } from '../state/campaignStore';
 import { denormalizeObject, normalizeArray } from '../state/campaignUtils';
+import { selectOwnerMaterialHoldings } from '../state/selectors/inventorySelectors';
 import type { GMLockData } from '../types/views';
 import type { Id, FoodType, MaterialType, Material, AlchemyLab, Kitchen, CookingSkill, AlchemyReagent, AlchemyFormula, CustomTemplates, Craft } from '../types/campaign';
 
@@ -84,10 +85,7 @@ export function ManagerTab() {
     [campaignState.entities.crafts]
   );
   const customTemplates = campaignState.entities.customTemplates;
-  const materials = useMemo(() =>
-    denormalizeObject(campaignState.entities.materials) as Material[],
-    [campaignState.entities.materials]
-  );
+  const materials = useMemo(() => selectOwnerMaterialHoldings(campaignState, 'party'), [campaignState]);
 
   // Alchemy
   const effectFamilyMap = campaignState.entities.effectFamilyMap;
@@ -125,8 +123,12 @@ export function ManagerTab() {
 
 
   const saveMaterials = useCallback((mats: Material[]) => {
-    campaignActions.setMaterials(normalizeArray(mats));
-  }, [campaignActions]);
+    for (const current of materials) if (!mats.some(entry => entry.id === current.id)) campaignActions.removeMaterial(current.id);
+    for (const material of mats) {
+      if (materials.some(entry => entry.id === material.id)) campaignActions.updateMaterial(material.id, material);
+      else campaignActions.addMaterial(material);
+    }
+  }, [campaignActions, materials]);
 
   const saveCrafts = useCallback((craftsList: Craft[]) => {
     campaignActions.setCrafts(normalizeArray(craftsList));
@@ -172,11 +174,11 @@ export function ManagerTab() {
     saveMaterialTypes(updatedTypes);
 
     // Update all materials that use this type
-    const updatedMaterials = Object.values(campaignState.entities.materials).map(m =>
-      (m as { type?: string }).type === oldName ? { ...m, type: newName } : m
+    const updatedMaterials = materials.map(m =>
+      m.type === oldName ? { ...m, type: newName } : m
     );
     saveMaterials(updatedMaterials);
-  }, [materialTypes, campaignState.entities.materials, saveMaterialTypes, saveMaterials]);
+  }, [materialTypes, materials, saveMaterialTypes, saveMaterials]);
 
   // Gathering save callbacks removed — GatheringManager handles its own state
 

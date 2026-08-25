@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { useCampaignStore } from '../../state/campaignStore';
 import type { Character } from '../../types/campaign';
 import { hasDietTraitHint } from '../../utils/dietaryRestrictions';
+import { selectAllFoods } from '../../state/selectors/inventorySelectors';
 
 interface DietSectionProps {
   character: Character;
@@ -95,12 +96,12 @@ export function DietSection({
   const { state } = useCampaignStore();
   const vocabulary = useMemo(() => {
     const foodTypes = new Set<string>();
-    for (const food of Object.values(state.entities.foods)) {
+    for (const food of selectAllFoods(state)) {
       for (const foodType of food.types ?? []) foodTypes.add(foodType);
     }
     for (const foodType of [...excludedFoodTypes, ...requiredFoodTypes]) foodTypes.add(foodType);
     return [...foodTypes].sort((left, right) => left.localeCompare(right));
-  }, [state.entities.foods, excludedFoodTypes, requiredFoodTypes]);
+  }, [state, excludedFoodTypes, requiredFoodTypes]);
 
   const hasConfiguredDiet = excludedFoodTypes.length > 0 || requiredFoodTypes.length > 0;
   const showNudge = !hasConfiguredDiet && hasDietTraitHint(character);

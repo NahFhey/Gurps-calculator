@@ -26,15 +26,15 @@ import type {
 export const MATERIAL_ADD = 'addMaterial' as const;
 export const MATERIAL_UPDATE = 'updateMaterial' as const;
 export const MATERIAL_REMOVE = 'removeMaterial' as const;
-export const MATERIAL_CONSUME = 'consumeMaterials' as const;
-export const MATERIAL_SET = 'setMaterials' as const;
+export const MATERIALS_CONSUMED = 'inventory/materialsConsumed' as const;
+export const MATERIAL_TRANSFERRED = 'inventory/materialTransferred' as const;
 
 // Food actions
 export const FOOD_ADD = 'addFood' as const;
 export const FOOD_UPDATE = 'updateFood' as const;
 export const FOOD_REMOVE = 'removeFood' as const;
-export const FOOD_CONSUME = 'consumeFoods' as const;
-export const FOOD_SET = 'setFoods' as const;
+export const FOODS_CONSUMED = 'inventory/foodsConsumed' as const;
+export const FOOD_TRANSFERRED = 'inventory/foodTransferred' as const;
 
 // Recipe actions
 export const RECIPE_ADD = 'addRecipe' as const;
@@ -72,13 +72,13 @@ export type UpdateMaterialAction = {
   payload: { id: Id; changes: Partial<Material> };
 };
 export type RemoveMaterialAction = { type: typeof MATERIAL_REMOVE; payload: Id };
-export type ConsumeMaterialsAction = {
-  type: typeof MATERIAL_CONSUME;
-  payload: Array<{ id: Id; amount: number }>;
+export type MaterialsConsumedAction = {
+  type: typeof MATERIALS_CONSUMED;
+  payload: { owner: InventoryOwner; entries: Array<{ name?: string; type?: string; quantity: number }> };
 };
-export type SetMaterialsAction = {
-  type: typeof MATERIAL_SET;
-  payload: Record<Id, Material>;
+export type MaterialTransferredAction = {
+  type: typeof MATERIAL_TRANSFERRED;
+  payload: { sourceOwner: InventoryOwner; targetOwner: InventoryOwner; entryId?: Id; name?: string; type?: string; quantity: number };
 };
 
 // Food action types
@@ -88,11 +88,14 @@ export type UpdateFoodAction = {
   payload: { id: Id; changes: Partial<Food> };
 };
 export type RemoveFoodAction = { type: typeof FOOD_REMOVE; payload: Id };
-export type ConsumeFoodsAction = {
-  type: typeof FOOD_CONSUME;
-  payload: Array<{ id: Id; amount: number }>;
+export type FoodsConsumedAction = {
+  type: typeof FOODS_CONSUMED;
+  payload: { owner: InventoryOwner; entries: Array<{ name?: string; type?: string; quantity: number }> };
 };
-export type SetFoodsAction = { type: typeof FOOD_SET; payload: Record<Id, Food> };
+export type FoodTransferredAction = {
+  type: typeof FOOD_TRANSFERRED;
+  payload: { sourceOwner: InventoryOwner; targetOwner: InventoryOwner; entryId?: Id; name?: string; type?: string; quantity: number };
+};
 
 // Recipe action types
 export type AddRecipeAction = { type: typeof RECIPE_ADD; payload: Recipe };
@@ -163,14 +166,14 @@ export type InventoryAction =
   | AddMaterialAction
   | UpdateMaterialAction
   | RemoveMaterialAction
-  | ConsumeMaterialsAction
-  | SetMaterialsAction
+  | MaterialsConsumedAction
+  | MaterialTransferredAction
   // Food actions
   | AddFoodAction
   | UpdateFoodAction
   | RemoveFoodAction
-  | ConsumeFoodsAction
-  | SetFoodsAction
+  | FoodsConsumedAction
+  | FoodTransferredAction
   // Recipe actions
   | AddRecipeAction
   | UpdateRecipeAction
@@ -201,13 +204,13 @@ const INVENTORY_ACTION_TYPES = new Set([
   MATERIAL_ADD,
   MATERIAL_UPDATE,
   MATERIAL_REMOVE,
-  MATERIAL_CONSUME,
-  MATERIAL_SET,
+  MATERIALS_CONSUMED,
+  MATERIAL_TRANSFERRED,
   FOOD_ADD,
   FOOD_UPDATE,
   FOOD_REMOVE,
-  FOOD_CONSUME,
-  FOOD_SET,
+  FOODS_CONSUMED,
+  FOOD_TRANSFERRED,
   RECIPE_ADD,
   RECIPE_UPDATE,
   RECIPE_REMOVE,

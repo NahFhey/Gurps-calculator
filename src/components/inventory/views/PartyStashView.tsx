@@ -270,6 +270,44 @@ export function PartyStashView({
                 </ul>
               </div>
             </div>
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <div>
+                <h4 className="text-sm font-semibold text-slate-300">Materials</h4>
+                <ul className="mt-2 space-y-2 text-sm text-slate-200">
+                  {inventory.materials.map((material) => (
+                    <li key={material.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2">
+                      <span>{material.name} <span className="text-slate-400">× {material.quantity}</span></span>
+                      <button
+                        onClick={() => onTransferStateChange({
+                          type: 'material', entryId: material.id, quantity: '',
+                          sourceInventoryId: inventory.id, targetInventoryId: '',
+                        })}
+                        className="rounded-full bg-indigo-500/20 px-3 py-1 text-xs text-indigo-200 hover:bg-indigo-500/30"
+                      >Transfer</button>
+                    </li>
+                  ))}
+                  {inventory.materials.length === 0 && <li className="text-xs text-slate-500">No materials.</li>}
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-slate-300">Food</h4>
+                <ul className="mt-2 space-y-2 text-sm text-slate-200">
+                  {inventory.food.map((food) => (
+                    <li key={food.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2">
+                      <span>{food.name} <span className="text-slate-400">× {food.quantity}</span></span>
+                      <button
+                        onClick={() => onTransferStateChange({
+                          type: 'food', entryId: food.id, quantity: '',
+                          sourceInventoryId: inventory.id, targetInventoryId: '',
+                        })}
+                        className="rounded-full bg-indigo-500/20 px-3 py-1 text-xs text-indigo-200 hover:bg-indigo-500/30"
+                      >Transfer</button>
+                    </li>
+                  ))}
+                  {inventory.food.length === 0 && <li className="text-xs text-slate-500">No food.</li>}
+                </ul>
+              </div>
+            </div>
           </div>
         ))}
         {partyInventories.length === 0 && (

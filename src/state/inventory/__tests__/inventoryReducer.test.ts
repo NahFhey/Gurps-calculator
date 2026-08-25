@@ -5,13 +5,13 @@ import {
   MATERIAL_ADD,
   MATERIAL_UPDATE,
   MATERIAL_REMOVE,
-  MATERIAL_CONSUME,
-  MATERIAL_SET,
+  MATERIALS_CONSUMED,
+  MATERIAL_TRANSFERRED,
   FOOD_ADD,
   FOOD_UPDATE,
   FOOD_REMOVE,
-  FOOD_CONSUME,
-  FOOD_SET,
+  FOODS_CONSUMED,
+  FOOD_TRANSFERRED,
   RECIPE_ADD,
   RECIPE_UPDATE,
   RECIPE_REMOVE,
@@ -85,12 +85,10 @@ const inventory = (id: string, overrides: Partial<Inventory> = {}): Inventory =>
 const createMinimalCampaignState = (): CampaignState =>
   ({
     entities: {
-      materials: {},
-      foods: {},
       recipes: {},
       foodTypes: [],
       materialTypes: [],
-      inventories: {},
+      inventories: { party: inventory('party') },
     },
   }) as unknown as CampaignState;
 
@@ -111,34 +109,32 @@ describe('inventoryReducer', () => {
     it('MATERIAL_ADD inserts a new material', () => {
       const m = material('m1');
       const next = applyAction(state, { type: MATERIAL_ADD, payload: m });
-      expect(next.entities.materials['m1']).toEqual(m);
+      expect(next.entities.inventories.party.materials).toEqual([m]);
     });
 
     it('MATERIAL_ADD stacks quantities when name+type match', () => {
       const existing = material('m1', { quantity: 3 });
-      state.entities.materials['m1'] = existing;
+      state.entities.inventories.party.materials = [existing];
       const incoming = material('m2', { name: 'mat-m1', type: 'wood', quantity: 5 });
       const next = applyAction(state, { type: MATERIAL_ADD, payload: incoming });
-      expect(next.entities.materials['m1'].quantity).toBe(8);
-      expect(next.entities.materials['m2']).toBeUndefined();
+      expect(next.entities.inventories.party.materials).toEqual([{ ...existing, quantity: 8 }]);
     });
 
     it('MATERIAL_ADD does not stack when type differs', () => {
-      state.entities.materials['m1'] = material('m1', { quantity: 3 });
+      state.entities.inventories.party.materials = [material('m1', { quantity: 3 })];
       const incoming = material('m2', { name: 'mat-m1', type: 'stone', quantity: 5 });
       const next = applyAction(state, { type: MATERIAL_ADD, payload: incoming });
-      expect(next.entities.materials['m1'].quantity).toBe(3);
-      expect(next.entities.materials['m2']).toEqual(incoming);
+      expect(next.entities.inventories.party.materials.map(entry => entry.quantity)).toEqual([3, 5]);
     });
 
     it('MATERIAL_UPDATE merges changes onto existing material', () => {
-      state.entities.materials['m1'] = material('m1', { quantity: 2 });
+      state.entities.inventories.party.materials = [material('m1', { quantity: 2 })];
       const next = applyAction(state, {
         type: MATERIAL_UPDATE,
         payload: { id: 'm1', changes: { quantity: 10, notes: 'updated' } },
       });
-      expect(next.entities.materials['m1'].quantity).toBe(10);
-      expect(next.entities.materials['m1'].notes).toBe('updated');
+      expect(next.entities.inventories.party.materials[0].quantity).toBe(10);
+      expect(next.entities.inventories.party.materials[0].notes).toBe('updated');
     });
 
     it('MATERIAL_UPDATE is a no-op when id is missing', () => {
@@ -146,43 +142,75 @@ describe('inventoryReducer', () => {
         type: MATERIAL_UPDATE,
         payload: { id: 'missing', changes: { quantity: 10 } },
       });
-      expect(next.entities.materials['missing']).toBeUndefined();
+      expect(next.entities.inventories.party.materials).toEqual([]);
     });
 
     it('MATERIAL_REMOVE deletes the entry', () => {
-      state.entities.materials['m1'] = material('m1');
+      state.entities.inventories.party.materials = [material('m1')];
       const next = applyAction(state, { type: MATERIAL_REMOVE, payload: 'm1' });
-      expect(next.entities.materials['m1']).toBeUndefined();
+      expect(next.entities.inventories.party.materials).toEqual([]);
     });
 
-    it('MATERIAL_CONSUME decrements quantities and removes when depleted', () => {
-      state.entities.materials['m1'] = material('m1', { quantity: 5 });
-      state.entities.materials['m2'] = material('m2', { quantity: 2 });
+    it('MATERIALS_CONSUMED decrements and removes depleted entries', () => {
+      state.entities.inventories.party.materials = [
+        material('m1', { quantity: 5 }), material('m2', { quantity: 2 }),
+      ];
       const next = applyAction(state, {
-        type: MATERIAL_CONSUME,
-        payload: [
-          { id: 'm1', amount: 2 },
-          { id: 'm2', amount: 2 },
-        ],
+        type: MATERIALS_CONSUMED,
+        payload: { owner: 'party', entries: [
+          { name: 'mat-m1', type: 'wood', quantity: 2 },
+          { name: 'mat-m2', type: 'wood', quantity: 2 },
+        ] },
       });
-      expect(next.entities.materials['m1'].quantity).toBe(3);
-      expect(next.entities.materials['m2']).toBeUndefined();
+      expect(next.entities.inventories.party.materials).toEqual([material('m1', { quantity: 3 })]);
     });
 
-    it('MATERIAL_CONSUME ignores unknown ids', () => {
-      state.entities.materials['m1'] = material('m1', { quantity: 5 });
+    it('MATERIALS_CONSUMED clamps over-consumption at zero', () => {
+      state.entities.inventories.party.materials = [material('m1', { quantity: 5 })];
       const next = applyAction(state, {
-        type: MATERIAL_CONSUME,
-        payload: [{ id: 'missing', amount: 100 }],
+        type: MATERIALS_CONSUMED,
+        payload: { owner: 'party', entries: [{ name: 'mat-m1', quantity: 100 }] },
       });
-      expect(next.entities.materials['m1'].quantity).toBe(5);
+      expect(next.entities.inventories.party.materials).toEqual([]);
     });
 
-    it('MATERIAL_SET replaces the entire map', () => {
-      state.entities.materials['old'] = material('old');
-      const payload = { m1: material('m1') };
-      const next = applyAction(state, { type: MATERIAL_SET, payload });
-      expect(next.entities.materials).toEqual(payload);
+    it('MATERIALS_CONSUMED missing owner is a no-op', () => {
+      const next = applyAction(state, { type: MATERIALS_CONSUMED, payload: {
+        owner: 'missing', entries: [{ name: 'mat-m1', quantity: 1 }],
+      } });
+      expect(next.entities.inventories).toEqual(state.entities.inventories);
+    });
+
+    it('MATERIALS_CONSUMED without an identity is a no-op', () => {
+      state.entities.inventories.party.materials = [material('m1', { quantity: 5 })];
+      const next = applyAction(state, { type: MATERIALS_CONSUMED, payload: {
+        owner: 'party', entries: [{ quantity: 2 }],
+      } });
+      expect(next.entities.inventories.party.materials[0].quantity).toBe(5);
+    });
+
+    it('MATERIAL_TRANSFERRED moves a partial quantity and creates target', () => {
+      state.entities.inventories.party.materials = [material('m1', { quantity: 5 })];
+      const next = applyAction(state, { type: MATERIAL_TRANSFERRED, payload: {
+        sourceOwner: 'party', targetOwner: 'char-1', entryId: 'm1', quantity: 2,
+      } });
+      expect(next.entities.inventories.party.materials[0].quantity).toBe(3);
+      expect(next.entities.inventories['inv-char-1'].materials[0]).toMatchObject({ name: 'mat-m1', quantity: 2 });
+    });
+
+    it('MATERIAL_TRANSFERRED removes source on a full transfer', () => {
+      state.entities.inventories.party.materials = [material('m1', { quantity: 5 })];
+      const next = applyAction(state, { type: MATERIAL_TRANSFERRED, payload: {
+        sourceOwner: 'party', targetOwner: 'char-1', entryId: 'm1', quantity: 5,
+      } });
+      expect(next.entities.inventories.party.materials).toEqual([]);
+    });
+
+    it('MATERIAL_TRANSFERRED missing source is a no-op', () => {
+      const next = applyAction(state, { type: MATERIAL_TRANSFERRED, payload: {
+        sourceOwner: 'missing', targetOwner: 'char-1', entryId: 'm1', quantity: 2,
+      } });
+      expect(next.entities.inventories).toEqual(state.entities.inventories);
     });
   });
 
@@ -190,23 +218,22 @@ describe('inventoryReducer', () => {
     it('FOOD_ADD inserts a new food', () => {
       const f = food('f1');
       const next = applyAction(state, { type: FOOD_ADD, payload: f });
-      expect(next.entities.foods['f1']).toEqual(f);
+      expect(next.entities.inventories.party.food).toEqual([f]);
     });
 
     it('FOOD_ADD stacks by name + single type', () => {
-      state.entities.foods['f1'] = food('f1', { quantity: 2 });
+      state.entities.inventories.party.food = [food('f1', { quantity: 2 })];
       const incoming = food('f2', { name: 'food-f1', type: 'fruit', quantity: 4 });
       const next = applyAction(state, { type: FOOD_ADD, payload: incoming });
-      expect(next.entities.foods['f1'].quantity).toBe(6);
-      expect(next.entities.foods['f2']).toBeUndefined();
+      expect(next.entities.inventories.party.food[0].quantity).toBe(6);
     });
 
     it('FOOD_ADD stacks by name + types array', () => {
-      state.entities.foods['f1'] = food('f1', {
+      state.entities.inventories.party.food = [food('f1', {
         type: undefined,
         types: ['fruit', 'sweet'],
         quantity: 1,
-      });
+      })];
       const incoming = food('f2', {
         name: 'food-f1',
         type: undefined,
@@ -214,25 +241,23 @@ describe('inventoryReducer', () => {
         quantity: 3,
       });
       const next = applyAction(state, { type: FOOD_ADD, payload: incoming });
-      expect(next.entities.foods['f1'].quantity).toBe(4);
-      expect(next.entities.foods['f2']).toBeUndefined();
+      expect(next.entities.inventories.party.food[0].quantity).toBe(4);
     });
 
     it('FOOD_ADD does not stack when types differ', () => {
-      state.entities.foods['f1'] = food('f1', { type: 'fruit', quantity: 2 });
+      state.entities.inventories.party.food = [food('f1', { type: 'fruit', quantity: 2 })];
       const incoming = food('f2', { name: 'food-f1', type: 'meat', quantity: 4 });
       const next = applyAction(state, { type: FOOD_ADD, payload: incoming });
-      expect(next.entities.foods['f1'].quantity).toBe(2);
-      expect(next.entities.foods['f2']).toEqual(incoming);
+      expect(next.entities.inventories.party.food.map(entry => entry.quantity)).toEqual([2, 4]);
     });
 
     it('FOOD_UPDATE merges changes', () => {
-      state.entities.foods['f1'] = food('f1');
+      state.entities.inventories.party.food = [food('f1')];
       const next = applyAction(state, {
         type: FOOD_UPDATE,
         payload: { id: 'f1', changes: { quantity: 9 } },
       });
-      expect(next.entities.foods['f1'].quantity).toBe(9);
+      expect(next.entities.inventories.party.food[0].quantity).toBe(9);
     });
 
     it('FOOD_UPDATE is a no-op on missing id', () => {
@@ -240,43 +265,60 @@ describe('inventoryReducer', () => {
         type: FOOD_UPDATE,
         payload: { id: 'missing', changes: { quantity: 9 } },
       });
-      expect(next.entities.foods['missing']).toBeUndefined();
+      expect(next.entities.inventories.party.food).toEqual([]);
     });
 
     it('FOOD_REMOVE deletes the entry', () => {
-      state.entities.foods['f1'] = food('f1');
+      state.entities.inventories.party.food = [food('f1')];
       const next = applyAction(state, { type: FOOD_REMOVE, payload: 'f1' });
-      expect(next.entities.foods['f1']).toBeUndefined();
+      expect(next.entities.inventories.party.food).toEqual([]);
     });
 
-    it('FOOD_CONSUME decrements and deletes depleted entries', () => {
-      state.entities.foods['f1'] = food('f1', { quantity: 5 });
-      state.entities.foods['f2'] = food('f2', { quantity: 1 });
+    it('FOODS_CONSUMED decrements and deletes depleted entries', () => {
+      state.entities.inventories.party.food = [food('f1', { quantity: 5 }), food('f2', { quantity: 1 })];
       const next = applyAction(state, {
-        type: FOOD_CONSUME,
-        payload: [
-          { id: 'f1', amount: 3 },
-          { id: 'f2', amount: 1 },
-        ],
+        type: FOODS_CONSUMED,
+        payload: { owner: 'party', entries: [
+          { name: 'food-f1', quantity: 3 }, { name: 'food-f2', quantity: 1 },
+        ] },
       });
-      expect(next.entities.foods['f1'].quantity).toBe(2);
-      expect(next.entities.foods['f2']).toBeUndefined();
+      expect(next.entities.inventories.party.food).toEqual([food('f1', { quantity: 2 })]);
     });
 
-    it('FOOD_CONSUME ignores unknown ids', () => {
-      state.entities.foods['f1'] = food('f1', { quantity: 5 });
+    it('FOODS_CONSUMED ignores unknown entries', () => {
+      state.entities.inventories.party.food = [food('f1', { quantity: 5 })];
       const next = applyAction(state, {
-        type: FOOD_CONSUME,
-        payload: [{ id: 'missing', amount: 99 }],
+        type: FOODS_CONSUMED,
+        payload: { owner: 'party', entries: [{ name: 'missing', quantity: 99 }] },
       });
-      expect(next.entities.foods['f1'].quantity).toBe(5);
+      expect(next.entities.inventories.party.food[0].quantity).toBe(5);
     });
 
-    it('FOOD_SET replaces the food map', () => {
-      state.entities.foods['old'] = food('old');
-      const payload = { f1: food('f1') };
-      const next = applyAction(state, { type: FOOD_SET, payload });
-      expect(next.entities.foods).toEqual(payload);
+    it('FOODS_CONSUMED non-positive quantities are a no-op', () => {
+      state.entities.inventories.party.food = [food('f1', { quantity: 5 })];
+      const next = applyAction(state, { type: FOODS_CONSUMED, payload: {
+        owner: 'party', entries: [{ name: 'food-f1', quantity: -2 }],
+      } });
+      expect(next.entities.inventories.party.food[0].quantity).toBe(5);
+    });
+
+    it('FOOD_TRANSFERRED moves food and stacks at target', () => {
+      state.entities.inventories.party.food = [food('f1', { name: 'Berries', quantity: 4 })];
+      state.entities.inventories.char = inventory('char', { ownerType: 'character', ownerId: 'char-1', food: [food('old', { name: 'Berries', quantity: 2 })] });
+      const next = applyAction(state, { type: FOOD_TRANSFERRED, payload: {
+        sourceOwner: 'party', targetOwner: 'char-1', entryId: 'f1', quantity: 3,
+      } });
+      expect(next.entities.inventories.party.food[0].quantity).toBe(1);
+      expect(next.entities.inventories.char.food[0].quantity).toBe(5);
+    });
+
+    it('FOOD_TRANSFERRED clamps to source quantity', () => {
+      state.entities.inventories.party.food = [food('f1', { quantity: 2 })];
+      const next = applyAction(state, { type: FOOD_TRANSFERRED, payload: {
+        sourceOwner: 'party', targetOwner: 'char-1', entryId: 'f1', quantity: 20,
+      } });
+      expect(next.entities.inventories.party.food).toEqual([]);
+      expect(next.entities.inventories['inv-char-1'].food[0].quantity).toBe(2);
     });
   });
 
@@ -397,7 +439,7 @@ describe('inventoryReducer', () => {
   });
 
   describe('ITEM_ACQUIRED (inventory bus)', () => {
-    it('material acquisition stacks into the pool and refs the owner inventory', () => {
+    it('material acquisition lands an authoritative owner holding', () => {
       const next = applyAction(state, {
         type: ITEM_ACQUIRED,
         payload: {
@@ -406,18 +448,18 @@ describe('inventoryReducer', () => {
           source: 'gathering',
         },
       });
-      expect(next.entities.materials['m1']).toMatchObject({
+      const party = next.entities.inventories.party;
+      expect(party.materials[0]).toMatchObject({
         name: 'Iron Ore',
         type: 'metal',
         quantity: 3,
         source: 'gathering',
       });
-      const party = Object.values(next.entities.inventories).find(i => i.ownerType === 'party');
-      expect(party?.materials).toEqual([{ id: 'm1', quantity: 3 }]);
+      expect(party.materials).toHaveLength(1);
     });
 
-    it('material acquisition merges with an existing pool stack by name+type', () => {
-      state.entities.materials['m1'] = material('m1', { name: 'Iron Ore', type: 'metal', quantity: 5 });
+    it('material acquisition merges within the owner only by name+type', () => {
+      state.entities.inventories.party.materials = [material('m1', { name: 'Iron Ore', type: 'metal', quantity: 5 })];
       const next = applyAction(state, {
         type: ITEM_ACQUIRED,
         payload: {
@@ -426,11 +468,8 @@ describe('inventoryReducer', () => {
           source: 'loot',
         },
       });
-      expect(next.entities.materials['m1'].quantity).toBe(7);
-      expect(next.entities.materials['m2']).toBeUndefined();
-      // The owner ref points at the record the quantity landed in
-      const party = Object.values(next.entities.inventories).find(i => i.ownerType === 'party');
-      expect(party?.materials).toEqual([{ id: 'm1', quantity: 2 }]);
+      expect(next.entities.inventories.party.materials[0].quantity).toBe(7);
+      expect(next.entities.inventories.party.materials).toHaveLength(1);
     });
 
     it('material acquisition preserves a descriptive source label when provided', () => {
@@ -442,11 +481,11 @@ describe('inventoryReducer', () => {
           source: 'gathering',
         },
       });
-      expect(next.entities.materials['m1'].source).toBe('Foraging at Greenwood');
+      expect(next.entities.inventories.party.materials[0].source).toBe('Foraging at Greenwood');
     });
 
-    it('food acquisition stacks into the pool and refs the owner inventory', () => {
-      state.entities.foods['f1'] = food('f1', { name: 'Berries', type: undefined, types: ['fruit'], quantity: 4 });
+    it('food acquisition stacks within the owner', () => {
+      state.entities.inventories.party.food = [food('f1', { name: 'Berries', type: undefined, types: ['fruit'], quantity: 4 })];
       const next = applyAction(state, {
         type: ITEM_ACQUIRED,
         payload: {
@@ -455,9 +494,7 @@ describe('inventoryReducer', () => {
           source: 'gathering',
         },
       });
-      expect(next.entities.foods['f1'].quantity).toBe(10);
-      const party = Object.values(next.entities.inventories).find(i => i.ownerType === 'party');
-      expect(party?.food).toEqual([{ id: 'f1', quantity: 6 }]);
+      expect(next.entities.inventories.party.food[0].quantity).toBe(10);
     });
 
     it('equipment acquisition lands an ItemInstance in the owner inventory', () => {
@@ -538,6 +575,7 @@ describe('inventoryReducer', () => {
     });
 
     it('auto-creates a missing owner inventory record (always-succeed)', () => {
+      delete state.entities.inventories.party;
       expect(Object.keys(state.entities.inventories)).toHaveLength(0);
       const next = applyAction(state, {
         type: ITEM_ACQUIRED,
@@ -673,21 +711,21 @@ describe('inventoryReducer', () => {
       expect(next.entities.inventories['party'].items[0].attuned).toBe(false);
     });
 
-    it('moves a material quantity ref between inventories, merging on arrival', () => {
+    it('ITEM_RETAGGED does not move authoritative stackables', () => {
       state.entities.inventories['party'] = inventory('party', {
-        materials: [{ id: 'm1', quantity: 5 }],
+        materials: [material('m1', { quantity: 5 })],
       });
       state.entities.inventories['inv-char-1'] = inventory('inv-char-1', {
         ownerType: 'character',
         ownerId: 'char-1',
-        materials: [{ id: 'm1', quantity: 2 }],
+        materials: [material('m2', { quantity: 2 })],
       });
       const next = applyAction(state, {
         type: ITEM_RETAGGED,
         payload: { itemId: 'm1', newOwner: 'char-1' },
       });
-      expect(next.entities.inventories['party'].materials).toHaveLength(0);
-      expect(next.entities.inventories['inv-char-1'].materials).toEqual([{ id: 'm1', quantity: 7 }]);
+      expect(next.entities.inventories['party'].materials[0].quantity).toBe(5);
+      expect(next.entities.inventories['inv-char-1'].materials[0].quantity).toBe(2);
     });
 
     it('retag to the current owner is a no-op', () => {

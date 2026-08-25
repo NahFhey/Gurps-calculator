@@ -10,11 +10,10 @@ import type { CampaignState } from '../campaignReducer';
 import type {
   AcquiredItem,
   AcquisitionSource,
-  Food,
+  FoodEntry,
   Id,
   Inventory,
   InventoryOwner,
-  Material,
   MaterialEntry
 } from '../../types/campaign';
 import type { CombatState } from '../../types/combatTracker';
@@ -23,13 +22,13 @@ import {
   MATERIAL_ADD,
   MATERIAL_UPDATE,
   MATERIAL_REMOVE,
-  MATERIAL_CONSUME,
-  MATERIAL_SET,
+  MATERIALS_CONSUMED,
+  MATERIAL_TRANSFERRED,
   FOOD_ADD,
   FOOD_UPDATE,
   FOOD_REMOVE,
-  FOOD_CONSUME,
-  FOOD_SET,
+  FOODS_CONSUMED,
+  FOOD_TRANSFERRED,
   RECIPE_ADD,
   RECIPE_UPDATE,
   RECIPE_REMOVE,
@@ -54,30 +53,26 @@ import {
 // ============================================================================
 
 /**
- * Stack a material into the global pool using the existing stack rule
- * (same name + type merge quantities). Returns the id of the record the
- * quantity landed in.
+ * Stack a material into one owner's authoritative holdings by name + type.
  */
-function stackMaterial(draft: Draft<CampaignState>, material: Material): Id {
-  const existing = Object.values(draft.entities.materials).find(
+function stackMaterial(inventory: Draft<Inventory>, material: MaterialEntry): Id {
+  const existing = inventory.materials.find(
     (m) => m.name === material.name && m.type === material.type
   );
   if (existing) {
     existing.quantity += material.quantity;
     return existing.id;
   }
-  draft.entities.materials[material.id] = material;
+  inventory.materials.push(material);
   return material.id;
 }
 
 /**
- * Stack a food into the global pool using the existing stack rule
- * (same name + type(s) merge quantities). Returns the id of the record the
- * quantity landed in.
+ * Stack food into one owner's authoritative holdings by name + type(s).
  */
-function stackFood(draft: Draft<CampaignState>, food: Food): Id {
+function stackFood(inventory: Draft<Inventory>, food: FoodEntry): Id {
   const foodTypeKey = food.type ?? food.types?.join(',') ?? '';
-  const existing = Object.values(draft.entities.foods).find((f) => {
+  const existing = inventory.food.find((f) => {
     const fType = f.type ?? f.types?.join(',') ?? '';
     return f.name === food.name && fType === foodTypeKey;
   });
@@ -85,7 +80,7 @@ function stackFood(draft: Draft<CampaignState>, food: Food): Id {
     existing.quantity += food.quantity;
     return existing.id;
   }
-  draft.entities.foods[food.id] = food;
+  inventory.food.push(food);
   return food.id;
 }
 
@@ -119,21 +114,15 @@ function ensureInventoryRecord(
   return draft.entities.inventories[created.id];
 }
 
-/**
- * Merge a quantity ref into a MaterialEntry/FoodEntry list (upsert by id).
- *
- * These refs are advisory/provenance-grade — the consume paths
- * (`MATERIAL_CONSUME`/`FOOD_CONSUME`) decrement only the global pool and never
- * these refs, so they intentionally drift above real holdings. The pool total is
- * authoritative. See {@link MaterialEntry} and INVENTORY_INTEGRATION_FOLLOWUPS.md #8.
- */
-function upsertEntryRef(entries: Draft<MaterialEntry>[], id: Id, quantity: number): void {
-  const existing = entries.find((e) => e.id === id);
-  if (existing) {
-    existing.quantity += quantity;
-  } else {
-    entries.push({ id, quantity });
-  }
+function findInventoryRecord(
+  draft: Draft<CampaignState>,
+  owner: InventoryOwner
+): Draft<Inventory> | undefined {
+  return Object.values(draft.entities.inventories).find((inventory) =>
+    owner === 'party'
+      ? inventory.ownerType === 'party'
+      : inventory.ownerType === 'character' && inventory.ownerId === owner
+  );
 }
 
 /**
@@ -150,7 +139,7 @@ function acquireInventoryItem(
 
   switch (item.kind) {
     case 'material': {
-      const materialId = stackMaterial(draft, {
+      stackMaterial(inventory, {
         id: item.id,
         name: item.name,
         type: item.type,
@@ -158,11 +147,10 @@ function acquireInventoryItem(
         source: item.source ?? source,
         notes: item.notes
       });
-      upsertEntryRef(inventory.materials, materialId, item.quantity);
       return;
     }
     case 'food': {
-      const foodId = stackFood(draft, {
+      stackFood(inventory, {
         id: item.id,
         name: item.name,
         types: item.types,
@@ -170,7 +158,6 @@ function acquireInventoryItem(
         source: item.source ?? source,
         notes: item.notes
       });
-      upsertEntryRef(inventory.food, foodId, item.quantity);
       return;
     }
     case 'equipment':
@@ -215,73 +202,129 @@ export function handleInventoryAction(
     // MATERIAL ACTIONS
     // ========================================================================
     case MATERIAL_ADD:
-      // Stack with existing material that has the same name and type
-      stackMaterial(draft, action.payload);
+      stackMaterial(ensureInventoryRecord(draft, 'party'), action.payload);
       return true;
 
     case MATERIAL_UPDATE:
-      if (draft.entities.materials[action.payload.id]) {
-        draft.entities.materials[action.payload.id] = {
-          ...draft.entities.materials[action.payload.id],
-          ...action.payload.changes
-        };
+      {
+        const material = findInventoryRecord(draft, 'party')?.materials.find(
+          (entry) => entry.id === action.payload.id
+        );
+        if (material) Object.assign(material, action.payload.changes);
       }
       return true;
 
     case MATERIAL_REMOVE:
-      delete draft.entities.materials[action.payload];
+      {
+        const materials = findInventoryRecord(draft, 'party')?.materials;
+        const index = materials?.findIndex((entry) => entry.id === action.payload) ?? -1;
+        if (materials && index >= 0) materials.splice(index, 1);
+      }
       return true;
 
-    case MATERIAL_CONSUME:
-      action.payload.forEach(({ id, amount }) => {
-        if (draft.entities.materials[id]) {
-          draft.entities.materials[id].quantity -= amount;
-          if (draft.entities.materials[id].quantity <= 0) {
-            delete draft.entities.materials[id];
-          }
+    case MATERIALS_CONSUMED: {
+      const inventory = findInventoryRecord(draft, action.payload.owner);
+      if (!inventory) return true;
+      for (const consumed of action.payload.entries) {
+        if ((consumed.name === undefined && consumed.type === undefined) || consumed.quantity <= 0) continue;
+        const index = inventory.materials.findIndex((entry) =>
+          (consumed.name === undefined || entry.name === consumed.name) &&
+          (consumed.type === undefined || entry.type === consumed.type)
+        );
+        if (index >= 0) {
+          inventory.materials[index].quantity = Math.max(
+            0,
+            inventory.materials[index].quantity - consumed.quantity
+          );
+          if (inventory.materials[index].quantity === 0) inventory.materials.splice(index, 1);
         }
-      });
+      }
       return true;
+    }
 
-    case MATERIAL_SET:
-      draft.entities.materials = action.payload;
+    case MATERIAL_TRANSFERRED: {
+      const { sourceOwner, targetOwner, entryId, name, type, quantity } = action.payload;
+      const source = findInventoryRecord(draft, sourceOwner);
+      if (!source || sourceOwner === targetOwner || quantity <= 0) return true;
+      const index = source.materials.findIndex((entry) =>
+        (entryId !== undefined ? entry.id === entryId : true) &&
+        (name === undefined || entry.name === name) &&
+        (type === undefined || entry.type === type)
+      );
+      if (index < 0) return true;
+      const sourceEntry = source.materials[index];
+      const movedQuantity = Math.min(quantity, sourceEntry.quantity);
+      const moved: MaterialEntry = { ...sourceEntry, quantity: movedQuantity };
+      sourceEntry.quantity -= movedQuantity;
+      if (sourceEntry.quantity === 0) source.materials.splice(index, 1);
+      stackMaterial(ensureInventoryRecord(draft, targetOwner), moved);
       return true;
+    }
 
     // ========================================================================
     // FOOD ACTIONS
     // ========================================================================
     case FOOD_ADD:
-      // Stack with existing food that has the same name and type(s)
-      stackFood(draft, action.payload);
+      stackFood(ensureInventoryRecord(draft, 'party'), action.payload);
       return true;
 
     case FOOD_UPDATE:
-      if (draft.entities.foods[action.payload.id]) {
-        draft.entities.foods[action.payload.id] = {
-          ...draft.entities.foods[action.payload.id],
-          ...action.payload.changes
-        };
+      {
+        const food = findInventoryRecord(draft, 'party')?.food.find(
+          (entry) => entry.id === action.payload.id
+        );
+        if (food) Object.assign(food, action.payload.changes);
       }
       return true;
 
     case FOOD_REMOVE:
-      delete draft.entities.foods[action.payload];
+      {
+        const foods = findInventoryRecord(draft, 'party')?.food;
+        const index = foods?.findIndex((entry) => entry.id === action.payload) ?? -1;
+        if (foods && index >= 0) foods.splice(index, 1);
+      }
       return true;
 
-    case FOOD_CONSUME:
-      action.payload.forEach(({ id, amount }) => {
-        if (draft.entities.foods[id]) {
-          draft.entities.foods[id].quantity -= amount;
-          if (draft.entities.foods[id].quantity <= 0) {
-            delete draft.entities.foods[id];
-          }
+    case FOODS_CONSUMED: {
+      const inventory = findInventoryRecord(draft, action.payload.owner);
+      if (!inventory) return true;
+      for (const consumed of action.payload.entries) {
+        if ((consumed.name === undefined && consumed.type === undefined) || consumed.quantity <= 0) continue;
+        const index = inventory.food.findIndex((entry) => {
+          const entryType = entry.type ?? entry.types?.join(',') ?? '';
+          const matchesType = consumed.type === undefined || entryType === consumed.type;
+          return (consumed.name === undefined || entry.name === consumed.name) && matchesType;
+        });
+        if (index >= 0) {
+          inventory.food[index].quantity = Math.max(
+            0,
+            inventory.food[index].quantity - consumed.quantity
+          );
+          if (inventory.food[index].quantity === 0) inventory.food.splice(index, 1);
         }
-      });
+      }
       return true;
+    }
 
-    case FOOD_SET:
-      draft.entities.foods = action.payload;
+    case FOOD_TRANSFERRED: {
+      const { sourceOwner, targetOwner, entryId, name, type, quantity } = action.payload;
+      const source = findInventoryRecord(draft, sourceOwner);
+      if (!source || sourceOwner === targetOwner || quantity <= 0) return true;
+      const index = source.food.findIndex((entry) => {
+        const entryType = entry.type ?? entry.types?.join(',') ?? '';
+        const matchesType = type === undefined || entryType === type;
+        return (entryId !== undefined ? entry.id === entryId : true) &&
+          (name === undefined || entry.name === name) && matchesType;
+      });
+      if (index < 0) return true;
+      const sourceEntry = source.food[index];
+      const movedQuantity = Math.min(quantity, sourceEntry.quantity);
+      const moved: FoodEntry = { ...sourceEntry, quantity: movedQuantity };
+      sourceEntry.quantity -= movedQuantity;
+      if (sourceEntry.quantity === 0) source.food.splice(index, 1);
+      stackFood(ensureInventoryRecord(draft, targetOwner), moved);
       return true;
+    }
 
     // ========================================================================
     // RECIPE ACTIONS
@@ -368,28 +411,6 @@ export function handleInventoryAction(
           if (target.id !== inv.id) {
             const [moved] = inv.items.splice(idx, 1);
             target.items.push(moved);
-          }
-          return true;
-        }
-      }
-
-      // Material/food quantity-ref move (whole entry)
-      for (const inv of inventories) {
-        const mIdx = inv.materials.findIndex((e) => e.id === itemId);
-        if (mIdx >= 0) {
-          const target = ensureInventoryRecord(draft, newOwner);
-          if (target.id !== inv.id) {
-            const [moved] = inv.materials.splice(mIdx, 1);
-            upsertEntryRef(target.materials, moved.id, moved.quantity);
-          }
-          return true;
-        }
-        const fIdx = inv.food.findIndex((e) => e.id === itemId);
-        if (fIdx >= 0) {
-          const target = ensureInventoryRecord(draft, newOwner);
-          if (target.id !== inv.id) {
-            const [moved] = inv.food.splice(fIdx, 1);
-            upsertEntryRef(target.food, moved.id, moved.quantity);
           }
           return true;
         }

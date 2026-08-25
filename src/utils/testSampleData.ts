@@ -1180,16 +1180,16 @@ export function generateAllTestSampleData() {
  */
 export function isStateEmpty(state: {
   entities: {
-    materials: Record<string, unknown>;
-    foods: Record<string, unknown>;
+    inventories: Record<string, { materials: unknown[]; food: unknown[] }>;
     gatheringSpecies: Record<string, unknown>;
     alchemyReagents: Record<string, unknown>;
     cookingSkills: unknown[];
   };
 }): boolean {
   return (
-    Object.keys(state.entities.materials).length === 0 &&
-    Object.keys(state.entities.foods).length === 0 &&
+    Object.values(state.entities.inventories).every(inventory =>
+      inventory.materials.length === 0 && inventory.food.length === 0
+    ) &&
     Object.keys(state.entities.gatheringSpecies).length === 0 &&
     Object.keys(state.entities.alchemyReagents).length === 0 &&
     state.entities.cookingSkills.length === 0

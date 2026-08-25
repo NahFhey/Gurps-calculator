@@ -36,6 +36,7 @@ import type {
 import type { ForageZoneProfile, ForageItem, ForagingConfig } from '../../types/foraging';
 import type { GatheringItemExtended } from '../../types/gathering';
 import { DEFAULT_FORAGING_CONFIG } from '../../constants/foraging';
+import { selectAllMaterials } from '../../state/selectors/inventorySelectors';
 
 // ============================================================================
 // CONTEXT TYPE DEFINITIONS
@@ -286,8 +287,8 @@ export function DowntimeProvider({
 
   // Extract crafting materials
   const craftingMaterials = useMemo(
-    () => Object.values(campaignState.entities?.materials ?? {}),
-    [campaignState.entities?.materials]
+    () => selectAllMaterials(campaignState),
+    [campaignState]
   );
 
   // Extract crafting workshops (facilities with type 'workshop')

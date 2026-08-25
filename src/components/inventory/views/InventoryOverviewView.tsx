@@ -13,6 +13,8 @@ export interface InventoryOverviewViewProps {
   view: 'materials' | 'foods';
   materials: Material[];
   foods: Food[];
+  materialBreakdowns: Record<string, Array<{ ownerLabel: string; quantity: number }>>;
+  foodBreakdowns: Record<string, Array<{ ownerLabel: string; quantity: number }>>;
   foodTypes: Array<string | FoodType>;
   materialTypes: MaterialType[];
   gmMode: boolean;
@@ -54,6 +56,8 @@ export function InventoryOverviewView({
   view,
   materials,
   foods,
+  materialBreakdowns,
+  foodBreakdowns,
   foodTypes,
   materialTypes,
   gmMode,
@@ -90,6 +94,10 @@ export function InventoryOverviewView({
   onSaveMaterials,
   onSaveFoods,
 }: InventoryOverviewViewProps) {
+  const ownerBreakdown = (entries: Array<{ ownerLabel: string; quantity: number }> = []) => {
+    if (entries.length === 0 || (entries.length === 1 && entries[0].ownerLabel === 'party')) return null;
+    return entries.map(entry => `${entry.ownerLabel} ${entry.quantity}`).join(', ');
+  };
   const grouped = foods.reduce((groups: Record<string, Food[]>, food) => {
     const key = food.types?.length > 0 ? [...food.types].sort().join('/') : 'no-type';
     if (!groups[key]) groups[key] = [];
@@ -216,7 +224,12 @@ export function InventoryOverviewView({
                 <div className="flex items-center gap-4 p-3 cursor-pointer hover:bg-gray-600" onClick={() => setExpanded(p => ({...p, [`mat-${m.id}`]: !p[`mat-${m.id}`]}))}>
                   <span className="flex-1">{m.name}</span>
                   <span className="text-blue-400 text-sm">{m.type || 'no type'}</span>
-                  <span className="text-gray-400">{m.quantity} lbs</span>
+                  <span className="text-right text-gray-400">
+                    {m.quantity} lbs
+                    {ownerBreakdown(materialBreakdowns[m.id]) && (
+                      <span className="block text-xs text-gray-500">— {ownerBreakdown(materialBreakdowns[m.id])}</span>
+                    )}
+                  </span>
                   <span className="text-gray-400">{expanded[`mat-${m.id}`] ? '▼' : '▶'}</span>
                 </div>
                 {expanded[`mat-${m.id}`] && (
@@ -382,7 +395,12 @@ export function InventoryOverviewView({
                           })}
                         </span>
                       </span>
-                      <span className="text-gray-400">{f.quantity} lbs</span>
+                      <span className="text-right text-gray-400">
+                        {f.quantity} lbs
+                        {ownerBreakdown(foodBreakdowns[f.id]) && (
+                          <span className="block text-xs text-gray-500">— {ownerBreakdown(foodBreakdowns[f.id])}</span>
+                        )}
+                      </span>
                       <span className="text-gray-400">{expanded[f.id] ? '▼' : '▶'}</span>
                     </div>
                     {expanded[f.id] && (

@@ -44,7 +44,8 @@ const recipe: Recipe = {
 
 function makeState(withRecipe = false): CampaignState {
   const state = createCampaignState();
-  state.entities.foods = { carrot: foods[0], apple: foods[1] };
+  const party = Object.values(state.entities.inventories).find(inventory => inventory.ownerType === 'party');
+  if (party) party.food = foods;
   state.entities.recipes = withRecipe ? { stew: recipe } : {};
   state.entities.kitchens = {
     camp: { id: 'camp', name: 'Camp Kitchen', rating: 1, description: '' },
@@ -190,7 +191,8 @@ describe('CookingTab router', () => {
     const savedRecipes = Object.values(latest.entities.recipes);
     expect(savedRecipes).toHaveLength(1);
     expect(savedRecipes[0].name).toBe('Carrot Plate');
-    expect(latest.entities.foods.carrot.quantity).toBe(9);
+    const party = Object.values(latest.entities.inventories).find(inventory => inventory.ownerType === 'party');
+    expect(party?.food.find(food => food.id === 'carrot')?.quantity).toBe(9);
     expect(latest.logs.entries[latest.logs.entries.length - 1]?.payload).toMatchObject({
       message: expect.stringContaining('Carrot Plate'),
     });

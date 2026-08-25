@@ -34,13 +34,15 @@ function makeState(withRecipe = false, existingBuff: MealBuff | null = null): Ca
   const state = createCampaignState();
   state.time.day = 7;
   state.mealBuff = existingBuff;
-  state.entities.foods = {
-    carrot: {
+  const party = Object.values(state.entities.inventories).find(inventory => inventory.ownerType === 'party');
+  if (party) state.entities.inventories = {
+    ...state.entities.inventories,
+    [party.id]: { ...party, food: [{
       id: 'carrot',
       name: 'Carrot',
       types: ['vegetable', 'root', 'starchy'],
       quantity: 10,
-    },
+    }] },
   };
   state.entities.recipes = withRecipe ? { 'root-stew': rootStew } : {};
   state.entities.kitchens = {
@@ -175,6 +177,8 @@ describe('CookingTab meal buff dispatches', () => {
       excludedCharacterIds: [],
     });
     expect(getState().mealBuff?.skills).not.toBe(rootStew.skills);
+    const party = Object.values(getState().entities.inventories).find(inventory => inventory.ownerType === 'party');
+    expect(party?.food.find(food => food.id === 'carrot')?.quantity).toBe(9);
   });
 
   it('uses stored recipe ingredient types for the remake exclusion snapshot', () => {

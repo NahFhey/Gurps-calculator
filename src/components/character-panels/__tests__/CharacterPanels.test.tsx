@@ -33,8 +33,8 @@ vi.mock('../../../state/campaignStore', () => ({
             items: [{ id: 'item-1', name: 'Rope', quantity: 2 }],
             tools: [],
             currency: { gold: 50, silver: 120 },
-            materials: [],
-            food: [],
+            materials: [{ id: 'iron', name: 'Iron Ore', type: 'metal', quantity: 3 }],
+            food: [{ id: 'apple', name: 'Apple', types: ['fruit'], quantity: 2 }],
           } as Inventory,
         },
       },
@@ -226,7 +226,7 @@ describe('CharacterInventoryPanel', () => {
   it('displays items section with inventory items', () => {
     render(<CharacterInventoryPanel character={mockCharacter} />);
     expect(screen.getByText('Rope')).toBeInTheDocument();
-    expect(screen.getByText(/x2/)).toBeInTheDocument();
+    expect(screen.getAllByText(/x2/).length).toBeGreaterThan(0);
   });
 
   it('displays currency section with currency types', () => {
@@ -270,6 +270,13 @@ describe('CharacterInventoryPanel', () => {
     render(<CharacterInventoryPanel character={mockCharacter} />);
     const toolHeaders = screen.getAllByText('Tools');
     expect(toolHeaders.length).toBeGreaterThan(0);
+  });
+
+  it('renders authoritative material and food holdings as read-only lists', () => {
+    render(<CharacterInventoryPanel character={mockCharacter} />);
+    expect(screen.getByText('Iron Ore')).toBeInTheDocument();
+    expect(screen.getByText('Apple')).toBeInTheDocument();
+    expect(screen.getByText('x3')).toBeInTheDocument();
   });
 });
 

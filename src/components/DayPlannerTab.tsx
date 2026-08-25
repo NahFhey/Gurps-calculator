@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { TASK_STATUS } from '../constants';
 import { useCampaignStore } from '../state/campaignStore';
-import { denormalizeObject, normalizeArray } from '../state/campaignUtils';
+import { denormalizeObject } from '../state/campaignUtils';
+import { selectOwnerFoodHoldings, selectOwnerMaterialHoldings } from '../state/selectors/inventorySelectors';
 import {
   createTaskAssignment,
   createPendingDayLedger,
@@ -31,6 +32,7 @@ import type {
   TaskAssignment,
   DayLedger,
   TimeSlot
+  , Food, Material
 } from '../types/campaign';
 
 /**
@@ -107,15 +109,9 @@ function DayPlannerTabBase() {
     return chars.filter(c => c.work?.enabled);
   }, [state.entities.characters]);
 
-  const foods = useMemo(() =>
-    denormalizeObject(state.entities.foods || {}),
-    [state.entities.foods]
-  );
+  const foods = useMemo(() => selectOwnerFoodHoldings(state, 'party'), [state]);
 
-  const materials = useMemo(() =>
-    denormalizeObject(state.entities.materials || {}),
-    [state.entities.materials]
-  );
+  const materials = useMemo(() => selectOwnerMaterialHoldings(state, 'party'), [state]);
 
   // Day planner state
   const timeSlots = (state.dayPlanner.timeSlots || []) as unknown as DayPlannerTimeSlot[];
@@ -145,13 +141,21 @@ function DayPlannerTabBase() {
     actions.setDayPlannerSlot(slot);
   }, [actions]);
 
-  const saveFoods = useCallback((foodsList: any[]) => {
-    actions.setFoods(normalizeArray(foodsList));
-  }, [actions]);
+  const saveFoods = useCallback((foodsList: Food[]) => {
+    for (const current of foods) if (!foodsList.some(entry => entry.id === current.id)) actions.removeFood(current.id);
+    for (const food of foodsList) {
+      if (foods.some(entry => entry.id === food.id)) actions.updateFood(food.id, food);
+      else actions.addFood(food);
+    }
+  }, [actions, foods]);
 
-  const saveMaterials = useCallback((materialsList: any[]) => {
-    actions.setMaterials(normalizeArray(materialsList));
-  }, [actions]);
+  const saveMaterials = useCallback((materialsList: Material[]) => {
+    for (const current of materials) if (!materialsList.some(entry => entry.id === current.id)) actions.removeMaterial(current.id);
+    for (const material of materialsList) {
+      if (materials.some(entry => entry.id === material.id)) actions.updateMaterial(material.id, material);
+      else actions.addMaterial(material);
+    }
+  }, [actions, materials]);
 
   // Initialize slots and ledger on mount or day change
   useEffect(() => {

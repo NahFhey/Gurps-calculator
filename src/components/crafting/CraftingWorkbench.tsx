@@ -294,12 +294,11 @@ export function CraftingWorkbench({
         };
       });
 
-      const newMaterials = materials.map(m => {
-        const u = consumedMaterials.find(c => c.materialId === m.id || c.materialId === String(m.id));
-        if (!u) return m;
-        return { ...m, quantity: m.quantity - u.amount };
-      });
-      saveMaterials(newMaterials);
+      campaignActions.consumeMaterials('party', consumedMaterials.map(material => ({
+        name: material.name,
+        type: material.type,
+        quantity: material.amount,
+      })));
 
       const newCur: Craft = { ...current, phase: 'design', consumedMaterials };
       setCurrent(newCur);

@@ -14,6 +14,7 @@
 import { useMemo, useCallback } from 'react';
 import { useCampaignStore } from '../state/campaignStore';
 import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
+import { selectAllMaterials, selectOwnerMaterialHoldings } from '../state/selectors/inventorySelectors';
 import { useWeatherModifiers } from './useWeatherModifiers';
 import { getCharacterSkills, ACTIVITY_SKILL_REQUIREMENTS } from '../types/characterSheet';
 import type {
@@ -47,9 +48,10 @@ export function useCraftingData() {
 
   // Derive data from normalized state
   const materials = useMemo(() =>
-    denormalizeObject(state.entities.materials) as Material[],
-    [state.entities.materials]
+    selectAllMaterials(state),
+    [state]
   );
+  const partyMaterials = useMemo(() => selectOwnerMaterialHoldings(state, 'party'), [state]);
 
   const materialTypes = (state.entities.materialTypes ?? []) as MaterialType[];
 
@@ -88,8 +90,12 @@ export function useCraftingData() {
 
   // Save callbacks that normalize arrays back to records
   const saveMaterials = useCallback((materialsArray: Material[]) => {
-    actions.setMaterials(normalizeArray(materialsArray));
-  }, [actions]);
+    for (const current of partyMaterials) if (!materialsArray.some(entry => entry.id === current.id)) actions.removeMaterial(current.id);
+    for (const material of materialsArray) {
+      if (partyMaterials.some(entry => entry.id === material.id)) actions.updateMaterial(material.id, material);
+      else actions.addMaterial(material);
+    }
+  }, [actions, partyMaterials]);
 
   const saveCrafts = useCallback((craftsArray: Craft[]) => {
     actions.setCrafts(normalizeArray(craftsArray));

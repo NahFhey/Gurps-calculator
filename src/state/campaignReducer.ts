@@ -6,8 +6,6 @@ import { logger } from '../utils/logger';
 import type {
   Id,
   Character,
-  Material,
-  Food,
   FoodType,
   MaterialType,
   Recipe,
@@ -113,8 +111,6 @@ export type CampaignState = {
     characters: Record<Id, Character>;
 
     // Inventory system
-    materials: Record<Id, Material>;
-    foods: Record<Id, Food>;
     recipes: Record<Id, Recipe>;
     foodTypes: FoodType[];
     materialTypes: MaterialType[];
@@ -331,8 +327,6 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
     characters: initialPartyToolState.characters,
 
     // Inventory system (empty initially)
-    materials: {},
-    foods: {},
     recipes: {},
     foodTypes: [
       { name: 'fish', color: '#60A5FA' },
@@ -503,17 +497,7 @@ export type CampaignAction =
   | { type: 'removeCharacter'; payload: Id }
   | { type: 'setCharacters'; payload: Record<Id, Character> }
   // Material actions
-  | { type: 'addMaterial'; payload: Material }
-  | { type: 'updateMaterial'; payload: { id: Id; changes: Partial<Material> } }
-  | { type: 'removeMaterial'; payload: Id }
-  | { type: 'consumeMaterials'; payload: Array<{ id: Id; amount: number }> }
-  | { type: 'setMaterials'; payload: Record<Id, Material> }
-  // Food actions
-  | { type: 'addFood'; payload: Food }
-  | { type: 'updateFood'; payload: { id: Id; changes: Partial<Food> } }
-  | { type: 'removeFood'; payload: Id }
-  | { type: 'consumeFoods'; payload: Array<{ id: Id; amount: number }> }
-  | { type: 'setFoods'; payload: Record<Id, Food> }
+  | import('./inventory').InventoryAction
   // Recipe actions
   | { type: 'addRecipe'; payload: Recipe }
   | { type: 'updateRecipe'; payload: { id: Id; changes: Partial<Recipe> } }

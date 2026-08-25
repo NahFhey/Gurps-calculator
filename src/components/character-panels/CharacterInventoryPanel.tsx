@@ -262,6 +262,40 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
               )}
             </div>
 
+            {/* Authoritative stackable holdings (read-only here). */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="bg-gray-800 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-300 mb-3">Materials</h3>
+                {characterInventory.materials.length === 0 ? (
+                  <p className="text-gray-500 text-sm italic">No materials</p>
+                ) : (
+                  <ul className="space-y-1">
+                    {characterInventory.materials.map(material => (
+                      <li key={material.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded bg-gray-700/50">
+                        <span className="text-gray-200">{material.name}</span>
+                        <span className="text-gray-400">x{material.quantity}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div className="bg-gray-800 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-300 mb-3">Food</h3>
+                {characterInventory.food.length === 0 ? (
+                  <p className="text-gray-500 text-sm italic">No food</p>
+                ) : (
+                  <ul className="space-y-1">
+                    {characterInventory.food.map(food => (
+                      <li key={food.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded bg-gray-700/50">
+                        <span className="text-gray-200">{food.name}</span>
+                        <span className="text-gray-400">x{food.quantity}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
             {/* Tools Section */}
             <div className="bg-gray-800 rounded-lg p-4">
               <h3 className="text-sm font-semibold text-gray-300 mb-3">Tools</h3>

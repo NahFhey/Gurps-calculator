@@ -35,11 +35,13 @@ export interface DeleteConfirm {
 }
 
 export interface TransferState {
-  type: 'item' | 'tool' | 'currency';
+  type: 'item' | 'tool' | 'currency' | 'material' | 'food';
   itemId?: string;
+  entryId?: string;
   toolId?: string;
   currencyKey?: string;
   amount?: string;
+  quantity?: string;
   sourceInventoryId: string;
   targetInventoryId: string;
 }

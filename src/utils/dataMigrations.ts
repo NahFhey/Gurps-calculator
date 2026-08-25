@@ -61,6 +61,7 @@ const migrationHandlers: Record<string, MigrationHandler> = {
   '1.5.0:1.5.1': migrateTo1_5_1,
   '1.5.1:1.5.2': migrateTo1_5_2,
   '1.5.2:1.5.3': migrateTo1_5_3,
+  '1.5.3:1.5.4': migrateTo1_5_4,
 };
 
 /**
@@ -316,6 +317,79 @@ function migrateTo1_5_3(data: MigratableData): MigratableData {
     ...data,
     combatHistory: upgradeCombatHistory(data.combatHistory),
   };
+}
+
+/**
+ * Migration: 1.5.3 → 1.5.4 (owner-attributed material holdings)
+ *
+ * Legacy global pools become the party's holdings. Existing inventory arrays
+ * are provenance refs and are deliberately discarded. Absence of both legacy
+ * pools means this migration has already run, making the transform idempotent.
+ */
+export function migrateTo1_5_4(data: MigratableData): MigratableData {
+  const hasMaterials = Object.prototype.hasOwnProperty.call(data, 'materials');
+  const hasFoods = Object.prototype.hasOwnProperty.call(data, 'foods');
+  if (!hasMaterials && !hasFoods) return data;
+
+  const toEntries = (value: unknown): Record<string, unknown>[] => {
+    if (Array.isArray(value)) return value.filter((entry): entry is Record<string, unknown> =>
+      !!entry && typeof entry === 'object'
+    );
+    if (value && typeof value === 'object') {
+      return Object.values(value as Record<string, unknown>).filter(
+        (entry): entry is Record<string, unknown> => !!entry && typeof entry === 'object'
+      );
+    }
+    return [];
+  };
+
+  const rawInventories = data.inventories;
+  const inventories: Record<string, Record<string, unknown>> =
+    rawInventories && typeof rawInventories === 'object' && !Array.isArray(rawInventories)
+      ? { ...(rawInventories as Record<string, Record<string, unknown>>) }
+      : {};
+  let partyKey = Object.keys(inventories).find(
+    (key) => inventories[key]?.ownerType === 'party'
+  );
+  if (!partyKey) {
+    partyKey = 'party';
+    inventories[partyKey] = {
+      id: 'party', ownerType: 'party', ownerId: null,
+      currency: {}, items: [], tools: [], materials: [], food: [],
+    };
+  }
+
+  const rawCharacters = data.characters;
+  const characters = Array.isArray(rawCharacters)
+    ? rawCharacters
+    : rawCharacters && typeof rawCharacters === 'object'
+      ? Object.values(rawCharacters as Record<string, unknown>)
+      : [];
+  for (const candidate of characters) {
+    if (!candidate || typeof candidate !== 'object') continue;
+    const character = candidate as Record<string, unknown>;
+    if (typeof character.id !== 'string') continue;
+    if (Object.values(inventories).some(inventory =>
+      inventory.ownerType === 'character' && inventory.ownerId === character.id
+    )) continue;
+    const inventoryId = inventories[character.id] ? `inv-${character.id}` : character.id;
+    inventories[inventoryId] = {
+      id: inventoryId, ownerType: 'character', ownerId: character.id,
+      currency: {}, items: [], tools: [], materials: [], food: [],
+    };
+  }
+
+  for (const [key, inventory] of Object.entries(inventories)) {
+    inventories[key] = { ...inventory, materials: [], food: [] };
+  }
+  inventories[partyKey] = {
+    ...inventories[partyKey],
+    materials: toEntries(data.materials),
+    food: toEntries(data.foods),
+  };
+
+  const { materials: _materials, foods: _foods, ...withoutPools } = data;
+  return { ...withoutPools, inventories };
 }
 
 /**

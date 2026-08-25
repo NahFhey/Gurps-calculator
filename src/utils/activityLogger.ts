@@ -154,6 +154,11 @@ export const inventoryLog = {
         : `Transferred "${itemName}" from ${fromInventory} to ${toInventory}`
     }),
 
+  stackableTransferred: (kind: 'material' | 'food', name: string, quantity: number, fromInventory: string, toInventory: string) =>
+    createActivityLogEntry('inventory', `${kind}_transferred`, {
+      message: `Transferred ${quantity} ${name} from ${fromInventory} to ${toInventory}`
+    }),
+
   currencyTransferred: (amount: number, currency: string, fromInventory: string, toInventory: string) =>
     createActivityLogEntry('inventory', 'currency_transferred', {
       message: `Transferred ${amount} ${currency} from ${fromInventory} to ${toInventory}`

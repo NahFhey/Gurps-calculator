@@ -23,7 +23,7 @@ export function TransferConsole({
       <h3 className="text-lg font-semibold text-white">Transfer Console</h3>
       {!transferState && (
         <p className="mt-3 text-sm text-slate-400">
-          Select an item, tool, or currency to initiate a transfer between inventories.
+          Select an item, tool, material, food, or currency to initiate a transfer between inventories.
         </p>
       )}
       {transferState && (
@@ -41,6 +41,8 @@ export function TransferConsole({
               {transferState.type === 'item' && 'Item'}
               {transferState.type === 'tool' && 'Tool'}
               {transferState.type === 'currency' && `Currency: ${transferState.currencyKey}`}
+              {transferState.type === 'material' && 'Material'}
+              {transferState.type === 'food' && 'Food'}
               <ArrowRight size={14} className="text-slate-400" />
             </p>
           </div>
@@ -74,6 +76,20 @@ export function TransferConsole({
                 value={transferState.amount || ''}
                 onChange={(event) =>
                   onTransferStateChange({ ...transferState, amount: event.target.value })
+                }
+                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+              />
+            </label>
+          )}
+          {(transferState.type === 'material' || transferState.type === 'food') && (
+            <label className="flex flex-col gap-2">
+              Quantity
+              <input
+                type="number"
+                min="1"
+                value={transferState.quantity || ''}
+                onChange={(event) =>
+                  onTransferStateChange({ ...transferState, quantity: event.target.value })
                 }
                 className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
               />

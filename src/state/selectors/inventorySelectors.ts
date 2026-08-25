@@ -14,7 +14,10 @@ import type {
   FoodType,
   MaterialType,
   Inventory,
-  ItemInstance
+  ItemInstance,
+  MaterialEntry,
+  FoodEntry,
+  InventoryOwner
 } from '../../types/campaign';
 
 // ============================================================================
@@ -25,31 +28,38 @@ import type {
  * Select all materials as a record
  */
 export const selectMaterialsRecord = (state: CampaignState): Record<Id, Material> =>
-  state.entities.materials;
+  Object.fromEntries(selectAllMaterials(state).map((material) => [material.id, material]));
 
 /**
  * Select all materials as an array
  */
 export const selectAllMaterials = (state: CampaignState): Material[] =>
-  Object.values(state.entities.materials);
+  Object.values(state.entities.inventories)
+    .flatMap((inventory) => inventory.materials)
+    .reduce<Material[]>((totals, material) => {
+      const existing = totals.find((entry) => entry.name === material.name && entry.type === material.type);
+      if (existing) existing.quantity += material.quantity;
+      else totals.push({ ...material });
+      return totals;
+    }, []);
 
 /**
  * Select a material by ID
  */
 export const selectMaterialById = (state: CampaignState, id: Id): Material | undefined =>
-  state.entities.materials[id];
+  selectAllMaterials(state).find((material) => material.id === id);
 
 /**
  * Select materials by type
  */
 export const selectMaterialsByType = (state: CampaignState, type: string): Material[] =>
-  Object.values(state.entities.materials).filter((m) => m.type === type);
+  selectAllMaterials(state).filter((m) => m.type === type);
 
 /**
  * Select total quantity of a material type
  */
 export const selectMaterialQuantityByType = (state: CampaignState, type: string): number =>
-  Object.values(state.entities.materials)
+  selectAllMaterials(state)
     .filter((m) => m.type === type)
     .reduce((sum, m) => sum + m.quantity, 0);
 
@@ -61,25 +71,35 @@ export const selectMaterialQuantityByType = (state: CampaignState, type: string)
  * Select all foods as a record
  */
 export const selectFoodsRecord = (state: CampaignState): Record<Id, Food> =>
-  state.entities.foods;
+  Object.fromEntries(selectAllFoods(state).map((food) => [food.id, food]));
 
 /**
  * Select all foods as an array
  */
 export const selectAllFoods = (state: CampaignState): Food[] =>
-  Object.values(state.entities.foods);
+  Object.values(state.entities.inventories)
+    .flatMap((inventory) => inventory.food)
+    .reduce<Food[]>((totals, food) => {
+      const typeKey = food.type ?? food.types?.join(',') ?? '';
+      const existing = totals.find((entry) =>
+        entry.name === food.name && (entry.type ?? entry.types?.join(',') ?? '') === typeKey
+      );
+      if (existing) existing.quantity += food.quantity;
+      else totals.push({ ...food });
+      return totals;
+    }, []);
 
 /**
  * Select a food by ID
  */
 export const selectFoodById = (state: CampaignState, id: Id): Food | undefined =>
-  state.entities.foods[id];
+  selectAllFoods(state).find((food) => food.id === id);
 
 /**
  * Select foods by type (supports both single type and multi-type)
  */
 export const selectFoodsByType = (state: CampaignState, type: string): Food[] =>
-  Object.values(state.entities.foods).filter(
+  selectAllFoods(state).filter(
     (f) => f.type === type || (f.types && f.types.includes(type))
   );
 
@@ -87,9 +107,70 @@ export const selectFoodsByType = (state: CampaignState, type: string): Food[] =>
  * Select total food quantity by type
  */
 export const selectFoodQuantityByType = (state: CampaignState, type: string): number =>
-  Object.values(state.entities.foods)
+  selectAllFoods(state)
     .filter((f) => f.type === type || (f.types && f.types.includes(type)))
     .reduce((sum, f) => sum + f.quantity, 0);
+
+/** Authoritative material holdings for one owner. */
+export const selectOwnerMaterialHoldings = (
+  state: CampaignState,
+  owner: InventoryOwner
+): MaterialEntry[] => {
+  const inventory = owner === 'party'
+    ? selectPartyInventory(state)
+    : selectCharacterInventory(state, owner);
+  return inventory?.materials ?? [];
+};
+
+/** Authoritative food holdings for one owner. */
+export const selectOwnerFoodHoldings = (
+  state: CampaignState,
+  owner: InventoryOwner
+): FoodEntry[] => {
+  const inventory = owner === 'party'
+    ? selectPartyInventory(state)
+    : selectCharacterInventory(state, owner);
+  return inventory?.food ?? [];
+};
+
+export interface HoldingOwnerBreakdown {
+  ownerLabel: string;
+  quantity: number;
+}
+
+/** Per-owner quantities for one material identity, omitting owners at zero. */
+export const selectMaterialOwnerBreakdown = (
+  state: CampaignState,
+  name: string,
+  type?: string
+): HoldingOwnerBreakdown[] => Object.values(state.entities.inventories)
+  .map((inventory) => ({
+    ownerLabel: inventory.ownerType === 'party'
+      ? 'party'
+      : state.entities.characters[inventory.ownerId ?? '']?.name ?? inventory.ownerId ?? 'unknown',
+    quantity: inventory.materials
+      .filter((entry) => entry.name === name && (type === undefined || entry.type === type))
+      .reduce((sum, entry) => sum + entry.quantity, 0),
+  }))
+  .filter((entry) => entry.quantity > 0);
+
+/** Per-owner quantities for one food identity, omitting owners at zero. */
+export const selectFoodOwnerBreakdown = (
+  state: CampaignState,
+  name: string,
+  type?: string
+): HoldingOwnerBreakdown[] => Object.values(state.entities.inventories)
+  .map((inventory) => ({
+    ownerLabel: inventory.ownerType === 'party'
+      ? 'party'
+      : state.entities.characters[inventory.ownerId ?? '']?.name ?? inventory.ownerId ?? 'unknown',
+    quantity: inventory.food
+      .filter((entry) => entry.name === name && (type === undefined ||
+        (entry.type ?? entry.types?.join(',') ?? '') === type
+      ))
+      .reduce((sum, entry) => sum + entry.quantity, 0),
+  }))
+  .filter((entry) => entry.quantity > 0);
 
 // ============================================================================
 // RECIPE SELECTORS

@@ -1,6 +1,13 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useCampaignStore } from '../../state/campaignStore';
-import { denormalizeObject, normalizeArray } from '../../state/campaignUtils';
+import {
+  selectAllFoods,
+  selectAllMaterials,
+  selectFoodOwnerBreakdown,
+  selectMaterialOwnerBreakdown,
+  selectOwnerFoodHoldings,
+  selectOwnerMaterialHoldings,
+} from '../../state/selectors/inventorySelectors';
 import type { Character, Inventory, ToolTemplate } from '../../types/campaign';
 import { inventoryLog } from '../../utils/activityLogger';
 import { toNumberOr } from '../../utils/helpers';
@@ -24,14 +31,18 @@ import { PartyStashView } from './views/PartyStashView';
 export function InventoryTab() {
   const { state, actions } = useCampaignStore();
 
-  const materials = useMemo(() =>
-    denormalizeObject(state.entities.materials) as Material[],
-    [state.entities.materials]
-  );
-  const foods = useMemo(() =>
-    denormalizeObject(state.entities.foods) as Food[],
-    [state.entities.foods]
-  );
+  const materials = useMemo(() => selectOwnerMaterialHoldings(state, 'party') as Material[], [state]);
+  const foods = useMemo(() => selectOwnerFoodHoldings(state, 'party') as Food[], [state]);
+  const materialTotals = useMemo(() => selectAllMaterials(state) as Material[], [state]);
+  const foodTotals = useMemo(() => selectAllFoods(state) as Food[], [state]);
+  const materialBreakdowns = useMemo(() => Object.fromEntries(materialTotals.map(material => [
+    material.id,
+    selectMaterialOwnerBreakdown(state, material.name, material.type),
+  ])), [materialTotals, state]);
+  const foodBreakdowns = useMemo(() => Object.fromEntries(foodTotals.map(food => [
+    food.id,
+    selectFoodOwnerBreakdown(state, food.name, food.types?.join(',')),
+  ])), [foodTotals, state]);
   const inventories = useMemo(() =>
     Object.values(state.entities.inventories) as Inventory[],
     [state.entities.inventories]
@@ -44,12 +55,20 @@ export function InventoryTab() {
   const toolTemplates = state.entities.toolTemplates as Record<string, ToolTemplate>;
 
   const saveMaterials = useCallback((materialsArray: Material[]) => {
-    actions.setMaterials(normalizeArray(materialsArray));
-  }, [actions]);
+    for (const current of materials) if (!materialsArray.some(entry => entry.id === current.id)) actions.removeMaterial(current.id);
+    for (const material of materialsArray) {
+      if (materials.some(entry => entry.id === material.id)) actions.updateMaterial(material.id, material);
+      else actions.addMaterial(material);
+    }
+  }, [actions, materials]);
 
   const saveFoods = useCallback((foodsArray: Food[]) => {
-    actions.setFoods(normalizeArray(foodsArray));
-  }, [actions]);
+    for (const current of foods) if (!foodsArray.some(entry => entry.id === current.id)) actions.removeFood(current.id);
+    for (const food of foodsArray) {
+      if (foods.some(entry => entry.id === food.id)) actions.updateFood(food.id, food);
+      else actions.addFood(food);
+    }
+  }, [actions, foods]);
 
   const [view, setView] = useState<InventoryView>('materials');
   const [showAddMat, setShowAddMat] = useState(false);
@@ -179,6 +198,44 @@ export function InventoryTab() {
       return;
     }
 
+    if ((transferState.type === 'material' || transferState.type === 'food') && transferState.entryId) {
+      const quantity = Number(transferState.quantity || '0');
+      if (quantity <= 0) {
+        alert('Enter a valid quantity');
+        return;
+      }
+      const entries = transferState.type === 'material' ? sourceInv.materials : sourceInv.food;
+      const entry = entries.find(candidate => candidate.id === transferState.entryId);
+      if (!entry) {
+        alert(`${transferState.type === 'material' ? 'Material' : 'Food'} not found in source inventory`);
+        return;
+      }
+      if (quantity > entry.quantity) {
+        alert(`Not enough ${entry.name}. Available: ${entry.quantity}`);
+        return;
+      }
+      const sourceOwner = sourceInv.ownerType === 'party' ? 'party' : sourceInv.ownerId;
+      const targetOwner = targetInv.ownerType === 'party' ? 'party' : targetInv.ownerId;
+      if (!sourceOwner || !targetOwner) {
+        alert('Invalid source or target inventory');
+        return;
+      }
+      if (transferState.type === 'material') {
+        actions.transferMaterial(sourceOwner, targetOwner, entry.id, quantity);
+      } else {
+        actions.transferFood(sourceOwner, targetOwner, entry.id, quantity);
+      }
+      actions.addLogEntry(inventoryLog.stackableTransferred(
+        transferState.type,
+        entry.name,
+        quantity,
+        getInventoryLabel(sourceInv, characters),
+        getInventoryLabel(targetInv, characters)
+      ));
+      setTransferState(null);
+      return;
+    }
+
     const retaggedItemId = transferState.type === 'item' ? transferState.itemId : undefined;
     if (retaggedItemId && targetInv.ownerType === 'character' && targetInv.ownerId) {
       const item = sourceInv.items.find(sourceItem => sourceItem.id === retaggedItemId);
@@ -305,8 +362,10 @@ export function InventoryTab() {
       {view !== 'stash' && (
         <InventoryOverviewView
           view={view}
-          materials={materials}
-          foods={foods}
+          materials={materialTotals}
+          foods={foodTotals}
+          materialBreakdowns={materialBreakdowns}
+          foodBreakdowns={foodBreakdowns}
           foodTypes={foodTypes}
           materialTypes={materialTypes}
           gmMode={gmMode}

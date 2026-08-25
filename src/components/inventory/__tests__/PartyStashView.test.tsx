@@ -31,8 +31,8 @@ function makeInventories(): Inventory[] {
         { id: 'rope-1', name: 'Rope', quantity: 2 },
       ],
       tools: [{ toolId: 'tool-1', templateId: 'missing-template', conditionId: 'good' }],
-      materials: [],
-      food: [],
+      materials: [{ id: 'iron', name: 'Iron Ore', type: 'metal', quantity: 5 }],
+      food: [{ id: 'berries', name: 'Berries', types: ['fruit'], quantity: 4 }],
     },
     {
       id: 'inv-char-a',
@@ -82,6 +82,8 @@ function makeOverviewProps(
     view: 'materials',
     materials: [{ id: 'iron', name: 'Iron', type: 'metal', quantity: 4 }],
     foods: [{ id: 'berries', name: 'Berries', types: ['fruit'], quantity: 3 }],
+    materialBreakdowns: {},
+    foodBreakdowns: {},
     foodTypes: [{ name: 'fruit', color: '#ff0000' }],
     materialTypes: [{ name: 'metal', difficulty: 0, ht: 10 }],
     gmMode: false,
@@ -163,6 +165,26 @@ describe('PartyStashView', () => {
     expect(screen.getByRole('checkbox', { name: 'Select Magic Sword' })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: 'Select Rope' })).toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: /Unknown Tool|cp/ })).not.toBeInTheDocument();
+  });
+
+  it('renders party material and food holdings without quick-assign controls', () => {
+    renderPartyStash();
+    expect(screen.getByText('Iron Ore')).toBeInTheDocument();
+    expect(screen.getByText('Berries')).toBeInTheDocument();
+    expect(screen.getAllByRole('checkbox')).toHaveLength(2);
+    expect(screen.queryByLabelText(/Give Iron Ore/)).not.toBeInTheDocument();
+  });
+
+  it('seeds a material quantity transfer from its row', () => {
+    const onTransferStateChange = vi.fn();
+    renderPartyStash({ onTransferStateChange });
+    const row = screen.getByText('Iron Ore').closest('li');
+    if (!row) throw new Error('material row missing');
+    fireEvent.click(within(row).getByRole('button', { name: 'Transfer' }));
+    expect(onTransferStateChange).toHaveBeenCalledWith({
+      type: 'material', entryId: 'iron', quantity: '',
+      sourceInventoryId: 'party', targetInventoryId: '',
+    });
   });
 
   it('shows the bulk action bar with the selected item count', () => {
@@ -435,6 +457,54 @@ describe('PartyStashView', () => {
       `Transferred 2x "Rope" from Party Stash to Alice's Pack`,
     ]));
   });
+
+  it('moves a valid material quantity across owners through the real store', () => {
+    const snapshots: CampaignStateSnapshot[] = [];
+    render(
+      <CampaignStoreProvider>
+        <SeedStash />
+        <StateProbe snapshots={snapshots} />
+        <InventoryTab />
+      </CampaignStoreProvider>
+    );
+    fireEvent.click(screen.getByText('Party Stash'));
+    const row = screen.getByText('Iron Ore').closest('li');
+    if (!row) throw new Error('material row missing');
+    fireEvent.click(within(row).getByRole('button', { name: 'Transfer' }));
+    fireEvent.change(screen.getByLabelText('Target Inventory'), { target: { value: 'inv-char-a' } });
+    fireEvent.change(screen.getByLabelText('Quantity'), { target: { value: '2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Transfer' }));
+
+    const latest = snapshots[snapshots.length - 1];
+    expect(latest.entities.inventories.party.materials[0].quantity).toBe(3);
+    expect(latest.entities.inventories['inv-char-a'].materials[0]).toMatchObject({ name: 'Iron Ore', quantity: 2 });
+    expect(latest.logs.entries[latest.logs.entries.length - 1]?.payload.message).toBe(
+      `Transferred 2 Iron Ore from Party Stash to Alice's Pack`
+    );
+  });
+
+  it('rejects a stackable quantity above the source holding', () => {
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined);
+    const snapshots: CampaignStateSnapshot[] = [];
+    render(
+      <CampaignStoreProvider>
+        <SeedStash />
+        <StateProbe snapshots={snapshots} />
+        <InventoryTab />
+      </CampaignStoreProvider>
+    );
+    fireEvent.click(screen.getByText('Party Stash'));
+    const row = screen.getByText('Berries').closest('li');
+    if (!row) throw new Error('food row missing');
+    fireEvent.click(within(row).getByRole('button', { name: 'Transfer' }));
+    fireEvent.change(screen.getByLabelText('Target Inventory'), { target: { value: 'inv-char-a' } });
+    fireEvent.change(screen.getByLabelText('Quantity'), { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Transfer' }));
+
+    expect(alertSpy).toHaveBeenCalledWith('Not enough Berries. Available: 4');
+    expect(snapshots[snapshots.length - 1]?.entities.inventories.party.food[0].quantity).toBe(4);
+    alertSpy.mockRestore();
+  });
 });
 
 describe('TransferConsole', () => {
@@ -442,7 +512,7 @@ describe('TransferConsole', () => {
     render(<TransferConsole {...makeTransferConsoleProps()} />);
 
     expect(screen.getByText('Transfer Console')).toBeInTheDocument();
-    expect(screen.getByText(/Select an item, tool, or currency/)).toBeInTheDocument();
+    expect(screen.getByText(/Select an item, tool, material, food, or currency/)).toBeInTheDocument();
   });
 
   it('renders transfer details and destination inventories', () => {
@@ -481,6 +551,19 @@ describe('TransferConsole', () => {
     }));
     expect(onConfirmTransfer).toHaveBeenCalledOnce();
   });
+
+  it('renders and updates quantity for a stackable transfer', () => {
+    const onTransferStateChange = vi.fn();
+    render(<TransferConsole {...makeTransferConsoleProps({
+      transferState: {
+        type: 'material', entryId: 'iron', quantity: '',
+        sourceInventoryId: 'party', targetInventoryId: 'inv-char-a',
+      },
+      onTransferStateChange,
+    })} />);
+    fireEvent.change(screen.getByLabelText('Quantity'), { target: { value: '3' } });
+    expect(onTransferStateChange).toHaveBeenCalledWith(expect.objectContaining({ quantity: '3' }));
+  });
 });
 
 describe('InventoryOverviewView', () => {
@@ -496,5 +579,22 @@ describe('InventoryOverviewView', () => {
 
     expect(screen.getByRole('heading', { name: 'Food Supplies' })).toBeInTheDocument();
     expect(screen.getByText('Berries')).toBeInTheDocument();
+  });
+
+  it('renders a multi-owner material breakdown', () => {
+    render(<InventoryOverviewView {...makeOverviewProps({
+      materials: [{ id: 'iron', name: 'Iron', type: 'metal', quantity: 8 }],
+      materialBreakdowns: { iron: [
+        { ownerLabel: 'party', quantity: 5 }, { ownerLabel: 'Alice', quantity: 3 },
+      ] },
+    })} />);
+    expect(screen.getByText('— party 5, Alice 3')).toBeInTheDocument();
+  });
+
+  it('omits a party-only breakdown', () => {
+    render(<InventoryOverviewView {...makeOverviewProps({
+      materialBreakdowns: { iron: [{ ownerLabel: 'party', quantity: 4 }] },
+    })} />);
+    expect(screen.queryByText(/— party 4/)).not.toBeInTheDocument();
   });
 });
