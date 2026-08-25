@@ -6,17 +6,16 @@
  * - Import from file
  */
 
-import { useState, useRef, useEffect, ChangeEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { UserPlus, FileText, Upload, X } from 'lucide-react';
 import {
   createBlankCharacter,
   createCharacterFromTemplate,
-  importCharacterJSON,
   CHARACTER_TEMPLATES,
   type CharacterTemplateType,
 } from '../../utils/characterManagement';
-import { parseCharacterText } from '../../utils/characterImport';
 import type { Character } from '../../types/campaign';
+import { CharacterImportFlow } from './CharacterImportFlow';
 
 type CreationStep = 'choose' | 'blank' | 'template' | 'import';
 
@@ -32,8 +31,6 @@ export function CharacterCreationModal({
   const [step, setStep] = useState<CreationStep>('choose');
   const [characterName, setCharacterName] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<CharacterTemplateType | null>(null);
-  const [importError, setImportError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const titleId = 'character-creation-modal-title';
 
@@ -62,61 +59,15 @@ export function CharacterCreationModal({
     onClose();
   };
 
-  const handleFileSelect = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setImportError(null);
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      if (!content) {
-        setImportError('Failed to read file');
-        return;
-      }
-
-      try {
-        let character: Character;
-
-        // Try JSON first, then text format
-        if (file.name.endsWith('.json')) {
-          character = importCharacterJSON(content);
-        } else {
-          character = parseCharacterText(content);
-        }
-
-        onCharacterCreated(character);
-        onClose();
-      } catch (error) {
-        console.error('Import error:', error);
-        setImportError(
-          error instanceof Error
-            ? error.message
-            : 'Failed to parse character file. Please check the format.'
-        );
-      }
-    };
-
-    reader.onerror = () => {
-      setImportError('Failed to read file');
-    };
-
-    reader.readAsText(file);
-    event.target.value = '';
-  };
-
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="bg-gray-800 rounded-lg border border-gray-600 w-full max-w-md m-4"
+        className={`bg-gray-800 rounded-lg border border-gray-600 w-full m-4 ${
+          step === 'import' ? 'max-w-3xl' : 'max-w-md'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -290,48 +241,7 @@ export function CharacterCreationModal({
           )}
 
           {step === 'import' && (
-            <div className="space-y-4">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".txt,.gcs,.json"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-
-              <div className="text-center">
-                <button
-                  type="button"
-                  onClick={handleFileSelect}
-                  className="inline-flex flex-col items-center gap-2 p-8 rounded-lg border-2 border-dashed border-gray-600 hover:border-gray-500 hover:bg-gray-700/50 transition-colors cursor-pointer"
-                >
-                  <Upload className="h-10 w-10 text-gray-400" />
-                  <span className="text-gray-300">Click to select a file</span>
-                  <span className="text-xs text-gray-500">
-                    Supports .txt (GCS text), .gcs, or .json formats
-                  </span>
-                </button>
-              </div>
-
-              {importError && (
-                <div className="p-3 rounded border border-red-500/50 bg-red-500/10 text-red-300 text-sm">
-                  {importError}
-                </div>
-              )}
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStep('choose');
-                    setImportError(null);
-                  }}
-                  className="flex-1 px-4 py-2 rounded border border-gray-600 text-gray-300 hover:border-gray-500 hover:bg-gray-700"
-                >
-                  Back
-                </button>
-              </div>
-            </div>
+            <CharacterImportFlow onBack={() => setStep('choose')} onComplete={onClose} />
           )}
         </div>
       </div>

@@ -5,6 +5,7 @@ import {
   duplicateCharacter,
   exportCharacterJSON,
   importCharacterJSON,
+  importCharactersJSON,
   CHARACTER_TEMPLATES,
 } from '../characterManagement';
 import type { Character } from '../../types/campaign';
@@ -137,6 +138,28 @@ describe('characterManagement', () => {
     it('rejects oversized input (>50MB)', () => {
       const oversized = 'x'.repeat(50 * 1024 * 1024 + 1);
       expect(() => importCharacterJSON(oversized)).toThrow(/maximum import size/);
+    });
+
+    it('imports a top-level JSON character array', () => {
+      const imported = importCharactersJSON(JSON.stringify([
+        { name: 'Ari', work: { skills: {} } },
+        { name: 'Bea', work: { skills: {} } },
+      ]));
+      expect(imported.map((character) => character.name)).toEqual(['Ari', 'Bea']);
+      expect(imported[0]?.id).not.toBe(imported[1]?.id);
+    });
+
+    it('mirrors single-character JSON as a one-item array', () => {
+      expect(importCharactersJSON('{"name":"Solo"}')).toHaveLength(1);
+      expect(importCharactersJSON('{"name":"Solo"}')[0]?.name).toBe('Solo');
+    });
+
+    it('rejects an empty JSON character array', () => {
+      expect(() => importCharactersJSON('[]')).toThrow(/at least one character/);
+    });
+
+    it('identifies the invalid array entry index', () => {
+      expect(() => importCharactersJSON('[{"name":"Valid"},{"name":4}]')).toThrow(/index 1/);
     });
   });
 });

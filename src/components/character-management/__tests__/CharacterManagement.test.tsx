@@ -4,6 +4,23 @@
 import '@testing-library/jest-dom';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
+const campaignStoreMock = vi.hoisted(() => ({
+  characters: {},
+  addCharacter: vi.fn(),
+  updateCharacter: vi.fn(),
+}));
+
+vi.mock('../../../state/campaignStore', () => ({
+  useCampaignStore: () => ({
+    state: { entities: { characters: campaignStoreMock.characters } },
+    actions: {
+      addCharacter: campaignStoreMock.addCharacter,
+      updateCharacter: campaignStoreMock.updateCharacter,
+    },
+  }),
+}));
+
 import { CharacterContextMenu } from '../CharacterContextMenu';
 import { CharacterCreationModal } from '../CharacterCreationModal';
 
