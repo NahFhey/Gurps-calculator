@@ -1,6 +1,6 @@
 # Take-from-Shared — Completion Design (Followup #3 remaining scope)
 
-**Status:** Designed 2026-08-25 (grill-me session, Devin + Fable). Not yet implemented.
+**Status:** Designed AND implemented 2026-08-25 (grill-me → codex-shepherd, same day). Live-verified: bulk bar gave 6x Healing Herb to Soren's Pack with changelog entry.
 **Origin:** [`INVENTORY_INTEGRATION_FOLLOWUPS.md`](./INVENTORY_INTEGRATION_FOLLOWUPS.md) item #3;
 first slice (per-row "Give to…" quick-assign) shipped earlier the same day.
 

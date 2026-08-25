@@ -51,7 +51,7 @@ Ready to spec for implementation.
 
 ---
 
-## 3. "Take from Shared" UI for Crafted / Gathered Items — ⚙️ SLICE SHIPPED + 📐 REMAINDER DESIGNED 2026-08-25
+## 3. "Take from Shared" UI for Crafted / Gathered Items — ✅ SHIPPED IN FULL 2026-08-25
 
 **Shipped (2026-08-25, codex-shepherd):** inline "Give to…" select on every party-stash item row (sorted party characters, no default preselect) dispatching `retagItem` + transfer log. One-click party→character assignment, browser-verified. **Remainder designed same day** — see [`TAKE_FROM_SHARED_COMPLETION_PLAN.md`](./TAKE_FROM_SHARED_COMPLETION_PLAN.md): items-only scope (materials → followup #11), checkbox+action-bar bulk give, `crafterId` plumbing with completing-shift attribution and preselection, dedicated claim view WONTFIXed (needs timestamps → note in #6).
 
