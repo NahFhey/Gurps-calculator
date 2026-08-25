@@ -94,7 +94,7 @@ describe('InventoryTab Party Stash transfers', () => {
     });
 
     fireEvent.click(screen.getByText('Transfer'));
-    fireEvent.change(screen.getByRole('combobox'), {
+    fireEvent.change(screen.getByRole('combobox', { name: /target inventory/i }), {
       target: { value: 'inv-char-1' },
     });
     fireEvent.click(screen.getByText('Confirm Transfer'));
