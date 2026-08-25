@@ -160,6 +160,13 @@ export interface CookingRecipe extends Recipe {
   creationHistory: RecipeCreationLog[];
 }
 
+export interface MealBuff {
+  day: number;
+  recipeId: string;
+  recipeName: string;
+  skills: string[];
+}
+
 // ============================================================================
 // CRAFTING SYSTEM
 // ============================================================================

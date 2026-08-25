@@ -44,7 +44,8 @@ import type {
   CurrencyLog,
   AcquiredItem,
   InventoryOwner,
-  AcquisitionSource
+  AcquisitionSource,
+  MealBuff
 } from '../types/campaign';
 import type {
   Location,
@@ -172,6 +173,7 @@ export type CampaignState = {
   legacy: {
     appState: LegacyAppState;
   };
+  mealBuff: MealBuff | null;
   time: {
     day: number;
     slot: number;
@@ -405,6 +407,7 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
   legacy: {
     appState: legacyAppState
   },
+  mealBuff: null,
   time: {
     day: 1,
     slot: 0,
@@ -480,6 +483,7 @@ export type CampaignAction =
   | { type: 'setGmUnlocked'; payload: boolean }
   | { type: 'toggleDebug' }
   | { type: 'setActivitiesSubview'; payload: string | null }
+  | { type: 'setMealBuff'; payload: MealBuff | null }
   | { type: 'advanceTime' }
   | { type: 'setPausedSessionIds'; payload: string[] }
   | { type: 'setActivitiesState'; payload: Partial<CampaignState['activities']> }
@@ -791,6 +795,9 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
       case 'setActivitiesSubview':
         draft.ui.activitiesSubview = action.payload;
         return;
+      case 'setMealBuff':
+        draft.mealBuff = action.payload;
+        return;
       case 'setPausedSessionIds':
         draft.activities.pausedSessionIds = action.payload;
         if (action.payload.length === 0) {
@@ -836,6 +843,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.meta = nextState.meta;
         draft.entities = nextState.entities;
         draft.legacy = nextState.legacy;
+        draft.mealBuff = nextState.mealBuff;
         draft.time = nextState.time;
         draft.inventory = nextState.inventory || { activeTab: 'materials' };
         draft.crafting = nextState.crafting || { currentProject: null };
@@ -900,6 +908,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.meta = nextState.meta;
         draft.entities = nextState.entities;
         draft.legacy = nextState.legacy;
+        draft.mealBuff = nextState.mealBuff;
         draft.time = nextState.time;
         draft.inventory = nextState.inventory;
         draft.crafting = nextState.crafting;
@@ -934,6 +943,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.meta = restoredSnapshot.meta;
         draft.entities = restoredSnapshot.entities;
         draft.legacy = restoredSnapshot.legacy;
+        draft.mealBuff = restoredSnapshot.mealBuff ?? null;
         draft.time = restoredSnapshot.time;
         draft.inventory = restoredSnapshot.inventory;
         draft.crafting = restoredSnapshot.crafting;

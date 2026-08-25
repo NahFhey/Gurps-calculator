@@ -47,7 +47,8 @@ import type {
   EncounterTemplate,
   AcquiredItem,
   InventoryOwner,
-  AcquisitionSource
+  AcquisitionSource,
+  MealBuff
 } from '../types/campaign';
 import type {
   Location,
@@ -93,6 +94,7 @@ type CampaignStoreValue = {
     setGmUnlocked: (value: boolean) => void;
     toggleDebug: () => void;
     setActivitiesSubview: (view: string | null) => void;
+    setMealBuff: (buff: MealBuff | null) => void;
 
     // Time & Activities
     advanceTime: () => void;
@@ -346,6 +348,7 @@ export function CampaignStoreProvider({
       setGmUnlocked: (value: boolean) => dispatch({ type: 'setGmUnlocked', payload: value }),
       toggleDebug: () => dispatch({ type: 'toggleDebug' }),
       setActivitiesSubview: (view: string | null) => dispatch({ type: 'setActivitiesSubview', payload: view }),
+      setMealBuff: (buff: MealBuff | null) => dispatch({ type: 'setMealBuff', payload: buff }),
       advanceTime: () => dispatch({ type: 'advanceTime' }),
       setPausedSessionIds: (ids: string[]) => dispatch({ type: 'setPausedSessionIds', payload: ids }),
       setActivitiesState: (payload: Partial<CampaignState['activities']>) =>

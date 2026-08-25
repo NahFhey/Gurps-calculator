@@ -108,6 +108,14 @@ export function CookingTab() {
       }),
       difficulty: stats.diff, skills, criticalSuccess: crit, creationHistory: [creationLog],
     };
+    if (result === 'Success' || result === 'Critical Success') {
+      actions.setMealBuff({
+        day: state.time.day,
+        recipeId: recipe.id,
+        recipeName: recipe.name,
+        skills: [...recipe.skills],
+      });
+    }
     saveRecipes([...recipes, recipe]);
     actions.addLogEntry(cookingLog.mealPrepared(name, result, selectedWorker));
     saveFoods(foods.map(food => {
@@ -212,6 +220,14 @@ export function CookingTab() {
     if (isCritSuccess) result = 'Critical Success';
     else if (isCritFail) result = 'Critical Failure';
     else if (mos >= 0) result = 'Success';
+    if ((result === 'Success' || result === 'Critical Success') && selectedRecipe) {
+      actions.setMealBuff({
+        day: state.time.day,
+        recipeId: selectedRecipe.id,
+        recipeName: selectedRecipe.name,
+        skills: [...selectedRecipe.skills],
+      });
+    }
     const substitutes: Array<{ original: string; replacement: string; amount: number }> = [];
     remakeIngredients.forEach(ingredient => {
       if (!ingredient.useOriginal) ingredient.substitutes.forEach(substitute => {

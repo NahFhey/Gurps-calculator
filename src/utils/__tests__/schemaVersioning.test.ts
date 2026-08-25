@@ -67,7 +67,7 @@ function assertArrayProperty<Key extends string>(
 describe('Schema Versioning System', () => {
   describe('Version Constants', () => {
     it('should have current schema version defined', () => {
-      expect(CURRENT_SCHEMA_VERSION).toBe('1.5.1');
+      expect(CURRENT_SCHEMA_VERSION).toBe('1.5.2');
     });
 
     it('should have metadata for all supported versions', () => {
@@ -78,6 +78,7 @@ describe('Schema Versioning System', () => {
       expect(SCHEMA_METADATA['1.4.0']).toBeDefined();
       expect(SCHEMA_METADATA['1.5.0']).toBeDefined();
       expect(SCHEMA_METADATA['1.5.1']).toBeDefined();
+      expect(SCHEMA_METADATA['1.5.2']).toBeDefined();
     });
 
     it('should include features list in metadata', () => {
@@ -478,7 +479,7 @@ describe('Schema Versioning System', () => {
     });
 
     it('should have upgrade path for all old versions', () => {
-      const oldVersions = ['1.0.0', '1.1.0', '1.2.0', '1.3.0', '1.4.0', '1.5.0'];
+      const oldVersions = ['1.0.0', '1.1.0', '1.2.0', '1.3.0', '1.4.0', '1.5.0', '1.5.1'];
 
       oldVersions.forEach(version => {
         const path = getMigrationPath(version, CURRENT_SCHEMA_VERSION);

@@ -13,7 +13,7 @@ export interface SchemaMetadataEntry {
   migratesFrom?: string[];
 }
 
-export const CURRENT_SCHEMA_VERSION = '1.5.1';
+export const CURRENT_SCHEMA_VERSION = '1.5.2';
 
 export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
   '1.0.0': {
@@ -76,6 +76,14 @@ export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
       'pre-1.5.1 records backfilled from isNPC so EncounterSetup library groups show them',
     features: ['combat_character_category'],
     migratesFrom: ['1.5.0'],
+  },
+  '1.5.2': {
+    name: 'Party Meal Buff',
+    timestamp: '2026-08-25',
+    breaking: false,
+    description: 'Successful cooking grants a display-only party meal buff for the current day',
+    features: ['party_meal_buff'],
+    migratesFrom: ['1.5.1'],
   },
 };
 
