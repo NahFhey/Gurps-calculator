@@ -6,7 +6,14 @@ See [`INVENTORY_INTEGRATION_PLAN.md`](./INVENTORY_INTEGRATION_PLAN.md) for the i
 
 ---
 
-## 1. Cooking Buff Write Path
+## 1. Cooking Buff Write Path — 📐 DESIGNED 2026-08-25
+
+**Design complete:** all five open questions below resolved in a grill-me session — see
+[`COOKING_BUFF_WRITE_PATH_PLAN.md`](./COOKING_BUFF_WRITE_PATH_PLAN.md) for the full
+decision list (flat +1 per `Recipe.skills` entry, party-wide, one slot latest-wins,
+calendar-day lazy expiry, top-level nullable snapshot field, display-only banner,
+cook = eat). Ready to spec for implementation. A new side-followup came out of the
+session: **dietary restrictions** (see item #10 below).
 
 **Context:** Cooking applies a temporary daily party-wide buff. Cooked food is never stored as an inventory item. The buff write path itself does not exist yet (or is partial).
 
@@ -108,3 +115,25 @@ See [`INVENTORY_INTEGRATION_PLAN.md`](./INVENTORY_INTEGRATION_PLAN.md) for the i
 **Context:** The loot form has no material-type picker, so loot-sourced materials are written with `type: 'loot'`. They stack by name within that type and don't reference any `MaterialType` (no HT/DR/weight modifiers).
 
 **Resolution (2026-07-04):** Added a material-type dropdown to the loot add-form in `LootDistribution.tsx`, populated from `entities.materialTypes` and shown only when loot type is `material`. The picked `MaterialType.name` is carried on `LootItem.materialType` and used as the acquired material's `type`; leaving it at the default "Untyped loot material" preserves the legacy `type: 'loot'` fallback. Two render tests added (typed pick → `type: 'Steel'`; default → `type: 'loot'`). A post-hoc retype affordance in InventoryTab remains a separate nicety if needed.
+
+---
+
+## 10. Dietary Restrictions on Meal Buffs (Discovered during cooking-buff design, 2026-08-25)
+
+**Context:** GURPS has diet-related traits (vegetarianism, allergies, restricted diets
+as disadvantages/features). Certain characters can't or won't eat certain meals, which
+should exclude them from that meal's buff. Surfaced while designing the cooking buff
+write path; explicitly deferred so v1 keeps its "everyone eats" invariant.
+
+**Open questions:**
+- Trait detection — match against free-text advantage/disadvantage names in
+  `gcsData`? Naming convention? (Same fragility class as attunement's
+  Magery-sourcing question, followup #2.)
+- Recipe tagging — derive "contains meat" etc. from ingredient `Food.types`
+  (fruit/vegetable/... already exist), or explicit per-recipe diet flags?
+- Effect shape — excluded character simply doesn't get the buff, or per-character
+  buff record replaces the party-level single slot?
+- Won't-eat vs can't-eat — player choice surface, or automatic from traits?
+
+**Notes:** Depends on the cooking buff write path shipping first. Pairs naturally
+with the who-ate-subset question parked in followup #5's orbit.
