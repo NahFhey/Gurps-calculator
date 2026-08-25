@@ -1,6 +1,17 @@
 import { useMemo } from 'react';
 import { Swords, Play, Users, Heart } from 'lucide-react';
 import { useCampaignStore } from '../../state/campaignStore';
+import { hasCondition } from '../../utils/conditionsEngine';
+import { ConditionId } from '../../constants/conditions';
+import type { Participant } from '../../types/combatTracker';
+
+const isAlly = (p: Participant) => p.category === 'player' || p.category === 'ally';
+
+const getMaxHP = (p: Participant): number =>
+  p.maxHP ?? (typeof p.hp === 'number' ? p.hp : p.hp?.max ?? 10);
+
+const getCurrentHP = (p: Participant): number =>
+  p.currentHP ?? (typeof p.hp === 'number' ? p.hp : p.hp?.current ?? getMaxHP(p));
 
 /**
  * CombatTile - Compact combat status display at the bottom of the layout
@@ -31,9 +42,11 @@ export function CombatTile({ onExpand, compact = false }: CombatTileProps) {
       return { total: 0, allies: 0, enemies: 0, active: 0 };
     }
 
-    const allies = session.participants.filter(p => p.team === 'ally');
-    const enemies = session.participants.filter(p => p.team === 'enemy');
-    const active = session.participants.filter(p => p.status === 'active');
+    const allies = session.participants.filter(isAlly);
+    const enemies = session.participants.filter(p => p.category === 'enemy');
+    const active = session.participants.filter(
+      p => !p.isDead && !hasCondition(p, ConditionId.UNCONSCIOUS)
+    );
 
     return {
       total: session.participants.length,
@@ -45,44 +58,37 @@ export function CombatTile({ onExpand, compact = false }: CombatTileProps) {
 
   // Get current turn character name
   const currentTurnCharacter = useMemo(() => {
-    if (!session?.participants || session.currentTurn === undefined) {
+    if (!session?.participants || !session.turnOrder?.length) {
       return null;
     }
 
-    // Sort participants by initiative (descending) to match turn order
-    const sortedParticipants = [...session.participants].sort(
-      (a, b) => b.initiative - a.initiative
+    const currentInstanceId = session.turnOrder[session.currentTurnIndex % session.turnOrder.length];
+    const currentParticipant = session.participants.find(
+      p => p.instanceId === currentInstanceId
     );
 
-    const turnIndex = session.currentTurn % sortedParticipants.length;
-    const currentParticipant = sortedParticipants[turnIndex];
-
-    if (!currentParticipant) return null;
-
-    // Get character name from combat characters
-    const combatChar = state.entities.combatCharacters[currentParticipant.characterId];
-    return combatChar?.name || 'Unknown';
-  }, [session, state.entities.combatCharacters]);
+    return currentParticipant?.name || null;
+  }, [session]);
 
   // Get HP summary for allies
   const hpSummary = useMemo(() => {
     if (!session?.participants) return null;
 
-    const allies = session.participants.filter(p => p.team === 'ally');
+    const allies = session.participants.filter(isAlly);
     if (allies.length === 0) return null;
 
     return allies.slice(0, 3).map(p => {
-      const char = state.entities.combatCharacters[p.characterId];
-      const maxHP = char?.maxHP || 10;
-      const percentage = Math.round((p.currentHP / maxHP) * 100);
+      const maxHP = getMaxHP(p);
+      const hp = getCurrentHP(p);
+      const percentage = maxHP > 0 ? Math.round((hp / maxHP) * 100) : 0;
       return {
-        name: char?.name?.slice(0, 8) || '???',
-        hp: p.currentHP,
+        name: p.name.slice(0, 8) || '???',
+        hp,
         maxHP,
         percentage,
       };
     });
-  }, [session?.participants, state.entities.combatCharacters]);
+  }, [session?.participants]);
 
   const handleClick = () => {
     if (onExpand) {

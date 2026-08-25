@@ -118,6 +118,10 @@ function partyCharacterToCombat(partyChar: PartyCharacter): Character {
 
 interface Participant extends Character {
   libraryId?: string;
+  fp: number;
+  mp: number;
+  basicSpeed: number;
+  basicMove: number;
   currentHP: number;
   currentFP: number;
   currentMP: number;
@@ -293,6 +297,10 @@ export default function EncounterSetup() {
         ...character,
         id: generateId(),
         libraryId: character.id, // Track original library character
+        fp: character.fp || 0,
+        mp: character.mp || 0,
+        basicSpeed: character.basicSpeed || 5,
+        basicMove: character.basicMove || 5,
         currentHP: character.hp,
         currentFP: character.fp || 0,
         currentMP: character.mp || 0,

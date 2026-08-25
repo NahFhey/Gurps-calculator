@@ -120,7 +120,7 @@ export default function CombatTracker() {
     variant: 'warning',
   });
 
-  const combat = combatActive as CombatState | null;
+  const combat = combatActive;
   const reveal = combatReveal as RevealState | null;
 
   // Persistent undo/redo history (extracted hook — Phase 11a)
@@ -341,10 +341,7 @@ export default function CombatTracker() {
       logEntries.push(condLogEntry);
     }
 
-    saveCombatActive((prev: CombatState) => ({
-      ...prev,
-      log: [...prev.log, ...logEntries],
-    }));
+    saveCombatActive((prev) => (prev ? { ...prev, log: [...prev.log, ...logEntries] } : prev));
   };
 
   const handlePrevTurn = () => {
@@ -429,10 +426,7 @@ export default function CombatTracker() {
       combat.currentRound, combat.currentTurnIndex,
       instanceId, participant.name, resource as "HP" | "FP" | "MP", oldValue, newValue
     );
-    saveCombatActive((prev: CombatState) => ({
-      ...prev,
-      log: [...prev.log, logEntry],
-    }));
+    saveCombatActive((prev) => (prev ? { ...prev, log: [...prev.log, logEntry] } : prev));
     recordAction(createAddLogEntryAction(logEntry));
   };
 
@@ -469,7 +463,7 @@ export default function CombatTracker() {
         shockPenalty: turnContext.shockPenalty,
       },
     });
-    saveCombatActive((prev: CombatState) => ({ ...prev, log: [...prev.log, logEntry] }));
+    saveCombatActive((prev) => (prev ? { ...prev, log: [...prev.log, logEntry] } : prev));
     recordAction(createAddLogEntryAction(logEntry));
   };
 
@@ -513,7 +507,7 @@ export default function CombatTracker() {
       combat.currentRound, combat.currentTurnIndex,
       currentActorInstanceId, currentActor?.name || 'Unknown', rollResult
     );
-    saveCombatActive((prev: CombatState) => ({ ...prev, log: [...prev.log, logEntry] }));
+    saveCombatActive((prev) => (prev ? { ...prev, log: [...prev.log, logEntry] } : prev));
     recordAction(createAddLogEntryAction(logEntry));
   };
 
@@ -527,7 +521,7 @@ export default function CombatTracker() {
       combat.currentRound, combat.currentTurnIndex,
       currentActorInstanceId, currentActor?.name || null, noteText
     );
-    saveCombatActive((prev: CombatState) => ({ ...prev, log: [...prev.log, logEntry] }));
+    saveCombatActive((prev) => (prev ? { ...prev, log: [...prev.log, logEntry] } : prev));
     recordAction(createAddLogEntryAction(logEntry));
     setNoteText('');
   };

@@ -9,7 +9,7 @@ import { useMemo, useRef, useEffect } from 'react';
 import { useCampaignStore } from '../state/campaignStore';
 import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
 import type { CombatCharacter, CombatSession, CombatItem, Character, EncounterTemplate } from '../types/campaign';
-import type { RevealState } from '../types/combatTracker';
+import type { CombatState, RevealState } from '../types/combatTracker';
 
 /**
  * Hook to access combat state and actions from the campaign store.
@@ -77,19 +77,22 @@ export function useCombatStore() {
       /**
        * Save active combat session.
        * Supports both direct values and functional updates.
-       * Note: Uses 'any' type to support both CombatSession and internal CombatState types
-       * during the ongoing combat system migration.
        */
-      saveCombatActive: (sessionOrUpdater: any) => {
+      saveCombatActive: (
+        sessionOrUpdater:
+          | CombatState
+          | null
+          | ((prev: CombatState | null) => CombatState | null)
+      ) => {
         if (typeof sessionOrUpdater === 'function') {
           // Use ref to get the latest session value (avoids stale closure issues)
           const currentSession = sessionRef.current;
           const newSession = sessionOrUpdater(currentSession);
-          actions.setCombatActive(newSession as CombatSession | null);
+          actions.setCombatActive(newSession);
           // Update ref immediately so subsequent calls in same tick get fresh value
           sessionRef.current = newSession;
         } else {
-          actions.setCombatActive(sessionOrUpdater as CombatSession | null);
+          actions.setCombatActive(sessionOrUpdater);
           // Update ref immediately for functional updates that follow
           sessionRef.current = sessionOrUpdater;
         }

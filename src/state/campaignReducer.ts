@@ -228,7 +228,7 @@ export type CampaignState = {
   combat: {
     active: boolean;
     encounterId: string | null;
-    activeSession: CombatSession | null;
+    activeSession: import('../types/combatTracker').CombatState | null;
     rulesPreset: string;
     reveal: {
       revealedTargets: Set<string>;
@@ -614,8 +614,8 @@ export type CampaignAction =
   | { type: 'removeCombatCharacter'; payload: Id }
   | { type: 'setCombatCharacters'; payload: Record<Id, CombatCharacter> }
   // Combat Session actions
-  | { type: 'setCombatActive'; payload: CombatSession | null }
-  | { type: 'updateCombatActive'; payload: Partial<CombatSession> }
+  | { type: 'setCombatActive'; payload: import('../types/combatTracker').CombatState | null }
+  | { type: 'updateCombatActive'; payload: Partial<import('../types/combatTracker').CombatState> }
   | { type: 'setCombatHistory'; payload: CombatSession[] }
   | { type: 'setCombatTombstones'; payload: CombatCharacter[] }
   | { type: 'setCombatRulesPreset'; payload: string }
