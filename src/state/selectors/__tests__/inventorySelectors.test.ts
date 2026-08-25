@@ -7,7 +7,9 @@ import type {
   FoodType,
   MaterialType,
   Inventory,
+  Character,
 } from '../../../types/campaign';
+import { createDefaultGCSData } from '../../../types/characterSheet';
 import {
   selectMaterialsRecord,
   selectAllMaterials,
@@ -33,6 +35,9 @@ import {
   selectInventoryByOwner,
   selectCharacterInventory,
   selectPartyInventory,
+  selectMageryLevel,
+  selectAttunementCapacity,
+  selectAttunedItems,
   selectInventoryActiveTab,
 } from '../inventorySelectors';
 
@@ -168,6 +173,29 @@ function buildState(): CampaignState {
     },
     inventory: { activeTab: 'foods' },
   };
+}
+
+function buildAttunementState(name?: string, level?: number): CampaignState {
+  const state = buildState();
+  const character: Character = {
+    id: 'char-alice',
+    name: 'Alice',
+    work: { skills: {} },
+    gcsData: {
+      ...createDefaultGCSData(),
+      advantages: name
+        ? [{
+            id: 'adv-magery',
+            name,
+            points: 0,
+            type: 'advantage',
+            ...(level !== undefined ? { level } : {}),
+          }]
+        : [],
+    },
+  };
+  state.entities.characters = { 'char-alice': character };
+  return state;
 }
 
 describe('inventorySelectors — materials', () => {
@@ -315,6 +343,61 @@ describe('inventorySelectors — inventory entities', () => {
     expect(selectAllInventories(initialCampaignState)).toEqual(
       Object.values(selectInventoriesRecord(initialCampaignState))
     );
+  });
+});
+
+describe('inventorySelectors — attunement', () => {
+  it('detects Magery 2 and grants three slots', () => {
+    const state = buildAttunementState('Magery 2', 2);
+    expect(selectMageryLevel(state, 'char-alice')).toBe(2);
+    expect(selectAttunementCapacity(state, 'char-alice')).toBe(3);
+  });
+
+  it('distinguishes Magery 0 from no Magery and grants one slot', () => {
+    const state = buildAttunementState('Magery 0', 0);
+    expect(selectMageryLevel(state, 'char-alice')).toBe(0);
+    expect(selectAttunementCapacity(state, 'char-alice')).toBe(1);
+  });
+
+  it('treats bare Magery without a level as Magery 0', () => {
+    const state = buildAttunementState('Magery');
+    expect(selectMageryLevel(state, 'char-alice')).toBe(0);
+    expect(selectAttunementCapacity(state, 'char-alice')).toBe(1);
+  });
+
+  it('prefix-matches Magery variants after trimming', () => {
+    const state = buildAttunementState('  Magery (One College)', 1);
+    expect(selectMageryLevel(state, 'char-alice')).toBe(1);
+    expect(selectAttunementCapacity(state, 'char-alice')).toBe(2);
+  });
+
+  it('matches Magery case-insensitively', () => {
+    const state = buildAttunementState('MAGERY', 3);
+    expect(selectMageryLevel(state, 'char-alice')).toBe(3);
+    expect(selectAttunementCapacity(state, 'char-alice')).toBe(4);
+  });
+
+  it('returns null Magery and zero capacity when no advantage matches', () => {
+    const state = buildAttunementState('Combat Reflexes');
+    expect(selectMageryLevel(state, 'char-alice')).toBeNull();
+    expect(selectAttunementCapacity(state, 'char-alice')).toBe(0);
+  });
+
+  it('lists only attuned items in the requested character inventory', () => {
+    const state = buildAttunementState('Magery', 0);
+    state.entities.inventories['inv-alice'] = {
+      ...aliceInv,
+      items: [
+        { id: 'wand', name: 'Wand', magical: true, attuned: true },
+        { id: 'ring', name: 'Ring', magical: true, attuned: false },
+      ],
+    };
+    state.entities.inventories['inv-bob'] = {
+      ...bobInv,
+      items: [{ id: 'staff', name: 'Staff', magical: true, attuned: true }],
+    };
+
+    expect(selectAttunedItems(state, 'char-alice').map(item => item.id)).toEqual(['wand']);
   });
 });
 

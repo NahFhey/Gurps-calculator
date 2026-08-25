@@ -15,12 +15,15 @@ const mockActions = {
   updateCharacter: vi.fn(),
   addInventory: vi.fn(),
   updateInventory: vi.fn(),
+  setItemAttunement: vi.fn(),
+  setItemMagical: vi.fn(),
 };
 
 vi.mock('../../../state/campaignStore', () => ({
   useCampaignStore: () => ({
     state: {
       entities: {
+        characters: {},
         toolTemplates: {},
         inventories: {
           'inv-char-1': {

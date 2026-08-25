@@ -23,6 +23,8 @@ import {
   INVENTORY_SET,
   ITEM_ACQUIRED,
   ITEM_RETAGGED,
+  ITEM_ATTUNEMENT_SET,
+  ITEM_MAGICAL_SET,
   isInventoryAction,
   type InventoryAction
 } from '../inventoryActions';
@@ -89,6 +91,8 @@ describe('inventoryActions', () => {
       expect(INVENTORY_SET).toBe('setInventories');
       expect(ITEM_ACQUIRED).toBe('inventory/itemAcquired');
       expect(ITEM_RETAGGED).toBe('inventory/itemRetagged');
+      expect(ITEM_ATTUNEMENT_SET).toBe('inventory/itemAttunementSet');
+      expect(ITEM_MAGICAL_SET).toBe('inventory/itemMagicalSet');
     });
 
     it('constants are all unique', () => {
@@ -115,7 +119,9 @@ describe('inventoryActions', () => {
         INVENTORY_UPDATE,
         INVENTORY_SET,
         ITEM_ACQUIRED,
-        ITEM_RETAGGED
+        ITEM_RETAGGED,
+        ITEM_ATTUNEMENT_SET,
+        ITEM_MAGICAL_SET
       ];
       expect(new Set(values).size).toBe(values.length);
     });
@@ -193,7 +199,9 @@ describe('inventoryActions', () => {
             source: 'gathering'
           }
         },
-        { type: ITEM_RETAGGED, payload: { itemId: 'm1', newOwner: 'char-1' } }
+        { type: ITEM_RETAGGED, payload: { itemId: 'm1', newOwner: 'char-1' } },
+        { type: ITEM_ATTUNEMENT_SET, payload: { itemId: 'm1', attuned: true } },
+        { type: ITEM_MAGICAL_SET, payload: { itemId: 'm1', magical: true } }
       ];
       for (const action of actions) {
         expect(isInventoryAction(action)).toBe(true);

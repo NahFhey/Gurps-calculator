@@ -39,7 +39,9 @@ import {
   INVENTORY_UPDATE,
   INVENTORY_SET,
   ITEM_ACQUIRED,
-  ITEM_RETAGGED
+  ITEM_RETAGGED,
+  ITEM_ATTUNEMENT_SET,
+  ITEM_MAGICAL_SET
 } from './inventoryActions';
 
 // ============================================================================
@@ -315,6 +317,7 @@ export function handleInventoryAction(
             id: item.id,
             name: item.name,
             quantity: item.quantity,
+            ...(item.magical !== undefined ? { magical: item.magical } : {}),
             value: item.value,
             notes: item.notes,
             source
@@ -336,6 +339,7 @@ export function handleInventoryAction(
       for (const inv of inventories) {
         const idx = inv.items.findIndex((i) => i.id === itemId);
         if (idx >= 0) {
+          inv.items[idx].attuned = false;
           const target = ensureInventoryRecord(draft, newOwner);
           if (target.id !== inv.id) {
             const [moved] = inv.items.splice(idx, 1);
@@ -370,6 +374,26 @@ export function handleInventoryAction(
       // Unknown id: always-succeed contract makes this a no-op
       return true;
     }
+
+    case ITEM_ATTUNEMENT_SET:
+      for (const inv of Object.values(draft.entities.inventories)) {
+        const item = inv.items.find((candidate) => candidate.id === action.payload.itemId);
+        if (item) {
+          item.attuned = action.payload.attuned;
+          return true;
+        }
+      }
+      return true;
+
+    case ITEM_MAGICAL_SET:
+      for (const inv of Object.values(draft.entities.inventories)) {
+        const item = inv.items.find((candidate) => candidate.id === action.payload.itemId);
+        if (item) {
+          item.magical = action.payload.magical;
+          return true;
+        }
+      }
+      return true;
 
     default:
       return false;

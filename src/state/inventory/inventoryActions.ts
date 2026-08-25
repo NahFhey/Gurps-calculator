@@ -56,6 +56,8 @@ export const INVENTORY_SET = 'setInventories' as const;
 // Inventory integration bus actions (Phase 12a.5)
 export const ITEM_ACQUIRED = 'inventory/itemAcquired' as const;
 export const ITEM_RETAGGED = 'inventory/itemRetagged' as const;
+export const ITEM_ATTUNEMENT_SET = 'inventory/itemAttunementSet' as const;
+export const ITEM_MAGICAL_SET = 'inventory/itemMagicalSet' as const;
 
 // ============================================================================
 // ACTION TYPES
@@ -129,6 +131,14 @@ export type ItemRetaggedAction = {
   type: typeof ITEM_RETAGGED;
   payload: { itemId: Id; newOwner: InventoryOwner };
 };
+export type ItemAttunementSetAction = {
+  type: typeof ITEM_ATTUNEMENT_SET;
+  payload: { itemId: Id; attuned: boolean };
+};
+export type ItemMagicalSetAction = {
+  type: typeof ITEM_MAGICAL_SET;
+  payload: { itemId: Id; magical: boolean };
+};
 
 // ============================================================================
 // UNION TYPE
@@ -163,7 +173,9 @@ export type InventoryAction =
   | SetInventoriesAction
   // Inventory integration bus actions
   | ItemAcquiredAction
-  | ItemRetaggedAction;
+  | ItemRetaggedAction
+  | ItemAttunementSetAction
+  | ItemMagicalSetAction;
 
 // ============================================================================
 // TYPE GUARD
@@ -192,7 +204,9 @@ const INVENTORY_ACTION_TYPES = new Set([
   INVENTORY_UPDATE,
   INVENTORY_SET,
   ITEM_ACQUIRED,
-  ITEM_RETAGGED
+  ITEM_RETAGGED,
+  ITEM_ATTUNEMENT_SET,
+  ITEM_MAGICAL_SET
 ]);
 
 /**

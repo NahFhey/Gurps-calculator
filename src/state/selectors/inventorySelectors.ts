@@ -13,7 +13,8 @@ import type {
   Recipe,
   FoodType,
   MaterialType,
-  Inventory
+  Inventory,
+  ItemInstance
 } from '../../types/campaign';
 
 // ============================================================================
@@ -199,6 +200,24 @@ export const selectCharacterInventory = (
  */
 export const selectPartyInventory = (state: CampaignState): Inventory | undefined =>
   Object.values(state.entities.inventories).find((inv) => inv.ownerType === 'party');
+
+/** Return the first matching Magery advantage's level, or null when absent. */
+export const selectMageryLevel = (state: CampaignState, characterId: Id): number | null => {
+  const advantage = state.entities.characters[characterId]?.gcsData?.advantages.find(
+    (entry) => entry.name.trim().toLowerCase().startsWith('magery')
+  );
+  return advantage ? advantage.level ?? 0 : null;
+};
+
+/** A character with Magery has one more attunement slot than their Magery level. */
+export const selectAttunementCapacity = (state: CampaignState, characterId: Id): number => {
+  const magery = selectMageryLevel(state, characterId);
+  return magery === null ? 0 : magery + 1;
+};
+
+/** Attuned item records owned by one character. Item quantity does not affect slots. */
+export const selectAttunedItems = (state: CampaignState, characterId: Id): ItemInstance[] =>
+  selectCharacterInventory(state, characterId)?.items.filter((item) => item.attuned) ?? [];
 
 // ============================================================================
 // UI STATE SELECTORS

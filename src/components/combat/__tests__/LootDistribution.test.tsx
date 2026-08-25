@@ -138,6 +138,56 @@ describe('LootDistribution', () => {
     expect(item).toMatchObject({ kind: 'material', name: 'Scrap', type: 'loot' });
   });
 
+  it('shows the Magical checkbox only for equipment and other loot', () => {
+    render(<LootDistribution onComplete={vi.fn()} />);
+    const typeSelect = screen.getAllByRole('combobox')[0];
+
+    expect(screen.queryByRole('checkbox', { name: 'Magical' })).not.toBeInTheDocument();
+    fireEvent.change(typeSelect, { target: { value: 'equipment' } });
+    expect(screen.getByRole('checkbox', { name: 'Magical' })).toBeInTheDocument();
+    fireEvent.change(typeSelect, { target: { value: 'other' } });
+    expect(screen.getByRole('checkbox', { name: 'Magical' })).toBeInTheDocument();
+    fireEvent.change(typeSelect, { target: { value: 'material' } });
+    expect(screen.queryByRole('checkbox', { name: 'Magical' })).not.toBeInTheDocument();
+  });
+
+  it('carries a checked Magical flag into equipment acquisition', () => {
+    render(<LootDistribution onComplete={vi.fn()} />);
+    fireEvent.change(screen.getByPlaceholderText('Item name'), {
+      target: { value: 'Enchanted Blade' },
+    });
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'equipment' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Magical' }));
+    fireEvent.click(screen.getByText('Add Item'));
+    fireEvent.click(screen.getByText('Distribute'));
+
+    const [item] = acquireItemMock.mock.calls[0];
+    expect(item).toMatchObject({ kind: 'equipment', name: 'Enchanted Blade', magical: true });
+  });
+
+  it('carries a checked Magical flag into other-item acquisition', () => {
+    render(<LootDistribution onComplete={vi.fn()} />);
+    fireEvent.change(screen.getByPlaceholderText('Item name'), {
+      target: { value: 'Mystic Token' },
+    });
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'other' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Magical' }));
+    fireEvent.click(screen.getByText('Add Item'));
+    fireEvent.click(screen.getByText('Distribute'));
+
+    const [item] = acquireItemMock.mock.calls[0];
+    expect(item).toMatchObject({ kind: 'other', name: 'Mystic Token', magical: true });
+  });
+
+  it('omits the Magical flag from unchecked equipment by default', () => {
+    render(<LootDistribution onComplete={vi.fn()} />);
+    addLootItem('Ordinary Shield', 'equipment');
+    fireEvent.click(screen.getByText('Distribute'));
+
+    const [item] = acquireItemMock.mock.calls[0];
+    expect(item).not.toHaveProperty('magical');
+  });
+
   it('shows the distribution summary after distributing', () => {
     render(<LootDistribution onComplete={vi.fn()} />);
     addLootItem('Iron Shield', 'equipment');

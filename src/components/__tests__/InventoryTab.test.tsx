@@ -103,7 +103,7 @@ describe('InventoryTab Party Stash transfers', () => {
       .inventories as Record<string, Inventory>;
     expect(inventories['party'].items).toHaveLength(0);
     expect(inventories['inv-char-1'].items).toEqual([
-      { id: 'sword-1', name: 'Magic Sword', quantity: 1 },
+      { id: 'sword-1', name: 'Magic Sword', quantity: 1, attuned: false },
     ]);
   });
 });

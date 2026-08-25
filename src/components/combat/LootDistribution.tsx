@@ -108,6 +108,7 @@ export default function LootDistribution({ onComplete }: LootDistributionProps) 
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState<LootItem['type']>('currency');
   const [newMaterialType, setNewMaterialType] = useState('');
+  const [newMagical, setNewMagical] = useState(false);
   const [newQuantity, setNewQuantity] = useState(1);
   const [newValue, setNewValue] = useState('');
   const [newNotes, setNewNotes] = useState('');
@@ -124,7 +125,8 @@ export default function LootDistribution({ onComplete }: LootDistributionProps) 
       value: newValue ? parseInt(newValue) : undefined,
       notes: newNotes.trim() || undefined,
       // Only meaningful for materials; empty string means "untyped loot material"
-      materialType: newType === 'material' && newMaterialType ? newMaterialType : undefined
+      materialType: newType === 'material' && newMaterialType ? newMaterialType : undefined,
+      ...((newType === 'equipment' || newType === 'other') && newMagical ? { magical: true } : {})
     };
 
     setLootItems(prev => [...prev, item]);
@@ -140,6 +142,7 @@ export default function LootDistribution({ onComplete }: LootDistributionProps) 
     setNewValue('');
     setNewNotes('');
     setNewMaterialType('');
+    setNewMagical(false);
   };
 
   const handleUpdateDistribution = (lootItemId: string, targetId: string, quantity: number) => {
@@ -207,7 +210,8 @@ export default function LootDistribution({ onComplete }: LootDistributionProps) 
             name: item.name,
             quantity: item.quantity,
             value: item.value,
-            notes: item.notes
+            notes: item.notes,
+            ...(item.magical !== undefined ? { magical: item.magical } : {})
           };
           break;
       }
@@ -286,6 +290,17 @@ export default function LootDistribution({ onComplete }: LootDistributionProps) 
                 <option key={mt.name} value={mt.name}>{mt.name}</option>
               ))}
             </select>
+          )}
+          {(newType === 'equipment' || newType === 'other') && (
+            <label className="flex items-center gap-2 text-sm text-gray-300">
+              <input
+                type="checkbox"
+                checked={newMagical}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setNewMagical(e.target.checked)}
+                className="rounded border-gray-600 bg-gray-700 text-violet-500"
+              />
+              Magical
+            </label>
           )}
           <input
             type="text"
