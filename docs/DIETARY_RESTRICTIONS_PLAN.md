@@ -1,6 +1,6 @@
 # Dietary Restrictions on Meal Buffs — Design Concept
 
-**Status:** Designed 2026-08-25 (grill-me session, Devin + Fable). Not yet implemented.
+**Status:** Designed AND implemented 2026-08-25 (grill-me → codex-shepherd, same day). Live-verified: vegetable exclusion on Soren via DietSection → veggie cook → '(Soren abstains)' in the banner.
 **Origin:** [`INVENTORY_INTEGRATION_FOLLOWUPS.md`](./INVENTORY_INTEGRATION_FOLLOWUPS.md) item #10,
 recorded during the cooking-buff design earlier the same day.
 **Depends on:** the shipped meal buff (`COOKING_BUFF_WRITE_PATH_PLAN.md`, schema 1.5.2).
