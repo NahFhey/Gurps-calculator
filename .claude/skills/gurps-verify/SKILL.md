@@ -17,7 +17,7 @@ You should also run this if the user explicitly asks you to verify, QA, or valid
 
 Check which project you've been working in. The two codebases live at:
 
-- **Charsheet:** `projects/Gurps-charsheet/`
+- **Charsheet:** `~/Meta/projects/gurps-charsheet/`
 - **VTT:** The VTT project root (look for `ROADMAP.md`, `server/`, `src/components/`)
 
 If you touched files in both projects in one session, run verification for both — sequentially, not interleaved.
@@ -30,14 +30,14 @@ Run these in order. Stop and report if any step fails — don't barrel through h
 
 #### 2a. Type Check
 ```bash
-cd projects/Gurps-charsheet && npx tsc --noEmit 2>&1
+cd ~/Meta/projects/gurps-charsheet && npx tsc --noEmit 2>&1
 ```
 **Pass criteria:** Zero errors. Warnings are acceptable but note them.
 **If it fails:** Report the exact errors. Don't try to fix them silently — the user needs to know what broke and why.
 
 #### 2b. Test Suite
 ```bash
-cd projects/Gurps-charsheet && npx vitest run 2>&1
+cd ~/Meta/projects/gurps-charsheet && npx vitest run 2>&1
 ```
 **Pass criteria:** All tests pass. No skipped tests unless they were already skipped before your changes.
 **If it fails:** Report which tests failed and what the assertion errors say. If a test failure is clearly caused by your changes (e.g., you changed a calculator formula and the calculator test now expects a different value), say so. If it's unclear, say that too.
@@ -45,7 +45,7 @@ cd projects/Gurps-charsheet && npx vitest run 2>&1
 #### 2c. Vault Census (if parser or schema changes were made)
 Only run this if you touched anything in `packages/parser/` or `packages/shared/`:
 ```bash
-cd projects/Gurps-charsheet && node --import tsx/esm packages/cli/src/index.ts vault-health "../../context/Obsidian/Dnd"
+cd ~/Meta/projects/gurps-charsheet && node --import tsx/esm packages/cli/src/index.ts vault-health "../../context/Obsidian/Dnd"
 ```
 **Check:** Compare structural and computational parse rates against the last known baseline in `.auto-memory/project_gurps_charsheet.md`. If either metric dropped, that's a regression — your parser change broke something it previously handled.
 
