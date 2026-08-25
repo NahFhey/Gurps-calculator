@@ -53,7 +53,6 @@ import type {
   RollData,
   ConditionInstance,
 } from '../types/combatTracker';
-import type { CombatSession } from '../types/campaign';
 
 export interface CombatSessionValue {
   /** The raw combat state (truth) */
@@ -137,7 +136,7 @@ export function useCombatSession(): CombatSessionValue | null {
     }
   }, [ui.gmMode, ui.viewMode]);
 
-  const combat = combatActive as CombatState | null;
+  const combat = combatActive;
   const reveal = combatReveal as RevealState | null;
 
   // Ensure reveal state is initialised
@@ -305,10 +304,7 @@ export function useCombatSession(): CombatSessionValue | null {
         shockPenalty: turnContext.shockPenalty,
       },
     });
-    saveCombatActive((prev: CombatState) => ({
-      ...prev,
-      log: [...prev.log, logEntry],
-    }));
+    saveCombatActive((prev) => (prev ? { ...prev, log: [...prev.log, logEntry] } : prev));
     recordAction(createAddLogEntryAction(logEntry));
   };
 
@@ -464,9 +460,9 @@ export function useCombatSession(): CombatSessionValue | null {
     };
     const newHistory = [
       endedCombat,
-      ...(combatHistory as CombatSession[]),
+      ...combatHistory,
     ].slice(0, MAX_COMBAT_HISTORY);
-    saveCombatHistory(newHistory as CombatSession[]);
+    saveCombatHistory(newHistory);
     saveCombatActive(null);
   };
 
@@ -599,10 +595,7 @@ export function useCombatSession(): CombatSessionValue | null {
       data: rollResult,
     };
 
-    saveCombatActive((prev: CombatState) => ({
-      ...prev,
-      log: [...prev.log, logEntry],
-    }));
+    saveCombatActive((prev) => (prev ? { ...prev, log: [...prev.log, logEntry] } : prev));
   };
 
   // -----------------------------------------------------------------------

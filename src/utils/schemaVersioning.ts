@@ -13,7 +13,7 @@ export interface SchemaMetadataEntry {
   migratesFrom?: string[];
 }
 
-export const CURRENT_SCHEMA_VERSION = '1.5.2';
+export const CURRENT_SCHEMA_VERSION = '1.5.3';
 
 export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
   '1.0.0': {
@@ -84,6 +84,16 @@ export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
     description: 'Successful cooking grants a display-only party meal buff for the current day',
     features: ['party_meal_buff'],
     migratesFrom: ['1.5.1'],
+  },
+  '1.5.3': {
+    name: 'Combat History Entry Shape',
+    timestamp: '2026-08-25',
+    breaking: false,
+    description:
+      'combatHistory holds canonical CombatState snapshots; pre-rewrite ' +
+      'CombatSession records (characterId/team participants, startDate strings) upgraded on load',
+    features: ['combat_history_combat_state'],
+    migratesFrom: ['1.5.2'],
   },
 };
 

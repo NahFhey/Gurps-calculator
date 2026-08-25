@@ -3,7 +3,7 @@ import { createCampaignState, type CampaignState } from '../state/campaignReduce
 import { generateAllTestSampleData, isStateEmpty } from '../utils/testSampleData';
 import { initialMapState } from '../types/map';
 import { logger } from '../utils/logger';
-import { ensureInventoryRecords, ensureConditionVisibility, ensureCombatCharacterCategories } from './dataMigration';
+import { ensureInventoryRecords, ensureConditionVisibility, ensureCombatCharacterCategories, ensureCombatHistoryShape } from './dataMigration';
 
 const CAMPAIGN_STORAGE_KEY = 'campaignState';
 
@@ -60,7 +60,7 @@ const hydrateMapState = (maps: any): CampaignState['maps'] => {
 export const hydrateCampaignState = (payload: CampaignState): CampaignState => {
   const base = createCampaignState();
   const reveal = payload.combat?.reveal ?? base.combat.reveal;
-  return ensureCombatCharacterCategories(ensureConditionVisibility(ensureInventoryRecords({
+  return ensureCombatHistoryShape(ensureCombatCharacterCategories(ensureConditionVisibility(ensureInventoryRecords({
     ...base,
     ...payload,
     // Ensure all nested structures have proper defaults
@@ -89,7 +89,7 @@ export const hydrateCampaignState = (payload: CampaignState): CampaignState => {
       }
     },
     maps: hydrateMapState(payload.maps),
-  })));
+  }))));
 };
 
 export async function saveCampaignState(state: CampaignState) {

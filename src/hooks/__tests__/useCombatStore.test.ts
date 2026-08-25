@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useCombatStore } from '../useCombatStore';
-import type { CombatCharacter, CombatSession, CombatItem, Character } from '../../types/campaign';
-import type { RevealState } from '../../types/combatTracker';
+import type { CombatCharacter, CombatItem, Character } from '../../types/campaign';
+import type { CombatState, RevealState } from '../../types/combatTracker';
 
 // Mock the campaign store
 interface MockCampaignState {
@@ -10,12 +10,12 @@ interface MockCampaignState {
     combatCharacters: Record<string, CombatCharacter>;
     combatItems: Record<string, CombatItem>;
     characters: Record<string, Character>;
-    combatHistory: CombatSession[];
+    combatHistory: CombatState[];
     combatTombstones: CombatCharacter[];
     encounterTemplates?: Record<string, never>;
   };
   combat: {
-    activeSession: CombatSession | null;
+    activeSession: CombatState | null;
     rulesPreset: string;
     reveal: Record<string, unknown>;
     revealState?: RevealState | null;
@@ -67,17 +67,19 @@ function createMockCombatCharacter(
   };
 }
 
-function createMockCombatSession(
-  overrides: Partial<CombatSession> = {},
-): CombatSession {
+function createMockCombatState(
+  overrides: Partial<CombatState> = {},
+): CombatState {
   return {
     id: 'session-1',
     name: 'Test Combat Session',
+    startTime: 1767225600000,
     participants: [],
+    turnOrder: [],
+    currentTurnIndex: 0,
     currentRound: 1,
-    currentTurn: 0,
+    turnDecisions: {},
     log: [],
-    startDate: '2026-01-01',
     ...overrides,
   };
 }
@@ -241,7 +243,7 @@ describe('useCombatStore', () => {
     });
 
     it('returns active combat session', () => {
-      const session = createMockCombatSession({ id: 'active-session' });
+      const session = createMockCombatState({ id: 'active-session' });
 
       const mockActions = createMockActions();
       mockedUseCampaignStore.mockReturnValue({
@@ -273,7 +275,7 @@ describe('useCombatStore', () => {
     });
 
     it('returns combat history', () => {
-      const historySession = createMockCombatSession({ id: 'past-session' });
+      const historySession = createMockCombatState({ id: 'past-session' });
 
       const mockActions = createMockActions();
       mockedUseCampaignStore.mockReturnValue({
@@ -441,7 +443,7 @@ describe('useCombatStore', () => {
 
       const { result } = renderHook(() => useCombatStore());
 
-      const session = createMockCombatSession({ id: 'new-session' });
+      const session = createMockCombatState({ id: 'new-session' });
 
       act(() => {
         result.current.saveCombatActive(session);
@@ -468,9 +470,9 @@ describe('useCombatStore', () => {
     });
 
     it('supports functional update pattern', () => {
-      // CombatSession uses currentRound (not round) — same key mix-up as the
+      // CombatState uses currentRound (not round) — same key mix-up as the
       // campaignStorage round-trip tests fixed in PR #29
-      const existingSession = createMockCombatSession({ id: 'session-1', currentRound: 1 });
+      const existingSession = createMockCombatState({ id: 'session-1', currentRound: 1 });
       const mockActions = createMockActions();
 
       mockedUseCampaignStore.mockReturnValue({
@@ -487,7 +489,7 @@ describe('useCombatStore', () => {
       const { result } = renderHook(() => useCombatStore());
 
       act(() => {
-        result.current.saveCombatActive((prev: CombatSession | null) => {
+        result.current.saveCombatActive((prev: CombatState | null) => {
           if (!prev) return null;
           return { ...prev, currentRound: prev.currentRound + 1 };
         });
@@ -507,9 +509,9 @@ describe('useCombatStore', () => {
 
       const { result } = renderHook(() => useCombatStore());
 
-      let receivedValue: CombatSession | null | 'not-called' = 'not-called';
+      let receivedValue: CombatState | null | 'not-called' = 'not-called';
       act(() => {
-        result.current.saveCombatActive((prev: CombatSession | null) => {
+        result.current.saveCombatActive((prev: CombatState | null) => {
           receivedValue = prev;
           return prev;
         });
@@ -530,8 +532,8 @@ describe('useCombatStore', () => {
       const { result } = renderHook(() => useCombatStore());
 
       const history = [
-        createMockCombatSession({ id: 'past-1' }),
-        createMockCombatSession({ id: 'past-2' }),
+        createMockCombatState({ id: 'past-1' }),
+        createMockCombatState({ id: 'past-2' }),
       ];
 
       act(() => {

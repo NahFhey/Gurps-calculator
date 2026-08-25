@@ -37,7 +37,6 @@ import type {
   TaskAssignment,
   DayLedger,
   CombatCharacter,
-  CombatSession,
   CombatItem,
   Kitchen,
   CookingSkill,
@@ -61,7 +60,7 @@ import type {
 } from '../types/location';
 import type { DowntimeState } from '../types/downtime';
 import type { ForageZoneProfile } from '../types/foraging';
-import type { RevealState } from '../types/combatTracker';
+import type { CombatState, RevealState } from '../types/combatTracker';
 import type {
   MapState,
   MapModel,
@@ -224,9 +223,9 @@ type CampaignStoreValue = {
     updateCombatCharacter: (id: Id, changes: Partial<CombatCharacter>) => void;
     removeCombatCharacter: (id: Id) => void;
     setCombatCharacters: (characters: Record<Id, CombatCharacter>) => void;
-    setCombatActive: (session: CombatSession | null) => void;
-    updateCombatActive: (changes: Partial<CombatSession>) => void;
-    setCombatHistory: (history: CombatSession[]) => void;
+    setCombatActive: (session: CombatState | null) => void;
+    updateCombatActive: (changes: Partial<CombatState>) => void;
+    setCombatHistory: (history: CombatState[]) => void;
     setCombatTombstones: (tombstones: CombatCharacter[]) => void;
     setCombatRulesPreset: (preset: string) => void;
     setCombatItems: (items: Record<Id, CombatItem>) => void;
@@ -531,11 +530,11 @@ export function CampaignStoreProvider({
       removeCombatCharacter: (id: Id) => dispatch({ type: 'removeCombatCharacter', payload: id }),
       setCombatCharacters: (characters: Record<Id, CombatCharacter>) =>
         dispatch({ type: 'setCombatCharacters', payload: characters }),
-      setCombatActive: (session: CombatSession | null) =>
+      setCombatActive: (session: CombatState | null) =>
         dispatch({ type: 'setCombatActive', payload: session }),
-      updateCombatActive: (changes: Partial<CombatSession>) =>
+      updateCombatActive: (changes: Partial<CombatState>) =>
         dispatch({ type: 'updateCombatActive', payload: changes }),
-      setCombatHistory: (history: CombatSession[]) => dispatch({ type: 'setCombatHistory', payload: history }),
+      setCombatHistory: (history: CombatState[]) => dispatch({ type: 'setCombatHistory', payload: history }),
       setCombatTombstones: (tombstones: CombatCharacter[]) =>
         dispatch({ type: 'setCombatTombstones', payload: tombstones }),
       setCombatRulesPreset: (preset: string) => dispatch({ type: 'setCombatRulesPreset', payload: preset }),

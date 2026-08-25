@@ -8,7 +8,7 @@ import CharacterSheet from './CharacterSheet';
 import CharacterForm from './CharacterForm';
 import GCSImportModal from './GCSImportModal';
 import { useToast } from '../ui';
-import type { Character as PartyCharacter, CombatCharacter, CombatSession } from '../../types/campaign';
+import type { Character as PartyCharacter, CombatCharacter } from '../../types/campaign';
 
 // Local interface matching CharacterSheet's expected Character type
 interface LibraryCharacter {
@@ -169,8 +169,8 @@ export default function CharacterLibrary() {
     const charToDelete = (combatCharacters as CombatCharacter[]).find(c => c.id === id);
 
     // Check if this character is referenced in combat history
-    const isReferenced = (combatHistory as CombatSession[]).some(session =>
-      session.participants?.some(p => p.characterId === id)
+    const isReferenced = combatHistory.some(session =>
+      session.participants?.some(p => p.libraryId === id || p.id === id)
     );
 
     if (isReferenced && charToDelete) {

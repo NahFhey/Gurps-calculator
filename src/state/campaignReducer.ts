@@ -32,7 +32,6 @@ import type {
   TaskAssignment,
   DayLedger,
   CombatCharacter,
-  CombatSession,
   CombatItem,
   Kitchen,
   CookingSkill,
@@ -151,7 +150,7 @@ export type CampaignState = {
     // Combat system
     combatCharacters: Record<Id, CombatCharacter>;
     combatItems: Record<Id, CombatItem>;
-    combatHistory: CombatSession[];
+    combatHistory: import('../types/combatTracker').CombatState[];
     combatTombstones: CombatCharacter[];
     encounterTemplates: Record<Id, import('../types/combatTracker').EncounterTemplate>;
 
@@ -228,7 +227,7 @@ export type CampaignState = {
   combat: {
     active: boolean;
     encounterId: string | null;
-    activeSession: CombatSession | null;
+    activeSession: import('../types/combatTracker').CombatState | null;
     rulesPreset: string;
     reveal: {
       revealedTargets: Set<string>;
@@ -614,9 +613,9 @@ export type CampaignAction =
   | { type: 'removeCombatCharacter'; payload: Id }
   | { type: 'setCombatCharacters'; payload: Record<Id, CombatCharacter> }
   // Combat Session actions
-  | { type: 'setCombatActive'; payload: CombatSession | null }
-  | { type: 'updateCombatActive'; payload: Partial<CombatSession> }
-  | { type: 'setCombatHistory'; payload: CombatSession[] }
+  | { type: 'setCombatActive'; payload: import('../types/combatTracker').CombatState | null }
+  | { type: 'updateCombatActive'; payload: Partial<import('../types/combatTracker').CombatState> }
+  | { type: 'setCombatHistory'; payload: import('../types/combatTracker').CombatState[] }
   | { type: 'setCombatTombstones'; payload: CombatCharacter[] }
   | { type: 'setCombatRulesPreset'; payload: string }
   // Combat Item actions

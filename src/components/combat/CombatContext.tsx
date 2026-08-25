@@ -168,7 +168,7 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
   });
 
   // Cast
-  const combat = combatActive as CombatState | null;
+  const combat = combatActive;
   const reveal = combatReveal as RevealState | null;
 
   // History stub (undo/redo is only supported in CombatTracker's abstract mode for now)
@@ -330,10 +330,7 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
         shockPenalty: turnContext.shockPenalty,
       },
     });
-    saveCombatActive((prev: CombatState) => ({
-      ...prev,
-      log: [...prev.log, logEntry],
-    }));
+    saveCombatActive((prev) => (prev ? { ...prev, log: [...prev.log, logEntry] } : prev));
     recordAction(createAddLogEntryAction(logEntry));
   };
 
@@ -464,11 +461,11 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
       endTime: Date.now(),
       log: [...combat.log, endLogEntry],
     };
-    const newHistory = [endedCombat, ...(combatHistory as unknown as CombatState[])].slice(
+    const newHistory = [endedCombat, ...combatHistory].slice(
       0,
       MAX_COMBAT_HISTORY,
     );
-    saveCombatHistory(newHistory as unknown as typeof combatHistory);
+    saveCombatHistory(newHistory);
     saveCombatActive(null);
     saveCombatActiveHistory(null);
   };
@@ -578,10 +575,7 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
       data: rollResult,
     };
 
-    saveCombatActive((prev: CombatState) => ({
-      ...prev,
-      log: [...prev.log, logEntry],
-    }));
+    saveCombatActive((prev) => (prev ? { ...prev, log: [...prev.log, logEntry] } : prev));
   };
 
   // ---------------------------------------------------------------------------

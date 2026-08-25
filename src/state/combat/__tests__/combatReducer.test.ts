@@ -16,7 +16,8 @@ import {
   type CombatAction
 } from '../combatActions';
 import type { CampaignState } from '../../campaignReducer';
-import type { CombatCharacter, CombatSession, CombatItem } from '../../../types/campaign';
+import type { CombatCharacter, CombatItem } from '../../../types/campaign';
+import type { CombatState, Participant } from '../../../types/combatTracker';
 
 // ============================================================================
 // TEST FIXTURES
@@ -46,18 +47,50 @@ const createMockCombatCharacter = (overrides?: Partial<CombatCharacter>): Combat
   ...overrides
 });
 
-const createMockCombatSession = (overrides?: Partial<CombatSession>): CombatSession => ({
+const createMockParticipant = (overrides?: Partial<Participant>): Participant => ({
+  instanceId: 'char-1',
+  libraryId: 'char-1',
+  name: 'Test Fighter',
+  category: 'player',
+  st: 12,
+  dx: 13,
+  iq: 10,
+  ht: 11,
+  hp: 12,
+  fp: 11,
+  mp: 0,
+  maxHP: 12,
+  currentHP: 12,
+  basicSpeed: 6.25,
+  basicMove: 6,
+  isDead: false,
+  conditions: [],
+  ...overrides
+});
+
+const createMockCombatState = (overrides?: Partial<CombatState>): CombatState => ({
   id: 'session-1',
   name: 'Test Battle',
+  startTime: 1767225600000,
   participants: [
-    { characterId: 'char-1', team: 'ally', initiative: 10, currentHP: 12, status: 'active' },
-    { characterId: 'char-2', team: 'enemy', initiative: 8, currentHP: 8, status: 'active' }
+    createMockParticipant(),
+    createMockParticipant({
+      instanceId: 'char-2',
+      libraryId: 'char-2',
+      name: 'Goblin',
+      category: 'enemy',
+      hp: 8,
+      maxHP: 8,
+      currentHP: 8
+    })
   ],
+  turnOrder: ['char-1', 'char-2'],
+  currentTurnIndex: 0,
   currentRound: 1,
-  currentTurn: 0,
+  turnDecisions: {},
   log: [],
   ...overrides
-} as unknown as CombatSession);
+});
 
 const createMockCombatItem = (overrides?: Partial<CombatItem>): CombatItem => ({
   id: 'item-1',
@@ -306,7 +339,7 @@ describe('combatReducer - Session Actions', () => {
 
   describe('COMBAT_ACTIVE_SET', () => {
     it('sets the active combat session', () => {
-      const session = createMockCombatSession();
+      const session = createMockCombatState();
       const action: CombatAction = {
         type: COMBAT_ACTIVE_SET,
         payload: session
@@ -318,7 +351,7 @@ describe('combatReducer - Session Actions', () => {
     });
 
     it('can clear the active session', () => {
-      const session = createMockCombatSession();
+      const session = createMockCombatState();
       state = applyAction(state, { type: COMBAT_ACTIVE_SET, payload: session });
       expect(state.combat.activeSession).not.toBeNull();
 
@@ -335,18 +368,18 @@ describe('combatReducer - Session Actions', () => {
 
   describe('COMBAT_ACTIVE_UPDATE', () => {
     it('updates the active session', () => {
-      const session = createMockCombatSession();
+      const session = createMockCombatState();
       state = applyAction(state, { type: COMBAT_ACTIVE_SET, payload: session });
 
       const action: CombatAction = {
         type: COMBAT_ACTIVE_UPDATE,
-        payload: { currentRound: 2, currentTurn: 1 }
+        payload: { currentRound: 2, currentTurnIndex: 1 }
       };
 
       const nextState = applyAction(state, action);
 
       expect(nextState.combat.activeSession?.currentRound).toBe(2);
-      expect(nextState.combat.activeSession?.currentTurn).toBe(1);
+      expect(nextState.combat.activeSession?.currentTurnIndex).toBe(1);
       // Other fields unchanged
       expect(nextState.combat.activeSession?.name).toBe('Test Battle');
     });
@@ -365,12 +398,19 @@ describe('combatReducer - Session Actions', () => {
     });
 
     it('can update participants', () => {
-      const session = createMockCombatSession();
+      const session = createMockCombatState();
       state = applyAction(state, { type: COMBAT_ACTIVE_SET, payload: session });
 
       const updatedParticipants = [
         ...session.participants,
-        { characterId: 'char-3', team: 'ally' as const, initiative: 12, currentHP: 15, status: 'active' as const }
+        createMockParticipant({
+          instanceId: 'char-3',
+          libraryId: 'char-3',
+          name: 'Reinforcement',
+          hp: 15,
+          maxHP: 15,
+          currentHP: 15
+        })
       ];
 
       const action: CombatAction = {
@@ -399,8 +439,8 @@ describe('combatReducer - History Actions', () => {
   describe('COMBAT_HISTORY_SET', () => {
     it('sets combat history', () => {
       const sessions = [
-        createMockCombatSession({ id: 'session-1', name: 'Battle 1' }),
-        createMockCombatSession({ id: 'session-2', name: 'Battle 2' })
+        createMockCombatState({ id: 'session-1', name: 'Battle 1' }),
+        createMockCombatState({ id: 'session-2', name: 'Battle 2' })
       ];
 
       const action: CombatAction = {
@@ -416,7 +456,7 @@ describe('combatReducer - History Actions', () => {
     });
 
     it('can clear history', () => {
-      const session = createMockCombatSession();
+      const session = createMockCombatState();
       state = applyAction(state, { type: COMBAT_HISTORY_SET, payload: [session] });
       expect(state.entities.combatHistory).toHaveLength(1);
 

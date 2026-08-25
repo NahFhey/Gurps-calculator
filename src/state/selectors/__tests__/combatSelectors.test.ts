@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { initialCampaignState, type CampaignState } from '../../campaignReducer';
-import type { CombatCharacter, CombatItem, CombatSession } from '../../../types/campaign';
+import type { CombatCharacter, CombatItem } from '../../../types/campaign';
+import type { CombatState } from '../../../types/combatTracker';
 import {
   selectCombatCharactersRecord,
   selectAllCombatCharacters,
@@ -74,20 +75,22 @@ const item2: CombatItem = {
   quantity: 3,
 };
 
-const session: CombatSession = {
+const session: CombatState = {
   id: 's1',
   name: 'Skirmish',
+  startTime: 1767225600000,
   participants: [],
+  turnOrder: [],
+  currentTurnIndex: 0,
   currentRound: 1,
-  currentTurn: 0,
+  turnDecisions: {},
   log: [],
-  startDate: '2026-01-01',
 };
 
 function buildState(overrides: {
   combatCharacters?: Record<string, CombatCharacter>;
   combatItems?: Record<string, CombatItem>;
-  combatHistory?: CombatSession[];
+  combatHistory?: CombatState[];
   combatTombstones?: CombatCharacter[];
   combat?: Partial<CampaignState['combat']>;
 } = {}): CampaignState {
@@ -205,10 +208,22 @@ describe('combatSelectors — combat session', () => {
   });
 });
 
+const historySession: CombatState = {
+  id: 's1-archived',
+  name: 'Skirmish (archived)',
+  startTime: 1767225600000,
+  participants: [],
+  turnOrder: [],
+  currentTurnIndex: 0,
+  currentRound: 1,
+  turnDecisions: {},
+  log: [],
+};
+
 describe('combatSelectors — combat history', () => {
   it('selectCombatHistory returns the history array', () => {
-    const state = buildState({ combatHistory: [session] });
-    expect(selectCombatHistory(state)).toEqual([session]);
+    const state = buildState({ combatHistory: [historySession] });
+    expect(selectCombatHistory(state)).toEqual([historySession]);
   });
 
   it('selectCombatHistory returns empty array by default', () => {
@@ -221,7 +236,7 @@ describe('combatSelectors — combat history', () => {
   });
 
   it('selectCombatHistoryCount returns count', () => {
-    expect(selectCombatHistoryCount(buildState({ combatHistory: [session, session] }))).toBe(2);
+    expect(selectCombatHistoryCount(buildState({ combatHistory: [historySession, historySession] }))).toBe(2);
     expect(selectCombatHistoryCount(buildState())).toBe(0);
   });
 });

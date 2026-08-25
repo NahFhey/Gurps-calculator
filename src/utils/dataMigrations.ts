@@ -24,6 +24,7 @@ import {
 } from './schemaVersioning';
 import { ensureParticipantConditionVisibility } from './conditionsEngine';
 import { deriveCombatCategory } from './combatHelpers';
+import { upgradeCombatHistory } from './legacyCombatHistory';
 
 type MigratableData = Record<string, unknown> & { schemaVersion?: string };
 
@@ -59,6 +60,7 @@ const migrationHandlers: Record<string, MigrationHandler> = {
   '1.4.0:1.5.0': migrateTo1_5_0,
   '1.5.0:1.5.1': migrateTo1_5_1,
   '1.5.1:1.5.2': migrateTo1_5_2,
+  '1.5.2:1.5.3': migrateTo1_5_3,
 };
 
 /**
@@ -295,6 +297,24 @@ function migrateTo1_5_2(data: MigratableData): MigratableData {
   return {
     ...data,
     mealBuff: data.mealBuff ?? null,
+  };
+}
+
+/**
+ * Migration: 1.5.2 → 1.5.3 (Combat history entry shape)
+ *
+ * Upgrades legacy CombatSession history records (characterId/team
+ * participants, startDate strings) to canonical CombatState snapshots.
+ * Handles the flat legacy `combatHistory` key here; the nested
+ * campaign-state shape is covered at hydrate time by
+ * src/persistence/dataMigration.ts ensureCombatHistoryShape() (same
+ * upgradeCombatHistory helper, so both paths stay in lockstep).
+ */
+function migrateTo1_5_3(data: MigratableData): MigratableData {
+  if (!Array.isArray(data.combatHistory)) return data;
+  return {
+    ...data,
+    combatHistory: upgradeCombatHistory(data.combatHistory),
   };
 }
 

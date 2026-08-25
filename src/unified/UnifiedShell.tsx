@@ -241,7 +241,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
 
   // Combat layout: when combat is active WITH a linked map, take over the whole shell
   const isCombatActive = !!state.combat.activeSession;
-  const combatHasMap = !!(state.combat.activeSession as any)?.mapId;
+  const combatHasMap = !!state.combat.activeSession?.mapId;
   const combatLayoutActive = isCombatActive && combatHasMap;
 
   // Character panel should hide when no character is selected or party is collapsed
