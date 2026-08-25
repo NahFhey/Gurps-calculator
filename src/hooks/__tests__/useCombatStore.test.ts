@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useCombatStore } from '../useCombatStore';
-import type { CombatCharacter, CombatSession, CombatItem, Character } from '../../types/campaign';
+import type { CombatCharacter, CombatItem, Character } from '../../types/campaign';
 import type { CombatState, RevealState } from '../../types/combatTracker';
 
 // Mock the campaign store
@@ -10,7 +10,7 @@ interface MockCampaignState {
     combatCharacters: Record<string, CombatCharacter>;
     combatItems: Record<string, CombatItem>;
     characters: Record<string, Character>;
-    combatHistory: CombatSession[];
+    combatHistory: CombatState[];
     combatTombstones: CombatCharacter[];
     encounterTemplates?: Record<string, never>;
   };
@@ -63,21 +63,6 @@ function createMockCombatCharacter(
     dr: 0,
     skills: {},
     weapons: [],
-    ...overrides,
-  };
-}
-
-function createMockCombatSession(
-  overrides: Partial<CombatSession> = {},
-): CombatSession {
-  return {
-    id: 'session-1',
-    name: 'Test Combat Session',
-    participants: [],
-    currentRound: 1,
-    currentTurn: 0,
-    log: [],
-    startDate: '2026-01-01',
     ...overrides,
   };
 }
@@ -290,7 +275,7 @@ describe('useCombatStore', () => {
     });
 
     it('returns combat history', () => {
-      const historySession = createMockCombatSession({ id: 'past-session' });
+      const historySession = createMockCombatState({ id: 'past-session' });
 
       const mockActions = createMockActions();
       mockedUseCampaignStore.mockReturnValue({
@@ -547,8 +532,8 @@ describe('useCombatStore', () => {
       const { result } = renderHook(() => useCombatStore());
 
       const history = [
-        createMockCombatSession({ id: 'past-1' }),
-        createMockCombatSession({ id: 'past-2' }),
+        createMockCombatState({ id: 'past-1' }),
+        createMockCombatState({ id: 'past-2' }),
       ];
 
       act(() => {

@@ -3,7 +3,7 @@ import { History, Download, Trash2, Eye, EyeOff } from 'lucide-react';
 import { useCombatStore } from '../../hooks/useCombatStore';
 import { exportCombatLog } from '../../utils/combatHelpers';
 import { ConfirmDialog, useConfirmDialog } from '../ui';
-import type { CombatSession } from '../../types/campaign';
+import type { CombatState, Participant } from '../../types/combatTracker';
 
 /**
  * Combat History Component
@@ -24,10 +24,17 @@ export default function CombatHistory() {
     setExpandedId(expandedId === id ? null : id);
   };
 
-  const handleExport = (combat: CombatSession) => {
-    const text = exportCombatLog(combat.log as any, {
+  /** Final HP as archived: currentHP when tracked, else the hp field. */
+  const finalHP = (p: Participant): number | string => {
+    if (typeof p.currentHP === 'number') return p.currentHP;
+    if (typeof p.hp === 'number') return p.hp;
+    return p.hp.current ?? '—';
+  };
+
+  const handleExport = (combat: CombatState) => {
+    const text = exportCombatLog(combat.log, {
       name: combat.name,
-      date: Date.now()
+      date: combat.endTime ?? combat.startTime
     });
 
     const blob = new Blob([text], { type: 'text/plain' });
@@ -42,7 +49,7 @@ export default function CombatHistory() {
   const handleDelete = async (id: string) => {
     const confirmed = await deleteDialog.confirm();
     if (confirmed) {
-      saveCombatHistory(combatHistory.filter((c: CombatSession) => c.id !== id));
+      saveCombatHistory(combatHistory.filter((c) => c.id !== id));
     }
   };
 
@@ -64,12 +71,12 @@ export default function CombatHistory() {
       </div>
 
       <div className="space-y-2">
-        {combatHistory.map((combat: CombatSession) => (
+        {combatHistory.map((combat) => (
           <div key={combat.id} className="bg-gray-800 rounded-lg overflow-hidden">
             {/* Header */}
             <div
               className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-700"
-              onClick={() => toggleExpand(combat.id as string)}
+              onClick={() => toggleExpand(combat.id)}
             >
               <div className="flex-1">
                 <h3 className="text-lg font-semibold">{combat.name}</h3>
@@ -113,10 +120,10 @@ export default function CombatHistory() {
                     <h4 className="font-semibold mb-2">Participants</h4>
                     <div className="space-y-1 max-h-64 overflow-y-auto">
                       {combat.participants.map((p, idx) => (
-                        <div key={idx} className="text-sm bg-gray-700 rounded p-2">
-                          <div className="font-semibold">{p.characterId}</div>
+                        <div key={p.instanceId || idx} className="text-sm bg-gray-700 rounded p-2">
+                          <div className="font-semibold">{p.name}</div>
                           <div className="text-gray-400">
-                            {p.team} | Final HP: {p.currentHP}
+                            {p.category} | Final HP: {finalHP(p)}
                           </div>
                         </div>
                       ))}
@@ -128,8 +135,8 @@ export default function CombatHistory() {
                     <h4 className="font-semibold mb-2">Combat Log</h4>
                     <div className="bg-gray-900 rounded p-3 max-h-64 overflow-y-auto font-mono text-xs">
                       {combat.log.map((entry, index) => (
-                        <div key={index} className="mb-1">
-                          {entry.action}
+                        <div key={entry.id || index} className="mb-1">
+                          {entry.text ?? entry.message ?? ''}
                         </div>
                       ))}
                     </div>

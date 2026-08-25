@@ -10,7 +10,7 @@
 import { describe, it, expect } from 'vitest';
 import { campaignReducer, createCampaignState } from '../state/campaignReducer';
 import type { CampaignAction, CampaignState } from '../state/campaignReducer';
-import type { CombatCharacter, CombatSession, Craft } from '../types/campaign';
+import type { CombatCharacter, Craft } from '../types/campaign';
 import type { CombatState, Participant } from '../types/combatTracker';
 
 // Helper to dispatch a sequence of actions
@@ -209,12 +209,10 @@ describe('Combat round lifecycle', () => {
 
     state = campaignReducer(state, { type: 'setCombatActive', payload: session });
 
-    // Archive the session to history.  entities.combatHistory still carries the
-    // legacy CombatSession[] declaration while holding CombatState snapshots at
-    // runtime — same bridge production end-combat code uses.
+    // Archive the session to history.
     state = campaignReducer(state, {
       type: 'setCombatHistory',
-      payload: [session] as unknown as CombatSession[],
+      payload: [session],
     });
 
     // End combat

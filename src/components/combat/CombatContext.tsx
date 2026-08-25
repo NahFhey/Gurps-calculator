@@ -461,11 +461,11 @@ export function CombatContextProvider({ children }: { children: ReactNode }) {
       endTime: Date.now(),
       log: [...combat.log, endLogEntry],
     };
-    const newHistory = [endedCombat, ...(combatHistory as unknown as CombatState[])].slice(
+    const newHistory = [endedCombat, ...combatHistory].slice(
       0,
       MAX_COMBAT_HISTORY,
     );
-    saveCombatHistory(newHistory as unknown as typeof combatHistory);
+    saveCombatHistory(newHistory);
     saveCombatActive(null);
     saveCombatActiveHistory(null);
   };

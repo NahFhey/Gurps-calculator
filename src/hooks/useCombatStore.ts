@@ -8,7 +8,7 @@
 import { useMemo, useRef, useEffect } from 'react';
 import { useCampaignStore } from '../state/campaignStore';
 import { normalizeArray, denormalizeObject } from '../state/campaignUtils';
-import type { CombatCharacter, CombatSession, CombatItem, Character, EncounterTemplate } from '../types/campaign';
+import type { CombatCharacter, CombatItem, Character, EncounterTemplate } from '../types/campaign';
 import type { CombatState, RevealState } from '../types/combatTracker';
 
 /**
@@ -101,7 +101,7 @@ export function useCombatStore() {
       /**
        * Save combat history.
        */
-      saveCombatHistory: (history: CombatSession[]) => {
+      saveCombatHistory: (history: CombatState[]) => {
         actions.setCombatHistory(history);
       },
 

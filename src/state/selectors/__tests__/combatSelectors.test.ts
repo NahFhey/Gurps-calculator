@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { initialCampaignState, type CampaignState } from '../../campaignReducer';
-import type { CombatCharacter, CombatItem, CombatSession } from '../../../types/campaign';
+import type { CombatCharacter, CombatItem } from '../../../types/campaign';
 import type { CombatState } from '../../../types/combatTracker';
 import {
   selectCombatCharactersRecord,
@@ -90,7 +90,7 @@ const session: CombatState = {
 function buildState(overrides: {
   combatCharacters?: Record<string, CombatCharacter>;
   combatItems?: Record<string, CombatItem>;
-  combatHistory?: CombatSession[];
+  combatHistory?: CombatState[];
   combatTombstones?: CombatCharacter[];
   combat?: Partial<CampaignState['combat']>;
 } = {}): CampaignState {
@@ -208,16 +208,16 @@ describe('combatSelectors — combat session', () => {
   });
 });
 
-// entities.combatHistory still carries the legacy CombatSession declaration
-// (retyping it is a separate migration), so history tests use a legacy fixture.
-const historySession: CombatSession = {
+const historySession: CombatState = {
   id: 's1-archived',
   name: 'Skirmish (archived)',
+  startTime: 1767225600000,
   participants: [],
+  turnOrder: [],
+  currentTurnIndex: 0,
   currentRound: 1,
-  currentTurn: 0,
+  turnDecisions: {},
   log: [],
-  startDate: '2026-01-01',
 };
 
 describe('combatSelectors — combat history', () => {

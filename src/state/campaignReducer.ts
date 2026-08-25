@@ -32,7 +32,6 @@ import type {
   TaskAssignment,
   DayLedger,
   CombatCharacter,
-  CombatSession,
   CombatItem,
   Kitchen,
   CookingSkill,
@@ -151,7 +150,7 @@ export type CampaignState = {
     // Combat system
     combatCharacters: Record<Id, CombatCharacter>;
     combatItems: Record<Id, CombatItem>;
-    combatHistory: CombatSession[];
+    combatHistory: import('../types/combatTracker').CombatState[];
     combatTombstones: CombatCharacter[];
     encounterTemplates: Record<Id, import('../types/combatTracker').EncounterTemplate>;
 
@@ -616,7 +615,7 @@ export type CampaignAction =
   // Combat Session actions
   | { type: 'setCombatActive'; payload: import('../types/combatTracker').CombatState | null }
   | { type: 'updateCombatActive'; payload: Partial<import('../types/combatTracker').CombatState> }
-  | { type: 'setCombatHistory'; payload: CombatSession[] }
+  | { type: 'setCombatHistory'; payload: import('../types/combatTracker').CombatState[] }
   | { type: 'setCombatTombstones'; payload: CombatCharacter[] }
   | { type: 'setCombatRulesPreset'; payload: string }
   // Combat Item actions

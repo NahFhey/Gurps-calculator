@@ -16,7 +16,7 @@ import {
   type CombatAction
 } from '../combatActions';
 import type { CampaignState } from '../../campaignReducer';
-import type { CombatCharacter, CombatSession, CombatItem } from '../../../types/campaign';
+import type { CombatCharacter, CombatItem } from '../../../types/campaign';
 import type { CombatState, Participant } from '../../../types/combatTracker';
 
 // ============================================================================
@@ -46,19 +46,6 @@ const createMockCombatCharacter = (overrides?: Partial<CombatCharacter>): Combat
   notes: 'Test character',
   ...overrides
 });
-
-const createMockCombatSession = (overrides?: Partial<CombatSession>): CombatSession => ({
-  id: 'session-1',
-  name: 'Test Battle',
-  participants: [
-    { characterId: 'char-1', team: 'ally', initiative: 10, currentHP: 12, status: 'active' },
-    { characterId: 'char-2', team: 'enemy', initiative: 8, currentHP: 8, status: 'active' }
-  ],
-  currentRound: 1,
-  currentTurn: 0,
-  log: [],
-  ...overrides
-} as unknown as CombatSession);
 
 const createMockParticipant = (overrides?: Partial<Participant>): Participant => ({
   instanceId: 'char-1',
@@ -452,8 +439,8 @@ describe('combatReducer - History Actions', () => {
   describe('COMBAT_HISTORY_SET', () => {
     it('sets combat history', () => {
       const sessions = [
-        createMockCombatSession({ id: 'session-1', name: 'Battle 1' }),
-        createMockCombatSession({ id: 'session-2', name: 'Battle 2' })
+        createMockCombatState({ id: 'session-1', name: 'Battle 1' }),
+        createMockCombatState({ id: 'session-2', name: 'Battle 2' })
       ];
 
       const action: CombatAction = {
@@ -469,7 +456,7 @@ describe('combatReducer - History Actions', () => {
     });
 
     it('can clear history', () => {
-      const session = createMockCombatSession();
+      const session = createMockCombatState();
       state = applyAction(state, { type: COMBAT_HISTORY_SET, payload: [session] });
       expect(state.entities.combatHistory).toHaveLength(1);
 

@@ -5,7 +5,7 @@
  * Covers combat characters, sessions, history, tombstones, rules, and items.
  */
 
-import type { Id, CombatCharacter, CombatItem, CombatSession } from '../../types/campaign';
+import type { Id, CombatCharacter, CombatItem } from '../../types/campaign';
 import type { CombatState, EncounterTemplate, RevealState } from '../../types/combatTracker';
 
 // ============================================================================
@@ -77,7 +77,7 @@ export type UpdateCombatActiveAction = {
 // Combat history action types
 export type SetCombatHistoryAction = {
   type: typeof COMBAT_HISTORY_SET;
-  payload: CombatSession[];
+  payload: CombatState[];
 };
 export type SetCombatTombstonesAction = {
   type: typeof COMBAT_TOMBSTONES_SET;

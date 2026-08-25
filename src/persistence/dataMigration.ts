@@ -14,6 +14,7 @@ import {
 } from '../state/campaignUtils';
 import { ensureParticipantConditionVisibility } from '../utils/conditionsEngine';
 import { deriveCombatCategory } from '../utils/combatHelpers';
+import { isLegacyCombatSession, upgradeCombatHistory } from '../utils/legacyCombatHistory';
 import type { Id, Material, Food, Recipe, Craft, CraftDesign, AlchemyReagent, AlchemyFormula, AlchemyBatch, AlchemyLab, GatheringSpecies, GatheringTool, GatheringTable, GatheringEnvironment, GatheringSession, GatheringBait, GatheringCategory, GatheringItem, CombatCharacter, CombatItem, Kitchen, Inventory } from '../types/campaign';
 
 // Legacy localStorage keys to migrate
@@ -306,7 +307,7 @@ function migrateEntities(state: CampaignState, legacy: Record<string, any>): voi
   state.entities.combatCharacters = normalizeArray(combatCharacters) as Record<Id, CombatCharacter>;
   const combatItems = ensureIds(legacy.combatItems || []);
   state.entities.combatItems = normalizeArray(combatItems) as Record<Id, CombatItem>;
-  state.entities.combatHistory = legacy.combatHistory || [];
+  state.entities.combatHistory = upgradeCombatHistory(legacy.combatHistory || []);
   state.entities.combatTombstones = legacy.combatTombstones || [];
   console.log(`[Migration] Migrated combat: ${combatCharacters.length} characters, ${state.entities.combatHistory.length} history`);
 
@@ -548,6 +549,30 @@ export function ensureCombatCharacterCategories(state: CampaignState): CampaignS
       ...state.entities,
       combatCharacters,
       combatTombstones
+    }
+  };
+}
+
+/**
+ * Schema 1.5.3: combat history entry shape.
+ *
+ * End-of-combat has archived canonical CombatState snapshots since the
+ * tracker rewrite, but pre-rewrite saves hold legacy CombatSession records
+ * (characterId/team participants, startDate strings). Upgrades any legacy
+ * entry to CombatState so consumers see a single shape. Handles the nested
+ * campaign-state shape here; the flat legacy `combatHistory` key is covered
+ * by migrateTo1_5_3() in src/utils/dataMigrations.ts (same
+ * upgradeCombatHistory helper, so both paths stay in lockstep). Pure and
+ * idempotent — safe to run on every load.
+ */
+export function ensureCombatHistoryShape(state: CampaignState): CampaignState {
+  const history = state.entities.combatHistory;
+  if (!Array.isArray(history) || !history.some(isLegacyCombatSession)) return state;
+  return {
+    ...state,
+    entities: {
+      ...state.entities,
+      combatHistory: upgradeCombatHistory(history)
     }
   };
 }

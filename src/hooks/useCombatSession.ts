@@ -53,7 +53,6 @@ import type {
   RollData,
   ConditionInstance,
 } from '../types/combatTracker';
-import type { CombatSession } from '../types/campaign';
 
 export interface CombatSessionValue {
   /** The raw combat state (truth) */
@@ -461,9 +460,9 @@ export function useCombatSession(): CombatSessionValue | null {
     };
     const newHistory = [
       endedCombat,
-      ...(combatHistory as CombatSession[]),
+      ...combatHistory,
     ].slice(0, MAX_COMBAT_HISTORY);
-    saveCombatHistory(newHistory as CombatSession[]);
+    saveCombatHistory(newHistory);
     saveCombatActive(null);
   };
 

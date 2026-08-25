@@ -545,10 +545,7 @@ export default function CombatTracker() {
 
     // Save to history
     const newHistory = [endedCombat, ...combatHistory].slice(0, MAX_COMBAT_HISTORY);
-    // Persistence still declares legacy CombatSession[], while the tracker
-    // archives canonical CombatState snapshots. Resolving this requires a
-    // migration of every legacy combat-history consumer.
-    saveCombatHistory(newHistory as any);
+    saveCombatHistory(newHistory);
 
     // Enter post-combat flow — keep combat active in store until flow completes
     // so CombatTab continues to render CombatTracker

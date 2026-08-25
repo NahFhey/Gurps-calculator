@@ -6,7 +6,7 @@
  */
 
 import type { CampaignState } from '../campaignReducer';
-import type { Id, CombatCharacter, CombatItem, CombatSession } from '../../types/campaign';
+import type { Id, CombatCharacter, CombatItem } from '../../types/campaign';
 import type { CombatState } from '../../types/combatTracker';
 
 // ============================================================================
@@ -95,7 +95,7 @@ export const selectCombatRulesPreset = (state: CampaignState): string => state.c
 /**
  * Select combat history
  */
-export const selectCombatHistory = (state: CampaignState): CombatSession[] =>
+export const selectCombatHistory = (state: CampaignState): CombatState[] =>
   state.entities.combatHistory;
 
 /**

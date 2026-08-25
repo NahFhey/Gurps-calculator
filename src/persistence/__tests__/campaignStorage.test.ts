@@ -214,15 +214,13 @@ describe('campaignStorage', () => {
 
     it('round-trips combat history', async () => {
       const state = createCampaignState();
-      const pastSession1 = createMockCombatSession({
+      const pastSession1 = createMockCombatState({
         id: 'past-1',
         name: 'Tavern Brawl',
-        isActive: false,
       });
-      const pastSession2 = createMockCombatSession({
+      const pastSession2 = createMockCombatState({
         id: 'past-2',
         name: 'Dungeon Ambush',
-        isActive: false,
       });
 
       state.entities.combatHistory = [pastSession1, pastSession2];
@@ -234,6 +232,37 @@ describe('campaignStorage', () => {
       expect(loaded.entities.combatHistory[0].id).toBe('past-1');
       expect(loaded.entities.combatHistory[0].name).toBe('Tavern Brawl');
       expect(loaded.entities.combatHistory[1].id).toBe('past-2');
+    });
+
+    it('upgrades legacy CombatSession history entries on load (schema 1.5.3)', async () => {
+      const state = createCampaignState();
+      const legacyEntry = createMockCombatSession({
+        id: 'legacy-1',
+        name: 'Old Skirmish',
+        startDate: '2025-09-01T12:00:00.000Z',
+        currentRound: 4,
+        participants: [
+          { characterId: 'char-1', team: 'ally', initiative: 12, currentHP: 7, status: 'active' },
+          { characterId: 'char-2', team: 'enemy', initiative: 9, currentHP: 0, status: 'dead' },
+        ],
+      });
+
+      state.entities.combatHistory = [legacyEntry as unknown as CombatState];
+
+      await saveCampaignState(state);
+      const loaded = await loadCampaignState();
+
+      expect(loaded.entities.combatHistory).toHaveLength(1);
+      const upgraded = loaded.entities.combatHistory[0];
+      expect(upgraded.id).toBe('legacy-1');
+      expect(upgraded.name).toBe('Old Skirmish');
+      expect(upgraded.startTime).toBe(Date.parse('2025-09-01T12:00:00.000Z'));
+      expect(upgraded.currentRound).toBe(4);
+      expect(upgraded.turnOrder).toEqual(['char-1', 'char-2']);
+      expect(upgraded.participants[0].name).toBe('char-1');
+      expect(upgraded.participants[0].libraryId).toBe('char-1');
+      expect(upgraded.participants[0].currentHP).toBe(7);
+      expect(upgraded.participants[1].isDead).toBe(true);
     });
 
     it('round-trips combat tombstones', async () => {
@@ -333,7 +362,7 @@ describe('campaignStorage', () => {
 
       // Combat history
       state.entities.combatHistory = [
-        createMockCombatSession({ id: 'past-battle', name: 'Tavern Fight', isActive: false }),
+        createMockCombatState({ id: 'past-battle', name: 'Tavern Fight' }),
       ];
 
       // Tombstones
