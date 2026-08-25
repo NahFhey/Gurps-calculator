@@ -77,6 +77,8 @@ interface FilteredParticipant {
   side: string | undefined;
   category: string;
   _reveal: RevealEntry;
+  partyCharacterId?: string;
+  isFromParty?: boolean;
   basicSpeed?: number;
   dx?: number;
   position?: Participant['position'];
@@ -216,6 +218,11 @@ function filterParticipant(
   // Copy non-secret combat stats (always visible for UI purposes)
   filtered.basicSpeed = participant.basicSpeed;
   filtered.dx = participant.dx;
+  // Party linkage is not secret — it's the player's own character reference, and
+  // stripping it broke the Items workflow in player view (PCs rendered as
+  // library combatants with no inventory).
+  filtered.partyCharacterId = participant.partyCharacterId;
+  filtered.isFromParty = participant.isFromParty;
   // Board position is public — a token on the shared map is visible to everyone;
   // concealment is fog/LOS's job, not field-stripping (dropping it made player
   // view render zero tokens).
