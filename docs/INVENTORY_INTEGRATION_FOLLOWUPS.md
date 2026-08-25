@@ -28,7 +28,16 @@ session: **dietary restrictions** (see item #10 below).
 
 ---
 
-## 2. Attunement State Machine
+## 2. Attunement State Machine — 📐 DESIGNED 2026-08-25
+
+**Design complete:** all open questions resolved in a grill-me session — see
+[`ATTUNEMENT_STATE_MACHINE_PLAN.md`](./ATTUNEMENT_STATE_MACHINE_PLAN.md). Key calls:
+cap = Magery + 1 (Magery required; prefix-match detection, level ?? 0), new
+`magical`/`attuned` optional flags on ItemInstance (no schema bump), explicit-set
+always-succeed action with cap in selectors/UI only, retag clears attunement,
+CharacterInventoryPanel surface. **Premise correction:** the claim below that the
+acquire path writes `attuned: false` was never true — no such field existed.
+Ready to spec for implementation.
 
 **Context:** Magic items can be possessed in any quantity but only `1 + Magery` of them can be attuned at a time (use limit, not possession limit). Phase 12a.5's acquire path writes magic items with `attuned: false`. The toggle path is separate.
 
