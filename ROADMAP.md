@@ -29,7 +29,9 @@
 - ✅ Replaced `as any` / `as unknown as any` in GatheringTab, FishingActivity, FishingResolutionPanel, ForagingActivity, ForagingResolutionPanel, CookingTab, EncounterSetup, FormulasView
 - ✅ Production `as any` count: **3 remaining** (was 203) — all in deferred structural mismatches
 
-**Remaining 3 production `as any` casts (→ Phase 11a):**
+**DRIFT NOTE (2026-08-26):** the "3 remaining" count below is stale — a sweep found **87** production `as any` lines, ~60 concentrated in the Fishing downtime views (`FishingResolutionPanel.tsx` 32, `FishingActivity.tsx` 18, `FishingTaskForm.tsx` 10), reintroduced during the downtime-system rework. Candidate cleanup lane once the 13b batch lane (which owns FishingTaskForm) merges.
+
+**Remaining 3 production `as any` casts (→ Phase 11a, count as of 2026-04-09):**
 - `DayPlannerTab.tsx:185` — two casts bridging `TimeSlot` type divergence between campaign.ts and dayplanner.ts
 - `AlchemyActivity.tsx:169` — `AlchemyBatchWithPhase` ↔ `ExtendedBatch` interface bridge
 - `campaignUtils.ts:294` — `deepMerge` recursive generic call (runtime-safe, generic utility)
