@@ -1,4 +1,21 @@
-import type { LogEntry, LogVisibility } from '../state/campaignReducer';
+import type { LogEntry, LogEntryMeta, LogVisibility } from '../state/campaignReducer';
+
+type ActivityLogDetails = {
+  message: string;
+  maskedMessage?: string;
+  characterName?: string;
+  itemName?: string;
+  quantity?: number;
+  characterIds?: string[];
+  characterNames?: string[];
+  itemNames?: string[];
+  taskId?: string;
+};
+
+const mergeMetaNames = (names?: string[], name?: string): string[] | undefined => {
+  const merged = [...(names ?? []), ...(name ? [name] : [])];
+  return merged.length > 0 ? [...new Set(merged)] : undefined;
+};
 
 /**
  * Creates a log entry for activity-related events
@@ -8,16 +25,20 @@ import type { LogEntry, LogVisibility } from '../state/campaignReducer';
 export function createActivityLogEntry(
   activityType: 'alchemy' | 'cooking' | 'crafting' | 'gathering' | 'inventory' | 'combat',
   action: string,
-  details: {
-    message: string;
-    maskedMessage?: string;
-    characterName?: string;
-    itemName?: string;
-    quantity?: number;
-  },
+  details: ActivityLogDetails,
   visibility: LogVisibility = 'player'
 ): LogEntry {
   const type = `${activityType}.${action}`;
+  const characterNames = mergeMetaNames(details.characterNames, details.characterName);
+  const itemNames = mergeMetaNames(details.itemNames, details.itemName);
+  const meta: LogEntryMeta = {
+    ...(details.characterIds?.length ? { characterIds: details.characterIds } : {}),
+    ...(characterNames ? { characterNames } : {}),
+    ...(itemNames ? { itemNames } : {}),
+    ...(details.quantity !== undefined ? { quantity: details.quantity } : {}),
+    ...(details.taskId ? { taskId: details.taskId } : {}),
+  };
+  const hasMeta = Object.keys(meta).length > 0;
 
   return {
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -28,7 +49,8 @@ export function createActivityLogEntry(
       message: details.message,
       maskedMessage: details.maskedMessage,
       title: `${activityType.charAt(0).toUpperCase() + activityType.slice(1)}: ${action}`
-    }
+    },
+    ...(hasMeta ? { meta } : {}),
   };
 }
 
@@ -36,44 +58,62 @@ export function createActivityLogEntry(
  * Alchemy-specific log entry creators
  */
 export const alchemyLog = {
-  batchStarted: (batchName: string, workerName?: string) =>
+  batchStarted: (batchName: string, workerName?: string, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('alchemy', 'batch_started', {
       message: workerName
         ? `${workerName} started brewing "${batchName}"`
-        : `Started brewing "${batchName}"`
+        : `Started brewing "${batchName}"`,
+      itemName: batchName,
+      characterName: workerName,
+      ...meta,
     }),
 
-  batchCompleted: (batchName: string, quality: string, workerName?: string) =>
+  batchCompleted: (batchName: string, quality: string, workerName?: string, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('alchemy', 'batch_completed', {
       message: workerName
         ? `${workerName} completed "${batchName}" with ${quality} quality`
-        : `Completed "${batchName}" with ${quality} quality`
+        : `Completed "${batchName}" with ${quality} quality`,
+      itemName: batchName,
+      characterName: workerName,
+      ...meta,
     }),
 
-  batchFailed: (batchName: string, workerName?: string) =>
+  batchFailed: (batchName: string, workerName?: string, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('alchemy', 'batch_failed', {
       message: workerName
         ? `${workerName}'s batch "${batchName}" failed - Mishap occurred`
-        : `Batch "${batchName}" failed - Mishap occurred`
+        : `Batch "${batchName}" failed - Mishap occurred`,
+      itemName: batchName,
+      characterName: workerName,
+      ...meta,
     }),
 
-  reagentAnalyzed: (reagentName: string, workerName?: string) =>
+  reagentAnalyzed: (reagentName: string, workerName?: string, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('alchemy', 'reagent_analyzed', {
       message: workerName
         ? `${workerName} analyzed reagent "${reagentName}"`
-        : `Analyzed reagent "${reagentName}"`
+        : `Analyzed reagent "${reagentName}"`,
+      itemName: reagentName,
+      characterName: workerName,
+      ...meta,
     }),
 
-  reagentProcessed: (reagentName: string, processType: string, workerName?: string) =>
+  reagentProcessed: (reagentName: string, processType: string, workerName?: string, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('alchemy', 'reagent_processed', {
       message: workerName
         ? `${workerName} ${processType} reagent "${reagentName}"`
-        : `${processType} reagent "${reagentName}"`
+        : `${processType} reagent "${reagentName}"`,
+      itemName: reagentName,
+      characterName: workerName,
+      ...meta,
     }),
 
-  reagentPromoted: (reagentName: string, quantity: number) =>
+  reagentPromoted: (reagentName: string, quantity: number, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('alchemy', 'reagent_promoted', {
-      message: `${quantity} ${reagentName} promoted to lab stock`
+      message: `${quantity} ${reagentName} promoted to lab stock`,
+      itemName: reagentName,
+      quantity,
+      ...meta,
     })
 };
 
@@ -81,18 +121,25 @@ export const alchemyLog = {
  * Cooking-specific log entry creators
  */
 export const cookingLog = {
-  mealPrepared: (mealName: string, quality: string, workerName?: string) =>
+  mealPrepared: (mealName: string, quality: string, workerName?: string, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('cooking', 'meal_prepared', {
       message: workerName
         ? `${workerName} prepared "${mealName}" (${quality})`
-        : `Prepared "${mealName}" (${quality})`
+        : `Prepared "${mealName}" (${quality})`,
+      itemName: mealName,
+      characterName: workerName,
+      ...meta,
     }),
 
-  rationCreated: (quantity: number, workerName?: string) =>
+  rationCreated: (quantity: number, workerName?: string, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('cooking', 'ration_created', {
       message: workerName
         ? `${workerName} created ${quantity} ration(s)`
-        : `Created ${quantity} ration(s)`
+        : `Created ${quantity} ration(s)`,
+      itemName: 'Ration',
+      characterName: workerName,
+      quantity,
+      ...meta,
     })
 };
 
@@ -100,25 +147,35 @@ export const cookingLog = {
  * Crafting-specific log entry creators
  */
 export const craftingLog = {
-  projectStarted: (itemName: string, workerName?: string) =>
+  projectStarted: (itemName: string, workerName?: string, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('crafting', 'project_started', {
       message: workerName
         ? `${workerName} started crafting "${itemName}"`
-        : `Started crafting "${itemName}"`
+        : `Started crafting "${itemName}"`,
+      itemName,
+      characterName: workerName,
+      ...meta,
     }),
 
-  projectCompleted: (itemName: string, quality: string, workerName?: string) =>
+  projectCompleted: (itemName: string, quality: string, workerName?: string, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('crafting', 'project_completed', {
       message: workerName
         ? `${workerName} completed "${itemName}" (${quality})`
-        : `Completed "${itemName}" (${quality})`
+        : `Completed "${itemName}" (${quality})`,
+      itemName,
+      characterName: workerName,
+      ...meta,
     }),
 
-  workApplied: (itemName: string, hoursWorked: number, workerName?: string) =>
+  workApplied: (itemName: string, hoursWorked: number, workerName?: string, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('crafting', 'work_applied', {
       message: workerName
         ? `${workerName} worked on "${itemName}" for ${hoursWorked} hour(s)`
-        : `Worked on "${itemName}" for ${hoursWorked} hour(s)`
+        : `Worked on "${itemName}" for ${hoursWorked} hour(s)`,
+      itemName,
+      characterName: workerName,
+      quantity: hoursWorked,
+      ...meta,
     })
 };
 
@@ -126,25 +183,34 @@ export const craftingLog = {
  * Gathering-specific log entry creators
  */
 export const gatheringLog = {
-  sessionStarted: (location: string, method: string, workerName?: string) =>
+  sessionStarted: (location: string, method: string, workerName?: string, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('gathering', 'session_started', {
       message: workerName
         ? `${workerName} began ${method} at ${location}`
-        : `Began ${method} at ${location}`
+        : `Began ${method} at ${location}`,
+      characterName: workerName,
+      ...meta,
     }),
 
-  itemGathered: (itemName: string, quantity: number, workerName?: string) =>
+  itemGathered: (itemName: string, quantity: number, workerName?: string, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('gathering', 'item_gathered', {
       message: workerName
         ? `${workerName} gathered ${quantity}x ${itemName}`
-        : `Gathered ${quantity}x ${itemName}`
+        : `Gathered ${quantity}x ${itemName}`,
+      itemName,
+      characterName: workerName,
+      quantity,
+      ...meta,
     }),
 
-  sessionCompleted: (itemsGathered: number, workerName?: string) =>
+  sessionCompleted: (itemsGathered: number, workerName?: string, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('gathering', 'session_completed', {
       message: workerName
         ? `${workerName} finished gathering (${itemsGathered} items)`
-        : `Finished gathering (${itemsGathered} items)`
+        : `Finished gathering (${itemsGathered} items)`,
+      characterName: workerName,
+      quantity: itemsGathered,
+      ...meta,
     })
 };
 
@@ -152,45 +218,65 @@ export const gatheringLog = {
  * Inventory-specific log entry creators
  */
 export const inventoryLog = {
-  itemTransferred: (itemName: string, fromInventory: string, toInventory: string, quantity?: number) =>
+  itemTransferred: (itemName: string, fromInventory: string, toInventory: string, quantity?: number, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('inventory', 'item_transferred', {
       message: quantity
         ? `Transferred ${quantity}x "${itemName}" from ${fromInventory} to ${toInventory}`
-        : `Transferred "${itemName}" from ${fromInventory} to ${toInventory}`
+        : `Transferred "${itemName}" from ${fromInventory} to ${toInventory}`,
+      itemName,
+      quantity,
+      ...meta,
     }),
 
-  stackableTransferred: (kind: 'material' | 'food', name: string, quantity: number, fromInventory: string, toInventory: string) =>
+  stackableTransferred: (kind: 'material' | 'food', name: string, quantity: number, fromInventory: string, toInventory: string, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('inventory', `${kind}_transferred`, {
-      message: `Transferred ${quantity} ${name} from ${fromInventory} to ${toInventory}`
+      message: `Transferred ${quantity} ${name} from ${fromInventory} to ${toInventory}`,
+      itemName: name,
+      quantity,
+      ...meta,
     }),
 
-  currencyTransferred: (amount: number, currency: string, fromInventory: string, toInventory: string) =>
+  currencyTransferred: (amount: number, currency: string, fromInventory: string, toInventory: string, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('inventory', 'currency_transferred', {
-      message: `Transferred ${amount} ${currency} from ${fromInventory} to ${toInventory}`
+      message: `Transferred ${amount} ${currency} from ${fromInventory} to ${toInventory}`,
+      quantity: amount,
+      ...meta,
     }),
 
-  itemAdded: (itemName: string, inventoryName: string, quantity?: number) =>
+  itemAdded: (itemName: string, inventoryName: string, quantity?: number, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('inventory', 'item_added', {
       message: quantity
         ? `Added ${quantity}x "${itemName}" to ${inventoryName}`
-        : `Added "${itemName}" to ${inventoryName}`
+        : `Added "${itemName}" to ${inventoryName}`,
+      itemName,
+      quantity,
+      ...meta,
     }),
 
-  itemRemoved: (itemName: string, inventoryName: string, quantity?: number) =>
+  itemRemoved: (itemName: string, inventoryName: string, quantity?: number, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('inventory', 'item_removed', {
       message: quantity
         ? `Removed ${quantity}x "${itemName}" from ${inventoryName}`
-        : `Removed "${itemName}" from ${inventoryName}`
+        : `Removed "${itemName}" from ${inventoryName}`,
+      itemName,
+      quantity,
+      ...meta,
     }),
 
-  itemConsumed: (itemName: string, characterName: string) =>
+  itemConsumed: (itemName: string, characterName: string, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('inventory', 'item_consumed', {
-      message: `${characterName} used "${itemName}"`
+      message: `${characterName} used "${itemName}"`,
+      itemName,
+      characterName,
+      ...meta,
     }),
 
-  itemConsumptionReverted: (itemName: string, characterName: string) =>
+  itemConsumptionReverted: (itemName: string, characterName: string, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('inventory', 'item_consumption_reverted', {
-      message: `Restored "${itemName}" to ${characterName}`
+      message: `Restored "${itemName}" to ${characterName}`,
+      itemName,
+      characterName,
+      ...meta,
     })
 };
 
@@ -198,29 +284,36 @@ export const inventoryLog = {
  * Combat-specific log entry creators
  */
 export const combatLog = {
-  combatStarted: (encounterName?: string) =>
+  combatStarted: (encounterName?: string, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('combat', 'started', {
       message: encounterName
         ? `Combat started: ${encounterName}`
-        : 'Combat started'
+        : 'Combat started',
+      ...meta,
     }),
 
-  combatEnded: (result?: string) =>
+  combatEnded: (result?: string, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('combat', 'ended', {
       message: result
         ? `Combat ended: ${result}`
-        : 'Combat ended'
+        : 'Combat ended',
+      ...meta,
     }),
 
-  characterDamaged: (characterName: string, damage: number, currentHp: number) =>
+  characterDamaged: (characterName: string, damage: number, currentHp: number, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('combat', 'damage', {
       message: `${characterName} took ${damage} damage (HP: ${currentHp})`,
-      maskedMessage: 'A combatant was injured'
+      maskedMessage: 'A combatant was injured',
+      characterName,
+      quantity: damage,
+      ...meta,
     }, 'mixed'),
 
-  characterDefeated: (characterName: string) =>
+  characterDefeated: (characterName: string, meta: LogEntryMeta = {}) =>
     createActivityLogEntry('combat', 'defeated', {
       message: `${characterName} was defeated`,
-      maskedMessage: 'A combatant was defeated'
+      maskedMessage: 'A combatant was defeated',
+      characterName,
+      ...meta,
     }, 'mixed')
 };

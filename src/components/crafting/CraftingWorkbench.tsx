@@ -282,6 +282,12 @@ export function CraftingWorkbench({
 
     // Check time slot availability and mark character as busy (before either branch)
     if (!tryReserveSlot(`Started design phase: ${current.template || 'Unknown'}`)) return;
+    const startingWorkerId = workers.find(worker => worker.name === selectedWorker)?.id;
+    const startMeta = {
+      ...(startingWorkerId ? { characterIds: [startingWorkerId] } : {}),
+      ...(selectedWorker ? { characterNames: [selectedWorker] } : {}),
+      taskId: current.id,
+    };
 
     if (current.selectedMaterials && current.selectedMaterials.length > 0) {
       const consumedMaterials = current.selectedMaterials.map(req => {
@@ -304,13 +310,13 @@ export function CraftingWorkbench({
       setCurrent(newCur);
       onCraftUpdated(newCur);
       saveCrafts(upsertCraft(crafts, newCur) as Craft[]);
-      addLogEntry(craftingLog.projectStarted(current.template || 'Unknown'));
+      addLogEntry(craftingLog.projectStarted(current.template || 'Unknown', undefined, startMeta));
     } else {
       const newCur: Craft = { ...current, phase: 'design' };
       setCurrent(newCur);
       onCraftUpdated(newCur);
       saveCrafts(upsertCraft(crafts, newCur) as Craft[]);
-      addLogEntry(craftingLog.projectStarted(current.template || 'Unknown'));
+      addLogEntry(craftingLog.projectStarted(current.template || 'Unknown', undefined, startMeta));
     }
 
     if (workers && workers.length > 0 && !selectedWorker) {
@@ -415,7 +421,11 @@ export function CraftingWorkbench({
       addLogEntry(craftingLog.projectCompleted(
         newCur.name || newCur.template || 'Unknown',
         (newCur.currentQuality as string) || 'Standard',
-        selectedWorker
+        selectedWorker,
+        {
+          ...(completingWorkerId ? { characterIds: [completingWorkerId] } : {}),
+          taskId: newCur.id,
+        }
       ));
       setCurrent(null);
       onCraftUpdated(null);

@@ -123,7 +123,13 @@ export function CookingTab() {
       });
     }
     saveRecipes([...recipes, recipe]);
-    actions.addLogEntry(cookingLog.mealPrepared(name, result, selectedWorker));
+    const workerId = workers?.find(worker => worker.name === selectedWorker)?.id;
+    actions.addLogEntry(cookingLog.mealPrepared(
+      name,
+      result,
+      selectedWorker,
+      workerId ? { characterIds: [workerId] } : undefined
+    ));
     actions.consumeFoods('party', selected.map(ingredient => {
       const food = foods.find(item => item.id === ingredient.foodId || String(item.id) === ingredient.foodId);
       return {
@@ -269,7 +275,13 @@ export function CookingTab() {
     saveRecipes(recipes.map(recipe => recipe.id === selectedRecipe?.id
       ? { ...recipe, creationHistory: [...(recipe.creationHistory || []), remakeLog] }
       : recipe));
-    actions.addLogEntry(cookingLog.mealPrepared(selectedRecipe?.name || 'Unknown', result, remakeWorker));
+    const workerId = workers?.find(worker => worker.name === remakeWorker)?.id;
+    actions.addLogEntry(cookingLog.mealPrepared(
+      selectedRecipe?.name || 'Unknown',
+      result,
+      remakeWorker,
+      workerId ? { characterIds: [workerId] } : undefined
+    ));
     alert(`Recipe "${selectedRecipe?.name}" remade! Result: ${result} (MoS: ${mos}, Difficulty: ${calculateRemakeDifficulty()})`);
     setView('library');
     setSelectedRecipe(null);

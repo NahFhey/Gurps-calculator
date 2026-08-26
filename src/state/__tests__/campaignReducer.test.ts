@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { campaignReducer, createCampaignState, initialCampaignState } from '../campaignReducer';
+import { campaignReducer, createCampaignState, initialCampaignState, logEvent } from '../campaignReducer';
 
 describe('campaignReducer', () => {
   it('setActiveModule updates state', () => {
@@ -67,6 +67,70 @@ describe('campaignReducer', () => {
 
     expect(nextState.time.slot).toBe(1);
     expect(nextState.ui.blockingError).toBeNull();
+  });
+
+  it('stamps appended log entries with the current game day and slot', () => {
+    const state = createCampaignState();
+    state.time.day = 7;
+    state.time.slot = 3;
+
+    const nextState = campaignReducer(state, {
+      type: 'addLogEntry',
+      payload: logEvent('inventory.item_added', 'player', { message: 'Added Rope' })
+    });
+
+    expect(nextState.logs.entries[0].day).toBe(7);
+    expect(nextState.logs.entries[0].slot).toBe(3);
+  });
+
+  it('preserves pre-stamped day and slot values on appended log entries', () => {
+    const state = createCampaignState();
+    state.time.day = 7;
+    state.time.slot = 3;
+    const entry = {
+      ...logEvent('inventory.item_added', 'player', { message: 'Added Rope' }),
+      day: 2,
+      slot: 1,
+    };
+
+    const nextState = campaignReducer(state, { type: 'addLogEntry', payload: entry });
+
+    expect(nextState.logs.entries[0].day).toBe(2);
+    expect(nextState.logs.entries[0].slot).toBe(1);
+  });
+
+  it('caps appended logs at 2,000 entries and drops the oldest entry', () => {
+    const state = createCampaignState();
+    state.logs.entries = Array.from({ length: 2000 }, (_, index) => ({
+      ...logEvent('inventory.item_added', 'player', { message: `Entry ${index}` }),
+      id: `entry-${index}`,
+    }));
+
+    const nextState = campaignReducer(state, {
+      type: 'addLogEntry',
+      payload: { ...logEvent('inventory.item_added', 'player', { message: 'Newest' }), id: 'newest' }
+    });
+
+    expect(nextState.logs.entries).toHaveLength(2000);
+    expect(nextState.logs.entries[0].id).toBe('newest');
+    expect(nextState.logs.entries[nextState.logs.entries.length - 1]?.id).toBe('entry-1998');
+    expect(nextState.logs.entries.some(entry => entry.id === 'entry-1999')).toBe(false);
+  });
+
+  it('caps wholesale log replacement at 2,000 entries without stamping legacy entries', () => {
+    const state = createCampaignState();
+    const entries = Array.from({ length: 2001 }, (_, index) => ({
+      ...logEvent('inventory.item_added', 'player', { message: `Entry ${index}` }),
+      id: `entry-${index}`,
+    }));
+
+    const nextState = campaignReducer(state, { type: 'setLogsEntries', payload: entries });
+
+    expect(nextState.logs.entries).toHaveLength(2000);
+    expect(nextState.logs.entries[0].id).toBe('entry-0');
+    expect(nextState.logs.entries[nextState.logs.entries.length - 1]?.id).toBe('entry-1999');
+    expect(nextState.logs.entries[0].day).toBeUndefined();
+    expect(nextState.logs.entries[0].slot).toBeUndefined();
   });
 
   it('createCheckpoint adds to ring and respects max size', () => {

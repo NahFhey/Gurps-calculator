@@ -44,6 +44,69 @@ describe('activityLogger', () => {
       const b = createActivityLogEntry('inventory', 'item_added', { message: 'x' });
       expect(a.id).not.toBe(b.id);
     });
+
+    it('folds singular names into metadata and preserves provided structured fields', () => {
+      const entry = createActivityLogEntry('crafting', 'project_started', {
+        message: 'Started crafting "Sword"',
+        characterName: 'Alice',
+        itemName: 'Sword',
+        characterIds: ['character-1'],
+        characterNames: ['Bob'],
+        itemNames: ['Shield'],
+        quantity: 2,
+        taskId: 'task-1',
+      });
+
+      expect(entry.meta).toEqual({
+        characterIds: ['character-1'],
+        characterNames: ['Bob', 'Alice'],
+        itemNames: ['Shield', 'Sword'],
+        quantity: 2,
+        taskId: 'task-1',
+      });
+    });
+
+    it('omits metadata and absent metadata keys when no data is provided', () => {
+      const empty = createActivityLogEntry('combat', 'started', { message: 'Combat started' });
+      const itemOnly = createActivityLogEntry('inventory', 'item_added', {
+        message: 'Added Rope',
+        itemName: 'Rope',
+      });
+
+      expect(empty.meta).toBeUndefined();
+      expect(itemOnly.meta).toEqual({ itemNames: ['Rope'] });
+      expect(itemOnly.meta).not.toHaveProperty('quantity');
+      expect(itemOnly.meta).not.toHaveProperty('characterIds');
+    });
+  });
+
+  it('populates metadata from all activity creator families', () => {
+    expect(alchemyLog.batchStarted('Potion', 'Alice').meta).toMatchObject({
+      characterNames: ['Alice'],
+      itemNames: ['Potion'],
+    });
+    expect(cookingLog.rationCreated(3, 'Bob').meta).toMatchObject({
+      characterNames: ['Bob'],
+      quantity: 3,
+    });
+    expect(craftingLog.workApplied('Shield', 4, 'Carol').meta).toMatchObject({
+      characterNames: ['Carol'],
+      itemNames: ['Shield'],
+      quantity: 4,
+    });
+    expect(gatheringLog.itemGathered('Berries', 7, 'Dan').meta).toMatchObject({
+      characterNames: ['Dan'],
+      itemNames: ['Berries'],
+      quantity: 7,
+    });
+    expect(inventoryLog.itemTransferred('Rope', 'A', 'B', 2).meta).toMatchObject({
+      itemNames: ['Rope'],
+      quantity: 2,
+    });
+    expect(combatLog.characterDamaged('Eve', 5, 7).meta).toMatchObject({
+      characterNames: ['Eve'],
+      quantity: 5,
+    });
   });
 
   describe('alchemyLog', () => {
