@@ -256,12 +256,12 @@
 
 **Estimated effort:** 2-3 sessions.
 
-### 12b: GCS Import Improvements — first slice ✅ (2026-08-25, codex-shepherd)
-- Broader GCS format support (validate against real exports)
+### 12b: GCS Import Improvements ✅ COMPLETE (2026-08-26, codex-shepherd)
+- ✅ Broader GCS format support — equipment entry variants: decimal + comma-thousands costs, optional quantity/weight, lb/lb./lbs suffixes (2026-08-26)
 - ✅ Import validation with diff preview ("here's what will change") — `validateCharacterText` (line-level errors/warnings, wipe-guard for sections that parse empty), `diffCharacters` + grouped preview, update-vs-create choice on name match with narrow non-destructive merge (`buildCharacterImportUpdate`). Browser-verified end-to-end.
 - ✅ Batch import for entire party files — `parsePartyText` (Name:-block split) + JSON arrays, selectable batch preview with new/update badges.
-- Export back to GCS-compatible format
-- Known parser gap (pre-existing, confirmed): equipment entries split at the cost/weight semicolon — sample sheet parses zero equipment; merge logic prevents data loss on update.
+- ✅ Export back to GCS-compatible format — `exportCharacterText()` in `src/utils/characterExport.ts`; round-trip parse(export(parse(text))) verified across all sections (2026-08-26)
+- ✅ Equipment parser gap FIXED (2026-08-26): `splitBySemicolon` now bracket-aware — entries no longer split at the cost/weight semicolon inside `[$X; Y lb]`; real sheets previously parsed zero equipment. UI wiring for text export (e.g. a context-menu entry beside Export JSON) is a small open nicety.
 
 ### 12c: Character Lifecycle
 - Character creation wizard with template support (warrior, mage, thief archetypes)
@@ -339,10 +339,10 @@
 - Location arrival -> updates available facilities and NPCs
 
 ### 15b: Performance & Bundle
-- Code splitting by tab/feature (lazy load combat, map, etc.)
+- ✅ Code splitting by tab/feature (2026-08-26, codex-shepherd): React.lazy + Suspense for all heavy tabs in UnifiedShell; entry chunk 2,061KB → 450KB (+142KB react-vendor); Map3DView (543KB) and @dnd-kit (48KB) load on demand. Browser-verified chunk-on-demand behavior, zero console errors.
 - Profile and optimize re-renders in large state updates
-- Target: bundle < 500KB initial, lazy-load the rest
-- **Known regression:** `@dnd-kit` (Phase 11b) pushed bundle from ~624KB to ~1,378KB — candidate for lazy loading or lighter alternative
+- ~~Target: bundle < 500KB initial, lazy-load the rest~~ ✅ met (450KB entry)
+- ~~**Known regression:** `@dnd-kit` (Phase 11b) pushed bundle from ~624KB to ~1,378KB~~ ✅ resolved via deferred `combat-dnd` chunk
 
 ### 15c: UX Polish
 - Keyboard shortcuts for common actions
