@@ -117,7 +117,16 @@ export function useAlchemyData() {
     for (const batch of batchesArray) {
       const phase = batch.phase || batch.status;
       if (!prevBatchIds.has(batch.id) && phase === 'brewing') {
-        actions.addLogEntry(alchemyLog.batchStarted(batch.formulaName || 'Unknown'));
+        const workerId = workers.find(worker => worker.name === batch.worker)?.id;
+        actions.addLogEntry(alchemyLog.batchStarted(
+          batch.formulaName || 'Unknown',
+          undefined,
+          {
+            ...(workerId ? { characterIds: [workerId] } : {}),
+            ...(batch.worker ? { characterNames: [batch.worker] } : {}),
+            taskId: batch.id,
+          }
+        ));
       }
     }
 
@@ -127,13 +136,25 @@ export function useAlchemyData() {
       const phase = batch.phase || batch.status;
       const prevPhase = prevBatch?.phase || prevBatch?.status;
       if (prevBatch && prevPhase === 'brewing') {
+        const workerId = workers.find(worker => worker.name === batch.worker)?.id;
+        const meta = {
+          ...(workerId ? { characterIds: [workerId] } : {}),
+          ...(batch.worker ? { characterNames: [batch.worker] } : {}),
+          taskId: batch.id,
+        };
         if (phase === 'completed' || phase === 'complete') {
           actions.addLogEntry(alchemyLog.batchCompleted(
             batch.formulaName || 'Unknown',
-            batch.quality || 'Unknown'
+            batch.quality || 'Unknown',
+            undefined,
+            meta
           ));
         } else if (phase === 'failed') {
-          actions.addLogEntry(alchemyLog.batchFailed(batch.formulaName || 'Unknown'));
+          actions.addLogEntry(alchemyLog.batchFailed(
+            batch.formulaName || 'Unknown',
+            undefined,
+            meta
+          ));
         }
       }
     }
@@ -150,7 +171,7 @@ export function useAlchemyData() {
 
     prevBatchesRef.current = batchesArray;
     actions.setAlchemyBatches(normalizeArray(normalizedBatches) as Record<string, AlchemyBatch>);
-  }, [actions]);
+  }, [actions, workers]);
 
   // Count batches currently in brewing phase for badge display
   const activeCount = batches.filter(b => b.phase === 'brewing' || b.status === 'brewing').length;

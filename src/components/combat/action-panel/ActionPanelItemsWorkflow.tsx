@@ -62,6 +62,7 @@ export default function ActionPanelItemsWorkflow({
       inventoryLog.itemConsumed(
         itemName,
         (characterId && state.entities.characters[characterId]?.name) || currentActor.name,
+        characterId ? { characterIds: [characterId] } : undefined,
       ),
     );
   };
@@ -72,6 +73,7 @@ export default function ActionPanelItemsWorkflow({
       inventoryLog.itemConsumptionReverted(
         entry.itemSnapshot.name ?? 'Unnamed item',
         state.entities.characters[entry.characterId]?.name ?? entry.participantName,
+        { characterIds: [entry.characterId] },
       ),
     );
   };

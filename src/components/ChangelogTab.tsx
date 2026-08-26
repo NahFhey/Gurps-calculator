@@ -1,15 +1,25 @@
+import { useMemo, useState } from 'react';
 import { useCampaignStore } from '../state/campaignStore';
+import type { LogEntry } from '../state/campaignReducer';
 
-interface LogEntry {
-  id: string;
-  type: string;
-  visibility?: 'gmOnly' | 'mixed' | 'public';
-  timestamp: number;
-  payload?: {
-    message?: string;
-    maskedMessage?: string;
-    title?: string;
-  };
+const ACTIVITY_FAMILIES = [
+  'alchemy',
+  'cooking',
+  'crafting',
+  'gathering',
+  'inventory',
+  'combat',
+] as const;
+
+type VisibleLogEntry = {
+  entry: LogEntry;
+  message: string;
+  searchableMessage: string;
+};
+
+function getPayloadString(entry: LogEntry, key: 'message' | 'maskedMessage' | 'title'): string | undefined {
+  const value = entry.payload?.[key];
+  return typeof value === 'string' ? value : undefined;
 }
 
 /**
@@ -20,32 +30,142 @@ interface LogEntry {
  */
 export function ChangelogTab() {
   const { state } = useCampaignStore();
-  const entries = state.logs.entries as LogEntry[];
+  const entries = state.logs.entries;
   const gmModeEnabled = state.ui.gmModeEnabled;
+  const [search, setSearch] = useState('');
+  const [family, setFamily] = useState('all');
+  const [fromDay, setFromDay] = useState('');
+  const [toDay, setToDay] = useState('');
+  const [characterId, setCharacterId] = useState('');
 
-  const visibleEntries = entries.filter((entry) => {
+  const characters = useMemo(
+    () => Object.values(state.entities.characters).sort((left, right) => left.name.localeCompare(right.name)),
+    [state.entities.characters]
+  );
+
+  const visibleEntries = useMemo<VisibleLogEntry[]>(() => entries.flatMap((entry) => {
     if (entry.visibility === 'gmOnly' && !gmModeEnabled) {
-      return false;
+      return [];
     }
-    return true;
-  });
+
+    const isMasked = !gmModeEnabled && entry.visibility === 'mixed';
+    const payloadMessage = getPayloadString(entry, 'message');
+    const maskedMessage = getPayloadString(entry, 'maskedMessage');
+    const title = getPayloadString(entry, 'title');
+    const searchableMessage = isMasked ? (maskedMessage ?? '') : (payloadMessage ?? '');
+    const message = isMasked
+      ? maskedMessage ?? 'Details hidden in player mode.'
+      : payloadMessage ?? title ?? entry.type;
+
+    return [{ entry, message, searchableMessage }];
+  }), [entries, gmModeEnabled]);
+
+  const searchedEntries = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return query
+      ? visibleEntries.filter(({ searchableMessage }) => searchableMessage.toLowerCase().includes(query))
+      : visibleEntries;
+  }, [search, visibleEntries]);
+
+  const familyEntries = useMemo(() => family === 'all'
+    ? searchedEntries
+    : searchedEntries.filter(({ entry }) => entry.type.split('.')[0] === family),
+  [family, searchedEntries]);
+
+  const dayEntries = useMemo(() => {
+    if (fromDay === '' && toDay === '') return familyEntries;
+
+    const minimum = fromDay === '' ? undefined : Number(fromDay);
+    const maximum = toDay === '' ? undefined : Number(toDay);
+    return familyEntries.filter(({ entry }) => {
+      if (entry.day === undefined) return false;
+      if (minimum !== undefined && entry.day < minimum) return false;
+      if (maximum !== undefined && entry.day > maximum) return false;
+      return true;
+    });
+  }, [familyEntries, fromDay, toDay]);
+
+  const filteredEntries = useMemo(() => {
+    if (!characterId) return dayEntries;
+    const character = state.entities.characters[characterId];
+    if (!character) return [];
+    const characterName = character.name.toLowerCase();
+
+    return dayEntries.filter(({ entry }) => {
+      const ids = entry.meta?.characterIds;
+      if (ids?.length) return ids.includes(characterId);
+      return entry.meta?.characterNames?.some(name => name.toLowerCase() === characterName) ?? false;
+    });
+  }, [characterId, dayEntries, state.entities.characters]);
+
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
+    <div className="bg-slate-800 rounded-lg p-6">
       <h2 className="text-2xl font-bold mb-6">Changelog</h2>
-      {visibleEntries.length === 0 ? (
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <label className="text-sm text-slate-300 lg:col-span-2">
+          <span className="mb-1 block">Search</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search log messages"
+            className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 placeholder:text-slate-400"
+          />
+        </label>
+        <label className="text-sm text-slate-300">
+          <span className="mb-1 block">Category</span>
+          <select
+            value={family}
+            onChange={(event) => setFamily(event.target.value)}
+            className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100"
+          >
+            <option value="all">All</option>
+            {ACTIVITY_FAMILIES.map((activityFamily) => (
+              <option key={activityFamily} value={activityFamily}>
+                {activityFamily.charAt(0).toUpperCase() + activityFamily.slice(1)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm text-slate-300">
+          <span className="mb-1 block">From day</span>
+          <input
+            type="number"
+            value={fromDay}
+            onChange={(event) => setFromDay(event.target.value)}
+            className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100"
+          />
+        </label>
+        <label className="text-sm text-slate-300">
+          <span className="mb-1 block">To day</span>
+          <input
+            type="number"
+            value={toDay}
+            onChange={(event) => setToDay(event.target.value)}
+            className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100"
+          />
+        </label>
+        <label className="text-sm text-slate-300 sm:col-span-2 lg:col-span-2">
+          <span className="mb-1 block">Character</span>
+          <select
+            value={characterId}
+            onChange={(event) => setCharacterId(event.target.value)}
+            className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100"
+          >
+            <option value="">All characters</option>
+            {characters.map((character) => (
+              <option key={character.id} value={character.id}>{character.name}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {filteredEntries.length === 0 ? (
         <div className="text-sm text-gray-400">No log entries yet.</div>
       ) : (
         <div className="space-y-4">
-          {visibleEntries.map((entry) => {
-            const payload = entry.payload || {};
-            const isMixed = entry.visibility === 'mixed';
-            const message =
-              !gmModeEnabled && isMixed
-                ? payload.maskedMessage || 'Details hidden in player mode.'
-                : payload.message || payload.title || entry.type;
-            return (
-              <div key={entry.id} className="bg-gray-700 rounded-lg p-4">
+          {filteredEntries.map(({ entry, message }) => (
+              <div key={entry.id} className="bg-slate-700 rounded-lg p-4">
                 <div className="flex items-center justify-between text-xs text-gray-400">
                   <span className="uppercase tracking-wide">{entry.type}</span>
                   <span>{new Date(entry.timestamp).toLocaleString()}</span>
@@ -54,8 +174,7 @@ export function ChangelogTab() {
                   {message}
                 </div>
               </div>
-            );
-          })}
+          ))}
         </div>
       )}
     </div>

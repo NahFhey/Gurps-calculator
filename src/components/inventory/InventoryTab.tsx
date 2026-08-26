@@ -24,6 +24,12 @@ import type {
 import { InventoryOverviewView } from './views/InventoryOverviewView';
 import { PartyStashView } from './views/PartyStashView';
 
+function getInventoryCharacterIds(...inventories: Inventory[]): string[] {
+  return [...new Set(inventories.flatMap(inventory =>
+    inventory.ownerType === 'character' && inventory.ownerId ? [inventory.ownerId] : []
+  ))];
+}
+
 /**
  * InventoryTab owns inventory state and store integration, then routes data and
  * callbacks into the pure inventory views.
@@ -230,7 +236,8 @@ export function InventoryTab() {
         entry.name,
         quantity,
         getInventoryLabel(sourceInv, characters),
-        getInventoryLabel(targetInv, characters)
+        getInventoryLabel(targetInv, characters),
+        { characterIds: getInventoryCharacterIds(sourceInv, targetInv) }
       ));
       setTransferState(null);
       return;
@@ -248,7 +255,8 @@ export function InventoryTab() {
         item.name ?? 'Unknown',
         getInventoryLabel(sourceInv, characters),
         getInventoryLabel(targetInv, characters),
-        item.quantity
+        item.quantity,
+        { characterIds: getInventoryCharacterIds(sourceInv, targetInv) }
       ));
       setTransferState(null);
       return;
@@ -313,7 +321,8 @@ export function InventoryTab() {
         item?.name || 'Unknown',
         sourceLabel,
         targetLabel,
-        item?.quantity
+        item?.quantity,
+        { characterIds: getInventoryCharacterIds(sourceInv, targetInv) }
       ));
     } else if (transferState.type === 'tool' && transferState.toolId) {
       const tool = sourceInv.tools.find(sourceTool => sourceTool.toolId === transferState.toolId);
@@ -321,7 +330,9 @@ export function InventoryTab() {
       actions.addLogEntry(inventoryLog.itemTransferred(
         template?.name || 'Unknown Tool',
         sourceLabel,
-        targetLabel
+        targetLabel,
+        undefined,
+        { characterIds: getInventoryCharacterIds(sourceInv, targetInv) }
       ));
     } else if (transferState.type === 'currency' && transferState.currencyKey) {
       const amount = parseInt(transferState.amount || '0', 10);
@@ -329,7 +340,8 @@ export function InventoryTab() {
         amount,
         transferState.currencyKey,
         sourceLabel,
-        targetLabel
+        targetLabel,
+        { characterIds: getInventoryCharacterIds(sourceInv, targetInv) }
       ));
     }
 
@@ -347,7 +359,8 @@ export function InventoryTab() {
       item.name ?? 'Unknown',
       getInventoryLabel(sourceInventory, characters),
       getCharacterPackLabel(character),
-      item.quantity
+      item.quantity,
+      { characterIds: [...new Set([...getInventoryCharacterIds(sourceInventory), characterId])] }
     ));
   }, [actions, characters, inventories]);
 

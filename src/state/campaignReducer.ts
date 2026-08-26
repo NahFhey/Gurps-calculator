@@ -1,4 +1,5 @@
 import { enableMapSet, produce } from 'immer';
+import type { Draft } from 'immer';
 import { createPartyToolState, PARTY_TOOL_SKILLS } from '../components/partyToolSeed';
 import { advanceTimeSlot, type TimeLogEntry } from '../utils/timeSystem';
 import { SLOT_NAMES, SLOTS_PER_DAY } from '../constants';
@@ -243,12 +244,36 @@ const initialPartyToolState = createPartyToolState();
 
 export type LogVisibility = 'gmOnly' | 'player' | 'mixed';
 
+export type LogEntryMeta = {
+  characterIds?: string[];
+  characterNames?: string[];
+  itemNames?: string[];
+  quantity?: number;
+  taskId?: string;
+};
+
 export type LogEntry = {
   id: string;
   timestamp: number;
   type: string;
   visibility: LogVisibility;
   payload: Record<string, unknown>;
+  day?: number;
+  slot?: number;
+  meta?: LogEntryMeta;
+};
+
+const MAX_LOG_ENTRIES = 2000;
+
+const appendLogEntry = (draft: Draft<CampaignState>, entry: LogEntry): void => {
+  draft.logs.entries.unshift({
+    ...entry,
+    day: entry.day ?? draft.time.day,
+    slot: entry.slot ?? draft.time.slot,
+  });
+  if (draft.logs.entries.length > MAX_LOG_ENTRIES) {
+    draft.logs.entries.length = MAX_LOG_ENTRIES;
+  }
 };
 
 export type CampaignSnapshot = Omit<CampaignState, 'checkpoints'>;
@@ -718,7 +743,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
               );
               location.modifiers = terrainMods;
               location.modifiedAt = Date.now();
-              draft.logs.entries.unshift(
+              appendLogEntry(draft,
                 logEvent('terrain.changed', 'player', {
                   message: `Terrain changed from ${oldLabel} to ${newLabel}`
                 })
@@ -746,7 +771,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.time.slot = nextSlot;
         draft.time.day = nextDay;
         draft.time.history.push({ ...logEntry, day: nextDay });
-        draft.logs.entries.unshift(
+        appendLogEntry(draft,
           logEvent('time.advance', 'player', {
             message: `Travel completed — advanced to Day ${nextDay}, Slot ${nextSlot + 1} (${slotLabels[nextSlot]})`
           })
@@ -804,10 +829,13 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.entities.toolReservations = action.payload;
         return;
       case 'addLogEntry':
-        draft.logs.entries.unshift(action.payload);
+        appendLogEntry(draft, action.payload);
         return;
       case 'setLogsEntries':
         draft.logs.entries = action.payload;
+        if (draft.logs.entries.length > MAX_LOG_ENTRIES) {
+          draft.logs.entries = action.payload.slice(0, MAX_LOG_ENTRIES);
+        }
         return;
       case 'createCheckpoint': {
         const checkpoint = createCheckpointEntry(draft as CampaignState, action.payload);
@@ -857,7 +885,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
           action.payload?.encounterId ?? `enc-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
         // Log combat start
-        draft.logs.entries.unshift(
+        appendLogEntry(draft,
           logEvent('combat.started', 'player', {
             message: 'Combat started'
           })
@@ -872,7 +900,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
           // Log when a combatant is defeated
           const character = draft.entities.combatCharacters[targetId];
           const characterName = character?.name ?? targetId;
-          draft.logs.entries.unshift(
+          appendLogEntry(draft,
             logEvent('combat.defeated', 'mixed', {
               message: `${characterName} was defeated`,
               maskedMessage: 'A combatant was defeated'
@@ -939,8 +967,9 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.dayPlanner = restoredSnapshot.dayPlanner;
         draft.activities = restoredSnapshot.activities;
         draft.logs = {
-          entries: [rollbackEntry, ...restoredSnapshot.logs.entries]
+          entries: restoredSnapshot.logs.entries
         };
+        appendLogEntry(draft, rollbackEntry);
         draft.combat = restoredSnapshot.combat;
         draft.locations = (restoredSnapshot as CampaignState).locations || createInitialLocationState(restoredSnapshot.time || { day: 1, slot: 0 });
         draft.downtime = (restoredSnapshot as CampaignState).downtime || downtimeInitialState;
@@ -984,7 +1013,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         draft.time.slot = nextSlot;
         draft.time.day = nextDay;
         draft.time.history.push({ ...logEntry, day: nextDay });
-        draft.logs.entries.unshift(
+        appendLogEntry(draft,
           logEvent('time.advance', 'player', {
             message: `Advanced to Day ${nextDay}, Slot ${nextSlot + 1} (${slotLabels[nextSlot]})`
           })
@@ -1009,7 +1038,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
 
             // Only log if this is the current location
             if (location.id === draft.locations.currentLocationId) {
-              draft.logs.entries.unshift(
+              appendLogEntry(draft,
                 logEvent('weather.changed', 'player', {
                   message: result.logMessage
                 })
@@ -1130,7 +1159,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
       case 'setCurrentLocation':
         if (draft.locations.locations[action.payload]) {
           draft.locations.currentLocationId = action.payload;
-          draft.logs.entries.unshift(
+          appendLogEntry(draft,
             logEvent('location.changed', 'player', {
               message: `Party moved to ${draft.locations.locations[action.payload].name}`
             })
@@ -1163,7 +1192,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
           });
           location.currentWeather = result.weather;
           location.modifiedAt = Date.now();
-          draft.logs.entries.unshift(
+          appendLogEntry(draft,
             logEvent('weather.changed', 'player', {
               message: result.logMessage
             })
@@ -1218,7 +1247,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
           // Set current location to destination
           if (draft.locations.locations[travel.toLocationId]) {
             draft.locations.currentLocationId = travel.toLocationId;
-            draft.logs.entries.unshift(
+            appendLogEntry(draft,
               logEvent('travel.completed', 'player', {
                 message: `Party arrived at ${draft.locations.locations[travel.toLocationId].name}`
               })
@@ -1234,7 +1263,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         const travelToCancel = draft.locations.activeTravels.find(t => t.id === action.payload);
         if (travelToCancel) {
           draft.locations.activeTravels = draft.locations.activeTravels.filter(t => t.id !== action.payload);
-          draft.logs.entries.unshift(
+          appendLogEntry(draft,
             logEvent('travel.cancelled', 'player', {
               message: 'Travel was cancelled'
             })

@@ -135,7 +135,11 @@ export function CraftingDesigns({
                       };
 
                       saveCrafts([...crafts, newCraft]);
-                      addLogEntry(craftingLog.projectStarted(design.name || design.template || 'Unknown'));
+                      addLogEntry(craftingLog.projectStarted(
+                        design.name || design.template || 'Unknown',
+                        undefined,
+                        { taskId: newCraft.id }
+                      ));
                       onStartFromDesign(newCraft);
                     }}
                     disabled={!canStart}
