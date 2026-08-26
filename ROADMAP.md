@@ -362,7 +362,7 @@
 - Target: Lighthouse accessibility score > 80
 
 ### 15e: JS -> TS Migration (NEW)
-- Convert critical `.js` utility files to `.ts`:
+- ✅ COMPLETE (2026-08-26): all listed files were already converted in earlier phases or removed as dead code; the two remaining live JS utils (gathering.js 823, alchemy.js 1,366) converted via codex-shepherd with .d.ts folded in — src/utils now has zero .js files outside tests. Original list:
   - `src/utils/combatHistory.js` (600 lines)
   - `src/utils/combatReveal.js` (300 lines)
   - `src/utils/exportImport.js` (500 lines)
