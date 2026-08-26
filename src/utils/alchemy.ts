@@ -48,6 +48,280 @@ import {
   HAZARD_RULES
 } from '../constants';
 import { determineQuality } from './helpers';
+import type {
+  AlchemyBatch,
+  AlchemyFormula,
+  AlchemyReagent,
+  FormulaIngredient,
+} from '../types/campaign';
+
+type AspectTally = Record<string, number>;
+
+export interface RoleCoverageResult {
+  valid: boolean;
+  missingRoles: string[];
+  wrDelta: number;
+  dmDelta: number;
+  messages: string[];
+}
+
+export interface BatchValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface HazardDetail {
+  hazard: string;
+  source?: string;
+  effect: string;
+  triggerOn: string[];
+  wrMod: number;
+  dmMod: number;
+  severity?: string;
+}
+
+export interface HazardEvaluationResult {
+  count: number;
+  hazards: string[];
+  details: HazardDetail[];
+}
+
+export interface FormulaStats {
+  tier: number;
+  calculatedTier: number;
+  potencyLoad: number;
+  isLegacyTier: boolean | number | undefined;
+  baseWR: number;
+  baseDM: number;
+  dominantAspect: string | null;
+  secondaryAspect: string | null;
+  basePotency: string;
+  concentrationSteps: number;
+  finalPotency: string;
+  totalConcentrationSteps: number;
+  vector: string;
+  traitBudget: number;
+  hasMatchingStabilizer: boolean;
+  coherent: boolean;
+  activeAspectCount: number;
+  conflicts: number;
+  hazardCount: number;
+  roleCoverage: RoleCoverageResult;
+  batchValidation: BatchValidationResult;
+  hazardEvaluation: HazardEvaluationResult;
+}
+
+export interface DominantSecondaryResult {
+  dominant: string | null;
+  dominantValue: number;
+  secondary: string | null;
+  secondaryValue: number;
+}
+
+export interface ProcessingDifficultyParams {
+  operation: 'refine' | 'concentrate';
+  currentRefinement: string;
+  targetRefinement: string | null;
+  inputPotency: string;
+  targetPotency: string | null;
+  outputUnits: number;
+  alchemySkill: number;
+  labRating: number;
+  cumulativeBatchPenalty?: number;
+}
+
+export interface ProcessingDifficultyResult {
+  alchemySkill: number;
+  labRating: number;
+  processStepDM: number;
+  batchSizePenalty: number;
+  potencyControlPenalty: number;
+  effectiveSkill: number;
+  breakdown: string;
+}
+
+export interface ProcessingResult {
+  success: boolean;
+  critical?: boolean;
+  minor?: boolean;
+  outputProduced: boolean;
+  hazardAdded: string | null;
+  message: string;
+  reclaim?: boolean;
+  complication?: boolean;
+}
+
+export interface PublicHazard {
+  id: string;
+  known: boolean;
+  severity: string | undefined;
+}
+
+export interface GmHazard extends HazardDetail {
+  id: string;
+}
+
+export interface HazardVisibility {
+  hazardsPublic: PublicHazard[];
+  gmHazards: GmHazard[];
+}
+
+export type DisplayHazard = GmHazard | {
+  id: string;
+  hazard: 'Unknown Complication';
+  effect: string;
+  severity: string | undefined;
+  masked: true;
+};
+
+export interface FormulaStatsOptions {
+  overrideTier?: boolean;
+  tier?: number;
+  labRating?: number;
+}
+
+export interface ConcentrationRefinementStep {
+  type: 'concentration';
+  from: number;
+  to: number;
+  steps: number;
+}
+
+type ReagentInput = Omit<Partial<AlchemyReagent>, 'potency' | 'refinement'> & {
+  potency?: string | number;
+  refinement?: string;
+  refinementHistory?: ConcentrationRefinementStep[];
+};
+
+type IngredientInput = Pick<FormulaIngredient, 'unitsUsed'>
+  & Partial<Omit<FormulaIngredient, 'unitsUsed' | 'refinement'>>
+  & {
+    refinement?: string;
+    basePotency?: string;
+    potency?: string;
+    concentrationSteps?: number;
+  };
+
+type FormulaInput = Omit<Partial<AlchemyFormula>, 'ingredients' | 'secondaryAspect'> & {
+  ingredients?: IngredientInput[];
+  vector?: string;
+  secondaryAspect?: string | null;
+  potency?: string | number;
+  hazardEvaluation?: HazardEvaluationResult | null;
+};
+
+export interface WorkHazardEvent {
+  hazard: string;
+  effect: string;
+  severity: string | undefined;
+  trigger?: string;
+}
+
+export interface WorkShift {
+  id: string;
+  date: string;
+  worker: string;
+  skill: number;
+  roll: number;
+  effectiveSkill: number;
+  result: string;
+  ppAdded: number;
+  cpChange: number;
+  hazardEvents?: WorkHazardEvent[];
+  labName?: string;
+  labRating?: number;
+}
+
+type WorkBatch = Omit<Partial<AlchemyBatch>,
+  'phase' | 'hazardDetails' | 'shifts' | 'completionHazards'
+> & {
+  id: string;
+  phase?: string;
+  skill?: number;
+  hazardDetails?: unknown[];
+  shifts?: WorkShift[];
+};
+
+type WorkBatchResult = WorkBatch & {
+  PP?: number;
+  CP?: number;
+  shifts?: WorkShift[];
+  phase?: string;
+  quality?: string | null;
+  completedDate?: string | null;
+  completionHazards?: WorkHazardEvent[];
+};
+
+export interface LegacyWorkRoll {
+  total: number;
+  modifier: number;
+}
+
+export interface StartBatchOptions {
+  forecast?: AlchemyBatch['forecast'] | unknown[] | null;
+  microAssay?: AlchemyBatch['microAssay'] | unknown[] | null;
+  overrideWR?: number;
+  overrideDM?: number;
+  gmMode?: boolean;
+}
+
+type StartedConsumedIngredient = Omit<
+  NonNullable<AlchemyBatch['consumedIngredients']>[number],
+  'potency'
+> & {
+  potency?: string | number;
+};
+
+export type StartedAlchemyBatch = Omit<Partial<AlchemyBatch>,
+  | 'phase'
+  | 'consumedIngredients'
+  | 'hazardsPublic'
+  | 'gmHazards'
+  | 'hazardDetails'
+  | 'shifts'
+  | 'basePotency'
+  | 'finalPotency'
+  | 'forecast'
+  | 'microAssay'
+> & {
+  id: string;
+  formulaId: string;
+  formulaName: string;
+  phase: 'brewing';
+  consumedIngredients: StartedConsumedIngredient[];
+  hazardsPublic: PublicHazard[];
+  gmHazards: GmHazard[];
+  hazardDetails: GmHazard[];
+  shifts: [];
+  basePotency: string | number;
+  finalPotency: string | number;
+  forecast: StartBatchOptions['forecast'] | null;
+  microAssay: StartBatchOptions['microAssay'] | null;
+  startDate: string;
+  completedDate: null;
+};
+
+export interface MissingReagent {
+  reagentId: string;
+  reagentName: string;
+  needed: number;
+  available: number;
+}
+
+export type StartBatchResult<R extends ReagentInput = ReagentInput> = {
+  ok: false;
+  error: {
+    code: 'INSUFFICIENT_REAGENTS';
+    message: string;
+    missing: MissingReagent[];
+  };
+} | {
+  ok: true;
+  batch: StartedAlchemyBatch;
+  reagents: R[];
+  events: [];
+};
 
 /**
  * Conflicting aspect pairs that increase WR/DM difficulty.
@@ -68,7 +342,7 @@ const CONFLICT_PAIRS = [
  * @param {number} max - Maximum allowed value
  * @returns {number} The clamped value
  */
-function clamp(value, min, max) {
+function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
@@ -84,7 +358,7 @@ function clamp(value, min, max) {
  * normalizeLabRating(-1) // returns 0 (clamped)
  * normalizeLabRating(10) // returns 4 (clamped)
  */
-export function normalizeLabRating(lr) {
+export function normalizeLabRating(lr?: number): number {
   return clamp(lr || 0, 0, 4);
 }
 
@@ -96,7 +370,7 @@ export function normalizeLabRating(lr) {
  * @param {Object<string, number>} tally - Aspect tally object mapping aspect names to point totals
  * @returns {number} Count of active aspects (aspects with > 0 points)
  */
-function countActiveAspects(tally) {
+function countActiveAspects(tally: AspectTally): number {
   return Object.keys(tally).filter(aspect => aspect && tally[aspect] > 0).length;
 }
 
@@ -112,7 +386,7 @@ function countActiveAspects(tally) {
  * countConflictsFromTally({Fire: 5, Water: 3}) // returns 1
  * countConflictsFromTally({Fire: 5, Water: 3, Light: 2, Shadow: 1}) // returns 2
  */
-function countConflictsFromTally(tally) {
+function countConflictsFromTally(tally: AspectTally): number {
   let conflicts = 0;
   CONFLICT_PAIRS.forEach(([a, b]) => {
     if (tally[a] > 0 && tally[b] > 0) {
@@ -146,11 +420,11 @@ function countConflictsFromTally(tally) {
  * getReagentAspectPoints(reagent)
  * // returns { Fire: 3, Light: 2 } (tertiary not active at 'prepared')
  */
-export function getReagentAspectPoints(reagent) {
+export function getReagentAspectPoints(reagent: ReagentInput): AspectTally {
   if (!reagent.aspects?.primary) return {};
 
-  const activeSlots = REFINEMENT_LEVELS[reagent.refinement] || REFINEMENT_LEVELS.crude;
-  const points = {};
+  const activeSlots = REFINEMENT_LEVELS[reagent.refinement as string] || REFINEMENT_LEVELS.crude;
+  const points: AspectTally = {};
 
   if (activeSlots.includes('primary') && reagent.aspects.primary) {
     points[reagent.aspects.primary] = (points[reagent.aspects.primary] || 0) + 3;
@@ -173,11 +447,11 @@ export function getReagentAspectPoints(reagent) {
  * @param {Map<string, Object>} reagentsMap - Map of reagent IDs to reagent objects
  * @returns {Object<string, number>} Tally object mapping aspect names to total points
  */
-export function tallyAspects(activeIngredients, reagentsMap) {
-  const tally = {};
+export function tallyAspects(activeIngredients: IngredientInput[], reagentsMap: Map<string, ReagentInput>): AspectTally {
+  const tally: AspectTally = {};
 
   activeIngredients.forEach(ing => {
-    const reagent = reagentsMap.get(ing.reagentId);
+    const reagent = reagentsMap.get(ing.reagentId as string);
     if (!reagent || !reagent.aspects?.primary) return;
 
     const tempReagent = { ...reagent, refinement: ing.refinement };
@@ -204,7 +478,7 @@ export function tallyAspects(activeIngredients, reagentsMap) {
  * @returns {string|null} returns.secondary - Name of the secondary aspect (second highest)
  * @returns {number} returns.secondaryValue - Point value of secondary aspect
  */
-export function computeDominantSecondary(tally) {
+export function computeDominantSecondary(tally: AspectTally): DominantSecondaryResult {
   const entries = Object.entries(tally).sort((a, b) => b[1] - a[1]);
 
   return {
@@ -224,8 +498,8 @@ export function computeDominantSecondary(tally) {
  * @param {number} concentrationSteps - Number of concentration steps to apply
  * @returns {string} Final potency level after concentration
  */
-export function getFinalPotency(basePotency, concentrationSteps) {
-  const baseIndex = POTENCY_LEVELS.indexOf(basePotency);
+export function getFinalPotency(basePotency: string, concentrationSteps: number): string {
+  const baseIndex = (POTENCY_LEVELS as readonly unknown[]).indexOf(basePotency);
   if (baseIndex === -1) return basePotency;
 
   const finalIndex = Math.min(POTENCY_LEVELS.length - 1, baseIndex + concentrationSteps);
@@ -243,9 +517,12 @@ export function getFinalPotency(basePotency, concentrationSteps) {
  * @param {number} steps - Steps to apply
  * @returns {Object} Updated reagent with new concentration and history
  */
-export function calculateConcentrationRefinement(reagent, steps = 1) {
+export function calculateConcentrationRefinement<R extends ReagentInput>(
+  reagent: R,
+  steps = 1
+): R & { concentrationSteps?: number; refinementHistory?: ConcentrationRefinementStep[] } {
   const basePotency = reagent.basePotency || reagent.potency || 'P0';
-  const baseIndex = POTENCY_LEVELS.indexOf(basePotency);
+  const baseIndex = (POTENCY_LEVELS as readonly unknown[]).indexOf(basePotency);
   if (baseIndex === -1) {
     return { ...reagent };
   }
@@ -286,17 +563,17 @@ export function calculateConcentrationRefinement(reagent, steps = 1) {
  * // 1 unit of P2 reagent (index 2) with 1 concentration = (2+1)*1 = 3
  * // Total potency load = 5
  */
-export function calculatePotencyLoad(activeIngredients, reagentsMap) {
+export function calculatePotencyLoad(activeIngredients: IngredientInput[], reagentsMap: Map<string, ReagentInput>): number {
   let totalLoad = 0;
 
   activeIngredients.forEach(ing => {
-    const reagent = reagentsMap.get?.(ing.reagentId);
+    const reagent = reagentsMap.get?.(ing.reagentId as string);
     const basePotency = reagent?.basePotency
       || reagent?.potency
       || ing.basePotency
       || ing.potency
       || 'P1';
-    const potencyIndex = POTENCY_LEVELS.indexOf(basePotency);
+    const potencyIndex = (POTENCY_LEVELS as readonly unknown[]).indexOf(basePotency);
     const concentrationSteps = reagent?.concentrationSteps || ing.concentrationSteps || 0;
 
     // Potency load contribution = (base potency index + concentration steps) * units used
@@ -318,7 +595,7 @@ export function calculatePotencyLoad(activeIngredients, reagentsMap) {
  * calculateTierFromPotencyLoad(3) // returns 1 (Tier 1: 0-4 range)
  * calculateTierFromPotencyLoad(12) // returns 3 (Tier 3: 10-16 range)
  */
-export function calculateTierFromPotencyLoad(potencyLoad) {
+export function calculateTierFromPotencyLoad(potencyLoad: number): number {
   for (const threshold of TIER_THRESHOLDS) {
     if (potencyLoad >= threshold.minPotencyLoad && potencyLoad <= threshold.maxPotencyLoad) {
       return threshold.tier;
@@ -343,14 +620,14 @@ export function calculateTierFromPotencyLoad(potencyLoad) {
  * @returns {number} returns.dmDelta - DM penalty for missing roles
  * @returns {Array<string>} returns.messages - Human-readable penalty descriptions
  */
-export function validateRoleCoverage(ingredients, vectorName) {
+export function validateRoleCoverage(ingredients: IngredientInput[], vectorName: string): RoleCoverageResult {
   const requiredRoles = REQUIRED_ROLES_BY_VECTOR[vectorName] || [];
   const presentRoles = new Set(ingredients.map(ing => ing.role).filter(Boolean));
 
-  const missingRoles = [];
+  const missingRoles: string[] = [];
   let wrPenalty = 0;
   let dmPenalty = 0;
-  const messages = [];
+  const messages: string[] = [];
 
   requiredRoles.forEach(requiredRole => {
     if (!presentRoles.has(requiredRole)) {
@@ -383,9 +660,9 @@ export function validateRoleCoverage(ingredients, vectorName) {
  * @returns {Array<string>} returns.errors - Critical errors (block formula creation)
  * @returns {Array<string>} returns.warnings - Non-critical warnings
  */
-export function validateBatchConstraints(ingredients) {
-  const errors = [];
-  const warnings = [];
+export function validateBatchConstraints(ingredients: IngredientInput[]): BatchValidationResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
 
   // Check max reagents
   if (ingredients.length > MAX_REAGENTS_PER_BATCH) {
@@ -395,7 +672,7 @@ export function validateBatchConstraints(ingredients) {
   // Check max units per role
   ingredients.forEach((ing, idx) => {
     const role = ing.role;
-    const maxUnits = MAX_UNITS_PER_REAGENT_BY_ROLE[role];
+    const maxUnits = MAX_UNITS_PER_REAGENT_BY_ROLE[role as string];
     if (maxUnits && ing.unitsUsed > maxUnits) {
       warnings.push(`${ing.reagentName || `Ingredient ${idx + 1}`}: ${role} role limited to ${maxUnits}U (using ${ing.unitsUsed}U)`);
     }
@@ -424,12 +701,15 @@ export function validateBatchConstraints(ingredients) {
  * @returns {Array<string>} returns.hazards - Array of hazard names
  * @returns {Array<Object>} returns.details - Detailed hazard information with effects and triggers
  */
-export function evaluateHazards(ingredients, reagentsMap = new Map()) {
-  const hazardsPresent = new Set();
-  const hazardDetails = [];
+export function evaluateHazards(
+  ingredients: IngredientInput[],
+  reagentsMap: Map<string, ReagentInput> = new Map()
+): HazardEvaluationResult {
+  const hazardsPresent = new Set<string>();
+  const hazardDetails: HazardDetail[] = [];
 
   ingredients.forEach(ing => {
-    const reagent = reagentsMap.get?.(ing.reagentId);
+    const reagent = reagentsMap.get?.(ing.reagentId as string);
     if (!reagent || !reagent.hazards) return;
 
     reagent.hazards.forEach(hazard => {
@@ -477,7 +757,7 @@ export function evaluateHazards(ingredients, reagentsMap = new Map()) {
  * getEffectFamilyKey('Light', 'Fire') // returns 'Fire/Light' (same key, alphabetical)
  * getEffectFamilyKey('Fire', null) // returns 'Fire'
  */
-export function getEffectFamilyKey(aspect1, aspect2) {
+export function getEffectFamilyKey(aspect1: string | null, aspect2: string | null): string | null {
   if (!aspect1 && !aspect2) return null;
   if (!aspect2) return aspect1;
 
@@ -513,16 +793,20 @@ export function getEffectFamilyKey(aspect1, aspect2) {
  * @param {number} [options.labRating=0] - Lab Rating (0-4) for WR reduction
  * @returns {Object} Complete formula statistics including validation results
  */
-export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion', options = {}) {
+export function calculateFormulaStats(
+  formula: FormulaInput,
+  reagentsMap?: Map<string, ReagentInput>,
+  vectorName: string | FormulaStatsOptions = 'Potion',
+  options: FormulaStatsOptions = {}
+): FormulaStats {
   const resolvedReagentsMap = reagentsMap instanceof Map ? reagentsMap : new Map();
   const resolvedVectorName = typeof vectorName === 'string'
     ? (formula.vector || vectorName)
     : (formula.vector || 'Potion');
   const resolvedOptions = typeof vectorName === 'object' && vectorName !== null ? vectorName : options;
-
-  const actives = formula.ingredients.filter(ing => ing.role === 'active' || ing.role === 'Active');
-  const stabilizers = formula.ingredients.filter(ing => ing.role === 'stabilizer' || ing.role === 'Stabilizer');
-  const catalysts = formula.ingredients.filter(ing => ing.role === 'catalyst' || ing.role === 'Catalyst');
+  const actives = formula.ingredients!.filter(ing => ing.role === 'active' || ing.role === 'Active');
+  const stabilizers = formula.ingredients!.filter(ing => ing.role === 'stabilizer' || ing.role === 'Stabilizer');
+  const catalysts = formula.ingredients!.filter(ing => ing.role === 'catalyst' || ing.role === 'Catalyst');
 
   // Calculate aspect tally for dominant/secondary
   const tally = tallyAspects(actives, resolvedReagentsMap);
@@ -536,13 +820,13 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
   const isLegacyTier = resolvedOptions.overrideTier || (formula.tier && formula.tier !== calculatedTier);
 
   // ROLE COVERAGE VALIDATION
-  const roleCoverage = validateRoleCoverage(formula.ingredients, resolvedVectorName);
+  const roleCoverage = validateRoleCoverage(formula.ingredients!, resolvedVectorName);
 
   // BATCH CONSTRAINTS VALIDATION
-  const batchValidation = validateBatchConstraints(formula.ingredients);
+  const batchValidation = validateBatchConstraints(formula.ingredients!);
 
   // HAZARD EVALUATION
-  const hazardEvaluation = evaluateHazards(formula.ingredients, resolvedReagentsMap);
+  const hazardEvaluation = evaluateHazards(formula.ingredients!, resolvedReagentsMap);
 
   // Get vector modifiers
   const vector = VECTORS.find(v => v.name === resolvedVectorName)
@@ -608,7 +892,7 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
   // 5. Concentration (max concentration steps from actives)
   let maxConcentrationSteps = 0;
   actives.forEach(ing => {
-    const r = resolvedReagentsMap.get?.(ing.reagentId);
+    const r = resolvedReagentsMap.get?.(ing.reagentId as string);
     const concentrationSteps = r?.concentrationSteps || ing.concentrationSteps || 0;
     if (concentrationSteps > maxConcentrationSteps) {
       maxConcentrationSteps = concentrationSteps;
@@ -633,12 +917,12 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
   // 7. Catalyst matching bonus
   let catalystBonus = 0;
   catalysts.forEach(cat => {
-    const reagent = resolvedReagentsMap.get?.(cat.reagentId);
+    const reagent = resolvedReagentsMap.get?.(cat.reagentId as string);
     if (!reagent) return;
     const points = getReagentAspectPoints({ ...reagent, refinement: cat.refinement });
 
-    const matchesDominant = points[dominant] > 0;
-    const matchesSecondary = points[secondary] > 0;
+    const matchesDominant = points[dominant as string] > 0;
+    const matchesSecondary = points[secondary as string] > 0;
 
     if (matchesDominant && matchesSecondary) {
       catalystBonus = Math.max(catalystBonus, 2);
@@ -661,22 +945,22 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
 
   // Check for matching stabilizer (flag only, NOT a DM modifier)
   const hasMatchingStabilizer = stabilizers.some(stab => {
-    const reagent = resolvedReagentsMap.get?.(stab.reagentId);
+    const reagent = resolvedReagentsMap.get?.(stab.reagentId as string);
     if (!reagent) return false;
     const points = getReagentAspectPoints({ ...reagent, refinement: stab.refinement });
-    return points[dominant] > 0;
+    return points[dominant as string] > 0;
   });
 
   // Get highest base potency from actives
   let highestBasePotency = 'P0';
   actives.forEach(ing => {
-    const r = resolvedReagentsMap.get?.(ing.reagentId);
+    const r = resolvedReagentsMap.get?.(ing.reagentId as string);
     const basePotency = r?.basePotency || r?.potency || ing.basePotency || ing.potency || 'P1';
     if (basePotency) {
-      const currentIndex = POTENCY_LEVELS.indexOf(basePotency);
-      const highestIndex = POTENCY_LEVELS.indexOf(highestBasePotency);
+      const currentIndex = (POTENCY_LEVELS as readonly unknown[]).indexOf(basePotency);
+      const highestIndex = (POTENCY_LEVELS as readonly unknown[]).indexOf(highestBasePotency);
       if (currentIndex > highestIndex) {
-        highestBasePotency = basePotency;
+        highestBasePotency = basePotency as string;
       }
     }
   });
@@ -685,8 +969,8 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
   const finalPotency = getFinalPotency(highestBasePotency, maxConcentrationSteps);
 
   // Calculate total concentration steps (for display/tracking)
-  const totalConcentrationSteps = formula.ingredients.reduce((sum, ing) => {
-    const r = resolvedReagentsMap.get?.(ing.reagentId);
+  const totalConcentrationSteps = formula.ingredients!.reduce((sum, ing) => {
+    const r = resolvedReagentsMap.get?.(ing.reagentId as string);
     return sum + ((r?.concentrationSteps || ing.concentrationSteps || 0) * ing.unitsUsed);
   }, 0);
 
@@ -749,16 +1033,34 @@ export function calculateFormulaStats(formula, reagentsMap, vectorName = 'Potion
  * @param {string} date - Date string for the work block
  * @returns {Object} Updated batch object with new PP, CP, shifts, hazard events, and possibly completed status
  */
-export function applyWorkBlockResult(batch, skill, roll, worker, date) {
+export function applyWorkBlockResult<T extends WorkBatch>(
+  batch: T,
+  roll: LegacyWorkRoll,
+  workType: string
+): T & WorkBatchResult;
+export function applyWorkBlockResult<T extends WorkBatch>(
+  batch: T,
+  skill: number,
+  roll: number,
+  worker: string,
+  date: string
+): T & WorkBatchResult;
+export function applyWorkBlockResult<T extends WorkBatch>(
+  batch: T,
+  skill: number | LegacyWorkRoll,
+  roll: number | string,
+  worker?: string,
+  date?: string
+): T & WorkBatchResult {
   if (typeof skill === 'object' && skill !== null && typeof roll === 'string') {
     const rollInfo = skill;
-    const normalizedSkill = Number.isFinite(batch.skill) ? batch.skill : 12;
+    const normalizedSkill = Number.isFinite(batch.skill) ? batch.skill as number : 12;
     const normalizedRoll = rollInfo.total ?? 0;
     const result = applyWorkBlockResult(
       {
         ...batch,
-        PP: Number.isFinite(batch.PP) ? batch.PP : 0,
-        WR: Number.isFinite(batch.WR) ? batch.WR : 0,
+        PP: Number.isFinite(batch.PP) ? batch.PP as number : 0,
+        WR: Number.isFinite(batch.WR) ? batch.WR as number : 0,
         shifts: Array.isArray(batch.shifts) ? batch.shifts : []
       },
       normalizedSkill,
@@ -775,13 +1077,13 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
     return result;
   }
 
-  const safeSkill = Number.isFinite(skill) ? skill : 0;
-  const safeDM = Number.isFinite(batch.DM) ? batch.DM : 0;
+  const safeSkill = Number.isFinite(skill) ? skill as number : 0;
+  const safeDM = Number.isFinite(batch.DM) ? batch.DM as number : 0;
   const effectiveSkill = safeSkill + safeDM + (batch.labRating || 0);
 
   // PHASE 1: Classify roll outcome
   const isCritSuccess =
-    roll <= 4 ||
+    (roll as number) <= 4 ||
     (roll === 5 && effectiveSkill >= 15) ||
     (roll === 6 && effectiveSkill >= 16);
 
@@ -790,11 +1092,13 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
     (roll === 17 && effectiveSkill <= 15) ||
     (roll === 16 && effectiveSkill <= 6);
 
-  const isSuccess = !isCritSuccess && !isCritFailure && roll <= effectiveSkill;
-  const isFailure = !isCritSuccess && roll > effectiveSkill;
+  const isSuccess = !isCritSuccess && !isCritFailure && (roll as number) <= effectiveSkill;
+  const isFailure = !isCritSuccess && (roll as number) > effectiveSkill;
   const isMishap = isCritFailure;
 
-  const margin = isSuccess ? effectiveSkill - roll : (isFailure ? roll - effectiveSkill : 0);
+  const margin = isSuccess
+    ? effectiveSkill - (roll as number)
+    : (isFailure ? (roll as number) - effectiveSkill : 0);
 
   // PHASE 2: Compute base deltas
   let baseProgressDelta = 0;
@@ -823,9 +1127,9 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
   let hazardProgressDelta = 0;
   let hazardCPDelta = 0;
   let destroyed = false;
-  const hazardEvents = [];
+  const hazardEvents: WorkHazardEvent[] = [];
 
-  const hazardDetails = batch.hazardDetails || [];
+  const hazardDetails = (batch.hazardDetails || []) as HazardDetail[];
   hazardDetails.forEach(hazard => {
     let triggered = false;
     let reason = '';
@@ -872,10 +1176,10 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
   // Create shift record with deltas
   const newShift = {
     id: crypto.randomUUID(),
-    date,
-    worker,
-    skill,
-    roll,
+    date: date as string,
+    worker: worker as string,
+    skill: skill as number,
+    roll: roll as number,
     effectiveSkill,
     result,
     ppAdded: progressDelta,
@@ -887,8 +1191,8 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
 
   // PHASE 5: Handle destruction (skip progress if destroyed)
   const safeShifts = Array.isArray(batch.shifts) ? batch.shifts : [];
-  const safePP = Number.isFinite(batch.PP) ? batch.PP : 0;
-  const safeWR = Number.isFinite(batch.WR) ? batch.WR : 0;
+  const safePP = Number.isFinite(batch.PP) ? batch.PP as number : 0;
+  const safeWR = Number.isFinite(batch.WR) ? batch.WR as number : 0;
 
   if (destroyed) {
     return {
@@ -912,14 +1216,14 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
   };
 
   // PHASE 7: Check completion
-  if (updated.PP >= updated.WR) {
+  if ((updated.PP as number) >= (updated.WR as number)) {
     const quality = determineQuality(updated.CP);
     updated.phase = quality === 'Mishap' ? 'failed' : 'completed';
     updated.quality = quality;
     updated.completedDate = new Date().toISOString();
 
     // CHECK HAZARDS ON COMPLETION
-    const completionHazards = [];
+    const completionHazards: WorkHazardEvent[] = [];
     hazardDetails.forEach(hazard => {
       // Flammable triggers on Unstable or worse
       if (hazard.hazard === 'Flammable' && ['Unstable', 'Flawed', 'Mishap'].includes(quality)) {
@@ -942,7 +1246,7 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
     });
 
     if (completionHazards.length > 0) {
-      updated.completionHazards = completionHazards;
+      (updated as WorkBatchResult).completionHazards = completionHazards;
     }
   }
 
@@ -960,9 +1264,12 @@ export function applyWorkBlockResult(batch, skill, roll, worker, date) {
  * @param {boolean} [options.allKnown=false] - If true, all hazards start as known
  * @returns {Object} Hazard visibility data with public and GM layers
  */
-export function prepareHazardsWithVisibility(hazardEvaluation, options = {}) {
-  const hazardsPublic = [];
-  const gmHazards = [];
+export function prepareHazardsWithVisibility(
+  hazardEvaluation: HazardEvaluationResult | null | undefined,
+  options: { allKnown?: boolean } = {}
+): HazardVisibility {
+  const hazardsPublic: PublicHazard[] = [];
+  const gmHazards: GmHazard[] = [];
 
   (hazardEvaluation?.details || []).forEach(hazard => {
     // Public shell: just ID, known status, and severity
@@ -997,7 +1304,11 @@ export function prepareHazardsWithVisibility(hazardEvaluation, options = {}) {
  * @param {Array} gmHazards - GM hazard details
  * @returns {Object|null} Hazard detail object or masked version
  */
-export function getHazardForDisplay(hazardId, hazardsPublic, gmHazards) {
+export function getHazardForDisplay(
+  hazardId: string,
+  hazardsPublic: PublicHazard[],
+  gmHazards: GmHazard[]
+): DisplayHazard | null {
   const publicInfo = hazardsPublic.find(h => h.id === hazardId);
   const gmInfo = gmHazards.find(h => h.id === hazardId);
 
@@ -1021,7 +1332,7 @@ export function getHazardForDisplay(hazardId, hazardsPublic, gmHazards) {
  * Simulates a 3d6 dice roll.
  * @returns {number} Result between 3 and 18
  */
-export function roll3d6() {
+export function roll3d6(): number {
   const d1 = Math.floor(Math.random() * 6) + 1;
   const d2 = Math.floor(Math.random() * 6) + 1;
   const d3 = Math.floor(Math.random() * 6) + 1;
@@ -1042,7 +1353,7 @@ export function roll3d6() {
  * @param {number} params.labRating - Lab rating (0-4)
  * @returns {Object} Difficulty calculation breakdown
  */
-export function calculateProcessingDifficulty(params) {
+export function calculateProcessingDifficulty(params: ProcessingDifficultyParams): ProcessingDifficultyResult {
   const {
     operation,
     currentRefinement,
@@ -1089,7 +1400,7 @@ export function calculateProcessingDifficulty(params) {
 
   // Potency Control Penalty
   const potencyToUse = operation === 'concentrate' ? targetPotency : inputPotency;
-  const potencyIndex = POTENCY_LEVELS.indexOf(potencyToUse);
+  const potencyIndex = (POTENCY_LEVELS as readonly unknown[]).indexOf(potencyToUse);
   potencyControlPenalty = potencyIndex >= 0 ? -potencyIndex : 0;
 
   const effectiveSkill = alchemySkill + (labRating || 0) + processStepDM + batchSizePenalty + potencyControlPenalty;
@@ -1111,7 +1422,7 @@ export function calculateProcessingDifficulty(params) {
  * @param {Array<string>} existingHazards - Current hazards on the output reagent
  * @returns {string} Hazard name to add
  */
-export function selectHazardForMinorFailure(existingHazards = []) {
+export function selectHazardForMinorFailure(existingHazards: string[] = []): string {
   const hasVolatile = existingHazards.includes('Volatile');
   const hazardCount = existingHazards.length;
 
@@ -1138,7 +1449,7 @@ export function selectHazardForMinorFailure(existingHazards = []) {
  * @param {Array<string>} currentHazards - Hazards on the output variant
  * @returns {Object} Result evaluation
  */
-export function evaluateProcessingResult(roll, effectiveSkill, currentHazards = []) {
+export function evaluateProcessingResult(roll: number, effectiveSkill: number, currentHazards: string[] = []): ProcessingResult {
   const margin = Math.abs(roll - effectiveSkill);
 
   // Success
@@ -1208,7 +1519,7 @@ export function evaluateProcessingResult(roll, effectiveSkill, currentHazards = 
  * @param {number} concentrationSteps - Concentration steps
  * @returns {string} Derived name
  */
-export function createDerivedReagentName(baseName, refinement, concentrationSteps) {
+export function createDerivedReagentName(baseName: string, refinement: string, concentrationSteps: number): string {
   let name = baseName;
 
   // Add refinement suffix
@@ -1249,10 +1560,16 @@ export function createDerivedReagentName(baseName, refinement, concentrationStep
  * @param {Array|null} [microAssay=null] - Legacy: micro-assay data (use options.microAssay instead)
  * @returns {Object|null} Result object with newReagents and newBatch, or null if insufficient reagents
  */
-export function startBatchFromFormula(formula, reagents, batches, forecastOrOptions = null, microAssay = null) {
+export function startBatchFromFormula<R extends ReagentInput>(
+  formula: FormulaInput,
+  reagents: R[],
+  _batches: AlchemyBatch[],
+  forecastOrOptions: StartBatchOptions | unknown[] | null = null,
+  microAssay: unknown[] | null = null
+): StartBatchResult<R> {
   // Support both old signature (formula, reagents, batches, forecast, microAssay)
   // and new signature (formula, reagents, batches, options)
-  let options = {};
+  let options: StartBatchOptions = {};
   if (forecastOrOptions && typeof forecastOrOptions === 'object' && !Array.isArray(forecastOrOptions)) {
     // New signature with options object
     options = forecastOrOptions;
@@ -1263,15 +1580,14 @@ export function startBatchFromFormula(formula, reagents, batches, forecastOrOpti
       microAssay: microAssay
     };
   }
-
   // Check reagent availability
-  const missing = [];
-  for (const ing of formula.ingredients) {
+  const missing: MissingReagent[] = [];
+  for (const ing of formula.ingredients!) {
     const reagent = reagents.find(r => r.id === ing.reagentId);
-    if (!reagent || reagent.quantity < ing.unitsUsed) {
+    if (!reagent || (reagent.quantity as number) < ing.unitsUsed) {
       missing.push({
-        reagentId: ing.reagentId,
-        reagentName: ing.reagentName,
+        reagentId: ing.reagentId as string,
+        reagentName: ing.reagentName as string,
         needed: ing.unitsUsed,
         available: reagent?.quantity || 0
       });
@@ -1292,24 +1608,24 @@ export function startBatchFromFormula(formula, reagents, batches, forecastOrOpti
     };
   }
 
-  const consumed = formula.ingredients.map(ing => {
+  const consumed = formula.ingredients!.map(ing => {
     const reagent = reagents.find(r => r.id === ing.reagentId);
     return {
-      reagentId: ing.reagentId,
-      reagentName: ing.reagentName,
-      role: ing.role,
+      reagentId: ing.reagentId as string,
+      reagentName: ing.reagentName as string,
+      role: ing.role as string,
       unitsUsed: ing.unitsUsed,
-      refinement: ing.refinement,
+      refinement: ing.refinement as string,
       aspects: {...ing.aspects},
-      potency: reagent.potency,
-      concentrationSteps: reagent.concentrationSteps
+      potency: reagent!.potency,
+      concentrationSteps: reagent!.concentrationSteps
     };
   });
 
   const newReagents = reagents.map(r => {
-    const used = formula.ingredients.find(ing => ing.reagentId === r.id);
+    const used = formula.ingredients!.find(ing => ing.reagentId === r.id);
     if (used) {
-      return {...r, quantity: Math.max(0, r.quantity - used.unitsUsed)};
+      return {...r, quantity: Math.max(0, (r.quantity as number) - used.unitsUsed)};
     }
     return r;
   });
@@ -1324,10 +1640,10 @@ export function startBatchFromFormula(formula, reagents, batches, forecastOrOpti
     { allKnown: options.gmMode || false }
   );
 
-  const newBatch = {
+  const newBatch: StartedAlchemyBatch = {
     id: crypto.randomUUID(),
-    formulaId: formula.id,
-    formulaName: formula.name,
+    formulaId: formula.id as string,
+    formulaName: formula.name as string,
     phase: 'brewing',
     consumedIngredients: consumed,
     tier: formula.tier || 1,

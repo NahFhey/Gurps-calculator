@@ -1,47 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-  calculateFormulaStats as calculateDeclaredFormulaStats,
+  calculateFormulaStats,
   calculateConcentrationRefinement,
-  applyWorkBlockResult as applyDeclaredWorkBlockResult,
-  type FormulaStats
+  applyWorkBlockResult
 } from '../alchemy';
-
-interface LegacyFormulaInput {
-  tier: number;
-  vector: string;
-  dominantAspect: string;
-  secondaryAspect?: string | null;
-  ingredients: Array<{
-    unitsUsed: number;
-    potency: string;
-  }>;
-}
-
-interface LegacyBatch {
-  id: string;
-  phase: string;
-  CP: number;
-  DM: number;
-}
-
-interface LegacyRoll {
-  total: number;
-  modifier: number;
-}
-
-// TODO(types): calculateFormulaStats shim omits its supported one-argument legacy signature.
-const calculateFormulaStats = calculateDeclaredFormulaStats as
-  typeof calculateDeclaredFormulaStats
-  & ((formula: LegacyFormulaInput) => FormulaStats);
-
-// TODO(types): applyWorkBlockResult shim declares only the newer five-argument signature.
-const applyWorkBlockResult = applyDeclaredWorkBlockResult as
-  typeof applyDeclaredWorkBlockResult
-  & ((
-    batch: LegacyBatch,
-    roll: LegacyRoll,
-    workType: string
-  ) => LegacyBatch);
 
 describe('alchemy utilities', () => {
   describe('calculateFormulaStats', () => {
