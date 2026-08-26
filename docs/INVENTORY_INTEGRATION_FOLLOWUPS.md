@@ -193,3 +193,13 @@ Both deliberately excluded from the owner-attributed-materials phase to keep the
 gather→craft loop frictionless. Design when a table moment wants personal stock
 spent directly. Also noted there: alchemy has NO material-consumption path at all
 — its own gap, not part of this item.
+
+**Precision on the alchemy gap (recon 2026-08-26):** alchemy DOES consume — but
+from its own siloed reagent pool, not the inventory materials system.
+`BatchesView.tsx` (~lines 258–363) checks reagent sufficiency, decrements
+`AlchemyReagent.quantity`, and persists via wholesale `saveReagents`/
+`setAlchemyReagents` — the same legacy SET-recompute pattern crafting/cooking were
+migrated off in followup #11. The real design question is whether reagents should
+integrate with owner-attributed `Inventory.materials` (and whether gathered herbs
+should land in the reagent silo or inventory), not whether consumption exists.
+Needs a grill-me session before any implementation.

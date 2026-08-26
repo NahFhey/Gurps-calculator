@@ -56,7 +56,8 @@
 - **Add tests for import validation edge cases** (malformed JSON, huge files, missing fields)
 - **Add tests for serialization round-trip** (Set -> Array -> Set)
 
-### 10d: Defensive JSON & Error Handling (NEW)
+### 10d: Defensive JSON & Error Handling (NEW) ✅ COMPLETE (verified 2026-08-26)
+**Status:** All items below were completed incidentally across later phases (JS→TS conversions, Phase 10.5 hardening, import-validation work). Verified 2026-08-26: every remaining `JSON.parse` site in `src/` is inside try-catch (storage.ts, helpers.ts `safeJsonParse`, schemaVersioning.ts, dataMigrations.ts, exportImport.ts); the listed `.js` files no longer exist (converted to `.ts`, several no longer parse JSON at all); Zod import validation + 50MB size limit live in `exportImport.ts` (`CampaignImportSchema`, `exceedsImportSizeLimit`); per-tab `TabErrorBoundary` wraps feature areas in UnifiedShell.
 
 **Wrap all unprotected `JSON.parse` calls in try-catch:**
 - `src/state/campaignReducer.ts:937`
@@ -78,7 +79,8 @@
 - Add error boundary around CombatTracker action panel
 - Catch async errors in SyncProvider with user-facing toast
 
-### 10e: Memory Leak Fixes (NEW)
+### 10e: Memory Leak Fixes (NEW) ✅ COMPLETE (verified 2026-08-26)
+**Status:** Verified 2026-08-26: `CharacterContextMenu` clears its timer and removes listeners in cleanup; `MapContextMenu` and `ConfirmDialog` have symmetric add/remove listener effects; `ConnectionManager.connectSocket()` calls `socket.off()` before every `socket.on()` and `removeAllListeners()` on disconnect (lines ~188, ~277).
 
 **Fix event listener leaks (setTimeout race condition):**
 - `src/components/character-management/CharacterContextMenu.tsx` (lines 47-50)
