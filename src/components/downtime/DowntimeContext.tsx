@@ -16,6 +16,11 @@ import {
   resolveTask,
   cancelTask,
 } from '../../state/downtime';
+import {
+  validateBatchToolExclusivity,
+  validateTaskCreation,
+} from '../../state/downtime/downtimeValidation';
+import type { ValidationResult } from '../../state/downtime/downtimeErrors';
 import type { DowntimeState, TaskResults } from '../../types/downtime';
 import type {
   Character,
@@ -95,6 +100,8 @@ interface DowntimeContextValue {
   currentSlot: number;
   /** Convenience action: create a task */
   createDowntimeTask: (payload: CreateTaskPayload) => void;
+  /** Validate and atomically create a batch of normal single-leader tasks. */
+  createDowntimeTasksBatch: (payloads: CreateTaskPayload[]) => ValidationResult[];
   /** Convenience action: begin resolving a task */
   beginResolve: (taskId: string) => void;
   /** Convenience action: resolve a task with results */
@@ -306,6 +313,24 @@ export function DowntimeProvider({
     dispatch(createTask(payload));
   };
 
+  const createDowntimeTasksBatch = (payloads: CreateTaskPayload[]): ValidationResult[] => {
+    const intraBatchResults = validateBatchToolExclusivity(payloads);
+    const results = payloads.map((payload, index) => {
+      const stateResult = validateTaskCreation(state, payload);
+      return stateResult.valid ? intraBatchResults[index] : stateResult;
+    });
+
+    if (results.some((result) => !result.valid)) {
+      return results;
+    }
+
+    for (const payload of payloads) {
+      dispatch(createTask(payload));
+    }
+
+    return results;
+  };
+
   const beginResolve = (taskId: string) => {
     dispatch(beginResolveTask(taskId));
   };
@@ -358,6 +383,7 @@ export function DowntimeProvider({
       currentDayKey,
       currentSlot,
       createDowntimeTask,
+      createDowntimeTasksBatch,
       beginResolve,
       resolve,
       cancel,
@@ -414,4 +440,9 @@ export function useDowntimeContext(): DowntimeContextValue {
     throw new Error('useDowntimeContext must be used within a DowntimeProvider');
   }
   return context;
+}
+
+/** Returns the context when a form is mounted below a provider. */
+export function useOptionalDowntimeContext(): DowntimeContextValue | undefined {
+  return useContext(DowntimeContext);
 }

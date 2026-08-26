@@ -4,6 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { FishingTaskForm } from '../FishingTaskForm';
 import { downtimeInitialState } from '../../../../state/downtime/downtimeInitialState';
 import type { Character, GatheringSpecies, GatheringTool, GatheringEnvironment } from '../../../../types/campaign';
+import type { CreateTaskPayload } from '../../../../state/downtime/downtimeActions';
 
 // Mock data
 const mockCharacters: Character[] = [
@@ -349,6 +350,40 @@ describe('FishingTaskForm', () => {
       render(<FishingTaskForm {...defaultProps} />);
       // The form shows a skill modifier panel with resolution info
       expect(screen.getByText(/Large fish penalty.*applied during resolution/)).toBeInTheDocument();
+    });
+  });
+
+  describe('batch assignment', () => {
+    it('swaps the leader picker and submits one payload per selected leader', () => {
+      const onSubmit = vi.fn();
+      const submittedBatches: CreateTaskPayload[][] = [];
+      const onSubmitBatch = vi.fn((payloads: CreateTaskPayload[]) => {
+        submittedBatches.push(payloads);
+        return [{ valid: true }, { valid: true }];
+      });
+      render(
+        <FishingTaskForm
+          {...defaultProps}
+          onSubmit={onSubmit}
+          onSubmitBatch={onSubmitBatch}
+        />
+      );
+
+      fireEvent.click(screen.getByTestId('batch-assign-toggle'));
+      expect(screen.queryByTestId('leader-select')).not.toBeInTheDocument();
+      const leaderSelect = screen.getByTestId('batch-leader-select') as HTMLSelectElement;
+      Array.from(leaderSelect.options).forEach((option) => { option.selected = true; });
+      fireEvent.change(leaderSelect);
+      fireEvent.change(screen.getByTestId('spot-select'), { target: { value: 'spot-1' } });
+      fireEvent.click(screen.getByTestId('submit-button'));
+
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(onSubmitBatch).toHaveBeenCalledOnce();
+      const payloads = submittedBatches[0];
+      if (!payloads) throw new Error('Expected a submitted batch');
+      expect(payloads).toHaveLength(2);
+      expect(payloads.map((payload) => payload.leaderId)).toEqual(['char-1', 'char-2']);
+      expect(payloads.every((payload) => payload.helperIds.length === 0)).toBe(true);
     });
   });
 });

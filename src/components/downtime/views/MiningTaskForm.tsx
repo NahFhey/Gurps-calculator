@@ -26,6 +26,10 @@ import {
   selectReservedToolIdsForSlot,
 } from '../../../state/downtime/downtimeSelectors';
 import { ToolSelector } from './shared/ToolSelector';
+import { ValidationError } from './shared/ValidationError';
+import { useOptionalDowntimeContext } from '../DowntimeContext';
+import type { CreateTaskPayload } from '../../../state/downtime/downtimeActions';
+import type { ValidationResult } from '../../../state/downtime/downtimeErrors';
 
 // ============================================================================
 // TYPES
@@ -43,6 +47,7 @@ interface MiningTaskFormProps {
     helperIds: string[];
     activityData: MiningData;
   }) => void;
+  onSubmitBatch?: (payloads: CreateTaskPayload[]) => ValidationResult[];
   onCancel: () => void;
 }
 
@@ -94,9 +99,15 @@ export function MiningTaskForm({
   currentDayKey,
   currentSlot,
   onSubmit,
+  onSubmitBatch,
   onCancel,
 }: MiningTaskFormProps) {
+  const downtimeContext = useOptionalDowntimeContext();
   // Form state
+  const [isBatchMode, setIsBatchMode] = useState(false);
+  const [batchLeaderIds, setBatchLeaderIds] = useState<string[]>([]);
+  const [batchToolIds, setBatchToolIds] = useState<Record<string, string[]>>({});
+  const [batchErrors, setBatchErrors] = useState<Record<string, ValidationResult>>({});
   const [method, setMethod] = useState<MiningMethod>('Surface Prospecting');
   const [leaderId, setLeaderId] = useState('');
   const [helperIds, setHelperIds] = useState<string[]>([]);
@@ -189,14 +200,70 @@ export function MiningTaskForm({
 
   // Form validation
   const isFormValid = useMemo(() => {
-    if (!leaderId) return false;
+    if (isBatchMode ? batchLeaderIds.length === 0 : !leaderId) return false;
     if (method === 'Deep Mining' && !siteId) return false;
     return true;
-  }, [leaderId, method, siteId]);
+  }, [isBatchMode, batchLeaderIds, leaderId, method, siteId]);
 
   // Handle submit
   const handleSubmit = useCallback(() => {
     if (!isFormValid) return;
+
+    if (isBatchMode) {
+      const payloads: CreateTaskPayload[] = batchLeaderIds.map((batchLeaderId) => {
+        const character = characters.find((candidate) => candidate.id === batchLeaderId);
+        const skills = character ? getCharacterMiningSkills(character) : [];
+        const rowLocateSkill = skills.find((entry) => entry.skill === locateSkill)?.level ?? 10;
+        const rowExtractionSkill = skills.find((entry) => entry.skill === extractionSkill)?.level ?? 10;
+        const toolIds = batchToolIds[batchLeaderId] ?? [];
+        const rowToolBonus = toolIds.reduce((sum, toolId) => {
+          const tool = tools.find((candidate) => candidate.id === toolId);
+          return sum + (tool?.skillBonus ?? 0);
+        }, 0);
+        const fatigueStatus = selectCharacterFatigueStatus(state, batchLeaderId, currentDayKey, currentSlot);
+
+        return {
+          activityType: 'mining',
+          dayKey: currentDayKey,
+          slot: currentSlot,
+          leaderId: batchLeaderId,
+          helperIds: [],
+          activityData: {
+            type: 'mining',
+            method,
+            zoneId: siteId ? (availableSites.find((site) => site.id === siteId)?.zoneId ?? '') : '',
+            siteId: method === 'Deep Mining' ? siteId : undefined,
+            targetResourceId: targetResourceId || undefined,
+            locateSkill,
+            extractionSkill,
+            leaderLocateSkill: rowLocateSkill,
+            leaderExtractionSkill: rowExtractionSkill,
+            toolIds,
+            skillModifier: rowToolBonus + getFatiguePenalty(fatigueStatus),
+            dangerMode,
+            contextFlags: {
+              hasDetailedMaps,
+              knownRichDeposit,
+              randomUnexplored,
+              hasSupervisor,
+              hasProperTools,
+              isImprovisedTools,
+            },
+          },
+        };
+      });
+      const results = onSubmitBatch?.(payloads)
+        ?? downtimeContext?.createDowntimeTasksBatch(payloads)
+        ?? payloads.map(() => ({ valid: false, message: 'Batch submission is unavailable' }));
+      const nextErrors: Record<string, ValidationResult> = {};
+      results.forEach((result, index) => {
+        const rowId = batchLeaderIds[index];
+        if (!result.valid && rowId) nextErrors[rowId] = result;
+      });
+      setBatchErrors(nextErrors);
+      if (results.every((result) => result.valid)) onCancel();
+      return;
+    }
 
     const activityData: MiningData = {
       type: 'mining',
@@ -232,6 +299,8 @@ export function MiningTaskForm({
     selectedToolIds, totalSkillModifier, dangerMode,
     hasDetailedMaps, knownRichDeposit, randomUnexplored, hasSupervisor,
     hasProperTools, isImprovisedTools, leaderId, helperIds, onSubmit,
+    isBatchMode, batchLeaderIds, batchToolIds, characters, tools, state,
+    currentDayKey, currentSlot, onSubmitBatch, downtimeContext, onCancel,
   ]);
 
   const toggleHelper = useCallback((helperId: string) => {
@@ -251,6 +320,20 @@ export function MiningTaskForm({
           <X className="w-5 h-5" />
         </button>
       </div>
+
+      <label className="mb-4 flex items-center gap-2 text-sm text-gray-300">
+        <input
+          type="checkbox"
+          checked={isBatchMode}
+          onChange={(event) => {
+            setIsBatchMode(event.target.checked);
+            setBatchErrors({});
+          }}
+          data-testid="batch-assign-toggle"
+          className="rounded border-gray-600 bg-gray-900 text-amber-600 focus:ring-amber-500"
+        />
+        Batch assign
+      </label>
 
       {/* Method Selector */}
       <div className="mb-4">
@@ -289,7 +372,7 @@ export function MiningTaskForm({
       </div>
 
       {/* Leader Selection */}
-      <div className="mb-3">
+      {!isBatchMode ? <div className="mb-3">
         <label htmlFor="mining-leader-select" className="block text-sm font-medium text-gray-300 mb-1">
           Leader
         </label>
@@ -304,10 +387,33 @@ export function MiningTaskForm({
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
-      </div>
+      </div> : (
+        <div className="mb-3">
+          <label htmlFor="mining-batch-leaders" className="block text-sm font-medium text-gray-300 mb-1">Leaders</label>
+          <select
+            id="mining-batch-leaders"
+            multiple
+            value={batchLeaderIds}
+            onChange={(event) => {
+              const nextIds = Array.from(event.currentTarget.selectedOptions, (option) => option.value);
+              setBatchLeaderIds(nextIds);
+              setBatchToolIds((current) => Object.fromEntries(
+                Object.entries(current).filter(([characterId]) => nextIds.includes(characterId))
+              ));
+              setBatchErrors({});
+            }}
+            data-testid="batch-leader-select"
+            className="w-full min-h-24 px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 text-sm"
+          >
+            {availableCharacters.map((character) => (
+              <option key={character.id} value={character.id}>{character.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Locate Skill Selection */}
-      {leaderId && (
+      {(leaderId || isBatchMode) && (
         <div className="mb-3">
           <label htmlFor="locate-skill-select" className="block text-sm font-medium text-gray-300 mb-1">
             Locate Skill
@@ -318,22 +424,28 @@ export function MiningTaskForm({
             onChange={(e) => setLocateSkill(e.target.value as MiningSkill)}
             className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
           >
-            {leaderSkills
-              .filter((s) => LOCATE_SKILLS.includes(s.skill))
-              .map((s) => (
-                <option key={s.skill} value={s.skill}>
-                  {MINING_SKILL_LABELS[s.skill]} — Level {s.level}
-                </option>
-              ))}
-            {leaderSkills.filter((s) => LOCATE_SKILLS.includes(s.skill)).length === 0 && (
-              <option value="prospecting">Prospecting (IQ) — Default 10</option>
+            {isBatchMode ? LOCATE_SKILLS.map((skill) => (
+              <option key={skill} value={skill}>{MINING_SKILL_LABELS[skill]}</option>
+            )) : (
+              <>
+                {leaderSkills
+                  .filter((s) => LOCATE_SKILLS.includes(s.skill))
+                  .map((s) => (
+                    <option key={s.skill} value={s.skill}>
+                      {MINING_SKILL_LABELS[s.skill]} — Level {s.level}
+                    </option>
+                  ))}
+                {leaderSkills.filter((s) => LOCATE_SKILLS.includes(s.skill)).length === 0 && (
+                  <option value="prospecting">Prospecting (IQ) — Default 10</option>
+                )}
+              </>
             )}
           </select>
         </div>
       )}
 
       {/* Extraction Skill Selection */}
-      {leaderId && (
+      {(leaderId || isBatchMode) && (
         <div className="mb-3">
           <label htmlFor="extraction-skill-select" className="block text-sm font-medium text-gray-300 mb-1">
             Extraction Skill
@@ -344,16 +456,22 @@ export function MiningTaskForm({
             onChange={(e) => setExtractionSkill(e.target.value as MiningSkill)}
             className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
           >
-            {leaderSkills
-              .filter((s) => EXTRACTION_SKILLS.includes(s.skill))
-              .map((s) => (
-                <option key={s.skill} value={s.skill}>
-                  {MINING_SKILL_LABELS[s.skill]} — Level {s.level}
-                  {s.skill === 'prospecting' ? ' (−2 without proper mining skill)' : ''}
-                </option>
-              ))}
-            {leaderSkills.filter((s) => EXTRACTION_SKILLS.includes(s.skill)).length === 0 && (
-              <option value="prospecting">Prospecting (IQ) — Default 10 (−2)</option>
+            {isBatchMode ? EXTRACTION_SKILLS.map((skill) => (
+              <option key={skill} value={skill}>{MINING_SKILL_LABELS[skill]}</option>
+            )) : (
+              <>
+                {leaderSkills
+                  .filter((s) => EXTRACTION_SKILLS.includes(s.skill))
+                  .map((s) => (
+                    <option key={s.skill} value={s.skill}>
+                      {MINING_SKILL_LABELS[s.skill]} — Level {s.level}
+                      {s.skill === 'prospecting' ? ' (−2 without proper mining skill)' : ''}
+                    </option>
+                  ))}
+                {leaderSkills.filter((s) => EXTRACTION_SKILLS.includes(s.skill)).length === 0 && (
+                  <option value="prospecting">Prospecting (IQ) — Default 10 (−2)</option>
+                )}
+              </>
             )}
           </select>
         </div>
@@ -415,7 +533,7 @@ export function MiningTaskForm({
       )}
 
       {/* Helpers */}
-      {leaderId && availableHelpers.length > 0 && (
+      {!isBatchMode && leaderId && availableHelpers.length > 0 && (
         <div className="mb-3">
           <label className="block text-sm font-medium text-gray-300 mb-1">
             Helpers ({helperIds.length}) {teamBonus > 0 && <span className="text-green-400 text-xs">+{teamBonus} team bonus</span>}
@@ -440,7 +558,7 @@ export function MiningTaskForm({
       )}
 
       {/* Tools */}
-      {tools.length > 0 && (
+      {!isBatchMode && tools.length > 0 && (
         <ToolSelector
           label="Tools"
           value={selectedToolIds}
@@ -449,6 +567,45 @@ export function MiningTaskForm({
           reservedToolIds={reservedToolIds}
           className="mb-3"
         />
+      )}
+
+      {isBatchMode && (
+        <div className="space-y-3 mb-3" data-testid="batch-tool-rows">
+          {batchLeaderIds.map((characterId) => {
+            const character = characters.find((candidate) => candidate.id === characterId);
+            const otherDraftTools = batchLeaderIds.flatMap((otherId) =>
+              otherId === characterId ? [] : (batchToolIds[otherId] ?? [])
+            );
+            const error = batchErrors[characterId];
+            return (
+              <div key={characterId} className="rounded border border-gray-700 bg-gray-900/40 p-3" data-testid={`batch-row-${characterId}`}>
+                <p className="mb-2 text-sm font-medium text-gray-200">{character?.name ?? characterId}</p>
+                <ToolSelector
+                  label={`${character?.name ?? characterId} tools`}
+                  value={batchToolIds[characterId] ?? []}
+                  onChange={(toolIds) => {
+                    setBatchToolIds((current) => ({ ...current, [characterId]: toolIds }));
+                    setBatchErrors((current) => {
+                      const next = { ...current };
+                      delete next[characterId];
+                      return next;
+                    });
+                  }}
+                  tools={tools}
+                  reservedToolIds={new Set([...reservedToolIds, ...otherDraftTools])}
+                />
+                {error && (
+                  <ValidationError
+                    code={error.code ?? 'UNKNOWN_ERROR'}
+                    message={error.message ?? 'Validation failed'}
+                    meta={error.meta}
+                    className="mt-2"
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {/* Context Modifiers */}
@@ -520,7 +677,7 @@ export function MiningTaskForm({
       )}
 
       {/* Skill Summary */}
-      {leaderId && (
+      {!isBatchMode && leaderId && (
         <div className="mb-4 bg-gray-900/50 border border-gray-700 rounded p-3 text-sm">
           <p className="text-gray-200">
             <span className="font-medium">Locate Skill:</span> {locateSkillLevel}

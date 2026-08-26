@@ -4,12 +4,13 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { TileGrid, ACTIVITY_SKILL_REQUIREMENTS } from '../TileGrid';
 
 describe('TileGrid', () => {
-  it('renders all six activity tiles', () => {
+  it('renders all seven activity tiles', () => {
     render(<TileGrid onNavigate={vi.fn()} />);
 
     expect(screen.getByText('Fishing')).toBeInTheDocument();
     expect(screen.getByText('Foraging')).toBeInTheDocument();
     expect(screen.getByText('Mining')).toBeInTheDocument();
+    expect(screen.getByText('Rest')).toBeInTheDocument();
     expect(screen.getByText('Alchemy')).toBeInTheDocument();
     expect(screen.getByText('Crafting')).toBeInTheDocument();
     expect(screen.getByText('Cooking')).toBeInTheDocument();
@@ -62,7 +63,7 @@ describe('TileGrid', () => {
     render(<TileGrid onNavigate={vi.fn()} />);
 
     const buttons = screen.getAllByRole('button');
-    expect(buttons).toHaveLength(6);
+    expect(buttons).toHaveLength(7);
     buttons.forEach((button) => {
       expect(button).toHaveAttribute('aria-label');
     });
