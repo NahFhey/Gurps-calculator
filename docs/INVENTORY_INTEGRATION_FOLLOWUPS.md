@@ -37,7 +37,7 @@ cap = Magery + 1 (Magery required; prefix-match detection, level ?? 0), new
 always-succeed action with cap in selectors/UI only, retag clears attunement,
 CharacterInventoryPanel surface. **Premise correction:** the claim below that the
 acquire path writes `attuned: false` was never true — no such field existed.
-Ready to spec for implementation.
+**SHIPPED 2026-08-26** (codex-shepherd, live-verified).
 
 **Context:** Magic items can be possessed in any quantity but only `1 + Magery` of them can be attuned at a time (use limit, not possession limit). Phase 12a.5's acquire path writes magic items with `attuned: false`. The toggle path is separate.
 
@@ -207,4 +207,4 @@ should land in the reagent silo or inventory), not whether consumption exists.
 (one-way inventory→reagent conversion, GM-only via ReagentsView picker, 1:1
 partial, single atomic `inventory/reagentPromoted` action), gathering untouched,
 reagents stay a party-scoped silo, alchemy write-path modernization recorded as a
-multiplayer-triggered followup. Ready to spec for implementation.
+multiplayer-triggered followup. **SHIPPED 2026-08-26** (codex-shepherd, live-verified).

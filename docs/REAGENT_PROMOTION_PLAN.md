@@ -1,6 +1,6 @@
 # Reagent Promotion — Design Concept (Phase)
 
-**Status:** Designed 2026-08-26 (grill-me session). Not yet implemented.
+**Status:** Designed AND implemented 2026-08-26 (grill-me -> codex-shepherd, same day). Live-verified: Wood Stock 90->85, reagent 5U created via picker, changelog entry "5 Wood Stock promoted to lab stock", zero console errors.
 **Origin:** [`INVENTORY_INTEGRATION_FOLLOWUPS.md`](./INVENTORY_INTEGRATION_FOLLOWUPS.md) item #12's
 alchemy-gap note (2026-08-26 precision correction: alchemy consumes from its own
 reagent silo; the gap is the missing bridge between gathered stock and that silo).
