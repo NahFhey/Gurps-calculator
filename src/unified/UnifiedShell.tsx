@@ -11,7 +11,7 @@ import {
   type CharacterContextMenuAction,
 } from '../components/character-management';
 import { CharacterStatusBadge } from '../components/downtime/views/CharacterStatusBadge';
-import { duplicateCharacter, downloadCharacterJSON } from '../utils/characterManagement';
+import { duplicateCharacter, downloadCharacterJSON, downloadCharacterText } from '../utils/characterManagement';
 import { parseCharacterText } from '../utils/characterImport';
 import { WeatherWidget, MealBuffWidget, TimeDisplay, TimeControls } from '../components/header';
 import { CombatTile } from '../components/combat/CombatTile';
@@ -252,6 +252,9 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
         }
         case 'export':
           downloadCharacterJSON(character);
+          break;
+        case 'exportText':
+          downloadCharacterText(character);
           break;
         case 'delete':
           setDeleteConfirm({

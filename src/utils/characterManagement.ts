@@ -3,6 +3,7 @@
  * Functions for creating, duplicating, and exporting characters
  */
 import { safeDeepClone } from './helpers';
+import { exportCharacterText } from './characterExport';
 
 import type { Character } from '../types/campaign';
 import type { GCSCharacterData } from '../types/characterSheet';
@@ -293,6 +294,21 @@ export function importCharactersJSON(jsonString: string): Character[] {
  * Download character as JSON file
  * Triggers a browser download of the character data
  */
+export function downloadCharacterText(character: Character): void {
+  const text = exportCharacterText(character);
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${character.name.replace(/[^a-z0-9]/gi, '_')}.txt`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  URL.revokeObjectURL(url);
+}
+
 export function downloadCharacterJSON(character: Character): void {
   const jsonString = exportCharacterJSON(character);
   const blob = new Blob([jsonString], { type: 'application/json' });

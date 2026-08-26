@@ -5,10 +5,10 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { Eye, Edit2, Copy, Download, Trash2 } from 'lucide-react';
+import { Eye, Edit2, Copy, Download, FileText, Trash2 } from 'lucide-react';
 
 export interface CharacterContextMenuAction {
-  type: 'view' | 'edit' | 'duplicate' | 'export' | 'delete';
+  type: 'view' | 'edit' | 'duplicate' | 'export' | 'exportText' | 'delete';
   characterId: string;
 }
 
@@ -92,6 +92,7 @@ export function CharacterContextMenu({
     { type: 'edit' as const, label: 'Edit', icon: Edit2 },
     { type: 'duplicate' as const, label: 'Duplicate', icon: Copy },
     { type: 'export' as const, label: 'Export (JSON)', icon: Download },
+    { type: 'exportText' as const, label: 'Export (GCS Text)', icon: FileText },
     { type: 'delete' as const, label: 'Delete', icon: Trash2, danger: true },
   ];
 
