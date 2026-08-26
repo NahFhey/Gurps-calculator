@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { Plus, Save, X, Trash2 } from 'lucide-react';
+import type { Dispatch, SetStateAction } from 'react';
+import { PackagePlus, Plus, Save, X, Trash2 } from 'lucide-react';
 import { toNumberOr } from '../../../utils/helpers';
+import { alchemyLog } from '../../../utils/activityLogger';
 import { ASPECTS, POTENCY_LEVELS, INGREDIENT_ROLES, HAZARD_TAGS } from '../../../constants';
+import { useCampaignStore } from '../../../state/campaignStore';
 import type { ReagentsViewProps, AlchemyReagent } from '../../../types/views';
 
 interface NewReagentFormState {
@@ -26,6 +29,354 @@ const defaultFormState: NewReagentFormState = {
   newQuantity: '10'
 };
 
+interface ReagentEnrichmentFieldsProps {
+  formState: NewReagentFormState;
+  setFormState: Dispatch<SetStateAction<NewReagentFormState>>;
+  showQuantity?: boolean;
+}
+
+function ReagentEnrichmentFields({
+  formState,
+  setFormState,
+  showQuantity = true
+}: ReagentEnrichmentFieldsProps) {
+  return (
+    <>
+      <div className="grid grid-cols-3 gap-3">
+        <div>
+          <label className="block text-sm mb-1">Primary Aspect (3pts)</label>
+          <select
+            aria-label="Primary Aspect (3pts)"
+            value={formState.newPrimary}
+            onChange={(e) => setFormState({...formState, newPrimary: e.target.value})}
+            className="w-full bg-gray-600 px-3 py-2 rounded"
+          >
+            {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm mb-1">Secondary Aspect (2pts)</label>
+          <select
+            aria-label="Secondary Aspect (2pts)"
+            value={formState.newSecondary}
+            onChange={(e) => setFormState({...formState, newSecondary: e.target.value})}
+            className="w-full bg-gray-600 px-3 py-2 rounded"
+          >
+            {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm mb-1">Tertiary Aspect (1pt)</label>
+          <select
+            aria-label="Tertiary Aspect (1pt)"
+            value={formState.newTertiary}
+            onChange={(e) => setFormState({...formState, newTertiary: e.target.value})}
+            className="w-full bg-gray-600 px-3 py-2 rounded"
+          >
+            {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div className={`grid ${showQuantity ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
+        <div>
+          <label className="block text-sm mb-1">Base Potency</label>
+          <select
+            aria-label="Base Potency"
+            value={formState.newPotency}
+            onChange={(e) => setFormState({...formState, newPotency: e.target.value})}
+            className="w-full bg-gray-600 px-3 py-2 rounded"
+          >
+            {POTENCY_LEVELS.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm mb-1">Refinement</label>
+          <select
+            aria-label="Refinement"
+            value={formState.newRefinement}
+            onChange={(e) => setFormState({...formState, newRefinement: e.target.value})}
+            className="w-full bg-gray-600 px-3 py-2 rounded"
+          >
+            <option value="crude">Crude</option>
+            <option value="prepared">Prepared</option>
+            <option value="refined">Refined</option>
+          </select>
+        </div>
+        {showQuantity && (
+          <div>
+            <label className="block text-sm mb-1">Quantity (Units)</label>
+            <input
+              aria-label="Quantity (Units)"
+              type="number"
+              value={formState.newQuantity}
+              onChange={(e) => setFormState({...formState, newQuantity: e.target.value})}
+              className="w-full bg-gray-600 px-3 py-2 rounded"
+              min="0"
+            />
+          </div>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-sm mb-2">Roles</label>
+        <div className="grid grid-cols-4 gap-2">
+          {INGREDIENT_ROLES.map(role => (
+            <label key={role} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={formState.newRoles.includes(role)}
+                onChange={(e) => {
+                  setFormState({
+                    ...formState,
+                    newRoles: e.target.checked
+                      ? [...formState.newRoles, role]
+                      : formState.newRoles.filter(r => r !== role)
+                  });
+                }}
+                className="w-4 h-4"
+              />
+              <span>{role}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm mb-2">Hazards</label>
+        <div className="grid grid-cols-3 gap-2">
+          {HAZARD_TAGS.map(hazard => (
+            <label key={hazard} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={formState.newHazards.includes(hazard)}
+                onChange={(e) => {
+                  setFormState({
+                    ...formState,
+                    newHazards: e.target.checked
+                      ? [...formState.newHazards, hazard]
+                      : formState.newHazards.filter(h => h !== hazard)
+                  });
+                }}
+                className="w-4 h-4"
+              />
+              <span>{hazard}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+interface PromotionSource {
+  kind: 'material' | 'food';
+  name: string;
+  type?: string;
+  quantity: number;
+}
+
+function InventoryReagentPicker({
+  alchemyReagents,
+  onClose
+}: {
+  alchemyReagents: AlchemyReagent[];
+  onClose: () => void;
+}) {
+  const { state, actions } = useCampaignStore();
+  const partyInventory = Object.values(state.entities.inventories).find(
+    inventory => inventory.ownerType === 'party'
+  );
+  const sources: PromotionSource[] = [
+    ...(partyInventory?.materials ?? []).map(entry => ({
+      kind: 'material' as const,
+      name: entry.name,
+      type: entry.type,
+      quantity: entry.quantity
+    })),
+    ...(partyInventory?.food ?? []).map(entry => ({
+      kind: 'food' as const,
+      name: entry.name,
+      type: entry.type ?? entry.types?.join(','),
+      quantity: entry.quantity
+    }))
+  ].filter(entry => entry.quantity > 0);
+  const [selectedSource, setSelectedSource] = useState<PromotionSource | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [targetMode, setTargetMode] = useState<'existing' | 'new'>('new');
+  const [targetReagentId, setTargetReagentId] = useState('');
+  const [newName, setNewName] = useState('');
+  const [formState, setFormState] = useState<NewReagentFormState>({
+    ...defaultFormState,
+    newRoles: ['Active']
+  });
+
+  function selectSource(source: PromotionSource) {
+    const matchingReagent = alchemyReagents.find(
+      reagent => reagent.name.toLocaleLowerCase() === source.name.toLocaleLowerCase()
+    );
+    setSelectedSource(source);
+    setQuantity(source.quantity);
+    setTargetMode(matchingReagent ? 'existing' : 'new');
+    setTargetReagentId(matchingReagent?.id ?? alchemyReagents[0]?.id ?? '');
+    setNewName(source.name);
+    setFormState({
+      ...defaultFormState,
+      newRefinement: 'crude',
+      newRoles: ['Active'],
+      newQuantity: String(source.quantity)
+    });
+  }
+
+  function handleConfirm() {
+    if (!selectedSource) return;
+    const promotedQuantity = Math.max(1, Math.min(selectedSource.quantity, quantity));
+
+    if (targetMode === 'existing') {
+      const targetReagent = alchemyReagents.find(reagent => reagent.id === targetReagentId);
+      if (!targetReagent) return;
+      actions.promoteReagent({
+        source: { ...selectedSource, quantity: promotedQuantity },
+        target: { mode: 'existing', reagentId: targetReagent.id }
+      });
+      actions.addLogEntry(alchemyLog.reagentPromoted(targetReagent.name, promotedQuantity));
+      onClose();
+      return;
+    }
+
+    if (!newName.trim()) {
+      alert('Enter reagent name');
+      return;
+    }
+    const roles = formState.newRoles.length > 0 ? formState.newRoles : ['Active'];
+    const reagent: AlchemyReagent = {
+      id: crypto.randomUUID(),
+      name: newName.trim(),
+      aspects: {
+        primary: formState.newPrimary,
+        secondary: formState.newSecondary,
+        tertiary: formState.newTertiary
+      },
+      refinement: formState.newRefinement as 'crude' | 'prepared' | 'refined',
+      basePotency: formState.newPotency,
+      concentrationSteps: 0,
+      roles,
+      primaryRole: roles[0],
+      hazards: formState.newHazards,
+      processingNotes: '',
+      source: `Promoted from party stock: ${selectedSource.name}`,
+      quantity: promotedQuantity,
+      identificationLevel: 4,
+      analysisHistory: [],
+      falseProfile: null
+    };
+    actions.promoteReagent({
+      source: { ...selectedSource, quantity: promotedQuantity },
+      target: { mode: 'new', reagent }
+    });
+    actions.addLogEntry(alchemyLog.reagentPromoted(reagent.name, promotedQuantity));
+    onClose();
+  }
+
+  return (
+    <div className="bg-slate-800 p-4 rounded mb-4 space-y-3 border border-slate-600">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold">Import from party inventory</h3>
+        <button onClick={onClose} className="text-gray-300" aria-label="Close inventory import">
+          <X size={20} />
+        </button>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        {sources.map((source, index) => (
+          <button
+            key={`${source.kind}-${source.name}-${source.type ?? ''}-${index}`}
+            onClick={() => selectSource(source)}
+            aria-label={`${source.kind} ${source.name} ${source.quantity} on hand`}
+            className={`text-left rounded p-3 border ${selectedSource === source ? 'border-blue-400 bg-slate-700' : 'border-slate-600 bg-slate-900'}`}
+          >
+            <span className="text-xs uppercase text-blue-300">{source.kind}</span>
+            <span className="block font-medium">{source.name}</span>
+            <span className="text-sm text-gray-400">{source.quantity} on hand</span>
+          </button>
+        ))}
+      </div>
+      {sources.length === 0 && (
+        <p className="text-sm text-gray-400">No party materials or food are available to import.</p>
+      )}
+
+      {selectedSource && (
+        <div className="space-y-3 border-t border-slate-600 pt-3">
+          <div>
+            <label className="block text-sm mb-1" htmlFor="promotion-quantity">Quantity</label>
+            <input
+              id="promotion-quantity"
+              type="number"
+              min="1"
+              max={selectedSource.quantity}
+              value={quantity}
+              onChange={(event) => setQuantity(Math.max(
+                1,
+                Math.min(selectedSource.quantity, toNumberOr(event.target.value, 1))
+              ))}
+              className="w-full bg-gray-600 px-3 py-2 rounded"
+            />
+          </div>
+          <div>
+            <label className="block text-sm mb-1" htmlFor="promotion-target-mode">Target</label>
+            <select
+              id="promotion-target-mode"
+              value={targetMode}
+              onChange={(event) => setTargetMode(event.target.value as 'existing' | 'new')}
+              className="w-full bg-gray-600 px-3 py-2 rounded"
+            >
+              <option value="existing" disabled={alchemyReagents.length === 0}>Add to existing reagent</option>
+              <option value="new">Create new reagent</option>
+            </select>
+          </div>
+
+          {targetMode === 'existing' ? (
+            <div>
+              <label className="block text-sm mb-1" htmlFor="promotion-existing-reagent">Existing reagent</label>
+              <select
+                id="promotion-existing-reagent"
+                value={targetReagentId}
+                onChange={(event) => setTargetReagentId(event.target.value)}
+                className="w-full bg-gray-600 px-3 py-2 rounded"
+              >
+                {alchemyReagents.map(reagent => (
+                  <option key={reagent.id} value={reagent.id}>{reagent.name}</option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="block text-sm mb-1" htmlFor="promoted-reagent-name">Reagent Name</label>
+                <input
+                  id="promoted-reagent-name"
+                  value={newName}
+                  onChange={(event) => setNewName(event.target.value)}
+                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                />
+              </div>
+              <ReagentEnrichmentFields
+                formState={formState}
+                setFormState={setFormState}
+                showQuantity={false}
+              />
+            </>
+          )}
+
+          <button onClick={handleConfirm} className="w-full bg-blue-600 px-4 py-2 rounded">
+            <PackagePlus size={20} className="inline" /> Confirm Import
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
  * ReagentsView - Manages alchemy reagent inventory with full properties
  *
@@ -40,6 +391,7 @@ const defaultFormState: NewReagentFormState = {
  */
 export function ReagentsView({ alchemyReagents, saveAlchemyReagents, onDelete }: ReagentsViewProps) {
   const [showAdd, setShowAdd] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [newType, setNewType] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [formState, setFormState] = useState<NewReagentFormState>(defaultFormState);
@@ -86,13 +438,28 @@ export function ReagentsView({ alchemyReagents, saveAlchemyReagents, onDelete }:
             Full reagent properties including identification data. Players see limited info based on identification level.
           </p>
         </div>
-        <button
-          onClick={() => setShowAdd(!showAdd)}
-          className="bg-green-600 px-4 py-2 rounded h-fit"
-        >
-          <Plus size={20} className="inline" /> Add Reagent
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowImport(!showImport)}
+            className="bg-blue-600 px-4 py-2 rounded h-fit"
+          >
+            <PackagePlus size={20} className="inline" /> Import from inventory
+          </button>
+          <button
+            onClick={() => setShowAdd(!showAdd)}
+            className="bg-green-600 px-4 py-2 rounded h-fit"
+          >
+            <Plus size={20} className="inline" /> Add Reagent
+          </button>
+        </div>
       </div>
+
+      {showImport && (
+        <InventoryReagentPicker
+          alchemyReagents={alchemyReagents || []}
+          onClose={() => setShowImport(false)}
+        />
+      )}
 
       {showAdd && (
         <div className="bg-gray-700 p-4 rounded mb-4 space-y-3">
@@ -106,121 +473,7 @@ export function ReagentsView({ alchemyReagents, saveAlchemyReagents, onDelete }:
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-sm mb-1">Primary Aspect (3pts)</label>
-              <select
-                value={formState.newPrimary}
-                onChange={(e) => setFormState({...formState, newPrimary: e.target.value})}
-                className="w-full bg-gray-600 px-3 py-2 rounded"
-              >
-                {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Secondary Aspect (2pts)</label>
-              <select
-                value={formState.newSecondary}
-                onChange={(e) => setFormState({...formState, newSecondary: e.target.value})}
-                className="w-full bg-gray-600 px-3 py-2 rounded"
-              >
-                {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Tertiary Aspect (1pt)</label>
-              <select
-                value={formState.newTertiary}
-                onChange={(e) => setFormState({...formState, newTertiary: e.target.value})}
-                className="w-full bg-gray-600 px-3 py-2 rounded"
-              >
-                {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-sm mb-1">Base Potency</label>
-              <select
-                value={formState.newPotency}
-                onChange={(e) => setFormState({...formState, newPotency: e.target.value})}
-                className="w-full bg-gray-600 px-3 py-2 rounded"
-              >
-                {POTENCY_LEVELS.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Refinement</label>
-              <select
-                value={formState.newRefinement}
-                onChange={(e) => setFormState({...formState, newRefinement: e.target.value})}
-                className="w-full bg-gray-600 px-3 py-2 rounded"
-              >
-                <option value="crude">Crude</option>
-                <option value="prepared">Prepared</option>
-                <option value="refined">Refined</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Quantity (Units)</label>
-              <input
-                type="number"
-                value={formState.newQuantity}
-                onChange={(e) => setFormState({...formState, newQuantity: e.target.value})}
-                className="w-full bg-gray-600 px-3 py-2 rounded"
-                min="0"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm mb-2">Roles</label>
-            <div className="grid grid-cols-4 gap-2">
-              {INGREDIENT_ROLES.map(role => (
-                <label key={role} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={formState.newRoles.includes(role)}
-                    onChange={(e) => {
-                      setFormState({
-                        ...formState,
-                        newRoles: e.target.checked
-                          ? [...formState.newRoles, role]
-                          : formState.newRoles.filter(r => r !== role)
-                      });
-                    }}
-                    className="w-4 h-4"
-                  />
-                  <span>{role}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm mb-2">Hazards</label>
-            <div className="grid grid-cols-3 gap-2">
-              {HAZARD_TAGS.map(hazard => (
-                <label key={hazard} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={formState.newHazards.includes(hazard)}
-                    onChange={(e) => {
-                      setFormState({
-                        ...formState,
-                        newHazards: e.target.checked
-                          ? [...formState.newHazards, hazard]
-                          : formState.newHazards.filter(h => h !== hazard)
-                      });
-                    }}
-                    className="w-4 h-4"
-                  />
-                  <span>{hazard}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+          <ReagentEnrichmentFields formState={formState} setFormState={setFormState} />
 
           <div className="flex gap-2">
             <button
