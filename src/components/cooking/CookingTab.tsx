@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useWeatherModifiers } from '../../hooks/useWeatherModifiers';
 import { denormalizeObject, normalizeArray } from '../../state/campaignUtils';
-import { selectAllFoods } from '../../state/selectors/inventorySelectors';
+import { selectOwnerFoodHoldings } from '../../state/selectors/inventorySelectors';
 import { useCampaignStore } from '../../state/campaignStore';
 import type {
   CookingRecipe as Recipe,
@@ -27,7 +27,7 @@ import { RemakeView } from './views/RemakeView';
 export function CookingTab() {
   const { state, actions } = useCampaignStore();
   const { hasEffect, effectDescription, locationName } = useWeatherModifiers('cooking');
-  const foods = useMemo(() => selectAllFoods(state) as Food[], [state]);
+  const foods = useMemo(() => selectOwnerFoodHoldings(state, 'party') as Food[], [state]);
   const recipes = useMemo(() => denormalizeObject(state.entities.recipes) as unknown as Recipe[], [state.entities.recipes]);
   const kitchens = useMemo(() => denormalizeObject(state.entities.kitchens) as unknown as Kitchen[], [state.entities.kitchens]);
   const cookingSkills = state.entities.cookingSkills as CookingSkill[];

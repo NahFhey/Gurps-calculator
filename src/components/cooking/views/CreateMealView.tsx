@@ -48,6 +48,16 @@ export function CreateMealView({
   onCritChange, onWorkerChange, onKitchenChange, onCookingSkillChange,
   onRollChange, onRollTotalChange, onSkillChange, onRandomSkill, onCreate,
 }: CreateMealViewProps) {
+  const ingredientAvailability = selected.map(ingredient => {
+    const food = foods.find(entry => entry.id === ingredient.foodId);
+    return {
+      ingredient,
+      food,
+      hasEnough: !!food && food.quantity >= ingredient.amount,
+    };
+  });
+  const hasEnoughIngredients = ingredientAvailability.every(entry => entry.hasEnough);
+
   return (
     <div className="bg-gray-800 rounded-lg p-6 space-y-4">
       <input value={name} onChange={(e) => onNameChange(e.target.value)} placeholder="Recipe name" className="w-full bg-gray-700 px-3 py-2 rounded" />
@@ -69,6 +79,19 @@ export function CreateMealView({
           </div>
         ))}
       </div>
+      {ingredientAvailability.length > 0 && (
+        <div className="text-sm text-gray-400">
+          <div className="font-semibold mb-1">Required Ingredients:</div>
+          <div className="space-y-1">
+            {ingredientAvailability.map(({ ingredient, food, hasEnough }) => (
+              <div key={ingredient.id} className={hasEnough ? 'text-green-400' : 'text-red-400'}>
+                {food?.name || 'Unknown Food'}: {ingredient.amount} lbs required{' '}
+                {food ? `(${food.quantity} lbs available)` : '(not found)'}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="bg-gray-700 p-4 rounded text-sm">
         <div>Unique: {stats.unique} | Total: {stats.total}/{numPeople} | Difficulty: {stats.diff} | Skill Rolls: {stats.rolls}</div>
       </div>
@@ -126,7 +149,13 @@ export function CreateMealView({
           </div>
         ))}
       </div>
-      <button onClick={onCreate} className="w-full bg-green-600 py-3 rounded font-semibold">Create Recipe</button>
+      <button
+        onClick={onCreate}
+        disabled={!hasEnoughIngredients}
+        className={`w-full py-3 rounded font-semibold ${hasEnoughIngredients ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 cursor-not-allowed'}`}
+      >
+        {hasEnoughIngredients ? 'Create Recipe' : 'Need Ingredients'}
+      </button>
     </div>
   );
 }

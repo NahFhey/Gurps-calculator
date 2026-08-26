@@ -20,9 +20,22 @@ vi.mock('../../../state/campaignStore', () => ({
 vi.mock('../../../utils/alchemy', () => ({
   calculateFormulaStats: vi.fn(() => ({
     tier: 1,
+    calculatedTier: 1,
+    potencyLoad: 1,
+    vector: 'Potion',
     baseWR: 10,
     baseDM: 5,
+    dominantAspect: 'Fire',
+    secondaryAspect: 'Water',
+    basePotency: 'P1',
     finalPotency: 'P1',
+    concentrationSteps: 0,
+    totalConcentrationSteps: 0,
+    traitBudget: 10,
+    hasMatchingStabilizer: false,
+    roleCoverage: { valid: true, wrDelta: 0, messages: [] },
+    batchValidation: { valid: true, errors: [], warnings: [] },
+    hazardEvaluation: { count: 0, hazards: [], details: [] },
   })),
   startBatchFromFormula: vi.fn(() => ({
     ok: true,
@@ -65,7 +78,11 @@ vi.mock('../../../constants', () => ({
     refined: ['primary', 'secondary', 'tertiary'],
   },
   ASPECTS: ['Fire', 'Water', 'Earth', 'Air', 'Life', 'Death'],
-  VECTORS: ['Potion', 'Salve', 'Powder'],
+  VECTORS: [
+    { name: 'Potion', wrMod: 0, dmMod: 0 },
+    { name: 'Salve', wrMod: 0, dmMod: 0 },
+    { name: 'Powder', wrMod: 0, dmMod: 0 },
+  ],
   POTENCY_LEVELS: ['P1', 'P2', 'P3', 'P4', 'P5'],
 }));
 
@@ -523,6 +540,35 @@ describe('BatchesView', () => {
         />
       );
     }).not.toThrow();
+  });
+
+  it('previews reagent sufficiency and disables batch start when short', () => {
+    render(
+      <BatchesView
+        batches={[]}
+        reagents={[makeReagent({ name: 'Mandrake', quantity: 5 })]}
+        formulas={[]}
+        workers={[]}
+        labs={[makeLab()]}
+        saveBatches={vi.fn()}
+        saveFormulas={vi.fn()}
+        saveReagents={vi.fn()}
+        downtimeState={undefined}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Start New Batch/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Add Ingredient/i }));
+
+    const sufficientLine = screen.getByText(/Mandrake: 1U required.*5U available/);
+    expect(sufficientLine).toHaveClass('text-green-400');
+    expect(screen.getByRole('button', { name: 'Start Batch' })).not.toBeDisabled();
+
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '6' } });
+
+    const insufficientLine = screen.getByText(/Mandrake: 6U required.*5U available/);
+    expect(insufficientLine).toHaveClass('text-red-400');
+    expect(screen.getByRole('button', { name: 'Need Reagents' })).toBeDisabled();
   });
 });
 
