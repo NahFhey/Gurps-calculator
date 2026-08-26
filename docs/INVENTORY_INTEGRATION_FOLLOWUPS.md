@@ -37,7 +37,7 @@ cap = Magery + 1 (Magery required; prefix-match detection, level ?? 0), new
 always-succeed action with cap in selectors/UI only, retag clears attunement,
 CharacterInventoryPanel surface. **Premise correction:** the claim below that the
 acquire path writes `attuned: false` was never true — no such field existed.
-**SHIPPED 2026-08-26** (codex-shepherd, live-verified).
+Shipped same day via codex-shepherd (commits 2665360/93077fd, followup closed 51e1001).
 
 **Context:** Magic items can be possessed in any quantity but only `1 + Magery` of them can be attuned at a time (use limit, not possession limit). Phase 12a.5's acquire path writes magic items with `attuned: false`. The toggle path is separate.
 
