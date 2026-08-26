@@ -202,4 +202,9 @@ from its own siloed reagent pool, not the inventory materials system.
 migrated off in followup #11. The real design question is whether reagents should
 integrate with owner-attributed `Inventory.materials` (and whether gathered herbs
 should land in the reagent silo or inventory), not whether consumption exists.
-Needs a grill-me session before any implementation.
+**Design complete (grill-me session, 2026-08-26):** see
+[`REAGENT_PROMOTION_PLAN.md`](./REAGENT_PROMOTION_PLAN.md) — promotion model
+(one-way inventory→reagent conversion, GM-only via ReagentsView picker, 1:1
+partial, single atomic `inventory/reagentPromoted` action), gathering untouched,
+reagents stay a party-scoped silo, alchemy write-path modernization recorded as a
+multiplayer-triggered followup. Ready to spec for implementation.
