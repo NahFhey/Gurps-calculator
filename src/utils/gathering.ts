@@ -22,6 +22,239 @@ import {
   FORAGING_RARITIES,
   FORAGING_HAZARDS
 } from '../constants';
+import type {
+  GatheringCategory,
+  GatheringDailyEvents,
+  GatheringItem,
+  GatheringSpecies,
+  GatheringTool,
+} from '../types/campaign';
+
+export type TableResultType =
+  | 'species'
+  | 'item'
+  | 'nothing'
+  | 'event'
+  | 'special'
+  | 'category';
+
+export interface RollableTableEntry {
+  id?: string;
+  rollValue?: number;
+  resultType?: TableResultType;
+  speciesId?: string | null;
+  itemId?: string | null;
+  categoryId?: string | null;
+  text?: string;
+}
+
+export interface RollableTable {
+  entries: RollableTableEntry[];
+  rollMethod?: string;
+}
+
+export interface TableEntry extends RollableTableEntry {
+  result?: string;
+  rerollCount?: number;
+  rawRoll?: number;
+  modifiedRoll?: number;
+  rollBonus?: number;
+}
+
+export interface FishingResult {
+  success: boolean;
+  fish: number;
+  critSuccess: boolean;
+  critFailure: boolean;
+  outcome: 'critFailure' | 'critSuccess' | 'success' | 'failure';
+  margin: number;
+  isCritical: boolean;
+  description: string;
+}
+
+export interface ForagingResult {
+  success: boolean;
+  randomFallback?: boolean;
+  outcome: 'critFailure' | 'critSuccess' | 'success' | 'failure';
+  critFailure: boolean;
+  critSuccess: boolean;
+  margin: number;
+  yieldMultiplier: number;
+  hazard?: string;
+  bonusFind?: boolean;
+  description: string;
+}
+
+export interface FishYield {
+  meatUnits: number;
+  meatRolls?: number[];
+  meatFormula?: string;
+  secondaryUnits: number;
+  secondaryRolls?: number[];
+  secondaryFormula?: string | null;
+  secondaryType?: string | null;
+  foodType?: string;
+}
+
+export interface LegacyFishYield {
+  name: string;
+  foodType: string;
+}
+
+export interface ForageYield {
+  units: number;
+  formula?: null;
+  baseFormula?: string;
+  modifiedFormula?: string;
+  rolls: number[];
+  rawTotal?: number;
+  multiplier?: number;
+  finalUnits?: number;
+}
+
+export interface LargeFishStruggleResult {
+  success: boolean;
+  characterRoll: number;
+  characterMargin: number;
+  fishRoll: number;
+  fishMargin: number;
+  characterST: number;
+  fishST: number;
+  description: string;
+}
+
+export interface ForageFind {
+  type: TableResultType | undefined;
+  categoryId?: string | null;
+  itemId?: string | null;
+  item?: GatheringItem | ForageTargetItem | null;
+  source?: string;
+  text?: string;
+  tableEntry?: TableEntry;
+}
+
+export interface FishingSkillParams {
+  baseFishingSkill: number;
+  toolBonus?: number;
+  hasCorrectBait?: boolean;
+  hasInappropriateBait?: boolean;
+  targetingLargeFish?: boolean;
+  retryPenalty?: number;
+  environmentMod?: number;
+}
+
+export interface SkillBreakdown {
+  base?: number;
+  tool?: number;
+  bait?: number;
+  largeFish?: number;
+  retry?: number;
+  context?: number;
+  rarity?: number;
+  environment?: number;
+}
+
+export interface EffectiveSkillResult {
+  effectiveSkill: number;
+  breakdown: SkillBreakdown;
+}
+
+export interface ForagingSkillParams {
+  baseForagingSkill: number;
+  toolBonus?: number;
+  hasMapGuide?: boolean;
+  isUnfamiliar?: boolean;
+  isPeakSeason?: boolean;
+  targetRarity?: string | null;
+  environmentMod?: number;
+}
+
+export interface GatheringSession {
+  id: string;
+  dateKey: number;
+  mode: string;
+  environmentId: string;
+  method: string;
+  leaderCharacterId: string;
+  helperCharacterIds: string[];
+  intent: { targetedSpeciesId: string | null; randomCatch: boolean };
+  selectedToolIds: string[];
+  selectedConsumableIds: string[];
+  modifiers: EffectiveSkillResult | null;
+  tablesResolved: {
+    randomCatchTableId: string | null | undefined;
+    mildEventTableId: string | null | undefined;
+    rareEventTableId: string | null | undefined;
+  };
+  dailyEvent: {
+    rolled: boolean;
+    roll?: number;
+    resultType: string | null;
+    eventEntryId?: string | null;
+    eventText?: string | null;
+  };
+  resolution: {
+    fishingRoll: {
+      success: boolean;
+      fish: number;
+      critSuccess?: boolean;
+      critFailure?: boolean;
+      outcome?: string;
+      margin?: number;
+      isCritical?: boolean;
+      description?: string;
+    } | null | undefined;
+    fishCaught: unknown[];
+    yields: unknown[];
+    inventoryDelta: unknown[] | {
+      foods: Record<string, number>;
+      materials: Record<string, number>;
+    };
+  };
+  committedToInventory: boolean;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface CreateGatheringSessionParams {
+  mode: string;
+  environmentId: string;
+  method: string;
+  leaderCharacterId: string;
+  helperCharacterIds?: string[];
+  intent?: {
+    targetedSpeciesId?: string | null;
+    randomCatch?: boolean;
+  };
+  selectedToolIds?: string[];
+  selectedConsumableIds?: string[];
+  currentDay: number;
+}
+
+type LegacyFishSpecies = Pick<GatheringSpecies, 'name'> & {
+  yieldFormula?: string;
+  foodType?: string;
+};
+
+type FishSpeciesInput = LegacyFishSpecies
+  & Partial<Pick<
+    GatheringSpecies,
+    'yieldMeatFormula' | 'yieldSecondaryFormula' | 'secondaryMaterialType'
+  >>;
+
+type NetSpecies = Pick<GatheringSpecies, 'id'> & Partial<Pick<GatheringSpecies, 'tags'>>;
+type ForageTargetItem = Pick<GatheringItem, 'id' | 'name'>;
+type YieldCategory = Pick<GatheringCategory, 'yieldFormula'>;
+type YieldItem = Partial<Pick<GatheringItem, 'yieldFormula'>> & { yieldOverrideFormula?: string };
+type FilterableTool = Partial<Pick<
+  GatheringTool,
+  'toolType' | 'allowedModes' | 'allowedMethods'
+>>;
+
+type GatheringDailyEvent = GatheringDailyEvents[string][string];
+type DailyEventLog = Record<string, Record<string,
+  Omit<GatheringDailyEvent, 'resultType'> & { resultType?: string | null }
+>> | null | undefined;
 
 /**
  * Parses a dice formula string and returns its components
@@ -36,7 +269,7 @@ import {
  * parseDiceFormula("1d8")   // { count: 1, sides: 8, modifier: 0 }
  * parseDiceFormula("5")     // { count: 0, sides: 0, modifier: 5 }
  */
-export function parseDiceFormula(formula) {
+export function parseDiceFormula(formula: unknown): { count: number; sides: number; modifier: number } {
   if (!formula || typeof formula !== 'string') {
     return { count: 0, sides: 0, modifier: 0 };
   }
@@ -74,10 +307,10 @@ export function parseDiceFormula(formula) {
  * @example
  * evaluateDiceFormula("2d6+1") // { total: 8, rolls: [3, 4], formula: "2d6+1" }
  */
-export function evaluateDiceFormula(formula) {
+export function evaluateDiceFormula(formula: string): { total: number; rolls: number[]; modifier: number; formula: string } {
   const { count, sides, modifier } = parseDiceFormula(formula);
 
-  const rolls = [];
+  const rolls: number[] = [];
   let sum = 0;
 
   for (let i = 0; i < count; i++) {
@@ -99,7 +332,7 @@ export function evaluateDiceFormula(formula) {
  *
  * @returns {{total: number, rolls: number[]}} The 3d6 result
  */
-export function roll3d6() {
+export function roll3d6(): { total: number; rolls: number[] } {
   const rolls = [
     Math.floor(Math.random() * 6) + 1,
     Math.floor(Math.random() * 6) + 1,
@@ -119,7 +352,7 @@ export function roll3d6() {
  * @param {number} effectiveSkill - The effective skill level
  * @returns {boolean} True if critical success
  */
-export function isCriticalSuccess(roll, effectiveSkill) {
+export function isCriticalSuccess(roll: number, effectiveSkill: number): boolean {
   if (roll <= 4) return true;
   if (roll === 5 && effectiveSkill >= 15) return true;
   if (roll === 6 && effectiveSkill >= 16) return true;
@@ -134,7 +367,7 @@ export function isCriticalSuccess(roll, effectiveSkill) {
  * @param {number} effectiveSkill - The effective skill level
  * @returns {boolean} True if critical failure
  */
-export function isCriticalFailure(roll, effectiveSkill) {
+export function isCriticalFailure(roll: number, effectiveSkill: number): boolean {
   if (roll === 18) return true;
   if (roll === 17 && effectiveSkill <= 15) return true;
   if (roll - effectiveSkill >= 10) return true;
@@ -149,7 +382,7 @@ export function isCriticalFailure(roll, effectiveSkill) {
  * @param {string} method - Fishing method (Line/Net/Spear)
  * @returns {Object} Outcome with fish count and description
  */
-export function evaluateFishingRoll(roll, effectiveSkill, method) {
+export function evaluateFishingRoll(roll: number, effectiveSkill: number, method?: string): FishingResult {
   const margin = effectiveSkill - roll;
   const useLegacyRules = method === undefined;
   const critSuccess = useLegacyRules
@@ -232,14 +465,30 @@ export function evaluateFishingRoll(roll, effectiveSkill, method) {
  * @param {number} params.environmentMod - Environment-specific modifier
  * @returns {{effectiveSkill: number, breakdown: Object}} Calculated skill with breakdown
  */
-export function calculateEffectiveFishingSkill(params) {
+export function calculateEffectiveFishingSkill(
+  params: FishingSkillParams
+): EffectiveSkillResult;
+export function calculateEffectiveFishingSkill(
+  baseFishingSkill: number,
+  environmentMod?: number,
+  tools?: readonly unknown[],
+  hasFamiliarTools?: boolean
+): number;
+export function calculateEffectiveFishingSkill(
+  params: FishingSkillParams | number
+): EffectiveSkillResult | number {
   if (typeof params === 'number') {
     const [
       baseFishingSkill,
       environmentMod = 0,
       tools = [],
       hasFamiliarTools = true
-    ] = arguments;
+    ] = arguments as unknown as [
+      baseFishingSkill: number,
+      environmentMod?: number,
+      tools?: readonly unknown[],
+      hasFamiliarTools?: boolean,
+    ];
     const toolBonus = Array.isArray(tools) && tools.length > 0
       ? (hasFamiliarTools ? 2 : -2)
       : 0;
@@ -284,11 +533,11 @@ export function calculateEffectiveFishingSkill(params) {
  * @param {number} roll - The 3d6 roll result
  * @returns {'rare' | 'mild' | 'none'} Event type
  */
-export function determineDynamicEventType(roll) {
+export function determineDynamicEventType(roll?: number): 'rare' | 'mild' | 'none' {
   const { rare, mild } = DYNAMIC_EVENT_THRESHOLDS;
 
-  if (roll >= rare.min && roll <= rare.max) return 'rare';
-  if (roll >= mild.min && roll <= mild.max) return 'mild';
+  if ((roll as number) >= rare.min && (roll as number) <= rare.max) return 'rare';
+  if ((roll as number) >= mild.min && (roll as number) <= mild.max) return 'mild';
   return 'none';
 }
 
@@ -302,7 +551,7 @@ export function determineDynamicEventType(roll) {
  * @param {number} [rollBonus=0] - Bonus to add to the roll (e.g., from bait)
  * @returns {Object} The selected entry result with raw roll info
  */
-export function rollOnCatchTable(table, rollBonus = 0) {
+export function rollOnCatchTable(table: RollableTable | null, rollBonus = 0): TableEntry {
   if (!table || !table.entries || table.entries.length === 0) {
     return { resultType: 'nothing', text: 'Empty table' };
   }
@@ -329,7 +578,7 @@ export function rollOnCatchTable(table, rollBonus = 0) {
 /**
  * Helper to get roll method range
  */
-function getRollMethodRange(rollMethod) {
+function getRollMethodRange(rollMethod: string): { min: number; max: number } {
   switch (rollMethod) {
     case '1d6': return { min: 1, max: 6 };
     case '2d6': return { min: 2, max: 12 };
@@ -346,7 +595,7 @@ function getRollMethodRange(rollMethod) {
  * @returns {Object} Entry that is not a large fish
  * @throws {Error} If max reroll attempts exceeded
  */
-export function rollNetCatch(table, species) {
+export function rollNetCatch(table: RollableTable, species: NetSpecies[]): TableEntry {
   let attempts = 0;
 
   while (attempts < MAX_NET_REROLL_ATTEMPTS) {
@@ -378,7 +627,7 @@ export function rollNetCatch(table, species) {
  * @param {number} fishST - Fish's ST (uses DEFAULT_FISH_ST if not provided)
  * @returns {Object} Struggle result
  */
-export function resolveLargeFishStruggle(characterST, fishST = DEFAULT_FISH_ST) {
+export function resolveLargeFishStruggle(characterST: number, fishST = DEFAULT_FISH_ST): LargeFishStruggleResult {
   const characterRoll = roll3d6();
   const fishRoll = roll3d6();
 
@@ -411,7 +660,17 @@ export function resolveLargeFishStruggle(characterST, fishST = DEFAULT_FISH_ST) 
  * @param {string} species.secondaryMaterialType - Type of secondary material
  * @returns {Object} Yield results
  */
-export function calculateFishYields(species, success, margin = 0) {
+export function calculateFishYields(species: GatheringSpecies | null): FishYield;
+export function calculateFishYields(
+  species: FishSpeciesInput | null,
+  success: boolean,
+  margin?: number
+): LegacyFishYield[];
+export function calculateFishYields(
+  species: FishSpeciesInput | null,
+  success?: boolean,
+  margin = 0
+): FishYield | LegacyFishYield[] {
   if (!species) {
     return success === undefined
       ? { meatUnits: 0, secondaryUnits: 0, secondaryType: null }
@@ -423,7 +682,7 @@ export function calculateFishYields(species, success, margin = 0) {
       return [];
     }
 
-    const result = species.yieldFormula
+    const result: { total: number; rolls?: number[] } = species.yieldFormula
       ? evaluateDiceFormula(species.yieldFormula)
       : { total: 1 };
     const multiplier = Math.max(1, Math.floor(margin) || 1);
@@ -434,11 +693,11 @@ export function calculateFishYields(species, success, margin = 0) {
     }));
   }
 
-  const meatResult = species.yieldMeatFormula
+  const meatResult: { total: number; rolls?: number[] } = species.yieldMeatFormula
     ? evaluateDiceFormula(species.yieldMeatFormula)
     : { total: 1 };
 
-  const secondaryResult = species.yieldSecondaryFormula && species.secondaryMaterialType
+  const secondaryResult: { total: number; rolls?: number[] } = species.yieldSecondaryFormula && species.secondaryMaterialType
     ? evaluateDiceFormula(species.yieldSecondaryFormula)
     : { total: 0 };
 
@@ -462,7 +721,7 @@ export function calculateFishYields(species, success, margin = 0) {
  * @param {string[]} helperIds - Array of helper IDs
  * @returns {string} Unique group key
  */
-export function generateGroupKey(leaderId, helperIds = []) {
+export function generateGroupKey(leaderId: string, helperIds: string[] | null = []): string {
   const helpers = Array.isArray(helperIds) ? helperIds : [];
   const sortedHelpers = [...helpers].sort();
   return `${leaderId}:${sortedHelpers.join(',')}`;
@@ -476,15 +735,29 @@ export function generateGroupKey(leaderId, helperIds = []) {
  * @param {string} groupKey - Group identifier from generateGroupKey
  * @returns {boolean} True if already rolled today
  */
-export function hasDailyEventBeenRolled(dailyEventLog, currentDay, groupKey) {
-  let normalizedLog = dailyEventLog;
+export function hasDailyEventBeenRolled(
+  dailyEventLog: DailyEventLog,
+  currentDay: number | string,
+  groupKey: string
+): boolean;
+export function hasDailyEventBeenRolled(
+  currentDay: number | string,
+  groupKey: string,
+  dailyEventLog: DailyEventLog
+): boolean;
+export function hasDailyEventBeenRolled(
+  dailyEventLog: DailyEventLog | number | string,
+  currentDay: number | string,
+  groupKey: string | DailyEventLog
+): boolean {
+  let normalizedLog = dailyEventLog as DailyEventLog;
   let normalizedDay = currentDay;
-  let normalizedGroup = groupKey;
+  let normalizedGroup = groupKey as string;
 
   if (typeof dailyEventLog === 'number' || typeof dailyEventLog === 'string') {
     normalizedDay = dailyEventLog;
-    normalizedGroup = currentDay;
-    normalizedLog = groupKey;
+    normalizedGroup = currentDay as string;
+    normalizedLog = groupKey as DailyEventLog;
   }
 
   const dayKey = `day${normalizedDay}`;
@@ -501,7 +774,7 @@ export function hasDailyEventBeenRolled(dailyEventLog, currentDay, groupKey) {
  * @param {string} method - Method within mode (e.g., "Line", "Net", "Spear")
  * @returns {Array<Object>} Filtered tools
  */
-export function filterToolsForMethod(tools, mode, method) {
+export function filterToolsForMethod<T extends FilterableTool>(tools: T[] | null | undefined, mode: string, method: string): T[] {
   if (!tools || !Array.isArray(tools)) return [];
 
   const methodConfig = FISHING_METHODS[method];
@@ -517,7 +790,7 @@ export function filterToolsForMethod(tools, mode, method) {
     }
 
     // Tool type must match method's allowed types
-    if (methodConfig.toolTypes && !methodConfig.toolTypes.includes(tool.toolType)) {
+    if (methodConfig.toolTypes && !methodConfig.toolTypes.includes(tool.toolType as string)) {
       return false;
     }
 
@@ -541,7 +814,7 @@ export function createGatheringSession({
   selectedToolIds = [],
   selectedConsumableIds = [],
   currentDay
-}) {
+}: CreateGatheringSessionParams): GatheringSession {
   return {
     id: crypto.randomUUID(),
     dateKey: currentDay,
@@ -604,7 +877,7 @@ export function calculateEffectiveForagingSkill({
   isPeakSeason = false,
   targetRarity = null,
   environmentMod = 0
-}) {
+}: ForagingSkillParams): EffectiveSkillResult {
   let contextMod = 0;
   if (hasMapGuide) contextMod += FORAGING_CONTEXT_MODIFIERS.mapGuide.modifier;
   if (isUnfamiliar) contextMod += FORAGING_CONTEXT_MODIFIERS.unfamiliar.modifier;
@@ -636,7 +909,7 @@ export function calculateEffectiveForagingSkill({
  * @param {boolean} isTargeted - Whether this is a targeted search
  * @returns {Object} Outcome with yield multiplier and description
  */
-export function evaluateForagingRoll(roll, effectiveSkill, isTargeted = false) {
+export function evaluateForagingRoll(roll: number, effectiveSkill: number, isTargeted = false): ForagingResult {
   const margin = effectiveSkill - roll;
   const critSuccess = isCriticalSuccess(roll, effectiveSkill);
   const critFailure = isCriticalFailure(roll, effectiveSkill);
@@ -710,7 +983,13 @@ export function determineForageFind({
   findTable,
   _targetCategory = null,
   targetItem = null
-}) {
+}: {
+  rollResult: Pick<ForagingResult, 'success' | 'randomFallback'>;
+  findTable: RollableTable | null;
+  _targetCategory?: string | null;
+  targetItem?: ForageTargetItem | null;
+}): ForageFind {
+  void _targetCategory;
   // If targeted search and successful, return target item
   if (targetItem && rollResult.success && !rollResult.randomFallback) {
     return {
@@ -758,7 +1037,13 @@ export function calculateForageYields({
   yieldMultiplier = 1.0,
   yieldDiceBonus = 0,
   yieldDicePenalty = 0
-}) {
+}: {
+  category?: YieldCategory | null;
+  item?: YieldItem | null;
+  yieldMultiplier?: number;
+  yieldDiceBonus?: number;
+  yieldDicePenalty?: number;
+}): ForageYield {
   if (!category && !item) {
     return { units: 0, formula: null, rolls: [] };
   }
@@ -807,7 +1092,7 @@ export function calculateForageYields({
  * @param {string} typeId - Type ID to check for bonuses (or categoryId for backwards compatibility)
  * @returns {number} Total yield dice bonus for this type
  */
-export function getToolYieldBonus(tools, typeId) {
+export function getToolYieldBonus(tools: Array<Pick<GatheringTool, 'bonuses'>> | null | undefined, typeId: string): number {
   if (!tools || !Array.isArray(tools) || !typeId) return 0;
 
   return tools.reduce((total, tool) => {

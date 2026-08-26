@@ -1,66 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
-  calculateEffectiveFishingSkill as calculateDeclaredEffectiveFishingSkill,
-  evaluateFishingRoll as evaluateDeclaredFishingRoll,
-  calculateFishYields as calculateDeclaredFishYields,
-  generateGroupKey as generateDeclaredGroupKey,
-  hasDailyEventBeenRolled as hasDeclaredDailyEventBeenRolled,
-  type FishingResult
+  calculateEffectiveFishingSkill,
+  evaluateFishingRoll,
+  calculateFishYields,
+  generateGroupKey,
+  hasDailyEventBeenRolled
 } from '../gathering';
-
-interface LegacyFishSpecies {
-  name: string;
-  yieldFormula: string;
-}
-
-interface LegacyFishYield {
-  name: string;
-  foodType: string;
-}
-
-interface DailyEvent {
-  rolled: boolean;
-  resultType: string | null;
-}
-
-type DailyEventLog = Record<string, Record<string, DailyEvent>>;
-
-// TODO(types): calculateEffectiveFishingSkill shim omits its supported positional legacy signature.
-const calculateEffectiveFishingSkill = calculateDeclaredEffectiveFishingSkill as
-  typeof calculateDeclaredEffectiveFishingSkill
-  & ((
-    baseFishingSkill: number,
-    environmentMod: number,
-    tools: string[],
-    hasFamiliarTools: boolean
-  ) => number);
-
-// TODO(types): evaluateFishingRoll shim incorrectly requires the runtime-optional method argument.
-const evaluateFishingRoll = evaluateDeclaredFishingRoll as
-  typeof evaluateDeclaredFishingRoll
-  & ((roll: number, effectiveSkill: number) => FishingResult);
-
-// TODO(types): calculateFishYields shim omits the legacy array-yield overload used by these tests.
-const calculateFishYields = calculateDeclaredFishYields as
-  ((
-    species: LegacyFishSpecies,
-    success: boolean,
-    margin: number
-  ) => LegacyFishYield[]);
-
-// TODO(types): generateGroupKey shim excludes the runtime-supported null helper list.
-const generateGroupKey = generateDeclaredGroupKey as
-  typeof generateDeclaredGroupKey
-  & ((leaderId: string, helperIds: string[] | null) => string);
-
-// TODO(types): hasDailyEventBeenRolled shim omits its supported legacy argument order.
-const hasDailyEventBeenRolled = hasDeclaredDailyEventBeenRolled as
-  typeof hasDeclaredDailyEventBeenRolled
-  & ((
-    currentDay: number,
-    groupKey: string,
-    dailyEventLog: DailyEventLog | null | undefined
-  ) => boolean);
 
 describe('gathering utilities', () => {
   describe('calculateEffectiveFishingSkill', () => {
