@@ -69,6 +69,11 @@ export const alchemyLog = {
       message: workerName
         ? `${workerName} ${processType} reagent "${reagentName}"`
         : `${processType} reagent "${reagentName}"`
+    }),
+
+  reagentPromoted: (reagentName: string, quantity: number) =>
+    createActivityLogEntry('alchemy', 'reagent_promoted', {
+      message: `${quantity} ${reagentName} promoted to lab stock`
     })
 };
 

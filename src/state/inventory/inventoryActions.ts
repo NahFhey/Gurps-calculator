@@ -13,6 +13,7 @@ import type {
   FoodType,
   MaterialType,
   Inventory,
+  AlchemyReagent,
   AcquiredItem,
   InventoryOwner,
   AcquisitionSource
@@ -60,6 +61,7 @@ export const ITEM_ATTUNEMENT_SET = 'inventory/itemAttunementSet' as const;
 export const ITEM_MAGICAL_SET = 'inventory/itemMagicalSet' as const;
 export const ITEM_CONSUMED = 'inventory/itemConsumed' as const;
 export const ITEM_CONSUMPTION_REVERTED = 'inventory/itemConsumptionReverted' as const;
+export const REAGENT_PROMOTED = 'inventory/reagentPromoted' as const;
 
 // ============================================================================
 // ACTION TYPES
@@ -156,6 +158,15 @@ export type ItemConsumptionRevertedAction = {
   type: typeof ITEM_CONSUMPTION_REVERTED;
   payload: { entryId: Id };
 };
+export type ReagentPromotedAction = {
+  type: typeof REAGENT_PROMOTED;
+  payload: {
+    source: { kind: 'material' | 'food'; name: string; type?: string; quantity: number };
+    target:
+      | { mode: 'existing'; reagentId: Id }
+      | { mode: 'new'; reagent: AlchemyReagent };
+  };
+};
 
 // ============================================================================
 // UNION TYPE
@@ -194,7 +205,8 @@ export type InventoryAction =
   | ItemAttunementSetAction
   | ItemMagicalSetAction
   | ItemConsumedAction
-  | ItemConsumptionRevertedAction;
+  | ItemConsumptionRevertedAction
+  | ReagentPromotedAction;
 
 // ============================================================================
 // TYPE GUARD
@@ -227,7 +239,8 @@ const INVENTORY_ACTION_TYPES = new Set([
   ITEM_ATTUNEMENT_SET,
   ITEM_MAGICAL_SET,
   ITEM_CONSUMED,
-  ITEM_CONSUMPTION_REVERTED
+  ITEM_CONSUMPTION_REVERTED,
+  REAGENT_PROMOTED
 ]);
 
 /**

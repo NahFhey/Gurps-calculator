@@ -61,6 +61,7 @@ import type {
 import type { DowntimeState } from '../types/downtime';
 import type { ForageZoneProfile } from '../types/foraging';
 import type { CombatState, RevealState } from '../types/combatTracker';
+import type { ReagentPromotedAction } from './inventory/inventoryActions';
 import type {
   MapState,
   MapModel,
@@ -261,6 +262,8 @@ type CampaignStoreValue = {
     consumeItem: (itemId: Id, quantity?: number, combat?: { participantId: Id; participantName: string; round: number }) => void;
     /** Restore a recorded combat consumption through acquire semantics. Always succeeds. */
     revertItemConsumption: (entryId: Id) => void;
+    /** Promote party material or food stock into alchemy reagent stock atomically. */
+    promoteReagent: (payload: ReagentPromotedAction['payload']) => void;
 
     // Location & Weather Actions
     setLocationsState: (payload: Partial<LocationState>) => void;
@@ -580,6 +583,8 @@ export function CampaignStoreProvider({
         dispatch({ type: 'inventory/itemConsumed', payload: { itemId, quantity, combat } }),
       revertItemConsumption: (entryId: Id) =>
         dispatch({ type: 'inventory/itemConsumptionReverted', payload: { entryId } }),
+      promoteReagent: (payload: ReagentPromotedAction['payload']) =>
+        dispatch({ type: 'inventory/reagentPromoted', payload }),
 
       // Location & Weather Actions
       setLocationsState: (payload: Partial<LocationState>) =>

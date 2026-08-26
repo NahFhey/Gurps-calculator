@@ -45,7 +45,8 @@ import {
   ITEM_ATTUNEMENT_SET,
   ITEM_MAGICAL_SET,
   ITEM_CONSUMED,
-  ITEM_CONSUMPTION_REVERTED
+  ITEM_CONSUMPTION_REVERTED,
+  REAGENT_PROMOTED
 } from './inventoryActions';
 
 // ============================================================================
@@ -504,6 +505,46 @@ export function handleInventoryAction(
         'loot'
       );
       activeSession.consumptions.splice(entryIndex, 1);
+      return true;
+    }
+
+    case REAGENT_PROMOTED: {
+      const { source, target } = action.payload;
+      if (source.quantity <= 0) return true;
+
+      const existingReagent = target.mode === 'existing'
+        ? draft.entities.alchemyReagents[target.reagentId]
+        : undefined;
+      if (target.mode === 'existing' && !existingReagent) return true;
+
+      const inventory = findInventoryRecord(draft, 'party');
+      if (!inventory) return true;
+
+      const entries = source.kind === 'material' ? inventory.materials : inventory.food;
+      const sourceIndex = entries.findIndex((entry) => {
+        if (entry.name !== source.name) return false;
+        if (source.type === undefined) return true;
+        if (source.kind === 'material') return entry.type === source.type;
+        const foodEntry = entry as Draft<FoodEntry>;
+        return (foodEntry.type ?? foodEntry.types?.join(',') ?? '') === source.type;
+      });
+      if (sourceIndex < 0) return true;
+
+      const sourceEntry = entries[sourceIndex];
+      const promotedQuantity = Math.min(source.quantity, Math.max(0, sourceEntry.quantity));
+      if (promotedQuantity <= 0) return true;
+
+      sourceEntry.quantity = Math.max(0, sourceEntry.quantity - promotedQuantity);
+      if (sourceEntry.quantity === 0) entries.splice(sourceIndex, 1);
+
+      if (target.mode === 'existing') {
+        draft.entities.alchemyReagents[target.reagentId].quantity += promotedQuantity;
+      } else {
+        draft.entities.alchemyReagents[target.reagent.id] =
+          promotedQuantity === source.quantity
+            ? target.reagent
+            : { ...target.reagent, quantity: promotedQuantity };
+      }
       return true;
     }
 
