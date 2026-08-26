@@ -17,7 +17,9 @@ import {
   selectCharacterFatigueStatus,
   getFatiguePenalty,
   selectAvailableCharacterIdsForSlot,
+  selectReservedToolIdsForSlot,
 } from '../../../state/downtime/downtimeSelectors';
+import { ToolSelector } from './shared/ToolSelector';
 
 // ============================================================================
 // TYPES
@@ -119,6 +121,10 @@ export function ForagingTaskForm({
   const availableCharacters = useMemo(
     () => characters.filter((c) => availableIds.includes(c.id)),
     [characters, availableIds]
+  );
+  const reservedToolIds = useMemo(
+    () => selectReservedToolIdsForSlot(state, currentDayKey, currentSlot),
+    [state, currentDayKey, currentSlot]
   );
 
   // Leader's skills
@@ -232,15 +238,6 @@ export function ForagingTaskForm({
       prev.includes(helperId)
         ? prev.filter((id) => id !== helperId)
         : [...prev, helperId]
-    );
-  }, []);
-
-  // Toggle tool
-  const toggleTool = useCallback((toolId: string) => {
-    setSelectedToolIds((prev) =>
-      prev.includes(toolId)
-        ? prev.filter((id) => id !== toolId)
-        : [...prev, toolId]
     );
   }, []);
 
@@ -472,27 +469,14 @@ export function ForagingTaskForm({
 
       {/* Tools */}
       {tools.length > 0 && (
-        <div className="mb-3">
-          <label className="block text-sm font-medium text-gray-300 mb-1">
-            Tools
-          </label>
-          <div className="flex flex-wrap gap-1">
-            {tools.map((tool) => (
-              <button
-                key={tool.id}
-                type="button"
-                onClick={() => toggleTool(tool.id)}
-                className={`px-2 py-1 text-xs rounded border transition-colors ${
-                  selectedToolIds.includes(tool.id)
-                    ? 'bg-blue-900/50 border-blue-500 text-blue-200'
-                    : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
-                }`}
-              >
-                {tool.name}
-              </button>
-            ))}
-          </div>
-        </div>
+        <ToolSelector
+          label="Tools"
+          value={selectedToolIds}
+          onChange={setSelectedToolIds}
+          tools={tools}
+          reservedToolIds={reservedToolIds}
+          className="mb-3"
+        />
       )}
 
       {/* Context Flags */}

@@ -1,10 +1,11 @@
 import '@testing-library/jest-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { ForagingTaskForm } from '../ForagingTaskForm';
 import { downtimeInitialState } from '../../../../state/downtime/downtimeInitialState';
 import { DEFAULT_FORAGING_CONFIG } from '../../../../constants/foraging';
 import type { Character, GatheringTool } from '../../../../types/campaign';
+import type { DowntimeState, DowntimeTask } from '../../../../types/downtime';
 import type { ForageZoneProfile, ForageItem } from '../../../../types/foraging';
 
 // Mock data
@@ -92,6 +93,28 @@ const mockTools: GatheringTool[] = [
     yieldBonus: 0,
   },
 ];
+
+const reservedToolTask = {
+  id: 'reserved-task',
+  activityType: 'fishing',
+  dayKey: 1,
+  slot: 0,
+  leaderId: 'char-2',
+  helperIds: [],
+  status: 'pending',
+  activityData: {
+    type: 'fishing',
+    toolIds: ['tool-1'],
+  },
+  createdAt: 1,
+  updatedAt: 1,
+} as unknown as DowntimeTask;
+
+const stateWithReservedTool: DowntimeState = {
+  tasksById: { [reservedToolTask.id]: reservedToolTask },
+  taskOrder: [reservedToolTask.id],
+  pendingDayLedger: null,
+};
 
 describe('ForagingTaskForm', () => {
   const defaultProps = {
@@ -287,6 +310,36 @@ describe('ForagingTaskForm', () => {
 
       expect(screen.getByText('Foraging Basket')).toBeInTheDocument();
       expect(screen.getByText('Herbalist Kit')).toBeInTheDocument();
+    });
+
+    it('disables reserved tools and submits only selected unreserved tools', () => {
+      const onSubmit = vi.fn();
+      render(
+        <ForagingTaskForm
+          {...defaultProps}
+          state={stateWithReservedTool}
+          onSubmit={onSubmit}
+        />
+      );
+
+      const reservedTool = screen.getByText('Foraging Basket').closest('label');
+      const availableTool = screen.getByText('Herbalist Kit').closest('label');
+      if (!reservedTool || !availableTool) throw new Error('Expected tool selector labels');
+
+      expect(within(reservedTool).getByRole('checkbox')).toBeDisabled();
+      expect(reservedTool).toHaveClass('opacity-50');
+      expect(within(reservedTool).getByText('In use')).toBeInTheDocument();
+      expect(within(availableTool).getByRole('checkbox')).not.toBeDisabled();
+
+      fireEvent.click(within(availableTool).getByRole('checkbox'));
+      fireEvent.change(screen.getByTestId('leader-select'), {
+        target: { value: 'char-1' },
+      });
+      fireEvent.click(screen.getByTestId('submit-button'));
+
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+        activityData: expect.objectContaining({ toolIds: ['tool-2'] }),
+      }));
     });
   });
 

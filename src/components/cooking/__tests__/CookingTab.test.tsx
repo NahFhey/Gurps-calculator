@@ -45,7 +45,10 @@ const recipe: Recipe = {
 function makeState(withRecipe = false): CampaignState {
   const state = createCampaignState();
   const party = Object.values(state.entities.inventories).find(inventory => inventory.ownerType === 'party');
-  if (party) party.food = foods;
+  if (party) state.entities.inventories = {
+    ...state.entities.inventories,
+    [party.id]: { ...party, food: foods.map(food => ({ ...food })) },
+  };
   state.entities.recipes = withRecipe ? { stew: recipe } : {};
   state.entities.kitchens = {
     camp: { id: 'camp', name: 'Camp Kitchen', rating: 1, description: '' },
@@ -63,9 +66,15 @@ function StateProbe({ capture }: { capture: (state: CampaignState) => void }) {
   return null;
 }
 
-function renderRouter(withRecipe = false, capture: (state: CampaignState) => void = () => {}) {
+function renderRouter(
+  withRecipe = false,
+  capture: (state: CampaignState) => void = () => {},
+  customizeState: (state: CampaignState) => void = () => {},
+) {
+  const initialState = makeState(withRecipe);
+  customizeState(initialState);
   render(
-    <CampaignStoreProvider initialCampaignState={makeState(withRecipe)}>
+    <CampaignStoreProvider initialCampaignState={initialState}>
       <StateProbe capture={capture} />
       <CookingTab />
     </CampaignStoreProvider>,
@@ -199,6 +208,30 @@ describe('CookingTab router', () => {
     expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('Recipe created!'));
     alertSpy.mockRestore();
   });
+
+  it('bases the preview on party holdings rather than character food inventories', () => {
+    renderRouter(false, () => {}, state => {
+      const party = Object.values(state.entities.inventories).find(inventory => inventory.ownerType === 'party');
+      if (!party) throw new Error('Expected party inventory');
+      state.entities.inventories = {
+        ...state.entities.inventories,
+        [party.id]: { ...party, food: [{ ...foods[0], quantity: 1 }] },
+        'alice-food': {
+          ...party,
+          id: 'alice-food',
+          ownerType: 'character',
+          ownerId: 'alice',
+          food: [{ ...foods[0], quantity: 100 }],
+        },
+      };
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    fireEvent.change(screen.getAllByRole('spinbutton')[1], { target: { value: '2' } });
+
+    expect(screen.getByText(/Carrot: 2 lbs required.*1 lbs available/)).toHaveClass('text-red-400');
+    expect(screen.getByRole('button', { name: 'Need Ingredients' })).toBeDisabled();
+  });
 });
 
 describe('CreateMealView', () => {
@@ -225,6 +258,22 @@ describe('CreateMealView', () => {
     fireEvent.change(screen.getByPlaceholderText('Skill 1'), { target: { value: 'Professional Skill' } });
     expect(createProps.onWorkerChange).toHaveBeenCalledWith('');
     expect(createProps.onSkillChange).toHaveBeenCalledWith(0, 'Professional Skill');
+  });
+
+  it('previews party food sufficiency and disables creation when any ingredient is short', () => {
+    render(
+      <CreateMealView
+        {...createProps}
+        selected={[
+          { id: 'selected-carrot', foodId: 'carrot', amount: 2 },
+          { id: 'selected-apple', foodId: 'apple', amount: 7 },
+        ]}
+      />
+    );
+
+    expect(screen.getByText(/Carrot: 2 lbs required.*10 lbs available/)).toHaveClass('text-green-400');
+    expect(screen.getByText(/Apple: 7 lbs required.*6 lbs available/)).toHaveClass('text-red-400');
+    expect(screen.getByRole('button', { name: 'Need Ingredients' })).toBeDisabled();
   });
 });
 

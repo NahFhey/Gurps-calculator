@@ -1,22 +1,17 @@
 import '@testing-library/jest-dom';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MiningTaskForm } from '../MiningTaskForm';
 import { CampaignStoreProvider } from '../../../../state/campaignStore';
 import { DowntimeProvider } from '../../DowntimeContext';
-import type { DowntimeState, MiningSite } from '../../../../types/downtime';
+import type { DowntimeState, DowntimeTask, MiningSite } from '../../../../types/downtime';
 import type { Character, GatheringTool } from '../../../../types/campaign';
 
-// Minimal downtime state for the form (loose cast — runtime only reads a subset)
-const minimalDowntimeState = {
-  tasks: {},
+const minimalDowntimeState: DowntimeState = {
+  tasksById: {},
   taskOrder: [],
-  reservations: {},
-  config: {
-    slotsPerDay: 3,
-    maxDays: 30,
-  },
-} as unknown as DowntimeState;
+  pendingDayLedger: null,
+};
 
 // Test character
 const testCharacters: Character[] = [
@@ -38,7 +33,34 @@ const testTools: GatheringTool[] = [
     name: 'Pickaxe',
     skillBonus: 1,
   } as unknown as GatheringTool,
+  {
+    id: 'tool-2',
+    name: 'Shovel',
+    skillBonus: 0,
+  } as unknown as GatheringTool,
 ];
+
+const reservedToolTask = {
+  id: 'reserved-task',
+  activityType: 'fishing',
+  dayKey: 1,
+  slot: 0,
+  leaderId: 'char-2',
+  helperIds: [],
+  status: 'pending',
+  activityData: {
+    type: 'fishing',
+    toolIds: ['tool-1'],
+  },
+  createdAt: 1,
+  updatedAt: 1,
+} as unknown as DowntimeTask;
+
+const stateWithReservedTool: DowntimeState = {
+  tasksById: { [reservedToolTask.id]: reservedToolTask },
+  taskOrder: [reservedToolTask.id],
+  pendingDayLedger: null,
+};
 
 const testSites: MiningSite[] = [
   {
@@ -194,6 +216,30 @@ describe('MiningTaskForm', () => {
     it('does not show tools section when no tools available', () => {
       renderForm({ tools: [] });
       expect(screen.queryByText('Tools')).not.toBeInTheDocument();
+    });
+
+    it('disables reserved tools and submits only selected unreserved tools', () => {
+      const onSubmit = vi.fn();
+      renderForm({ state: stateWithReservedTool, onSubmit });
+
+      const reservedTool = screen.getByText('Pickaxe').closest('label');
+      const availableTool = screen.getByText('Shovel').closest('label');
+      if (!reservedTool || !availableTool) throw new Error('Expected tool selector labels');
+
+      expect(within(reservedTool).getByRole('checkbox')).toBeDisabled();
+      expect(reservedTool).toHaveClass('opacity-50');
+      expect(within(reservedTool).getByText('In use')).toBeInTheDocument();
+      expect(within(availableTool).getByRole('checkbox')).not.toBeDisabled();
+
+      fireEvent.click(within(availableTool).getByRole('checkbox'));
+      fireEvent.change(screen.getByRole('combobox', { name: /leader/i }), {
+        target: { value: 'char-1' },
+      });
+      fireEvent.click(screen.getByText('Create Task'));
+
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+        activityData: expect.objectContaining({ toolIds: ['tool-2'] }),
+      }));
     });
   });
 });

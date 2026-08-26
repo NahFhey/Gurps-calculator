@@ -128,6 +128,16 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
   const [selectedVector, setSelectedVector] = useState('Potion');
   const [selectedLabId, setSelectedLabId] = useState(labs?.[0]?.id || 'default');
 
+  const ingredientAvailability = useMemo(() => ingredients.map(ingredient => {
+    const reagent = reagents.find(entry => entry.id === ingredient.reagentId);
+    return {
+      ingredient,
+      reagent,
+      hasEnough: !!reagent && reagent.quantity >= ingredient.unitsUsed,
+    };
+  }), [ingredients, reagents]);
+  const hasEnoughReagents = ingredientAvailability.every(entry => entry.hasEnough);
+
   // Memoize batch filtering to prevent unnecessary recalculations
   const activeBatches = useMemo(() => batches.filter(b => b.phase === 'brewing'), [batches]);
   const completedBatches = useMemo(() => batches.filter(b => b.phase !== 'brewing'), [batches]);
@@ -816,6 +826,20 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                 })}
               </div>
 
+              {ingredientAvailability.length > 0 && (
+                <div className="text-sm text-gray-400">
+                  <div className="font-semibold mb-1">Required Reagents:</div>
+                  <div className="space-y-1">
+                    {ingredientAvailability.map(({ ingredient, reagent, hasEnough }) => (
+                      <div key={ingredient.id} className={hasEnough ? 'text-green-400' : 'text-red-400'}>
+                        {reagent?.name || 'Unknown Reagent'}: {ingredient.unitsUsed}U required{' '}
+                        {reagent ? `(${reagent.quantity}U available)` : '(not found)'}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {ingredients.length > 0 && (() => {
                 const reagentsMap = new Map(reagents.map(r => [r.id, r]));
                 const actives = ingredients.filter(i => i.role === 'Active' || i.role === 'active');
@@ -901,8 +925,12 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                 );
               })()}
 
-              <button onClick={createNewBatch} className="w-full bg-green-600 px-4 py-2 rounded">
-                Start Batch
+              <button
+                onClick={createNewBatch}
+                disabled={!hasEnoughReagents}
+                className={`w-full px-4 py-2 rounded ${hasEnoughReagents ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 cursor-not-allowed'}`}
+              >
+                {hasEnoughReagents ? 'Start Batch' : 'Need Reagents'}
               </button>
             </div>
           )}
