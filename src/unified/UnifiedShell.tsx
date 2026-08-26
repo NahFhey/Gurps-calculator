@@ -1,11 +1,5 @@
-import { useMemo, useRef, useCallback, useState, useEffect, ReactNode, KeyboardEvent, MouseEvent, ChangeEvent } from 'react';
+import { lazy, Suspense, useMemo, useRef, useCallback, useState, useEffect, ReactNode, KeyboardEvent, MouseEvent, ChangeEvent } from 'react';
 import { ChevronLeft, ChevronRight, Plus, MoreVertical } from 'lucide-react';
-import { InventoryTab } from '../components/InventoryTab';
-import { ManagerTab } from '../components/ManagerTab';
-import { RulesTab } from '../components/RulesTab';
-import { ChangelogTab } from '../components/ChangelogTab';
-import { DowntimePanel } from '../components/downtime';
-import { CharacterSheet } from '../components/character-sheet';
 import {
   CharacterSkillsPanel,
   CharacterEquipmentPanel,
@@ -21,12 +15,7 @@ import { duplicateCharacter, downloadCharacterJSON } from '../utils/characterMan
 import { parseCharacterText } from '../utils/characterImport';
 import { WeatherWidget, MealBuffWidget, TimeDisplay, TimeControls } from '../components/header';
 import { CombatTile } from '../components/combat/CombatTile';
-import { CombatTab } from '../components/CombatTab';
 import { CombatContextProvider } from '../components/combat/CombatContext';
-import { CombatParticipantsSidebar } from '../components/combat/CombatParticipantsSidebar';
-import { CombatManeuverRail } from '../components/combat/CombatManeuverRail';
-import { CombatMainArea } from '../components/combat/CombatMainArea';
-import { MapPanel } from '../components/map';
 import { TabErrorBoundary } from '../components/ui/TabErrorBoundary';
 import { PanelLayoutProvider, usePanelLayout } from '../contexts/PanelLayoutContext';
 import {
@@ -37,6 +26,60 @@ import {
 } from '../state/campaignStore';
 import { useAllCharacterSlotSummaries } from '../hooks/useCharacterSlotSummary';
 import type { Character } from '../types/campaign';
+
+const InventoryTab = lazy(() =>
+  import('../components/InventoryTab').then((module) => ({ default: module.InventoryTab })),
+);
+const ManagerTab = lazy(() =>
+  import('../components/ManagerTab').then((module) => ({ default: module.ManagerTab })),
+);
+const RulesTab = lazy(() =>
+  import('../components/RulesTab').then((module) => ({ default: module.RulesTab })),
+);
+const ChangelogTab = lazy(() =>
+  import('../components/ChangelogTab').then((module) => ({ default: module.ChangelogTab })),
+);
+const DowntimePanel = lazy(() =>
+  import('../components/downtime').then((module) => ({ default: module.DowntimePanel })),
+);
+const CharacterSheet = lazy(() =>
+  import('../components/character-sheet').then((module) => ({ default: module.CharacterSheet })),
+);
+const CombatTab = lazy(() =>
+  import('../components/CombatTab').then((module) => ({ default: module.CombatTab })),
+);
+const MapPanel = lazy(() =>
+  import('../components/map').then((module) => ({ default: module.MapPanel })),
+);
+const CombatParticipantsSidebar = lazy(() =>
+  import('../components/combat/CombatParticipantsSidebar').then((module) => ({
+    default: module.CombatParticipantsSidebar,
+  })),
+);
+const CombatManeuverRail = lazy(() =>
+  import('../components/combat/CombatManeuverRail').then((module) => ({
+    default: module.CombatManeuverRail,
+  })),
+);
+const CombatMainArea = lazy(() =>
+  import('../components/combat/CombatMainArea').then((module) => ({ default: module.CombatMainArea })),
+);
+
+function LazyLoadFallback() {
+  return (
+    <div className="flex h-full min-h-32 items-center justify-center rounded bg-slate-900/60 text-sm text-slate-400">
+      Loading…
+    </div>
+  );
+}
+
+function LazyContent({ tabName, children }: { tabName: string; children: ReactNode }) {
+  return (
+    <TabErrorBoundary tabName={tabName}>
+      <Suspense fallback={<LazyLoadFallback />}>{children}</Suspense>
+    </TabErrorBoundary>
+  );
+}
 
 interface ModuleDefinition {
   id: string;
@@ -62,28 +105,28 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
       return modules;
     }
     return [
-      { id: 'inventory', label: 'Inventory', content: <TabErrorBoundary tabName="Inventory"><InventoryTab /></TabErrorBoundary> },
+      { id: 'inventory', label: 'Inventory', content: <LazyContent tabName="Inventory"><InventoryTab /></LazyContent> },
       {
         id: 'downtime',
         label: 'Downtime',
         content: (
-          <TabErrorBoundary tabName="Downtime">
+          <LazyContent tabName="Downtime">
             <DowntimePanel
               currentDayKey={state.time?.day ?? 1}
               currentSlot={state.time?.slot ?? 0}
             />
-          </TabErrorBoundary>
+          </LazyContent>
         ),
       },
-      { id: 'combat', label: 'Combat', content: <TabErrorBoundary tabName="Combat"><CombatTab /></TabErrorBoundary> },
-      { id: 'map', label: 'Map', content: <TabErrorBoundary tabName="Map"><MapPanel /></TabErrorBoundary> },
+      { id: 'combat', label: 'Combat', content: <LazyContent tabName="Combat"><CombatTab /></LazyContent> },
+      { id: 'map', label: 'Map', content: <LazyContent tabName="Map"><MapPanel /></LazyContent> },
       {
         id: 'manager',
         label: 'Manager',
-        content: <TabErrorBoundary tabName="Manager"><ManagerTab /></TabErrorBoundary>
+        content: <LazyContent tabName="Manager"><ManagerTab /></LazyContent>
       },
-      { id: 'rules', label: 'Rules', content: <TabErrorBoundary tabName="Rules"><RulesTab /></TabErrorBoundary> },
-      { id: 'changelog', label: 'Changelog', content: <TabErrorBoundary tabName="Changelog"><ChangelogTab /></TabErrorBoundary> },
+      { id: 'rules', label: 'Rules', content: <LazyContent tabName="Rules"><RulesTab /></LazyContent> },
+      { id: 'changelog', label: 'Changelog', content: <LazyContent tabName="Changelog"><ChangelogTab /></LazyContent> },
     ];
   }, [modules, state.time?.day, state.time?.slot]);
   const activeModuleId = state.ui.activeModule;
@@ -348,7 +391,9 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           }`}
         >
           {combatLayoutActive ? (
-            <CombatParticipantsSidebar />
+            <LazyContent tabName="Combat Participants">
+              <CombatParticipantsSidebar />
+            </LazyContent>
           ) : (
             <>
 
@@ -581,7 +626,9 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
         >
           <div className="h-full" data-testid="character-pane">
             {selectedCharacter && characterPanelView === 'sheet' && (
-              <CharacterSheet character={selectedCharacter} />
+              <LazyContent tabName="Character Sheet">
+                <CharacterSheet character={selectedCharacter} />
+              </LazyContent>
             )}
             {selectedCharacter && characterPanelView === 'skills' && (
               <CharacterSkillsPanel character={selectedCharacter} />
@@ -606,7 +653,9 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           }`}
         >
           {combatLayoutActive ? (
-            <CombatMainArea />
+            <LazyContent tabName="Combat Map">
+              <CombatMainArea />
+            </LazyContent>
           ) : (
             activeModule && (
               <>
@@ -641,7 +690,9 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           }`}
         >
           {combatLayoutActive ? (
-            <CombatManeuverRail />
+            <LazyContent tabName="Combat Maneuvers">
+              <CombatManeuverRail />
+            </LazyContent>
           ) : (
             <>
           {/* Header with toggle button - matching Party collapsed structure */}

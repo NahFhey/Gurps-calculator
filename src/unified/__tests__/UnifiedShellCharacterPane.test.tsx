@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { CampaignStoreProvider } from '../../state/campaignStore';
 import { UnifiedShell } from '../UnifiedShell';
@@ -37,7 +37,7 @@ describe('UnifiedShell character pane', () => {
     expect(characterPane).toBeInTheDocument();
   });
 
-  it('shows selected character name in character sheet', () => {
+  it('shows selected character name in character sheet', async () => {
     render(
       <CampaignStoreProvider>
         <UnifiedShell modules={modules} />
@@ -47,11 +47,12 @@ describe('UnifiedShell character pane', () => {
     fireEvent.click(screen.getByTestId('party-character-char-rina'));
 
     // Character name appears multiple times (party list + character sheet)
-    const rinaElements = screen.getAllByText('Rina');
-    expect(rinaElements.length).toBeGreaterThan(1);
+    await waitFor(() => {
+      expect(screen.getAllByText('Rina').length).toBeGreaterThan(1);
+    });
   });
 
-  it('shows character information when selected', () => {
+  it('shows character information when selected', async () => {
     render(
       <CampaignStoreProvider>
         <UnifiedShell modules={modules} />
@@ -64,7 +65,8 @@ describe('UnifiedShell character pane', () => {
     const characterPane = screen.getByTestId('character-pane');
     expect(characterPane).toBeInTheDocument();
     // Character name appears multiple times after selection (party list + character sheet)
-    const rinaElements = screen.getAllByText('Rina');
-    expect(rinaElements.length).toBeGreaterThan(1);
+    await waitFor(() => {
+      expect(screen.getAllByText('Rina').length).toBeGreaterThan(1);
+    });
   });
 });
