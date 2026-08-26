@@ -6,6 +6,7 @@ import { CampaignStoreProvider } from '../../../../state/campaignStore';
 import { DowntimeProvider } from '../../DowntimeContext';
 import type { DowntimeState, DowntimeTask, MiningSite } from '../../../../types/downtime';
 import type { Character, GatheringTool } from '../../../../types/campaign';
+import type { CreateTaskPayload } from '../../../../state/downtime/downtimeActions';
 
 const minimalDowntimeState: DowntimeState = {
   tasksById: {},
@@ -240,6 +241,32 @@ describe('MiningTaskForm', () => {
       expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
         activityData: expect.objectContaining({ toolIds: ['tool-2'] }),
       }));
+    });
+  });
+
+  describe('batch assignment', () => {
+    it('swaps the leader picker and submits one payload per selected leader', () => {
+      const onSubmit = vi.fn();
+      const submittedBatches: CreateTaskPayload[][] = [];
+      const onSubmitBatch = vi.fn((payloads: CreateTaskPayload[]) => {
+        submittedBatches.push(payloads);
+        return [{ valid: true }, { valid: true }];
+      });
+      renderForm({ onSubmit, onSubmitBatch });
+
+      fireEvent.click(screen.getByTestId('batch-assign-toggle'));
+      expect(screen.queryByRole('combobox', { name: /^leader$/i })).not.toBeInTheDocument();
+      const leaderSelect = screen.getByTestId('batch-leader-select') as HTMLSelectElement;
+      Array.from(leaderSelect.options).forEach((option) => { option.selected = true; });
+      fireEvent.change(leaderSelect);
+      fireEvent.click(screen.getByText('Create Task'));
+
+      expect(onSubmit).not.toHaveBeenCalled();
+      const payloads = submittedBatches[0];
+      if (!payloads) throw new Error('Expected a submitted batch');
+      expect(payloads).toHaveLength(2);
+      expect(payloads.map((payload) => payload.leaderId)).toEqual(['char-1', 'char-2']);
+      expect(payloads.every((payload) => payload.helperIds.length === 0)).toBe(true);
     });
   });
 });

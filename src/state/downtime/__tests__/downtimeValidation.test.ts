@@ -15,6 +15,7 @@ import {
   validateTaskCreation,
   validateLockOnCreate,
   validateToolExclusivity,
+  validateBatchToolExclusivity,
 } from '../downtimeValidation';
 import { DowntimeValidationError, DOWNTIME_ERROR_CODES } from '../downtimeErrors';
 
@@ -1208,5 +1209,40 @@ describe('downtimeReducer - tool validation', () => {
     })));
 
     expect(Object.keys(state3.tasksById)).toHaveLength(2);
+  });
+});
+
+describe('validateBatchToolExclusivity', () => {
+  it('flags a payload whose tool collides with an earlier payload', () => {
+    const results = validateBatchToolExclusivity([
+      createTaskPayload({
+        leaderId: 'char-1',
+        activityData: createFishingData({ toolIds: ['rod-1'] }),
+      }),
+      createTaskPayload({
+        leaderId: 'char-2',
+        activityData: createFishingData({ toolIds: ['rod-1', 'net-1'] }),
+      }),
+    ]);
+
+    expect(results[0].valid).toBe(true);
+    expect(results[1].valid).toBe(false);
+    expect(results[1].code).toBe(DOWNTIME_ERROR_CODES.TOOL_CONFLICT);
+    expect(results[1].meta?.conflictingToolIds).toEqual(['rod-1']);
+  });
+
+  it('passes payloads with disjoint tools', () => {
+    const results = validateBatchToolExclusivity([
+      createTaskPayload({
+        leaderId: 'char-1',
+        activityData: createFishingData({ toolIds: ['rod-1'] }),
+      }),
+      createTaskPayload({
+        leaderId: 'char-2',
+        activityData: createFishingData({ toolIds: ['net-1'] }),
+      }),
+    ]);
+
+    expect(results).toEqual([{ valid: true }, { valid: true }]);
   });
 });

@@ -17,6 +17,11 @@ import { characterHasAnySkill, getCharacterSkills, ACTIVITY_SKILL_REQUIREMENTS }
 import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
 import type { DowntimeState, FishingData, FishingMethod } from '../../../types/downtime';
 import type { Character, GatheringSpecies, GatheringTool, GatheringEnvironment, GatheringBait } from '../../../types/campaign';
+import type { CreateTaskPayload } from '../../../state/downtime/downtimeActions';
+import type { ValidationResult } from '../../../state/downtime/downtimeErrors';
+import { useOptionalDowntimeContext } from '../DowntimeContext';
+import { ToolSelector } from './shared/ToolSelector';
+import { ValidationError } from './shared/ValidationError';
 
 // ============================================================================
 // TYPES
@@ -47,6 +52,8 @@ interface FishingTaskFormProps {
     helperIds: string[];
     activityData: FishingData;
   }) => void;
+  /** Optional override used by isolated form tests; production uses the context seam. */
+  onSubmitBatch?: (payloads: CreateTaskPayload[]) => ValidationResult[];
   /** Called when form is cancelled */
   onCancel: () => void;
 }
@@ -66,9 +73,15 @@ export function FishingTaskForm({
   currentDayKey,
   currentSlot,
   onSubmit,
+  onSubmitBatch,
   onCancel,
 }: FishingTaskFormProps) {
+  const downtimeContext = useOptionalDowntimeContext();
   // Form state
+  const [isBatchMode, setIsBatchMode] = useState(false);
+  const [batchLeaderIds, setBatchLeaderIds] = useState<string[]>([]);
+  const [batchToolIds, setBatchToolIds] = useState<Record<string, string[]>>({});
+  const [batchErrors, setBatchErrors] = useState<Record<string, ValidationResult>>({});
   const [leaderId, setLeaderId] = useState('');
   const [helperIds, setHelperIds] = useState<string[]>([]);
   const [method, setMethod] = useState<FishingMethod>('Line');
@@ -322,6 +335,56 @@ export function FishingTaskForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (isBatchMode) {
+      if (batchLeaderIds.length === 0 || !spotId || (!isRandomCatch && !speciesId)) {
+        return;
+      }
+
+      const payloads: CreateTaskPayload[] = batchLeaderIds.map((batchLeaderId) => {
+        const toolIds = batchToolIds[batchLeaderId] ?? [];
+        const rowToolModifier = toolIds.reduce((sum, toolId) => {
+          const tool = tools.find((candidate) => candidate.id === toolId);
+          if (!tool) return sum;
+          const flatBonus = typeof tool.skillBonus === 'number' ? tool.skillBonus : 0;
+          const structuredBonus = tool.bonuses
+            ?.filter((bonus) => bonus.type === 'skill_bonus' && bonus.skill === 'Fishing')
+            .reduce((bonusSum, bonus) => bonusSum + (bonus.value ?? 0), 0) ?? 0;
+          return sum + flatBonus + structuredBonus;
+        }, 0);
+
+        return {
+          activityType: 'fishing',
+          dayKey: currentDayKey,
+          slot: currentSlot,
+          leaderId: batchLeaderId,
+          helperIds: [],
+          activityData: {
+            type: 'fishing',
+            method,
+            speciesId: isRandomCatch ? '' : speciesId,
+            isRandomCatch,
+            spotId,
+            toolIds,
+            baitId: baitId || null,
+            retryAttempt: 0,
+            skillModifier: rowToolModifier,
+            targetYield: 1,
+          },
+        };
+      });
+      const results = onSubmitBatch?.(payloads)
+        ?? downtimeContext?.createDowntimeTasksBatch(payloads)
+        ?? payloads.map(() => ({ valid: false, message: 'Batch submission is unavailable' }));
+      const nextErrors: Record<string, ValidationResult> = {};
+      results.forEach((result, index) => {
+        const rowId = batchLeaderIds[index];
+        if (!result.valid && rowId) nextErrors[rowId] = result;
+      });
+      setBatchErrors(nextErrors);
+      if (results.every((result) => result.valid)) onCancel();
+      return;
+    }
+
     // Validation
     if (!leaderId || !spotId) {
       return; // Required fields not filled
@@ -366,7 +429,9 @@ export function FishingTaskForm({
   };
 
   // Check if form is valid
-  const isFormValid = leaderId && spotId && (isRandomCatch || speciesId);
+  const isFormValid = (isBatchMode ? batchLeaderIds.length > 0 : Boolean(leaderId))
+    && Boolean(spotId)
+    && (isRandomCatch || Boolean(speciesId));
 
   return (
     <form
@@ -386,6 +451,20 @@ export function FishingTaskForm({
           <X className="w-5 h-5" />
         </button>
       </div>
+
+      <label className="mb-4 flex items-center gap-2 text-sm text-gray-300">
+        <input
+          type="checkbox"
+          checked={isBatchMode}
+          onChange={(event) => {
+            setIsBatchMode(event.target.checked);
+            setBatchErrors({});
+          }}
+          data-testid="batch-assign-toggle"
+          className="rounded border-gray-600 bg-gray-900 text-blue-600 focus:ring-blue-500"
+        />
+        Batch assign
+      </label>
 
       {/* Fishing Method Selection */}
       <div className="form-group mb-4">
@@ -418,7 +497,7 @@ export function FishingTaskForm({
       </div>
 
       {/* Leader Selection */}
-      <div className="form-group mb-4">
+      {!isBatchMode ? <div className="form-group mb-4">
         <label htmlFor="leader-select" className="block text-sm font-medium text-gray-300 mb-1">
           Leader <span className="text-red-400">*</span>
         </label>
@@ -442,10 +521,35 @@ export function FishingTaskForm({
             All characters are already assigned to tasks in this slot
           </p>
         )}
-      </div>
+      </div> : (
+        <div className="form-group mb-4">
+          <label htmlFor="fishing-batch-leaders" className="block text-sm font-medium text-gray-300 mb-1">
+            Leaders <span className="text-red-400">*</span>
+          </label>
+          <select
+            id="fishing-batch-leaders"
+            multiple
+            value={batchLeaderIds}
+            onChange={(event) => {
+              const nextIds = Array.from(event.currentTarget.selectedOptions, (option) => option.value);
+              setBatchLeaderIds(nextIds);
+              setBatchToolIds((current) => Object.fromEntries(
+                Object.entries(current).filter(([characterId]) => nextIds.includes(characterId))
+              ));
+              setBatchErrors({});
+            }}
+            data-testid="batch-leader-select"
+            className="w-full min-h-24 px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100"
+          >
+            {availableCharacters.map((character) => (
+              <option key={character.id} value={character.id}>{character.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Helper Selection */}
-      <div className="form-group mb-4">
+      {!isBatchMode && <div className="form-group mb-4">
         <label className="block text-sm font-medium text-gray-300 mb-1">
           Helpers (optional)
         </label>
@@ -473,7 +577,7 @@ export function FishingTaskForm({
             ))}
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Fishing Spot Selection */}
       <div className="form-group mb-4">
@@ -628,7 +732,7 @@ export function FishingTaskForm({
       </div>
 
       {/* Tool Selection */}
-      <div className="form-group mb-4">
+      {!isBatchMode ? <div className="form-group mb-4">
         <label className="block text-sm font-medium text-gray-300 mb-1">
           Equipment (optional)
         </label>
@@ -674,7 +778,45 @@ export function FishingTaskForm({
             })}
           </div>
         )}
-      </div>
+      </div> : (
+        <div className="space-y-3 mb-4" data-testid="batch-tool-rows">
+          {batchLeaderIds.map((characterId) => {
+            const character = characters.find((candidate) => candidate.id === characterId);
+            const otherDraftTools = batchLeaderIds.flatMap((otherId) =>
+              otherId === characterId ? [] : (batchToolIds[otherId] ?? [])
+            );
+            const rowReservedToolIds = new Set([...reservedToolIds, ...otherDraftTools]);
+            const error = batchErrors[characterId];
+            return (
+              <div key={characterId} className="rounded border border-gray-700 bg-gray-900/40 p-3" data-testid={`batch-row-${characterId}`}>
+                <p className="mb-2 text-sm font-medium text-gray-200">{character?.name ?? characterId}</p>
+                <ToolSelector
+                  label={`${character?.name ?? characterId} tools`}
+                  value={batchToolIds[characterId] ?? []}
+                  onChange={(toolIds) => {
+                    setBatchToolIds((current) => ({ ...current, [characterId]: toolIds }));
+                    setBatchErrors((current) => {
+                      const next = { ...current };
+                      delete next[characterId];
+                      return next;
+                    });
+                  }}
+                  tools={availableTools}
+                  reservedToolIds={rowReservedToolIds}
+                />
+                {error && (
+                  <ValidationError
+                    code={error.code ?? 'UNKNOWN_ERROR'}
+                    message={error.message ?? 'Validation failed'}
+                    meta={error.meta}
+                    className="mt-2"
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Skill Summary */}
       <div className="bg-gray-900/50 border border-gray-700 rounded p-3 mb-4">

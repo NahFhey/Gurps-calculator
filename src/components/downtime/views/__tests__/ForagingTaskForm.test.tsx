@@ -6,6 +6,7 @@ import { downtimeInitialState } from '../../../../state/downtime/downtimeInitial
 import { DEFAULT_FORAGING_CONFIG } from '../../../../constants/foraging';
 import type { Character, GatheringTool } from '../../../../types/campaign';
 import type { DowntimeState, DowntimeTask } from '../../../../types/downtime';
+import type { CreateTaskPayload } from '../../../../state/downtime/downtimeActions';
 import type { ForageZoneProfile, ForageItem } from '../../../../types/foraging';
 
 // Mock data
@@ -366,6 +367,46 @@ describe('ForagingTaskForm', () => {
 
       expect(screen.getByText(/Base Skill:/)).toBeInTheDocument();
       expect(screen.getByText(/Total Modifier:/)).toBeInTheDocument();
+    });
+  });
+
+  describe('batch assignment', () => {
+    it('reserves tools selected in another draft row and submits N payloads', () => {
+      const onSubmit = vi.fn();
+      const submittedBatches: CreateTaskPayload[][] = [];
+      const onSubmitBatch = vi.fn((payloads: CreateTaskPayload[]) => {
+        submittedBatches.push(payloads);
+        return [{ valid: true }, { valid: true }];
+      });
+      render(
+        <ForagingTaskForm
+          {...defaultProps}
+          onSubmit={onSubmit}
+          onSubmitBatch={onSubmitBatch}
+        />
+      );
+
+      fireEvent.click(screen.getByTestId('batch-assign-toggle'));
+      expect(screen.queryByTestId('leader-select')).not.toBeInTheDocument();
+      const leaderSelect = screen.getByTestId('batch-leader-select') as HTMLSelectElement;
+      Array.from(leaderSelect.options).forEach((option) => { option.selected = true; });
+      fireEvent.change(leaderSelect);
+
+      const firstRow = screen.getByTestId('batch-row-char-1');
+      const secondRow = screen.getByTestId('batch-row-char-2');
+      const firstBasket = within(firstRow).getByText('Foraging Basket').closest('label');
+      const secondBasket = within(secondRow).getByText('Foraging Basket').closest('label');
+      if (!firstBasket || !secondBasket) throw new Error('Expected per-row tool labels');
+      fireEvent.click(within(firstBasket).getByRole('checkbox'));
+      expect(within(secondBasket).getByRole('checkbox')).toBeDisabled();
+
+      fireEvent.click(screen.getByTestId('submit-button'));
+      expect(onSubmit).not.toHaveBeenCalled();
+      const payloads = submittedBatches[0];
+      if (!payloads) throw new Error('Expected a submitted batch');
+      expect(payloads).toHaveLength(2);
+      expect(payloads[0].activityData).toMatchObject({ toolIds: ['tool-1'] });
+      expect(payloads[1].activityData).toMatchObject({ toolIds: [] });
     });
   });
 });

@@ -212,6 +212,49 @@ export function validateToolExclusivity(
   return { valid: true };
 }
 
+/**
+ * Validates tool reservations created inside a batch of task payloads.
+ *
+ * Each payload is compared only with earlier payloads scheduled for the same
+ * day and slot. The returned array is index-aligned with `payloads`, which
+ * lets forms attach an error to the character row that caused the conflict.
+ * Existing committed reservations remain the responsibility of
+ * `validateTaskCreation`.
+ */
+export function validateBatchToolExclusivity(
+  payloads: CreateTaskPayload[]
+): ValidationResult[] {
+  const toolsBySlot = new Map<string, Set<string>>();
+
+  return payloads.map((payload, payloadIndex) => {
+    const slotKey = `${payload.dayKey}:${payload.slot}`;
+    const earlierTools = toolsBySlot.get(slotKey) ?? new Set<string>();
+    const toolIds = getToolIdsFromActivityData(payload.activityData);
+    const conflictingToolIds = toolIds.filter((toolId) => earlierTools.has(toolId));
+
+    for (const toolId of toolIds) {
+      earlierTools.add(toolId);
+    }
+    toolsBySlot.set(slotKey, earlierTools);
+
+    if (conflictingToolIds.length === 0) {
+      return { valid: true };
+    }
+
+    return {
+      valid: false,
+      code: DOWNTIME_ERROR_CODES.TOOL_CONFLICT,
+      message: `Tool(s) already selected by an earlier batch row: ${conflictingToolIds.join(', ')}`,
+      meta: {
+        conflictingToolIds,
+        dayKey: payload.dayKey,
+        slot: payload.slot,
+        payloadIndex,
+      },
+    };
+  });
+}
+
 // ============================================================================
 // COMBINED TASK CREATION VALIDATION
 // ============================================================================

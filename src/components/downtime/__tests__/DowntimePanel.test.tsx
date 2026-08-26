@@ -51,4 +51,11 @@ describe('DowntimePanel', () => {
     fireEvent.click(screen.getByText('Fishing'));
     expect(screen.getByTestId('new-fishing-task-button')).toBeInTheDocument();
   });
+
+  it('navigates to the rest task form', () => {
+    renderWithProvider(<DowntimePanel {...defaultProps} />);
+    fireEvent.click(screen.getByText('Rest'));
+    expect(screen.getByTestId('rest-activity')).toBeInTheDocument();
+    expect(screen.getByTestId('rest-task-form')).toBeInTheDocument();
+  });
 });
