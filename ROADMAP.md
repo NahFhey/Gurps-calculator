@@ -280,7 +280,7 @@
 ### 13a: Decompose Remaining Monoliths
 - ✅ CookingTab.tsx (978 lines) -> thin router + views (2026-08-25, codex-shepherd: `src/components/cooking/`, 337-line router + 3 views + 14 characterization tests; re-export shim keeps consumers untouched)
 - ✅ InventoryTab.tsx (968 lines) -> thin router + views (2026-08-25, codex-shepherd: `src/components/inventory/`, router + OverviewView/PartyStashView/TransferConsole; done alongside the Give-to quick-assign)
-- CraftingTab.tsx (currently gone but crafting logic) — verify decomposition state
+- ✅ CraftingTab.tsx — verified decomposed (2026-08-26): `src/components/crafting/` holds CraftingWorkbench (638 lines), CraftingDesigns, CraftingProjectList, SaveDesignModal; no monolith remains. **13a fully complete.**
 - ✅ LocationManager.tsx (1,084 lines) -> thin router + views (2026-08-25, codex-shepherd: 321-line router + 8 views + 17 tests; 13a monolith list complete)
 
 ### 13b: Activity System Improvements
