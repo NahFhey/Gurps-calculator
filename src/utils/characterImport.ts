@@ -442,14 +442,16 @@ function parseEquipment(line: string): Equipment[] {
     const trimmed = part.trim();
     if (!trimmed) continue;
 
-    // Match: "Qty Name [$Cost; Weight lb]"
-    const match = trimmed.match(/^(\d+)\s+(.+?)\s+\[\$(\d+);\s*([\d.]+)\s*lb\]$/);
+    // Match: "Qty Name [$Cost; Weight lb]" with optional quantity and weight
+    const match = trimmed.match(
+      /^(?:(\d+)\s+)?(.+?)\s+\[\$(\d[\d,]*(?:\.\d+)?)(?:;\s*(\d+(?:\.\d+)?)\s*lbs?\.?)?\]$/
+    );
 
     if (match) {
-      const quantity = parseInt(match[1], 10);
+      const quantity = match[1] ? parseInt(match[1], 10) : 1;
       const name = match[2].trim();
-      const cost = parseInt(match[3], 10);
-      const weight = parseFloat(match[4]);
+      const cost = parseFloat(match[3].replace(/,/g, ''));
+      const weight = match[4] ? parseFloat(match[4]) : 0;
 
       equipment.push({
         id: `equip-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -465,17 +467,20 @@ function parseEquipment(line: string): Equipment[] {
 }
 
 /**
- * Helper to split by semicolon while respecting parentheses
+ * Helper to split by semicolon while respecting parentheses and square brackets
  */
 function splitBySemicolon(text: string): string[] {
   const parts: string[] = [];
   let current = '';
   let parenDepth = 0;
+  let bracketDepth = 0;
 
   for (const char of text) {
     if (char === '(') parenDepth++;
     else if (char === ')') parenDepth--;
-    else if (char === ';' && parenDepth === 0) {
+    else if (char === '[') bracketDepth++;
+    else if (char === ']') bracketDepth--;
+    else if (char === ';' && parenDepth === 0 && bracketDepth === 0) {
       parts.push(current.trim());
       current = '';
       continue;

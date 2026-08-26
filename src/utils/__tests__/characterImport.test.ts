@@ -210,11 +210,37 @@ describe('parseCharacterText full GCS imports', () => {
       castingTime: '1 sec',
       duration: '1 min',
     });
-    // NOTE: The generic semicolon splitter breaks documented equipment entries at the
-    // cost/weight separator, so even well-formed equipment is currently dropped.
-    expect(gcsData.equipment).toEqual([]);
+    expect(gcsData.equipment).toEqual([
+      expect.objectContaining({ name: 'Boots', quantity: 1, cost: 80, weight: 3 }),
+      expect.objectContaining({ name: 'Healing Potions', quantity: 2, cost: 120, weight: 0.5 }),
+    ]);
     expect(gcsData.otherEquipment).toBe('Bedroll, flint and steel');
     expect(gcsData.notes).toBe('Corvi alchemist and reluctant adventurer.');
+  });
+});
+
+describe('parseCharacterText equipment variants', () => {
+  it.each([
+    ['decimal costs', '1 Fine Boots [$80.50; 3 lb]', { name: 'Fine Boots', quantity: 1, cost: 80.5, weight: 3 }],
+    ['thousands separators', '1 Armor [$3,000; 2 lb]', { name: 'Armor', quantity: 1, cost: 3000, weight: 2 }],
+    ['missing quantities', 'Boots [$80; 3 lb]', { name: 'Boots', quantity: 1, cost: 80, weight: 3 }],
+    ['lb. suffixes', '1 Rope [$10; 3 lb.]', { name: 'Rope', quantity: 1, cost: 10, weight: 3 }],
+    ['lbs suffixes', '2 Rations [$6; 1.5 lbs]', { name: 'Rations', quantity: 2, cost: 6, weight: 1.5 }],
+    ['missing weights', '1 Torch [$3]', { name: 'Torch', quantity: 1, cost: 3, weight: 0 }],
+  ])('parses %s', (_label, entry, expected) => {
+    const { gcsData } = parseWithData(`Equipment: ${entry};`);
+
+    expect(gcsData.equipment).toEqual([expect.objectContaining(expected)]);
+  });
+
+  it('skips malformed fragments while preserving valid equipment', () => {
+    const { gcsData } = parseWithData(
+      'Equipment: broken equipment; 1 Torch [$3]; missing [$oops; heavy lbs];'
+    );
+
+    expect(gcsData.equipment).toEqual([
+      expect.objectContaining({ name: 'Torch', quantity: 1, cost: 3, weight: 0 }),
+    ]);
   });
 });
 
