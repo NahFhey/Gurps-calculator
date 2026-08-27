@@ -285,12 +285,12 @@
 - ✅ CraftingTab.tsx — verified decomposed (2026-08-26): `src/components/crafting/` holds CraftingWorkbench (638 lines), CraftingDesigns, CraftingProjectList, SaveDesignModal; no monolith remains. **13a fully complete.**
 - ✅ LocationManager.tsx (1,084 lines) -> thin router + views (2026-08-25, codex-shepherd: 321-line router + 8 views + 17 tests; 13a monolith list complete)
 
-### 13b: Activity System Improvements
-- Activity result history with searchable log
-- Material requirement previews before committing to activities
-- Batch operations (assign multiple characters to same activity type)
-- Activity chaining (craft outputs feed into next activity's inputs)
-- Better UX for tool reservation conflicts
+### 13b: Activity System Improvements ✅ COMPLETE (2026-08-27)
+Shipped as a four-lane bundle (design: [`docs/ACTIVITY_SYSTEM_13B_PLAN.md`](./docs/ACTIVITY_SYSTEM_13B_PLAN.md), all lanes codex-shepherd):
+- ✅ Better UX for tool reservation conflicts + material requirement previews (lane 1 "parity", 2026-08-26)
+- ✅ Activity result history with searchable log (lane 2 "result history" — structured changelog, 2026-08-26)
+- ✅ Batch operations (lane 3 "batch ops" — N parallel single-leader tasks, all-or-nothing validation, 2026-08-26)
+- ✅ Activity chaining (lane 4, 2026-08-27) — follow-on affordances on resolved gathering task cards ("Cook with these" / "Craft with these" / "Send to lab") via one-shot `ui.pendingIntent`; `InventoryDelta.kind` stamped at all fishing/foraging/mining resolution sites; bonus fix: foraging deltas now record the acquired inventory id (was catalog id)
 
 ### 13c: New Activity Types
 - Trading/Commerce (buy/sell with market prices, haggling rolls)

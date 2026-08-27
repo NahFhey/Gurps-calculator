@@ -1,7 +1,8 @@
 # Phase 13b: Activity System Improvements — Design Concept (Bundle)
 
-**Status:** Designed 2026-08-26 (grill-me session). Lane 1 (parity) SHIPPED same day;
-lanes 2–4 ready to spec.
+**Status:** ✅ ALL FOUR LANES SHIPPED — 13b COMPLETE. Designed 2026-08-26 (grill-me
+session); lanes 1–3 shipped 2026-08-26, lane 4 (chaining) shipped 2026-08-27 (spec
+`2026-08-27-chaining-13b-lane4.md`, merge `codex/chaining`).
 **Origin:** ROADMAP.md Phase 13b (five bullets), reconciled against recon findings
 (crafting preview already existed; tool-conflict UX half-built; result records in
 three silos; batch/chaining green-field; cooking is not a downtime task).
@@ -16,10 +17,20 @@ three silos; batch/chaining green-field; cooking is not a downtime task).
    cooking's CreateMealView (vs party food holdings), start/confirm disabled when
    short. Closes roadmap bullets "material requirement previews" and "better tool
    reservation UX".
-2. **Result history lane** (decisions below) — closes "activity result history
+2. **Result history lane — ✅ SHIPPED 2026-08-26** (codex-shepherd, spec
+   `2026-08-26-result-history-13b-lane2.md`) — closes "activity result history
    with searchable log".
-3. **Batch operations lane** — closes "batch operations".
-4. **Chaining lane** — closes "activity chaining".
+3. **Batch operations lane — ✅ SHIPPED 2026-08-26** (codex-shepherd, spec
+   `2026-08-26-batch-ops-13b-lane3.md`) — closes "batch operations".
+4. **Chaining lane — ✅ SHIPPED 2026-08-27** (codex-shepherd, spec
+   `2026-08-27-chaining-13b-lane4.md`) — closes "activity chaining". As built:
+   one-shot `ui.pendingIntent` (`cook`/`craft`/`promote`) nulled on hydrate and
+   in both export halves; optional `InventoryDelta.kind` stamped at all six
+   fishing/foraging/mining resolution sites (manual + auto); shared
+   `ChainingAffordances` on the three gathering task cards; ManagerTab →
+   ReagentsView promotion picker preselects first matching source by name.
+   Bonus fix: foraging deltas now record the acquired inventory id (was the
+   catalog id — cook prefill would have pointed at non-existent foods).
 
 Sequencing: history ∥ batch (disjoint footprints), chaining last (touches the
 most surfaces; its lab prefill builds on the reagent-promotion picker).
