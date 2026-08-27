@@ -86,6 +86,11 @@ export type LegacyAppState = Record<string, unknown>;
 
 export type CharacterPanelView = 'sheet' | 'skills' | 'equipment' | 'inventory';
 
+export type PendingIntent =
+  | { kind: 'cook'; foodIds: string[] }
+  | { kind: 'craft' }
+  | { kind: 'promote'; sourceNames: string[] };
+
 export type CampaignState = {
   ui: {
     activeModule: string;
@@ -95,6 +100,7 @@ export type CampaignState = {
     gmSessionUnlocked: boolean;
     debugMode: boolean;
     activitiesSubview: string | null;
+    pendingIntent: PendingIntent | null;
     blockingError: null | {
       type: string;
       system: 'time';
@@ -340,6 +346,7 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
     gmSessionUnlocked: false,
     debugMode: false,
     activitiesSubview: null,
+    pendingIntent: null,
     blockingError: null
   },
   meta: {
@@ -494,6 +501,8 @@ export const initialCampaignState: CampaignState = createCampaignState();
 
 export type CampaignAction =
   | { type: 'setActiveModule'; payload: string }
+  | { type: 'setPendingIntent'; payload: PendingIntent }
+  | { type: 'clearPendingIntent' }
   | { type: 'selectCharacter'; payload: string | null }
   | { type: 'setCharacterPanelView'; payload: CharacterPanelView }
   | { type: 'toggleGmMode' }
@@ -783,6 +792,12 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
     switch (action.type) {
       case 'setActiveModule':
         draft.ui.activeModule = action.payload;
+        return;
+      case 'setPendingIntent':
+        draft.ui.pendingIntent = action.payload;
+        return;
+      case 'clearPendingIntent':
+        draft.ui.pendingIntent = null;
         return;
       case 'selectCharacter':
         draft.ui.selectedCharacterId = action.payload;

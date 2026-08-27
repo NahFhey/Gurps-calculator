@@ -3,10 +3,23 @@ import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { DowntimePanel } from '../DowntimePanel';
 import { CampaignStoreProvider } from '../../../state/campaignStore';
+import { createCampaignState } from '../../../state/campaignReducer';
 
 // Wrapper component with CampaignStoreProvider
 function renderWithProvider(ui: React.ReactElement) {
   return render(<CampaignStoreProvider>{ui}</CampaignStoreProvider>);
+}
+
+function renderWithIntent(kind: 'cook' | 'craft') {
+  const state = createCampaignState();
+  state.ui.pendingIntent = kind === 'cook'
+    ? { kind: 'cook', foodIds: [] }
+    : { kind: 'craft' };
+  return render(
+    <CampaignStoreProvider initialCampaignState={state}>
+      <DowntimePanel currentDayKey={1} currentSlot={0} />
+    </CampaignStoreProvider>,
+  );
 }
 
 describe('DowntimePanel', () => {
@@ -57,5 +70,15 @@ describe('DowntimePanel', () => {
     fireEvent.click(screen.getByText('Rest'));
     expect(screen.getByTestId('rest-activity')).toBeInTheDocument();
     expect(screen.getByTestId('rest-task-form')).toBeInTheDocument();
+  });
+
+  it('navigates to cooking for a cook intent', () => {
+    renderWithIntent('cook');
+    expect(screen.getByPlaceholderText('Recipe name')).toBeInTheDocument();
+  });
+
+  it('navigates to crafting for a craft intent', () => {
+    renderWithIntent('craft');
+    expect(screen.getByTestId('crafting-activity')).toBeInTheDocument();
   });
 });

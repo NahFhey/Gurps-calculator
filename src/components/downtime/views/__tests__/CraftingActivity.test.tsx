@@ -3,6 +3,8 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { CraftingActivity } from '../CraftingActivity';
 import { CampaignStoreProvider } from '../../../../state/campaignStore';
+import { useCampaignStore } from '../../../../state/campaignStore';
+import { createCampaignState, type CampaignState } from '../../../../state/campaignReducer';
 import { DowntimeProvider } from '../../DowntimeContext';
 
 // Helper to render with all required providers
@@ -26,6 +28,29 @@ describe('CraftingActivity', () => {
   };
 
   describe('rendering', () => {
+    it('consumes a craft intent and lands on Designs', () => {
+      const initialState = createCampaignState();
+      initialState.ui.pendingIntent = { kind: 'craft' };
+      let latest: CampaignState = initialState;
+
+      function StateProbe() {
+        latest = useCampaignStore().state;
+        return null;
+      }
+
+      render(
+        <CampaignStoreProvider initialCampaignState={initialState}>
+          <DowntimeProvider currentDayKey={1} currentSlot={0}>
+            <CraftingActivity {...defaultProps} />
+            <StateProbe />
+          </DowntimeProvider>
+        </CampaignStoreProvider>
+      );
+
+      expect(screen.getByText('Designs').closest('button')).toHaveClass('border-orange-500');
+      expect(latest.ui.pendingIntent).toBeNull();
+    });
+
     it('renders crafting activity header', () => {
       renderWithProviders(<CraftingActivity {...defaultProps} />);
       expect(screen.getByText('Crafting')).toBeInTheDocument();

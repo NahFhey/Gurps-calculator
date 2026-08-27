@@ -14,6 +14,7 @@ export { StatusBadge, getStatusBorderColor, getStatusBackgroundColor } from './S
 
 // Task results
 export { TaskResultsDisplay, CancelledMessage } from './TaskResultsDisplay';
+export { ChainingAffordances } from './ChainingAffordances';
 
 // Task actions
 export { TaskActions, ResolveButton, CancelButton } from './TaskActions';

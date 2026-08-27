@@ -8,7 +8,7 @@
  * - Designs: Saved design templates for quick-starting crafts
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Hammer } from 'lucide-react';
 import { useDowntimeContext } from '../DowntimeContext';
 import { useCraftingData } from '../../../hooks/useCraftingData';
@@ -17,6 +17,7 @@ import { CraftingWorkbench } from '../../crafting/CraftingWorkbench';
 import { CraftingDesigns } from '../../crafting/CraftingDesigns';
 import { SaveDesignModal } from '../../crafting/SaveDesignModal';
 import type { Craft, CraftDesign } from '../../../types/campaign';
+import { useCampaignStore } from '../../../state/campaignStore';
 
 // ============================================================================
 // TYPES
@@ -48,6 +49,7 @@ const TABS: { key: CraftingSubView; label: string; getBadge?: (ctx: { projectCou
 export function CraftingActivity({ currentDayKey, currentSlot }: CraftingActivityProps) {
   // Downtime context for time slot tracking
   const { state: downtimeState, dispatch: downtimeDispatch } = useDowntimeContext();
+  const { state: campaignState, actions: campaignActions } = useCampaignStore();
 
   // Crafting data hook for sub-views (with save callbacks)
   const {
@@ -68,6 +70,16 @@ export function CraftingActivity({ currentDayKey, currentSlot }: CraftingActivit
 
   // Sub-view navigation
   const [activeTab, setActiveTab] = useState<CraftingSubView>('projects');
+  const consumedIntentRef = useRef<typeof campaignState.ui.pendingIntent>(null);
+
+  useEffect(() => {
+    const intent = campaignState.ui.pendingIntent;
+    if (intent?.kind !== 'craft' || consumedIntentRef.current === intent) return;
+
+    consumedIntentRef.current = intent;
+    setActiveTab('designs');
+    campaignActions.clearPendingIntent();
+  }, [campaignActions, campaignState.ui.pendingIntent]);
 
   // Workbench state
   const [currentCraft, setCurrentCraft] = useState<Craft | null>(null);

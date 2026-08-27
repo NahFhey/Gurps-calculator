@@ -28,7 +28,7 @@ import { DowntimeValidationError } from '../../../state/downtime/downtimeErrors'
 import { resolveForage } from '../../../utils/foraging';
 import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
 import { useWeatherModifiers } from '../../../hooks/useWeatherModifiers';
-import type { DowntimeTask, ForagingData, TaskResults } from '../../../types/downtime';
+import type { DowntimeTask, ForagingData, InventoryDelta, TaskResults } from '../../../types/downtime';
 import type { CreateTaskPayload } from '../../../state/downtime/downtimeActions';
 import type { ForageActionInput, ForageContextFlags } from '../../../types/foraging';
 import type { AcquiredItem, InventoryOwner, AcquisitionSource } from '../../../types/campaign';
@@ -154,11 +154,7 @@ function resolveForagingTask(
   // Convert ForageActionResult → TaskResults
   const success = result.tierOutcome !== 'nothing' && result.tierOutcome !== 'scraps' && result.found.length > 0;
 
-  const inventoryChanges = result.found.map((stack) => ({
-    itemId: stack.itemId,
-    quantity: stack.quantity,
-    itemName: stack.itemName,
-  }));
+  const inventoryChanges: InventoryDelta[] = [];
 
   // Add found items to inventory
   const zoneName = zone?.name ?? 'unknown zone';
@@ -183,6 +179,12 @@ function resolveForagingTask(
         source: `Foraging at ${zoneName}`,
       }, 'party', 'gathering');
     }
+    inventoryChanges.push({
+      itemId,
+      quantity: stack.quantity,
+      itemName: stack.itemName,
+      kind: stack.inventoryKind,
+    });
   }
 
   // No XP awarded for foraging

@@ -1,10 +1,16 @@
 import '@testing-library/jest-dom';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render as testingRender, screen, fireEvent } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { ForagingTaskCard } from '../ForagingTaskCard';
 import type { DowntimeTask, ForagingData, TaskResults } from '../../../../types/downtime';
 import type { Character } from '../../../../types/campaign';
 import type { ForageZoneProfile, ForageItem } from '../../../../types/foraging';
+import { CampaignStoreProvider } from '../../../../state/campaignStore';
+
+function render(ui: ReactElement) {
+  return testingRender(<CampaignStoreProvider>{ui}</CampaignStoreProvider>);
+}
 
 // Helper to create a foraging task
 function createForagingTask(

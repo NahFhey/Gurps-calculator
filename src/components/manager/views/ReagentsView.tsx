@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { PackagePlus, Plus, Save, X, Trash2 } from 'lucide-react';
 import { toNumberOr } from '../../../utils/helpers';
@@ -178,10 +178,14 @@ interface PromotionSource {
 
 function InventoryReagentPicker({
   alchemyReagents,
-  onClose
+  onClose,
+  initialPromotionSourceNames,
+  onInitialPromotionHandled,
 }: {
   alchemyReagents: AlchemyReagent[];
   onClose: () => void;
+  initialPromotionSourceNames?: string[];
+  onInitialPromotionHandled: () => void;
 }) {
   const { state, actions } = useCampaignStore();
   const partyInventory = Object.values(state.entities.inventories).find(
@@ -210,6 +214,7 @@ function InventoryReagentPicker({
     ...defaultFormState,
     newRoles: ['Active']
   });
+  const initialPromotionHandledRef = useRef(false);
 
   function selectSource(source: PromotionSource) {
     const matchingReagent = alchemyReagents.find(
@@ -227,6 +232,20 @@ function InventoryReagentPicker({
       newQuantity: String(source.quantity)
     });
   }
+
+  useEffect(() => {
+    if (initialPromotionHandledRef.current || !initialPromotionSourceNames?.length) return;
+    initialPromotionHandledRef.current = true;
+
+    for (const name of initialPromotionSourceNames) {
+      const source = sources.find(candidate => candidate.name === name);
+      if (source) {
+        selectSource(source);
+        break;
+      }
+    }
+    onInitialPromotionHandled();
+  }, [initialPromotionSourceNames, onInitialPromotionHandled, sources]);
 
   function handleConfirm() {
     if (!selectedSource) return;
@@ -389,12 +408,24 @@ function InventoryReagentPicker({
  * - Identification: 0-4 levels (affects player visibility)
  * - False Profiles: For critical failures on identification
  */
-export function ReagentsView({ alchemyReagents, saveAlchemyReagents, onDelete }: ReagentsViewProps) {
+export function ReagentsView({
+  alchemyReagents,
+  saveAlchemyReagents,
+  onDelete,
+  initialPromotionSourceNames,
+}: ReagentsViewProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [newType, setNewType] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [formState, setFormState] = useState<NewReagentFormState>(defaultFormState);
+  const [promotionSourceNames, setPromotionSourceNames] = useState<string[] | undefined>();
+
+  useEffect(() => {
+    if (!initialPromotionSourceNames?.length) return;
+    setPromotionSourceNames(initialPromotionSourceNames);
+    setShowImport(true);
+  }, [initialPromotionSourceNames]);
 
   function handleSaveReagent() {
     if (!newType.trim()) {
@@ -458,6 +489,8 @@ export function ReagentsView({ alchemyReagents, saveAlchemyReagents, onDelete }:
         <InventoryReagentPicker
           alchemyReagents={alchemyReagents || []}
           onClose={() => setShowImport(false)}
+          initialPromotionSourceNames={promotionSourceNames}
+          onInitialPromotionHandled={() => setPromotionSourceNames(undefined)}
         />
       )}
 

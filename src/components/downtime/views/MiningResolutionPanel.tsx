@@ -44,7 +44,7 @@ import {
   type ExtractionOutcome,
 } from '../../../constants/mining';
 import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
-import type { DowntimeTask, MiningData, MiningSite, TaskResults } from '../../../types/downtime';
+import type { DowntimeTask, InventoryDelta, MiningData, MiningSite, TaskResults } from '../../../types/downtime';
 import type { Character } from '../../../types/campaign';
 
 // ============================================================================
@@ -292,7 +292,7 @@ export function MiningResolutionPanel({
   const handleFinalize = useCallback(() => {
     if (!allRollsComplete) return;
 
-    const inventoryChanges: { itemId: string; quantity: number; itemName: string }[] = [];
+    const inventoryChanges: InventoryDelta[] = [];
     let message = '';
     let success = false;
     let newSite: MiningSite | undefined;
@@ -345,6 +345,7 @@ export function MiningResolutionPanel({
               itemId: discoveredMineral.id,
               quantity: finalYield,
               itemName: discoveredMineral.name,
+              kind: 'material',
             });
 
             // Add to inventory
@@ -396,6 +397,7 @@ export function MiningResolutionPanel({
             itemId: activeMineral.id,
             quantity: finalYield,
             itemName: activeMineral.name,
+            kind: 'material',
           });
 
           campaignActions.acquireItem({

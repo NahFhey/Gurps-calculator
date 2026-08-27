@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Shield, ShieldOff } from 'lucide-react';
 import { refundMaterialsFromProject } from '../utils/helpers';
 import { unlockGMData, mergeGM } from '../utils/exportImport';
@@ -70,6 +70,24 @@ export function ManagerTab() {
   const [gmLockError, setGmLockError] = useState<string | null>(null);
   const [gmLockData, setGmLockData] = useState<GMLockData | null>(null);
   const { state: campaignState, actions: campaignActions } = useCampaignStore();
+  const [initialPromotionSourceNames, setInitialPromotionSourceNames] = useState<string[] | undefined>();
+  const consumedIntentRef = useRef<typeof campaignState.ui.pendingIntent>(null);
+
+  useEffect(() => {
+    const intent = campaignState.ui.pendingIntent;
+    if (intent?.kind !== 'promote' || consumedIntentRef.current === intent) return;
+
+    consumedIntentRef.current = intent;
+    setInitialPromotionSourceNames(intent.sourceNames);
+    setView('reagents');
+    campaignActions.clearPendingIntent();
+  }, [campaignActions, campaignState.ui.pendingIntent]);
+
+  useEffect(() => {
+    if (view === 'reagents' && initialPromotionSourceNames !== undefined) {
+      setInitialPromotionSourceNames(undefined);
+    }
+  }, [initialPromotionSourceNames, view]);
 
   // Derive data from campaign store
   const gmMode = campaignState.ui.gmModeEnabled;
@@ -541,6 +559,7 @@ export function ManagerTab() {
           alchemyReagents={alchemyReagents}
           saveAlchemyReagents={saveAlchemyReagents}
           onDelete={handleDelete}
+          initialPromotionSourceNames={initialPromotionSourceNames}
         />
       )}
 

@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { HardHat, Mountain, Shovel, Zap, Dices } from 'lucide-react';
-import { StatusBadge, getStatusBorderColor } from './shared/StatusBadge';
+import { ChainingAffordances, StatusBadge, getStatusBorderColor } from './shared';
 import type { DowntimeTask, MiningData, MiningSite } from '../../../types/downtime';
 import type { Character } from '../../../types/campaign';
 import { MINING_SKILL_LABELS, MINERALS_BY_ID } from '../../../constants/mining';
@@ -195,6 +195,7 @@ export function MiningTaskCard({
           )}
         </div>
       )}
+      {task.results && <ChainingAffordances results={task.results} />}
 
       {/* Cancelled */}
       {task.status === 'cancelled' && (
