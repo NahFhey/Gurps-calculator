@@ -10,6 +10,10 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO"
 
+# .desktop launches (Terminal=false) get a minimal PATH without the user-local
+# node install, so npm/node are missing exactly when a rebuild is needed.
+[ -d "$HOME/.local/node/bin" ] && PATH="$HOME/.local/node/bin:$PATH"
+
 LOG_DIR="$HOME/.local/state/gurps-vtt"
 mkdir -p "$LOG_DIR"
 
