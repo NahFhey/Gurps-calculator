@@ -43,7 +43,7 @@ import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/
 import { useWeatherModifiers } from '../../../hooks/useWeatherModifiers';
 import type { DowntimeState, DowntimeTask, FishingData, TaskResults, InventoryDelta } from '../../../types/downtime';
 import type { CreateTaskPayload } from '../../../state/downtime/downtimeActions';
-import type { GatheringSpecies, GatheringEnvironment, GatheringTable, GatheringBait, AcquiredItem, InventoryOwner, AcquisitionSource } from '../../../types/campaign';
+import type { Character, GatheringSpecies, GatheringEnvironment, GatheringTable, GatheringBait, AcquiredItem, InventoryOwner, AcquisitionSource } from '../../../types/campaign';
 
 // ============================================================================
 // TYPES
@@ -76,7 +76,7 @@ interface CaughtFish {
  */
 function calculateFishingResultsAuto(
   task: DowntimeTask,
-  leader: any | undefined,
+  leader: Character | undefined,
   species: GatheringSpecies[],
   bait: GatheringBait[],
   gatheringTables: GatheringTable[],
@@ -126,7 +126,7 @@ function calculateFishingResultsAuto(
   let hasCorrectBait = false;
   let hasInappropriateBait = false;
   if (baitItem && targetSpecies && !isRandomCatch) {
-    const attractsSpeciesIds = (baitItem as any).attractsSpeciesIds;
+    const attractsSpeciesIds = baitItem.attractsSpeciesIds;
     if (Array.isArray(attractsSpeciesIds)) {
       hasCorrectBait = attractsSpeciesIds.includes(data.speciesId);
       hasInappropriateBait = !hasCorrectBait;
@@ -135,7 +135,7 @@ function calculateFishingResultsAuto(
 
   // Check if targeting large fish
   const targetIsLarge = targetSpecies
-    ? ((targetSpecies as any).tags?.includes('LargeFish') ?? false)
+    ? (targetSpecies.tags?.includes('LargeFish') ?? false)
     : false;
   const targetingLargeFish = !isRandomCatch && targetIsLarge;
 
@@ -202,7 +202,7 @@ function calculateFishingResultsAuto(
   const inventoryChanges: InventoryDelta[] = [];
 
   // Get random catch table for the spot
-  const spotDefaults = spot?.defaultsByMode?.Fishing ?? (spot as any)?.defaultTables;
+  const spotDefaults = spot?.defaultsByMode?.Fishing ?? spot?.defaultTables;
   const catchTableId = spotDefaults?.randomCatchTableId;
   const catchTable = catchTableId
     ? gatheringTables.find(t => t.id === catchTableId)
@@ -217,10 +217,10 @@ function calculateFishingResultsAuto(
       try {
         let tableEntry;
         if (method === 'Net') {
-          tableEntry = rollNetCatch(catchTable as any, species as any);
+          tableEntry = rollNetCatch(catchTable, species);
         } else {
-          const baitRollBonus = baitItem ? ((baitItem as any).rollBonus ?? 0) : 0;
-          tableEntry = rollOnCatchTable(catchTable as any, baitRollBonus);
+          const baitRollBonus = baitItem ? (baitItem.rollBonus ?? 0) : 0;
+          tableEntry = rollOnCatchTable(catchTable, baitRollBonus);
         }
 
         if (tableEntry.resultType === 'species' && tableEntry.speciesId) {
@@ -240,13 +240,13 @@ function calculateFishingResultsAuto(
     if (!caughtSpecies) continue;
 
     // Check if fish is large
-    const isLarge = (caughtSpecies as any).tags?.includes('LargeFish') ?? false;
+    const isLarge = caughtSpecies.tags?.includes('LargeFish') ?? false;
     let struggleSuccess = true;
 
     // Large fish struggle (Line and Spear only, not Net)
     if (isLarge && method !== 'Net') {
       const characterST = leader?.st ?? 10;
-      const fishST = (caughtSpecies as any).st ?? DEFAULT_FISH_ST;
+      const fishST = caughtSpecies.st ?? DEFAULT_FISH_ST;
       const struggleResult = resolveLargeFishStruggle(characterST, fishST);
       struggleSuccess = struggleResult.success;
     }
@@ -258,13 +258,13 @@ function calculateFishingResultsAuto(
 
     if (struggleSuccess) {
       // Roll yield dice
-      const meatFormula = (caughtSpecies as any)?.yieldMeatFormula ?? '1d';
+      const meatFormula = caughtSpecies?.yieldMeatFormula ?? '1d';
       meatYield = rollYieldDice(meatFormula);
 
       // Only roll for secondary if species has secondary material type
-      const speciesSecondaryType = (caughtSpecies as any)?.secondaryMaterialType;
+      const speciesSecondaryType = caughtSpecies?.secondaryMaterialType;
       if (speciesSecondaryType && speciesSecondaryType !== 'None' && speciesSecondaryType !== '') {
-        const secondaryFormula = (caughtSpecies as any)?.yieldSecondaryFormula ?? '1d-2';
+        const secondaryFormula = caughtSpecies?.yieldSecondaryFormula ?? '1d-2';
         secondaryType = speciesSecondaryType;
         secondaryYield = rollYieldDice(secondaryFormula);
       }
@@ -285,7 +285,7 @@ function calculateFishingResultsAuto(
       const foodId = `fish-${caughtSpecies.id}-${Date.now()}-${i}`;
       const foodName = `${caughtSpecies.name} Meat`;
       // Use the species' foodType instead of hardcoded 'fish'
-      const foodType = (caughtSpecies as any).foodType ?? 'fish';
+      const foodType = caughtSpecies.foodType ?? 'fish';
 
       campaignActions.acquireItem({
         kind: 'food',
@@ -354,8 +354,8 @@ function calculateFishingResultsAuto(
   }
 
   // Consume bait (decrement quantity by 1 per fishing attempt)
-  if (baitItem && (baitItem as any).quantity > 0) {
-    const updatedBait = { ...baitItem, quantity: (baitItem as any).quantity - 1 } as GatheringBait;
+  if (baitItem && baitItem.quantity > 0) {
+    const updatedBait = { ...baitItem, quantity: baitItem.quantity - 1 } as GatheringBait;
     campaignActions.addGatheringBait(updatedBait);
     message += ` (1 ${baitItem.name} consumed)`;
   }
@@ -475,7 +475,7 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
       } else {
         // Auto-resolve
         const data = task.activityData as FishingData;
-        const leader = characters.find(c => c.id === task.leaderId) as any;
+        const leader = characters.find(c => c.id === task.leaderId);
         const spot = fishingSpots.find(s => s.id === data.spotId);
 
         beginResolve(task.id);
@@ -483,9 +483,9 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
         const results = calculateFishingResultsAuto(
           task,
           leader,
-          fishSpecies as any[],
-          fishingBait as any[],
-          gatheringTables as any[],
+          fishSpecies,
+          fishingBait,
+          gatheringTables,
           spot,
           campaignActions,
           state,

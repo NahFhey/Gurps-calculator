@@ -147,7 +147,7 @@ export function FishingTaskCard({
   // Lookup display names
   const speciesData = species.find((s) => s.id === data.speciesId);
   const speciesName = speciesData?.name ?? 'Unknown';
-  const isLargeFish = (speciesData as any)?.tags?.includes('LargeFish') ?? false;
+  const isLargeFish = speciesData?.tags?.includes('LargeFish') ?? false;
 
   const spotData = spots.find((s) => s.id === data.spotId);
   const spotName = spotData?.name ?? data.spotId;

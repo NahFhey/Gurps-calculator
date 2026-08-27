@@ -22,17 +22,6 @@ import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/
 import type { DowntimeTask, FishingData, InventoryDelta, TaskResults } from '../../../types/downtime';
 import type { GatheringSpecies, GatheringEnvironment, GatheringTable, GatheringBait, Character } from '../../../types/campaign';
 
-// GatheringEnvironment is now the canonical Extended type (skillMod and
-// defaultsByMode included). Legacy pre-Extended saves stored default tables
-// under `defaultTables` instead; keep that as a typed compat field.
-interface GatheringEnvironmentExtended extends GatheringEnvironment {
-  defaultTables?: {
-    randomCatchTableId?: string | null;
-    mildEventTableId?: string | null;
-    rareEventTableId?: string | null;
-  };
-}
-
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -41,7 +30,7 @@ interface FishingResolutionPanelProps {
   task: DowntimeTask;
   leader: Character | undefined;
   species: GatheringSpecies[];
-  spots: GatheringEnvironmentExtended[];
+  spots: GatheringEnvironment[];
   bait: GatheringBait[];
   gatheringTables: GatheringTable[];
   onFinalize: (results: TaskResults) => void;
@@ -398,7 +387,7 @@ export function FishingResolutionPanel({
     ? (leaderSkills.spear ?? leaderSkills.fishing ?? 10)
     : (leaderSkills.fishing ?? 10);
   const stealthSkill = leaderSkills.stealth ?? leaderSkills.survival ?? 10;
-  const leaderST = (leader as any)?.st ?? 10;
+  const leaderST = leader?.st ?? 10;
 
   // Calculate fatigue penalty for the leader
   const fatigueStatus = leader
@@ -408,13 +397,13 @@ export function FishingResolutionPanel({
 
   // Check bait compatibility
   const hasCorrectBait = baitItem && targetSpecies && !isRandomCatch
-    ? ((baitItem as any).attractsSpeciesIds?.includes(data.speciesId) ?? false)
+    ? (baitItem.attractsSpeciesIds?.includes(data.speciesId) ?? false)
     : false;
   const hasInappropriateBait = baitItem && targetSpecies && !isRandomCatch && !hasCorrectBait;
 
   // Check if targeting large fish
   const targetIsLarge = targetSpecies
-    ? ((targetSpecies as any).tags?.includes('LargeFish') ?? false)
+    ? (targetSpecies.tags?.includes('LargeFish') ?? false)
     : false;
 
   // State for resolution steps
@@ -483,7 +472,7 @@ export function FishingResolutionPanel({
     setSpeciesRoll({ ...result, rolled: true });
 
     // Get catch table for spot
-    const spotDefaults = spot?.defaultsByMode?.Fishing ?? (spot as any)?.defaultTables;
+    const spotDefaults = spot?.defaultsByMode?.Fishing ?? spot?.defaultTables;
     const catchTableId = spotDefaults?.randomCatchTableId;
     const catchTable = catchTableId
       ? gatheringTables.find(t => t.id === catchTableId)
@@ -500,7 +489,7 @@ export function FishingResolutionPanel({
     try {
       // For Net fishing, need to reroll if large fish
       if (method === 'Net') {
-        const tableEntry = rollNetCatch(catchTable as any, species as any);
+        const tableEntry = rollNetCatch(catchTable, species);
         if (tableEntry.resultType === 'species' && tableEntry.speciesId) {
           const caught = species.find(s => s.id === tableEntry.speciesId);
           if (caught) {
@@ -509,12 +498,12 @@ export function FishingResolutionPanel({
         }
       } else {
         // For Line/Spear: use the displayed roll to look up table entry
-        const baitRollBonus = baitItem ? ((baitItem as any).rollBonus ?? 0) : 0;
+        const baitRollBonus = baitItem ? (baitItem.rollBonus ?? 0) : 0;
         const modifiedRoll = Math.min(12, result.total + baitRollBonus);
 
         // Find matching entry in table
-        const entries = (catchTable as any).entries || [];
-        const entry = entries.find((e: any) => e.rollValue === modifiedRoll);
+        const entries = catchTable.entries || [];
+        const entry = entries.find((e) => e.rollValue === modifiedRoll);
 
         if (entry && entry.resultType === 'species' && entry.speciesId) {
           const caught = species.find(s => s.id === entry.speciesId);
@@ -523,7 +512,7 @@ export function FishingResolutionPanel({
           }
         } else if (entries.length > 0) {
           // Fallback: find closest entry or first species entry
-          const speciesEntry = entries.find((e: any) => e.resultType === 'species' && e.speciesId);
+          const speciesEntry = entries.find((e) => e.resultType === 'species' && e.speciesId);
           if (speciesEntry) {
             const caught = species.find(s => s.id === speciesEntry.speciesId);
             if (caught) {
@@ -550,7 +539,7 @@ export function FishingResolutionPanel({
     setFishStruggleRoll({ ...result, rolled: true });
 
     // Determine winner
-    const fishST = (caughtSpecies as any)?.st ?? DEFAULT_FISH_ST;
+    const fishST = caughtSpecies?.st ?? DEFAULT_FISH_ST;
     const playerMargin = leaderST - struggleRoll.total;
     const fishMargin = fishST - result.total;
 
@@ -576,7 +565,7 @@ export function FishingResolutionPanel({
   };
 
   const handleMeatYieldRoll = useCallback(() => {
-    const formula = (caughtSpecies as any)?.yieldMeatFormula ?? '1d';
+    const formula = caughtSpecies?.yieldMeatFormula ?? '1d';
     const { diceCount, modifier } = parseDiceFormula(formula);
     const result = rollDice(diceCount);
     setMeatYieldRoll({
@@ -587,7 +576,7 @@ export function FishingResolutionPanel({
   }, [caughtSpecies]);
 
   const handleSecondaryYieldRoll = useCallback(() => {
-    const formula = (caughtSpecies as any)?.yieldSecondaryFormula ?? '1d-2';
+    const formula = caughtSpecies?.yieldSecondaryFormula ?? '1d-2';
     const { diceCount, modifier } = parseDiceFormula(formula);
     const result = rollDice(diceCount);
     setSecondaryYieldRoll({
@@ -629,7 +618,7 @@ export function FishingResolutionPanel({
     // Re-evaluate struggle if fish has also rolled
     if (fishStruggleRoll.rolled) {
       const playerMoS = leaderST - newTotal;
-      const fishMoS = ((caughtSpecies as any)?.st ?? DEFAULT_FISH_ST) - fishStruggleRoll.total;
+      const fishMoS = (caughtSpecies?.st ?? DEFAULT_FISH_ST) - fishStruggleRoll.total;
       setStruggleWon(playerMoS >= fishMoS);
     }
   }, [leaderST, fishStruggleRoll, caughtSpecies]);
@@ -639,13 +628,13 @@ export function FishingResolutionPanel({
     // Re-evaluate struggle
     if (struggleRoll.rolled) {
       const playerMoS = leaderST - struggleRoll.total;
-      const fishMoS = ((caughtSpecies as any)?.st ?? DEFAULT_FISH_ST) - newTotal;
+      const fishMoS = (caughtSpecies?.st ?? DEFAULT_FISH_ST) - newTotal;
       setStruggleWon(playerMoS >= fishMoS);
     }
   }, [leaderST, struggleRoll, caughtSpecies]);
 
   const handleEditMeatYield = useCallback((newDice: number[], newTotal: number) => {
-    const formula = (caughtSpecies as any)?.yieldMeatFormula ?? '1d';
+    const formula = caughtSpecies?.yieldMeatFormula ?? '1d';
     const { modifier } = parseDiceFormula(formula);
     setMeatYieldRoll({
       dice: newDice,
@@ -655,7 +644,7 @@ export function FishingResolutionPanel({
   }, [caughtSpecies]);
 
   const handleEditSecondaryYield = useCallback((newDice: number[], newTotal: number) => {
-    const formula = (caughtSpecies as any)?.yieldSecondaryFormula ?? '1d-2';
+    const formula = caughtSpecies?.yieldSecondaryFormula ?? '1d-2';
     const { modifier } = parseDiceFormula(formula);
     setSecondaryYieldRoll({
       dice: newDice,
@@ -668,7 +657,7 @@ export function FishingResolutionPanel({
     setSpeciesRoll({ dice: newDice, total: newTotal, rolled: true });
 
     // Re-lookup species based on new roll
-    const spotDefaults = spot?.defaultsByMode?.Fishing ?? (spot as any)?.defaultTables;
+    const spotDefaults = spot?.defaultsByMode?.Fishing ?? spot?.defaultTables;
     const catchTableId = spotDefaults?.randomCatchTableId;
     const catchTable = catchTableId
       ? gatheringTables.find(t => t.id === catchTableId)
@@ -681,10 +670,10 @@ export function FishingResolutionPanel({
       return;
     }
 
-    const baitRollBonus = baitItem ? ((baitItem as any).rollBonus ?? 0) : 0;
+    const baitRollBonus = baitItem ? (baitItem.rollBonus ?? 0) : 0;
     const modifiedRoll = Math.min(12, newTotal + baitRollBonus);
-    const entries = (catchTable as any).entries || [];
-    const entry = entries.find((e: any) => e.rollValue === modifiedRoll);
+    const entries = catchTable.entries || [];
+    const entry = entries.find((e) => e.rollValue === modifiedRoll);
 
     if (entry && entry.resultType === 'species' && entry.speciesId) {
       const caught = species.find(s => s.id === entry.speciesId);
@@ -692,7 +681,7 @@ export function FishingResolutionPanel({
         setCaughtSpecies(caught);
       }
     } else if (entries.length > 0) {
-      const speciesEntry = entries.find((e: any) => e.resultType === 'species' && e.speciesId);
+      const speciesEntry = entries.find((e) => e.resultType === 'species' && e.speciesId);
       if (speciesEntry) {
         const caught = species.find(s => s.id === speciesEntry.speciesId);
         if (caught) {
@@ -706,7 +695,7 @@ export function FishingResolutionPanel({
   const needsStealthRoll = isSpear;
   const needsSpeciesRoll = fishingSuccess && isRandomCatch;
   const needsStruggleRoll = fishingSuccess && caughtSpecies &&
-    ((caughtSpecies as any)?.tags?.includes('LargeFish') ?? false) &&
+    (caughtSpecies?.tags?.includes('LargeFish') ?? false) &&
     method !== 'Net';
   const needsYieldRolls = fishingSuccess && caughtSpecies &&
     (!needsStruggleRoll || (struggleRoll.rolled && fishStruggleRoll.rolled && struggleWon));
@@ -721,9 +710,9 @@ export function FishingResolutionPanel({
     if (needsYieldRolls) {
       if (!meatYieldRoll.rolled) return false;
       // Only require secondary roll if species has secondary material
-      const hasSecondary = (caughtSpecies as any)?.secondaryMaterialType &&
-        (caughtSpecies as any)?.secondaryMaterialType !== 'None' &&
-        (caughtSpecies as any)?.secondaryMaterialType !== '';
+      const hasSecondary = caughtSpecies?.secondaryMaterialType &&
+        caughtSpecies?.secondaryMaterialType !== 'None' &&
+        caughtSpecies?.secondaryMaterialType !== '';
       if (hasSecondary && !secondaryYieldRoll.rolled) return false;
     }
     return true;
@@ -774,14 +763,14 @@ export function FishingResolutionPanel({
     if (fishingSuccess && caughtSpecies && (!needsStruggleRoll || struggleWon)) {
       const meatUnits = meatYieldRoll.total;
       const secondaryUnits = secondaryYieldRoll.total;
-      const secondaryType = (caughtSpecies as any)?.secondaryMaterialType ?? 'scales';
+      const secondaryType = caughtSpecies?.secondaryMaterialType ?? 'scales';
 
       // Add to foods
       if (meatUnits > 0) {
         const foodId = `fish-${caughtSpecies.id}-${Date.now()}`;
         const foodName = `${caughtSpecies.name} Meat`;
         // Use the species' foodType instead of hardcoded 'fish'
-        const foodType = (caughtSpecies as any).foodType ?? 'fish';
+        const foodType = caughtSpecies.foodType ?? 'fish';
 
         campaignActions.acquireItem({
           kind: 'food',
@@ -828,8 +817,8 @@ export function FishingResolutionPanel({
     }
 
     // Consume bait (decrement quantity by 1 per fishing attempt)
-    if (baitItem && (baitItem as any).quantity > 0) {
-      const updatedBait = { ...baitItem, quantity: (baitItem as any).quantity - 1 } as GatheringBait;
+    if (baitItem && baitItem.quantity > 0) {
+      const updatedBait = { ...baitItem, quantity: baitItem.quantity - 1 } as GatheringBait;
       campaignActions.addGatheringBait(updatedBait);
       message += ` (1 ${baitItem.name} consumed)`;
     }
@@ -850,10 +839,10 @@ export function FishingResolutionPanel({
   ]);
 
   // Get yield formulas for display
-  const meatFormula = (caughtSpecies as any)?.yieldMeatFormula ?? '1d';
-  const secondaryMaterialType = (caughtSpecies as any)?.secondaryMaterialType;
+  const meatFormula = caughtSpecies?.yieldMeatFormula ?? '1d';
+  const secondaryMaterialType = caughtSpecies?.secondaryMaterialType;
   const hasSecondaryMaterial = secondaryMaterialType && secondaryMaterialType !== 'None' && secondaryMaterialType !== '';
-  const secondaryFormula = hasSecondaryMaterial ? ((caughtSpecies as any)?.yieldSecondaryFormula ?? '1d-2') : '';
+  const secondaryFormula = hasSecondaryMaterial ? (caughtSpecies?.yieldSecondaryFormula ?? '1d-2') : '';
   const secondaryType = hasSecondaryMaterial ? secondaryMaterialType : '';
 
   return (
@@ -904,11 +893,11 @@ export function FishingResolutionPanel({
             </span>
           </div>
         )}
-        {((spot as any)?.skillMod ?? 0) !== 0 && (
+        {(spot?.skillMod ?? 0) !== 0 && (
           <div className="flex justify-between">
             <span className="text-gray-400">Environment ({spot?.name}):</span>
-            <span className={((spot as any)?.skillMod ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}>
-              {(spot as any)?.skillMod >= 0 ? '+' : ''}{(spot as any)?.skillMod}
+            <span className={(spot?.skillMod ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}>
+              {(spot?.skillMod ?? 0) >= 0 ? '+' : ''}{spot?.skillMod}
             </span>
           </div>
         )}
@@ -1081,7 +1070,7 @@ export function FishingResolutionPanel({
             <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3 mb-2">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-gray-200 font-medium">
-                  Fish ST vs {(caughtSpecies as any)?.st ?? DEFAULT_FISH_ST}
+                  Fish ST vs {caughtSpecies?.st ?? DEFAULT_FISH_ST}
                 </span>
                 <div className="flex gap-1">
                   {gmMode && fishStruggleRoll.rolled && (
