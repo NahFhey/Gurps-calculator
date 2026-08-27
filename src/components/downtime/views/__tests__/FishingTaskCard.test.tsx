@@ -1,11 +1,17 @@
 import '@testing-library/jest-dom';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render as testingRender, screen, fireEvent } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { FishingTaskCard } from '../FishingTaskCard';
 import type { DowntimeTask, FishingData, TaskResults } from '../../../../types/downtime';
 import type { Character, GatheringSpecies, GatheringEnvironment } from '../../../../types/campaign';
+import { CampaignStoreProvider } from '../../../../state/campaignStore';
 const asSpecies = <T,>(xs: T[]): GatheringSpecies[] => xs as unknown as GatheringSpecies[];
 const asSpots = <T,>(xs: T[]): GatheringEnvironment[] => xs as unknown as GatheringEnvironment[];
+
+function render(ui: ReactElement) {
+  return testingRender(<CampaignStoreProvider>{ui}</CampaignStoreProvider>);
+}
 
 // Helper to create a fishing task
 function createFishingTask(

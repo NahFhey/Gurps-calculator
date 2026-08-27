@@ -300,6 +300,7 @@ function calculateFishingResultsAuto(
         itemId: foodId,
         quantity: meatYield,
         itemName: foodName,
+        kind: 'food',
       });
 
       if (secondaryYield > 0 && secondaryType) {
@@ -319,6 +320,7 @@ function calculateFishingResultsAuto(
           itemId: materialId,
           quantity: secondaryYield,
           itemName: materialName,
+          kind: 'material',
         });
       }
     }

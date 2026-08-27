@@ -158,6 +158,16 @@ describe('exportImport', () => {
   });
 
   describe('splitState', () => {
+    it('removes pending UI intents from public and GM campaign exports', () => {
+      const state = createCampaignState();
+      state.ui.pendingIntent = { kind: 'promote', sourceNames: ['Iron Ore'] };
+
+      const { public: publicData, gm } = splitState(state);
+
+      expect(publicData.ui.pendingIntent).toBeNull();
+      expect(gm.ui.pendingIntent).toBeNull();
+    });
+
     it('keeps reagent secrets out of public data and in GM data', () => {
       const state = createLegacyCampaignFixture();
       const { public: publicData, gm } = splitState(state);

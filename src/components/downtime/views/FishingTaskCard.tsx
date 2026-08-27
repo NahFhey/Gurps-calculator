@@ -11,6 +11,7 @@ import { Fish, Check, X, Clock, Loader, Ban, Target, Shuffle, Dices, Zap } from 
 import { FISHING_METHODS } from '../../../constants';
 import type { DowntimeTask, FishingData, TaskStatus, FishingMethod } from '../../../types/downtime';
 import type { Character, GatheringSpecies, GatheringEnvironment, GatheringBait } from '../../../types/campaign';
+import { ChainingAffordances } from './shared';
 
 // ============================================================================
 // TYPES
@@ -272,6 +273,7 @@ export function FishingTaskCard({
           )}
         </div>
       )}
+      {task.results && <ChainingAffordances results={task.results} />}
 
       {/* Cancelled Message */}
       {task.status === 'cancelled' && (

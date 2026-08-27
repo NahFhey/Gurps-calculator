@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWeatherModifiers } from '../../hooks/useWeatherModifiers';
 import { denormalizeObject, normalizeArray } from '../../state/campaignUtils';
 import { selectOwnerFoodHoldings } from '../../state/selectors/inventorySelectors';
@@ -57,6 +57,23 @@ export function CookingTab() {
   const [remakeKitchenId, setRemakeKitchenId] = useState(kitchens?.[0]?.id || 'default');
   const [remakeSkill, setRemakeSkill] = useState('');
   const [remakeRoll, setRemakeRoll] = useState<DiceRoll>({ dice: [], total: 0 });
+  const consumedIntentRef = useRef<typeof state.ui.pendingIntent>(null);
+
+  useEffect(() => {
+    const intent = state.ui.pendingIntent;
+    if (intent?.kind !== 'cook' || consumedIntentRef.current === intent) return;
+
+    consumedIntentRef.current = intent;
+    setView('create');
+    setSelected(current => [
+      ...current,
+      ...intent.foodIds.flatMap(foodId => {
+        const food = foods.find(candidate => candidate.id === foodId && candidate.quantity > 0);
+        return food ? [{ id: crypto.randomUUID(), foodId: food.id, amount: 1 }] : [];
+      }),
+    ]);
+    actions.clearPendingIntent();
+  }, [actions, foods, state.ui.pendingIntent]);
 
   const stats = (() => {
     const unique = selected.length;

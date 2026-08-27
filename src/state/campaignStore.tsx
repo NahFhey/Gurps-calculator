@@ -5,7 +5,8 @@ import {
   CampaignState,
   LegacyAppState,
   LogEntry,
-  CharacterPanelView
+  CharacterPanelView,
+  PendingIntent
 } from './campaignReducer';
 import { saveCampaignState } from '../persistence/campaignStorage';
 import type {
@@ -87,6 +88,8 @@ type CampaignStoreValue = {
   actions: {
     // UI Actions
     setActiveModule: (moduleId: string) => void;
+    setPendingIntent: (intent: PendingIntent) => void;
+    clearPendingIntent: () => void;
     selectCharacter: (id: string | null) => void;
     setCharacterPanelView: (view: CharacterPanelView) => void;
     toggleGmMode: () => void;
@@ -351,6 +354,8 @@ export function CampaignStoreProvider({
   const actions = useMemo(
     () => ({
       setActiveModule: (moduleId: string) => dispatch({ type: 'setActiveModule', payload: moduleId }),
+      setPendingIntent: (intent: PendingIntent) => dispatch({ type: 'setPendingIntent', payload: intent }),
+      clearPendingIntent: () => dispatch({ type: 'clearPendingIntent' }),
       selectCharacter: (id: string | null) => dispatch({ type: 'selectCharacter', payload: id }),
       setCharacterPanelView: (view: 'sheet' | 'skills' | 'equipment' | 'inventory') => dispatch({ type: 'setCharacterPanelView', payload: view }),
       toggleGmMode: () => dispatch({ type: 'toggleGmMode' }),

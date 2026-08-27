@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Moon, ArrowLeft } from 'lucide-react';
 import { TileGrid } from './views/TileGrid';
 import { FishingActivity } from './views/FishingActivity';
@@ -13,7 +13,7 @@ import { RestTaskForm } from './views/RestTaskForm';
 import { validateTaskCreation } from '../../state/downtime/downtimeValidation';
 import type { RestData } from '../../types/downtime';
 import type { CreateTaskPayload } from '../../state/downtime/downtimeActions';
-import { useCampaignCharacters } from '../../state/campaignStore';
+import { useCampaignCharacters, useCampaignStore } from '../../state/campaignStore';
 import { characterHasAnySkill, ACTIVITY_SKILL_REQUIREMENTS } from '../../types/characterSheet';
 
 type NavigableView = 'fishing' | 'foraging' | 'mining' | 'alchemy' | 'crafting' | 'cooking' | 'rest';
@@ -27,6 +27,15 @@ interface DowntimePanelProps {
 export function DowntimePanel({ currentDayKey, currentSlot }: DowntimePanelProps) {
   const [activeView, setActiveView] = useState<DowntimeView>('tiles');
   const characters = useCampaignCharacters();
+  const { state } = useCampaignStore();
+
+  useEffect(() => {
+    if (state.ui.pendingIntent?.kind === 'cook') {
+      setActiveView('cooking');
+    } else if (state.ui.pendingIntent?.kind === 'craft') {
+      setActiveView('crafting');
+    }
+  }, [state.ui.pendingIntent]);
 
   // Determine which activities have no characters with the required skills
   const disabledActivities = useMemo(() => {

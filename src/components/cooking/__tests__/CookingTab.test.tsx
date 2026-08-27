@@ -12,6 +12,7 @@ import { RecipeLibraryView } from '../views/RecipeLibraryView';
 import type { RemakeViewProps } from '../views/RemakeView';
 import { RemakeView } from '../views/RemakeView';
 import type { Food } from '../types';
+import { StrictMode } from 'react';
 
 type CampaignState = ReturnType<typeof createCampaignState>;
 
@@ -155,6 +156,45 @@ beforeEach(() => {
 });
 
 describe('CookingTab router', () => {
+  it('consumes a cook intent once and preselects only available foods', () => {
+    const initialState = makeState();
+    const party = Object.values(initialState.entities.inventories).find(inventory => inventory.ownerType === 'party');
+    if (!party) throw new Error('Expected party inventory');
+    initialState.entities.inventories = {
+      ...initialState.entities.inventories,
+      [party.id]: {
+        ...party,
+        food: [
+          { ...foods[0], quantity: 10 },
+          { ...foods[1], quantity: 0 },
+        ],
+      },
+    };
+    initialState.ui.pendingIntent = { kind: 'cook', foodIds: ['carrot', 'apple', 'missing'] };
+    let latest = initialState;
+    const tree = (
+      <StrictMode>
+        <CampaignStoreProvider initialCampaignState={initialState}>
+          <StateProbe capture={state => { latest = state; }} />
+          <CookingTab />
+        </CampaignStoreProvider>
+      </StrictMode>
+    );
+
+    const rendered = render(tree);
+    const selectedFoodInputs = screen.getAllByRole('combobox').filter(
+      input => (input as HTMLSelectElement).value === 'carrot'
+    );
+    expect(selectedFoodInputs).toHaveLength(1);
+    expect(screen.getByPlaceholderText('Recipe name')).toBeInTheDocument();
+    expect(latest.ui.pendingIntent).toBeNull();
+
+    rendered.rerender(tree);
+    expect(screen.getAllByRole('combobox').filter(
+      input => (input as HTMLSelectElement).value === 'carrot'
+    )).toHaveLength(1);
+  });
+
   it('renders the create view by default', () => {
     renderRouter();
     expect(screen.getByPlaceholderText('Recipe name')).toBeInTheDocument();

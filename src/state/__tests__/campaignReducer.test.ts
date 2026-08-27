@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { campaignReducer, createCampaignState, initialCampaignState, logEvent } from '../campaignReducer';
+import { hydrateCampaignState } from '../../persistence/campaignStorage';
 
 describe('campaignReducer', () => {
   it('setActiveModule updates state', () => {
@@ -9,6 +10,28 @@ describe('campaignReducer', () => {
     });
 
     expect(nextState.ui.activeModule).toBe('rules');
+  });
+
+  it('stores and clears a pending intent', () => {
+    const withIntent = campaignReducer(initialCampaignState, {
+      type: 'setPendingIntent',
+      payload: { kind: 'cook', foodIds: ['trout', 'berries'] },
+    });
+
+    expect(withIntent.ui.pendingIntent).toEqual({
+      kind: 'cook',
+      foodIds: ['trout', 'berries'],
+    });
+
+    const cleared = campaignReducer(withIntent, { type: 'clearPendingIntent' });
+    expect(cleared.ui.pendingIntent).toBeNull();
+  });
+
+  it('drops a persisted pending intent during hydration', () => {
+    const persisted = createCampaignState();
+    persisted.ui.pendingIntent = { kind: 'craft' };
+
+    expect(hydrateCampaignState(persisted).ui.pendingIntent).toBeNull();
   });
 
   it('toggleGmMode flips boolean', () => {

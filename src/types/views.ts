@@ -211,6 +211,7 @@ export interface ReagentsViewProps {
   alchemyReagents: AlchemyReagent[];
   saveAlchemyReagents: (reagents: AlchemyReagent[]) => void;
   onDelete: OnDeleteHandler;
+  initialPromotionSourceNames?: string[];
 }
 
 export interface FormulasViewProps {

@@ -19,7 +19,7 @@ import {
 import { getCharacterSkills } from '../../../types/characterSheet';
 import { useDowntimeContext } from '../DowntimeContext';
 import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
-import type { DowntimeTask, FishingData, TaskResults } from '../../../types/downtime';
+import type { DowntimeTask, FishingData, InventoryDelta, TaskResults } from '../../../types/downtime';
 import type { GatheringSpecies, GatheringEnvironment, GatheringTable, GatheringBait, Character } from '../../../types/campaign';
 
 // GatheringEnvironment is now the canonical Extended type (skillMod and
@@ -769,7 +769,7 @@ export function FishingResolutionPanel({
     }
 
     // Prepare inventory changes and save to campaign
-    const inventoryChanges: Array<{ itemId: string; quantity: number; itemName: string }> = [];
+    const inventoryChanges: InventoryDelta[] = [];
 
     if (fishingSuccess && caughtSpecies && (!needsStruggleRoll || struggleWon)) {
       const meatUnits = meatYieldRoll.total;
@@ -796,6 +796,7 @@ export function FishingResolutionPanel({
           itemId: foodId,
           quantity: meatUnits,
           itemName: foodName,
+          kind: 'food',
         });
       }
 
@@ -821,6 +822,7 @@ export function FishingResolutionPanel({
           itemId: materialId,
           quantity: secondaryUnits,
           itemName: materialName,
+          kind: 'material',
         });
       }
     }

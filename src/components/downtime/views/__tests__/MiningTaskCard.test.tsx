@@ -1,9 +1,15 @@
 import '@testing-library/jest-dom';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render as testingRender, screen, fireEvent } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { MiningTaskCard } from '../MiningTaskCard';
 import type { DowntimeTask, MiningData, MiningSite } from '../../../../types/downtime';
 import type { Character } from '../../../../types/campaign';
+import { CampaignStoreProvider } from '../../../../state/campaignStore';
+
+function render(ui: ReactElement) {
+  return testingRender(<CampaignStoreProvider>{ui}</CampaignStoreProvider>);
+}
 
 // ============================================================================
 // MOCK DATA

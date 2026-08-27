@@ -352,10 +352,17 @@ export function splitState(
         ui: {
           ...serializedState.ui,
           gmModeEnabled: false,
-          gmSessionUnlocked: false
+          gmSessionUnlocked: false,
+          pendingIntent: null
         }
       },
-      gm: serializedState
+      gm: {
+        ...serializedState,
+        ui: {
+          ...serializedState.ui,
+          pendingIntent: null
+        }
+      }
     };
   }
   const {

@@ -45,7 +45,7 @@ import {
   parseDiceFormula,
 } from '../../../utils/gathering';
 import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
-import type { DowntimeTask, MiningData, MiningSite, TaskResults } from '../../../types/downtime';
+import type { DowntimeTask, InventoryDelta, MiningData, MiningSite, TaskResults } from '../../../types/downtime';
 import type { CreateTaskPayload } from '../../../state/downtime/downtimeActions';
 import type { AcquiredItem, InventoryOwner, AcquisitionSource } from '../../../types/campaign';
 
@@ -143,7 +143,7 @@ function autoResolveMiningTask(
     if (tool) extractSkill += tool.skillBonus ?? 0;
   }
 
-  const inventoryChanges: { itemId: string; quantity: number; itemName: string }[] = [];
+  const inventoryChanges: InventoryDelta[] = [];
   let message = '';
   let success = false;
   let newSite: MiningSite | undefined;
@@ -206,7 +206,7 @@ function autoResolveMiningTask(
         newSite.remainingUnits = Math.max(0, newSite.remainingUnits - finalYield);
         if (newSite.remainingUnits <= 0) newSite.depleted = true;
 
-        inventoryChanges.push({ itemId: mineral.id, quantity: finalYield, itemName: mineral.name });
+        inventoryChanges.push({ itemId: mineral.id, quantity: finalYield, itemName: mineral.name, kind: 'material' });
         campaignActions.acquireItem({
           kind: 'material',
           id: `mine-${mineral.id}-${Date.now()}`,
@@ -266,7 +266,7 @@ function autoResolveMiningTask(
           depleted: newRemaining <= 0,
         };
 
-        inventoryChanges.push({ itemId: mineral.id, quantity: finalYield, itemName: mineral.name });
+        inventoryChanges.push({ itemId: mineral.id, quantity: finalYield, itemName: mineral.name, kind: 'material' });
         campaignActions.acquireItem({
           kind: 'material',
           id: `mine-${mineral.id}-${Date.now()}`,

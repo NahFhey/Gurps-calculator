@@ -9,7 +9,7 @@
 
 import { useState } from 'react';
 import { Leaf, Search, Target, Crosshair, Zap, Dices } from 'lucide-react';
-import { StatusBadge, getStatusBorderColor } from './shared/StatusBadge';
+import { ChainingAffordances, StatusBadge, getStatusBorderColor } from './shared';
 import type { DowntimeTask, ForagingData } from '../../../types/downtime';
 import type { Character } from '../../../types/campaign';
 import type { ForageZoneProfile, ForageItem } from '../../../types/foraging';
@@ -232,6 +232,7 @@ export function ForagingTaskCard({
           )}
         </div>
       )}
+      {task.results && <ChainingAffordances results={task.results} />}
 
       {/* Cancelled Message */}
       {task.status === 'cancelled' && (

@@ -341,6 +341,8 @@ export interface InventoryDelta {
   quantity: number;
   /** Human-readable name of the item for display */
   itemName: string;
+  /** What sort of item this delta touches — used by chaining affordances */
+  kind?: 'food' | 'material';
 }
 
 // ============================================================================

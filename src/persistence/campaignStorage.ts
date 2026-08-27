@@ -64,6 +64,11 @@ export const hydrateCampaignState = (payload: CampaignState): CampaignState => {
     ...base,
     ...payload,
     // Ensure all nested structures have proper defaults
+    ui: {
+      ...base.ui,
+      ...payload.ui,
+      pendingIntent: null
+    },
     checkpoints: {
       ...base.checkpoints,
       ...payload.checkpoints,

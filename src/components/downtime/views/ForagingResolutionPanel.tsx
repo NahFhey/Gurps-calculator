@@ -30,7 +30,7 @@ import {
 } from '../../../utils/gathering';
 import { FORAGE_CATEGORY_META, FORAGE_TIER_MULTIPLIERS } from '../../../constants/foraging';
 import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
-import type { DowntimeTask, ForagingData, TaskResults } from '../../../types/downtime';
+import type { DowntimeTask, ForagingData, InventoryDelta, TaskResults } from '../../../types/downtime';
 import type { Character } from '../../../types/campaign';
 import type {
   ForageActionInput,
@@ -260,6 +260,7 @@ export function ForagingResolutionPanel({
 
     // Add items to inventory
     const zoneName = zone?.name ?? 'unknown zone';
+    const inventoryChanges: InventoryDelta[] = [];
     for (const stack of foundStacks) {
       const itemId = `forage-${stack.itemId}-${Date.now()}`;
       if (stack.inventoryKind === 'food') {
@@ -281,6 +282,12 @@ export function ForagingResolutionPanel({
           source: `Foraging at ${zoneName}`,
         }, 'party', 'gathering');
       }
+      inventoryChanges.push({
+        itemId,
+        quantity: stack.quantity,
+        itemName: stack.itemName,
+        kind: stack.inventoryKind,
+      });
     }
 
     // Build log text
@@ -290,12 +297,6 @@ export function ForagingResolutionPanel({
       success, critSuccess, critFailure,
       tierOutcome, foundStacks
     );
-
-    const inventoryChanges = foundStacks.map((s) => ({
-      itemId: s.itemId,
-      quantity: s.quantity,
-      itemName: s.itemName,
-    }));
 
     const results: TaskResults = {
       success: foundStacks.length > 0,
