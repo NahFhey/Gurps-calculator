@@ -16,7 +16,7 @@ import { FISHING_METHODS } from '../../../constants';
 import { characterHasAnySkill, getCharacterSkills, ACTIVITY_SKILL_REQUIREMENTS } from '../../../types/characterSheet';
 import { selectCharacterFatigueStatus, getFatiguePenalty } from '../../../state/downtime/downtimeSelectors';
 import type { DowntimeState, FishingData, FishingMethod } from '../../../types/downtime';
-import type { Character, GatheringSpecies, GatheringTool, GatheringEnvironment, GatheringBait } from '../../../types/campaign';
+import type { Character, GatheringSpecies, GatheringTool, GatheringEnvironment, GatheringBait, GatheringTable } from '../../../types/campaign';
 import type { CreateTaskPayload } from '../../../state/downtime/downtimeActions';
 import type { ValidationResult } from '../../../state/downtime/downtimeErrors';
 import { useOptionalDowntimeContext } from '../DowntimeContext';
@@ -39,7 +39,7 @@ interface FishingTaskFormProps {
   /** Available fishing bait */
   bait: GatheringBait[];
   /** Gathering tables for species filtering */
-  gatheringTables?: any[];
+  gatheringTables?: GatheringTable[];
   /** Current downtime state for validation */
   state: DowntimeState;
   /** Current day key */
@@ -148,7 +148,7 @@ export function FishingTaskForm({
     if (!methodConfig) return [];
     return tools.filter((tool) => {
       // Check if tool type is allowed for this method
-      const toolType = (tool as any).toolType;
+      const toolType = tool.toolType;
       if (toolType && methodConfig.toolTypes) {
         return methodConfig.toolTypes.includes(toolType);
       }
@@ -168,7 +168,7 @@ export function FishingTaskForm({
     if (!spotId || !selectedSpot) return [];
 
     // Get catch table ID from spot
-    const spotDefaults = selectedSpot?.defaultsByMode?.Fishing ?? (selectedSpot as any)?.defaultTables;
+    const spotDefaults = selectedSpot?.defaultsByMode?.Fishing ?? selectedSpot?.defaultTables;
     const catchTableId = spotDefaults?.randomCatchTableId;
 
     if (!catchTableId) {
@@ -177,7 +177,7 @@ export function FishingTaskForm({
     }
 
     // Find the catch table
-    const catchTable = gatheringTables.find((t: any) => t.id === catchTableId);
+    const catchTable = gatheringTables.find((t) => t.id === catchTableId);
     if (!catchTable || !catchTable.entries) {
       return species;
     }
@@ -220,7 +220,7 @@ export function FishingTaskForm({
   // Get selected spot's environment modifier
   const environmentMod = useMemo(() => {
     if (!selectedSpot) return 0;
-    return (selectedSpot as any).skillMod ?? 0;
+    return selectedSpot.skillMod ?? 0;
   }, [selectedSpot]);
 
   // Get selected species
@@ -232,7 +232,7 @@ export function FishingTaskForm({
   // Check if species is large fish
   const isLargeFish = useMemo(() => {
     if (!selectedSpecies) return false;
-    const tags = (selectedSpecies as any).tags;
+    const tags = selectedSpecies.tags;
     return Array.isArray(tags) && tags.includes('LargeFish');
   }, [selectedSpecies]);
 
@@ -248,7 +248,7 @@ export function FishingTaskForm({
       return { correct: false, inappropriate: false };
     }
     // Check if bait attracts this species
-    const attractsSpeciesIds = (selectedBait as any).attractsSpeciesIds;
+    const attractsSpeciesIds = selectedBait.attractsSpeciesIds;
     if (Array.isArray(attractsSpeciesIds)) {
       const attractsTarget = attractsSpeciesIds.includes(speciesId);
       return {
@@ -269,14 +269,14 @@ export function FishingTaskForm({
     for (const toolId of selectedToolIds) {
       const tool = tools.find((t) => t.id === toolId);
       if (tool) {
-        const skillBonus = (tool as any).skillBonus;
+        const skillBonus = tool.skillBonus;
         if (skillBonus) {
           toolMod += skillBonus;
         }
         // Also check bonuses array for skill_bonus type
-        const bonuses = (tool as any).bonuses;
+        const bonuses = tool.bonuses;
         if (Array.isArray(bonuses)) {
-          const bonus = bonuses.find((b: any) => b.type === 'skill_bonus' && b.skill === 'Fishing');
+          const bonus = bonuses.find((b) => b.type === 'skill_bonus' && b.skill === 'Fishing');
           if (bonus?.value) {
             toolMod += bonus.value;
           }
@@ -683,7 +683,7 @@ export function FishingTaskForm({
             >
               <option value="">Select species...</option>
               {availableSpecies.map((s) => {
-                const tags = (s as any).tags;
+                const tags = s.tags;
                 const isLarge = Array.isArray(tags) && tags.includes('LargeFish');
                 return (
                   <option key={s.id} value={s.id}>
@@ -743,9 +743,9 @@ export function FishingTaskForm({
             {availableTools.map((tool) => {
               const isReserved = reservedToolIds.has(tool.id);
               const isSelected = selectedToolIds.includes(tool.id);
-              const skillBonus = (tool as any).skillBonus;
-              const bonuses = (tool as any).bonuses;
-              const displayBonus = skillBonus || bonuses?.find((b: any) => b.type === 'skill_bonus')?.value;
+              const skillBonus = tool.skillBonus;
+              const bonuses = tool.bonuses;
+              const displayBonus = skillBonus || bonuses?.find((b) => b.type === 'skill_bonus')?.value;
 
               return (
                 <label
@@ -767,7 +767,7 @@ export function FishingTaskForm({
                     className="sr-only"
                   />
                   <span className="text-sm">{tool.name}</span>
-                  {displayBonus > 0 && (
+                  {(displayBonus ?? 0) > 0 && (
                     <span className="text-xs text-green-400">(+{displayBonus})</span>
                   )}
                   {isReserved && (

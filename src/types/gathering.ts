@@ -103,6 +103,11 @@ export interface GatheringEnvironmentExtended {
     Fishing?: ModeDefaults;
     Foraging?: ModeDefaults;
   };
+  /**
+   * @deprecated Legacy pre-Extended saves only. Modern environments store
+   * mode-specific table defaults under `defaultsByMode`.
+   */
+  defaultTables?: ModeDefaults;
   skillMod: number;
   /** Links this environment to a Location. Environments without a locationId are hidden from activities. */
   locationId?: string;
