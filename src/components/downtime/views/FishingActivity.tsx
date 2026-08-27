@@ -74,7 +74,7 @@ interface CaughtFish {
  * Calculate fishing results using proper GURPS mechanics (auto-roll mode).
  * Also saves results directly to foods/materials inventory.
  */
-function calculateFishingResultsAuto(
+export function calculateFishingResultsAuto(
   task: DowntimeTask,
   leader: Character | undefined,
   species: GatheringSpecies[],
@@ -280,28 +280,32 @@ function calculateFishingResultsAuto(
       secondaryType,
     });
 
-    // Add to inventory and campaign
-    if (struggleSuccess && meatYield > 0) {
-      const foodId = `fish-${caughtSpecies.id}-${Date.now()}-${i}`;
-      const foodName = `${caughtSpecies.name} Meat`;
-      // Use the species' foodType instead of hardcoded 'fish'
-      const foodType = caughtSpecies.foodType ?? 'fish';
+    // Add to inventory and campaign. Meat and secondary material persist
+    // independently — a zero-meat catch can still yield scales/shell (matches
+    // the manual FishingResolutionPanel finalize behavior).
+    if (struggleSuccess) {
+      if (meatYield > 0) {
+        const foodId = `fish-${caughtSpecies.id}-${Date.now()}-${i}`;
+        const foodName = `${caughtSpecies.name} Meat`;
+        // Use the species' foodType instead of hardcoded 'fish'
+        const foodType = caughtSpecies.foodType ?? 'fish';
 
-      campaignActions.acquireItem({
-        kind: 'food',
-        id: foodId,
-        name: foodName,
-        types: [foodType],
-        quantity: meatYield,
-        source: `Fishing at ${spot?.name ?? 'unknown'}`,
-      }, 'party', 'gathering');
+        campaignActions.acquireItem({
+          kind: 'food',
+          id: foodId,
+          name: foodName,
+          types: [foodType],
+          quantity: meatYield,
+          source: `Fishing at ${spot?.name ?? 'unknown'}`,
+        }, 'party', 'gathering');
 
-      inventoryChanges.push({
-        itemId: foodId,
-        quantity: meatYield,
-        itemName: foodName,
-        kind: 'food',
-      });
+        inventoryChanges.push({
+          itemId: foodId,
+          quantity: meatYield,
+          itemName: foodName,
+          kind: 'food',
+        });
+      }
 
       if (secondaryYield > 0 && secondaryType) {
         const materialId = `material-${caughtSpecies.id}-${secondaryType}-${Date.now()}-${i}`;
