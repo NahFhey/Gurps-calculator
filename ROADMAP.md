@@ -293,9 +293,9 @@ Shipped as a four-lane bundle (design: [`docs/ACTIVITY_SYSTEM_13B_PLAN.md`](./do
 - ✅ Activity chaining (lane 4, 2026-08-27) — follow-on affordances on resolved gathering task cards ("Cook with these" / "Craft with these" / "Send to lab") via one-shot `ui.pendingIntent`; `InventoryDelta.kind` stamped at all fishing/foraging/mining resolution sites; bonus fix: foraging deltas now record the acquired inventory id (was catalog id)
 
 ### 13c: New Activity Types
-- Trading/Commerce (buy/sell with market prices, haggling rolls)
+- Trading/Commerce (buy/sell with market prices, haggling rolls) — **design in progress 2026-08-28** (grill-me session: sell-surplus-first scope, money = existing `Inventory.currency` maps, configurable currency setting)
 - Research/Study (skill improvement during downtime)
-- Healing/Recovery (injury recovery tracking tied to rest activities)
+- ✅ Healing/Recovery (2026-08-28, codex-shepherd, spec `2026-08-28-rest-recovery-13c.md`, merge `codex/rest-recovery`): rest tasks now resolve — FP restores to max on any rest; sleep makes the B424 natural-recovery HT roll (physician healer adds +1 and doubles, `RestData.healerId`), gated on full-day rest with GM override; RestActivity view with party recovery-status strip (shared `estimateHealing` util, also used by PostCombatSummary); `rest` changelog family. Browser-verified end-to-end.
 - Social activities (reputation/reaction modifier management)
 
 **Estimated effort:** 3-4 sessions
