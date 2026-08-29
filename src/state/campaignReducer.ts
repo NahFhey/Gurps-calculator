@@ -48,7 +48,8 @@ import type {
   PriceBookEntry,
   StudyConfig,
   StudyProject,
-  ContactEntry
+  ContactEntry,
+  CharacterTemplateEntity
 } from '../types/campaign';
 import type {
   Location,
@@ -121,6 +122,8 @@ export type CampaignState = {
   entities: {
     // Shared characters (merged workers + party characters)
     characters: Record<Id, Character>;
+    characterTemplates?: Record<Id, CharacterTemplateEntity>;
+    deletedBuiltinTemplateIds?: string[];
 
     // Inventory system
     recipes: Record<Id, Recipe>;
@@ -373,6 +376,8 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
   entities: {
     // Characters (from Party Tool initially)
     characters: initialPartyToolState.characters,
+    characterTemplates: {},
+    deletedBuiltinTemplateIds: [],
 
     // Inventory system (empty initially)
     recipes: {},
@@ -546,6 +551,8 @@ export type CampaignAction =
   | { type: 'updateCharacter'; payload: { id: Id; changes: Partial<Character> } }
   | { type: 'removeCharacter'; payload: Id }
   | { type: 'setCharacters'; payload: Record<Id, Character> }
+  | { type: 'upsertCharacterTemplate'; payload: CharacterTemplateEntity }
+  | { type: 'removeCharacterTemplate'; payload: Id }
   // Material actions
   | import('./inventory').InventoryAction
   // Recipe actions

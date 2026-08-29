@@ -3,7 +3,7 @@ import { createCampaignState, type CampaignState } from '../state/campaignReduce
 import { generateAllTestSampleData, isStateEmpty } from '../utils/testSampleData';
 import { initialMapState } from '../types/map';
 import { logger } from '../utils/logger';
-import { ensureInventoryRecords, ensureOwnerAttributedHoldings, ensureConditionVisibility, ensureCombatCharacterCategories, ensureCombatHistoryShape } from './dataMigration';
+import { ensureCharacterTemplates, ensureInventoryRecords, ensureOwnerAttributedHoldings, ensureConditionVisibility, ensureCombatCharacterCategories, ensureCombatHistoryShape } from './dataMigration';
 
 const CAMPAIGN_STORAGE_KEY = 'campaignState';
 
@@ -60,7 +60,7 @@ const hydrateMapState = (maps: any): CampaignState['maps'] => {
 export const hydrateCampaignState = (payload: CampaignState): CampaignState => {
   const base = createCampaignState();
   const reveal = payload.combat?.reveal ?? base.combat.reveal;
-  return ensureCombatHistoryShape(ensureCombatCharacterCategories(ensureConditionVisibility(ensureOwnerAttributedHoldings(ensureInventoryRecords({
+  return ensureCharacterTemplates(ensureCombatHistoryShape(ensureCombatCharacterCategories(ensureConditionVisibility(ensureOwnerAttributedHoldings(ensureInventoryRecords({
     ...base,
     ...payload,
     // Ensure all nested structures have proper defaults
@@ -94,7 +94,7 @@ export const hydrateCampaignState = (payload: CampaignState): CampaignState => {
       }
     },
     maps: hydrateMapState(payload.maps),
-  }))))) ;
+  }))))));
 };
 
 export async function saveCampaignState(state: CampaignState) {
@@ -163,7 +163,7 @@ function injectTestSampleData(state: CampaignState): CampaignState {
 export async function loadCampaignState(): Promise<CampaignState> {
   const stored = await storage.get(CAMPAIGN_STORAGE_KEY, false);
   if (!stored?.value) {
-    const freshState = createCampaignState();
+    const freshState = ensureCharacterTemplates(createCampaignState());
     return injectTestSampleData(freshState);
   }
 
@@ -173,7 +173,7 @@ export async function loadCampaignState(): Promise<CampaignState> {
     return injectTestSampleData(hydratedState);
   } catch (error) {
     console.error('Failed to parse campaign state, using defaults.', error);
-    const freshState = createCampaignState();
+    const freshState = ensureCharacterTemplates(createCampaignState());
     return injectTestSampleData(freshState);
   }
 }

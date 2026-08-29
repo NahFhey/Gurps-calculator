@@ -5,6 +5,8 @@
 
 import { createCampaignState } from '../state/campaignReducer';
 import type { CampaignState } from '../state/campaignReducer';
+import { CHARACTER_TEMPLATE_SEEDS } from '../constants/characterTemplateSeeds';
+import { safeDeepClone } from '../utils/helpers';
 import {
   normalizeArray,
   mergeCharacters,
@@ -16,6 +18,28 @@ import { ensureParticipantConditionVisibility } from '../utils/conditionsEngine'
 import { deriveCombatCategory } from '../utils/combatHelpers';
 import { isLegacyCombatSession, upgradeCombatHistory } from '../utils/legacyCombatHistory';
 import type { Id, Material, Food, Recipe, Craft, CraftDesign, AlchemyReagent, AlchemyFormula, AlchemyBatch, AlchemyLab, GatheringSpecies, GatheringTool, GatheringTable, GatheringEnvironment, GatheringSession, GatheringBait, GatheringCategory, GatheringItem, CombatCharacter, CombatItem, Kitchen, Inventory } from '../types/campaign';
+
+/** Seed missing built-in character templates while honoring persisted deletions and edits. */
+export function ensureCharacterTemplates(state: CampaignState): CampaignState {
+  const templates = { ...(state.entities.characterTemplates ?? {}) };
+  const deleted = new Set(state.entities.deletedBuiltinTemplateIds ?? []);
+  let changed = state.entities.characterTemplates === undefined || state.entities.deletedBuiltinTemplateIds === undefined;
+  for (const seed of CHARACTER_TEMPLATE_SEEDS) {
+    if (!templates[seed.id] && !deleted.has(seed.id)) {
+      templates[seed.id] = safeDeepClone(seed);
+      changed = true;
+    }
+  }
+  if (!changed) return state;
+  return {
+    ...state,
+    entities: {
+      ...state.entities,
+      characterTemplates: templates,
+      deletedBuiltinTemplateIds: [...deleted],
+    },
+  };
+}
 
 // Legacy localStorage keys to migrate
 const LEGACY_KEYS = [

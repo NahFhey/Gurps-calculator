@@ -1,6 +1,7 @@
 import type { Character } from '../types/campaign';
 import type {
   Advantage,
+  AnyTrait,
   Disadvantage,
   Equipment,
   Perk,
@@ -55,6 +56,14 @@ interface NamedEntry {
 interface FieldDefinition<T> {
   key: keyof T;
   label: string;
+}
+
+export interface ComparisonRow {
+  section: 'Identity' | 'Attributes' | 'Secondaries' | 'Pools' | 'Skills' | 'Spells' | 'Traits' | 'Equipment';
+  label: string;
+  a: string | number;
+  b: string | number;
+  status: 'same' | 'changed' | 'added' | 'missing';
 }
 
 const SKILL_FIELDS: ReadonlyArray<FieldDefinition<Skill>> = [
@@ -127,23 +136,15 @@ function compareCollection<T extends NamedEntry>(
   incoming: readonly T[],
   fields: ReadonlyArray<FieldDefinition<T>>
 ): CollectionDiff<T> {
-  const existingByName = new Map<string, T[]>();
-  for (const entry of existing) {
-    const key = entry.name.trim().toLocaleLowerCase();
-    existingByName.set(key, [...(existingByName.get(key) ?? []), entry]);
-  }
-
   const added: T[] = [];
+  const removed: T[] = [];
   const changed: ChangedCollectionEntry[] = [];
-
-  for (const incomingEntry of incoming) {
-    const key = incomingEntry.name.trim().toLocaleLowerCase();
-    const matches = existingByName.get(key);
-    const existingEntry = matches?.shift();
-    if (!existingEntry) {
-      added.push(incomingEntry);
-      continue;
-    }
+  for (const pair of matchCollectionEntries(existing, incoming)) {
+    if (!pair.existing && pair.incoming) { added.push(pair.incoming); continue; }
+    if (pair.existing && !pair.incoming) { removed.push(pair.existing); continue; }
+    if (!pair.existing || !pair.incoming) continue;
+    const existingEntry = pair.existing;
+    const incomingEntry = pair.incoming;
 
     const changes = fields.flatMap((field): FieldChange[] => {
       const from = existingEntry[field.key];
@@ -160,8 +161,53 @@ function compareCollection<T extends NamedEntry>(
     if (changes.length > 0) changed.push({ name: incomingEntry.name, changes });
   }
 
-  const removed = Array.from(existingByName.values()).flat();
   return { added, removed, changed };
+}
+
+interface MatchedEntries<T> { existing?: T; incoming?: T }
+
+function matchCollectionEntries<T extends NamedEntry>(existing: readonly T[], incoming: readonly T[]): Array<MatchedEntries<T>> {
+  const existingByName = new Map<string, T[]>();
+  for (const entry of existing) {
+    const key = entry.name.trim().toLocaleLowerCase();
+    existingByName.set(key, [...(existingByName.get(key) ?? []), entry]);
+  }
+  const pairs: Array<MatchedEntries<T>> = [];
+  for (const incomingEntry of incoming) {
+    const key = incomingEntry.name.trim().toLocaleLowerCase();
+    const existingEntry = existingByName.get(key)?.shift();
+    pairs.push({ existing: existingEntry, incoming: incomingEntry });
+  }
+  for (const entries of existingByName.values()) {
+    for (const existingEntry of entries) pairs.push({ existing: existingEntry });
+  }
+  return pairs;
+}
+
+function comparisonStatus(a: string | number, b: string | number): ComparisonRow['status'] {
+  return a === b ? 'same' : 'changed';
+}
+
+function collectionComparisonRows<T extends NamedEntry>(
+  section: ComparisonRow['section'],
+  existing: readonly T[],
+  incoming: readonly T[],
+  fields: ReadonlyArray<FieldDefinition<T>>
+): ComparisonRow[] {
+  return matchCollectionEntries(existing, incoming).map(({ existing: left, incoming: right }) => {
+    const format = (entry: T | undefined): string => entry
+      ? fields.map((field) => `${field.label}: ${displayValue(entry[field.key])}`).join(' · ')
+      : '—';
+    const a = format(left);
+    const b = format(right);
+    return {
+      section,
+      label: left?.name ?? right?.name ?? 'Unnamed',
+      a,
+      b,
+      status: !left ? 'added' : !right ? 'missing' : comparisonStatus(a, b),
+    };
+  });
 }
 
 function addScalar(
@@ -251,4 +297,40 @@ export function diffCharacters(existing: Character, incoming: Character): Charac
 export function hasChanges(diff: CharacterDiff): boolean {
   const { changedFields, added, removed, modified } = diff.summary;
   return changedFields + added + removed + modified > 0;
+}
+
+/** Build a complete, symmetric view using the same field definitions and name matcher as imports. */
+export function buildComparisonRows(a: Character, b: Character): ComparisonRow[] {
+  const left = a.gcsData ?? createDefaultGCSData();
+  const right = b.gcsData ?? createDefaultGCSData();
+  const rows: ComparisonRow[] = [];
+  const add = (section: ComparisonRow['section'], label: string, av: string | number, bv: string | number) => {
+    rows.push({ section, label, a: av, b: bv, status: comparisonStatus(av, bv) });
+  };
+  add('Identity', 'Name', a.name, b.name);
+  add('Identity', 'Total points', left.totalPoints, right.totalPoints);
+  for (const key of ['ST', 'DX', 'IQ', 'HT'] as const) {
+    add('Attributes', key, left.attributes[key], right.attributes[key]);
+    add('Attributes', `${key} points`, left.attributePoints[key], right.attributePoints[key]);
+  }
+  const secondaryLabels = {
+    will: 'Will', frightCheck: 'Fright Check', per: 'Perception', vision: 'Vision', hearing: 'Hearing',
+    tasteSmell: 'Taste & Smell', touch: 'Touch', basicSpeed: 'Basic Speed', basicMove: 'Basic Move',
+  } as const;
+  for (const key of Object.keys(secondaryLabels) as Array<keyof typeof secondaryLabels>) {
+    add('Secondaries', secondaryLabels[key], left.secondaryAttributes[key].value, right.secondaryAttributes[key].value);
+    add('Secondaries', `${secondaryLabels[key]} points`, left.secondaryAttributes[key].points, right.secondaryAttributes[key].points);
+  }
+  for (const key of ['HP', 'FP'] as const) {
+    add('Pools', `${key} current`, left.pools[key].current, right.pools[key].current);
+    add('Pools', `${key} maximum`, left.pools[key].max, right.pools[key].max);
+    add('Pools', `${key} points`, left.pools[key].points, right.pools[key].points);
+  }
+  rows.push(...collectionComparisonRows('Skills', left.skills, right.skills, SKILL_FIELDS));
+  rows.push(...collectionComparisonRows('Spells', left.spells, right.spells, SPELL_FIELDS));
+  const leftTraits: AnyTrait[] = [...left.advantages, ...left.perks, ...left.disadvantages, ...left.quirks];
+  const rightTraits: AnyTrait[] = [...right.advantages, ...right.perks, ...right.disadvantages, ...right.quirks];
+  rows.push(...collectionComparisonRows('Traits', leftTraits, rightTraits, TRAIT_FIELDS));
+  rows.push(...collectionComparisonRows('Equipment', left.equipment, right.equipment, EQUIPMENT_FIELDS));
+  return rows;
 }

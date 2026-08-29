@@ -5,7 +5,7 @@
 import { safeDeepClone } from './helpers';
 import { exportCharacterText } from './characterExport';
 
-import type { Character } from '../types/campaign';
+import type { Character, CharacterTemplateEntity } from '../types/campaign';
 import type { GCSCharacterData } from '../types/characterSheet';
 import { createDefaultGCSData, syncWorkSkillsFromGCS } from '../types/characterSheet';
 
@@ -36,89 +36,42 @@ export function createBlankCharacter(name: string = 'New Character'): Character 
   };
 }
 
-/**
- * Character template types
- */
-export type CharacterTemplateType =
-  | 'fighter'
-  | 'wizard'
-  | 'rogue'
-  | 'cleric'
-  | 'ranger'
-  | 'bard';
-
-/**
- * Character template metadata
- */
-export interface CharacterTemplate {
-  type: CharacterTemplateType;
-  name: string;
-  description: string;
-  pointValue: number;
+/** Create a full character from a persisted template snapshot. */
+export function createCharacterFromTemplateEntity(
+  template: CharacterTemplateEntity,
+  name: string = `New ${template.name}`
+): Character {
+  const gcsData = safeDeepClone(template.gcsData);
+  regenerateGCSDataIds(gcsData);
+  return {
+    id: generateCharacterId(),
+    name,
+    isPlayer: true,
+    work: { enabled: true, skills: syncWorkSkillsFromGCS(gcsData) },
+    st: gcsData.attributes.ST,
+    gcsData,
+  };
 }
 
-/**
- * Available character templates
- * Note: These are just metadata - actual template data would be added later
- */
-export const CHARACTER_TEMPLATES: CharacterTemplate[] = [
-  {
-    type: 'fighter',
-    name: 'Fighter',
-    description: 'A combat-focused warrior with high ST and weapon skills',
-    pointValue: 150,
-  },
-  {
-    type: 'wizard',
-    name: 'Wizard',
-    description: 'A spellcaster with high IQ and magical abilities',
-    pointValue: 150,
-  },
-  {
-    type: 'rogue',
-    name: 'Rogue',
-    description: 'A nimble character with high DX and stealth skills',
-    pointValue: 150,
-  },
-  {
-    type: 'cleric',
-    name: 'Cleric',
-    description: 'A healer with divine magic and support abilities',
-    pointValue: 150,
-  },
-  {
-    type: 'ranger',
-    name: 'Ranger',
-    description: 'An outdoorsman with survival and ranged combat skills',
-    pointValue: 150,
-  },
-  {
-    type: 'bard',
-    name: 'Bard',
-    description: 'A charismatic performer with social and magical skills',
-    pointValue: 150,
-  },
-];
-
-/**
- * Create a character from a template
- * Note: Currently creates a blank character with the template name
- * Template-specific attributes/skills would be added in a future phase
- */
-export function createCharacterFromTemplate(templateType: CharacterTemplateType): Character {
-  const template = CHARACTER_TEMPLATES.find(t => t.type === templateType);
-  const templateName = template?.name || 'New Character';
-
-  // For now, create a blank character with the template name
-  // In a future phase, this would populate template-specific attributes/skills
-  const character = createBlankCharacter(`New ${templateName}`);
-
-  // Set total points based on template
-  if (character.gcsData && template) {
-    character.gcsData.totalPoints = template.pointValue;
-  }
-
-  return character;
+/** Snapshot a character as an images-free build rather than a career record. */
+export function createCharacterTemplateSnapshot(
+  character: Character,
+  name: string,
+  description: string,
+  now: number = Date.now()
+): CharacterTemplateEntity {
+  const gcsData = safeDeepClone(character.gcsData ?? createDefaultGCSData());
+  gcsData.unspentPoints = 0;
+  gcsData.pointLedger = [];
+  return {
+    id: `character-template-${now}-${Math.random().toString(36).slice(2, 9)}`,
+    name,
+    description,
+    builtin: false,
+    gcsData,
+    createdAt: now,
+    updatedAt: now,
+  };
 }
 
 /**
@@ -127,7 +80,7 @@ export function createCharacterFromTemplate(templateType: CharacterTemplateType)
  */
 export function duplicateCharacter(character: Character): Character {
   // Deep clone the character
-  const cloned = safeDeepClone(character) as Character;
+  const cloned = safeDeepClone(character);
 
   // Generate new ID
   cloned.id = generateCharacterId();
@@ -146,7 +99,7 @@ export function duplicateCharacter(character: Character): Character {
 /**
  * Regenerate all IDs within GCS data to avoid duplicates
  */
-function regenerateGCSDataIds(gcsData: GCSCharacterData): void {
+export function regenerateGCSDataIds(gcsData: GCSCharacterData): void {
   const generateId = (prefix: string) =>
     `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 

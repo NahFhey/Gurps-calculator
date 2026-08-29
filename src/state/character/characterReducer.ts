@@ -11,7 +11,9 @@ import {
   CHARACTER_ADD,
   CHARACTER_UPDATE,
   CHARACTER_REMOVE,
-  CHARACTERS_SET
+  CHARACTERS_SET,
+  CHARACTER_TEMPLATE_UPSERT,
+  CHARACTER_TEMPLATE_REMOVE
 } from './characterActions';
 
 /**
@@ -48,6 +50,24 @@ export function handleCharacterAction(
     case CHARACTERS_SET:
       draft.entities.characters = action.payload;
       return true;
+
+    case CHARACTER_TEMPLATE_UPSERT:
+      if (!draft.entities.characterTemplates) draft.entities.characterTemplates = {};
+      draft.entities.characterTemplates[action.payload.id] = action.payload;
+      draft.entities.deletedBuiltinTemplateIds = (draft.entities.deletedBuiltinTemplateIds ?? [])
+        .filter((id) => id !== action.payload.id);
+      return true;
+
+    case CHARACTER_TEMPLATE_REMOVE: {
+      const template = draft.entities.characterTemplates?.[action.payload];
+      if (template?.builtin) {
+        const deleted = draft.entities.deletedBuiltinTemplateIds ?? [];
+        if (!deleted.includes(action.payload)) deleted.push(action.payload);
+        draft.entities.deletedBuiltinTemplateIds = deleted;
+      }
+      if (draft.entities.characterTemplates) delete draft.entities.characterTemplates[action.payload];
+      return true;
+    }
 
     default:
       return false;

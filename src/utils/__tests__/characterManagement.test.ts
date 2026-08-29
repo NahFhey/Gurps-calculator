@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
   createBlankCharacter,
-  createCharacterFromTemplate,
+  createCharacterFromTemplateEntity,
   duplicateCharacter,
   exportCharacterJSON,
   importCharacterJSON,
   importCharactersJSON,
-  CHARACTER_TEMPLATES,
 } from '../characterManagement';
 import type { Character } from '../../types/campaign';
+import { CHARACTER_TEMPLATE_SEEDS } from '../../constants/characterTemplateSeeds';
 
 describe('characterManagement', () => {
   describe('createBlankCharacter', () => {
@@ -33,18 +33,21 @@ describe('characterManagement', () => {
     });
   });
 
-  describe('createCharacterFromTemplate', () => {
+  describe('createCharacterFromTemplateEntity', () => {
     it('creates a fighter with the template name and point value', () => {
-      const c = createCharacterFromTemplate('fighter');
+      const fighter = CHARACTER_TEMPLATE_SEEDS.find((template) => template.id === 'builtin-fighter');
+      expect(fighter).toBeDefined();
+      if (!fighter) return;
+      const c = createCharacterFromTemplateEntity(fighter);
       expect(c.name).toBe('New Fighter');
       expect(c.gcsData?.totalPoints).toBe(150);
     });
 
     it('covers every declared template type', () => {
-      for (const tmpl of CHARACTER_TEMPLATES) {
-        const c = createCharacterFromTemplate(tmpl.type);
+      for (const tmpl of CHARACTER_TEMPLATE_SEEDS) {
+        const c = createCharacterFromTemplateEntity(tmpl);
         expect(c.name).toBe(`New ${tmpl.name}`);
-        expect(c.gcsData?.totalPoints).toBe(tmpl.pointValue);
+        expect(c.gcsData?.totalPoints).toBe(tmpl.gcsData.totalPoints);
       }
     });
   });

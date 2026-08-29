@@ -53,7 +53,8 @@ import type {
   PriceBookEntry,
   StudyConfig,
   StudyProject,
-  ContactEntry
+  ContactEntry,
+  CharacterTemplateEntity
 } from '../types/campaign';
 import type {
   Location,
@@ -129,6 +130,8 @@ type CampaignStoreValue = {
     updateCharacter: (id: Id, changes: Partial<Character>) => void;
     removeCharacter: (id: Id) => void;
     setCharacters: (characters: Record<Id, Character>) => void;
+    upsertCharacterTemplate: (template: CharacterTemplateEntity) => void;
+    removeCharacterTemplate: (id: Id) => void;
 
     // Material Actions
     addMaterial: (material: Material) => void;
@@ -410,6 +413,10 @@ export function CampaignStoreProvider({
       removeCharacter: (id: Id) => dispatch({ type: 'removeCharacter', payload: id }),
       setCharacters: (characters: Record<Id, Character>) =>
         dispatch({ type: 'setCharacters', payload: characters }),
+      upsertCharacterTemplate: (template: CharacterTemplateEntity) =>
+        dispatch({ type: 'upsertCharacterTemplate', payload: template }),
+      removeCharacterTemplate: (id: Id) =>
+        dispatch({ type: 'removeCharacterTemplate', payload: id }),
 
       // Material Actions
       addMaterial: (material: Material) => dispatch({ type: 'addMaterial', payload: material }),
