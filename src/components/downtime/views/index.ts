@@ -31,3 +31,7 @@ export { TradingResolutionPanel } from './TradingResolutionPanel';
 export { StudyActivity } from './StudyActivity';
 export { StudyTaskForm } from './StudyTaskForm';
 export { StudyTaskCard } from './StudyTaskCard';
+export { SocialActivity } from './SocialActivity';
+export { SocialTaskForm } from './SocialTaskForm';
+export { SocialTaskCard } from './SocialTaskCard';
+export { SocialResolutionPanel } from './SocialResolutionPanel';

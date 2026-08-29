@@ -2,14 +2,43 @@ import { describe, expect, it } from 'vitest';
 import { campaignReducer, createCampaignState, initialCampaignState, logEvent } from '../campaignReducer';
 import { hydrateCampaignState } from '../../persistence/campaignStorage';
 import { DEFAULT_STUDY_CONFIG } from '../../constants';
-import { selectStudyConfig, selectStudyProjects, selectStudyProjectsForCharacter } from '../selectors';
-import type { StudyProject } from '../../types/campaign';
+import { selectContactByName, selectContacts, selectStudyConfig, selectStudyProjects, selectStudyProjectsForCharacter } from '../selectors';
+import type { ContactEntry, StudyProject } from '../../types/campaign';
 
 describe('campaignReducer', () => {
   const studyProject: StudyProject = {
     id: 'study-1', characterId: 'char-1', skillName: 'Research', attribute: 'IQ', difficulty: 'A',
     accumulatedHours: 198, pointsAwarded: 0, createdAt: 1, updatedAt: 1,
   };
+  const contact: ContactEntry = { id: 'contact-1', name: 'Dockworkers Guild', kind: 'faction', modifier: 3, notes: 'Harbor allies', history: [], createdAt: 1, updatedAt: 1 };
+
+  it('upserts, selects by normalized name, and removes contacts', () => {
+    const added = campaignReducer(createCampaignState(), { type: 'upsertContact', payload: contact });
+    expect(selectContacts(added)[contact.id]).toEqual(contact);
+    expect(selectContactByName(added, '  dockworkers guild ')).toEqual(contact);
+    const removed = campaignReducer(added, { type: 'removeContact', payload: contact.id });
+    expect(selectContacts(removed)).toEqual({});
+  });
+
+  it('clamps positive shifts and records the post-clamp delta, cause, and day', () => {
+    const added = campaignReducer(createCampaignState(), { type: 'upsertContact', payload: contact });
+    const shifted = campaignReducer(added, { type: 'shiftContactModifier', payload: { id: contact.id, delta: 2, cause: 'Diplomacy success by Rina', dayKey: 7 } });
+    expect(shifted.entities.contacts?.[contact.id]?.modifier).toBe(4);
+    expect(shifted.entities.contacts?.[contact.id]?.history[0]).toMatchObject({ delta: 1, newModifier: 4, cause: 'Diplomacy success by Rina', dayKey: 7 });
+  });
+
+  it('clamps negative shifts at -4', () => {
+    const added = campaignReducer(createCampaignState(), { type: 'upsertContact', payload: { ...contact, modifier: -3 } });
+    const shifted = campaignReducer(added, { type: 'shiftContactModifier', payload: { id: contact.id, delta: -2, cause: 'Critical failure', dayKey: 2 } });
+    expect(shifted.entities.contacts?.[contact.id]?.history[0]).toMatchObject({ delta: -1, newModifier: -4 });
+  });
+
+  it('appends a zero-delta history line at the cap', () => {
+    const added = campaignReducer(createCampaignState(), { type: 'upsertContact', payload: { ...contact, modifier: 4 } });
+    const shifted = campaignReducer(added, { type: 'shiftContactModifier', payload: { id: contact.id, delta: 1, cause: 'Carousing success', dayKey: 4 } });
+    expect(shifted.entities.contacts?.[contact.id]?.history).toHaveLength(1);
+    expect(shifted.entities.contacts?.[contact.id]?.history[0]).toMatchObject({ delta: 0, newModifier: 4, cause: 'Carousing success', dayKey: 4 });
+  });
 
   it('setActiveModule updates state', () => {
     const nextState = campaignReducer(initialCampaignState, {

@@ -23,7 +23,7 @@ const mergeMetaNames = (names?: string[], name?: string): string[] | undefined =
  * Part of Phase 4: Populate Changelog
  */
 export function createActivityLogEntry(
-  activityType: 'alchemy' | 'cooking' | 'crafting' | 'gathering' | 'inventory' | 'combat' | 'rest' | 'trading' | 'study',
+  activityType: 'alchemy' | 'cooking' | 'crafting' | 'gathering' | 'inventory' | 'combat' | 'rest' | 'trading' | 'study' | 'social',
   action: string,
   details: ActivityLogDetails,
   visibility: LogVisibility = 'player'
@@ -126,6 +126,31 @@ export const studyLog = {
     characterName,
     itemName: skillName,
     quantity: 1,
+    ...meta,
+  }),
+};
+
+export const socialLog = {
+  attemptResolved: (
+    characterName: string,
+    contactName: string,
+    outcome: string,
+    newModifier: number,
+    meta: LogEntryMeta = {}
+  ) => createActivityLogEntry('social', 'attempt_resolved', {
+    message: outcome || `${characterName} adjusted ${contactName} to ${newModifier >= 0 ? '+' : ''}${newModifier}`,
+    characterName,
+    itemName: contactName,
+    ...meta,
+  }),
+
+  contactAdjusted: (
+    contactName: string,
+    newModifier: number,
+    meta: LogEntryMeta = {}
+  ) => createActivityLogEntry('social', 'contact_adjusted', {
+    message: `${contactName} standing adjusted to ${newModifier >= 0 ? '+' : ''}${newModifier}`,
+    itemName: contactName,
     ...meta,
   }),
 };

@@ -13,9 +13,10 @@ const characters: Character[] = [
   { id: 'soren', name: 'Soren', work: { skills: {} } },
 ];
 
-function renderForm(onSubmit = vi.fn()) {
+function renderForm(onSubmit = vi.fn(), merchantContact = false) {
   const campaign = createCampaignState();
   characters.forEach((character) => { campaign.entities.characters[character.id] = character; });
+  if (merchantContact) campaign.entities.contacts = { guild: { id: 'guild', name: "Dockworkers' Guild", kind: 'faction', modifier: 2, history: [], createdAt: 1, updatedAt: 1 } };
   const locationName = campaign.locations.locations[campaign.locations.currentLocationId ?? '']?.name ?? '';
   render(
     <CampaignStoreProvider initialCampaignState={campaign}>
@@ -48,5 +49,17 @@ describe('TradingTaskForm', () => {
     expect(screen.getByRole('option', { name: 'Rina (Merchant-13)' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Soren (default IQ−5 = 5)' })).toBeInTheDocument();
     expect(screen.getByTestId('opposing-skill-input')).toHaveValue(12);
+  });
+
+  it('shows standing when the merchant name matches a contact case-insensitively', () => {
+    renderForm(vi.fn(), true);
+    fireEvent.change(screen.getByTestId('merchant-name-input'), { target: { value: "  dockworkers' guild " } });
+    expect(screen.getByTestId('merchant-standing-badge')).toHaveTextContent("Dockworkers' Guild: +2");
+  });
+
+  it('does not show standing for an unmatched merchant', () => {
+    renderForm(vi.fn(), true);
+    fireEvent.change(screen.getByTestId('merchant-name-input'), { target: { value: 'Other Market' } });
+    expect(screen.queryByTestId('merchant-standing-badge')).not.toBeInTheDocument();
   });
 });

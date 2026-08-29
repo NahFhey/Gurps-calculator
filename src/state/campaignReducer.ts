@@ -47,7 +47,8 @@ import type {
   CurrencyConfig,
   PriceBookEntry,
   StudyConfig,
-  StudyProject
+  StudyProject,
+  ContactEntry
 } from '../types/campaign';
 import type {
   Location,
@@ -161,6 +162,9 @@ export type CampaignState = {
     // Study system (optional for backwards-compatible saves)
     studyProjects?: Record<Id, StudyProject>;
     studyConfig?: StudyConfig;
+
+    // Social relationship ledger (optional for backwards-compatible saves)
+    contacts?: Record<Id, ContactEntry>;
 
     // Combat system
     combatCharacters: Record<Id, CombatCharacter>;
@@ -639,6 +643,10 @@ export type CampaignAction =
   | { type: 'removeStudyProject'; payload: Id }
   | { type: 'creditStudyHours'; payload: { projectId: Id; hours: number } }
   | { type: 'awardStudyPoint'; payload: Id }
+  // Social contact actions
+  | { type: 'upsertContact'; payload: ContactEntry }
+  | { type: 'removeContact'; payload: Id }
+  | { type: 'shiftContactModifier'; payload: { id: Id; delta: number; cause: string; dayKey: number } }
   // Day Planner actions
   | { type: 'setTimeSlots'; payload: TimeSlot[] }
   | { type: 'addTaskAssignment'; payload: TaskAssignment }
@@ -1129,6 +1137,34 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         project.accumulatedHours = Math.max(0, project.accumulatedHours - hoursPerPoint);
         project.pointsAwarded += 1;
         project.updatedAt = Date.now();
+        return;
+      }
+      case 'upsertContact':
+        draft.entities.contacts ??= {};
+        draft.entities.contacts[action.payload.id] = {
+          ...action.payload,
+          modifier: Math.max(-4, Math.min(4, action.payload.modifier)),
+        };
+        return;
+      case 'removeContact':
+        if (draft.entities.contacts) delete draft.entities.contacts[action.payload];
+        return;
+      case 'shiftContactModifier': {
+        const contact = draft.entities.contacts?.[action.payload.id];
+        if (!contact) return;
+        const timestamp = Date.now();
+        const newModifier = Math.max(-4, Math.min(4, contact.modifier + action.payload.delta));
+        const appliedDelta = newModifier - contact.modifier;
+        contact.modifier = newModifier;
+        contact.history.push({
+          id: `contact-shift-${timestamp}-${contact.history.length}`,
+          dayKey: action.payload.dayKey,
+          delta: appliedDelta,
+          newModifier,
+          cause: action.payload.cause,
+          timestamp,
+        });
+        contact.updatedAt = timestamp;
         return;
       }
       case 'setTimeSlots':

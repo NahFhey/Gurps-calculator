@@ -223,3 +223,4 @@ export {
   selectStudyProjects,
   selectStudyProjectsForCharacter,
 } from './studySelectors';
+export { selectContacts, selectContactByName } from './contactSelectors';

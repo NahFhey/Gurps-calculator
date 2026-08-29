@@ -52,7 +52,8 @@ import type {
   CurrencyConfig,
   PriceBookEntry,
   StudyConfig,
-  StudyProject
+  StudyProject,
+  ContactEntry
 } from '../types/campaign';
 import type {
   Location,
@@ -260,6 +261,9 @@ type CampaignStoreValue = {
     removeStudyProject: (id: Id) => void;
     creditStudyHours: (projectId: Id, hours: number) => void;
     awardStudyPoint: (projectId: Id) => void;
+    upsertContact: (contact: ContactEntry) => void;
+    removeContact: (id: Id) => void;
+    shiftContactModifier: (id: Id, delta: number, cause: string, dayKey: number) => void;
 
     // Inventory Actions
     addInventory: (inventory: Inventory) => void;
@@ -591,6 +595,10 @@ export function CampaignStoreProvider({
       creditStudyHours: (projectId: Id, hours: number) =>
         dispatch({ type: 'creditStudyHours', payload: { projectId, hours } }),
       awardStudyPoint: (projectId: Id) => dispatch({ type: 'awardStudyPoint', payload: projectId }),
+      upsertContact: (contact: ContactEntry) => dispatch({ type: 'upsertContact', payload: contact }),
+      removeContact: (id: Id) => dispatch({ type: 'removeContact', payload: id }),
+      shiftContactModifier: (id: Id, delta: number, cause: string, dayKey: number) =>
+        dispatch({ type: 'shiftContactModifier', payload: { id, delta, cause, dayKey } }),
 
       // Inventory Actions
       addInventory: (inventory: Inventory) => dispatch({ type: 'addInventory', payload: inventory }),

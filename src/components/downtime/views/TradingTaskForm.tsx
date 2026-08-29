@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Coins, X } from 'lucide-react';
 import { selectAvailableCharacterIdsForSlot } from '../../../state/downtime/downtimeSelectors';
+import { useCampaignStore } from '../../../state/campaignStore';
+import { selectContactByName } from '../../../state/selectors';
 import { getMerchantSkill } from '../../../utils/trading';
 import { useOptionalDowntimeContext } from '../DowntimeContext';
 import type { Character } from '../../../types/campaign';
@@ -23,10 +25,12 @@ export function TradingTaskForm({
   onSubmit,
   onCancel,
 }: TradingTaskFormProps) {
+  const { state: campaignState } = useCampaignStore();
   const downtimeContext = useOptionalDowntimeContext();
   const [leaderId, setLeaderId] = useState('');
   const [merchantName, setMerchantName] = useState(downtimeContext?.currentLocationName ?? '');
   const [opposingSkill, setOpposingSkill] = useState(12);
+  const matchingContact = selectContactByName(campaignState, merchantName);
   const availableCharacters = useMemo(() => {
     const ids = selectAvailableCharacterIdsForSlot(
       state,
@@ -90,6 +94,7 @@ export function TradingTaskForm({
           data-testid="merchant-name-input"
           className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-gray-100"
         />
+        {matchingContact && <span className="mt-1 inline-block rounded bg-gray-700 px-2 py-0.5 text-xs text-gray-300" data-testid="merchant-standing-badge">{matchingContact.name}: {matchingContact.modifier >= 0 ? '+' : ''}{matchingContact.modifier}</span>}
       </label>
 
       <label className="mb-4 block text-sm text-gray-300">
