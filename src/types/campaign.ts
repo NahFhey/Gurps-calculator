@@ -667,7 +667,7 @@ export interface TaskAssignment {
   day: number;
   slot: number;
   workerId: Id;
-  taskType: 'fishing' | 'foraging' | 'hunting' | 'cooking' | 'crafting' | 'alchemy' | 'rest' | 'trading' | 'study';
+  taskType: 'fishing' | 'foraging' | 'hunting' | 'cooking' | 'crafting' | 'alchemy' | 'rest' | 'trading' | 'study' | 'social';
   taskId?: Id;  // References session/batch/craft ID
   status: 'pending' | 'complete' | 'failed';
   notes?: string;
@@ -823,6 +823,28 @@ export interface PriceBookEntry {
   name: string;
   kind: 'material' | 'food' | 'item';
   price: number;
+  updatedAt: number;
+}
+
+export type ContactKind = 'person' | 'faction' | 'settlement';
+
+export interface ContactShift {
+  id: Id;
+  dayKey: number;
+  delta: number;
+  newModifier: number;
+  cause: string;
+  timestamp: number;
+}
+
+export interface ContactEntry {
+  id: Id;
+  name: string;
+  kind: ContactKind;
+  modifier: number;
+  notes?: string;
+  history: ContactShift[];
+  createdAt: number;
   updatedAt: number;
 }
 

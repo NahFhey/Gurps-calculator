@@ -1,8 +1,8 @@
-import { Fish, Leaf, HardHat, FlaskConical, Hammer, ChefHat, Bed, Coins, GraduationCap } from 'lucide-react';
+import { Fish, Leaf, HardHat, FlaskConical, Hammer, ChefHat, Bed, Coins, GraduationCap, Users } from 'lucide-react';
 import type { DowntimeActivityId } from '../../../types/characterSheet';
 export { ACTIVITY_SKILL_REQUIREMENTS } from '../../../types/characterSheet';
 
-export type NavigableView = DowntimeActivityId | 'rest' | 'trading' | 'study';
+export type NavigableView = DowntimeActivityId | 'rest' | 'trading' | 'study' | 'social';
 
 interface TileGridProps {
   onNavigate: (view: NavigableView) => void;
@@ -60,6 +60,13 @@ const TILES: TileConfig[] = [
     description: 'Skills & Advancement',
     icon: GraduationCap,
     color: 'bg-cyan-900/50 hover:bg-cyan-800/60 border-cyan-700/50',
+  },
+  {
+    id: 'social',
+    label: 'Social',
+    description: 'Contacts & Influence',
+    icon: Users,
+    color: 'bg-rose-900/50 hover:bg-rose-800/60 border-rose-700/50',
   },
   {
     id: 'alchemy',

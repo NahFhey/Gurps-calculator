@@ -50,7 +50,8 @@ export type DowntimeActivityType =
   | 'crafting'
   | 'rest'
   | 'trading'
-  | 'study';
+  | 'study'
+  | 'social';
 
 // ============================================================================
 // TASK STATUS
@@ -313,6 +314,13 @@ export interface StudyData {
   /** A teacher is task.helperIds[0]: unlike Rest's healer, this real helper is slot-locked. */
 }
 
+export interface SocialData {
+  type: 'social';
+  contactId: string;
+  contactName: string;
+  skillKey: string;
+}
+
 // ============================================================================
 // ACTIVITY DATA DISCRIMINATED UNION
 // ============================================================================
@@ -337,7 +345,8 @@ export type ActivityData =
   | CraftingData
   | RestData
   | TradingData
-  | StudyData;
+  | StudyData
+  | SocialData;
 
 // ============================================================================
 // TASK LOCK KEY
@@ -501,6 +510,13 @@ export function isTradingTask(
   task: DowntimeTask
 ): task is DowntimeTask & { activityData: TradingData } {
   return task.activityData.type === 'trading';
+}
+
+/** Narrow a downtime task to its Social payload. */
+export function isSocialTask(
+  task: DowntimeTask
+): task is DowntimeTask & { activityData: SocialData } {
+  return task.activityData.type === 'social';
 }
 
 // ============================================================================
