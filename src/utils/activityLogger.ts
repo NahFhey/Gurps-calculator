@@ -156,6 +156,16 @@ export const socialLog = {
 };
 
 export const characterLog = {
+  npcGenerated: (
+    names: string[],
+    templateName: string,
+    meta: LogEntryMeta = {}
+  ) => createActivityLogEntry('character', 'npc_generated', {
+    message: `Generated ${names.join(', ')} from ${templateName}`,
+    characterNames: names,
+    ...meta,
+  }),
+
   pointsAwarded: (
     names: string[],
     amount: number,

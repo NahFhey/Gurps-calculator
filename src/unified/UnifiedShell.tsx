@@ -10,10 +10,12 @@ import {
   CharacterContextMenu,
   AwardPointsModal,
   PointSpendModal,
+  CharacterCompareModal,
   type CharacterContextMenuAction,
 } from '../components/character-management';
 import { CharacterStatusBadge } from '../components/downtime/views/CharacterStatusBadge';
-import { duplicateCharacter, downloadCharacterJSON, downloadCharacterText } from '../utils/characterManagement';
+import { createCharacterTemplateSnapshot, duplicateCharacter, downloadCharacterJSON, downloadCharacterText } from '../utils/characterManagement';
+import { characterLog } from '../utils/activityLogger';
 import { parseCharacterText } from '../utils/characterImport';
 import { WeatherWidget, MealBuffWidget, TimeDisplay, TimeControls } from '../components/header';
 import { CombatTile } from '../components/combat/CombatTile';
@@ -154,6 +156,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
   const [showCreationModal, setShowCreationModal] = useState(false);
   const [showAwardPointsModal, setShowAwardPointsModal] = useState(false);
   const [spendPointsCharacterId, setSpendPointsCharacterId] = useState<string | null>(null);
+  const [compareCharacterId, setCompareCharacterId] = useState<string | null>(null);
   const [editRequestToken, setEditRequestToken] = useState(0);
 
   // Context menu state
@@ -255,6 +258,16 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           actions.selectCharacter(action.characterId);
           actions.setCharacterPanelView('sheet');
           setSpendPointsCharacterId(action.characterId);
+          break;
+        case 'saveTemplate': {
+          const name = window.prompt('Template name', character.name)?.trim();
+          if (!name) break;
+          const description = window.prompt('Template description', `Build based on ${character.name}`)?.trim() ?? '';
+          actions.upsertCharacterTemplate(createCharacterTemplateSnapshot(character, name, description));
+          break;
+        }
+        case 'compare':
+          setCompareCharacterId(action.characterId);
           break;
         case 'duplicate': {
           const duplicated = duplicateCharacter(character);
@@ -835,6 +848,8 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
         <CharacterCreationModal
           onClose={() => setShowCreationModal(false)}
           onCharacterCreated={handleCharacterCreated}
+          templates={Object.values(state.entities.characterTemplates ?? {})}
+          onNpcsGenerated={(names, templateName) => actions.addLogEntry(characterLog.npcGenerated(names, templateName))}
         />
       )}
 
@@ -848,6 +863,10 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           campaignDay={state.time?.day ?? 1}
           onClose={() => setSpendPointsCharacterId(null)}
         />
+      )}
+
+      {compareCharacterId && state.entities.characters[compareCharacterId] && (
+        <CharacterCompareModal character={state.entities.characters[compareCharacterId]} characters={sortedCharacters} onClose={() => setCompareCharacterId(null)} />
       )}
 
       {/* Character Context Menu */}

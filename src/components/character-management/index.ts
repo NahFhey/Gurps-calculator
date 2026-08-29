@@ -8,3 +8,4 @@ export { CharacterContextMenu } from './CharacterContextMenu';
 export type { CharacterContextMenuAction } from './CharacterContextMenu';
 export { AwardPointsModal } from './AwardPointsModal';
 export { PointSpendModal } from './PointSpendModal';
+export { CharacterCompareModal } from './CharacterCompareModal';

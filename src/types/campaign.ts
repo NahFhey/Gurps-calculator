@@ -70,6 +70,16 @@ export interface Character {
   gcsData?: GCSCharacterData;
 }
 
+export interface CharacterTemplateEntity {
+  id: Id;
+  name: string;
+  description: string;
+  builtin: boolean;
+  gcsData: GCSCharacterData;
+  createdAt: number;
+  updatedAt: number;
+}
+
 // Re-export GCS types for convenience
 export type { GCSCharacterData } from './characterSheet';
 
