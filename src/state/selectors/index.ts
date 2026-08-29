@@ -218,3 +218,8 @@ export {
 } from './locationSelectors';
 
 export { selectCurrencyConfig, selectPriceBook } from './tradingSelectors';
+export {
+  selectStudyConfig,
+  selectStudyProjects,
+  selectStudyProjectsForCharacter,
+} from './studySelectors';
