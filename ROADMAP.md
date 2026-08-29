@@ -266,6 +266,7 @@
 - ✅ Equipment parser gap FIXED (2026-08-26): `splitBySemicolon` now bracket-aware — entries no longer split at the cost/weight semicolon inside `[$X; Y lb]`; real sheets previously parsed zero equipment. UI wiring for text export (e.g. a context-menu entry beside Export JSON) is a small open nicety.
 
 ### 12c: Character Lifecycle
+**Designed 2026-08-28** (grill-me session; see [`docs/CHARACTER_LIFECYCLE_12C_PLAN.md`](./docs/CHARACTER_LIFECYCLE_12C_PLAN.md)). Two specs queued after the 13c chain: Lane A `2026-08-28-points-economy-12c-laneA.md` (earned-points pool + award modal + cart-with-confirm spend workflow + cost-rules consolidation + totals bug fix), Lane B `2026-08-28-templates-npcgen-12c-laneB.md` (templates as seeded data entities + save-as-template, NPC generator with variance, comparison view).
 - Character creation wizard with template support (warrior, mage, thief archetypes)
 - Level-up / point-spend workflow between sessions
 - Character comparison view (side-by-side stats)
