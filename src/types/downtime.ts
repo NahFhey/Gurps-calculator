@@ -13,6 +13,7 @@ import type {
   ForageSkill,
 } from './foraging';
 import type { CraftQuality } from './campaign';
+import type { SkillAttribute, SkillDifficulty } from './characterSheet';
 
 // ============================================================================
 // TYPE ALIASES
@@ -48,7 +49,8 @@ export type DowntimeActivityType =
   | 'alchemy'
   | 'crafting'
   | 'rest'
-  | 'trading';
+  | 'trading'
+  | 'study';
 
 // ============================================================================
 // TASK STATUS
@@ -300,6 +302,17 @@ export interface TradingData {
   locationId?: string | null;
 }
 
+export interface StudyData {
+  type: 'study';
+  skillName: string;
+  specialization?: string;
+  attribute: SkillAttribute;
+  difficulty: SkillDifficulty;
+  goodMaterials: boolean;
+  projectId: string;
+  /** A teacher is task.helperIds[0]: unlike Rest's healer, this real helper is slot-locked. */
+}
+
 // ============================================================================
 // ACTIVITY DATA DISCRIMINATED UNION
 // ============================================================================
@@ -323,7 +336,8 @@ export type ActivityData =
   | AlchemyData
   | CraftingData
   | RestData
-  | TradingData;
+  | TradingData
+  | StudyData;
 
 // ============================================================================
 // TASK LOCK KEY
@@ -474,6 +488,13 @@ export function isRestTask(
   task: DowntimeTask
 ): task is DowntimeTask & { activityData: RestData } {
   return task.activityData.type === 'rest';
+}
+
+/** Narrow a downtime task to its Study payload. */
+export function isStudyTask(
+  task: DowntimeTask
+): task is DowntimeTask & { activityData: StudyData } {
+  return task.activityData.type === 'study';
 }
 
 export function isTradingTask(

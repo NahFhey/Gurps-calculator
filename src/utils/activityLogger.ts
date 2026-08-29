@@ -23,7 +23,7 @@ const mergeMetaNames = (names?: string[], name?: string): string[] | undefined =
  * Part of Phase 4: Populate Changelog
  */
 export function createActivityLogEntry(
-  activityType: 'alchemy' | 'cooking' | 'crafting' | 'gathering' | 'inventory' | 'combat' | 'rest' | 'trading',
+  activityType: 'alchemy' | 'cooking' | 'crafting' | 'gathering' | 'inventory' | 'combat' | 'rest' | 'trading' | 'study',
   action: string,
   details: ActivityLogDetails,
   visibility: LogVisibility = 'player'
@@ -97,6 +97,35 @@ export const tradingLog = {
   ) => createActivityLogEntry('trading', 'trip_resolved', {
     message: `${leaderName} traded with ${merchantName}: ${summary}`,
     characterName: leaderName,
+    ...meta,
+  }),
+};
+
+export const studyLog = {
+  sessionLogged: (
+    characterName: string,
+    skillName: string,
+    hours: number,
+    totalHours: number,
+    meta: LogEntryMeta = {}
+  ) => createActivityLogEntry('study', 'session_logged', {
+    message: `${characterName} studied ${skillName} for ${hours}h (${totalHours}h total)`,
+    characterName,
+    itemName: skillName,
+    quantity: hours,
+    ...meta,
+  }),
+
+  pointAwarded: (
+    characterName: string,
+    skillName: string,
+    newLevel: number,
+    meta: LogEntryMeta = {}
+  ) => createActivityLogEntry('study', 'point_awarded', {
+    message: `${characterName} gained 1 point in ${skillName} (level ${newLevel})`,
+    characterName,
+    itemName: skillName,
+    quantity: 1,
     ...meta,
   }),
 };

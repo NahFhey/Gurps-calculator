@@ -2,7 +2,7 @@ import { enableMapSet, produce } from 'immer';
 import type { Draft } from 'immer';
 import { createPartyToolState, PARTY_TOOL_SKILLS } from '../components/partyToolSeed';
 import { advanceTimeSlot, type TimeLogEntry } from '../utils/timeSystem';
-import { SLOT_NAMES, SLOTS_PER_DAY } from '../constants';
+import { DEFAULT_STUDY_CONFIG, SLOT_NAMES, SLOTS_PER_DAY } from '../constants';
 import { logger } from '../utils/logger';
 import type {
   Id,
@@ -45,7 +45,9 @@ import type {
   AcquisitionSource,
   MealBuff,
   CurrencyConfig,
-  PriceBookEntry
+  PriceBookEntry,
+  StudyConfig,
+  StudyProject
 } from '../types/campaign';
 import type {
   Location,
@@ -155,6 +157,10 @@ export type CampaignState = {
     // Trading system (optional for backwards-compatible saves)
     currencyConfig?: CurrencyConfig;
     priceBook?: Record<string, PriceBookEntry>;
+
+    // Study system (optional for backwards-compatible saves)
+    studyProjects?: Record<Id, StudyProject>;
+    studyConfig?: StudyConfig;
 
     // Combat system
     combatCharacters: Record<Id, CombatCharacter>;
@@ -627,6 +633,12 @@ export type CampaignAction =
   | { type: 'setCurrencyConfig'; payload: CurrencyConfig }
   | { type: 'setPriceBookEntry'; payload: PriceBookEntry }
   | { type: 'removePriceBookEntry'; payload: string }
+  // Study actions
+  | { type: 'setStudyConfig'; payload: StudyConfig }
+  | { type: 'upsertStudyProject'; payload: StudyProject }
+  | { type: 'removeStudyProject'; payload: Id }
+  | { type: 'creditStudyHours'; payload: { projectId: Id; hours: number } }
+  | { type: 'awardStudyPoint'; payload: Id }
   // Day Planner actions
   | { type: 'setTimeSlots'; payload: TimeSlot[] }
   | { type: 'addTaskAssignment'; payload: TaskAssignment }
@@ -1092,6 +1104,33 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
       case 'removePriceBookEntry':
         if (draft.entities.priceBook) delete draft.entities.priceBook[action.payload];
         return;
+      case 'setStudyConfig':
+        draft.entities.studyConfig = action.payload;
+        return;
+      case 'upsertStudyProject':
+        draft.entities.studyProjects ??= {};
+        draft.entities.studyProjects[action.payload.id] = action.payload;
+        return;
+      case 'removeStudyProject':
+        if (draft.entities.studyProjects) delete draft.entities.studyProjects[action.payload];
+        return;
+      case 'creditStudyHours': {
+        const project = draft.entities.studyProjects?.[action.payload.projectId];
+        if (!project) return;
+        project.accumulatedHours += action.payload.hours;
+        project.updatedAt = Date.now();
+        return;
+      }
+      case 'awardStudyPoint': {
+        const project = draft.entities.studyProjects?.[action.payload];
+        if (!project) return;
+        const hoursPerPoint = draft.entities.studyConfig?.hoursPerPoint ?? DEFAULT_STUDY_CONFIG.hoursPerPoint;
+        if (project.accumulatedHours < hoursPerPoint) return;
+        project.accumulatedHours = Math.max(0, project.accumulatedHours - hoursPerPoint);
+        project.pointsAwarded += 1;
+        project.updatedAt = Date.now();
+        return;
+      }
       case 'setTimeSlots':
         draft.dayPlanner.timeSlots = action.payload;
         return;

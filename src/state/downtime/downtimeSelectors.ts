@@ -27,7 +27,8 @@ type TargetKeyActivityData =
   | { type: 'alchemy'; recipeId: string }
   | { type: 'crafting'; recipeId: string }
   | { type: 'rest'; restType: string }
-  | { type: 'trading'; merchantName: string };
+  | { type: 'trading'; merchantName: string }
+  | { type: 'study'; skillName: string };
 
 // ============================================================================
 // BASIC SELECTORS
@@ -401,6 +402,8 @@ export function getTargetKeyFromActivityData(
       const merchantName = (activityData as { merchantName: string }).merchantName.toLowerCase().trim();
       return `trade:${merchantName || 'general'}`;
     }
+    case 'study':
+      return `study:${(activityData as { skillName: string }).skillName.toLowerCase().trim()}`;
     default:
       return 'unknown';
   }
@@ -506,6 +509,7 @@ function getToolIdsFromTask(task: DowntimeTask): string[] {
       return (data as { toolInstanceIds?: string[] }).toolInstanceIds ?? [];
     case 'rest':
     case 'trading':
+    case 'study':
       return [];
     default:
       return [];
@@ -736,6 +740,7 @@ const ACTIVITY_DISPLAY_NAMES: Record<DowntimeActivityType, string> = {
   crafting: 'Crafting',
   rest: 'Resting',
   trading: 'Trading',
+  study: 'Study',
 };
 
 /**

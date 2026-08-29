@@ -28,3 +28,6 @@ export { TradingActivity } from './TradingActivity';
 export { TradingTaskForm } from './TradingTaskForm';
 export { TradingTaskCard } from './TradingTaskCard';
 export { TradingResolutionPanel } from './TradingResolutionPanel';
+export { StudyActivity } from './StudyActivity';
+export { StudyTaskForm } from './StudyTaskForm';
+export { StudyTaskCard } from './StudyTaskCard';

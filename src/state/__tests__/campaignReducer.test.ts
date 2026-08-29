@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { campaignReducer, createCampaignState, initialCampaignState, logEvent } from '../campaignReducer';
 import { hydrateCampaignState } from '../../persistence/campaignStorage';
+import { DEFAULT_STUDY_CONFIG } from '../../constants';
+import { selectStudyConfig, selectStudyProjects, selectStudyProjectsForCharacter } from '../selectors';
+import type { StudyProject } from '../../types/campaign';
 
 describe('campaignReducer', () => {
+  const studyProject: StudyProject = {
+    id: 'study-1', characterId: 'char-1', skillName: 'Research', attribute: 'IQ', difficulty: 'A',
+    accumulatedHours: 198, pointsAwarded: 0, createdAt: 1, updatedAt: 1,
+  };
+
   it('setActiveModule updates state', () => {
     const nextState = campaignReducer(initialCampaignState, {
       type: 'setActiveModule',
@@ -27,6 +35,41 @@ describe('campaignReducer', () => {
     expect(updated.entities.priceBook?.[first.key]).toEqual(second);
     const removed = campaignReducer(updated, { type: 'removePriceBookEntry', payload: first.key });
     expect(removed.entities.priceBook).toEqual({});
+  });
+
+  it('upserts, selects, and removes study projects', () => {
+    const added = campaignReducer(createCampaignState(), { type: 'upsertStudyProject', payload: studyProject });
+    expect(selectStudyProjects(added)[studyProject.id]).toEqual(studyProject);
+    expect(selectStudyProjectsForCharacter(added, 'char-1')).toEqual([studyProject]);
+    const removed = campaignReducer(added, { type: 'removeStudyProject', payload: studyProject.id });
+    expect(selectStudyProjects(removed)).toEqual({});
+  });
+
+  it('credits study hours and stamps updatedAt', () => {
+    const added = campaignReducer(createCampaignState(), { type: 'upsertStudyProject', payload: studyProject });
+    const credited = campaignReducer(added, { type: 'creditStudyHours', payload: { projectId: studyProject.id, hours: 4 } });
+    expect(credited.entities.studyProjects?.[studyProject.id]?.accumulatedHours).toBe(202);
+    expect(credited.entities.studyProjects?.[studyProject.id]?.updatedAt).toBeGreaterThan(1);
+  });
+
+  it('awards a point with rollover at the configured threshold', () => {
+    let state = campaignReducer(createCampaignState(), { type: 'setStudyConfig', payload: { hoursPerPoint: 200 } });
+    state = campaignReducer(state, { type: 'upsertStudyProject', payload: { ...studyProject, accumulatedHours: 205 } });
+    const awarded = campaignReducer(state, { type: 'awardStudyPoint', payload: studyProject.id });
+    expect(awarded.entities.studyProjects?.[studyProject.id]).toMatchObject({ accumulatedHours: 5, pointsAwarded: 1 });
+  });
+
+  it('does not award below the threshold', () => {
+    const added = campaignReducer(createCampaignState(), { type: 'upsertStudyProject', payload: studyProject });
+    const awarded = campaignReducer(added, { type: 'awardStudyPoint', payload: studyProject.id });
+    expect(awarded.entities.studyProjects?.[studyProject.id]).toEqual(studyProject);
+  });
+
+  it('sets study config and selects the default fallback', () => {
+    const state = createCampaignState();
+    expect(selectStudyConfig(state)).toEqual(DEFAULT_STUDY_CONFIG);
+    const configured = campaignReducer(state, { type: 'setStudyConfig', payload: { hoursPerPoint: 100 } });
+    expect(selectStudyConfig(configured)).toEqual({ hoursPerPoint: 100 });
   });
 
   it('stores and clears a pending intent', () => {

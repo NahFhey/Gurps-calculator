@@ -50,7 +50,9 @@ import type {
   AcquisitionSource,
   MealBuff,
   CurrencyConfig,
-  PriceBookEntry
+  PriceBookEntry,
+  StudyConfig,
+  StudyProject
 } from '../types/campaign';
 import type {
   Location,
@@ -253,6 +255,11 @@ type CampaignStoreValue = {
     setCurrencyConfig: (config: CurrencyConfig) => void;
     setPriceBookEntry: (entry: PriceBookEntry) => void;
     removePriceBookEntry: (key: string) => void;
+    setStudyConfig: (config: StudyConfig) => void;
+    upsertStudyProject: (project: StudyProject) => void;
+    removeStudyProject: (id: Id) => void;
+    creditStudyHours: (projectId: Id, hours: number) => void;
+    awardStudyPoint: (projectId: Id) => void;
 
     // Inventory Actions
     addInventory: (inventory: Inventory) => void;
@@ -578,6 +585,12 @@ export function CampaignStoreProvider({
       setCurrencyConfig: (config: CurrencyConfig) => dispatch({ type: 'setCurrencyConfig', payload: config }),
       setPriceBookEntry: (entry: PriceBookEntry) => dispatch({ type: 'setPriceBookEntry', payload: entry }),
       removePriceBookEntry: (key: string) => dispatch({ type: 'removePriceBookEntry', payload: key }),
+      setStudyConfig: (config: StudyConfig) => dispatch({ type: 'setStudyConfig', payload: config }),
+      upsertStudyProject: (project: StudyProject) => dispatch({ type: 'upsertStudyProject', payload: project }),
+      removeStudyProject: (id: Id) => dispatch({ type: 'removeStudyProject', payload: id }),
+      creditStudyHours: (projectId: Id, hours: number) =>
+        dispatch({ type: 'creditStudyHours', payload: { projectId, hours } }),
+      awardStudyPoint: (projectId: Id) => dispatch({ type: 'awardStudyPoint', payload: projectId }),
 
       // Inventory Actions
       addInventory: (inventory: Inventory) => dispatch({ type: 'addInventory', payload: inventory }),

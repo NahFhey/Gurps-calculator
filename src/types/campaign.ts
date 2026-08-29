@@ -3,7 +3,12 @@
  * This file defines all types needed for the unified CampaignStore
  */
 
-import type { GCSCharacterData, CharacterImages } from './characterSheet';
+import type {
+  GCSCharacterData,
+  CharacterImages,
+  SkillAttribute,
+  SkillDifficulty,
+} from './characterSheet';
 import type { CombatCategory } from '../constants';
 import type {
   GatheringSpeciesExtended,
@@ -662,7 +667,7 @@ export interface TaskAssignment {
   day: number;
   slot: number;
   workerId: Id;
-  taskType: 'fishing' | 'foraging' | 'hunting' | 'cooking' | 'crafting' | 'alchemy' | 'rest' | 'trading';
+  taskType: 'fishing' | 'foraging' | 'hunting' | 'cooking' | 'crafting' | 'alchemy' | 'rest' | 'trading' | 'study';
   taskId?: Id;  // References session/batch/craft ID
   status: 'pending' | 'complete' | 'failed';
   notes?: string;
@@ -819,6 +824,23 @@ export interface PriceBookEntry {
   kind: 'material' | 'food' | 'item';
   price: number;
   updatedAt: number;
+}
+
+export interface StudyProject {
+  id: Id;
+  characterId: Id;
+  skillName: string;
+  specialization?: string;
+  attribute: SkillAttribute;
+  difficulty: SkillDifficulty;
+  accumulatedHours: number;
+  pointsAwarded: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface StudyConfig {
+  hoursPerPoint: number;
 }
 
 // ============================================================================

@@ -10,12 +10,15 @@
  * - Role coverage penalties and constraints
  */
 
-import type { CurrencyConfig } from '../types/campaign';
+import type { CurrencyConfig, StudyConfig } from '../types/campaign';
 
 export const DEFAULT_CURRENCY_CONFIG: CurrencyConfig = {
   currencies: [{ key: 'cp', name: 'Copper' }],
   primaryKey: 'cp',
 };
+
+export const DEFAULT_STUDY_CONFIG: StudyConfig = { hoursPerPoint: 200 };
+export const STUDY_HOURS_PER_SLOT = 4;
 
 // ============================================================================
 // FEATURE FLAGS
