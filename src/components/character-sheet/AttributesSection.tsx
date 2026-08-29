@@ -1,4 +1,5 @@
 import type { PrimaryAttributes, PrimaryAttributePoints } from '../../types/characterSheet';
+import { ATTRIBUTE_COSTS } from '../../utils/characterPoints';
 
 interface AttributesSectionProps {
   attributes: PrimaryAttributes;
@@ -6,13 +7,6 @@ interface AttributesSectionProps {
   editMode: boolean;
   onChange: (attrs: PrimaryAttributes, points: PrimaryAttributePoints) => void;
 }
-
-const ATTRIBUTE_COSTS: Record<keyof PrimaryAttributes, number> = {
-  ST: 10,
-  DX: 20,
-  IQ: 20,
-  HT: 10,
-};
 
 const ATTRIBUTE_LABELS: Record<keyof PrimaryAttributes, string> = {
   ST: 'Strength',

@@ -2,6 +2,7 @@ import { Heart, Zap, Target } from 'lucide-react';
 import type { PointPools, PrimaryAttributes } from '../../types/characterSheet';
 import { DEFAULT_HIT_LOCATION_PROFILE } from '../../types/characterSheet';
 import { getAllProfiles } from '../../utils/hitLocations';
+import { POOL_COSTS } from '../../utils/characterPoints';
 
 // Type for hit location profiles from the JS module
 interface HitLocationProfile {
@@ -37,7 +38,7 @@ export function PointPoolsSection({
 
   const handleHPMaxChange = (max: number) => {
     const diff = max - hpBase;
-    const points = diff * 2; // 2 pts per HP
+    const points = diff * POOL_COSTS.HP;
     onChange({
       ...pools,
       HP: { ...pools.HP, max, points },
@@ -46,7 +47,7 @@ export function PointPoolsSection({
 
   const handleFPMaxChange = (max: number) => {
     const diff = max - fpBase;
-    const points = diff * 3; // 3 pts per FP
+    const points = diff * POOL_COSTS.FP;
     onChange({
       ...pools,
       FP: { ...pools.FP, max, points },

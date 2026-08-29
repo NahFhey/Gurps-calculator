@@ -82,6 +82,24 @@ describe('characterManagement', () => {
       expect(copy.gcsData?.skills[0]?.id).toMatch(/^skill-/);
     });
 
+    it('remaps skill history references to regenerated skill IDs', () => {
+      const original = createBlankCharacter('Historian');
+      if (!original.gcsData) throw new Error('Expected GCS data');
+      original.gcsData.skills = [{
+        id: 'skill-original', name: 'Research', attribute: 'IQ', difficulty: 'A',
+        points: 1, relativeLevel: -1, level: 9,
+      }];
+      original.gcsData.skillHistory = [{
+        id: 'history-1', skillId: 'skill-original', skillName: 'Research',
+        date: new Date().toISOString(), pointsAdded: 1, previousPoints: 0,
+        newPoints: 1, previousLevel: 0, newLevel: 9,
+      }];
+
+      const copy = duplicateCharacter(original);
+      expect(copy.gcsData?.skillHistory?.[0]?.skillId).toBe(copy.gcsData?.skills[0]?.id);
+      expect(copy.gcsData?.skillHistory?.[0]?.skillId).not.toBe('skill-original');
+    });
+
     it('handles a character with no gcsData', () => {
       const original: Character = {
         id: 'char-x',

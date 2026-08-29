@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo, useRef, useCallback, useState, useEffect, ReactNode, KeyboardEvent, MouseEvent, ChangeEvent } from 'react';
-import { ChevronLeft, ChevronRight, Plus, MoreVertical } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, MoreVertical, Coins } from 'lucide-react';
 import {
   CharacterSkillsPanel,
   CharacterEquipmentPanel,
@@ -8,6 +8,8 @@ import {
 import {
   CharacterCreationModal,
   CharacterContextMenu,
+  AwardPointsModal,
+  PointSpendModal,
   type CharacterContextMenuAction,
 } from '../components/character-management';
 import { CharacterStatusBadge } from '../components/downtime/views/CharacterStatusBadge';
@@ -150,6 +152,9 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
 
   // Character creation modal state
   const [showCreationModal, setShowCreationModal] = useState(false);
+  const [showAwardPointsModal, setShowAwardPointsModal] = useState(false);
+  const [spendPointsCharacterId, setSpendPointsCharacterId] = useState<string | null>(null);
+  const [editRequestToken, setEditRequestToken] = useState(0);
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -239,10 +244,17 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
       switch (action.type) {
         case 'view':
           actions.selectCharacter(action.characterId);
+          actions.setCharacterPanelView('sheet');
           break;
         case 'edit':
           actions.selectCharacter(action.characterId);
-          // TODO: In future, could open edit mode on character sheet
+          actions.setCharacterPanelView('sheet');
+          setEditRequestToken((current) => current + 1);
+          break;
+        case 'spendPoints':
+          actions.selectCharacter(action.characterId);
+          actions.setCharacterPanelView('sheet');
+          setSpendPointsCharacterId(action.characterId);
           break;
         case 'duplicate': {
           const duplicated = duplicateCharacter(character);
@@ -540,16 +552,27 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
               })}
 
               {/* Add Character and Import Buttons */}
-              <div className="mt-4 pt-4 border-t border-gray-700 space-y-2">
+              <div className="mt-4 border-t border-gray-700 pt-4 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setShowCreationModal(true)}
-                  className="w-full flex items-center justify-center gap-2 rounded border border-blue-500 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-200 hover:bg-blue-500/20"
+                  className="flex items-center justify-center gap-1 rounded border border-blue-500 bg-blue-500/10 px-2 py-2 text-xs font-semibold text-blue-200 hover:bg-blue-500/20"
                   data-testid="add-character-button"
                 >
                   <Plus className="h-4 w-4" />
                   Add Character
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAwardPointsModal(true)}
+                  className="flex items-center justify-center gap-1 rounded border border-emerald-500 bg-emerald-500/10 px-2 py-2 text-xs font-semibold text-emerald-200 hover:bg-emerald-500/20"
+                  data-testid="award-points-button"
+                >
+                  <Coins className="h-4 w-4" />
+                  Award Points
+                </button>
+                </div>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -630,7 +653,11 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           <div className="h-full" data-testid="character-pane">
             {selectedCharacter && characterPanelView === 'sheet' && (
               <LazyContent tabName="Character Sheet">
-                <CharacterSheet character={selectedCharacter} />
+                <CharacterSheet
+                  character={selectedCharacter}
+                  editRequestToken={editRequestToken}
+                  onSpendPoints={() => setSpendPointsCharacterId(selectedCharacter.id)}
+                />
               </LazyContent>
             )}
             {selectedCharacter && characterPanelView === 'skills' && (
@@ -808,6 +835,18 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
         <CharacterCreationModal
           onClose={() => setShowCreationModal(false)}
           onCharacterCreated={handleCharacterCreated}
+        />
+      )}
+
+      {showAwardPointsModal && (
+        <AwardPointsModal characters={sortedCharacters} onClose={() => setShowAwardPointsModal(false)} />
+      )}
+
+      {spendPointsCharacterId && state.entities.characters[spendPointsCharacterId] && (
+        <PointSpendModal
+          character={state.entities.characters[spendPointsCharacterId]}
+          campaignDay={state.time?.day ?? 1}
+          onClose={() => setSpendPointsCharacterId(null)}
         />
       )}
 

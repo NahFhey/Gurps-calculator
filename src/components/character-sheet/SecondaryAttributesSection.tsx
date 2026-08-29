@@ -1,5 +1,6 @@
 import type { PrimaryAttributes, SecondaryAttributes } from '../../types/characterSheet';
 import { calculateDerivedAttributes } from '../../types/characterSheet';
+import { SECONDARY_COSTS } from '../../utils/characterPoints';
 
 interface SecondaryAttributesSectionProps {
   primaryAttributes: PrimaryAttributes;
@@ -16,15 +17,15 @@ interface SecondaryAttrConfig {
 }
 
 const SECONDARY_ATTRS: SecondaryAttrConfig[] = [
-  { key: 'will', label: 'Will', baseAttr: 'IQ', costPerPoint: 5 },
-  { key: 'frightCheck', label: 'Fright Check', baseAttr: 'IQ', costPerPoint: 2 },
-  { key: 'per', label: 'Perception', baseAttr: 'IQ', costPerPoint: 5 },
-  { key: 'vision', label: 'Vision', baseAttr: 'IQ', costPerPoint: 2 },
-  { key: 'hearing', label: 'Hearing', baseAttr: 'IQ', costPerPoint: 2 },
-  { key: 'tasteSmell', label: 'Taste & Smell', baseAttr: 'IQ', costPerPoint: 2 },
-  { key: 'touch', label: 'Touch', baseAttr: 'IQ', costPerPoint: 2 },
-  { key: 'basicSpeed', label: 'Basic Speed', baseAttr: 'derived', costPerPoint: 5 },
-  { key: 'basicMove', label: 'Basic Move', baseAttr: 'derived', costPerPoint: 5 },
+  { key: 'will', label: 'Will', baseAttr: 'IQ', costPerPoint: SECONDARY_COSTS.will },
+  { key: 'frightCheck', label: 'Fright Check', baseAttr: 'IQ', costPerPoint: SECONDARY_COSTS.frightCheck },
+  { key: 'per', label: 'Perception', baseAttr: 'IQ', costPerPoint: SECONDARY_COSTS.per },
+  { key: 'vision', label: 'Vision', baseAttr: 'IQ', costPerPoint: SECONDARY_COSTS.vision },
+  { key: 'hearing', label: 'Hearing', baseAttr: 'IQ', costPerPoint: SECONDARY_COSTS.hearing },
+  { key: 'tasteSmell', label: 'Taste & Smell', baseAttr: 'IQ', costPerPoint: SECONDARY_COSTS.tasteSmell },
+  { key: 'touch', label: 'Touch', baseAttr: 'IQ', costPerPoint: SECONDARY_COSTS.touch },
+  { key: 'basicSpeed', label: 'Basic Speed', baseAttr: 'derived', costPerPoint: SECONDARY_COSTS.basicSpeed },
+  { key: 'basicMove', label: 'Basic Move', baseAttr: 'derived', costPerPoint: SECONDARY_COSTS.basicMove },
 ];
 
 export function SecondaryAttributesSection({

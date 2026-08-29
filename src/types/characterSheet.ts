@@ -261,6 +261,14 @@ export interface SkillAdvancementEntry {
   notes?: string;            // Optional GM notes
 }
 
+export interface PointLedgerEntry {
+  id: Id;
+  date: string;
+  kind: 'award' | 'spend';
+  points: number;
+  label: string;
+}
+
 // ============================================================================
 // PORTRAIT / TOKEN IMAGES
 // ============================================================================
@@ -324,6 +332,10 @@ export interface GCSCharacterData {
 
   // Skill Advancement History
   skillHistory?: SkillAdvancementEntry[];
+
+  // Earned advancement-point economy (optional for legacy saves)
+  unspentPoints?: number;
+  pointLedger?: PointLedgerEntry[];
 
   // Notes
   notes: string;
@@ -475,39 +487,7 @@ export function calculateSkillPointCost(
 /**
  * Calculate total character points
  */
-export function calculateTotalPoints(data: GCSCharacterData): number {
-  let total = 0;
-
-  // Attribute points (ST/HT = 10pts/level, DX/IQ = 20pts/level)
-  total += data.attributePoints.ST;
-  total += data.attributePoints.DX;
-  total += data.attributePoints.IQ;
-  total += data.attributePoints.HT;
-
-  // Secondary attribute points
-  total += data.secondaryAttributes.will.points;
-  total += data.secondaryAttributes.per.points;
-  total += data.secondaryAttributes.basicSpeed.points;
-  total += data.secondaryAttributes.basicMove.points;
-
-  // Pool points
-  total += data.pools.HP.points;
-  total += data.pools.FP.points;
-
-  // Trait points
-  total += data.advantages.reduce((sum, t) => sum + t.points, 0);
-  total += data.perks.reduce((sum, t) => sum + t.points, 0);
-  total += data.disadvantages.reduce((sum, t) => sum + t.points, 0);
-  total += data.quirks.reduce((sum, t) => sum + t.points, 0);
-
-  // Skill points
-  total += data.skills.reduce((sum, s) => sum + s.points, 0);
-
-  // Spell points
-  total += data.spells.reduce((sum, s) => sum + s.points, 0);
-
-  return total;
-}
+export { calculateTotalPoints } from '../utils/characterPoints';
 
 /**
  * Create default GCS character data
@@ -542,6 +522,8 @@ export function createDefaultGCSData(): GCSCharacterData {
     spells: [],
     equipment: [],
     otherEquipment: '',
+    unspentPoints: 0,
+    pointLedger: [],
     notes: '',
   };
 }

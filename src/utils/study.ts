@@ -1,15 +1,11 @@
-import {
-  calculateRelativeLevel,
-  calculateSkillLevel,
-  getCharacterSkills,
-} from '../types/characterSheet';
+import { calculateRelativeLevel, getCharacterSkills } from '../types/characterSheet';
+import { applySkillAdvancement } from './skillAdvancement';
 import { STUDY_HOURS_PER_SLOT } from '../constants';
 import type { StudyProject } from '../types/campaign';
 import type {
   GCSCharacterData,
   Skill,
   SkillAdvancementEntry,
-  SkillAttribute,
 } from '../types/characterSheet';
 
 export interface CharacterLike {
@@ -82,19 +78,6 @@ export interface StudyAwardComputation {
   historyEntry: SkillAdvancementEntry;
 }
 
-const getAttributeValue = (gcsData: GCSCharacterData, attribute: SkillAttribute): number => {
-  if (attribute === 'Will') return gcsData.secondaryAttributes.will.value;
-  if (attribute === 'Per') return gcsData.secondaryAttributes.per.value;
-  return gcsData.attributes[attribute];
-};
-
-const generateAwardId = (): string => {
-  const suffix = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : Math.random().toString(16).slice(2);
-  return `adv-${Date.now()}-${suffix}`;
-};
-
 /** Compute the character-sheet skill replacement and matching advancement history entry. */
 export function computeStudyAward(
   character: CharacterWithGCS,
@@ -103,61 +86,34 @@ export function computeStudyAward(
 ): StudyAwardComputation {
   const existing = findStudiedSkill(character, project.skillName, project.specialization);
   const isNewSkill = existing === undefined;
-  const attribute = existing?.attribute ?? project.attribute;
   const difficulty = existing?.difficulty ?? project.difficulty;
-  const attributeValue = getAttributeValue(character.gcsData, attribute);
   const previousPoints = existing?.points ?? 0;
-  const newPoints = previousPoints + 1;
   const previousLevel = existing?.level ?? 0;
-  const newLevel = calculateSkillLevel(attributeValue, difficulty, newPoints);
   const previousRelativeLevel = existing?.relativeLevel ?? calculateRelativeLevel(difficulty, previousPoints);
-  const newRelativeLevel = calculateRelativeLevel(difficulty, newPoints);
-  const skillId = existing?.id ?? `skill-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  const updatedSkill: Skill = existing
-    ? {
-        ...existing,
-        points: newPoints,
-        level: newLevel,
-        relativeLevel: newRelativeLevel,
-      }
+  const advancement = applySkillAdvancement(character.gcsData, existing
+    ? { skillId: existing.id, pointsToAdd: 1, sessionLabel: `Study — Day ${dayKey}` }
     : {
-        id: skillId,
-        name: project.skillName.trim(),
-        ...(project.specialization?.trim() ? { specialization: project.specialization.trim() } : {}),
-        attribute,
-        difficulty,
-        points: newPoints,
-        level: newLevel,
-        relativeLevel: newRelativeLevel,
-      };
-  const updatedSkills = existing
-    ? character.gcsData.skills.map((skill) => skill.id === existing.id ? updatedSkill : skill)
-    : [...character.gcsData.skills, updatedSkill];
-  const displayName = project.specialization?.trim()
-    ? `${project.skillName.trim()} (${project.specialization.trim()})`
-    : project.skillName.trim();
-  const historyEntry: SkillAdvancementEntry = {
-    id: generateAwardId(),
-    skillId,
-    skillName: displayName,
-    date: new Date().toISOString(),
-    sessionLabel: `Study — Day ${dayKey}`,
-    pointsAdded: 1,
-    previousPoints,
-    newPoints,
-    previousLevel,
-    newLevel,
-  };
+        newSkill: {
+          name: project.skillName,
+          specialization: project.specialization,
+          attribute: project.attribute,
+          difficulty: project.difficulty,
+        },
+        pointsToAdd: 1,
+        sessionLabel: `Study — Day ${dayKey}`,
+      });
+  const updatedSkill = advancement.updatedSkills.find((skill) => skill.id === advancement.historyEntry.skillId);
+  if (!updatedSkill) throw new Error('Study advancement did not produce a skill');
 
   return {
     isNewSkill,
     previousPoints,
-    newPoints,
+    newPoints: advancement.historyEntry.newPoints,
     previousLevel,
-    newLevel,
+    newLevel: advancement.historyEntry.newLevel,
     previousRelativeLevel,
-    newRelativeLevel,
-    updatedSkills,
-    historyEntry,
+    newRelativeLevel: updatedSkill.relativeLevel,
+    updatedSkills: advancement.updatedSkills,
+    historyEntry: advancement.historyEntry,
   };
 }
