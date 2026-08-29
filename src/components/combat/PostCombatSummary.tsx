@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useCombatStore } from '../../hooks/useCombatStore';
 import { hasCondition } from '../../utils/conditionsEngine';
+import { estimateHealing } from '../../utils/recovery';
 import { ConditionId } from '../../constants/conditions';
 import type { CombatState, Participant, ConditionInstance } from '../../types/combatTracker';
 import type { CombatSummaryData, ParticipantSummary, HealingEstimate } from '../../types/combatTracker';
@@ -35,28 +36,6 @@ function getNumericFP(p: Participant): { current: number; max: number } {
   const max = p.maxFP ?? (typeof p.fp === 'number' ? p.fp : (p.fp?.max ?? 10));
   const current = p.currentFP ?? (typeof p.fp === 'number' ? p.fp : (p.fp?.current ?? max));
   return { current, max };
-}
-
-/**
- * Calculate GURPS healing estimates.
- *
- * GURPS recovery rules (B424):
- * - Natural healing: 1 HP per day of rest (HT roll), doubled with successful Physician roll
- * - FP recovery: 1 FP per 10 minutes of rest
- * - First Aid (B424): heals 1d-2 HP (min 1) for basic, 1d-1 for good equipment
- */
-function calculateHealingEstimate(summary: ParticipantSummary): HealingEstimate {
-  const hpLost = summary.maxHP - summary.endHP;
-  const fpLost = summary.maxFP - summary.endFP;
-
-  return {
-    daysToFullHP: Math.max(0, hpLost), // 1 HP/day with rest
-    daysToFullFP: fpLost > 0 ? Math.max(1, Math.ceil(fpLost * 10 / 60 / 24)) : 0, // 1 FP per 10 min
-    firstAidEstimate: {
-      min: Math.max(0, Math.min(hpLost, 1)), // 1d-2, min 1 if any damage
-      max: Math.min(hpLost, 4) // 1d-2, max = 6-2 = 4
-    }
-  };
 }
 
 /**
@@ -92,7 +71,10 @@ export function buildCombatSummary(combat: CombatState): CombatSummaryData {
   const healingEstimates: Record<string, HealingEstimate> = {};
   for (const ps of participants) {
     if (ps.isFromParty && ps.partyCharacterId) {
-      healingEstimates[ps.partyCharacterId] = calculateHealingEstimate(ps);
+      healingEstimates[ps.partyCharacterId] = estimateHealing(
+        ps.maxHP - ps.endHP,
+        ps.maxFP - ps.endFP,
+      );
     }
   }
 

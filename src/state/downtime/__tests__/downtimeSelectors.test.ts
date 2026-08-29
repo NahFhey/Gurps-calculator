@@ -21,6 +21,7 @@ import {
   selectTasksByCharacter,
   selectTasksByStatus,
   selectTasksForDay,
+  selectCharacterHasNonRestTasksForDay,
   selectTaskCount,
   selectSlotHasUnresolvedTasks,
   // Assignment selectors
@@ -148,6 +149,34 @@ describe('selectAllTasks', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('task-exists');
+  });
+});
+
+describe('selectCharacterHasNonRestTasksForDay', () => {
+  it('detects a character leading a non-rest task', () => {
+    const state = createTestState([createTestTask({ leaderId: 'char-1', dayKey: 2 })]);
+    expect(selectCharacterHasNonRestTasksForDay(state, 'char-1', 2)).toBe(true);
+  });
+
+  it('detects a character helping a non-rest task', () => {
+    const state = createTestState([createTestTask({ helperIds: ['char-2'], dayKey: 2 })]);
+    expect(selectCharacterHasNonRestTasksForDay(state, 'char-2', 2)).toBe(true);
+  });
+
+  it('returns false for a rest-only day', () => {
+    const activityData: RestData = { type: 'rest', restType: 'sleep', recoveryBonus: 0 };
+    const state = createTestState([createTestTask({ activityType: 'rest', activityData, dayKey: 2 })]);
+    expect(selectCharacterHasNonRestTasksForDay(state, 'char-1', 2)).toBe(false);
+  });
+
+  it('ignores cancelled tasks', () => {
+    const state = createTestState([createTestTask({ status: 'cancelled', dayKey: 2 })]);
+    expect(selectCharacterHasNonRestTasksForDay(state, 'char-1', 2)).toBe(false);
+  });
+
+  it('ignores tasks from other days', () => {
+    const state = createTestState([createTestTask({ dayKey: 1 })]);
+    expect(selectCharacterHasNonRestTasksForDay(state, 'char-1', 2)).toBe(false);
   });
 });
 

@@ -57,6 +57,7 @@ export {
   // Day-based selectors
   selectTasksForDay,
   selectTaskCountsByStatusForDay,
+  selectCharacterHasNonRestTasksForDay,
   // Utility selectors
   selectSlotHasUnresolvedTasks,
   selectTaskCount,

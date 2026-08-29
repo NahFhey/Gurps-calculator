@@ -23,7 +23,7 @@ const mergeMetaNames = (names?: string[], name?: string): string[] | undefined =
  * Part of Phase 4: Populate Changelog
  */
 export function createActivityLogEntry(
-  activityType: 'alchemy' | 'cooking' | 'crafting' | 'gathering' | 'inventory' | 'combat',
+  activityType: 'alchemy' | 'cooking' | 'crafting' | 'gathering' | 'inventory' | 'combat' | 'rest',
   action: string,
   details: ActivityLogDetails,
   visibility: LogVisibility = 'player'
@@ -53,6 +53,33 @@ export function createActivityLogEntry(
     ...(hasMeta ? { meta } : {}),
   };
 }
+
+/** Rest and recovery-specific log entry creators. */
+export const restLog = {
+  taskCreated: (characterName: string, restType: string, meta: LogEntryMeta = {}) =>
+    createActivityLogEntry('rest', 'task_created', {
+      message: `${characterName} scheduled ${restType}`,
+      characterName,
+      ...meta,
+    }),
+
+  recoveryResolved: (
+    characterName: string,
+    hpRestored: number,
+    fpRestored: number,
+    meta: LogEntryMeta = {}
+  ) => {
+    const recovered = [
+      hpRestored > 0 ? `${hpRestored} HP` : '',
+      fpRestored > 0 ? `${fpRestored} FP` : '',
+    ].filter(Boolean).join(' and ') || 'nothing';
+    return createActivityLogEntry('rest', 'recovery_resolved', {
+      message: `${characterName} recovered ${recovered}`,
+      characterName,
+      ...meta,
+    });
+  },
+};
 
 /**
  * Alchemy-specific log entry creators
