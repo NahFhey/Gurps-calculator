@@ -1,10 +1,12 @@
 import { useState, useMemo } from 'react';
 import { History, Plus, ChevronDown, ChevronUp, TrendingUp } from 'lucide-react';
-import type { Skill, SkillAdvancementEntry, SkillDifficulty, PrimaryAttributes, SecondaryAttributes, SkillAttribute } from '../../types/characterSheet';
+import type { GCSCharacterData, Skill, SkillAdvancementEntry, SkillDifficulty, PrimaryAttributes, SecondaryAttributes, SkillAttribute } from '../../types/characterSheet';
 import { calculateSkillLevel } from '../../types/characterSheet';
+import { applySkillAdvancement } from '../../utils/skillAdvancement';
 
 interface SkillHistorySectionProps {
   skills: Skill[];
+  gcsData: GCSCharacterData;
   skillHistory: SkillAdvancementEntry[];
   primaryAttributes: PrimaryAttributes;
   secondaryAttributes: SecondaryAttributes;
@@ -15,6 +17,7 @@ interface SkillHistorySectionProps {
 
 export function SkillHistorySection({
   skills,
+  gcsData,
   skillHistory,
   primaryAttributes,
   secondaryAttributes,
@@ -47,45 +50,18 @@ export function SkillHistorySection({
     const skill = skills.find((s) => s.id === selectedSkillId);
     if (!skill) return;
 
-    const previousPoints = skill.points;
-    const newPoints = previousPoints + pointsToAdd;
-    const difficulty = skill.difficulty || 'A';
-    const attrValue = getAttributeValue(skill.attribute);
-    const previousLevel = skill.level;
-    const newLevel = calculateSkillLevel(attrValue, difficulty as SkillDifficulty, newPoints);
-
-    // Create history entry
-    const entry: SkillAdvancementEntry = {
-      id: `adv-${Date.now()}`,
+    const result = applySkillAdvancement({ ...gcsData, skills }, {
       skillId: skill.id,
-      skillName: skill.specialization
-        ? `${skill.name} (${skill.specialization})`
-        : skill.name,
-      date: new Date().toISOString(),
-      sessionLabel: sessionLabel || undefined,
-      pointsAdded: pointsToAdd,
-      previousPoints,
-      newPoints,
-      previousLevel,
-      newLevel,
-      notes: advanceNotes || undefined,
-    };
+      pointsToAdd,
+      sessionLabel,
+      notes: advanceNotes,
+    });
 
     // Update history
-    onHistoryChange([...skillHistory, entry]);
+    onHistoryChange([...skillHistory, result.historyEntry]);
 
     // Update the skill's points (and level will recalculate)
-    onSkillsChange(
-      skills.map((s) => {
-        if (s.id !== selectedSkillId) return s;
-        return {
-          ...s,
-          points: newPoints,
-          level: newLevel,
-          relativeLevel: newLevel - attrValue,
-        };
-      })
-    );
+    onSkillsChange(result.updatedSkills);
 
     // Reset form
     setSelectedSkillId('');

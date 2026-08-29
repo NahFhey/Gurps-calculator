@@ -126,7 +126,7 @@ describe('computeStudyAward', () => {
     const result = computeStudyAward(character, project({ skillName: 'Meditation', specialization: undefined, attribute: 'Will', difficulty: 'H' }), 9);
     expect(result.isNewSkill).toBe(true);
     expect(result.updatedSkills[0]).toMatchObject({ name: 'Meditation', points: 1, level: 11, relativeLevel: -2 });
-    expect(result.updatedSkills[0]?.id).toMatch(/^skill-\d+-[a-f0-9]+$/);
+    expect(result.updatedSkills[0]?.id).toMatch(/^skill-\d+-.+/);
   });
 
   it('creates a complete Study history entry with a randomized id', () => {

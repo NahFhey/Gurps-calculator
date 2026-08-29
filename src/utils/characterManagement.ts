@@ -164,9 +164,16 @@ function regenerateGCSDataIds(gcsData: GCSCharacterData): void {
     quirk.id = generateId('quirk');
   }
 
-  // Regenerate skill IDs
+  // Regenerate skill IDs and preserve history references to them.
+  const skillIdMap = new Map<string, string>();
   for (const skill of gcsData.skills) {
-    skill.id = generateId('skill');
+    const oldId = skill.id;
+    const newId = generateId('skill');
+    skillIdMap.set(oldId, newId);
+    skill.id = newId;
+  }
+  for (const entry of gcsData.skillHistory ?? []) {
+    entry.skillId = skillIdMap.get(entry.skillId) ?? entry.skillId;
   }
 
   // Regenerate spell IDs

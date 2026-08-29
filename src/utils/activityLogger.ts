@@ -23,7 +23,7 @@ const mergeMetaNames = (names?: string[], name?: string): string[] | undefined =
  * Part of Phase 4: Populate Changelog
  */
 export function createActivityLogEntry(
-  activityType: 'alchemy' | 'cooking' | 'crafting' | 'gathering' | 'inventory' | 'combat' | 'rest' | 'trading' | 'study' | 'social',
+  activityType: 'alchemy' | 'cooking' | 'crafting' | 'gathering' | 'inventory' | 'combat' | 'rest' | 'trading' | 'study' | 'social' | 'character',
   action: string,
   details: ActivityLogDetails,
   visibility: LogVisibility = 'player'
@@ -151,6 +151,34 @@ export const socialLog = {
   ) => createActivityLogEntry('social', 'contact_adjusted', {
     message: `${contactName} standing adjusted to ${newModifier >= 0 ? '+' : ''}${newModifier}`,
     itemName: contactName,
+    ...meta,
+  }),
+};
+
+export const characterLog = {
+  pointsAwarded: (
+    names: string[],
+    amount: number,
+    note: string,
+    meta: LogEntryMeta = {}
+  ) => createActivityLogEntry('character', 'points_awarded', {
+    message: `Awarded ${amount} point${amount === 1 ? '' : 's'} to ${names.join(', ')}${note.trim() ? `: ${note.trim()}` : ''}`,
+    characterNames: names,
+    quantity: amount,
+    ...meta,
+  }),
+
+  pointsSpent: (
+    characterName: string,
+    amount: number,
+    summary: string,
+    meta: LogEntryMeta = {}
+  ) => createActivityLogEntry('character', 'points_spent', {
+    message: amount >= 0
+      ? `${characterName} spent ${amount} point${amount === 1 ? '' : 's'}: ${summary}`
+      : `${characterName} gained ${Math.abs(amount)} point${amount === -1 ? '' : 's'} through point spending: ${summary}`,
+    characterName,
+    quantity: amount,
     ...meta,
   }),
 };

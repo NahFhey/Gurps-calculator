@@ -6,3 +6,5 @@
 export { CharacterCreationModal } from './CharacterCreationModal';
 export { CharacterContextMenu } from './CharacterContextMenu';
 export type { CharacterContextMenuAction } from './CharacterContextMenu';
+export { AwardPointsModal } from './AwardPointsModal';
+export { PointSpendModal } from './PointSpendModal';

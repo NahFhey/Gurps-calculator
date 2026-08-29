@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Edit2, Save, X } from 'lucide-react';
 import { useCampaignStore } from '../../state/campaignStore';
 import type { Character } from '../../types/campaign';
@@ -18,12 +18,15 @@ import { EncumbranceSection } from './EncumbranceSection';
 import { ModifiersSection } from './ModifiersSection';
 import { NotesSection } from './NotesSection';
 import { DietSection } from './DietSection';
+import { calculateTotalPoints } from '../../utils/characterPoints';
 
 interface CharacterSheetProps {
   character: Character;
+  editRequestToken?: number;
+  onSpendPoints?: () => void;
 }
 
-export function CharacterSheet({ character }: CharacterSheetProps) {
+export function CharacterSheet({ character, editRequestToken = 0, onSpendPoints }: CharacterSheetProps) {
   const { actions } = useCampaignStore();
   const [editMode, setEditMode] = useState(false);
 
@@ -54,6 +57,10 @@ export function CharacterSheet({ character }: CharacterSheetProps) {
     setDraftDietExcludedFoodTypes(character.dietExcludedFoodTypes || []);
     setDraftDietRequiredFoodTypes(character.dietRequiredFoodTypes || []);
   }, [character.id, character.name, character.gcsData, character.hitLocationProfileId, character.images, character.dietExcludedFoodTypes, character.dietRequiredFoodTypes]);
+
+  React.useEffect(() => {
+    if (editRequestToken > 0) setEditMode(true);
+  }, [editRequestToken]);
 
   const handleSave = useCallback(() => {
     // Sync work.skills from the updated GCS data
@@ -91,39 +98,7 @@ export function CharacterSheet({ character }: CharacterSheetProps) {
   const displayImages = editMode ? draftImages : (character.images || {});
 
   // Calculate total points
-  const totalPoints = useMemo(() => {
-    let total = 0;
-
-    // Attribute points
-    total += displayData.attributePoints.ST;
-    total += displayData.attributePoints.DX;
-    total += displayData.attributePoints.IQ;
-    total += displayData.attributePoints.HT;
-
-    // Secondary attribute points
-    total += displayData.secondaryAttributes.will.points;
-    total += displayData.secondaryAttributes.per.points;
-    total += displayData.secondaryAttributes.basicSpeed.points;
-    total += displayData.secondaryAttributes.basicMove.points;
-
-    // Pool points
-    total += displayData.pools.HP.points;
-    total += displayData.pools.FP.points;
-
-    // Trait points
-    total += displayData.advantages.reduce((sum, t) => sum + t.points, 0);
-    total += displayData.perks.reduce((sum, t) => sum + t.points, 0);
-    total += displayData.disadvantages.reduce((sum, t) => sum + t.points, 0);
-    total += displayData.quirks.reduce((sum, t) => sum + t.points, 0);
-
-    // Skill points
-    total += displayData.skills.reduce((sum, s) => sum + s.points, 0);
-
-    // Spell points
-    total += displayData.spells.reduce((sum, s) => sum + s.points, 0);
-
-    return total;
-  }, [displayData]);
+  const totalPoints = calculateTotalPoints(displayData);
 
   return (
     <div className="h-full overflow-y-auto bg-gray-900 p-4">
@@ -151,6 +126,16 @@ export function CharacterSheet({ character }: CharacterSheetProps) {
                 <h1 className="text-2xl font-bold text-gray-100">{displayName}</h1>
               )}
               <span className="text-gray-400">({totalPoints} pts)</span>
+              {(displayData.unspentPoints ?? 0) > 0 && (
+                <button
+                  type="button"
+                  onClick={onSpendPoints}
+                  data-testid="unspent-points-badge"
+                  className="rounded-full border border-emerald-500/70 bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25"
+                >
+                  {displayData.unspentPoints} unspent
+                </button>
+              )}
             </div>
 
             <div className="flex gap-2">
@@ -293,6 +278,7 @@ export function CharacterSheet({ character }: CharacterSheetProps) {
         {/* Skill Advancement History */}
         <SkillHistorySection
           skills={displayData.skills}
+          gcsData={displayData}
           skillHistory={displayData.skillHistory || []}
           primaryAttributes={displayData.attributes}
           secondaryAttributes={displayData.secondaryAttributes}
