@@ -38,6 +38,7 @@ export {
   ITEM_MAGICAL_SET,
   ITEM_CONSUMED,
   ITEM_CONSUMPTION_REVERTED,
+  CURRENCY_SPENT,
   // Type guard
   isInventoryAction,
   // Types
@@ -68,7 +69,8 @@ export {
   type ItemAttunementSetAction,
   type ItemMagicalSetAction,
   type ItemConsumedAction,
-  type ItemConsumptionRevertedAction
+  type ItemConsumptionRevertedAction,
+  type CurrencySpentAction
 } from './inventoryActions';
 
 // Re-export selectors from central location

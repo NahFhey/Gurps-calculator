@@ -10,6 +10,7 @@ const ACTIVITY_FAMILIES = [
   'inventory',
   'combat',
   'rest',
+  'trading',
 ] as const;
 
 type VisibleLogEntry = {

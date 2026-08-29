@@ -10,6 +10,13 @@
  * - Role coverage penalties and constraints
  */
 
+import type { CurrencyConfig } from '../types/campaign';
+
+export const DEFAULT_CURRENCY_CONFIG: CurrencyConfig = {
+  currencies: [{ key: 'cp', name: 'Copper' }],
+  primaryKey: 'cp',
+};
+
 // ============================================================================
 // FEATURE FLAGS
 // ============================================================================

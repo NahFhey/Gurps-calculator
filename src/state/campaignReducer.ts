@@ -43,7 +43,9 @@ import type {
   AcquiredItem,
   InventoryOwner,
   AcquisitionSource,
-  MealBuff
+  MealBuff,
+  CurrencyConfig,
+  PriceBookEntry
 } from '../types/campaign';
 import type {
   Location,
@@ -149,6 +151,10 @@ export type CampaignState = {
     forageZoneProfiles: Record<Id, ForageZoneProfile>;
     forageItems: Record<Id, ForageItem>;
     foragingConfig: ForagingConfig;
+
+    // Trading system (optional for backwards-compatible saves)
+    currencyConfig?: CurrencyConfig;
+    priceBook?: Record<string, PriceBookEntry>;
 
     // Combat system
     combatCharacters: Record<Id, CombatCharacter>;
@@ -617,6 +623,10 @@ export type CampaignAction =
   // Foraging Config actions
   | { type: 'setForagingConfig'; payload: ForagingConfig }
   | { type: 'updateForagingConfig'; payload: Partial<ForagingConfig> }
+  // Trading config actions
+  | { type: 'setCurrencyConfig'; payload: CurrencyConfig }
+  | { type: 'setPriceBookEntry'; payload: PriceBookEntry }
+  | { type: 'removePriceBookEntry'; payload: string }
   // Day Planner actions
   | { type: 'setTimeSlots'; payload: TimeSlot[] }
   | { type: 'addTaskAssignment'; payload: TaskAssignment }
@@ -1072,6 +1082,16 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
       // ========================================================================
       // DAY PLANNER ACTIONS
       // ========================================================================
+      case 'setCurrencyConfig':
+        draft.entities.currencyConfig = action.payload;
+        return;
+      case 'setPriceBookEntry':
+        draft.entities.priceBook ??= {};
+        draft.entities.priceBook[action.payload.key] = action.payload;
+        return;
+      case 'removePriceBookEntry':
+        if (draft.entities.priceBook) delete draft.entities.priceBook[action.payload];
+        return;
       case 'setTimeSlots':
         draft.dayPlanner.timeSlots = action.payload;
         return;

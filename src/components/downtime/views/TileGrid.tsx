@@ -1,8 +1,8 @@
-import { Fish, Leaf, HardHat, FlaskConical, Hammer, ChefHat, Bed } from 'lucide-react';
+import { Fish, Leaf, HardHat, FlaskConical, Hammer, ChefHat, Bed, Coins } from 'lucide-react';
 import type { DowntimeActivityId } from '../../../types/characterSheet';
 export { ACTIVITY_SKILL_REQUIREMENTS } from '../../../types/characterSheet';
 
-export type NavigableView = DowntimeActivityId | 'rest';
+export type NavigableView = DowntimeActivityId | 'rest' | 'trading';
 
 interface TileGridProps {
   onNavigate: (view: NavigableView) => void;
@@ -46,6 +46,13 @@ const TILES: TileConfig[] = [
     description: 'Sleep & Recovery',
     icon: Bed,
     color: 'bg-indigo-900/50 hover:bg-indigo-800/60 border-indigo-700/50',
+  },
+  {
+    id: 'trading',
+    label: 'Trading',
+    description: 'Buy, Sell & Haggle',
+    icon: Coins,
+    color: 'bg-yellow-900/50 hover:bg-yellow-800/60 border-yellow-700/50',
   },
   {
     id: 'alchemy',

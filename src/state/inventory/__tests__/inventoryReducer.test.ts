@@ -27,6 +27,7 @@ import {
   ITEM_RETAGGED,
   ITEM_ATTUNEMENT_SET,
   ITEM_MAGICAL_SET,
+  CURRENCY_SPENT,
   type InventoryAction,
 } from '../inventoryActions';
 import type { CampaignState } from '../../campaignReducer';
@@ -841,6 +842,33 @@ describe('inventoryReducer', () => {
         payload: { itemId: 'missing', magical: true },
       });
       expect(next).toEqual(state);
+    });
+  });
+
+  describe('CURRENCY_SPENT', () => {
+    it('decrements currency', () => {
+      state.entities.inventories.party.currency.cp = 20;
+      const next = applyAction(state, { type: CURRENCY_SPENT, payload: { owner: 'party', currencyKey: 'cp', amount: 7 } });
+      expect(next.entities.inventories.party.currency.cp).toBe(13);
+    });
+
+    it('clamps currency at zero', () => {
+      state.entities.inventories.party.currency.cp = 3;
+      const next = applyAction(state, { type: CURRENCY_SPENT, payload: { owner: 'party', currencyKey: 'cp', amount: 10 } });
+      expect(next.entities.inventories.party.currency.cp).toBe(0);
+    });
+
+    it('creates a missing owner inventory record', () => {
+      const next = applyAction(state, { type: CURRENCY_SPENT, payload: { owner: 'char-9', currencyKey: 'cp', amount: 2 } });
+      expect(next.entities.inventories['inv-char-9']).toMatchObject({ ownerType: 'character', ownerId: 'char-9', currency: { cp: 0 } });
+    });
+
+    it('accepts trade as acquisition provenance', () => {
+      const next = applyAction(state, {
+        type: ITEM_ACQUIRED,
+        payload: { item: { kind: 'material', id: 'ore', name: 'Ore', type: 'metal', quantity: 2 }, owner: 'party', source: 'trade' },
+      });
+      expect(next.entities.inventories.party.materials[0]).toMatchObject({ name: 'Ore', quantity: 2, source: 'trade' });
     });
   });
 });

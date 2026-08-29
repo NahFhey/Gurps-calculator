@@ -48,7 +48,9 @@ import type {
   AcquiredItem,
   InventoryOwner,
   AcquisitionSource,
-  MealBuff
+  MealBuff,
+  CurrencyConfig,
+  PriceBookEntry
 } from '../types/campaign';
 import type {
   Location,
@@ -248,6 +250,9 @@ type CampaignStoreValue = {
     setFacilities: (facilities: Record<Id, Facility>) => void;
     setCookingSkills: (skills: CookingSkill[]) => void;
     setEffectFamilyMap: (map: EffectFamilyMap) => void;
+    setCurrencyConfig: (config: CurrencyConfig) => void;
+    setPriceBookEntry: (entry: PriceBookEntry) => void;
+    removePriceBookEntry: (key: string) => void;
 
     // Inventory Actions
     addInventory: (inventory: Inventory) => void;
@@ -255,6 +260,7 @@ type CampaignStoreValue = {
     setInventories: (inventories: Record<Id, Inventory>) => void;
     /** Inventory bus (Phase 12a.5): land an item with an owner. Always succeeds. */
     acquireItem: (item: AcquiredItem, owner: InventoryOwner, source: AcquisitionSource) => void;
+    spendCurrency: (owner: InventoryOwner, currencyKey: string, amount: number) => void;
     /** Inventory bus (Phase 12a.5): move an item/ref to a new owner. Always succeeds. */
     retagItem: (itemId: Id, newOwner: InventoryOwner) => void;
     /** Explicitly set an item's attunement flag. Always succeeds. */
@@ -569,6 +575,9 @@ export function CampaignStoreProvider({
       setFacilities: (facilities: Record<Id, Facility>) => dispatch({ type: 'setFacilities', payload: facilities }),
       setCookingSkills: (skills: CookingSkill[]) => dispatch({ type: 'setCookingSkills', payload: skills }),
       setEffectFamilyMap: (map: EffectFamilyMap) => dispatch({ type: 'setEffectFamilyMap', payload: map }),
+      setCurrencyConfig: (config: CurrencyConfig) => dispatch({ type: 'setCurrencyConfig', payload: config }),
+      setPriceBookEntry: (entry: PriceBookEntry) => dispatch({ type: 'setPriceBookEntry', payload: entry }),
+      removePriceBookEntry: (key: string) => dispatch({ type: 'removePriceBookEntry', payload: key }),
 
       // Inventory Actions
       addInventory: (inventory: Inventory) => dispatch({ type: 'addInventory', payload: inventory }),
@@ -578,6 +587,8 @@ export function CampaignStoreProvider({
         dispatch({ type: 'setInventories', payload: inventories }),
       acquireItem: (item: AcquiredItem, owner: InventoryOwner, source: AcquisitionSource) =>
         dispatch({ type: 'inventory/itemAcquired', payload: { item, owner, source } }),
+      spendCurrency: (owner: InventoryOwner, currencyKey: string, amount: number) =>
+        dispatch({ type: 'inventory/currencySpent', payload: { owner, currencyKey, amount } }),
       retagItem: (itemId: Id, newOwner: InventoryOwner) =>
         dispatch({ type: 'inventory/itemRetagged', payload: { itemId, newOwner } }),
       setItemAttunement: (itemId: Id, attuned: boolean) =>

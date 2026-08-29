@@ -294,9 +294,9 @@ Shipped as a four-lane bundle (design: [`docs/ACTIVITY_SYSTEM_13B_PLAN.md`](./do
 
 ### 13c: New Activity Types
 - Trading/Commerce (buy/sell with market prices, haggling rolls) — **design in progress 2026-08-28** (grill-me session: sell-surplus-first scope, money = existing `Inventory.currency` maps, configurable currency setting)
-- Research/Study (skill improvement during downtime)
+- Research/Study — **designed 2026-08-28** (grill-me session; see [`docs/STUDY_13C_PLAN.md`](./docs/STUDY_13C_PLAN.md)): slot-bounded study tasks credit hours into persistent StudyProjects, GM-ratified point awards reuse Record Advancement; spec `2026-08-28-study-13c.md` queued behind the trading dispatch (shared touchpoint files)
 - ✅ Healing/Recovery (2026-08-28, codex-shepherd, spec `2026-08-28-rest-recovery-13c.md`, merge `codex/rest-recovery`): rest tasks now resolve — FP restores to max on any rest; sleep makes the B424 natural-recovery HT roll (physician healer adds +1 and doubles, `RestData.healerId`), gated on full-day rest with GM override; RestActivity view with party recovery-status strip (shared `estimateHealing` util, also used by PostCombatSummary); `rest` changelog family. Browser-verified end-to-end.
-- Social activities (reputation/reaction modifier management)
+- Social activities — **designed 2026-08-28** (grill-me session; see [`docs/SOCIAL_13C_PLAN.md`](./docs/SOCIAL_13C_PLAN.md)): relationship ledger (`entities.contacts`, party-level reaction modifiers ±4) + `'social'` influence-roll tasks; spec `2026-08-28-social-13c.md` queued third (trading → study → social)
 
 **Estimated effort:** 3-4 sessions
 

@@ -566,6 +566,7 @@ const GURPS_TO_ACTIVITY_KEY: Record<string, string> = {
   'Spear': 'spear',
   'Stealth': 'stealth',
   'Physician': 'physician',
+  'Merchant': 'merchant',
 };
 
 /**

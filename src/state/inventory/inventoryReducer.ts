@@ -46,7 +46,8 @@ import {
   ITEM_MAGICAL_SET,
   ITEM_CONSUMED,
   ITEM_CONSUMPTION_REVERTED,
-  REAGENT_PROMOTED
+  REAGENT_PROMOTED,
+  CURRENCY_SPENT
 } from './inventoryActions';
 
 // ============================================================================
@@ -396,6 +397,16 @@ export function handleInventoryAction(
     case ITEM_ACQUIRED: {
       const { item, owner, source } = action.payload;
       acquireInventoryItem(draft, item, owner, source);
+      return true;
+    }
+
+    case CURRENCY_SPENT: {
+      const { owner, currencyKey, amount } = action.payload;
+      const inventory = ensureInventoryRecord(draft, owner);
+      inventory.currency[currencyKey] = Math.max(
+        0,
+        (inventory.currency[currencyKey] ?? 0) - Math.max(0, amount)
+      );
       return true;
     }
 

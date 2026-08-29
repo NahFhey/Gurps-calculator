@@ -662,7 +662,7 @@ export interface TaskAssignment {
   day: number;
   slot: number;
   workerId: Id;
-  taskType: 'fishing' | 'foraging' | 'hunting' | 'cooking' | 'crafting' | 'alchemy' | 'rest';
+  taskType: 'fishing' | 'foraging' | 'hunting' | 'cooking' | 'crafting' | 'alchemy' | 'rest' | 'trading';
   taskId?: Id;  // References session/batch/craft ID
   status: 'pending' | 'complete' | 'failed';
   notes?: string;
@@ -803,6 +803,24 @@ export interface EffectPairData {
 
 export type EffectFamilyMap = Record<string, EffectPairData>;
 
+export interface CurrencyDef {
+  key: string;
+  name: string;
+}
+
+export interface CurrencyConfig {
+  currencies: CurrencyDef[];
+  primaryKey: string;
+}
+
+export interface PriceBookEntry {
+  key: string;
+  name: string;
+  kind: 'material' | 'food' | 'item';
+  price: number;
+  updatedAt: number;
+}
+
 // ============================================================================
 // PARTY TOOL INTEGRATION (existing types from partyTool.ts)
 // ============================================================================
@@ -900,7 +918,7 @@ export interface Inventory {
 export type InventoryOwner = 'party' | Id;
 
 /** Provenance of an inventory bus write. Read-only metadata; reducers never branch on it. */
-export type AcquisitionSource = 'crafting' | 'gathering' | 'loot';
+export type AcquisitionSource = 'crafting' | 'gathering' | 'loot' | 'trade';
 
 /**
  * Item payload for the `inventory/itemAcquired` bus action.

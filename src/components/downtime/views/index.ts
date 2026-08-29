@@ -24,3 +24,7 @@ export { RestActivity } from './RestActivity';
 export { RestTaskForm } from './RestTaskForm';
 export { RestTaskCard } from './RestTaskCard';
 export { RestResolutionPanel } from './RestResolutionPanel';
+export { TradingActivity } from './TradingActivity';
+export { TradingTaskForm } from './TradingTaskForm';
+export { TradingTaskCard } from './TradingTaskCard';
+export { TradingResolutionPanel } from './TradingResolutionPanel';
