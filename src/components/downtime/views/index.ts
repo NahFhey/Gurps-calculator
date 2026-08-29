@@ -20,3 +20,7 @@ export { AlchemyActivity } from './AlchemyActivity';
 export { AlchemyTaskForm } from './AlchemyTaskForm';
 export { AlchemyTaskCard } from './AlchemyTaskCard';
 export { CraftingActivity } from './CraftingActivity';
+export { RestActivity } from './RestActivity';
+export { RestTaskForm } from './RestTaskForm';
+export { RestTaskCard } from './RestTaskCard';
+export { RestResolutionPanel } from './RestResolutionPanel';

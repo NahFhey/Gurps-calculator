@@ -236,6 +236,19 @@ export function selectTasksForDay(
   return selectAllTasks(state).filter((task) => task.dayKey === dayKey);
 }
 
+/** True if the character leads or helps any non-rest, non-cancelled task on dayKey. */
+export function selectCharacterHasNonRestTasksForDay(
+  state: DowntimeState,
+  characterId: string,
+  dayKey: number
+): boolean {
+  return selectTasksForDay(state, dayKey).some(
+    (task) => task.status !== 'cancelled'
+      && task.activityType !== 'rest'
+      && (task.leaderId === characterId || task.helperIds.includes(characterId))
+  );
+}
+
 /**
  * Get count of tasks by status for a day.
  */

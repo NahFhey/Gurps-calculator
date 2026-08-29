@@ -5,6 +5,7 @@ import type { DowntimeState, RestData } from '../../../types/downtime';
 import type { CreateTaskPayload } from '../../../state/downtime/downtimeActions';
 import type { ValidationResult } from '../../../state/downtime/downtimeErrors';
 import { selectAvailableCharacterIdsForSlot } from '../../../state/downtime/downtimeSelectors';
+import { getPhysicianLevel } from '../../../utils/recovery';
 import { useOptionalDowntimeContext } from '../DowntimeContext';
 import { ValidationError } from './shared/ValidationError';
 
@@ -33,6 +34,7 @@ export function RestTaskForm({
   const [batchLeaderIds, setBatchLeaderIds] = useState<string[]>([]);
   const [restType, setRestType] = useState<RestData['restType']>('sleep');
   const [recoveryBonus, setRecoveryBonus] = useState(0);
+  const [healerId, setHealerId] = useState('');
   const [batchErrors, setBatchErrors] = useState<Record<string, ValidationResult>>({});
 
   const availableCharacters = useMemo(() => {
@@ -45,8 +47,20 @@ export function RestTaskForm({
     return characters.filter((character) => availableIds.includes(character.id));
   }, [characters, currentDayKey, currentSlot, state]);
 
+  const physicians = useMemo(
+    () => characters.filter((character) =>
+      getPhysicianLevel(character) > 0 && (isBatchMode || character.id !== leaderId)
+    ),
+    [characters, isBatchMode, leaderId]
+  );
+
   const handleSubmit = () => {
-    const activityData: RestData = { type: 'rest', restType, recoveryBonus };
+    const activityData: RestData = {
+      type: 'rest',
+      restType,
+      recoveryBonus,
+      healerId: healerId && healerId !== leaderId ? healerId : null,
+    };
 
     if (!isBatchMode) {
       if (!leaderId) return;
@@ -61,7 +75,10 @@ export function RestTaskForm({
       slot: currentSlot,
       leaderId: batchLeaderId,
       helperIds: [],
-      activityData,
+      activityData: {
+        ...activityData,
+        healerId: batchLeaderId === healerId ? null : activityData.healerId,
+      },
     }));
     const results = onSubmitBatch?.(payloads)
       ?? downtimeContext?.createDowntimeTasksBatch(payloads)
@@ -171,6 +188,28 @@ export function RestTaskForm({
           <option value="light_rest">Light rest</option>
           <option value="meditation">Meditation</option>
         </select>
+      </div>
+
+      <div className="mb-3">
+        <label htmlFor="healer-select" className="mb-1 block text-sm font-medium text-gray-300">Healer</label>
+        {physicians.length > 0 ? (
+          <select
+            id="healer-select"
+            value={physicians.some((physician) => physician.id === healerId) ? healerId : ''}
+            onChange={(event) => setHealerId(event.target.value)}
+            data-testid="healer-select"
+            className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-gray-100"
+          >
+            <option value="">No healer</option>
+            {physicians.map((physician) => (
+              <option key={physician.id} value={physician.id}>
+                {physician.name} (Physician-{getPhysicianLevel(physician)})
+              </option>
+            ))}
+          </select>
+        ) : (
+          <p className="text-sm text-gray-500">No physician in party</p>
+        )}
       </div>
 
       <div className="mb-4">

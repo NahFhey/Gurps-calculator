@@ -69,6 +69,7 @@ describe('DowntimePanel', () => {
     renderWithProvider(<DowntimePanel {...defaultProps} />);
     fireEvent.click(screen.getByText('Rest'));
     expect(screen.getByTestId('rest-activity')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('new-rest-task-button'));
     expect(screen.getByTestId('rest-task-form')).toBeInTheDocument();
   });
 

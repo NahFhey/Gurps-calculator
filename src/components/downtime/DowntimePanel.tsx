@@ -6,13 +6,9 @@ import { ForagingActivity } from './views/ForagingActivity';
 import { MiningActivity } from './views/MiningActivity';
 import { AlchemyActivity } from './views/AlchemyActivity';
 import { CraftingActivity } from './views/CraftingActivity';
+import { RestActivity } from './views/RestActivity';
 import { CookingTab } from '../CookingTab';
 import { DowntimeProvider } from './DowntimeContext';
-import { useDowntimeContext } from './DowntimeContext';
-import { RestTaskForm } from './views/RestTaskForm';
-import { validateTaskCreation } from '../../state/downtime/downtimeValidation';
-import type { RestData } from '../../types/downtime';
-import type { CreateTaskPayload } from '../../state/downtime/downtimeActions';
 import { useCampaignCharacters, useCampaignStore } from '../../state/campaignStore';
 import { characterHasAnySkill, ACTIVITY_SKILL_REQUIREMENTS } from '../../types/characterSheet';
 
@@ -107,44 +103,11 @@ export function DowntimePanel({ currentDayKey, currentSlot }: DowntimePanelProps
             />
           )}
           {activeView === 'cooking' && <CookingTab />}
-          {activeView === 'rest' && <RestCreationView onDone={navigateBack} />}
+          {activeView === 'rest' && (
+            <RestActivity currentDayKey={currentDayKey} currentSlot={currentSlot} />
+          )}
         </main>
       </div>
     </DowntimeProvider>
-  );
-}
-
-function RestCreationView({ onDone }: { onDone: () => void }) {
-  const { state, characters, currentDayKey, currentSlot, createDowntimeTask } = useDowntimeContext();
-  const [validationMessage, setValidationMessage] = useState<string | null>(null);
-
-  const handleSubmit = (data: { leaderId: string; helperIds: string[]; activityData: RestData }) => {
-    const payload: CreateTaskPayload = {
-      activityType: 'rest',
-      dayKey: currentDayKey,
-      slot: currentSlot,
-      ...data,
-    };
-    const validation = validateTaskCreation(state, payload);
-    if (!validation.valid) {
-      setValidationMessage(validation.message ?? 'Validation failed');
-      return;
-    }
-    createDowntimeTask(payload);
-    onDone();
-  };
-
-  return (
-    <div data-testid="rest-activity">
-      {validationMessage && <p role="alert" className="mb-3 text-sm text-red-400">{validationMessage}</p>}
-      <RestTaskForm
-        characters={characters}
-        state={state}
-        currentDayKey={currentDayKey}
-        currentSlot={currentSlot}
-        onSubmit={handleSubmit}
-        onCancel={onDone}
-      />
-    </div>
   );
 }

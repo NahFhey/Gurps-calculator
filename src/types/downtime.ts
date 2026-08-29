@@ -288,6 +288,8 @@ export interface RestData {
   restType: 'sleep' | 'light_rest' | 'meditation';
   /** Bonus to recovery rolls from conditions (comfortable bed, etc.) */
   recoveryBonus: number;
+  /** Character providing medical care during this rest. Deliberately NOT a helper: helpers are slot-locked to one task, but one physician may tend several patients in the same slot. */
+  healerId?: string | null;
 }
 
 // ============================================================================
