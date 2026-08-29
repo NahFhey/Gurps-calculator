@@ -268,7 +268,7 @@
 ### 12c: Character Lifecycle
 **Designed 2026-08-28** (grill-me session; see [`docs/CHARACTER_LIFECYCLE_12C_PLAN.md`](./docs/CHARACTER_LIFECYCLE_12C_PLAN.md)).
 - ✅ **Lane A shipped 2026-08-29** (codex-shepherd, spec `2026-08-28-points-economy-12c-laneA.md`, merge `codex/points-economy`): `unspentPoints` + `pointLedger` on gcsData, GM Award Points modal, cart-with-confirm Spend Points workflow (computed skill/attribute costs, GM-priced traits, atomic apply); cost constants consolidated (`characterPoints.ts`), totals bug fixed (sense/frightCheck points now counted), shared `applySkillAdvancement` (with newSkill dedup) backing sheet/Study/cart, Edit-stub + skillHistory-remap fixes. Browser-verified end-to-end.
-- **Lane B** `2026-08-28-templates-npcgen-12c-laneB.md` (templates as seeded data entities + save-as-template, NPC generator with variance, comparison view) — dispatching next.
+- ✅ **Lane B shipped 2026-08-29** (codex-shepherd, spec `2026-08-28-templates-npcgen-12c-laneB.md`, merge `codex/templates-npcgen`): templates as seeded data entities (six playable ~150-pt builds, ensure-on-hydrate + deleted-builtin tracking, Manager view, Save-as-template), creation-modal previews + Generate NPC path (none/light/heavy variance, honest recomputation, syllable names), side-by-side CharacterCompareModal on shared characterDiff tables. Browser-verified end-to-end. **12c COMPLETE — Phase 12 done.**
 - Character creation wizard with template support (warrior, mage, thief archetypes)
 - Level-up / point-spend workflow between sessions
 - Character comparison view (side-by-side stats)
