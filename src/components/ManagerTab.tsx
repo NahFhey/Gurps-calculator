@@ -22,6 +22,7 @@ import { ReagentsView } from './manager/views/ReagentsView';
 import { FormulasView } from './manager/views/FormulasView';
 import { ToolTemplatesView } from './manager/views/ToolTemplatesView';
 import { FacilitiesView } from './manager/views/FacilitiesView';
+import { TradingView } from './manager/views/TradingView';
 
 // Shared components
 import { ImportExportPanel } from './ImportExportPanel';
@@ -46,6 +47,7 @@ type ManagerView =
   | 'gathering'
   | 'toolTemplates'
   | 'facilities'
+  | 'trading'
   | 'debug';
 
 // Delete confirmation state type
@@ -471,6 +473,9 @@ export function ManagerTab() {
         <button onClick={() => setView('facilities')} className={`px-4 py-2 ${view === 'facilities' ? 'border-b-2 border-purple-500 text-purple-400' : 'text-gray-400'}`}>
           Facilities
         </button>
+        <button onClick={() => setView('trading')} className={`px-4 py-2 ${view === 'trading' ? 'border-b-2 border-amber-500 text-amber-400' : 'text-gray-400'}`}>
+          Trading
+        </button>
         {gmMode && (
           <button
             onClick={() => setView('debug')}
@@ -591,6 +596,8 @@ export function ManagerTab() {
       {view === 'toolTemplates' && <ToolTemplatesView />}
 
       {view === 'facilities' && <FacilitiesView />}
+
+      {view === 'trading' && <TradingView />}
     </div>
   );
 }

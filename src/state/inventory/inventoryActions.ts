@@ -62,6 +62,7 @@ export const ITEM_MAGICAL_SET = 'inventory/itemMagicalSet' as const;
 export const ITEM_CONSUMED = 'inventory/itemConsumed' as const;
 export const ITEM_CONSUMPTION_REVERTED = 'inventory/itemConsumptionReverted' as const;
 export const REAGENT_PROMOTED = 'inventory/reagentPromoted' as const;
+export const CURRENCY_SPENT = 'inventory/currencySpent' as const;
 
 // ============================================================================
 // ACTION TYPES
@@ -167,6 +168,10 @@ export type ReagentPromotedAction = {
       | { mode: 'new'; reagent: AlchemyReagent };
   };
 };
+export type CurrencySpentAction = {
+  type: typeof CURRENCY_SPENT;
+  payload: { owner: InventoryOwner; currencyKey: string; amount: number };
+};
 
 // ============================================================================
 // UNION TYPE
@@ -206,7 +211,8 @@ export type InventoryAction =
   | ItemMagicalSetAction
   | ItemConsumedAction
   | ItemConsumptionRevertedAction
-  | ReagentPromotedAction;
+  | ReagentPromotedAction
+  | CurrencySpentAction;
 
 // ============================================================================
 // TYPE GUARD
@@ -240,7 +246,8 @@ const INVENTORY_ACTION_TYPES = new Set([
   ITEM_MAGICAL_SET,
   ITEM_CONSUMED,
   ITEM_CONSUMPTION_REVERTED,
-  REAGENT_PROMOTED
+  REAGENT_PROMOTED,
+  CURRENCY_SPENT
 ]);
 
 /**

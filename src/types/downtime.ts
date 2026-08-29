@@ -47,7 +47,8 @@ export type DowntimeActivityType =
   | 'mining'
   | 'alchemy'
   | 'crafting'
-  | 'rest';
+  | 'rest'
+  | 'trading';
 
 // ============================================================================
 // TASK STATUS
@@ -292,6 +293,13 @@ export interface RestData {
   healerId?: string | null;
 }
 
+export interface TradingData {
+  type: 'trading';
+  merchantName: string;
+  opposingSkill: number;
+  locationId?: string | null;
+}
+
 // ============================================================================
 // ACTIVITY DATA DISCRIMINATED UNION
 // ============================================================================
@@ -314,7 +322,8 @@ export type ActivityData =
   | MiningData
   | AlchemyData
   | CraftingData
-  | RestData;
+  | RestData
+  | TradingData;
 
 // ============================================================================
 // TASK LOCK KEY
@@ -465,6 +474,12 @@ export function isRestTask(
   task: DowntimeTask
 ): task is DowntimeTask & { activityData: RestData } {
   return task.activityData.type === 'rest';
+}
+
+export function isTradingTask(
+  task: DowntimeTask
+): task is DowntimeTask & { activityData: TradingData } {
+  return task.activityData.type === 'trading';
 }
 
 // ============================================================================

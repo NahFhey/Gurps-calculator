@@ -26,7 +26,8 @@ type TargetKeyActivityData =
   | { type: 'mining'; siteId?: string; targetResourceId?: string }
   | { type: 'alchemy'; recipeId: string }
   | { type: 'crafting'; recipeId: string }
-  | { type: 'rest'; restType: string };
+  | { type: 'rest'; restType: string }
+  | { type: 'trading'; merchantName: string };
 
 // ============================================================================
 // BASIC SELECTORS
@@ -396,6 +397,10 @@ export function getTargetKeyFromActivityData(
       return `recipe:${(activityData as { recipeId: string }).recipeId}`;
     case 'rest':
       return `rest:${(activityData as { restType: string }).restType}`;
+    case 'trading': {
+      const merchantName = (activityData as { merchantName: string }).merchantName.toLowerCase().trim();
+      return `trade:${merchantName || 'general'}`;
+    }
     default:
       return 'unknown';
   }
@@ -500,6 +505,7 @@ function getToolIdsFromTask(task: DowntimeTask): string[] {
       // CraftingData uses toolInstanceIds
       return (data as { toolInstanceIds?: string[] }).toolInstanceIds ?? [];
     case 'rest':
+    case 'trading':
       return [];
     default:
       return [];
@@ -729,6 +735,7 @@ const ACTIVITY_DISPLAY_NAMES: Record<DowntimeActivityType, string> = {
   alchemy: 'Alchemy',
   crafting: 'Crafting',
   rest: 'Resting',
+  trading: 'Trading',
 };
 
 /**

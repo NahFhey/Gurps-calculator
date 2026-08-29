@@ -23,7 +23,7 @@ const mergeMetaNames = (names?: string[], name?: string): string[] | undefined =
  * Part of Phase 4: Populate Changelog
  */
 export function createActivityLogEntry(
-  activityType: 'alchemy' | 'cooking' | 'crafting' | 'gathering' | 'inventory' | 'combat' | 'rest',
+  activityType: 'alchemy' | 'cooking' | 'crafting' | 'gathering' | 'inventory' | 'combat' | 'rest' | 'trading',
   action: string,
   details: ActivityLogDetails,
   visibility: LogVisibility = 'player'
@@ -79,6 +79,26 @@ export const restLog = {
       ...meta,
     });
   },
+};
+
+export const tradingLog = {
+  tripCreated: (leaderName: string, merchantName: string, meta: LogEntryMeta = {}) =>
+    createActivityLogEntry('trading', 'trip_created', {
+      message: `${leaderName} scheduled a market trip to ${merchantName}`,
+      characterName: leaderName,
+      ...meta,
+    }),
+
+  tripResolved: (
+    leaderName: string,
+    merchantName: string,
+    summary: string,
+    meta: LogEntryMeta = {}
+  ) => createActivityLogEntry('trading', 'trip_resolved', {
+    message: `${leaderName} traded with ${merchantName}: ${summary}`,
+    characterName: leaderName,
+    ...meta,
+  }),
 };
 
 /**

@@ -216,3 +216,5 @@ export {
   selectActiveTravelCount,
   selectIsPartyTraveling
 } from './locationSelectors';
+
+export { selectCurrencyConfig, selectPriceBook } from './tradingSelectors';

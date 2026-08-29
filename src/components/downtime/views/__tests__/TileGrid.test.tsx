@@ -63,7 +63,7 @@ describe('TileGrid', () => {
     render(<TileGrid onNavigate={vi.fn()} />);
 
     const buttons = screen.getAllByRole('button');
-    expect(buttons).toHaveLength(7);
+    expect(buttons).toHaveLength(8);
     buttons.forEach((button) => {
       expect(button).toHaveAttribute('aria-label');
     });

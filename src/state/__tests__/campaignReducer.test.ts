@@ -12,6 +12,23 @@ describe('campaignReducer', () => {
     expect(nextState.ui.activeModule).toBe('rules');
   });
 
+  it('sets currency configuration', () => {
+    const config = { currencies: [{ key: 'sp', name: 'Silver' }], primaryKey: 'sp' };
+    const next = campaignReducer(createCampaignState(), { type: 'setCurrencyConfig', payload: config });
+    expect(next.entities.currencyConfig).toEqual(config);
+  });
+
+  it('upserts and removes price book entries', () => {
+    const state = createCampaignState();
+    const first = { key: 'material:iron', name: 'Iron', kind: 'material' as const, price: 3, updatedAt: 1 };
+    const second = { ...first, price: 5, updatedAt: 2 };
+    const added = campaignReducer(state, { type: 'setPriceBookEntry', payload: first });
+    const updated = campaignReducer(added, { type: 'setPriceBookEntry', payload: second });
+    expect(updated.entities.priceBook?.[first.key]).toEqual(second);
+    const removed = campaignReducer(updated, { type: 'removePriceBookEntry', payload: first.key });
+    expect(removed.entities.priceBook).toEqual({});
+  });
+
   it('stores and clears a pending intent', () => {
     const withIntent = campaignReducer(initialCampaignState, {
       type: 'setPendingIntent',

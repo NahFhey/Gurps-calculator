@@ -164,6 +164,8 @@ export function getToolIdsFromActivityData(activityData: ActivityData): string[]
       return activityData.toolInstanceIds ?? [];
     case 'rest':
       return []; // Rest uses no tools
+    case 'trading':
+      return [];
     default:
       return [];
   }
