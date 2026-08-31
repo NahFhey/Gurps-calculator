@@ -30,6 +30,8 @@ import type {
   GatheringCategory,
   GatheringItem,
 } from './campaign';
+import type { Location } from './location';
+import type { Vehicle } from './party';
 
 // ============================================================================
 // SHARED TYPES
@@ -180,12 +182,16 @@ export interface LabsViewProps {
   alchemyLabs: AlchemyLab[];
   saveAlchemyLabs: (labs: AlchemyLab[]) => void;
   onDelete: OnDeleteHandler;
+  locations?: Location[];
+  vehicles?: Vehicle[];
 }
 
 export interface KitchensViewProps {
   kitchens: Kitchen[];
   saveKitchens: (kitchens: Kitchen[]) => void;
   onDelete: OnDeleteHandler;
+  locations?: Location[];
+  vehicles?: Vehicle[];
 }
 
 export interface MaterialTypesViewProps {

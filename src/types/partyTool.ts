@@ -50,13 +50,6 @@ export interface ToolInstance {
   notes?: string;
 }
 
-export interface Facility {
-  id: Id;
-  name: string;
-  conditionId: Id;
-  activityCategories: Record<string, ToolModifierSet>;
-}
-
 export interface Inventory {
   id: Id;
   ownerType: 'party' | 'character';
@@ -84,6 +77,5 @@ export interface GlobalState {
   inventories: Record<Id, Inventory>;
   toolTemplates: Record<Id, ToolTemplate>;
   toolInstances: Record<Id, ToolInstance>;
-  facilities: Record<Id, Facility>;
   currencyLogs: CurrencyLog[];
 }

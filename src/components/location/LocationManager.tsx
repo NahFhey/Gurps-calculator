@@ -85,10 +85,10 @@ export function LocationManager({ onClose }: LocationManagerProps) {
       id,
       name: editForm.name || 'New Location',
       description: editForm.description,
+      gmNotes: editForm.gmNotes,
       climate,
       terrain,
       modifiers: editForm.modifiers || createDefaultLocationModifiers(),
-      connections: [],
       theme: editForm.theme,
       createdAt: Date.now(),
       modifiedAt: Date.now(),
@@ -104,6 +104,7 @@ export function LocationManager({ onClose }: LocationManagerProps) {
     actions.updateLocation(selectedLocationId, {
       name: editForm.name,
       description: editForm.description,
+      gmNotes: editForm.gmNotes,
       climate: editForm.climate as ClimateType,
       terrain: editForm.terrain as TerrainType,
       modifiers: editForm.modifiers,
@@ -128,6 +129,7 @@ export function LocationManager({ onClose }: LocationManagerProps) {
     setEditForm({
       name: location.name,
       description: location.description,
+      gmNotes: location.gmNotes,
       climate: location.climate,
       terrain: location.terrain,
       modifiers: { ...location.modifiers },
@@ -264,7 +266,7 @@ export function LocationManager({ onClose }: LocationManagerProps) {
   };
 
   return (
-    <div className="p-4 bg-gray-800 rounded-lg border border-gray-600 max-w-md">
+    <div className="p-4 bg-gray-800 rounded-lg border border-gray-600 max-w-2xl">
       <ManagerNavigation view={view} onChangeView={setView} />
       {renderView()}
 

@@ -26,6 +26,7 @@ import { TradingView } from './manager/views/TradingView';
 import { CharacterTemplatesView } from './manager/views/CharacterTemplatesView';
 import { VehiclesView } from './manager/views/VehiclesView';
 import { CalendarView } from './manager/views/CalendarView';
+import { LocationManager } from './location/LocationManager';
 
 // Shared components
 import { ImportExportPanel } from './ImportExportPanel';
@@ -52,6 +53,7 @@ type ManagerView =
   | 'facilities'
   | 'trading'
   | 'characterTemplates'
+  | 'locations'
   | 'vehicles'
   | 'calendar'
   | 'debug';
@@ -485,6 +487,9 @@ export function ManagerTab() {
         <button onClick={() => setView('characterTemplates')} className={`px-4 py-2 ${view === 'characterTemplates' ? 'border-b-2 border-emerald-500 text-emerald-400' : 'text-gray-400'}`}>
           Character Templates
         </button>
+        <button onClick={() => setView('locations')} className={`px-4 py-2 ${view === 'locations' ? 'border-b-2 border-teal-500 text-teal-400' : 'text-gray-400'}`}>
+          Locations
+        </button>
         <button onClick={() => setView('vehicles')} className={`px-4 py-2 ${view === 'vehicles' ? 'border-b-2 border-orange-500 text-orange-400' : 'text-gray-400'}`}>
           Vehicles
         </button>
@@ -538,6 +543,8 @@ export function ManagerTab() {
           alchemyLabs={alchemyLabs}
           saveAlchemyLabs={saveAlchemyLabs}
           onDelete={handleDelete}
+          locations={Object.values(campaignState.locations.locations)}
+          vehicles={Object.values(campaignState.entities.vehicles ?? {})}
         />
       )}
 
@@ -546,6 +553,8 @@ export function ManagerTab() {
           kitchens={kitchens}
           saveKitchens={saveKitchens}
           onDelete={handleDelete}
+          locations={Object.values(campaignState.locations.locations)}
+          vehicles={Object.values(campaignState.entities.vehicles ?? {})}
         />
       )}
 
@@ -615,6 +624,8 @@ export function ManagerTab() {
       {view === 'trading' && <TradingView />}
 
       {view === 'characterTemplates' && <CharacterTemplatesView />}
+
+      {view === 'locations' && <LocationManager />}
 
       {view === 'vehicles' && <VehiclesView />}
       {view === 'calendar' && <CalendarView />}

@@ -145,7 +145,9 @@ export interface MarkerModel {
   /** Optional notes/description */
   notes?: string;
   /** When this marker was discovered (optional) */
-  discoveredAt?: { day: number; slot: 1 | 2 | 3 };
+  discoveredAt?: { day: number; slot: number };
+  /** Named location pinned to this tile. The marker is the sole spatial back-reference. */
+  locationId?: Id;
   /** Visibility level */
   visibility: MarkerVisibility;
   /** Optional tags for categorization */

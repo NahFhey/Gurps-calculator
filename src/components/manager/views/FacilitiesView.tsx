@@ -2,7 +2,8 @@ import { useState, useMemo, useCallback } from 'react';
 import { Building2, Plus, Save, X, Trash2, Edit2 } from 'lucide-react';
 import { useCampaignStore } from '../../../state/campaignStore';
 import { denormalizeObject, normalizeArray } from '../../../state/campaignUtils';
-import type { Facility, FacilityType, ToolModifierSet } from '../../../types/campaign';
+import type { Facility, FacilityAttachment, FacilityType, ToolModifierSet } from '../../../types/campaign';
+import { FacilityAttachmentControl } from './FacilityAttachmentControl';
 
 /**
  * FacilitiesView - Unified facilities management
@@ -48,6 +49,7 @@ interface FacilityFormState {
   conditionId: string;
   useAdvancedModifiers: boolean;
   activityCategories: Record<string, ToolModifierSet>;
+  attachment?: FacilityAttachment;
 }
 
 const DEFAULT_FORM_STATE: FacilityFormState = {
@@ -86,7 +88,6 @@ export function FacilitiesView() {
 
   const saveFacilities = useCallback((facilitiesList: Facility[]) => {
     const normalized = normalizeArray(facilitiesList);
-    console.log('Saving facilities:', normalized);
     actions.setFacilities(normalized);
   }, [actions]);
 
@@ -114,6 +115,7 @@ export function FacilitiesView() {
       rating: Math.max(0, Math.min(4, formState.rating)),
       description: formState.description.trim() || undefined,
       conditionId: formState.conditionId,
+      attachment: formState.attachment,
       activityCategories: formState.useAdvancedModifiers
         ? formState.activityCategories
         : {
@@ -141,7 +143,8 @@ export function FacilitiesView() {
       description: facility.description || '',
       conditionId: facility.conditionId || 'Good',
       useAdvancedModifiers: Object.keys(facility.activityCategories || {}).length > 1,
-      activityCategories: facility.activityCategories || {}
+      activityCategories: facility.activityCategories || {},
+      attachment: facility.attachment,
     });
     setShowAdd(true);
   }
@@ -303,6 +306,13 @@ export function FacilitiesView() {
               rows={2}
             />
           </div>
+
+          <FacilityAttachmentControl
+            value={formState.attachment}
+            locations={Object.values(state.locations.locations)}
+            vehicles={Object.values(state.entities.vehicles ?? {})}
+            onChange={(attachment) => setFormState((previous) => ({ ...previous, attachment }))}
+          />
 
           {/* Advanced Modifiers Toggle */}
           <div className="border-t border-gray-600 pt-4">

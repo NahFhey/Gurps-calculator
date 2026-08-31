@@ -881,7 +881,6 @@ export function createDefaultLocation(_currentTime: { day: number; slot: number 
     climate: 'temperate',
     terrain: 'plains',
     modifiers: createDefaultLocationModifiers(),
-    connections: [],
     createdAt: Date.now(),
     modifiedAt: Date.now(),
   };

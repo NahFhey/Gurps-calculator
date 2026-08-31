@@ -23,7 +23,6 @@ const forest: Location = {
   climate: 'temperate',
   terrain: 'forest',
   modifiers: { gathering: 1, hunting: 1, foraging: 1, travel: 0 },
-  connections: [],
   createdAt: 0,
   modifiedAt: 0,
 };
@@ -34,7 +33,6 @@ const desert: Location = {
   climate: 'arid',
   terrain: 'desert',
   modifiers: { gathering: -1, hunting: 0, foraging: -1, travel: -2 },
-  connections: [],
   createdAt: 0,
   modifiedAt: 0,
 };

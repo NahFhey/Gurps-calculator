@@ -55,6 +55,17 @@ export function LocationFormView({
         </div>
 
         <div>
+          <label className="block text-sm text-gray-400 mb-1">GM Notes</label>
+          <textarea
+            value={editForm.gmNotes || ''}
+            onChange={(e) => onChange({ ...editForm, gmNotes: e.target.value })}
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-gray-100"
+            rows={3}
+            placeholder="Private notes for the GM"
+          />
+        </div>
+
+        <div>
           <label className="block text-sm text-gray-400 mb-1">Climate</label>
           <select
             value={editForm.climate || 'temperate'}

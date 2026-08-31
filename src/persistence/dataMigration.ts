@@ -23,6 +23,80 @@ import type { TravelGroup } from '../types/party';
 import type { ActiveWeather, Location } from '../types/location';
 import { DEFAULT_CALENDAR } from '../utils/timeSystem';
 
+/** Clean Phase 14 location links and attachment references after hydration. */
+export function ensureLocationIntegrity(state: CampaignState): CampaignState {
+  let locationsChanged = false;
+  const locations = { ...state.locations.locations };
+  for (const [id, location] of Object.entries(locations)) {
+    const legacy = location as Location & Record<string, unknown>;
+    // Legacy key is intentionally a plain string literal: the field was removed in 1.5.8.
+    if (Object.prototype.hasOwnProperty.call(legacy, 'connections')) {
+      const cleaned = { ...legacy };
+      delete cleaned['connections'];
+      locations[id] = cleaned as Location;
+      locationsChanged = true;
+    }
+  }
+
+  const locationIds = new Set(Object.keys(locations));
+  const vehicleIds = new Set(Object.keys(state.entities.vehicles ?? {}));
+  const isDanglingAttachment = (value: unknown): boolean => {
+    if (!value || typeof value !== 'object') return false;
+    const attachment = value as Record<string, unknown>;
+    return attachment.kind === 'location'
+      ? typeof attachment.locationId !== 'string' || !locationIds.has(attachment.locationId)
+      : attachment.kind === 'vehicle'
+        ? typeof attachment.vehicleId !== 'string' || !vehicleIds.has(attachment.vehicleId)
+        : false;
+  };
+
+  let mapsChanged = false;
+  const mapsById = { ...state.maps.mapsById };
+  for (const [mapId, map] of Object.entries(mapsById)) {
+    let markersChanged = false;
+    const markersById = { ...map.markersById };
+    for (const [markerId, marker] of Object.entries(markersById)) {
+      if (marker.locationId && !locationIds.has(marker.locationId)) {
+        const { locationId: _locationId, ...cleaned } = marker;
+        markersById[markerId] = cleaned;
+        markersChanged = true;
+      }
+    }
+    if (markersChanged) {
+      mapsById[mapId] = { ...map, markersById };
+      mapsChanged = true;
+    }
+  }
+
+  let entitiesChanged = false;
+  const cleanRegistry = <T extends { attachment?: unknown }>(registry: Record<Id, T>): Record<Id, T> => {
+    let registryChanged = false;
+    const next = { ...registry };
+    for (const [id, entity] of Object.entries(next)) {
+      if (isDanglingAttachment(entity.attachment)) {
+        const { attachment: _attachment, ...cleaned } = entity;
+        next[id] = cleaned as T;
+        registryChanged = true;
+      }
+    }
+    if (registryChanged) entitiesChanged = true;
+    return registryChanged ? next : registry;
+  };
+  const facilities = cleanRegistry(state.entities.facilities);
+  const kitchens = cleanRegistry(state.entities.kitchens);
+  const alchemyLabs = cleanRegistry(state.entities.alchemyLabs);
+
+  if (!locationsChanged && !mapsChanged && !entitiesChanged) return state;
+  return {
+    ...state,
+    locations: locationsChanged ? { ...state.locations, locations } : state.locations,
+    maps: mapsChanged ? { ...state.maps, mapsById } : state.maps,
+    entities: entitiesChanged
+      ? { ...state.entities, facilities, kitchens, alchemyLabs }
+      : state.entities,
+  };
+}
+
 /** Move legacy location weather to maps and fill Phase 14 ambient defaults. */
 export function ensureAmbientWeather(state: CampaignState): CampaignState {
   let mapsChanged = false;

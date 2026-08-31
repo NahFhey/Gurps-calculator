@@ -23,6 +23,7 @@ import type {
 import { CreateMealView } from './views/CreateMealView';
 import { RecipeLibraryView } from './views/RecipeLibraryView';
 import { RemakeView } from './views/RemakeView';
+import { isAttachmentReachable } from '../../utils/facilityAccess';
 
 export function CookingTab() {
   const { state, actions } = useCampaignStore();
@@ -58,6 +59,17 @@ export function CookingTab() {
   const [remakeSkill, setRemakeSkill] = useState('');
   const [remakeRoll, setRemakeRoll] = useState<DiceRoll>({ dice: [], total: 0 });
   const consumedIntentRef = useRef<typeof state.ui.pendingIntent>(null);
+  const fallbackLeaderId = state.entities.travelGroups?.[state.ui.activeTravelGroupId ?? '']?.memberIds[0] ?? '';
+  const selectedWorkerId = workers.find((worker) => worker.name === selectedWorker)?.id ?? fallbackLeaderId;
+  const remakeWorkerId = workers.find((worker) => worker.name === remakeWorker)?.id ?? fallbackLeaderId;
+  const accessibleKitchens = useMemo(
+    () => kitchens.filter((kitchen) => isAttachmentReachable(state, kitchen.attachment, selectedWorkerId)),
+    [kitchens, selectedWorkerId, state]
+  );
+  const accessibleRemakeKitchens = useMemo(
+    () => kitchens.filter((kitchen) => isAttachmentReachable(state, kitchen.attachment, remakeWorkerId)),
+    [kitchens, remakeWorkerId, state]
+  );
 
   useEffect(() => {
     const intent = state.ui.pendingIntent;
@@ -103,7 +115,7 @@ export function CookingTab() {
       alert('Invalid skill or roll values');
       return;
     }
-    const selectedKitchen = kitchens?.find(kitchen => kitchen.id === selectedKitchenId) || { id: 'default', name: 'Basic Kitchen', rating: 0 };
+    const selectedKitchen = accessibleKitchens.find(kitchen => kitchen.id === selectedKitchenId) || { id: 'default', name: 'Basic Kitchen', rating: 0 };
     const kitchenBonus = selectedKitchen.rating || 0;
     const effectiveSkill = skillValue + kitchenBonus;
     const mos = effectiveSkill - rollValue;
@@ -241,7 +253,7 @@ export function CookingTab() {
       alert('Invalid skill or roll values');
       return;
     }
-    const selectedKitchen = kitchens?.find(kitchen => kitchen.id === remakeKitchenId) || { id: 'default', name: 'Basic Kitchen', rating: 0 };
+    const selectedKitchen = accessibleRemakeKitchens.find(kitchen => kitchen.id === remakeKitchenId) || { id: 'default', name: 'Basic Kitchen', rating: 0 };
     const kitchenBonus = selectedKitchen.rating || 0;
     const effectiveSkill = skillValue + kitchenBonus;
     const mos = effectiveSkill - rollValue;
@@ -362,7 +374,7 @@ export function CookingTab() {
       {view === 'create' && <CreateMealView
         foods={foods} selected={selected} numPeople={numPeople} name={name} crit={crit}
         skills={skills} selectedWorker={selectedWorker} selectedKitchenId={selectedKitchenId}
-        cookingSkillValue={cookingSkillValue} roll={roll} workers={workers} kitchens={kitchens}
+        cookingSkillValue={cookingSkillValue} roll={roll} workers={workers} kitchens={accessibleKitchens}
         stats={stats} onNameChange={setName}
         onNumPeopleChange={value => setNumPeople(Math.max(1, toNumberOr(value, 1)))}
         onAddIngredient={() => { if (foods.length > 0) setSelected([...selected, { id: crypto.randomUUID(), foodId: foods[0].id, amount: 1 }]); }}
@@ -382,7 +394,7 @@ export function CookingTab() {
       />}
       {view === 'remake' && selectedRecipe && <RemakeView
         recipe={selectedRecipe} foods={foods} ingredients={remakeIngredients} workers={workers}
-        kitchens={kitchens} worker={remakeWorker} kitchenId={remakeKitchenId} skill={remakeSkill}
+        kitchens={accessibleRemakeKitchens} worker={remakeWorker} kitchenId={remakeKitchenId} skill={remakeSkill}
         roll={remakeRoll} difficulty={remakeDifficulty} onToggleSubstitute={toggleSubstitute}
         onAddSubstitute={addSubstitute} onUpdateSubstitute={updateSubstitute}
         onRemoveSubstitute={removeSubstitute} onPenaltyChange={updateSubstitutePenalty}

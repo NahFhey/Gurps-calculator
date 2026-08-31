@@ -35,7 +35,6 @@ function buildLocation(overrides: Partial<Location> = {}): Location {
     climate: 'temperate',
     terrain: 'plains',
     modifiers: createDefaultLocationModifiers(),
-    connections: [],
     createdAt: 0,
     modifiedAt: 0,
     ...overrides,

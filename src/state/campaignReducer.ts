@@ -336,6 +336,63 @@ export const logEvent = (
   payload
 });
 
+const handleLocationArrival = (
+  draft: Draft<CampaignState>,
+  mapId: string,
+  tileId: string,
+  switchCurrentLocation: boolean
+): void => {
+  const map = draft.maps.mapsById[mapId];
+  if (!map) return;
+
+  const locationMarkers = Object.values(map.markersById).filter(
+    (marker) => marker.tileId === tileId
+      && marker.locationId
+      && draft.locations.locations[marker.locationId]
+  );
+
+  for (const marker of locationMarkers) {
+    if (marker.visibility !== 'gm' || !marker.locationId) continue;
+    marker.visibility = 'player';
+    marker.discoveredAt = { day: draft.time.day, slot: draft.time.slot };
+    const location = draft.locations.locations[marker.locationId];
+    appendLogEntry(draft, {
+      ...logEvent('location.discovered', 'player', {
+        message: `Discovered ${location.name}`,
+      }),
+      day: draft.time.day,
+    });
+  }
+
+  if (!switchCurrentLocation) return;
+  const pinnedLocationId = locationMarkers[0]?.locationId;
+  if (pinnedLocationId) {
+    const location = draft.locations.locations[pinnedLocationId];
+    draft.locations.currentLocationId = pinnedLocationId;
+    appendLogEntry(draft, logEvent('location.changed', 'player', {
+      message: `Party arrived at ${location.name}`,
+    }));
+    return;
+  }
+
+  const currentLocId = draft.locations.currentLocationId;
+  const location = currentLocId ? draft.locations.locations[currentLocId] : undefined;
+  if (!location) return;
+  const newTerrain = resolveLocationTerrain(map, tileId);
+  if (newTerrain === location.terrain) return;
+  const oldLabel = TERRAIN_LABELS[location.terrain] ?? location.terrain;
+  const newLabel = TERRAIN_LABELS[newTerrain] ?? newTerrain;
+  location.terrain = newTerrain;
+  location.modifiers = getTerrainModifiers(
+    newTerrain,
+    draft.locations.terrainModifierOverrides
+  );
+  location.modifiedAt = Date.now();
+  appendLogEntry(draft, logEvent('terrain.changed', 'player', {
+    message: `Terrain changed from ${oldLabel} to ${newLabel}`,
+  }));
+};
+
 const createCheckpointSnapshot = (state: CampaignState): CampaignSnapshot => {
   const { checkpoints, ...rest } = state;
   try {
@@ -847,37 +904,21 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
     if (isPartyAction(action)) {
       handlePartyAction(draft, action);
 
-      // Interim until Lane D derives named location from each group: only the
-      // active group's manual placement updates the campaign's current terrain.
+      // Campaign currentLocationId remains active-group-scoped until Phase 15a;
+      // discovery is objective and therefore applies to every arriving group.
       const placedGroup = action.type === 'party/placeGroup'
         ? draft.entities.travelGroups?.[action.payload.groupId]
         : undefined;
       if (action.type === 'party/placeGroup'
-        && action.payload.groupId === draft.ui.activeTravelGroupId
-        && placedGroup?.vehicleId === null
+        && placedGroup
         && placedGroup.position?.mapId === action.payload.mapId
         && placedGroup.position.tileId === action.payload.tileId) {
-        const map = draft.maps.mapsById[action.payload.mapId];
-        const currentLocId = draft.locations.currentLocationId;
-        if (map && currentLocId) {
-          const location = draft.locations.locations[currentLocId];
-          if (location) {
-            const newTerrain = resolveLocationTerrain(map, action.payload.tileId);
-            if (newTerrain !== location.terrain) {
-              const oldLabel = TERRAIN_LABELS[location.terrain] ?? location.terrain;
-              const newLabel = TERRAIN_LABELS[newTerrain] ?? newTerrain;
-              location.terrain = newTerrain;
-              location.modifiers = getTerrainModifiers(
-                newTerrain,
-                draft.locations.terrainModifierOverrides
-              );
-              location.modifiedAt = Date.now();
-              appendLogEntry(draft, logEvent('terrain.changed', 'player', {
-                message: `Terrain changed from ${oldLabel} to ${newLabel}`
-              }));
-            }
-          }
-        }
+        handleLocationArrival(
+          draft,
+          action.payload.mapId,
+          action.payload.tileId,
+          action.payload.groupId === draft.ui.activeTravelGroupId
+        );
       }
       const placedPosition = placedGroup ? resolveGroupPosition(draft, placedGroup) : null;
       if (action.type === 'party/placeGroup' && placedPosition?.mapId === action.payload.mapId) {
@@ -911,40 +952,6 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
 
       handleMapAction(draft, action);
 
-      // Sync location terrain from map tile after party movement (cross-slice)
-      if (action.type === 'map/executeTravel'
-        && action.payload.groupId === draft.ui.activeTravelGroupId) {
-        // Interim until Lane D derives named location from each group's position.
-        const destinationTileId = action.payload.destinationTileId;
-        const mapId = action.payload.mapId;
-        const map = draft.maps.mapsById[mapId];
-        const currentLocId = draft.locations.currentLocationId;
-
-        if (map && destinationTileId && currentLocId) {
-          const location = draft.locations.locations[currentLocId];
-          if (location) {
-            const newTerrain = resolveLocationTerrain(map, destinationTileId);
-            if (newTerrain !== location.terrain) {
-              const oldLabel = TERRAIN_LABELS[location.terrain] ?? location.terrain;
-              const newLabel = TERRAIN_LABELS[newTerrain] ?? newTerrain;
-              location.terrain = newTerrain;
-              // Auto-set location modifiers from terrain defaults (or GM overrides)
-              const terrainMods = getTerrainModifiers(
-                newTerrain,
-                draft.locations.terrainModifierOverrides
-              );
-              location.modifiers = terrainMods;
-              location.modifiedAt = Date.now();
-              appendLogEntry(draft,
-                logEvent('terrain.changed', 'player', {
-                  message: `Terrain changed from ${oldLabel} to ${newLabel}`
-                })
-              );
-            }
-          }
-        }
-      }
-
       if (action.type === 'map/executeTravel') {
         regenerateMapWeatherIfNeeded(
           draft,
@@ -962,6 +969,14 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
           draft,
           (day, slot, label) =>
             `Travel completed — advanced to Day ${day}, Slot ${slot + 1} (${label})`
+        );
+        // Campaign currentLocationId remains active-group-scoped until Phase 15a;
+        // discovery is objective and therefore applies to every arriving group.
+        handleLocationArrival(
+          draft,
+          action.payload.mapId,
+          action.payload.destinationTileId,
+          action.payload.groupId === draft.ui.activeTravelGroupId
         );
       }
       return;

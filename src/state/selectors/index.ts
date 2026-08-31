@@ -218,6 +218,13 @@ export {
   selectWeatherTableById,
 } from './locationSelectors';
 
+export {
+  selectLocationPins,
+  selectPinsForTile,
+  selectPinForLocation,
+  type LocationPin,
+} from './locationPinSelectors';
+
 export { selectCurrencyConfig, selectPriceBook } from './tradingSelectors';
 export {
   selectStudyConfig,

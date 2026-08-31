@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import type { MarkerModel, MarkerType, MarkerVisibility, TileId } from '../../../types/map';
+import type { Location } from '../../../types/location';
 import { X } from 'lucide-react';
 import { MarkerIcon } from './MarkerIcon';
 
@@ -12,22 +13,29 @@ const MARKER_TYPES: { value: MarkerType; label: string }[] = [
   { value: 'settlement', label: 'Settlement' },
   { value: 'mining_node', label: 'Mining Node' },
   { value: 'danger', label: 'Danger' },
+  { value: 'location', label: 'Location' },
 ];
 
 interface MarkerEditorProps {
   tileId: TileId;
   existing?: MarkerModel;
-  onConfirm: (marker: MarkerModel) => void;
+  locations?: Location[];
+  onConfirm: (marker: MarkerModel, newLocationName?: string) => void;
+  onDelete?: (marker: MarkerModel) => void;
   onCancel: () => void;
 }
 
-export function MarkerEditor({ tileId, existing, onConfirm, onCancel }: MarkerEditorProps) {
+export function MarkerEditor({ tileId, existing, locations = [], onConfirm, onDelete, onCancel }: MarkerEditorProps) {
   const [type, setType] = useState<MarkerType>(existing?.type ?? 'note');
   const [label, setLabel] = useState(existing?.label ?? '');
   const [notes, setNotes] = useState(existing?.notes ?? '');
   const [visibility, setVisibility] = useState<MarkerVisibility>(existing?.visibility ?? 'player');
+  const [locationChoice, setLocationChoice] = useState(existing?.locationId ?? '');
+  const [newLocationName, setNewLocationName] = useState('');
 
-  const canConfirm = label.trim().length > 0;
+  const creatingLocation = type === 'location' && locationChoice === '__create__';
+  const canConfirm = label.trim().length > 0
+    && (type !== 'location' || (creatingLocation ? newLocationName.trim().length > 0 : locationChoice.length > 0));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,8 +51,11 @@ export function MarkerEditor({ tileId, existing, onConfirm, onCancel }: MarkerEd
       tags: existing?.tags,
       resources: existing?.resources,
       discoveredAt: existing?.discoveredAt,
+      locationId: type === 'location'
+        ? creatingLocation ? crypto.randomUUID() : locationChoice
+        : undefined,
     };
-    onConfirm(marker);
+    onConfirm(marker, creatingLocation ? newLocationName.trim() : undefined);
   };
 
   return (
@@ -82,6 +93,33 @@ export function MarkerEditor({ tileId, existing, onConfirm, onCancel }: MarkerEd
               ))}
             </div>
           </div>
+
+          {type === 'location' && (
+            <div className="space-y-2">
+              <label className="block text-xs font-medium text-gray-400">Location</label>
+              <select
+                aria-label="Location"
+                value={locationChoice}
+                onChange={(e) => setLocationChoice(e.target.value)}
+                className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-600 rounded text-sm text-gray-200"
+              >
+                <option value="">Select a location…</option>
+                {locations.map((location) => (
+                  <option key={location.id} value={location.id}>{location.name}</option>
+                ))}
+                <option value="__create__">— create new —</option>
+              </select>
+              {creatingLocation && (
+                <input
+                  aria-label="New location name"
+                  value={newLocationName}
+                  onChange={(e) => setNewLocationName(e.target.value)}
+                  placeholder="New location name"
+                  className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-600 rounded text-sm text-gray-200"
+                />
+              )}
+            </div>
+          )}
 
           {/* Label */}
           <div>
@@ -143,6 +181,15 @@ export function MarkerEditor({ tileId, existing, onConfirm, onCancel }: MarkerEd
 
           {/* Actions */}
           <div className="flex justify-end gap-2 pt-1">
+            {existing && onDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(existing)}
+                className="mr-auto px-3 py-1.5 text-xs text-red-300 hover:text-red-200"
+              >
+                Delete
+              </button>
+            )}
             <button
               type="button"
               onClick={onCancel}

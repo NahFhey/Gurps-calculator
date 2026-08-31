@@ -5,6 +5,7 @@ import { ManagerTab } from '../../ManagerTab';
 import { CampaignStoreProvider, useCampaignStore } from '../../../state/campaignStore';
 import { createCampaignState, type CampaignState } from '../../../state/campaignReducer';
 import type { Inventory } from '../../../types/campaign';
+import { ToastProvider } from '../../ui';
 
 function makeState(sourceNames: string[]): CampaignState {
   const state = createCampaignState();
@@ -34,14 +35,23 @@ function StateProbe({ capture }: { capture: (state: CampaignState) => void }) {
 function renderManager(sourceNames: string[], capture: (state: CampaignState) => void) {
   const initialState = makeState(sourceNames);
   render(
-    <CampaignStoreProvider initialCampaignState={initialState}>
-      <ManagerTab />
-      <StateProbe capture={capture} />
-    </CampaignStoreProvider>,
+    <ToastProvider>
+      <CampaignStoreProvider initialCampaignState={initialState}>
+        <ManagerTab />
+        <StateProbe capture={capture} />
+      </CampaignStoreProvider>
+    </ToastProvider>,
   );
 }
 
 describe('ManagerTab promotion chaining', () => {
+  it('opens LocationManager from the Locations navigation item', () => {
+    renderManager([], () => undefined);
+    fireEvent.click(screen.getByRole('button', { name: 'Locations' }));
+    expect(screen.getByRole('heading', { name: 'Locations' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /New Location/ })).toBeInTheDocument();
+  });
+
   it('opens Reagents and preselects the first matching source name', () => {
     let latest = makeState([]);
     renderManager(['Missing Stock', 'Lunar Moss', 'Iron Ore'], state => {

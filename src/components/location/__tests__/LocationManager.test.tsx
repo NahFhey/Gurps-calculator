@@ -42,7 +42,6 @@ function makeState(locationCount = 1): CampaignState {
       ...firstLocation,
       id: 'location-2',
       name: 'Pine Ridge',
-      connections: [],
     };
   }
   return state;

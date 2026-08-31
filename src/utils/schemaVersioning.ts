@@ -13,7 +13,7 @@ export interface SchemaMetadataEntry {
   migratesFrom?: string[];
 }
 
-export const CURRENT_SCHEMA_VERSION = '1.5.7';
+export const CURRENT_SCHEMA_VERSION = '1.5.8';
 
 export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
   '1.0.0': {
@@ -126,6 +126,14 @@ export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
     description: 'Move ambient climate and weather to maps and add derived campaign seasons',
     features: ['map_climate', 'map_weather', 'calendar_seasons'],
     migratesFrom: ['1.5.6'],
+  },
+  '1.5.8': {
+    name: 'Locations on the Map',
+    timestamp: '2026-08-31',
+    breaking: true,
+    description: 'Pin locations to map markers and validate facility attachment references',
+    features: ['location_pins', 'location_discovery', 'facility_attachments', 'contact_locations'],
+    migratesFrom: ['1.5.7'],
   },
 };
 

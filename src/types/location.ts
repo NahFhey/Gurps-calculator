@@ -209,14 +209,6 @@ export interface LocationModifiers {
 }
 
 /**
- * Connection to another location
- */
-export interface LocationConnection {
-  targetLocationId: Id;
-  description?: string;       // "A winding mountain path"
-}
-
-/**
  * Visual theming for future animated backgrounds
  */
 export interface LocationTheme {
@@ -231,6 +223,7 @@ export interface Location {
   id: Id;
   name: string;               // "Thornwood Forest", "Sandspire Desert"
   description?: string;       // Flavor text for the location
+  gmNotes?: string;
 
   // Environment classification
   climate: ClimateType;
@@ -238,9 +231,6 @@ export interface Location {
 
   // Location-specific modifiers
   modifiers: LocationModifiers;
-
-  // Connections to other locations
-  connections: LocationConnection[];
 
   // Visual theming (for future animated backgrounds)
   theme?: LocationTheme;

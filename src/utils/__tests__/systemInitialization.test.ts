@@ -9,7 +9,6 @@ describe('SystemInitialization', () => {
       inventories: {},
       toolTemplates: {},
       toolInstances: {},
-      facilities: {},
       currencyLogs: [],
     };
 

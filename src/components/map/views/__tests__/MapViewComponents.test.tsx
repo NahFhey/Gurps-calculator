@@ -670,6 +670,36 @@ describe('MarkerEditor', () => {
       expect(marker.tileId).toBe('tile-1');
     });
   });
+
+  it('links a location marker to an existing location', () => {
+    const onConfirm = vi.fn();
+    render(<MarkerEditor tileId="tile-1" locations={[{ id: 'town', name: 'Town', climate: 'temperate', terrain: 'urban', modifiers: { gathering: 0, hunting: 0, foraging: 0, travel: 0 }, createdAt: 1, modifiedAt: 1 }]} onConfirm={onConfirm} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Location/ }));
+    fireEvent.change(screen.getByLabelText('Location'), { target: { value: 'town' } });
+    fireEvent.change(screen.getByPlaceholderText(/Iron Deposit/), { target: { value: 'Town pin' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add Marker' }));
+    expect(onConfirm.mock.calls[0][0]).toMatchObject({ type: 'location', locationId: 'town' });
+  });
+
+  it('returns an inline new-location name with a generated location id', () => {
+    const onConfirm = vi.fn();
+    render(<MarkerEditor tileId="tile-1" onConfirm={onConfirm} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Location/ }));
+    fireEvent.change(screen.getByLabelText('Location'), { target: { value: '__create__' } });
+    fireEvent.change(screen.getByLabelText('New location name'), { target: { value: 'New Town' } });
+    fireEvent.change(screen.getByPlaceholderText(/Iron Deposit/), { target: { value: 'New Town' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add Marker' }));
+    expect(onConfirm.mock.calls[0][0].locationId).toEqual(expect.any(String));
+    expect(onConfirm.mock.calls[0][1]).toBe('New Town');
+  });
+
+  it('deletes an existing marker through the editor action', () => {
+    const onDelete = vi.fn();
+    const existing: MarkerModel = { id: 'marker-1', tileId: 'tile-1', type: 'note', label: 'Note', visibility: 'gm' };
+    render(<MarkerEditor tileId="tile-1" existing={existing} onConfirm={vi.fn()} onDelete={onDelete} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(onDelete).toHaveBeenCalledWith(existing);
+  });
 });
 
 // ============================================================================
@@ -678,7 +708,7 @@ describe('MarkerEditor', () => {
 
 describe('MarkerIcon', () => {
   it('renders without crashing for different types', () => {
-    const types = ['note', 'settlement', 'mining_node', 'danger'];
+    const types = ['note', 'settlement', 'mining_node', 'danger', 'location'];
 
     types.forEach((type) => {
       const { container } = render(

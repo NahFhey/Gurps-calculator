@@ -3,8 +3,8 @@
  */
 
 import { useEffect, useRef } from 'react';
-import type { TileId, TerrainId, TerrainModel } from '../../../types/map';
-import { Paintbrush, MapPin, LinkIcon, Mountain } from 'lucide-react';
+import type { MarkerModel, TileId, TerrainId, TerrainModel } from '../../../types/map';
+import { Eye, Pencil, Paintbrush, MapPin, LinkIcon, Mountain } from 'lucide-react';
 
 export interface ContextMenuState {
   tileId: TileId;
@@ -23,6 +23,11 @@ interface MapContextMenuProps {
   onAddMarker: (tileId: TileId) => void;
   onAddLink: (tileId: TileId) => void;
   onSetElevation: (tileIds: TileId[]) => void;
+  isGmMode?: boolean;
+  marker?: MarkerModel;
+  hasVisibleLocation?: boolean;
+  onViewLocation?: (tileId: TileId) => void;
+  onEditMarker?: (marker: MarkerModel) => void;
   onClose: () => void;
 }
 
@@ -35,6 +40,11 @@ export function MapContextMenu({
   onAddMarker,
   onAddLink,
   onSetElevation,
+  isGmMode = true,
+  marker,
+  hasVisibleLocation,
+  onViewLocation,
+  onEditMarker,
   onClose,
 }: MapContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -69,8 +79,18 @@ export function MapContextMenu({
         Tile ({menuState.row}, {menuState.col})
       </div>
 
+      {hasVisibleLocation && onViewLocation && (
+        <button
+          className="w-full px-3 py-1.5 text-sm text-left text-gray-200 hover:bg-gray-700/50 flex items-center gap-2"
+          onClick={() => { onViewLocation(menuState.tileId); onClose(); }}
+        >
+          <Eye className="w-3.5 h-3.5 text-emerald-400" />
+          View location
+        </button>
+      )}
+
       {/* Stamp terrain to selection */}
-      {hasSelection && selectedTerrainId && (
+      {isGmMode && hasSelection && selectedTerrainId && (
         <button
           className="w-full px-3 py-1.5 text-sm text-left text-gray-200 hover:bg-gray-700/50 flex items-center gap-2"
           onClick={onStampSelection}
@@ -80,11 +100,10 @@ export function MapContextMenu({
         </button>
       )}
 
-      {/* Separator */}
-      <div className="border-t border-gray-700 my-1" />
+      {isGmMode && <div className="border-t border-gray-700 my-1" />}
 
       {/* Set elevation */}
-      <button
+      {isGmMode && <button
         className="w-full px-3 py-1.5 text-sm text-left text-gray-200 hover:bg-gray-700/50 flex items-center gap-2"
         onClick={() => {
           const targets = selectedTileIds.size > 0 && selectedTileIds.has(menuState.tileId)
@@ -96,10 +115,10 @@ export function MapContextMenu({
       >
         <Mountain className="w-3.5 h-3.5 text-gray-400" />
         Set Elevation…
-      </button>
+      </button>}
 
       {/* Add marker */}
-      <button
+      {isGmMode && <button
         className="w-full px-3 py-1.5 text-sm text-left text-gray-200 hover:bg-gray-700/50 flex items-center gap-2"
         onClick={() => {
           onAddMarker(menuState.tileId);
@@ -108,10 +127,20 @@ export function MapContextMenu({
       >
         <MapPin className="w-3.5 h-3.5 text-gray-400" />
         Add Marker
-      </button>
+      </button>}
+
+      {isGmMode && marker && onEditMarker && (
+        <button
+          className="w-full px-3 py-1.5 text-sm text-left text-gray-200 hover:bg-gray-700/50 flex items-center gap-2"
+          onClick={() => { onEditMarker(marker); onClose(); }}
+        >
+          <Pencil className="w-3.5 h-3.5 text-gray-400" />
+          Edit marker
+        </button>
+      )}
 
       {/* Add link */}
-      <button
+      {isGmMode && <button
         className="w-full px-3 py-1.5 text-sm text-left text-gray-200 hover:bg-gray-700/50 flex items-center gap-2"
         onClick={() => {
           onAddLink(menuState.tileId);
@@ -120,7 +149,7 @@ export function MapContextMenu({
       >
         <LinkIcon className="w-3.5 h-3.5 text-gray-400" />
         Add Link
-      </button>
+      </button>}
     </div>
   );
 }

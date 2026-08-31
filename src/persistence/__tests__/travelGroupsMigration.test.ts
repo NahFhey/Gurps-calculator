@@ -6,7 +6,8 @@ import { ensureTravelGroups } from '../dataMigration';
 
 describe('schema 1.5.6 travel migration', () => {
   it('strips legacy map positions and seeds the main group at the active map position', () => {
-    const legacyPositionKey = ['party', 'TileId'].join('');
+    // Legacy key as a literal on purpose: pre-1.5.6 saves still carry it.
+    const legacyPositionKey = 'partyTileId';
     const migrated = migrateTo1_5_6({
       maps: {
         activeMapId: 'active',

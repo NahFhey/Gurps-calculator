@@ -66,6 +66,7 @@ const migrationHandlers: Record<string, MigrationHandler> = {
   '1.5.4:1.5.5': migrateTo1_5_5,
   '1.5.5:1.5.6': migrateTo1_5_6,
   '1.5.6:1.5.7': migrateTo1_5_7,
+  '1.5.7:1.5.8': migrateTo1_5_8,
 };
 
 /**
@@ -555,6 +556,62 @@ export function migrateTo1_5_7(data: MigratableData): MigratableData {
     time.calendar = DEFAULT_CALENDAR;
   }
   next.time = time;
+  return next;
+}
+
+/** Migration: 1.5.7 → 1.5.8 (location pins and attached facilities). */
+export function migrateTo1_5_8(data: MigratableData): MigratableData {
+  const next: MigratableData = { ...data };
+  const locationsState = isRecord(data.locations) ? { ...data.locations } : {};
+  const rawLocations = isRecord(locationsState.locations) ? locationsState.locations : {};
+  const locationIds = new Set(Object.keys(rawLocations));
+  const cleanedLocations: Record<string, unknown> = {};
+  for (const [id, location] of Object.entries(rawLocations)) {
+    // Legacy key is intentionally a plain string literal: the field was removed in 1.5.8.
+    cleanedLocations[id] = isRecord(location) ? omitKeys(location, ['connections']) : location;
+  }
+  next.locations = { ...locationsState, locations: cleanedLocations };
+
+  const mapsState = isRecord(data.maps) ? { ...data.maps } : {};
+  const rawMaps = isRecord(mapsState.mapsById) ? mapsState.mapsById : {};
+  const cleanedMaps: Record<string, unknown> = {};
+  for (const [mapId, map] of Object.entries(rawMaps)) {
+    if (!isRecord(map) || !isRecord(map.markersById)) {
+      cleanedMaps[mapId] = map;
+      continue;
+    }
+    const markersById: Record<string, unknown> = {};
+    for (const [markerId, marker] of Object.entries(map.markersById)) {
+      markersById[markerId] = isRecord(marker)
+        && typeof marker.locationId === 'string'
+        && !locationIds.has(marker.locationId)
+        ? omitKeys(marker, ['locationId'])
+        : marker;
+    }
+    cleanedMaps[mapId] = { ...map, markersById };
+  }
+  next.maps = { ...mapsState, mapsById: cleanedMaps };
+
+  const entities = isRecord(data.entities) ? { ...data.entities } : {};
+  const vehicles = isRecord(entities.vehicles) ? entities.vehicles : {};
+  const vehicleIds = new Set(Object.keys(vehicles));
+  const cleanRegistry = (value: unknown): unknown => {
+    if (!isRecord(value)) return value;
+    return Object.fromEntries(Object.entries(value).map(([id, entity]) => {
+      if (!isRecord(entity) || !isRecord(entity.attachment)) return [id, entity];
+      const attachment = entity.attachment;
+      const dangling = attachment.kind === 'location'
+        ? typeof attachment.locationId !== 'string' || !locationIds.has(attachment.locationId)
+        : attachment.kind === 'vehicle'
+          ? typeof attachment.vehicleId !== 'string' || !vehicleIds.has(attachment.vehicleId)
+          : false;
+      return [id, dangling ? omitKeys(entity, ['attachment']) : entity];
+    }));
+  };
+  entities.facilities = cleanRegistry(entities.facilities);
+  entities.kitchens = cleanRegistry(entities.kitchens);
+  entities.alchemyLabs = cleanRegistry(entities.alchemyLabs);
+  next.entities = entities;
   return next;
 }
 
