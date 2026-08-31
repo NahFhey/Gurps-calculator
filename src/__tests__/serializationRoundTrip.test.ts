@@ -45,7 +45,6 @@ function makeMap(overrides: Partial<MapModel> = {}): MapModel {
     markersById: {},
     linksById: {},
     revealedTileIds: new Set(),
-    partyTileId: null,
     lastSelectedTerrainId: '',
     lastPlacedTerrainId: '',
     ...overrides,
@@ -110,6 +109,34 @@ describe('serializeCampaignState / hydrateCampaignState round-trip', () => {
     expect(map.revealedTileIds.has('tile-2')).toBe(true);
     expect(map.revealedTileIds.has('tile-3')).toBe(true);
     expect(map.revealedTileIds.size).toBe(3);
+  });
+
+  it('round-trips travel groups, vehicles, and vehicle types as plain state', () => {
+    const state = createCampaignState();
+    state.entities.travelGroups = {
+      g1: {
+        id: 'g1', name: 'Scouts', memberIds: Object.keys(state.entities.characters), vehicleId: 'v1', position: null,
+      },
+    };
+    state.entities.vehicles = {
+      v1: {
+        id: 'v1', name: 'Lancer One', typeId: 'vt-lancer',
+        position: { kind: 'tile', mapId: 'map-1', tileId: 'tile-1' },
+        createdAt: 10, modifiedAt: 20,
+      },
+    };
+    state.entities.vehicleTypes = {
+      'vt-lancer': {
+        id: 'vt-lancer', name: 'Lancer', mode: 'airship', minCrew: 1, hangarSlots: 0,
+      },
+    };
+    state.ui.activeTravelGroupId = 'g1';
+
+    const hydrated = hydrateCampaignState(JSON.parse(JSON.stringify(serializeCampaignState(state))));
+    expect(hydrated.entities.travelGroups).toEqual(state.entities.travelGroups);
+    expect(hydrated.entities.vehicles).toEqual(state.entities.vehicles);
+    expect(hydrated.entities.vehicleTypes?.['vt-lancer']).toEqual(state.entities.vehicleTypes['vt-lancer']);
+    expect(hydrated.ui.activeTravelGroupId).toBe('g1');
   });
 
   it('survives JSON.stringify → JSON.parse → hydrate (simulates storage)', () => {

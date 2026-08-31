@@ -55,7 +55,6 @@ function makeMap(id: string): MapModel {
     markersById: {},
     linksById: {},
     revealedTileIds: new Set<string>(),
-    partyTileId: null,
     lastSelectedTerrainId: 't-plains',
     lastPlacedTerrainId: 't-plains',
   };

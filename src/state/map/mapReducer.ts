@@ -32,7 +32,6 @@ import {
   MAP_REMOVE_STRUCTURE_LAYER,
   MAP_SET_STRUCTURE_CELLS,
   MAP_REVEAL_TILES,
-  MAP_SET_PARTY_TILE,
   MAP_EXECUTE_TRAVEL,
   MAP_SET_PENDING_TERRAIN,
   MAP_CLEAR_PENDING_TERRAIN,
@@ -44,6 +43,7 @@ import {
 } from '../../utils/mapUtils';
 import { MAX_ELEVATION } from '../../constants/map';
 import { computeVisibleTiles } from '../../utils/lineOfSight';
+import { resolveVehiclePosition } from '../../utils/partyPosition';
 
 /**
  * Process map actions on the campaign state draft.
@@ -411,44 +411,30 @@ export function handleMapAction(
       return;
     }
 
-    case MAP_SET_PARTY_TILE: {
-      const { mapId, tileId } = action.payload;
-      // Clear party from all other maps
-      for (const m of Object.values(maps.mapsById)) {
-        if (m.id !== mapId) {
-          m.partyTileId = null;
-        }
-      }
-      const map = maps.mapsById[mapId];
-      if (map) {
-        map.partyTileId = tileId;
-        if (tileId && map.visionMode === 'lineOfSight') {
-          for (const visibleTileId of computeVisibleTiles(map, [tileId])) {
-            map.revealedTileIds.add(visibleTileId);
-          }
-          const expanded = expandMapIfNeeded(map);
-          if (expanded !== map) maps.mapsById[mapId] = expanded;
-        }
-      }
-      return;
-    }
-
     // ========================================================================
     // TRAVEL EXECUTION
     // ========================================================================
 
     case MAP_EXECUTE_TRAVEL: {
-      const { mapId, routeTileIds, destinationTileId, gmOverride } = action.payload;
+      const { mapId, routeTileIds, destinationTileId, gmOverride, groupId } = action.payload;
       const map = maps.mapsById[mapId];
-      if (!map) return;
+      const group = draft.entities.travelGroups?.[groupId];
+      if (!map || !group) return;
+      const vehicles = draft.entities.vehicles ?? {};
+      const currentPosition = group.vehicleId
+        ? resolveVehiclePosition(vehicles, group.vehicleId)
+        : group.position;
+      if (currentPosition?.mapId !== mapId || !map.tilesById[currentPosition.tileId]) return;
 
-      // 1. Move party
-      map.partyTileId = destinationTileId;
-      // Clear party from other maps
-      for (const m of Object.values(maps.mapsById)) {
-        if (m.id !== mapId) {
-          m.partyTileId = null;
-        }
+      // 1. Move the group's authoritative position. Vehicle movement carries
+      // every aboard group and its one-level docked vehicles automatically.
+      if (group.vehicleId) {
+        const vehicle = vehicles[group.vehicleId];
+        if (!vehicle) return;
+        vehicle.position = { kind: 'tile', mapId, tileId: destinationTileId };
+        vehicle.modifiedAt = Date.now();
+      } else {
+        group.position = { mapId, tileId: destinationTileId };
       }
 
       // 2. Reveal all route tiles

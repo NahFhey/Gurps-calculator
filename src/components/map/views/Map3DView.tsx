@@ -18,10 +18,12 @@ interface Map3DViewProps {
   selectedTileIds?: Set<TileId>;
   routeTileIds?: TileId[];
   reachableTileIds?: Set<TileId>;
+  focusTileId?: TileId | null;
+  occupantsByTile?: Map<TileId, string[]>;
   /** Combat/actor tokens rendered on tiles (category-colored spheres). */
   tokens?: MapToken[];
   paintModeActive: boolean;
-  placingParty: boolean;
+  placingToken: boolean;
   onTileClick?: (tileId: TileId, row: number, col: number) => void;
   onTileContextMenu?: (tileId: TileId, row: number, col: number, e: TilePointerEvent) => void;
   onTilePaintStart?: (tileId: TileId, row: number, col: number) => void;
@@ -105,7 +107,7 @@ export function Map3DView(props: Map3DViewProps) {
       reachableTileIds: props.reachableTileIds ?? null,
       tokens: props.tokens ?? null,
       paintModeActive: props.paintModeActive,
-      placingParty: props.placingParty,
+      placingToken: props.placingToken,
     });
   }, [
     props.map,
@@ -117,7 +119,7 @@ export function Map3DView(props: Map3DViewProps) {
     props.reachableTileIds,
     props.tokens,
     props.paintModeActive,
-    props.placingParty,
+    props.placingToken,
     sceneReady,
   ]);
 
@@ -138,9 +140,9 @@ export function Map3DView(props: Map3DViewProps) {
       )}
       <button
         type="button"
-        aria-label="Frame party"
-        title="Frame party"
-        onClick={() => sceneRef.current?.frameParty()}
+        aria-label="Frame active group"
+        title="Frame active group"
+        onClick={() => sceneRef.current?.frameActive(props.focusTileId ?? null)}
         className="absolute right-3 top-3 z-10 rounded-md border border-gray-600 bg-gray-900/80 p-2 text-gray-200 shadow hover:bg-gray-700"
       >
         <Crosshair className="h-4 w-4" />
@@ -152,7 +154,9 @@ export function Map3DView(props: Map3DViewProps) {
         >
           <div className="font-medium">{terrain?.name ?? 'Unassigned'} ({hover.row}, {hover.col})</div>
           <div className="text-gray-400">Elev {getEffectiveElevation(props.map, hover.tileId)}</div>
-          {props.map.partyTileId === hover.tileId && <div>Party here</div>}
+          {props.occupantsByTile?.get(hover.tileId)?.map((name, index) => (
+            <div key={`${name}-${index}`}>{name}</div>
+          ))}
           {markerCount > 0 && <div>{markerCount} marker(s)</div>}
           {hoverTile.linkIds.length > 0 && <div>Has links</div>}
         </div>

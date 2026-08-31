@@ -13,18 +13,26 @@ interface MapHeaderProps {
   isGmMode: boolean;
   onSelectMap: (mapId: MapId) => void;
   onCreateMap: () => void;
+  mapsWithPresence?: Set<MapId>;
+  groups?: Array<{
+    id: string;
+    name: string;
+    memberCount: number;
+    vehicleName: string | null;
+    onThisMap: boolean;
+  }>;
+  activeGroupId?: string | null;
+  onSelectGroup?: (id: string) => void;
   /** Whether the active map has a party tile placed */
   hasPartyOnMap?: boolean;
   /** Whether the travel wizard is currently open */
   showTravelWizard?: boolean;
   /** Called when GM clicks Travel */
   onTravel?: () => void;
-  /** Called when GM clicks Move to Map (enters placement mode) */
-  onPlaceParty?: () => void;
-  /** Whether the user is currently in party-placement mode */
-  isPlacingParty?: boolean;
-  /** Called to cancel party-placement mode */
-  onCancelPlaceParty?: () => void;
+  placementTargets?: Array<{ kind: 'group' | 'vehicle'; id: string; name: string; unplaced: boolean }>;
+  placingName?: string | null;
+  onSelectPlacement?: (kind: 'group' | 'vehicle', id: string) => void;
+  onCancelPlacement?: () => void;
   onUpdateMapSettings?: (
     changes: Partial<Pick<MapModel, 'visionMode' | 'sightRangeTiles'>>
   ) => void;
@@ -38,17 +46,23 @@ export function MapHeader({
   isGmMode,
   onSelectMap,
   onCreateMap,
+  mapsWithPresence,
+  groups = [],
+  activeGroupId = null,
+  onSelectGroup,
   hasPartyOnMap,
   showTravelWizard,
   onTravel,
-  onPlaceParty,
-  isPlacingParty,
-  onCancelPlaceParty,
+  placementTargets = [],
+  placingName,
+  onSelectPlacement,
+  onCancelPlacement,
   onUpdateMapSettings,
   onOpenImages,
 }: MapHeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [placementOpen, setPlacementOpen] = useState(false);
   const activeMap = activeMapId ? maps[activeMapId] : null;
   const mapList = Object.values(maps);
 
@@ -107,8 +121,8 @@ export function MapHeader({
                           {scale.label}
                         </span>
                       )}
-                      {m.partyTileId && (
-                        <span className="w-2 h-2 rounded-full bg-green-400" title="Party is here" />
+                      {mapsWithPresence?.has(m.id) && (
+                        <span className="w-2 h-2 rounded-full bg-green-400" title="Group or vehicle is here" />
                       )}
                     </button>
                   );
@@ -119,14 +133,29 @@ export function MapHeader({
         )}
       </div>
 
-      {/* Placing-party banner */}
-      {isPlacingParty && (
+      {/* Active travel group selector */}
+      <select
+        aria-label="Active travel group"
+        value={activeGroupId ?? ''}
+        onChange={(event) => onSelectGroup?.(event.target.value)}
+        className="max-w-64 rounded border border-gray-600 bg-gray-700/50 px-2 py-1.5 text-sm text-gray-200"
+      >
+        {groups.length === 0 && <option value="">No travel groups</option>}
+        {groups.map((group) => (
+          <option key={group.id} value={group.id}>
+            {group.onThisMap ? '' : '◆ '}{group.name} ({group.memberCount}){group.vehicleName ? ` — aboard ${group.vehicleName}` : ''}
+          </option>
+        ))}
+      </select>
+
+      {/* Placement banner */}
+      {placingName && (
         <div className="flex items-center gap-2 px-3 py-1 rounded bg-amber-700/60 border border-amber-500/40 text-xs text-amber-200">
           <MapPinned className="w-3.5 h-3.5" />
-          Click any tile to place the party
+          Click any tile to place {placingName}
           <button
             className="ml-1 px-1.5 py-0.5 rounded bg-amber-600/50 hover:bg-amber-500/50 text-amber-100 transition-colors"
-            onClick={onCancelPlaceParty}
+            onClick={onCancelPlacement}
           >
             Cancel
           </button>
@@ -136,8 +165,9 @@ export function MapHeader({
       <div className="flex-1" />
 
       {/* Travel / Move to Map button */}
-      {activeMap && !showTravelWizard && !isPlacingParty && (
-        hasPartyOnMap ? (
+      {activeMap && !showTravelWizard && !placingName && (
+        <>
+        {hasPartyOnMap && (
           <button
             className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-green-700 hover:bg-green-600 text-sm font-medium text-white transition-colors"
             onClick={onTravel}
@@ -145,15 +175,37 @@ export function MapHeader({
             <Navigation className="w-3.5 h-3.5" />
             Travel
           </button>
-        ) : isGmMode ? (
-          <button
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-amber-600 hover:bg-amber-500 text-sm font-medium text-white transition-colors"
-            onClick={onPlaceParty}
-          >
-            <MapPinned className="w-3.5 h-3.5" />
-            Move to Map
-          </button>
-        ) : null
+        )}
+        {isGmMode && (
+          <div className="relative">
+            <button
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-amber-600 hover:bg-amber-500 text-sm font-medium text-white transition-colors"
+              onClick={() => setPlacementOpen((open) => !open)}
+            >
+              <MapPinned className="w-3.5 h-3.5" />
+              Move to Map
+            </button>
+            {placementOpen && (
+              <div className="absolute right-0 top-full z-30 mt-1 w-64 rounded border border-gray-600 bg-gray-800 py-1 shadow-xl">
+                {placementTargets.map((target) => (
+                  <button
+                    key={`${target.kind}:${target.id}`}
+                    type="button"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-200 hover:bg-gray-700"
+                    onClick={() => {
+                      onSelectPlacement?.(target.kind, target.id);
+                      setPlacementOpen(false);
+                    }}
+                  >
+                    <span className="flex-1 truncate">{target.name}</span>
+                    <span className="text-[10px] uppercase text-gray-500">{target.unplaced ? 'unplaced' : target.kind}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        </>
       )}
 
       {/* Image layers (GM only) */}

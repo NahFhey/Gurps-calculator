@@ -10,6 +10,7 @@ import type { TileId, TravelMode, MapModel } from '../../../types/map';
 import { getRouteStats } from '../../../utils/mapTravelValidation';
 import { findTileGridPos } from '../../../utils/mapUtils';
 import { MapPin, Ruler, Route } from 'lucide-react';
+import type { Vehicle, VehicleTypeDef } from '../../../types/party';
 
 interface TravelStep2RouteProps {
   map: MapModel;
@@ -18,6 +19,8 @@ interface TravelStep2RouteProps {
   startTileId: TileId | null;
   onClearRoute: () => void;
   weatherTravelModifier?: number;
+  vehicle: Vehicle | null;
+  vehicleType: VehicleTypeDef | null;
 }
 
 export function TravelStep2Route({
@@ -27,9 +30,13 @@ export function TravelStep2Route({
   startTileId,
   onClearRoute,
   weatherTravelModifier = 0,
+  vehicle,
+  vehicleType,
 }: TravelStep2RouteProps) {
   const hasRoute = routeTileIds.length > 1;
-  const stats = hasRoute ? getRouteStats(map, routeTileIds, mode, weatherTravelModifier) : null;
+  const stats = hasRoute
+    ? getRouteStats(map, routeTileIds, mode, weatherTravelModifier, vehicle, vehicleType)
+    : null;
 
   const startPos = startTileId ? findTileGridPos(map, startTileId) : null;
   const destTileId = hasRoute ? routeTileIds[routeTileIds.length - 1] : null;

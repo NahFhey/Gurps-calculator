@@ -69,3 +69,17 @@ export function cameraPosition(s: CameraState): [number, number, number] {
 export function frameTiles(row: number, col: number, cols: number, rows: number): CameraState {
   return clampCamera({ ...CAMERA_DEFAULT, targetX: col + 0.5, targetZ: row + 0.5 }, cols, rows);
 }
+
+/** Deterministic fan-out offsets for tokens sharing a tile. */
+export function tokenOffsets(
+  count: number,
+  radius: number = 0.22
+): Array<{ dx: number; dz: number }> {
+  const safeCount = Math.max(0, Math.floor(count));
+  if (safeCount === 0) return [];
+  if (safeCount === 1) return [{ dx: 0, dz: 0 }];
+  return Array.from({ length: safeCount }, (_, index) => {
+    const angle = -Math.PI / 2 + (index * Math.PI * 2) / safeCount;
+    return { dx: Math.cos(angle) * radius, dz: Math.sin(angle) * radius };
+  });
+}

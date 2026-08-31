@@ -86,6 +86,7 @@ import type {
   StructureLayer,
   TravelMode,
 } from '../types/map';
+import type { Vehicle, VehicleTypeDef } from '../types/party';
 
 type CampaignStoreValue = {
   state: CampaignState;
@@ -330,10 +331,25 @@ type CampaignStoreValue = {
     mapRemoveStructureLayer: (mapId: MapId, layerId: StructureLayerId) => void;
     mapSetStructureCells: (mapId: MapId, layerId: StructureLayerId, tileIds: TileId[], terrainId: TerrainId | null) => void;
     mapRevealTiles: (mapId: MapId, tileIds: TileId[]) => void;
-    mapSetPartyTile: (mapId: MapId, tileId: TileId | null) => void;
-    mapExecuteTravel: (params: { mapId: MapId; routeTileIds: TileId[]; destinationTileId: TileId; mode: TravelMode; gmOverride: boolean }) => void;
+    mapExecuteTravel: (params: { mapId: MapId; routeTileIds: TileId[]; destinationTileId: TileId; mode: TravelMode; gmOverride: boolean; groupId: Id }) => void;
     mapSetPendingTerrain: (tileIds: TileId[]) => void;
     mapClearPendingTerrain: () => void;
+
+    // Travel groups & vehicles
+    partyCreateGroup: (params: { name: string; memberIds: Id[]; fromGroupId: Id }) => void;
+    partyMoveMembers: (params: { memberIds: Id[]; toGroupId: Id }) => void;
+    partyRenameGroup: (groupId: Id, name: string) => void;
+    partySetActiveGroup: (groupId: Id) => void;
+    partyBoardVehicle: (groupId: Id, vehicleId: Id) => void;
+    partyDisembark: (groupId: Id) => void;
+    partyPlaceGroup: (groupId: Id, mapId: MapId, tileId: TileId) => void;
+    partyUpsertVehicle: (vehicle: Vehicle) => void;
+    partyRemoveVehicle: (vehicleId: Id) => void;
+    partyPlaceVehicle: (vehicleId: Id, mapId: MapId, tileId: TileId) => void;
+    partyDockVehicle: (vehicleId: Id, carrierId: Id) => void;
+    partyUndockVehicle: (vehicleId: Id) => void;
+    partyUpsertVehicleType: (def: VehicleTypeDef) => void;
+    partyRemoveVehicleType: (typeId: string) => void;
   };
 };
 
@@ -696,13 +712,40 @@ export function CampaignStoreProvider({
         dispatch({ type: 'map/setStructureCells', payload: { mapId, layerId, tileIds, terrainId } }),
       mapRevealTiles: (mapId: MapId, tileIds: TileId[]) =>
         dispatch({ type: 'map/revealTiles', payload: { mapId, tileIds } }),
-      mapSetPartyTile: (mapId: MapId, tileId: TileId | null) =>
-        dispatch({ type: 'map/setPartyTile', payload: { mapId, tileId } }),
-      mapExecuteTravel: (params: { mapId: MapId; routeTileIds: TileId[]; destinationTileId: TileId; mode: TravelMode; gmOverride: boolean }) =>
+      mapExecuteTravel: (params: { mapId: MapId; routeTileIds: TileId[]; destinationTileId: TileId; mode: TravelMode; gmOverride: boolean; groupId: Id }) =>
         dispatch({ type: 'map/executeTravel', payload: params }),
       mapSetPendingTerrain: (tileIds: TileId[]) =>
         dispatch({ type: 'map/setPendingTerrain', payload: tileIds }),
       mapClearPendingTerrain: () => dispatch({ type: 'map/clearPendingTerrain' }),
+
+      partyCreateGroup: (params: { name: string; memberIds: Id[]; fromGroupId: Id }) =>
+        dispatch({ type: 'party/createGroup', payload: params }),
+      partyMoveMembers: (params: { memberIds: Id[]; toGroupId: Id }) =>
+        dispatch({ type: 'party/moveMembers', payload: params }),
+      partyRenameGroup: (groupId: Id, name: string) =>
+        dispatch({ type: 'party/renameGroup', payload: { groupId, name } }),
+      partySetActiveGroup: (groupId: Id) =>
+        dispatch({ type: 'party/setActiveGroup', payload: { groupId } }),
+      partyBoardVehicle: (groupId: Id, vehicleId: Id) =>
+        dispatch({ type: 'party/boardVehicle', payload: { groupId, vehicleId } }),
+      partyDisembark: (groupId: Id) =>
+        dispatch({ type: 'party/disembark', payload: { groupId } }),
+      partyPlaceGroup: (groupId: Id, mapId: MapId, tileId: TileId) =>
+        dispatch({ type: 'party/placeGroup', payload: { groupId, mapId, tileId } }),
+      partyUpsertVehicle: (vehicle: Vehicle) =>
+        dispatch({ type: 'party/upsertVehicle', payload: { vehicle } }),
+      partyRemoveVehicle: (vehicleId: Id) =>
+        dispatch({ type: 'party/removeVehicle', payload: { vehicleId } }),
+      partyPlaceVehicle: (vehicleId: Id, mapId: MapId, tileId: TileId) =>
+        dispatch({ type: 'party/placeVehicle', payload: { vehicleId, mapId, tileId } }),
+      partyDockVehicle: (vehicleId: Id, carrierId: Id) =>
+        dispatch({ type: 'party/dockVehicle', payload: { vehicleId, carrierId } }),
+      partyUndockVehicle: (vehicleId: Id) =>
+        dispatch({ type: 'party/undockVehicle', payload: { vehicleId } }),
+      partyUpsertVehicleType: (def: VehicleTypeDef) =>
+        dispatch({ type: 'party/upsertVehicleType', payload: { def } }),
+      partyRemoveVehicleType: (typeId: string) =>
+        dispatch({ type: 'party/removeVehicleType', payload: { typeId } }),
 
       // Storage cleanup
       clearCheckpoints: () => dispatch({ type: 'clearCheckpoints' }),

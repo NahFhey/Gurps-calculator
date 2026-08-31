@@ -18,13 +18,12 @@ import {
   MAP_ADD_LINK,
   MAP_REMOVE_LINK,
   MAP_REVEAL_TILES,
-  MAP_SET_PARTY_TILE,
   MAP_EXECUTE_TRAVEL,
   MAP_SET_PENDING_TERRAIN,
   MAP_CLEAR_PENDING_TERRAIN,
   type MapAction,
 } from '../mapActions';
-import type { CampaignState } from '../../campaignReducer';
+import { createCampaignState, type CampaignState } from '../../campaignReducer';
 import type {
   MapModel,
   MapState,
@@ -97,14 +96,15 @@ function makeMinimalMap(id: string, terrainId = 't-plains'): MapModel {
     markersById: {},
     linksById: {},
     revealedTileIds: new Set<string>([tileA.id]),
-    partyTileId: tileA.id,
     lastSelectedTerrainId: terrainId,
     lastPlacedTerrainId: terrainId,
   };
 }
 
 function makeState(maps: MapState = initialMapState): CampaignState {
-  return { maps: { ...maps, mapsById: { ...maps.mapsById } } } as unknown as CampaignState;
+  const state = createCampaignState();
+  state.maps = { ...maps, mapsById: { ...maps.mapsById } };
+  return state;
 }
 
 function applyAction(state: CampaignState, action: MapAction): CampaignState {
@@ -434,45 +434,18 @@ describe('mapReducer', () => {
       expect(next.maps.mapsById['ghost']).toBeUndefined();
     });
 
-    it('MAP_SET_PARTY_TILE sets the party tile on target map and clears it from others', () => {
-      state.maps.mapsById['m2'].partyTileId = 'm2-a';
-      const next = applyAction(state, {
-        type: MAP_SET_PARTY_TILE,
-        payload: { mapId: 'm1', tileId: 'm1-c' },
-      });
-      expect(next.maps.mapsById['m1'].partyTileId).toBe('m1-c');
-      expect(next.maps.mapsById['m2'].partyTileId).toBeNull();
-    });
-
-    it('MAP_SET_PARTY_TILE reveals LOS-visible tiles in line-of-sight mode', () => {
-      state.maps.mapsById.m1.revealedTileIds = new Set(['m1-a']);
-      const next = applyAction(state, {
-        type: MAP_SET_PARTY_TILE,
-        payload: { mapId: 'm1', tileId: 'm1-c' },
-      });
-      expect(next.maps.mapsById.m1.revealedTileIds.has('m1-b')).toBe(true);
-      expect(next.maps.mapsById.m1.revealedTileIds.has('m1-c')).toBe(true);
-    });
-
-    it('MAP_SET_PARTY_TILE does not auto-reveal in open mode', () => {
-      state.maps.mapsById.m1.visionMode = 'open';
-      state.maps.mapsById.m1.revealedTileIds = new Set(['m1-a']);
-      const next = applyAction(state, {
-        type: MAP_SET_PARTY_TILE,
-        payload: { mapId: 'm1', tileId: 'm1-c' },
-      });
-      expect(next.maps.mapsById.m1.revealedTileIds).toEqual(new Set(['m1-a']));
-    });
   });
 
   describe('MAP_EXECUTE_TRAVEL', () => {
     beforeEach(() => {
       state.maps.mapsById = { m1: makeMinimalMap('m1'), m2: makeMinimalMap('m2') };
-      state.maps.mapsById['m2'].partyTileId = 'm2-a';
       state.maps.activeMapId = 'm1';
+      state.entities.travelGroups = {
+        g1: { id: 'g1', name: 'Party', memberIds: [], vehicleId: null, position: { mapId: 'm1', tileId: 'm1-a' } },
+      };
     });
 
-    it('moves the party, reveals route tiles, and clears party on other maps', () => {
+    it('moves the group and reveals route tiles', () => {
       const next = applyAction(state, {
         type: MAP_EXECUTE_TRAVEL,
         payload: {
@@ -481,10 +454,10 @@ describe('mapReducer', () => {
           destinationTileId: 'm1-c',
           mode: 'foot',
           gmOverride: false,
+          groupId: 'g1',
         },
       });
-      expect(next.maps.mapsById['m1'].partyTileId).toBe('m1-c');
-      expect(next.maps.mapsById['m2'].partyTileId).toBeNull();
+      expect(next.entities.travelGroups?.g1.position).toEqual({ mapId: 'm1', tileId: 'm1-c' });
       expect(next.maps.mapsById['m1'].revealedTileIds.has('m1-b')).toBe(true);
       expect(next.maps.mapsById['m1'].revealedTileIds.has('m1-c')).toBe(true);
       expect(next.maps.pendingTerrainAssignment).toBeNull();
@@ -500,6 +473,7 @@ describe('mapReducer', () => {
           destinationTileId: 'm1-c',
           mode: 'foot',
           gmOverride: true,
+          groupId: 'g1',
         },
       });
       expect(next.maps.pendingTerrainAssignment).toEqual(['m1-b']);
@@ -515,6 +489,7 @@ describe('mapReducer', () => {
           destinationTileId: 'm1-c',
           mode: 'foot',
           gmOverride: false,
+          groupId: 'g1',
         },
       });
       expect(next.maps.mapsById.m1.revealedTileIds.has('m1-b')).toBe(true);
@@ -529,6 +504,7 @@ describe('mapReducer', () => {
           destinationTileId: 'x',
           mode: 'foot',
           gmOverride: false,
+          groupId: 'g1',
         },
       });
       expect(next.maps.mapsById['ghost']).toBeUndefined();
@@ -549,7 +525,7 @@ describe('mapReducer', () => {
   });
 
   describe('createNewMap integration', () => {
-    it('MAP_CREATE produces a map with default terrains and a center party tile', () => {
+    it('MAP_CREATE produces a map with default terrains and a revealed center tile', () => {
       const next = applyAction(state, {
         type: MAP_CREATE,
         payload: { name: 'Created', scaleMilesPerTile: 50, startTerrainId: 'plains' },
@@ -557,8 +533,7 @@ describe('mapReducer', () => {
       const id = Object.keys(next.maps.mapsById)[0];
       const m = next.maps.mapsById[id];
       expect(m.scaleMilesPerTile).toBe(50);
-      expect(m.partyTileId).not.toBeNull();
-      expect(m.revealedTileIds.has(m.partyTileId!)).toBe(true);
+      expect(m.revealedTileIds.has(m.grid[4][4])).toBe(true);
     });
 
     // Smoke test that createNewMap stays compatible with the reducer's shape expectations.

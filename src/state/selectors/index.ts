@@ -25,6 +25,17 @@ export {
   selectCharacterExists
 } from './characterSelectors';
 
+export {
+  selectTravelGroups,
+  selectActiveTravelGroup,
+  selectGroupPosition,
+  selectVehicles,
+  selectVehicleTypes,
+  selectGroupsAboardVehicle,
+  selectGroupsOnMap,
+  selectVehiclesOnMap
+} from './partySelectors';
+
 // Inventory selectors
 export {
   // Materials

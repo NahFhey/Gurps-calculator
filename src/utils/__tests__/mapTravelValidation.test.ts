@@ -1,326 +1,236 @@
 import { describe, expect, it } from 'vitest';
-import { validateTravelRoute, getRouteStats } from '../mapTravelValidation';
-import { TRAVEL_BLOCKER_CODES } from '../../types/map';
-import type {
-  MapModel,
-  MapScale,
-  TerrainModel,
-  TileModel,
-  TravelMode,
-} from '../../types/map';
+import { createDefaultGCSData } from '../../types/characterSheet';
+import type { Character } from '../../types/campaign';
 import type { DowntimeState, DowntimeTask } from '../../types/downtime';
+import type { MapModel, MapScale, TerrainModel, TileModel, TravelMode } from '../../types/map';
+import { TRAVEL_BLOCKER_CODES } from '../../types/map';
+import type { TravelGroup, Vehicle, VehicleTypeDef } from '../../types/party';
+import { getRouteStats, validateTravelRoute, type TravelValidationInput } from '../mapTravelValidation';
 
-function makeTerrain(
-  id: string,
-  opts: { passable?: boolean; speed?: number } = {}
-): TerrainModel {
-  const passable = opts.passable ?? true;
-  const speedModifier = opts.speed ?? 1.0;
-  const perMode: TerrainModel['perMode'] = {
-    foot: { passable, speedModifier },
-    boat: { passable, speedModifier },
-    airship: { passable, speedModifier },
+function makeTerrain(id: string, passable = true): TerrainModel {
+  return {
+    id,
+    name: id,
+    color: '#fff',
+    perMode: {
+      foot: { passable, speedModifier: 1 },
+      boat: { passable, speedModifier: 1 },
+      airship: { passable, speedModifier: 1 },
+    },
   };
-  return { id, name: id, color: '#fff', perMode };
 }
 
-function makeUniformMap(
-  rows: number,
-  cols: number,
-  terrain: TerrainModel,
-  opts: {
-    scale?: MapScale;
-    extraTerrains?: TerrainModel[];
-    overrides?: Record<string, string | null>;
-  } = {}
-): MapModel {
-  const scale = opts.scale ?? 12;
+function makeMap(scale: MapScale = 12, overrides: Record<string, string | null> = {}): MapModel {
+  const terrain = makeTerrain('plains');
   const tilesById: Record<string, TileModel> = {};
-  const grid: string[][] = [];
-  for (let r = 0; r < rows; r++) {
-    const row: string[] = [];
-    for (let c = 0; c < cols; c++) {
-      const id = `t-${r}-${c}`;
-      let terrainId: string | null = terrain.id;
-      if (opts.overrides && id in opts.overrides) {
-        terrainId = opts.overrides[id];
-      }
-      tilesById[id] = { id, terrainId, markerIds: [], linkIds: [] };
-      row.push(id);
-    }
-    grid.push(row);
-  }
-  const terrainById: Record<string, TerrainModel> = { [terrain.id]: terrain };
-  for (const t of opts.extraTerrains ?? []) terrainById[t.id] = t;
+  const grid = [Array.from({ length: 5 }, (_, col) => {
+    const id = `t-0-${col}`;
+    tilesById[id] = {
+      id,
+      terrainId: id in overrides ? overrides[id] : terrain.id,
+      markerIds: [],
+      linkIds: [],
+    };
+    return id;
+  })];
   return {
     id: 'map-1',
-    name: 'test',
+    name: 'Test',
     visionMode: 'lineOfSight',
     scaleMilesPerTile: scale,
-    rows,
-    cols,
+    rows: 1,
+    cols: 5,
     grid,
     tilesById,
-    terrainById,
+    terrainById: { plains: terrain },
     markersById: {},
     linksById: {},
     revealedTileIds: new Set(),
-    partyTileId: null,
-    lastSelectedTerrainId: terrain.id,
-    lastPlacedTerrainId: terrain.id,
+    lastSelectedTerrainId: 'plains',
+    lastPlacedTerrainId: 'plains',
   };
 }
 
-function emptyDowntimeState(): DowntimeState {
-  return { tasksById: {}, taskOrder: [], pendingDayLedger: null };
+const emptyDowntime = (): DowntimeState => ({ tasksById: {}, taskOrder: [], pendingDayLedger: null });
+
+function character(id: string, hp = 10): Character {
+  const gcsData = createDefaultGCSData();
+  gcsData.pools.HP.current = hp;
+  gcsData.pools.HP.max = 10;
+  return { id, name: `Name ${id}`, work: { skills: {} }, gcsData };
 }
 
-function makeTask(overrides: Partial<DowntimeTask> = {}): DowntimeTask {
+const group: TravelGroup = {
+  id: 'g1',
+  name: 'Party',
+  memberIds: ['pc-1'],
+  vehicleId: null,
+  position: { mapId: 'map-1', tileId: 't-0-0' },
+};
+const vehicle: Vehicle = {
+  id: 'v1', name: 'Scout', typeId: 'boat-type',
+  position: { kind: 'tile', mapId: 'map-1', tileId: 't-0-0' },
+  createdAt: 0, modifiedAt: 0,
+};
+const boatType: VehicleTypeDef = {
+  id: 'boat-type', name: 'Boat', mode: 'boat', minCrew: 1, hangarSlots: 0,
+};
+
+function input(overrides: Partial<TravelValidationInput> = {}): TravelValidationInput {
   return {
-    id: 'task-1',
-    activityType: 'rest',
-    dayKey: 1,
+    map: makeMap(),
+    routeTileIds: ['t-0-0', 't-0-1'],
+    mode: 'foot',
+    group,
+    characters: { 'pc-1': character('pc-1') },
+    vehicle: null,
+    vehicleType: null,
+    day: 1,
     slot: 0,
-    leaderId: 'pc-1',
-    helperIds: [],
-    status: 'pending',
-    activityData: { type: 'rest' } as DowntimeTask['activityData'],
-    createdAt: 0,
-    updatedAt: 0,
+    downtimeState: emptyDowntime(),
+    isGmMode: false,
     ...overrides,
   };
 }
 
-function addTask(state: DowntimeState, task: DowntimeTask): DowntimeState {
+function task(status: DowntimeTask['status'] = 'pending'): DowntimeTask {
   return {
-    ...state,
-    tasksById: { ...state.tasksById, [task.id]: task },
-    taskOrder: [...state.taskOrder, task.id],
+    id: 'task-1', activityType: 'rest', dayKey: 1, slot: 0,
+    leaderId: 'pc-1', helperIds: [], status,
+    activityData: { type: 'rest', restType: 'sleep', recoveryBonus: 0 }, createdAt: 0, updatedAt: 0,
   };
 }
 
-const FOOT: TravelMode = 'foot';
-const BOAT: TravelMode = 'boat';
-const AIRSHIP: TravelMode = 'airship';
-
 describe('validateTravelRoute', () => {
-  it('returns no blockers for a valid foot route on a 12-mi map', () => {
-    const map = makeUniformMap(3, 3, makeTerrain('plains'));
-    // 2-tile route = 12 mi which matches the foot mode's 12 mi/slot budget.
-    const blockers = validateTravelRoute(
-      map,
-      ['t-0-0', 't-0-1'],
-      FOOT,
-      ['pc-1'],
-      1,
-      0,
-      emptyDowntimeState(),
-      false
-    );
-    expect(blockers).toEqual([]);
+  it('returns no blockers for a valid foot route', () => {
+    expect(validateTravelRoute(input())).toEqual([]);
   });
 
-  it('flags MODE_INCOMPATIBLE when the mode is not allowed at the map scale', () => {
-    const map = makeUniformMap(3, 3, makeTerrain('plains'), { scale: 457 });
-    const blockers = validateTravelRoute(
-      map,
-      ['t-0-0'],
-      FOOT,
-      ['pc-1'],
-      1,
-      0,
-      emptyDowntimeState(),
-      false
-    );
+  it('flags MODE_INCOMPATIBLE for foot travel at world scale', () => {
+    const blockers = validateTravelRoute(input({ map: makeMap(457) }));
     expect(blockers.some((b) => b.code === TRAVEL_BLOCKER_CODES.MODE_INCOMPATIBLE)).toBe(true);
   });
 
-  it('flags PARTY_IN_DOWNTIME when members are assigned to a non-cancelled task this slot', () => {
-    const map = makeUniformMap(3, 3, makeTerrain('plains'));
-    const dt = addTask(emptyDowntimeState(), makeTask({ leaderId: 'pc-1', dayKey: 1, slot: 0 }));
-    const blockers = validateTravelRoute(
-      map,
-      ['t-0-0'],
-      FOOT,
-      ['pc-1', 'pc-2'],
-      1,
-      0,
-      dt,
-      false
-    );
-    const busy = blockers.find((b) => b.code === TRAVEL_BLOCKER_CODES.PARTY_IN_DOWNTIME);
-    expect(busy).toBeDefined();
-    expect(busy?.details).toEqual(['pc-1']);
+  it('checks downtime only for the traveling group', () => {
+    const busy = task();
+    const downtimeState = {
+      ...emptyDowntime(), tasksById: { [busy.id]: busy }, taskOrder: [busy.id],
+    };
+    const blockers = validateTravelRoute(input({ downtimeState }));
+    expect(blockers.find((b) => b.code === TRAVEL_BLOCKER_CODES.PARTY_IN_DOWNTIME)?.details)
+      .toEqual(['Name pc-1']);
+
+    const otherGroup = { ...group, memberIds: ['pc-2'] };
+    expect(validateTravelRoute(input({
+      group: otherGroup,
+      characters: { 'pc-1': character('pc-1'), 'pc-2': character('pc-2') },
+      downtimeState,
+    })).some((b) => b.code === TRAVEL_BLOCKER_CODES.PARTY_IN_DOWNTIME)).toBe(false);
   });
 
-  it('ignores cancelled tasks for the downtime check', () => {
-    const map = makeUniformMap(3, 3, makeTerrain('plains'));
-    const dt = addTask(
-      emptyDowntimeState(),
-      makeTask({ leaderId: 'pc-1', status: 'cancelled' })
-    );
-    const blockers = validateTravelRoute(
-      map,
-      ['t-0-0'],
-      FOOT,
-      ['pc-1'],
-      1,
-      0,
-      dt,
-      false
-    );
-    expect(blockers.some((b) => b.code === TRAVEL_BLOCKER_CODES.PARTY_IN_DOWNTIME)).toBe(false);
+  it('ignores cancelled downtime tasks', () => {
+    const cancelled = task('cancelled');
+    const downtimeState = {
+      ...emptyDowntime(), tasksById: { [cancelled.id]: cancelled }, taskOrder: [cancelled.id],
+    };
+    expect(validateTravelRoute(input({ downtimeState }))
+      .some((b) => b.code === TRAVEL_BLOCKER_CODES.PARTY_IN_DOWNTIME)).toBe(false);
   });
 
-  it('flags INSUFFICIENT_PERSONNEL when the mode requires more crew than available', () => {
-    const map = makeUniformMap(3, 3, makeTerrain('plains'));
-    // boat requires 1 pilot + 4 crew = 5 people
-    const blockers = validateTravelRoute(
-      map,
-      ['t-0-0'],
-      BOAT,
-      ['pc-1', 'pc-2'],
-      1,
-      0,
-      emptyDowntimeState(),
-      false
-    );
-    expect(blockers.some((b) => b.code === TRAVEL_BLOCKER_CODES.INSUFFICIENT_PERSONNEL)).toBe(true);
+  it('blocks an on-foot group when every member is incapacitated and names them', () => {
+    const blockers = validateTravelRoute(input({ characters: { 'pc-1': character('pc-1', 0) } }));
+    const blocker = blockers.find((b) => b.code === TRAVEL_BLOCKER_CODES.PARTY_INCAPACITATED);
+    expect(blocker?.message).toContain('Name pc-1');
   });
 
-  it('flags NULL_TERRAIN_ON_ROUTE for player mode but not for GM mode', () => {
-    const plains = makeTerrain('plains');
-    const map = makeUniformMap(3, 3, plains, { overrides: { 't-0-1': null } });
-    const route = ['t-0-0', 't-0-1', 't-0-2'];
-    const playerBlockers = validateTravelRoute(
-      map,
-      route,
-      FOOT,
-      ['pc-1'],
-      1,
-      0,
-      emptyDowntimeState(),
-      false
-    );
-    expect(playerBlockers.some((b) => b.code === TRAVEL_BLOCKER_CODES.NULL_TERRAIN_ON_ROUTE)).toBe(true);
-
-    const gmBlockers = validateTravelRoute(
-      map,
-      route,
-      FOOT,
-      ['pc-1'],
-      1,
-      0,
-      emptyDowntimeState(),
-      true
-    );
-    expect(gmBlockers.some((b) => b.code === TRAVEL_BLOCKER_CODES.NULL_TERRAIN_ON_ROUTE)).toBe(false);
+  it('allows an on-foot group when one member remains able-bodied', () => {
+    const two = { ...group, memberIds: ['pc-1', 'pc-2'] };
+    const blockers = validateTravelRoute(input({
+      group: two,
+      characters: { 'pc-1': character('pc-1', 0), 'pc-2': character('pc-2') },
+    }));
+    expect(blockers.some((b) => b.code === TRAVEL_BLOCKER_CODES.PARTY_INCAPACITATED)).toBe(false);
   });
 
-  it('flags IMPASSABLE_TERRAIN when a tile is not passable for the mode', () => {
-    const plains = makeTerrain('plains');
-    const wall = makeTerrain('wall', { passable: false });
-    const map = makeUniformMap(3, 3, plains, {
-      extraTerrains: [wall],
-      overrides: { 't-0-1': wall.id },
-    });
-    const blockers = validateTravelRoute(
-      map,
-      ['t-0-0', 't-0-1', 't-0-2'],
-      FOOT,
-      ['pc-1'],
-      1,
-      0,
-      emptyDowntimeState(),
-      false
-    );
-    expect(blockers.some((b) => b.code === TRAVEL_BLOCKER_CODES.IMPASSABLE_TERRAIN)).toBe(true);
+  it('flags INSUFFICIENT_CREW when able and free crew are below minCrew', () => {
+    const type = { ...boatType, minCrew: 2 };
+    const blockers = validateTravelRoute(input({
+      mode: 'boat', vehicle, vehicleType: type,
+      group: { ...group, vehicleId: vehicle.id },
+    }));
+    expect(blockers.some((b) => b.code === TRAVEL_BLOCKER_CODES.INSUFFICIENT_CREW)).toBe(true);
   });
 
-  it('flags EXCEEDS_TIME_BUDGET when route miles exceed the mode budget', () => {
-    // 12-mi tiles, foot budget = 12 mi/slot. A 3-tile straight route is ~24 mi.
-    const map = makeUniformMap(1, 5, makeTerrain('plains'));
-    const blockers = validateTravelRoute(
-      map,
-      ['t-0-0', 't-0-1', 't-0-2'],
-      FOOT,
-      ['pc-1'],
-      1,
-      0,
-      emptyDowntimeState(),
-      false
-    );
-    expect(blockers.some((b) => b.code === TRAVEL_BLOCKER_CODES.EXCEEDS_TIME_BUDGET)).toBe(true);
+  it('does not count incapacitated members as vehicle crew', () => {
+    const two = { ...group, memberIds: ['pc-1', 'pc-2'], vehicleId: vehicle.id };
+    const blockers = validateTravelRoute(input({
+      mode: 'boat', group: two, vehicle, vehicleType: { ...boatType, minCrew: 2 },
+      characters: { 'pc-1': character('pc-1'), 'pc-2': character('pc-2', 0) },
+    }));
+    expect(blockers.some((b) => b.code === TRAVEL_BLOCKER_CODES.INSUFFICIENT_CREW)).toBe(true);
   });
 
-  it('weather modifier widens the budget enough to clear EXCEEDS_TIME_BUDGET', () => {
-    // airship budget = 457 mi/slot; positive weather should always pass for a 2-tile route on 12-mi map
-    const map = makeUniformMap(1, 3, makeTerrain('plains'));
-    const blockers = validateTravelRoute(
-      map,
-      ['t-0-0', 't-0-1'],
-      AIRSHIP,
-      ['pc-1', 'pc-2', 'pc-3', 'pc-4', 'pc-5'],
-      1,
-      0,
-      emptyDowntimeState(),
-      false,
-      2
-    );
-    expect(blockers.some((b) => b.code === TRAVEL_BLOCKER_CODES.EXCEEDS_TIME_BUDGET)).toBe(false);
+  it('flags VEHICLE_MODE_INCOMPATIBLE for the wrong map scale', () => {
+    const blockers = validateTravelRoute(input({
+      map: makeMap(457), mode: 'boat', vehicle, vehicleType: boatType,
+      group: { ...group, vehicleId: vehicle.id },
+    }));
+    expect(blockers.some((b) => b.code === TRAVEL_BLOCKER_CODES.VEHICLE_MODE_INCOMPATIBLE)).toBe(true);
   });
 
-  it('returns empty array when only one tile is in the route (no movement)', () => {
-    const map = makeUniformMap(3, 3, makeTerrain('plains'));
-    const blockers = validateTravelRoute(
-      map,
-      ['t-1-1'],
-      FOOT,
-      ['pc-1'],
-      1,
-      0,
-      emptyDowntimeState(),
-      false
-    );
-    // Single tile: no budget check (needs >1), no impassable issue, no null terrain → valid.
-    expect(blockers).toEqual([]);
+  it('flags null terrain for players but permits the GM override', () => {
+    const map = makeMap(12, { 't-0-1': null });
+    expect(validateTravelRoute(input({ map }))
+      .some((b) => b.code === TRAVEL_BLOCKER_CODES.NULL_TERRAIN_ON_ROUTE)).toBe(true);
+    expect(validateTravelRoute(input({ map, isGmMode: true }))
+      .some((b) => b.code === TRAVEL_BLOCKER_CODES.NULL_TERRAIN_ON_ROUTE)).toBe(false);
+  });
+
+  it('flags impassable terrain', () => {
+    const map = makeMap();
+    map.terrainById.wall = makeTerrain('wall', false);
+    map.tilesById['t-0-1'].terrainId = 'wall';
+    expect(validateTravelRoute(input({ map }))
+      .some((b) => b.code === TRAVEL_BLOCKER_CODES.IMPASSABLE_TERRAIN)).toBe(true);
+  });
+
+  it('flags routes beyond the foot budget', () => {
+    expect(validateTravelRoute(input({ routeTileIds: ['t-0-0', 't-0-1', 't-0-2'] }))
+      .some((b) => b.code === TRAVEL_BLOCKER_CODES.EXCEEDS_TIME_BUDGET)).toBe(true);
+  });
+
+  it('uses vehicle speed instead of the mode budget', () => {
+    const slow = { ...boatType, speedMilesPerSlot: 12 };
+    const fast = { ...boatType, speedMilesPerSlot: 100 };
+    const shared = {
+      mode: 'boat' as TravelMode,
+      routeTileIds: ['t-0-0', 't-0-1', 't-0-2'],
+      group: { ...group, vehicleId: vehicle.id }, vehicle,
+    };
+    expect(validateTravelRoute(input({ ...shared, vehicleType: slow }))
+      .some((b) => b.code === TRAVEL_BLOCKER_CODES.EXCEEDS_TIME_BUDGET)).toBe(true);
+    expect(validateTravelRoute(input({ ...shared, vehicleType: fast }))
+      .some((b) => b.code === TRAVEL_BLOCKER_CODES.EXCEEDS_TIME_BUDGET)).toBe(false);
   });
 });
 
 describe('getRouteStats', () => {
-  it('returns zero miles for a single-tile route and reports it as within budget', () => {
-    const map = makeUniformMap(3, 3, makeTerrain('plains'));
-    const stats = getRouteStats(map, ['t-1-1'], FOOT);
-    expect(stats.tileCount).toBe(1);
-    expect(stats.totalMiles).toBe(0);
-    expect(stats.withinBudget).toBe(true);
+  it('reports a single tile as zero miles within budget', () => {
+    const stats = getRouteStats(makeMap(), ['t-0-0'], 'foot');
+    expect(stats).toMatchObject({ tileCount: 1, totalMiles: 0, withinBudget: true });
   });
 
-  it('computes a terrain breakdown sorted by count descending', () => {
-    const plains = makeTerrain('plains');
-    const forest = makeTerrain('forest');
-    const map = makeUniformMap(1, 5, plains, {
-      extraTerrains: [forest],
-      overrides: { 't-0-2': forest.id, 't-0-3': forest.id },
-    });
-    const stats = getRouteStats(map, ['t-0-0', 't-0-1', 't-0-2', 't-0-3', 't-0-4'], FOOT);
+  it('sorts terrain counts and labels unassigned tiles', () => {
+    const map = makeMap(12, { 't-0-1': null });
+    const stats = getRouteStats(map, ['t-0-0', 't-0-1', 't-0-2'], 'foot');
     expect(stats.terrainBreakdown[0].count).toBeGreaterThanOrEqual(stats.terrainBreakdown[1].count);
-    expect(stats.tileCount).toBe(5);
+    expect(stats.terrainBreakdown).toContainEqual({ name: 'Unassigned', count: 1 });
   });
 
-  it('flags routes that exceed the foot budget on a 12-mi map', () => {
-    const map = makeUniformMap(1, 5, makeTerrain('plains'));
-    const stats = getRouteStats(map, ['t-0-0', 't-0-1', 't-0-2', 't-0-3'], FOOT);
-    expect(stats.withinBudget).toBe(false);
-    expect(stats.totalMiles).toBeGreaterThan(stats.budgetMiles);
-  });
-
-  it('labels tiles with null terrain as Unassigned in the breakdown', () => {
-    const plains = makeTerrain('plains');
-    const map = makeUniformMap(1, 3, plains, { overrides: { 't-0-1': null } });
-    const stats = getRouteStats(map, ['t-0-0', 't-0-1', 't-0-2'], FOOT);
-    const unassigned = stats.terrainBreakdown.find((t) => t.name === 'Unassigned');
-    expect(unassigned).toBeDefined();
-    expect(unassigned?.count).toBe(1);
+  it('uses a vehicle type speed override in displayed stats', () => {
+    const stats = getRouteStats(makeMap(), ['t-0-0', 't-0-1'], 'boat', 0, vehicle, {
+      ...boatType, speedMilesPerSlot: 77,
+    });
+    expect(stats.budgetMiles).toBe(77);
   });
 });

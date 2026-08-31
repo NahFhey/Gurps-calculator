@@ -15,7 +15,6 @@ import {
   MAP_ADD_LINK,
   MAP_REMOVE_LINK,
   MAP_REVEAL_TILES,
-  MAP_SET_PARTY_TILE,
   MAP_EXECUTE_TRAVEL,
   MAP_SET_PENDING_TERRAIN,
   MAP_CLEAR_PENDING_TERRAIN,
@@ -79,7 +78,6 @@ describe('mapActions', () => {
       expect(MAP_ADD_LINK).toBe('map/addLink');
       expect(MAP_REMOVE_LINK).toBe('map/removeLink');
       expect(MAP_REVEAL_TILES).toBe('map/revealTiles');
-      expect(MAP_SET_PARTY_TILE).toBe('map/setPartyTile');
       expect(MAP_EXECUTE_TRAVEL).toBe('map/executeTravel');
       expect(MAP_SET_PENDING_TERRAIN).toBe('map/setPendingTerrain');
       expect(MAP_CLEAR_PENDING_TERRAIN).toBe('map/clearPendingTerrain');
@@ -102,7 +100,6 @@ describe('mapActions', () => {
         MAP_ADD_LINK,
         MAP_REMOVE_LINK,
         MAP_REVEAL_TILES,
-        MAP_SET_PARTY_TILE,
         MAP_EXECUTE_TRAVEL,
         MAP_SET_PENDING_TERRAIN,
         MAP_CLEAR_PENDING_TERRAIN,
@@ -127,7 +124,6 @@ describe('mapActions', () => {
         MAP_ADD_LINK,
         MAP_REMOVE_LINK,
         MAP_REVEAL_TILES,
-        MAP_SET_PARTY_TILE,
         MAP_EXECUTE_TRAVEL,
         MAP_SET_PENDING_TERRAIN,
         MAP_CLEAR_PENDING_TERRAIN,
@@ -207,11 +203,9 @@ describe('mapActions', () => {
       }
     });
 
-    it('returns true for reveal/position actions', () => {
+    it('returns true for reveal actions', () => {
       const actions: MapAction[] = [
         { type: MAP_REVEAL_TILES, payload: { mapId: 'map-1', tileIds: ['tile-1'] } },
-        { type: MAP_SET_PARTY_TILE, payload: { mapId: 'map-1', tileId: 'tile-1' } },
-        { type: MAP_SET_PARTY_TILE, payload: { mapId: 'map-1', tileId: null } },
       ];
       for (const action of actions) {
         expect(isMapAction(action)).toBe(true);
@@ -228,6 +222,7 @@ describe('mapActions', () => {
             destinationTileId: 'tile-2',
             mode: 'foot',
             gmOverride: false,
+            groupId: 'group-1',
           },
         },
       ];

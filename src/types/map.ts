@@ -296,9 +296,6 @@ export interface MapModel {
    */
   revealedTileIds: Set<TileId>;
 
-  /** Party's current tile on this map (null if party is not on this map) */
-  partyTileId: TileId | null;
-
   /** Last terrain selected by GM during map creation */
   lastSelectedTerrainId: TerrainId;
 
@@ -329,7 +326,8 @@ export const TRAVEL_BLOCKER_CODES = {
   MODE_INCOMPATIBLE: 'MODE_INCOMPATIBLE',
   PARTY_IN_DOWNTIME: 'PARTY_IN_DOWNTIME',
   PARTY_INCAPACITATED: 'PARTY_INCAPACITATED',
-  INSUFFICIENT_PERSONNEL: 'INSUFFICIENT_PERSONNEL',
+  INSUFFICIENT_CREW: 'INSUFFICIENT_CREW',
+  VEHICLE_MODE_INCOMPATIBLE: 'VEHICLE_MODE_INCOMPATIBLE',
   NULL_TERRAIN_ON_ROUTE: 'NULL_TERRAIN_ON_ROUTE',
   IMPASSABLE_TERRAIN: 'IMPASSABLE_TERRAIN',
   EXCEEDS_TIME_BUDGET: 'EXCEEDS_TIME_BUDGET',
