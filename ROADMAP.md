@@ -305,31 +305,43 @@ Shipped as a four-lane bundle (design: [`docs/ACTIVITY_SYSTEM_13B_PLAN.md`](./do
 
 ---
 
-## Phase 14: Map & Location System (Feature)
+## Phase 14: Map, Travel & Location System (Feature)
 
-**Goal:** Bring the existing map infrastructure to full functionality.
+**Goal:** One movement model on the map — travel groups, vehicles with docking, multi-day journeys on the time tick — with locations, facilities, and contacts pinned to the map.
 
-### 14a: Map System Polish
-- The foundation is already built (MapPanel, MapGrid, TerrainEditor, TravelWizard — 25 files)
-- Polish MapGrid interaction (zoom, pan, selection)
-- Complete terrain assignment and climate system
-- Weather generation tied to location and season
-- Random encounter tables per terrain/region
+**Designed 2026-08-31** (grill-me session, 25 decisions; see [`docs/MAP_TRAVEL_14_PLAN.md`](./docs/MAP_TRAVEL_14_PLAN.md)). The original 14a text was stale — MapGrid was already replaced by the three.js scene (`SPEC-map-three.md`) with zoom/pan/selection done; the location-graph travel system (`TravelPanel`, `TravelAction`, `activeTravels`) was found declared-but-dead and is being deleted in favor of map-tile travel.
 
-### 14b: Travel System
-- TravelWizard steps are built (Mode -> Route -> Confirm) — complete the flow
-- Travel time calculation based on terrain, encumbrance, weather
-- Travel events and encounters during journeys
-- Resource consumption during travel (food, water, supplies from inventory)
-- Fatigue tracking for long journeys
+### Lane 0: Foundation & Demolition
+- Delete the dead location-graph travel system and orphaned components
+- Unify travel into `advanceTime` (fixes the divergent path that skips weather regen, undo checkpoints, and the paused-task guard)
+- Schema groundwork (bump + hydrate defaults)
 
-### 14c: Location Management
-- Location-based facility access (labs, kitchens, shops tied to places)
-- NPC placement on map locations
-- Location notes and discovery tracking
-- Settlement generator with services and population
+### Lane A: Groups & Vehicles
+- Persistent travel groups (every character in exactly one; split/merge/board require co-location; portrait drag-to-split wizard UI)
+- `Vehicle` entities + GM-editable type catalog (mode, speed, `minCrew`, `hangarSlots`); docking (lancers land on / deploy from the main ship)
+- Group map tokens, active-group selector, union fog-of-war reveal, Manager Vehicles view
 
-**Estimated effort:** 3-4 sessions
+### Lane B: Climate, Season & Weather
+- Per-map climate scalar; per-map ambient weather (terrain applies at consumption time)
+- Minimal season layer (configurable names/lengths, derived from day counter, temp-shift + precipitation multiplier on weather generation)
+- Migration off `Location.currentWeather`
+
+### Lane C: The Journey Loop
+- Journey-as-state progressed only by the time tick; day rhythm with auto-camp nights + forced-march override
+- Navigation rolls with overt drift (navigator, weather/terrain modifiers, lateral deviation, auto-reroute)
+- Terrain-keyed travel event tables (flavor/hazard/encounter; encounter pauses → EncounterSetup hand-off — the 15a hook)
+- Daily cooking as provisioning (real cooking tasks; missed-meal B426 accumulation); worst-member encumbrance gates foot speed
+- `'travel'` downtime tasks materialized in the task bar (crew slots blocked, worked-slot fatigue)
+
+### Lane D: Locations on the Map
+- Marker↔Location link (`MarkerModel.locationId`); location detail panel on the Map tab
+- Facility attachment: `party` | `location` | `vehicle` (main ship as mobile base); position-filtered activity calculator
+- Contacts placed at locations (soft presence hints); discovery tracking (`hidden` markers, presence-based `discoveredAt`, `gmNotes` split)
+- LocationManager adopted into Manager navigation
+
+**Out of scope (per design):** climate zones, full calendar, hidden drift, water tracking, cargo weight ledger, per-group hidden reveal, settlement generator (deferred), sight-based discovery, overland NPC tokens, fast travel.
+
+**Sequencing:** 0 → A → (B ∥ D) → C. **Estimated effort:** 6-8 sessions (grew with vehicles/groups scope)
 
 ---
 
