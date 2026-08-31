@@ -327,7 +327,7 @@ Three fixes out of the "Map tab wiped / maps missing after reload" investigation
 - ✅ Checkpoint snapshots no longer corrupt Set fields (`campaignReducer.ts`)
 - ✅ Cross-tab overwrite guard for campaign state saves (`src/persistence/campaignStorage.ts`): every save stamps a monotonic revision into `campaignStateRevision`; a session whose baseline is older than storage refuses to save (`CampaignStateConflictError` + one-time `campaign-state-conflict` window event, reload to recover) instead of letting a stale tab's whole-blob save silently erase another session's state — the leading candidate for the intermittent `maps.mapsById` localStorage data loss. 6 new tests.
 
-### Lane B: Climate, Season & Weather
+### Lane B: Climate, Season & Weather ✅ COMPLETE (2026-08-31, codex-shepherd, spec `2026-08-31-lane-b-climate-season-weather-14.md`, verdict accepted — zero shepherd fixes; schema 1.5.7; 54 tests; browser-verified season header/calendar editor/arrival weather gen/tick regen)
 - Per-map climate scalar; per-map ambient weather (terrain applies at consumption time)
 - Minimal season layer (configurable names/lengths, derived from day counter, temp-shift + precipitation multiplier on weather generation)
 - Migration off `Location.currentWeather`
@@ -339,7 +339,7 @@ Three fixes out of the "Map tab wiped / maps missing after reload" investigation
 - Daily cooking as provisioning (real cooking tasks; missed-meal B426 accumulation); worst-member encumbrance gates foot speed
 - `'travel'` downtime tasks materialized in the task bar (crew slots blocked, worked-slot fatigue)
 
-### Lane D: Locations on the Map
+### Lane D: Locations on the Map ✅ COMPLETE (2026-08-31, codex-shepherd, spec `2026-08-31-lane-d-locations-on-map-14.md`; schema 1.5.8; 56 tests; browser-verified hidden-pin discovery → location switch → detail panel; first dispatch stalled 2h and was killed — clean re-dispatch succeeded)
 - Marker↔Location link (`MarkerModel.locationId`); location detail panel on the Map tab
 - Facility attachment: `party` | `location` | `vehicle` (main ship as mobile base); position-filtered activity calculator
 - Contacts placed at locations (soft presence hints); discovery tracking (`hidden` markers, presence-based `discoveredAt`, `gmNotes` split)
