@@ -316,10 +316,10 @@ Shipped as a four-lane bundle (design: [`docs/ACTIVITY_SYSTEM_13B_PLAN.md`](./do
 - ✅ Travel unified into `advanceTime`: shared guard/checkpoint/advance+weather helpers; `map/executeTravel` now respects the paused-task guard (before movement), pushes a 'Before travel' undo checkpoint, and regenerates weather (previously silently skipped); reservation-stub `as any` removed
 - ✅ Schema 1.5.5 + idempotent hydrate strip of legacy travel fields; 7 new tests; bonus fix: weather-effect −0 normalization (pre-existing exportImport round-trip flake)
 
-### Lane A: Groups & Vehicles
-- Persistent travel groups (every character in exactly one; split/merge/board require co-location; portrait drag-to-split wizard UI)
-- `Vehicle` entities + GM-editable type catalog (mode, speed, `minCrew`, `hangarSlots`); docking (lancers land on / deploy from the main ship)
-- Group map tokens, active-group selector, union fog-of-war reveal, Manager Vehicles view
+### Lane A: Groups & Vehicles ✅ COMPLETE (2026-08-31, codex-shepherd ×2, specs `2026-08-31-lane-a1/a2-*`, merge `codex/lane-a-groups-vehicles`)
+- ✅ A1 state model: `TravelGroup`/`Vehicle`/`VehicleTypeDef` (seeded catalog: Lancer/Skyship/Riverboat/Sailing Ship), `party/` domain with co-location-gated split/merge/board, one-level docking with `hangarSlots`, `partyTileId` removed (group-aware `map/executeTravel`, union vision), rewritten travel validation (PARTY_INCAPACITATED implemented, INSUFFICIENT_CREW, vehicle speed budgets), schema 1.5.6 + `ensureTravelGroups`
+- ✅ A2 UI: group/vehicle map tokens (portrait sprites, per-tile fan-out, dimmed parked, active ring), active-group selector + generalized placement, wizard Party step (staged dnd-kit Traveling/Staying composition + conveyance, applied atomically at confirm), Manager Vehicles view (catalog + instances + dock/undock)
+- Browser-verified headless (SwiftShader): fresh boot seeds The Party, map create + group placement + token render, zero console errors. 70 new tests (suite: 3,904). Known pre-existing shell reload bug filed as a separate task (predates lane A, verified at baseline).
 
 ### Lane B: Climate, Season & Weather
 - Per-map climate scalar; per-map ambient weather (terrain applies at consumption time)
