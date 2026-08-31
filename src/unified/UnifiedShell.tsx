@@ -764,7 +764,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                     key={moduleItem.id}
                     type="button"
                     data-testid={`rail-module-${moduleItem.id}`}
-                    onClick={() => actions.setActiveModule(isSelected ? '' : moduleItem.id)}
+                    onClick={() => actions.setActiveModule(moduleItem.id)}
                     title={moduleItem.label}
                     className={`rounded border transition-colors px-3 py-2 w-full text-sm ${
                       isSelected
@@ -790,7 +790,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                     key={moduleItem.id}
                     type="button"
                     data-testid={`rail-module-${moduleItem.id}`}
-                    onClick={() => actions.setActiveModule(isSelected ? '' : moduleItem.id)}
+                    onClick={() => actions.setActiveModule(moduleItem.id)}
                     title={moduleItem.label}
                     className={`w-8 h-8 rounded text-xs font-bold flex items-center justify-center ${
                       isSelected
