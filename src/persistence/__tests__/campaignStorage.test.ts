@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createCampaignState } from '../../state/campaignReducer';
-import { loadCampaignState, saveCampaignState } from '../campaignStorage';
+import {
+  loadCampaignState,
+  saveCampaignState,
+  resetRevisionGuard,
+  CampaignStateConflictError,
+} from '../campaignStorage';
 import type { CombatCharacter, CombatSession, CombatItem } from '../../types/campaign';
 import type { CombatState } from '../../types/combatTracker';
 
@@ -80,6 +85,7 @@ function createMockCombatItem(overrides: Record<string, unknown> = {}): CombatIt
 describe('campaignStorage', () => {
   beforeEach(() => {
     localStorage.clear();
+    resetRevisionGuard();
   });
 
   it('loadCampaignState returns defaults when empty', async () => {
@@ -518,6 +524,88 @@ describe('campaignStorage', () => {
           (i) => i.ownerType === 'character' && i.ownerId === 'c1'
         )
       ).toBe(true);
+    });
+  });
+
+  describe('cross-tab revision guard', () => {
+    it('stamps a monotonically increasing revision on each save', async () => {
+      await loadCampaignState();
+      const state = createCampaignState();
+
+      await saveCampaignState(state);
+      expect(localStorage.getItem('campaignStateRevision')).toBe('1');
+
+      await saveCampaignState(state);
+      expect(localStorage.getItem('campaignStateRevision')).toBe('2');
+    });
+
+    it('refuses to save when another tab has advanced the stored revision', async () => {
+      await loadCampaignState();
+      const state = createCampaignState();
+      state.time.day = 3;
+      await saveCampaignState(state);
+
+      // Simulate another tab saving after this session's last write
+      localStorage.setItem('campaignStateRevision', '9');
+      const otherTabBlob = localStorage.getItem('campaignState');
+
+      state.time.day = 4;
+      await expect(saveCampaignState(state)).rejects.toBeInstanceOf(CampaignStateConflictError);
+      // The other tab's saved blob was not overwritten
+      expect(localStorage.getItem('campaignState')).toBe(otherTabBlob);
+      expect(localStorage.getItem('campaignStateRevision')).toBe('9');
+
+      // Subsequent saves from this stale session stay refused
+      await expect(saveCampaignState(state)).rejects.toBeInstanceOf(CampaignStateConflictError);
+    });
+
+    it('announces the conflict via a window event exactly once', async () => {
+      await loadCampaignState();
+      const state = createCampaignState();
+      await saveCampaignState(state);
+
+      const events: Event[] = [];
+      const listener = (event: Event) => events.push(event);
+      window.addEventListener('campaign-state-conflict', listener);
+      try {
+        localStorage.setItem('campaignStateRevision', '5');
+        await expect(saveCampaignState(state)).rejects.toBeInstanceOf(CampaignStateConflictError);
+        await expect(saveCampaignState(state)).rejects.toBeInstanceOf(CampaignStateConflictError);
+      } finally {
+        window.removeEventListener('campaign-state-conflict', listener);
+      }
+
+      expect(events).toHaveLength(1);
+      expect((events[0] as CustomEvent).detail).toEqual({ storedRevision: 5, sessionRevision: 1 });
+    });
+
+    it('adopts the stored revision at load so a reloaded tab can save again', async () => {
+      await loadCampaignState();
+      const state = createCampaignState();
+      await saveCampaignState(state);
+
+      // Another tab advances the revision; this session reloads (as the
+      // conflict warning tells the user to do)
+      localStorage.setItem('campaignStateRevision', '7');
+      await loadCampaignState();
+
+      await saveCampaignState(state);
+      expect(localStorage.getItem('campaignStateRevision')).toBe('8');
+    });
+
+    it('allows saving without a prior load by adopting the stored revision', async () => {
+      localStorage.setItem('campaignStateRevision', '5');
+
+      await saveCampaignState(createCampaignState());
+      expect(localStorage.getItem('campaignStateRevision')).toBe('6');
+    });
+
+    it('treats a malformed stored revision as zero', async () => {
+      localStorage.setItem('campaignStateRevision', 'not-a-number');
+      await loadCampaignState();
+
+      await saveCampaignState(createCampaignState());
+      expect(localStorage.getItem('campaignStateRevision')).toBe('1');
     });
   });
 });

@@ -8,7 +8,7 @@ import {
   CharacterPanelView,
   PendingIntent
 } from './campaignReducer';
-import { saveCampaignState } from '../persistence/campaignStorage';
+import { saveCampaignState, CampaignStateConflictError } from '../persistence/campaignStorage';
 import type {
   Id,
   Character,
@@ -779,7 +779,13 @@ export function CampaignStoreProvider({
     }
     saveTimeoutRef.current = window.setTimeout(() => {
       saveCampaignState(state).catch((error) => {
-        console.error('Failed to save campaign state', error);
+        if (error instanceof CampaignStateConflictError) {
+          // Another tab owns the saved state now; storage already announced
+          // the conflict via the 'campaign-state-conflict' event.
+          console.warn(error.message);
+        } else {
+          console.error('Failed to save campaign state', error);
+        }
       });
     }, 500);
 

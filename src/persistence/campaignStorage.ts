@@ -7,9 +7,63 @@ import { removeLegacyTravelState } from '../utils/dataMigrations';
 import { ensureCharacterTemplates, ensureTravelGroups, ensureInventoryRecords, ensureOwnerAttributedHoldings, ensureConditionVisibility, ensureCombatCharacterCategories, ensureCombatHistoryShape } from './dataMigration';
 
 const CAMPAIGN_STORAGE_KEY = 'campaignState';
+const CAMPAIGN_REVISION_KEY = 'campaignStateRevision';
 // Legacy key as a string literal on purpose: the field no longer exists on
 // MapModel, but pre-1.5.6 saves still carry it.
 const LEGACY_PARTY_POSITION_KEY = 'partyTileId';
+
+// ---------------------------------------------------------------------------
+// Cross-tab overwrite guard
+//
+// The entire CampaignState persists as a single blob that each session reads
+// once at boot, so a second tab (or a lingering old session) that dispatches
+// later would overwrite the blob with its own stale in-memory copy, silently
+// erasing everything the other tab saved. Every save bumps a monotonic
+// revision in CAMPAIGN_REVISION_KEY; a session that finds a stored revision
+// newer than the one it booted from (or last wrote) refuses to save and asks
+// for a reload instead.
+// ---------------------------------------------------------------------------
+
+/** Revision this session booted from / last wrote; null until load or first save. */
+let sessionRevision: number | null = null;
+let conflictAnnounced = false;
+
+export class CampaignStateConflictError extends Error {
+  constructor(storedRevision: number, sessionRev: number) {
+    super(
+      `Refusing to save campaign state: storage holds revision ${storedRevision}, ` +
+      `newer than this session's revision ${sessionRev}. Another tab or window has ` +
+      `saved since this session loaded — reload to pick up the latest state.`
+    );
+    this.name = 'CampaignStateConflictError';
+  }
+}
+
+async function readStoredRevision(): Promise<number> {
+  const stored = await storage.get(CAMPAIGN_REVISION_KEY, false);
+  if (!stored?.value) {
+    return 0;
+  }
+  const parsed = Number(stored.value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+async function commitRevision(revision: number) {
+  try {
+    await storage.set(CAMPAIGN_REVISION_KEY, String(revision), false);
+  } catch (error) {
+    // The state blob itself saved; a failed revision stamp only weakens the
+    // guard, so don't fail the save over it.
+    logger.warn('[CampaignStorage] Failed to persist revision stamp', error);
+  }
+  sessionRevision = revision;
+}
+
+/** Test-only: forget this session's revision baseline. */
+export function resetRevisionGuard() {
+  sessionRevision = null;
+  conflictAnnounced = false;
+}
 
 const serializeMapState = (maps: CampaignState['maps']) => {
   const serializedMaps: Record<string, unknown> = {};
@@ -105,6 +159,23 @@ export const hydrateCampaignState = (payload: CampaignState): CampaignState => {
 };
 
 export async function saveCampaignState(state: CampaignState) {
+  const storedRevision = await readStoredRevision();
+  if (sessionRevision !== null && storedRevision > sessionRevision) {
+    if (!conflictAnnounced) {
+      conflictAnnounced = true;
+      logger.warn(
+        `[CampaignStorage] Save refused: stored revision ${storedRevision} is newer than ` +
+        `this session's revision ${sessionRevision} — another tab has saved since this ` +
+        `session loaded. Reload to pick up the latest state.`
+      );
+      window.dispatchEvent(new CustomEvent('campaign-state-conflict', {
+        detail: { storedRevision, sessionRevision },
+      }));
+    }
+    throw new CampaignStateConflictError(storedRevision, sessionRevision);
+  }
+  const nextRevision = Math.max(sessionRevision ?? 0, storedRevision) + 1;
+
   const payload = serializeCampaignState(state);
   try {
     await storage.set(CAMPAIGN_STORAGE_KEY, JSON.stringify(payload), false);
@@ -118,13 +189,15 @@ export async function saveCampaignState(state: CampaignState) {
       logger.log('[CampaignStorage] Quota exceeded — pruning all checkpoints and retrying save');
       try {
         await storage.set(CAMPAIGN_STORAGE_KEY, JSON.stringify(pruned), false);
-        return; // Pruned save succeeded
+        await commitRevision(nextRevision); // Pruned save succeeded
+        return;
       } catch {
         // Still over quota even without checkpoints — re-throw the original error
       }
     }
     throw error;
   }
+  await commitRevision(nextRevision);
 }
 
 /**
@@ -168,6 +241,11 @@ function injectTestSampleData(state: CampaignState): CampaignState {
 }
 
 export async function loadCampaignState(): Promise<CampaignState> {
+  // Adopt whatever revision is on disk as this session's baseline; saves from
+  // this session are refused once another tab advances past it.
+  sessionRevision = await readStoredRevision();
+  conflictAnnounced = false;
+
   const stored = await storage.get(CAMPAIGN_STORAGE_KEY, false);
   if (!stored?.value) {
     const freshState = ensureTravelGroups(ensureCharacterTemplates(createCampaignState()));
