@@ -1,12 +1,12 @@
 /**
  * TravelWizard — 3-step travel planning panel.
  *
- * Step 1: Select travel mode
+ * Step 1: Compose traveling party and choose conveyance
  * Step 2: Select route (click destination on map)
  * Step 3: Validate and confirm
  */
 
-import { useCallback, useEffect, useId, useMemo } from 'react';
+import { useEffect, useId, useMemo } from 'react';
 import type { TileId, TravelMode, MapModel } from '../../../types/map';
 import type { TravelBlocker } from '../../../types/map';
 import type { DowntimeState } from '../../../types/downtime';
@@ -14,10 +14,12 @@ import type { Character, Id } from '../../../types/campaign';
 import type { TravelGroup, Vehicle, VehicleTypeDef } from '../../../types/party';
 import { validateTravelRoute } from '../../../utils/mapTravelValidation';
 import { useWeatherModifiers } from '../../../hooks/useWeatherModifiers';
-import { TravelStep1Mode } from './TravelStep1Mode';
+import { TravelStep1Party, type PartyColumn, type TravelPartySource, type TravelVehicleOption } from './TravelStep1Party';
 import { TravelStep2Route } from './TravelStep2Route';
 import { TravelStep3Confirm } from './TravelStep3Confirm';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { buildStagedGroup } from '../../../utils/travelComposition';
+import { SCALE_TO_MODES } from '../../../constants/map';
 
 interface TravelWizardProps {
   map: MapModel;
@@ -25,9 +27,12 @@ interface TravelWizardProps {
   selectedMode: TravelMode | null;
   routeTileIds: TileId[];
   isGmMode: boolean;
-  memberIds: Id[];
   group: TravelGroup;
   characters: Record<Id, Character>;
+  sources: TravelPartySource[];
+  travelingMemberIds: Id[];
+  selectedVehicleId: Id | null;
+  availableVehicles: TravelVehicleOption[];
   vehicle: Vehicle | null;
   vehicleType: VehicleTypeDef | null;
   startTileId: TileId | null;
@@ -35,13 +40,14 @@ interface TravelWizardProps {
   slot: number;
   downtimeState: DowntimeState;
   onSetStep: (step: 1 | 2 | 3) => void;
-  onSetMode: (mode: TravelMode) => void;
+  onMoveChip: (memberId: Id, to: PartyColumn) => void;
+  onSelectVehicle: (vehicleId: Id | null) => void;
   onClearRoute: () => void;
   onConfirm: () => void;
   onClose: () => void;
 }
 
-const STEP_LABELS = ['Mode', 'Route', 'Confirm'] as const;
+const STEP_LABELS = ['Party', 'Route', 'Confirm'] as const;
 
 export function TravelWizard({
   map,
@@ -49,9 +55,12 @@ export function TravelWizard({
   selectedMode,
   routeTileIds,
   isGmMode,
-  memberIds,
   group,
   characters,
+  sources,
+  travelingMemberIds,
+  selectedVehicleId,
+  availableVehicles,
   vehicle,
   vehicleType,
   startTileId,
@@ -59,14 +68,18 @@ export function TravelWizard({
   slot,
   downtimeState,
   onSetStep,
-  onSetMode,
+  onMoveChip,
+  onSelectVehicle,
   onClearRoute,
   onConfirm,
   onClose,
 }: TravelWizardProps) {
   const { skillBonus: weatherTravelMod } = useWeatherModifiers('travel');
   const titleId = useId();
-  const travelingGroup = useMemo(() => ({ ...group, memberIds }), [group, memberIds]);
+  const travelingGroup = useMemo(
+    () => buildStagedGroup(group, { travelingMemberIds, vehicleId: selectedVehicleId }),
+    [group, selectedVehicleId, travelingMemberIds]
+  );
 
   useEffect(() => {
     const handleKeyDown = (e: globalThis.KeyboardEvent) => {
@@ -103,16 +116,10 @@ export function TravelWizard({
     });
   }, [map, routeTileIds]);
 
-  // Auto-select mode based on map scale
-  const handleModeSelect = useCallback(
-    (mode: TravelMode) => {
-      onSetMode(mode);
-      onSetStep(2);
-    },
-    [onSetMode, onSetStep]
-  );
-
-  const canGoNext = step === 1 ? selectedMode !== null : step === 2 ? routeTileIds.length > 1 : false;
+  const modeAllowed = selectedMode !== null && SCALE_TO_MODES[map.scaleMilesPerTile].includes(selectedMode);
+  const canGoNext = step === 1
+    ? modeAllowed && travelingMemberIds.length > 0
+    : step === 2 ? routeTileIds.length > 1 : false;
   const canGoBack = step > 1;
 
   return (
@@ -169,12 +176,14 @@ export function TravelWizard({
       {/* Step content */}
       <div className="flex-1 overflow-y-auto px-3 py-2">
         {step === 1 && (
-          <TravelStep1Mode
+          <TravelStep1Party
             mapScale={map.scaleMilesPerTile}
-            selectedMode={selectedMode}
-            onSelectMode={handleModeSelect}
-            lockedMode={vehicleType?.mode ?? 'foot'}
-            vehicleName={vehicle ? vehicle.name : null}
+            sources={sources}
+            travelingMemberIds={travelingMemberIds}
+            selectedVehicleId={selectedVehicleId}
+            vehicles={availableVehicles}
+            onMoveChip={onMoveChip}
+            onSelectVehicle={onSelectVehicle}
           />
         )}
         {step === 2 && selectedMode && (

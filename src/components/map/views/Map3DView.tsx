@@ -18,12 +18,12 @@ interface Map3DViewProps {
   selectedTileIds?: Set<TileId>;
   routeTileIds?: TileId[];
   reachableTileIds?: Set<TileId>;
-  activeGroupTileId?: TileId | null;
+  focusTileId?: TileId | null;
   occupantsByTile?: Map<TileId, string[]>;
   /** Combat/actor tokens rendered on tiles (category-colored spheres). */
   tokens?: MapToken[];
   paintModeActive: boolean;
-  placingParty: boolean;
+  placingToken: boolean;
   onTileClick?: (tileId: TileId, row: number, col: number) => void;
   onTileContextMenu?: (tileId: TileId, row: number, col: number, e: TilePointerEvent) => void;
   onTilePaintStart?: (tileId: TileId, row: number, col: number) => void;
@@ -107,8 +107,7 @@ export function Map3DView(props: Map3DViewProps) {
       reachableTileIds: props.reachableTileIds ?? null,
       tokens: props.tokens ?? null,
       paintModeActive: props.paintModeActive,
-      placingParty: props.placingParty,
-      activeGroupTileId: props.activeGroupTileId ?? null,
+      placingToken: props.placingToken,
     });
   }, [
     props.map,
@@ -120,8 +119,7 @@ export function Map3DView(props: Map3DViewProps) {
     props.reachableTileIds,
     props.tokens,
     props.paintModeActive,
-    props.placingParty,
-    props.activeGroupTileId,
+    props.placingToken,
     sceneReady,
   ]);
 
@@ -142,9 +140,9 @@ export function Map3DView(props: Map3DViewProps) {
       )}
       <button
         type="button"
-        aria-label="Frame party"
-        title="Frame party"
-        onClick={() => sceneRef.current?.frameParty()}
+        aria-label="Frame active group"
+        title="Frame active group"
+        onClick={() => sceneRef.current?.frameActive(props.focusTileId ?? null)}
         className="absolute right-3 top-3 z-10 rounded-md border border-gray-600 bg-gray-900/80 p-2 text-gray-200 shadow hover:bg-gray-700"
       >
         <Crosshair className="h-4 w-4" />

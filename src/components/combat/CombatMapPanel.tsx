@@ -148,6 +148,7 @@ export function CombatMapPanel({
       const tileId = linkedMap.grid[p.position.r]?.[p.position.q];
       if (!tileId) continue;
       result.push({
+        id: p.instanceId,
         tileId,
         color: categoryTokenColor(p.category),
         isCurrent: p.instanceId === currentActorInstanceId,
@@ -261,7 +262,7 @@ export function CombatMapPanel({
         visibleTileIds={visibleTileIds}
         tokens={tokens}
         paintModeActive={false}
-        placingParty={false}
+        placingToken={false}
         onTileClick={handleTileClick}
         onTokenDragStart={handleTokenDragStart}
         onTokenDrop={handleTokenDrop}

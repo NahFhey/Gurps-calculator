@@ -170,7 +170,7 @@ function injectTestSampleData(state: CampaignState): CampaignState {
 export async function loadCampaignState(): Promise<CampaignState> {
   const stored = await storage.get(CAMPAIGN_STORAGE_KEY, false);
   if (!stored?.value) {
-    const freshState = ensureCharacterTemplates(createCampaignState());
+    const freshState = ensureTravelGroups(ensureCharacterTemplates(createCampaignState()));
     return injectTestSampleData(freshState);
   }
 
@@ -180,7 +180,7 @@ export async function loadCampaignState(): Promise<CampaignState> {
     return injectTestSampleData(hydratedState);
   } catch (error) {
     console.error('Failed to parse campaign state, using defaults.', error);
-    const freshState = ensureCharacterTemplates(createCampaignState());
+    const freshState = ensureTravelGroups(ensureCharacterTemplates(createCampaignState()));
     return injectTestSampleData(freshState);
   }
 }

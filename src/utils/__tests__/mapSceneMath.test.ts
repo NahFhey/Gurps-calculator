@@ -7,6 +7,7 @@ import {
   frameTiles,
   orbit,
   pan,
+  tokenOffsets,
   zoom,
   type CameraState,
 } from '../mapSceneMath';
@@ -79,5 +80,27 @@ describe('map scene camera math', () => {
     expect(orbit(input, 1, 0, 10, 8)).not.toBe(input);
     expect(zoom(input, 1, 10, 8)).not.toBe(input);
     expect(input).toEqual(state());
+  });
+});
+
+describe('tokenOffsets', () => {
+  it('centers a single token', () => {
+    expect(tokenOffsets(1)).toEqual([{ dx: 0, dz: 0 }]);
+  });
+
+  it('returns distinct offsets for three tokens', () => {
+    const offsets = tokenOffsets(3);
+    expect(new Set(offsets.map(({ dx, dz }) => `${dx}:${dz}`)).size).toBe(3);
+  });
+
+  it('places multiple tokens on the requested radius', () => {
+    for (const offset of tokenOffsets(3, 0.4)) {
+      expect(Math.hypot(offset.dx, offset.dz)).toBeCloseTo(0.4);
+    }
+  });
+
+  it('is deterministic and handles empty counts', () => {
+    expect(tokenOffsets(3)).toEqual(tokenOffsets(3));
+    expect(tokenOffsets(0)).toEqual([]);
   });
 });

@@ -9,7 +9,6 @@ import { ElevationDialog } from '../ElevationDialog';
 import { TerrainPalette } from '../TerrainPalette';
 import { MarkerEditor } from '../MarkerEditor';
 import { MarkerIcon } from '../MarkerIcon';
-import { TravelStep1Mode } from '../TravelStep1Mode';
 import { TravelStep3Confirm } from '../TravelStep3Confirm';
 import { LinkEditor } from '../LinkEditor';
 import { LinksMenu } from '../LinksMenu';
@@ -186,7 +185,7 @@ describe('MapHeader', () => {
     expect(screen.getByText('Travel')).toBeInTheDocument();
   });
 
-  it('displays placing-party banner when isPlacingParty is true', () => {
+  it('displays the named placement banner', () => {
     render(
       <MapHeader
         maps={mockMaps}
@@ -194,13 +193,54 @@ describe('MapHeader', () => {
         isGmMode={true}
         onSelectMap={vi.fn()}
         onCreateMap={vi.fn()}
-        isPlacingParty={true}
-        onCancelPlaceParty={vi.fn()}
+        placingName="the party"
+        onCancelPlacement={vi.fn()}
       />
     );
 
     expect(screen.getByText(/Click any tile to place the party/)).toBeInTheDocument();
     expect(screen.getByText('Cancel')).toBeInTheDocument();
+  });
+
+  it('renders travel groups with counts, conveyance, and elsewhere marker', () => {
+    render(
+      <MapHeader
+        maps={mockMaps}
+        activeMapId={mockMapId1}
+        isGmMode={false}
+        onSelectMap={vi.fn()}
+        onCreateMap={vi.fn()}
+        groups={[
+          { id: 'main', name: 'Main Party', memberCount: 3, vehicleName: 'Zephyr', onThisMap: true },
+          { id: 'scouts', name: 'Scouts', memberCount: 1, vehicleName: null, onThisMap: false },
+        ]}
+        activeGroupId="main"
+        onSelectGroup={vi.fn()}
+      />
+    );
+    expect(screen.getByRole('option', { name: /Main Party \(3\).*aboard Zephyr/ })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /◆ Scouts \(1\)/ })).toBeInTheDocument();
+  });
+
+  it('selects an active travel group', () => {
+    const onSelectGroup = vi.fn();
+    render(
+      <MapHeader
+        maps={mockMaps}
+        activeMapId={mockMapId1}
+        isGmMode={false}
+        onSelectMap={vi.fn()}
+        onCreateMap={vi.fn()}
+        groups={[
+          { id: 'main', name: 'Main Party', memberCount: 3, vehicleName: null, onThisMap: true },
+          { id: 'scouts', name: 'Scouts', memberCount: 1, vehicleName: null, onThisMap: true },
+        ]}
+        activeGroupId="main"
+        onSelectGroup={onSelectGroup}
+      />
+    );
+    fireEvent.change(screen.getByLabelText('Active travel group'), { target: { value: 'scouts' } });
+    expect(onSelectGroup).toHaveBeenCalledWith('scouts');
   });
 
   it('calls onSelectMap when map is selected from dropdown', async () => {
@@ -261,7 +301,7 @@ describe('three-dimensional map view', () => {
         isGmMode={true}
         visionMode="lineOfSight"
         paintModeActive={false}
-        placingParty={false}
+        placingToken={false}
       />
     );
     expect(await screen.findByText('3D map unavailable — WebGL could not start.')).toBeInTheDocument();
@@ -647,68 +687,6 @@ describe('MarkerIcon', () => {
 
     const svg = container.querySelector('svg');
     expect(svg).toHaveStyle({ width: '20px', height: '20px' });
-  });
-});
-
-// ============================================================================
-// TRAVELSTEP1MODE
-// ============================================================================
-
-describe('TravelStep1Mode', () => {
-  it('renders mode buttons', () => {
-    render(
-      <TravelStep1Mode
-        mapScale={12}
-        selectedMode={null}
-        onSelectMode={vi.fn()}
-        lockedMode="foot"
-        vehicleName={null}
-      />
-    );
-
-    const buttons = screen.getAllByRole('button');
-    expect(buttons.length).toBeGreaterThan(0);
-  });
-
-  it('disables invalid modes for map scale', () => {
-    render(
-      <TravelStep1Mode
-        mapScale={12}
-        selectedMode={null}
-        onSelectMode={vi.fn()}
-        lockedMode="foot"
-        vehicleName={null}
-      />
-    );
-
-    const buttons = screen.getAllByRole('button');
-    // At 12-mile scale, some modes should be disabled
-    const disabledButtons = buttons.filter((btn) => btn.getAttribute('disabled') !== null);
-    expect(disabledButtons.length).toBeGreaterThanOrEqual(0);
-    // At least some buttons should exist
-    expect(buttons.length).toBeGreaterThan(0);
-  });
-
-  it('calls onSelectMode when mode is selected', () => {
-    const onSelectMode = vi.fn();
-
-    render(
-      <TravelStep1Mode
-        mapScale={50}
-        selectedMode={null}
-        onSelectMode={onSelectMode}
-        lockedMode="boat"
-        vehicleName="Riverboat"
-      />
-    );
-
-    const buttons = screen.getAllByRole('button');
-    const enabledButton = buttons.find((btn) => !btn.hasAttribute('disabled'));
-
-    if (enabledButton) {
-      fireEvent.click(enabledButton);
-      expect(onSelectMode).toHaveBeenCalled();
-    }
   });
 });
 

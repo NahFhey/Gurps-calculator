@@ -7,6 +7,7 @@ import {
   frameTiles,
   clampCamera,
   orbit,
+  tokenOffsets,
   zoom,
   type CameraState,
 } from '../../../utils/mapSceneMath';
@@ -44,11 +45,16 @@ export interface TokenDragTile {
 
 export type FogMode = 'gm' | 'player-los' | 'player-open';
 
-/** A combat/actor token rendered on a tile (distinct from the overworld party sphere). */
+/** A group, vehicle, or combat actor token rendered on a tile. */
 export interface MapToken {
+  id: string;
   tileId: TileId;
   /** CSS color for the token body (e.g. category color). */
   color: string;
+  kind?: 'group' | 'vehicle';
+  image?: string;
+  label?: string;
+  dimmed?: boolean;
   /** Current actor: rendered larger with a white base ring. */
   isCurrent?: boolean;
   /** Selected token: yellow base ring. */
@@ -57,7 +63,6 @@ export interface MapToken {
 
 export interface MapSceneFrameData {
   map: MapModel;
-  activeGroupTileId?: TileId | null;
   fog: FogMode;
   visibleTileIds: Set<TileId> | null;
   selectedTileIds: Set<TileId> | null;
@@ -65,7 +70,7 @@ export interface MapSceneFrameData {
   reachableTileIds: Set<TileId> | null;
   tokens: MapToken[] | null;
   paintModeActive: boolean;
-  placingParty: boolean;
+  placingToken: boolean;
 }
 
 interface PickEntry {
@@ -107,7 +112,8 @@ export class MapScene {
   private imageGroup: THREE.Group | null = null;
   /** Data-URL textures cached per image layer so paint rebuilds don't re-decode. */
   private readonly imageTextures = new Map<string, { src: string; texture: THREE.Texture }>();
-  private partyGroup: THREE.Group | null = null;
+  /** Round-cropped portrait textures cached by stable token id and source reference. */
+  private readonly tokenImageTextures = new Map<string, { src: string; texture: THREE.CanvasTexture }>();
   private markerGroup: THREE.Group | null = null;
   private linkGroup: THREE.Group | null = null;
   private tokenGroup: THREE.Group | null = null;
@@ -161,8 +167,7 @@ export class MapScene {
       || oldData.map.cols !== data.map.cols
       || oldData.fog !== data.fog
       || oldData.visibleTileIds !== data.visibleTileIds
-      || oldData.tokens !== data.tokens
-      || oldData.activeGroupTileId !== data.activeGroupTileId;
+      || oldData.tokens !== data.tokens;
     if (rebuildTiles) this.rebuildWorld();
     else this.rebuildOverlays();
     this.applyCamera();
@@ -181,13 +186,13 @@ export class MapScene {
     this.needsRender = true;
   }
 
-  frameParty(): void {
+  frameActive(tileId: TileId | null): void {
     if (!this.data) return;
-    const partyPosition = this.data.activeGroupTileId
-      ? findTileGridPos(this.data.map, this.data.activeGroupTileId)
+    const activePosition = tileId
+      ? findTileGridPos(this.data.map, tileId)
       : null;
-    const row = partyPosition?.row ?? (this.data.map.rows - 1) / 2;
-    const col = partyPosition?.col ?? (this.data.map.cols - 1) / 2;
+    const row = activePosition?.row ?? (this.data.map.rows - 1) / 2;
+    const col = activePosition?.col ?? (this.data.map.cols - 1) / 2;
     this.cameraState = frameTiles(row, col, this.data.map.cols, this.data.map.rows);
     this.applyCamera();
     this.saveCamera(this.data.map.id);
@@ -203,6 +208,8 @@ export class MapScene {
     this.disposeWorld();
     for (const entry of this.imageTextures.values()) entry.texture.dispose();
     this.imageTextures.clear();
+    for (const entry of this.tokenImageTextures.values()) entry.texture.dispose();
+    this.tokenImageTextures.clear();
     this.markerTexture?.dispose();
     this.markerTexture = null;
     this.renderer?.dispose();
@@ -418,7 +425,7 @@ export class MapScene {
     } catch {
       // Storage is optional (private mode and sandboxed contexts may reject it).
     }
-    this.frameParty();
+    this.frameActive(null);
   }
 
   private saveCamera(mapId: string): void {
@@ -450,7 +457,6 @@ export class MapScene {
     this.buildStructures();
     this.buildImageLayers();
     this.buildMarkersAndLinks();
-    this.buildParty();
     this.buildTokens();
     this.rebuildOverlays();
   }
@@ -694,47 +700,74 @@ export class MapScene {
     this.scene.add(mesh);
   }
 
-  private buildParty(): void {
-    if (!this.data?.activeGroupTileId) return;
-    const position = findTileGridPos(this.data.map, this.data.activeGroupTileId);
-    if (!position) return;
-    const height = this.tileHeight(this.data.activeGroupTileId);
-    const group = new THREE.Group();
-    const sphereGeometry = new THREE.SphereGeometry(0.22, 16, 12);
-    const sphereMaterial = new THREE.MeshBasicMaterial({ color: '#ffffff' });
-    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    sphere.position.set(position.col + 0.5, height + 0.22, position.row + 0.5);
-    group.add(sphere);
-    const ringGeometry = new THREE.RingGeometry(0.18, 0.28, 24);
-    const ringMaterial = new THREE.MeshBasicMaterial({
-      color: '#ffffff', transparent: true, opacity: 0.6, side: THREE.DoubleSide,
-    });
-    const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.set(position.col + 0.5, height + 0.015, position.row + 0.5);
-    group.add(ring);
-    this.partyGroup = group;
-    this.scene.add(group);
-  }
-
   private buildTokens(): void {
-    if (!this.data?.tokens?.length) return;
+    if (!this.data) return;
+    const tokens = this.data.tokens ?? [];
+    const liveImageTokenIds = new Set(
+      tokens.filter((token) => Boolean(token.image)).map((token) => token.id)
+    );
+    for (const [id, entry] of this.tokenImageTextures) {
+      if (!liveImageTokenIds.has(id)) {
+        entry.texture.dispose();
+        this.tokenImageTextures.delete(id);
+      }
+    }
+    if (tokens.length === 0) return;
     const group = new THREE.Group();
-    for (const token of this.data.tokens) {
-      if (!this.renderedTileIds.has(token.tileId)) continue;
-      const position = findTileGridPos(this.data.map, token.tileId);
+    const byTile = new Map<TileId, MapToken[]>();
+    for (const token of tokens) {
+      byTile.set(token.tileId, [...(byTile.get(token.tileId) ?? []), token]);
+    }
+    for (const [tileId, tokens] of byTile) {
+      if (!this.renderedTileIds.has(tileId)) continue;
+      const position = findTileGridPos(this.data.map, tileId);
       if (!position) continue;
-      const height = this.tileHeight(token.tileId);
-      const radius = token.isCurrent ? 0.26 : 0.2;
-      const sphere = new THREE.Mesh(
-        new THREE.SphereGeometry(radius, 16, 12),
-        new THREE.MeshBasicMaterial({ color: token.color })
-      );
-      sphere.position.set(position.col + 0.5, height + radius, position.row + 0.5);
-      group.add(sphere);
-      if (token.isCurrent || token.isSelected) {
-        const ring = new THREE.Mesh(
-          new THREE.RingGeometry(radius + 0.04, radius + 0.12, 24),
+      const height = this.tileHeight(tileId);
+      const offsets = tokenOffsets(tokens.length);
+      tokens.forEach((token, index) => {
+        const { dx, dz } = offsets[index];
+        const x = position.col + 0.5 + dx;
+        const z = position.row + 0.5 + dz;
+        const opacity = token.dimmed ? 0.45 : 1;
+        const radius = token.isCurrent ? 0.25 : token.kind === 'vehicle' ? 0.23 : 0.2;
+        if (token.image) {
+          const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: this.getTokenImageTexture(token.id, token.image, token.color),
+            transparent: true,
+            opacity,
+            depthWrite: false,
+          }));
+          sprite.position.set(x, height + radius + 0.06, z);
+          sprite.scale.set(radius * 2.15, radius * 2.15, 1);
+          group.add(sprite);
+        } else {
+          const geometry = token.kind === 'vehicle'
+            ? new THREE.BoxGeometry(radius * 1.8, radius * 1.35, radius * 1.8)
+            : new THREE.SphereGeometry(radius, 16, 12);
+          const mesh = new THREE.Mesh(
+            geometry,
+            new THREE.MeshBasicMaterial({ color: token.color, transparent: opacity < 1, opacity })
+          );
+          mesh.position.set(x, height + radius * 0.75, z);
+          group.add(mesh);
+          if (token.label) {
+            const labelTexture = this.createLabelTexture(token.label, token.color);
+            const labelMaterial = new THREE.SpriteMaterial({
+              map: labelTexture,
+              transparent: true,
+              opacity,
+              depthWrite: false,
+            });
+            labelMaterial.userData.disposeMap = true;
+            const label = new THREE.Sprite(labelMaterial);
+            label.position.set(x, height + radius * 2.35, z);
+            label.scale.set(0.38, 0.38, 1);
+            group.add(label);
+          }
+        }
+        if (token.isCurrent || token.isSelected) {
+          const ring = new THREE.Mesh(
+            new THREE.RingGeometry(radius + 0.04, radius + 0.12, 24),
           new THREE.MeshBasicMaterial({
             color: token.isCurrent ? '#ffffff' : '#facc15',
             transparent: true,
@@ -744,14 +777,77 @@ export class MapScene {
           })
         );
         ring.rotation.x = -Math.PI / 2;
-        ring.position.set(position.col + 0.5, height + 0.015, position.row + 0.5);
+        ring.position.set(x, height + 0.015, z);
         group.add(ring);
-      }
+        }
+      });
     }
     if (group.children.length > 0) {
       this.tokenGroup = group;
       this.scene.add(group);
     }
+  }
+
+  private getTokenImageTexture(id: string, src: string, rimColor: string): THREE.CanvasTexture {
+    const cached = this.tokenImageTextures.get(id);
+    if (cached?.src === src) return cached.texture;
+    if (cached) cached.texture.dispose();
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 96;
+    canvas.height = 96;
+    const context = canvas.getContext('2d');
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    this.tokenImageTextures.set(id, { src, texture });
+    if (context) {
+      const image = new Image();
+      image.onload = () => {
+        context.clearRect(0, 0, 96, 96);
+        context.save();
+        context.beginPath();
+        context.arc(48, 48, 43, 0, Math.PI * 2);
+        context.clip();
+        const scale = Math.max(86 / image.naturalWidth, 86 / image.naturalHeight);
+        const width = image.naturalWidth * scale;
+        const height = image.naturalHeight * scale;
+        context.drawImage(image, (96 - width) / 2, (96 - height) / 2, width, height);
+        context.restore();
+        context.beginPath();
+        context.arc(48, 48, 44, 0, Math.PI * 2);
+        context.strokeStyle = rimColor;
+        context.lineWidth = 4;
+        context.stroke();
+        texture.needsUpdate = true;
+        this.needsRender = true;
+      };
+      image.src = src;
+    }
+    return texture;
+  }
+
+  private createLabelTexture(label: string, color: string): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.beginPath();
+      context.arc(32, 32, 28, 0, Math.PI * 2);
+      context.fillStyle = '#111827';
+      context.fill();
+      context.strokeStyle = color;
+      context.lineWidth = 3;
+      context.stroke();
+      context.fillStyle = '#ffffff';
+      context.font = 'bold 27px sans-serif';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText(label.slice(0, 2), 32, 34);
+    }
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
   }
 
   private buildMarkersAndLinks(): void {
@@ -860,11 +956,9 @@ export class MapScene {
       });
       this.imageGroup = null;
     }
-    this.disposeGroup(this.partyGroup);
     this.disposeGroup(this.markerGroup);
     this.disposeGroup(this.linkGroup);
     this.disposeGroup(this.tokenGroup);
-    this.partyGroup = null;
     this.markerGroup = null;
     this.linkGroup = null;
     this.tokenGroup = null;
@@ -884,6 +978,7 @@ export class MapScene {
         objectMaterials.forEach((material) => materials.add(material));
       } else if (object instanceof THREE.Sprite) {
         materials.add(object.material);
+        if (object.material.userData.disposeMap && object.material.map) object.material.map.dispose();
       }
     });
     geometries.forEach((geometry) => geometry.dispose());

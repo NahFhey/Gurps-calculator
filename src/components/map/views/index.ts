@@ -8,7 +8,7 @@ export { MarkerEditor } from './MarkerEditor';
 export { LinkEditor } from './LinkEditor';
 export { LinksMenu } from './LinksMenu';
 export { TravelWizard } from './TravelWizard';
-export { TravelStep1Mode } from './TravelStep1Mode';
+export { TravelStep1Party } from './TravelStep1Party';
 export { TravelStep2Route } from './TravelStep2Route';
 export { TravelStep3Confirm } from './TravelStep3Confirm';
 export { TerrainAssignmentModal } from './TerrainAssignmentModal';
