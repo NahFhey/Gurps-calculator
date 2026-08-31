@@ -9,7 +9,6 @@ import type {
   Location,
   LocationState,
   WeatherTable,
-  TravelAction,
   ActiveWeather
 } from '../../types/location';
 import type { Id } from '../../types/campaign';
@@ -118,46 +117,3 @@ export const selectWeatherTableForLocation = (
     ? state.locations.weatherTables[location.weatherTableId]
     : undefined;
 };
-
-// ============================================================================
-// TRAVEL SELECTORS
-// ============================================================================
-
-/**
- * Select all active travels
- */
-export const selectActiveTravels = (state: CampaignState): TravelAction[] =>
-  state.locations.activeTravels;
-
-/**
- * Select a travel by ID
- */
-export const selectTravelById = (state: CampaignState, id: Id): TravelAction | undefined =>
-  state.locations.activeTravels.find((t) => t.id === id);
-
-/**
- * Select travels by destination
- */
-export const selectTravelsByDestination = (
-  state: CampaignState,
-  destinationId: Id
-): TravelAction[] =>
-  state.locations.activeTravels.filter((t) => t.toLocationId === destinationId);
-
-/**
- * Select travels by origin
- */
-export const selectTravelsByOrigin = (state: CampaignState, originId: Id): TravelAction[] =>
-  state.locations.activeTravels.filter((t) => t.fromLocationId === originId);
-
-/**
- * Select active travel count
- */
-export const selectActiveTravelCount = (state: CampaignState): number =>
-  state.locations.activeTravels.length;
-
-/**
- * Check if party is traveling
- */
-export const selectIsPartyTraveling = (state: CampaignState): boolean =>
-  state.locations.activeTravels.length > 0;

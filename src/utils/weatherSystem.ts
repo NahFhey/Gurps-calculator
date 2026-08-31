@@ -567,7 +567,8 @@ function applyIntensityModifier(
   for (const key of numericKeys) {
     const baseValue = baseEffects[key];
     if (typeof baseValue === 'number') {
-      effects[key] = Math.round(baseValue * multiplier) as never;
+      // || 0 normalizes Math.round(-0.5) === -0, which JSON round-trips as +0
+      effects[key] = (Math.round(baseValue * multiplier) || 0) as never;
     }
   }
 
@@ -864,7 +865,6 @@ export function createInitialLocationState(currentTime: { day: number; slot: num
       [defaultLocation.id]: defaultLocation,
     },
     weatherTables: {},
-    activeTravels: [],
   };
 }
 

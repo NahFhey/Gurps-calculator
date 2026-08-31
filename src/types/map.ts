@@ -335,20 +335,6 @@ export const TRAVEL_BLOCKER_CODES = {
   EXCEEDS_TIME_BUDGET: 'EXCEEDS_TIME_BUDGET',
 } as const;
 
-/**
- * UI state for the travel wizard.
- */
-export interface TravelWizardState {
-  /** Current wizard step */
-  step: 1 | 2 | 3;
-  /** Selected travel mode (null = not yet chosen) */
-  selectedMode: TravelMode | null;
-  /** Ordered list of tile IDs forming the route (start to destination) */
-  routeTileIds: TileId[];
-  /** Current blocking reasons (empty = valid) */
-  blockers: TravelBlocker[];
-}
-
 // ============================================================================
 // MAP STATE (TOP-LEVEL STATE SLICE)
 // ============================================================================
@@ -362,8 +348,6 @@ export interface MapState {
   mapsById: Record<MapId, MapModel>;
   /** Currently active/displayed map (null if none) */
   activeMapId: MapId | null;
-  /** Travel wizard UI state (null if wizard not open) */
-  travelWizard: TravelWizardState | null;
   /** Tile IDs needing terrain assignment after GM override travel (null if none) */
   pendingTerrainAssignment: TileId[] | null;
 }
@@ -406,6 +390,5 @@ export interface TravelModeDefinition {
 export const initialMapState: MapState = {
   mapsById: {},
   activeMapId: null,
-  travelWizard: null,
   pendingTerrainAssignment: null,
 };

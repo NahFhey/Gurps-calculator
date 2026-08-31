@@ -13,7 +13,7 @@ export interface SchemaMetadataEntry {
   migratesFrom?: string[];
 }
 
-export const CURRENT_SCHEMA_VERSION = '1.5.4';
+export const CURRENT_SCHEMA_VERSION = '1.5.5';
 
 export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
   '1.0.0': {
@@ -102,6 +102,14 @@ export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
     description: 'Materials and foods are authoritative per-owner Inventory holdings',
     features: ['owner_material_holdings', 'owner_food_holdings'],
     migratesFrom: ['1.5.3'],
+  },
+  '1.5.5': {
+    name: 'Travel State Cleanup',
+    timestamp: '2026-08-31',
+    breaking: true,
+    description: 'Remove legacy location-graph travel semantics and persisted map travel UI state',
+    features: ['map_tile_travel', 'legacy_travel_cleanup'],
+    migratesFrom: ['1.5.4'],
   },
 };
 

@@ -291,7 +291,6 @@ describe('weatherSystem', () => {
       vi.spyOn(Math, 'random').mockReturnValue(0);
       const state = createInitialLocationState({ day: 0, slot: 0 });
       expect(state.currentLocationId).toBeTruthy();
-      expect(state.activeTravels).toEqual([]);
       expect(state.weatherTables).toEqual({});
 
       const loc = getCurrentLocation(state);
@@ -307,7 +306,6 @@ describe('weatherSystem', () => {
         currentLocationId: null,
         locations: {},
         weatherTables: {},
-        activeTravels: [],
       };
       expect(getCurrentLocation(state)).toBeNull();
       expect(getCurrentWeather(state)).toBeNull();
@@ -318,7 +316,6 @@ describe('weatherSystem', () => {
         currentLocationId: 'missing',
         locations: {},
         weatherTables: {},
-        activeTravels: [],
       };
       expect(getCurrentLocation(state)).toBeNull();
     });

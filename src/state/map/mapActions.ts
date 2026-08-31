@@ -18,7 +18,6 @@ import type {
   LinkModel,
   MapImageLayer,
   StructureLayer,
-  TravelWizardState,
   TravelMode,
   MapModel,
 } from '../../types/map';
@@ -66,10 +65,6 @@ export const MAP_SET_STRUCTURE_CELLS = 'map/setStructureCells' as const;
 // Reveal & position
 export const MAP_REVEAL_TILES = 'map/revealTiles' as const;
 export const MAP_SET_PARTY_TILE = 'map/setPartyTile' as const;
-
-// Travel wizard
-export const MAP_SET_TRAVEL_WIZARD = 'map/setTravelWizard' as const;
-export const MAP_CLEAR_TRAVEL_WIZARD = 'map/clearTravelWizard' as const;
 
 // Travel execution
 export const MAP_EXECUTE_TRAVEL = 'map/executeTravel' as const;
@@ -216,16 +211,7 @@ export type SetPartyTileAction = {
   payload: { mapId: MapId; tileId: TileId | null };
 };
 
-export type SetTravelWizardAction = {
-  type: typeof MAP_SET_TRAVEL_WIZARD;
-  payload: TravelWizardState;
-};
-
-export type ClearTravelWizardAction = {
-  type: typeof MAP_CLEAR_TRAVEL_WIZARD;
-};
-
-export type ExecuteTravelAction = {
+export type MapTravelExecutionAction = {
   type: typeof MAP_EXECUTE_TRAVEL;
   payload: {
     mapId: MapId;
@@ -274,9 +260,7 @@ export type MapAction =
   | SetStructureCellsAction
   | RevealTilesAction
   | SetPartyTileAction
-  | SetTravelWizardAction
-  | ClearTravelWizardAction
-  | ExecuteTravelAction
+  | MapTravelExecutionAction
   | SetPendingTerrainAction
   | ClearPendingTerrainAction;
 
@@ -309,8 +293,6 @@ const MAP_ACTION_TYPES = new Set<string>([
   MAP_SET_STRUCTURE_CELLS,
   MAP_REVEAL_TILES,
   MAP_SET_PARTY_TILE,
-  MAP_SET_TRAVEL_WIZARD,
-  MAP_CLEAR_TRAVEL_WIZARD,
   MAP_EXECUTE_TRAVEL,
   MAP_SET_PENDING_TERRAIN,
   MAP_CLEAR_PENDING_TERRAIN,

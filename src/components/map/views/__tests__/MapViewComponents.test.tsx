@@ -11,7 +11,6 @@ import { MarkerEditor } from '../MarkerEditor';
 import { MarkerIcon } from '../MarkerIcon';
 import { TravelStep1Mode } from '../TravelStep1Mode';
 import { TravelStep3Confirm } from '../TravelStep3Confirm';
-import { TravelBlockerList } from '../TravelBlockerList';
 import { LinkEditor } from '../LinkEditor';
 import { LinksMenu } from '../LinksMenu';
 
@@ -778,39 +777,6 @@ describe('TravelStep3Confirm', () => {
     fireEvent.click(confirmButton);
 
     expect(onConfirm).toHaveBeenCalled();
-  });
-});
-
-// ============================================================================
-// TRAVELBLOCKERLIST
-// ============================================================================
-
-describe('TravelBlockerList', () => {
-  it('returns null when blockers array is empty', () => {
-    const { container } = render(
-      <TravelBlockerList blockers={[]} />
-    );
-
-    expect(container.firstChild).toBeNull();
-  });
-
-  it('renders blocker messages and details', () => {
-    const blockers: TravelBlocker[] = [
-      {
-        code: 'water',
-        message: 'Blocked by water',
-        details: ['Water at (1, 2)', 'Water at (2, 2)'],
-      },
-      { code: 'unknown', message: 'Unknown terrain', details: [] },
-    ];
-
-    render(
-      <TravelBlockerList blockers={blockers} />
-    );
-
-    expect(screen.getByText('Blocked by water')).toBeInTheDocument();
-    expect(screen.getByText('Water at (1, 2)')).toBeInTheDocument();
-    expect(screen.getByText('Unknown terrain')).toBeInTheDocument();
   });
 });
 

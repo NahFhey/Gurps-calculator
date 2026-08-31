@@ -3,7 +3,6 @@ import { initialCampaignState, type CampaignState } from '../../campaignReducer'
 import type {
   Location,
   WeatherTable,
-  TravelAction,
   ActiveWeather,
   Weather,
   WeatherEffects,
@@ -22,12 +21,6 @@ import {
   selectAllWeatherTables,
   selectWeatherTableById,
   selectWeatherTableForLocation,
-  selectActiveTravels,
-  selectTravelById,
-  selectTravelsByDestination,
-  selectTravelsByOrigin,
-  selectActiveTravelCount,
-  selectIsPartyTraveling,
 } from '../locationSelectors';
 
 const emptyEffects: WeatherEffects = {
@@ -115,28 +108,6 @@ const desertTable: WeatherTable = {
   entries: [],
 };
 
-const travelFromForest: TravelAction = {
-  id: 'travel-1',
-  type: 'travel',
-  fromLocationId: 'loc-forest',
-  toLocationId: 'loc-desert',
-  travelers: ['char-1'],
-  startTime: { day: 1, slot: 0 },
-  estimatedArrival: { day: 2, slot: 0 },
-  status: 'inProgress',
-};
-
-const travelBackToForest: TravelAction = {
-  id: 'travel-2',
-  type: 'travel',
-  fromLocationId: 'loc-desert',
-  toLocationId: 'loc-forest',
-  travelers: ['char-2'],
-  startTime: { day: 3, slot: 0 },
-  estimatedArrival: { day: 4, slot: 0 },
-  status: 'planning',
-};
-
 const buildState = (): CampaignState => ({
   ...initialCampaignState,
   locations: {
@@ -149,7 +120,6 @@ const buildState = (): CampaignState => ({
       'wt-forest': forestTable,
       'wt-desert': desertTable,
     },
-    activeTravels: [travelFromForest, travelBackToForest],
   },
 });
 
@@ -260,41 +230,4 @@ describe('locationSelectors', () => {
     });
   });
 
-  describe('travel selectors', () => {
-    it('selectActiveTravels returns all active travels', () => {
-      expect(selectActiveTravels(buildState())).toEqual([travelFromForest, travelBackToForest]);
-    });
-
-    it('selectTravelById returns the matching travel or undefined', () => {
-      const state = buildState();
-      expect(selectTravelById(state, 'travel-1')).toBe(travelFromForest);
-      expect(selectTravelById(state, 'missing')).toBeUndefined();
-    });
-
-    it('selectTravelsByDestination filters by destination', () => {
-      const state = buildState();
-      expect(selectTravelsByDestination(state, 'loc-desert')).toEqual([travelFromForest]);
-      expect(selectTravelsByDestination(state, 'loc-forest')).toEqual([travelBackToForest]);
-      expect(selectTravelsByDestination(state, 'missing')).toEqual([]);
-    });
-
-    it('selectTravelsByOrigin filters by origin', () => {
-      const state = buildState();
-      expect(selectTravelsByOrigin(state, 'loc-forest')).toEqual([travelFromForest]);
-      expect(selectTravelsByOrigin(state, 'loc-desert')).toEqual([travelBackToForest]);
-      expect(selectTravelsByOrigin(state, 'missing')).toEqual([]);
-    });
-
-    it('selectActiveTravelCount returns the number of active travels', () => {
-      expect(selectActiveTravelCount(buildState())).toBe(2);
-    });
-
-    it('selectIsPartyTraveling reflects whether any travels are active', () => {
-      expect(selectIsPartyTraveling(buildState())).toBe(true);
-      const state = buildState();
-      state.locations.activeTravels = [];
-      expect(selectIsPartyTraveling(state)).toBe(false);
-      expect(selectActiveTravelCount(state)).toBe(0);
-    });
-  });
 });

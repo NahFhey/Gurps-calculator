@@ -33,8 +33,6 @@ import {
   MAP_SET_STRUCTURE_CELLS,
   MAP_REVEAL_TILES,
   MAP_SET_PARTY_TILE,
-  MAP_SET_TRAVEL_WIZARD,
-  MAP_CLEAR_TRAVEL_WIZARD,
   MAP_EXECUTE_TRAVEL,
   MAP_SET_PENDING_TERRAIN,
   MAP_CLEAR_PENDING_TERRAIN,
@@ -436,20 +434,6 @@ export function handleMapAction(
     }
 
     // ========================================================================
-    // TRAVEL WIZARD
-    // ========================================================================
-
-    case MAP_SET_TRAVEL_WIZARD: {
-      maps.travelWizard = action.payload;
-      return;
-    }
-
-    case MAP_CLEAR_TRAVEL_WIZARD: {
-      maps.travelWizard = null;
-      return;
-    }
-
-    // ========================================================================
     // TRAVEL EXECUTION
     // ========================================================================
 
@@ -483,10 +467,7 @@ export function handleMapAction(
         maps.mapsById[mapId] = expanded;
       }
 
-      // 4. Clear travel wizard
-      maps.travelWizard = null;
-
-      // 5. Check for null terrain tiles (GM override)
+      // 4. Check for null terrain tiles (GM override)
       if (gmOverride) {
         const nullTiles = routeTileIds.filter((tileId) => {
           const tile = maps.mapsById[mapId]?.tilesById[tileId];

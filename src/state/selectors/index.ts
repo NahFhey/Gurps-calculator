@@ -207,14 +207,7 @@ export {
   selectWeatherTablesRecord,
   selectAllWeatherTables,
   selectWeatherTableById,
-  selectWeatherTableForLocation,
-  // Travel
-  selectActiveTravels,
-  selectTravelById,
-  selectTravelsByDestination,
-  selectTravelsByOrigin,
-  selectActiveTravelCount,
-  selectIsPartyTraveling
+  selectWeatherTableForLocation
 } from './locationSelectors';
 
 export { selectCurrencyConfig, selectPriceBook } from './tradingSelectors';

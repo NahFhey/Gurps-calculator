@@ -6,7 +6,6 @@ export type ManagerView =
   | 'list'
   | 'create'
   | 'edit'
-  | 'travel'
   | 'weatherTables'
   | 'editWeatherTable'
   | 'climates'
