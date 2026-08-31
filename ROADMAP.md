@@ -311,10 +311,10 @@ Shipped as a four-lane bundle (design: [`docs/ACTIVITY_SYSTEM_13B_PLAN.md`](./do
 
 **Designed 2026-08-31** (grill-me session, 25 decisions; see [`docs/MAP_TRAVEL_14_PLAN.md`](./docs/MAP_TRAVEL_14_PLAN.md)). The original 14a text was stale — MapGrid was already replaced by the three.js scene (`SPEC-map-three.md`) with zoom/pan/selection done; the location-graph travel system (`TravelPanel`, `TravelAction`, `activeTravels`) was found declared-but-dead and is being deleted in favor of map-tile travel.
 
-### Lane 0: Foundation & Demolition
-- Delete the dead location-graph travel system and orphaned components
-- Unify travel into `advanceTime` (fixes the divergent path that skips weather regen, undo checkpoints, and the paused-task guard)
-- Schema groundwork (bump + hydrate defaults)
+### Lane 0: Foundation & Demolition ✅ COMPLETE (2026-08-31, codex-shepherd, spec `2026-08-31-lane0-travel-unify-14.md`, merge `codex/lane0-travel-unify`)
+- ✅ Dead location-graph travel system deleted (TravelPanel/TravelView, TravelAction/LocalTravel/activeTravels, connection travel fields, dead travelWizard map slice, orphaned TravelBlockerList) — net −416 lines
+- ✅ Travel unified into `advanceTime`: shared guard/checkpoint/advance+weather helpers; `map/executeTravel` now respects the paused-task guard (before movement), pushes a 'Before travel' undo checkpoint, and regenerates weather (previously silently skipped); reservation-stub `as any` removed
+- ✅ Schema 1.5.5 + idempotent hydrate strip of legacy travel fields; 7 new tests; bonus fix: weather-effect −0 normalization (pre-existing exportImport round-trip flake)
 
 ### Lane A: Groups & Vehicles
 - Persistent travel groups (every character in exactly one; split/merge/board require co-location; portrait drag-to-split wizard UI)
