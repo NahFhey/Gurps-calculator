@@ -7,6 +7,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useCampaignStore } from '../../state/campaignStore';
 import type { MapScale, StructureLayer, StructureLayerId, TerrainId, TerrainModel, TileId, MarkerModel, LinkModel } from '../../types/map';
 import type { Id } from '../../types/campaign';
+import { CLIMATE_LABELS, type ClimateType } from '../../types/location';
 import { MAX_ELEVATION } from '../../constants/map';
 import { findRoute, getReachableTiles } from '../../utils/mapRouter';
 import { computeVisibleTiles } from '../../utils/lineOfSight';
@@ -20,6 +21,7 @@ import { MapContextMenu, type ContextMenuState } from './views/MapContextMenu';
 import { MarkerEditor } from './views/MarkerEditor';
 import { LinkEditor } from './views/LinkEditor';
 import { LinksMenu } from './views/LinksMenu';
+import { LocationDetailPanel } from './views/LocationDetailPanel';
 import { TravelWizard } from './views/TravelWizard';
 import { TerrainAssignmentModal } from './views/TerrainAssignmentModal';
 import { ElevationDialog } from './views/ElevationDialog';
@@ -30,6 +32,7 @@ import {
   selectGroupPosition,
   selectGroupsOnMap,
   selectVehiclesOnMap,
+  selectLocationPins,
 } from '../../state/selectors';
 import { groupsOnMap, vehiclesOnMap } from '../../utils/partyPosition';
 import { resolveGroupPosition } from '../../utils/partyPosition';
@@ -42,6 +45,8 @@ import {
   mapSourceGroupsByMember,
 } from '../../utils/travelComposition';
 import type { PartyColumn } from './views/TravelStep1Party';
+import { getTerrainModifiers } from '../../utils/weatherSystem';
+import { resolveLocationTerrain } from '../../utils/mapUtils';
 
 /** Interaction mode for the map */
 export type MapInteractionMode = 'view' | 'paint' | 'select';
@@ -56,6 +61,11 @@ export function MapPanel() {
   const activeGroupTile = activeMap && activeGroupPosition?.mapId === activeMap.id
     ? activeGroupPosition.tileId
     : null;
+  const climateLabels = useMemo(() => {
+    const labels: Record<string, string> = { ...CLIMATE_LABELS };
+    for (const custom of state.locations.customClimates ?? []) labels[custom.key] = custom.label;
+    return labels;
+  }, [state.locations.customClimates]);
   // UI state
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [interactionMode, setInteractionMode] = useState<MapInteractionMode>('view');
@@ -74,9 +84,10 @@ export function MapPanel() {
   const [showImageLayers, setShowImageLayers] = useState(false);
 
   // Marker/Link editor state
-  const [markerEditorTileId, setMarkerEditorTileId] = useState<TileId | null>(null);
+  const [markerEditor, setMarkerEditor] = useState<{ tileId: TileId; existing?: MarkerModel } | null>(null);
   const [linkEditorTileId, setLinkEditorTileId] = useState<TileId | null>(null);
   const [showLinksMenu, setShowLinksMenu] = useState(false);
+  const [selectedLocationId, setSelectedLocationId] = useState<Id | null>(null);
 
   // Terrain editor state
   const [showTerrainEditor, setShowTerrainEditor] = useState(false);
@@ -167,6 +178,27 @@ export function MapPanel() {
     return occupants;
   }, [activeMap, state]);
 
+  const locationPins = useMemo(
+    () => selectLocationPins(state).filter((pin) => pin.mapId === activeMap?.id),
+    [activeMap?.id, state]
+  );
+  const visibleLocationPins = useMemo(
+    () => locationPins.filter((pin) => isGmMode || pin.visibility === 'player'),
+    [isGmMode, locationPins]
+  );
+  const locationsByTile = useMemo(() => {
+    const result = new Map<TileId, string[]>();
+    for (const pin of visibleLocationPins) {
+      const location = state.locations.locations[pin.locationId];
+      if (!location) continue;
+      result.set(pin.tileId, [...(result.get(pin.tileId) ?? []), location.name]);
+    }
+    return result;
+  }, [state.locations.locations, visibleLocationPins]);
+  const selectedLocationPin = selectedLocationId
+    ? locationPins.find((pin) => pin.locationId === selectedLocationId)
+    : undefined;
+
   const tokens = useMemo(
     () => activeMap
       ? buildMapTokens(state, activeMap.id, activeGroup?.id ?? null)
@@ -248,7 +280,7 @@ export function MapPanel() {
 
   // Create map
   const handleCreateMap = useCallback(
-    (params: { name: string; description?: string; scaleMilesPerTile: MapScale; startTerrainId: TerrainId }) => {
+    (params: { name: string; description?: string; scaleMilesPerTile: MapScale; startTerrainId: TerrainId; climate: ClimateType }) => {
       actions.mapCreateMap(params);
       setShowCreateDialog(false);
     },
@@ -297,9 +329,12 @@ export function MapPanel() {
           }
           return next;
         });
+      } else {
+        const pin = visibleLocationPins.find((candidate) => candidate.tileId === tileId);
+        if (pin) setSelectedLocationId(pin.locationId);
       }
     },
-    [activeMap, activeGroupTile, maps.activeMapId, interactionMode, selectedTerrainId, isGmMode, actions, showTravelWizard, travelStep, travelMode, placing, activeStructureLayer, structureEraseMode]
+    [activeMap, activeGroupTile, maps.activeMapId, interactionMode, selectedTerrainId, isGmMode, actions, showTravelWizard, travelStep, travelMode, placing, activeStructureLayer, structureEraseMode, visibleLocationPins]
   );
 
   const paintTile = useCallback(
@@ -339,10 +374,10 @@ export function MapPanel() {
   const handleTileContextMenu = useCallback(
     (tileId: TileId, row: number, col: number, e: TilePointerEvent) => {
       e.preventDefault();
-      if (!isGmMode) return;
+      if (!isGmMode && !visibleLocationPins.some((pin) => pin.tileId === tileId)) return;
       setContextMenu({ tileId, row, col, x: e.clientX, y: e.clientY });
     },
-    [isGmMode]
+    [isGmMode, visibleLocationPins]
   );
 
   const handleCloseContextMenu = useCallback(() => {
@@ -421,17 +456,38 @@ export function MapPanel() {
 
   // Add marker
   const handleAddMarker = useCallback((tileId: TileId) => {
-    setMarkerEditorTileId(tileId);
+    setMarkerEditor({ tileId });
   }, []);
 
   const handleConfirmMarker = useCallback(
-    (marker: MarkerModel) => {
-      if (!maps.activeMapId) return;
-      actions.mapAddMarker(maps.activeMapId, marker);
-      setMarkerEditorTileId(null);
+    (marker: MarkerModel, newLocationName?: string) => {
+      if (!maps.activeMapId || !activeMap) return;
+      if (newLocationName && marker.locationId) {
+        const terrain = resolveLocationTerrain(activeMap, marker.tileId);
+        actions.addLocation({
+          id: marker.locationId,
+          name: newLocationName,
+          climate: 'temperate',
+          terrain,
+          modifiers: getTerrainModifiers(terrain, state.locations.terrainModifierOverrides),
+          createdAt: Date.now(),
+          modifiedAt: Date.now(),
+        });
+      }
+      if (markerEditor?.existing) {
+        actions.mapUpdateMarker(maps.activeMapId, marker.id, marker);
+      } else {
+        actions.mapAddMarker(maps.activeMapId, marker);
+      }
+      setMarkerEditor(null);
     },
-    [maps.activeMapId, actions]
+    [maps.activeMapId, activeMap, actions, markerEditor?.existing, state.locations.terrainModifierOverrides]
   );
+
+  const handleDeleteMarker = useCallback((marker: MarkerModel) => {
+    if (maps.activeMapId) actions.mapRemoveMarker(maps.activeMapId, marker.id);
+    setMarkerEditor(null);
+  }, [actions, maps.activeMapId]);
 
   // Add link
   const handleAddLink = useCallback((tileId: TileId) => {
@@ -543,6 +599,8 @@ export function MapPanel() {
           groups={headerGroups}
           activeGroupId={activeGroup?.id ?? null}
           onSelectGroup={handleSelectGroup}
+          climateLabels={climateLabels}
+          weatherTables={Object.values(state.locations.weatherTables)}
         />
         <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-4">
           <MapIcon className="w-12 h-12 opacity-30" />
@@ -560,6 +618,7 @@ export function MapPanel() {
           <MapCreateDialog
             onConfirm={handleCreateMap}
             onCancel={() => setShowCreateDialog(false)}
+            climateLabels={climateLabels}
           />
         )}
       </div>
@@ -586,6 +645,8 @@ export function MapPanel() {
         onSelectPlacement={(kind, id) => setPlacing({ kind, id })}
         onCancelPlacement={() => setPlacing(null)}
         onUpdateMapSettings={(changes) => actions.mapUpdateMap(activeMap.id, changes)}
+        climateLabels={climateLabels}
+        weatherTables={Object.values(state.locations.weatherTables)}
         onOpenImages={() => setShowImageLayers(true)}
       />
 
@@ -629,6 +690,7 @@ export function MapPanel() {
           focusTileId={activeGroupTile}
           tokens={tokens}
           occupantsByTile={occupantsByTile}
+          locationsByTile={locationsByTile}
           onTileClick={handleTileClick}
           onTileContextMenu={handleTileContextMenu}
           onTilePaintStart={handleTilePaintStart}
@@ -697,16 +759,37 @@ export function MapPanel() {
           onAddMarker={handleAddMarker}
           onAddLink={handleAddLink}
           onSetElevation={setElevationDialogTileIds}
+          isGmMode={isGmMode}
+          marker={activeMap.tilesById[contextMenu.tileId]?.markerIds
+            .map((id) => activeMap.markersById[id])
+            .find((marker) => marker !== undefined)}
+          hasVisibleLocation={visibleLocationPins.some((pin) => pin.tileId === contextMenu.tileId)}
+          onViewLocation={(tileId) => {
+            const pin = visibleLocationPins.find((candidate) => candidate.tileId === tileId);
+            if (pin) setSelectedLocationId(pin.locationId);
+          }}
+          onEditMarker={(existing) => setMarkerEditor({ tileId: existing.tileId, existing })}
           onClose={handleCloseContextMenu}
         />
       )}
 
       {/* Marker editor */}
-      {markerEditorTileId && (
+      {markerEditor && (
         <MarkerEditor
-          tileId={markerEditorTileId}
+          tileId={markerEditor.tileId}
+          existing={markerEditor.existing}
+          locations={Object.values(state.locations.locations).sort((a, b) => a.name.localeCompare(b.name))}
           onConfirm={handleConfirmMarker}
-          onCancel={() => setMarkerEditorTileId(null)}
+          onDelete={handleDeleteMarker}
+          onCancel={() => setMarkerEditor(null)}
+        />
+      )}
+
+      {selectedLocationId && selectedLocationPin && (
+        <LocationDetailPanel
+          locationId={selectedLocationId}
+          pin={selectedLocationPin}
+          onClose={() => setSelectedLocationId(null)}
         />
       )}
 
@@ -726,6 +809,7 @@ export function MapPanel() {
         <MapCreateDialog
           onConfirm={handleCreateMap}
           onCancel={() => setShowCreateDialog(false)}
+          climateLabels={climateLabels}
         />
       )}
 

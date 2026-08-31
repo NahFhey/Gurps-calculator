@@ -10,7 +10,6 @@ describe('TimeSystem', () => {
       inventories: {},
       toolTemplates: {},
       toolInstances: {},
-      facilities: {},
       currencyLogs: [],
     };
     const reservationEngine = new ReservationEngine(state, {

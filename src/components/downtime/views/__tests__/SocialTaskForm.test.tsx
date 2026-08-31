@@ -44,4 +44,25 @@ describe('SocialTaskForm', () => {
     expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({ activityData: { type: 'social', contactId: '', contactName: 'Harbor Watch' } });
     expect(onSubmit.mock.calls[0]?.[1]).toEqual({ name: 'Harbor Watch', kind: 'faction' });
   });
+
+  it('shows a contact at the active location without an elsewhere warning', () => {
+    const placed = { ...contact, locationId: 'town' };
+    render(<SocialTaskForm characters={[trained]} contacts={[placed]} state={downtimeInitialState} currentDayKey={1} currentSlot={0} locations={[{ id: 'town', name: 'Town', climate: 'temperate', terrain: 'urban', modifiers: { gathering: 0, hunting: 0, foraging: 0, travel: 0 }, createdAt: 1, modifiedAt: 1 }]} currentLocationId="town" onSubmit={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.change(screen.getByTestId('contact-select'), { target: { value: 'guild' } });
+    expect(screen.getByTestId('contact-presence-hint')).toHaveTextContent('at Town');
+    expect(screen.getByTestId('contact-presence-hint')).not.toHaveTextContent('party elsewhere');
+  });
+
+  it('marks a placed contact when the party is elsewhere', () => {
+    const placed = { ...contact, locationId: 'town' };
+    render(<SocialTaskForm characters={[trained]} contacts={[placed]} state={downtimeInitialState} currentDayKey={1} currentSlot={0} locations={[{ id: 'town', name: 'Town', climate: 'temperate', terrain: 'urban', modifiers: { gathering: 0, hunting: 0, foraging: 0, travel: 0 }, createdAt: 1, modifiedAt: 1 }]} currentLocationId="camp" onSubmit={vi.fn()} onCancel={vi.fn()} />);
+    fireEvent.change(screen.getByTestId('contact-select'), { target: { value: 'guild' } });
+    expect(screen.getByTestId('contact-presence-hint')).toHaveTextContent('at Town — party elsewhere');
+  });
+
+  it('shows no presence hint for a contact without a location', () => {
+    renderForm();
+    fireEvent.change(screen.getByTestId('contact-select'), { target: { value: 'guild' } });
+    expect(screen.queryByTestId('contact-presence-hint')).not.toBeInTheDocument();
+  });
 });

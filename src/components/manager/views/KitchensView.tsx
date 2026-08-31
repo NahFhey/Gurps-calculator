@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Plus, Save, X, Trash2 } from 'lucide-react';
 import { toNumberOr } from '../../../utils/helpers';
 import type { KitchensViewProps } from '../../../types/views';
-import type { Kitchen } from '../../../types/campaign';
+import type { FacilityAttachment, Kitchen } from '../../../types/campaign';
+import { FacilityAttachmentControl } from './FacilityAttachmentControl';
 
 /**
  * KitchensView - Manages kitchen facilities
@@ -10,12 +11,13 @@ import type { Kitchen } from '../../../types/campaign';
  * Kitchens provide skill bonuses to cooking based on their rating.
  * Higher-rated kitchens improve cooking rolls and meal quality.
  */
-export function KitchensView({ kitchens, saveKitchens, onDelete }: KitchensViewProps) {
+export function KitchensView({ kitchens, saveKitchens, onDelete, locations = [], vehicles = [] }: KitchensViewProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [newKitchenName, setNewKitchenName] = useState('');
   const [newKitchenRating, setNewKitchenRating] = useState('0');
   const [newKitchenDescription, setNewKitchenDescription] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [newAttachment, setNewAttachment] = useState<FacilityAttachment | undefined>();
 
   function addKitchen() {
     if (!newKitchenName.trim()) {
@@ -33,13 +35,15 @@ export function KitchensView({ kitchens, saveKitchens, onDelete }: KitchensViewP
       id: crypto.randomUUID(),
       name: newKitchenName.trim(),
       rating: rating,
-      description: newKitchenDescription.trim()
+      description: newKitchenDescription.trim(),
+      attachment: newAttachment,
     };
 
     saveKitchens([...kitchens, newKitchen]);
     setNewKitchenName('');
     setNewKitchenRating('0');
     setNewKitchenDescription('');
+    setNewAttachment(undefined);
     setShowAdd(false);
   }
 
@@ -66,6 +70,7 @@ export function KitchensView({ kitchens, saveKitchens, onDelete }: KitchensViewP
               className="w-full bg-gray-600 px-3 py-2 rounded"
             />
           </div>
+          <FacilityAttachmentControl value={newAttachment} locations={locations} vehicles={vehicles} onChange={setNewAttachment} />
           <div>
             <label className="block text-xs text-gray-400 mb-1">Kitchen Rating (0-4)</label>
             <input
@@ -166,6 +171,12 @@ export function KitchensView({ kitchens, saveKitchens, onDelete }: KitchensViewP
                     rows={2}
                   />
                 </div>
+                <FacilityAttachmentControl
+                  value={kitchen.attachment}
+                  locations={locations}
+                  vehicles={vehicles}
+                  onChange={(attachment) => saveKitchens(kitchens.map((entry) => entry.id === kitchen.id ? { ...entry, attachment } : entry))}
+                />
                 <button
                   onClick={() => onDelete('kitchen', kitchen.name, { id: kitchen.id })}
                   className="w-full bg-red-600 py-2 rounded text-sm"

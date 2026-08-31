@@ -20,6 +20,7 @@ interface Map3DViewProps {
   reachableTileIds?: Set<TileId>;
   focusTileId?: TileId | null;
   occupantsByTile?: Map<TileId, string[]>;
+  locationsByTile?: Map<TileId, string[]>;
   /** Combat/actor tokens rendered on tiles (category-colored spheres). */
   tokens?: MapToken[];
   paintModeActive: boolean;
@@ -156,6 +157,9 @@ export function Map3DView(props: Map3DViewProps) {
           <div className="text-gray-400">Elev {getEffectiveElevation(props.map, hover.tileId)}</div>
           {props.occupantsByTile?.get(hover.tileId)?.map((name, index) => (
             <div key={`${name}-${index}`}>{name}</div>
+          ))}
+          {props.locationsByTile?.get(hover.tileId)?.map((name, index) => (
+            <div key={`location-${name}-${index}`}>📍 {name}</div>
           ))}
           {markerCount > 0 && <div>{markerCount} marker(s)</div>}
           {hoverTile.linkIds.length > 0 && <div>Has links</div>}

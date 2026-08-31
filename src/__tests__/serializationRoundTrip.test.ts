@@ -28,6 +28,7 @@ function makeMap(overrides: Partial<MapModel> = {}): MapModel {
   return {
     id: 'map-1',
     name: 'Test Map',
+    climate: 'temperate',
     visionMode: 'lineOfSight',
     scaleMilesPerTile: 12,
     rows: 1,
@@ -137,6 +138,62 @@ describe('serializeCampaignState / hydrateCampaignState round-trip', () => {
     expect(hydrated.entities.vehicles).toEqual(state.entities.vehicles);
     expect(hydrated.entities.vehicleTypes?.['vt-lancer']).toEqual(state.entities.vehicleTypes['vt-lancer']);
     expect(hydrated.ui.activeTravelGroupId).toBe('g1');
+  });
+
+  it('round-trips map climate, ambient weather, and calendar config', () => {
+    const state = createCampaignState();
+    const map = makeMap({
+      climate: 'oceanic',
+      currentWeather: {
+        weather: {
+          type: 'rain', intensity: 'moderate', temperature: 'cool', description: 'Steady rain',
+          effects: { gathering: -1, hunting: -1, travel: -1, crafting: 0, alchemy: 0, cooking: 0, combat: 0, visibility: -1, hearing: 0, slipperyGround: true, reducedVisibility: true, difficultTerrain: false, coldExposure: false, heatExposure: false, fireRisk: -1, trackingMod: 0 },
+        },
+        startedAt: { day: 7, slot: 1 },
+        duration: { type: 'slots', count: 2 },
+        expiresAt: { day: 8, slot: 0 },
+      },
+    });
+    state.maps = { ...state.maps, activeMapId: map.id, mapsById: { [map.id]: map } };
+    state.time.calendar = {
+      seasons: [{ name: 'Flood', days: 30, temperatureShift: -1, precipitationMultiplier: 2 }],
+      startSeasonIndex: 0,
+    };
+    const hydrated = hydrateCampaignState(JSON.parse(JSON.stringify(serializeCampaignState(state))));
+    expect(hydrated.maps.mapsById[map.id].climate).toBe('oceanic');
+    expect(hydrated.maps.mapsById[map.id].currentWeather).toEqual(map.currentWeather);
+    expect(hydrated.time.calendar).toEqual(state.time.calendar);
+  });
+
+  it('round-trips location pins, discovery, facility attachments, and contact placement', () => {
+    const state = createCampaignState();
+    state.locations.locations.town = {
+      id: 'town', name: 'Ravenport', climate: 'oceanic', terrain: 'urban',
+      modifiers: { gathering: 0, hunting: 0, foraging: 0, travel: 0 }, createdAt: 1, modifiedAt: 1,
+    };
+    const map = makeMap();
+    map.markersById.pin = {
+      id: 'pin', tileId: 'tile-1', type: 'location', label: 'Ravenport', visibility: 'player',
+      locationId: 'town', discoveredAt: { day: 7, slot: 0 },
+    };
+    map.tilesById['tile-1'].markerIds = ['pin'];
+    state.maps.mapsById[map.id] = map;
+    state.entities.vehicles = {
+      ship: { id: 'ship', name: 'Ship', typeId: 'type', position: null, createdAt: 1, modifiedAt: 1 },
+    };
+    state.entities.facilities.forge = { id: 'forge', name: 'Forge', facilityType: 'workshop', rating: 2, attachment: { kind: 'location', locationId: 'town' } };
+    state.entities.kitchens.galley = { id: 'galley', name: 'Galley', rating: 1, description: '', attachment: { kind: 'vehicle', vehicleId: 'ship' } };
+    state.entities.alchemyLabs.kit = { id: 'kit', name: 'Kit', rating: 0, description: '', attachment: { kind: 'party' } };
+    state.entities.contacts = {
+      npc: { id: 'npc', name: 'Harbormaster', kind: 'person', modifier: 1, history: [], createdAt: 1, updatedAt: 1, locationId: 'town' },
+    };
+
+    const hydrated = hydrateCampaignState(JSON.parse(JSON.stringify(serializeCampaignState(state))));
+    expect(hydrated.maps.mapsById[map.id].markersById.pin).toMatchObject({ locationId: 'town', discoveredAt: { day: 7, slot: 0 } });
+    expect(hydrated.entities.facilities.forge.attachment).toEqual({ kind: 'location', locationId: 'town' });
+    expect(hydrated.entities.kitchens.galley.attachment).toEqual({ kind: 'vehicle', vehicleId: 'ship' });
+    expect(hydrated.entities.alchemyLabs.kit.attachment).toEqual({ kind: 'party' });
+    expect(hydrated.entities.contacts?.npc.locationId).toBe('town');
   });
 
   it('survives JSON.stringify → JSON.parse → hydrate (simulates storage)', () => {

@@ -17,6 +17,7 @@ import type { SocialData, TaskResults } from '../../../types/downtime';
 import type { SocialAttemptResult } from '../../../utils/social';
 import type { NewContactInput } from './SocialTaskForm';
 import type { SocialTask } from './SocialTaskCard';
+import type { Location } from '../../../types/location';
 
 interface SocialActivityProps {
   currentDayKey: number;
@@ -35,18 +36,20 @@ interface ContactCardProps {
   contact: ContactEntry;
   onSave: (contact: ContactEntry, modifier: number) => void;
   onDelete: (contact: ContactEntry) => void;
+  locations: Location[];
 }
 
-function ContactCard({ contact, onSave, onDelete }: ContactCardProps) {
+function ContactCard({ contact, onSave, onDelete, locations }: ContactCardProps) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(contact.name);
   const [kind, setKind] = useState<ContactKind>(contact.kind);
   const [notes, setNotes] = useState(contact.notes ?? '');
   const [modifier, setModifier] = useState(contact.modifier);
+  const [locationId, setLocationId] = useState(contact.locationId ?? '');
   const save = () => {
     if (!name.trim()) return;
-    onSave({ ...contact, name: name.trim(), kind, notes: notes.trim() || undefined }, modifier);
+    onSave({ ...contact, name: name.trim(), kind, notes: notes.trim() || undefined, locationId: locationId || null }, modifier);
     setEditing(false);
   };
   return (
@@ -55,6 +58,10 @@ function ContactCard({ contact, onSave, onDelete }: ContactCardProps) {
         <div data-testid="contact-edit-form">
           <div className="mb-2 grid grid-cols-2 gap-2"><input aria-label="Contact name" value={name} onChange={(event) => setName(event.target.value)} className="rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-sm text-gray-100" /><select aria-label="Contact kind" value={kind} onChange={(event) => setKind(event.target.value as ContactKind)} className="rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-sm text-gray-100"><option value="person">Person</option><option value="faction">Faction</option><option value="settlement">Settlement</option></select></div>
           <textarea aria-label="Contact notes" value={notes} onChange={(event) => setNotes(event.target.value)} className="mb-2 w-full rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-sm text-gray-100" />
+          <select aria-label="Contact location" value={locationId} onChange={(event) => setLocationId(event.target.value)} className="mb-2 w-full rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-sm text-gray-100">
+            <option value="">— nowhere in particular —</option>
+            {locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
+          </select>
           <label className="mb-3 block text-sm text-gray-300">Standing <input aria-label="Contact modifier" type="number" min={-4} max={4} value={modifier} onChange={(event) => setModifier(Number(event.target.value))} className="ml-2 w-20 rounded border border-gray-600 bg-gray-900 px-2 py-1 text-gray-100" /></label>
           <div className="flex gap-2"><button type="button" onClick={save} data-testid="save-contact-button" className="rounded bg-rose-600 px-3 py-1.5 text-sm text-white">Save</button><button type="button" onClick={() => setEditing(false)} className="rounded border border-gray-600 px-3 py-1.5 text-sm text-gray-300">Cancel</button></div>
         </div>
@@ -80,6 +87,7 @@ export function SocialActivity({ currentDayKey, currentSlot }: SocialActivityPro
   const [validationError, setValidationError] = useState<string | null>(null);
   const [resolvingTask, setResolvingTask] = useState<SocialTask | null>(null);
   const contacts = useMemo(() => Object.values(selectContacts(campaignState)).sort((left, right) => left.name.localeCompare(right.name)), [campaignState]);
+  const locations = useMemo(() => Object.values(campaignState.locations.locations).sort((a, b) => a.name.localeCompare(b.name)), [campaignState.locations.locations]);
   const tasks = useMemo(() => selectTasksForSlot(state, currentDayKey, currentSlot).filter(isSocialTask), [currentDayKey, currentSlot, state]);
   const pendingTasks = tasks.filter((task) => task.status === 'pending' || task.status === 'in_progress');
   const completedTasks = tasks.filter((task) => task.status === 'resolved' || task.status === 'cancelled');
@@ -150,10 +158,10 @@ export function SocialActivity({ currentDayKey, currentSlot }: SocialActivityPro
       {validationError && <div role="alert" data-testid="validation-error" className="mb-4 flex items-center gap-2 rounded border border-red-500 bg-red-900/30 px-3 py-2 text-sm text-red-300"><AlertCircle className="h-4 w-4" /> {validationError}</div>}
       <section className="mb-6" data-testid="contact-ledger"><div className="mb-2 flex items-center justify-between"><h4 className="font-medium text-gray-200">Ledger ({contacts.length})</h4>{!isAddingContact && <button type="button" onClick={() => setIsAddingContact(true)} data-testid="add-contact-button" className="flex items-center gap-1 rounded border border-rose-500/50 px-2 py-1 text-sm text-rose-300"><Plus className="h-3 w-3" /> Add contact</button>}</div>
         {isAddingContact && <div className="mb-3 rounded border border-gray-700 bg-gray-800/60 p-3" data-testid="add-contact-form"><div className="grid grid-cols-2 gap-2"><input aria-label="New contact name" value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Contact name" className="rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-sm text-gray-100" /><select aria-label="New contact kind" value={newKind} onChange={(event) => setNewKind(event.target.value as ContactKind)} className="rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-sm text-gray-100"><option value="person">Person</option><option value="faction">Faction</option><option value="settlement">Settlement</option></select></div><textarea aria-label="New contact notes" value={newNotes} onChange={(event) => setNewNotes(event.target.value)} placeholder="Notes (optional)" className="my-2 w-full rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-sm text-gray-100" /><div className="flex gap-2"><button type="button" onClick={handleAddContact} disabled={!newName.trim()} data-testid="save-new-contact-button" className="rounded bg-rose-600 px-3 py-1.5 text-sm text-white disabled:bg-gray-700">Add</button><button type="button" onClick={() => setIsAddingContact(false)} className="rounded border border-gray-600 px-3 py-1.5 text-sm text-gray-300">Cancel</button></div></div>}
-        {contacts.length === 0 ? <p className="text-sm italic text-gray-400">No contacts in the ledger</p> : <div className="space-y-2">{contacts.map((contact) => <ContactCard key={contact.id} contact={contact} onSave={handleSaveContact} onDelete={(entry) => { if (window.confirm(`Delete ${entry.name}?`)) campaignActions.removeContact(entry.id); }} />)}</div>}
+        {contacts.length === 0 ? <p className="text-sm italic text-gray-400">No contacts in the ledger</p> : <div className="space-y-2">{contacts.map((contact) => <ContactCard key={contact.id} contact={contact} locations={locations} onSave={handleSaveContact} onDelete={(entry) => { if (window.confirm(`Delete ${entry.name}?`)) campaignActions.removeContact(entry.id); }} />)}</div>}
       </section>
       {resolvingTask && resolvingLeader && resolvingContact && <div className="mb-4"><SocialResolutionPanel task={resolvingTask} leader={resolvingLeader} contact={resolvingContact} onFinalize={handleFinalize} onCancel={() => setResolvingTask(null)} /></div>}
-      {isCreating && !resolvingTask && <div className="mb-4"><SocialTaskForm characters={characters} contacts={contacts} state={state} currentDayKey={currentDayKey} currentSlot={currentSlot} onSubmit={handleCreate} onCancel={() => { setIsCreating(false); setValidationError(null); }} /></div>}
+      {isCreating && !resolvingTask && <div className="mb-4"><SocialTaskForm characters={characters} contacts={contacts} state={state} currentDayKey={currentDayKey} currentSlot={currentSlot} locations={locations} currentLocationId={campaignState.locations.currentLocationId} onSubmit={handleCreate} onCancel={() => { setIsCreating(false); setValidationError(null); }} /></div>}
       {!resolvingTask && <><section className="mb-6" data-testid="pending-tasks-section"><h4 className="mb-2 font-medium text-gray-200">Pending ({pendingTasks.length})</h4>{pendingTasks.length === 0 ? <p className="text-sm italic text-gray-400">No pending social tasks</p> : <div className="space-y-2">{pendingTasks.map((task) => <SocialTaskCard key={task.id} task={task} leader={characters.find((character) => character.id === task.leaderId)} contact={selectContacts(campaignState)[task.activityData.contactId]} onResolve={() => setResolvingTask(task)} onCancel={() => cancel(task.id)} />)}</div>}</section><section data-testid="completed-tasks-section"><h4 className="mb-2 font-medium text-gray-200">Completed ({completedTasks.length})</h4>{completedTasks.length === 0 ? <p className="text-sm italic text-gray-400">No completed social tasks</p> : <div className="space-y-2">{completedTasks.map((task) => <SocialTaskCard key={task.id} task={task} leader={characters.find((character) => character.id === task.leaderId)} contact={selectContacts(campaignState)[task.activityData.contactId]} readonly />)}</div>}</section></>}
     </div>
   );

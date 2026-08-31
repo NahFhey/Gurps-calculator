@@ -13,6 +13,7 @@ import type { RemakeViewProps } from '../views/RemakeView';
 import { RemakeView } from '../views/RemakeView';
 import type { Food } from '../types';
 import { StrictMode } from 'react';
+import { createNewMap } from '../../../utils/mapUtils';
 
 type CampaignState = ReturnType<typeof createCampaignState>;
 
@@ -156,6 +157,26 @@ beforeEach(() => {
 });
 
 describe('CookingTab router', () => {
+  it('hard-excludes a location kitchen when the selected leader group is elsewhere', () => {
+    renderRouter(false, () => undefined, (state) => {
+      const map = createNewMap({ name: 'Kitchen Map', scaleMilesPerTile: 12, startTerrainId: 'plains' });
+      const here = map.grid[0][0];
+      const town = map.grid[0][1];
+      map.markersById.town = { id: 'town-pin', tileId: town, type: 'location', label: 'Town', visibility: 'player', locationId: 'town' };
+      state.maps = { ...state.maps, activeMapId: map.id, mapsById: { [map.id]: map } };
+      state.entities.travelGroups = {
+        group: { id: 'group', name: 'Group', memberIds: ['alice'], vehicleId: null, position: { mapId: map.id, tileId: here } },
+      };
+      state.ui.activeTravelGroupId = 'group';
+      state.entities.kitchens = {
+        camp: { id: 'camp', name: 'Camp Kitchen', rating: 1, description: '', attachment: { kind: 'party' } },
+        town: { id: 'town-kitchen', name: 'Town Kitchen', rating: 3, description: '', attachment: { kind: 'location', locationId: 'town' } },
+      };
+    });
+    expect(screen.getByRole('option', { name: /Camp Kitchen/ })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /Town Kitchen/ })).not.toBeInTheDocument();
+  });
+
   it('consumes a cook intent once and preselects only available foods', () => {
     const initialState = makeState();
     const party = Object.values(initialState.entities.inventories).find(inventory => inventory.ownerType === 'party');

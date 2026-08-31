@@ -212,14 +212,18 @@ export {
   selectCurrentLocation,
   selectLocationCount,
   // Weather
-  selectCurrentWeather,
-  selectWeatherForLocation,
   // Weather tables
   selectWeatherTablesRecord,
   selectAllWeatherTables,
   selectWeatherTableById,
-  selectWeatherTableForLocation
 } from './locationSelectors';
+
+export {
+  selectLocationPins,
+  selectPinsForTile,
+  selectPinForLocation,
+  type LocationPin,
+} from './locationPinSelectors';
 
 export { selectCurrencyConfig, selectPriceBook } from './tradingSelectors';
 export {

@@ -31,6 +31,9 @@ export function TradingTaskForm({
   const [merchantName, setMerchantName] = useState(downtimeContext?.currentLocationName ?? '');
   const [opposingSkill, setOpposingSkill] = useState(12);
   const matchingContact = selectContactByName(campaignState, merchantName);
+  const contactLocation = matchingContact?.locationId
+    ? campaignState.locations.locations[matchingContact.locationId]
+    : undefined;
   const availableCharacters = useMemo(() => {
     const ids = selectAvailableCharacterIdsForSlot(
       state,
@@ -95,6 +98,7 @@ export function TradingTaskForm({
           className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-gray-100"
         />
         {matchingContact && <span className="mt-1 inline-block rounded bg-gray-700 px-2 py-0.5 text-xs text-gray-300" data-testid="merchant-standing-badge">{matchingContact.name}: {matchingContact.modifier >= 0 ? '+' : ''}{matchingContact.modifier}</span>}
+        {contactLocation && <span className="mt-1 block text-xs text-gray-500" data-testid="contact-presence-hint">at {contactLocation.name}{contactLocation.id !== campaignState.locations.currentLocationId ? ' — party elsewhere' : ''}</span>}
       </label>
 
       <label className="mb-4 block text-sm text-gray-300">

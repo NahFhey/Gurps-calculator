@@ -1,4 +1,4 @@
-import type { CookingRecipeIngredient } from '../../types/campaign';
+import type { CookingRecipeIngredient, FacilityAttachment } from '../../types/campaign';
 
 export interface Worker {
   id: string;
@@ -19,6 +19,7 @@ export interface Kitchen {
   id: string;
   name: string;
   rating: number;
+  attachment?: FacilityAttachment;
   [key: string]: unknown;
 }
 

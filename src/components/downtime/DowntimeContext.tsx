@@ -42,6 +42,7 @@ import type { ForageZoneProfile, ForageItem, ForagingConfig } from '../../types/
 import type { GatheringItemExtended } from '../../types/gathering';
 import { DEFAULT_FORAGING_CONFIG } from '../../constants/foraging';
 import { selectAllMaterials } from '../../state/selectors/inventorySelectors';
+import { isAttachmentReachable } from '../../utils/facilityAccess';
 
 // ============================================================================
 // CONTEXT TYPE DEFINITIONS
@@ -301,8 +302,10 @@ export function DowntimeProvider({
   // Extract crafting workshops (facilities with type 'workshop')
   const craftingWorkshops = useMemo(() => {
     const facilities = Object.values(campaignState.entities?.facilities ?? {});
-    return facilities.filter((f) => f.facilityType === 'workshop');
-  }, [campaignState.entities?.facilities]);
+    const leaderId = campaignState.entities.travelGroups?.[campaignState.ui.activeTravelGroupId ?? '']?.memberIds[0] ?? '';
+    return facilities.filter((f) => f.facilityType === 'workshop'
+      && isAttachmentReachable(campaignState, f.attachment, leaderId));
+  }, [campaignState]);
 
   // Get current time from campaign state
   const currentDayKey = dayKeyOverride ?? campaignState.time?.day ?? 1;

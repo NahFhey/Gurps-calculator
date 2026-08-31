@@ -1,4 +1,4 @@
-import type { ClimateType, Location, TerrainType, WeatherTable } from '../../../types/location';
+import type { ClimateType, Location, TerrainType } from '../../../types/location';
 import { createDefaultLocationModifiers } from '../../../utils/weatherSystem';
 
 export interface LocationFormViewProps {
@@ -6,7 +6,6 @@ export interface LocationFormViewProps {
   editForm: Partial<Location>;
   allClimateLabels: Record<string, string>;
   allTerrainLabels: Record<string, string>;
-  weatherTables: WeatherTable[];
   onChange: (form: Partial<Location>) => void;
   onCancel: () => void;
   onSubmit: () => void;
@@ -17,7 +16,6 @@ export function LocationFormView({
   editForm,
   allClimateLabels,
   allTerrainLabels,
-  weatherTables,
   onChange,
   onCancel,
   onSubmit,
@@ -57,6 +55,17 @@ export function LocationFormView({
         </div>
 
         <div>
+          <label className="block text-sm text-gray-400 mb-1">GM Notes</label>
+          <textarea
+            value={editForm.gmNotes || ''}
+            onChange={(e) => onChange({ ...editForm, gmNotes: e.target.value })}
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-gray-100"
+            rows={3}
+            placeholder="Private notes for the GM"
+          />
+        </div>
+
+        <div>
           <label className="block text-sm text-gray-400 mb-1">Climate</label>
           <select
             value={editForm.climate || 'temperate'}
@@ -80,23 +89,6 @@ export function LocationFormView({
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
-        </div>
-
-        <div>
-          <label className="block text-sm text-gray-400 mb-1">Weather Table</label>
-          <select
-            value={editForm.weatherTableId || ''}
-            onChange={(e) => onChange({ ...editForm, weatherTableId: e.target.value || undefined })}
-            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-gray-100"
-          >
-            <option value="">Use climate default</option>
-            {weatherTables.map((table) => (
-              <option key={table.id} value={table.id}>{table.name}</option>
-            ))}
-          </select>
-          <p className="text-xs text-gray-500 mt-1">
-            Custom tables override the default weather probabilities for this location's climate
-          </p>
         </div>
 
         <div>

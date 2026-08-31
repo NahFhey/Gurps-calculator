@@ -9,7 +9,7 @@ import type { Location, WeatherTable } from '../../../types/location';
 // MOCK DATA
 // ============================================================================
 
-const mockLocations: Location[] = ([
+const mockLocations: Location[] = [
   {
     id: 'loc-1',
     name: 'Green Valley',
@@ -17,35 +17,8 @@ const mockLocations: Location[] = ([
     terrain: 'forest',
     description: 'A lush forest valley',
     modifiers: { gathering: 2, hunting: 1, foraging: 1, travel: 0 },
-    connections: [],
-    currentWeather: {
-      weather: {
-        type: 'clear',
-        intensity: 'light',
-        temperature: 'mild',
-        description: 'Clear skies',
-        effects: {
-          gathering: 0,
-          hunting: 0,
-          travel: 0,
-          crafting: 0,
-          alchemy: 0,
-          cooking: 0,
-          combat: 0,
-          visibility: 0,
-          hearing: 0,
-          slipperyGround: false,
-          reducedVisibility: false,
-          difficultTerrain: false,
-          coldExposure: false,
-          heatExposure: false,
-          fireRisk: 0,
-          trackingMod: 0,
-        },
-      },
-      startedAt: { day: 1, slot: 1 },
-      duration: { type: 'slots', count: 1 },
-    },
+    createdAt: 1,
+    modifiedAt: 1,
   },
   {
     id: 'loc-2',
@@ -53,37 +26,10 @@ const mockLocations: Location[] = ([
     climate: 'arid',
     terrain: 'desert',
     modifiers: { gathering: -2, hunting: 0, foraging: -2, travel: 1 },
-    connections: [],
-    currentWeather: {
-      weather: {
-        type: 'clear',
-        intensity: 'moderate',
-        temperature: 'hot',
-        description: 'Hot and dry',
-        effects: {
-          gathering: 0,
-          hunting: 0,
-          travel: 0,
-          crafting: 0,
-          alchemy: 0,
-          cooking: 0,
-          combat: 0,
-          visibility: 0,
-          hearing: 0,
-          slipperyGround: false,
-          reducedVisibility: false,
-          difficultTerrain: false,
-          coldExposure: false,
-          heatExposure: true,
-          fireRisk: 2,
-          trackingMod: 1,
-        },
-      },
-      startedAt: { day: 1, slot: 1 },
-      duration: { type: 'days', count: 1 },
-    },
+    createdAt: 1,
+    modifiedAt: 1,
   },
-] as unknown as Location[]);
+];
 
 const mockWeatherTable: WeatherTable = {
   id: 'wt-1',

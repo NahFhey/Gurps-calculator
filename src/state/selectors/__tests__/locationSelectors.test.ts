@@ -3,9 +3,6 @@ import { initialCampaignState, type CampaignState } from '../../campaignReducer'
 import type {
   Location,
   WeatherTable,
-  ActiveWeather,
-  Weather,
-  WeatherEffects,
 } from '../../../types/location';
 import {
   selectLocationsState,
@@ -15,70 +12,17 @@ import {
   selectCurrentLocationId,
   selectCurrentLocation,
   selectLocationCount,
-  selectCurrentWeather,
-  selectWeatherForLocation,
   selectWeatherTablesRecord,
   selectAllWeatherTables,
   selectWeatherTableById,
-  selectWeatherTableForLocation,
 } from '../locationSelectors';
-
-const emptyEffects: WeatherEffects = {
-  gathering: 0,
-  hunting: 0,
-  travel: 0,
-  crafting: 0,
-  alchemy: 0,
-  cooking: 0,
-  combat: 0,
-  visibility: 0,
-  hearing: 0,
-  slipperyGround: false,
-  reducedVisibility: false,
-  difficultTerrain: false,
-  coldExposure: false,
-  heatExposure: false,
-  fireRisk: 0,
-  trackingMod: 0,
-};
-
-const clearWeather: Weather = {
-  type: 'clear',
-  intensity: 'light',
-  temperature: 'mild',
-  description: 'Clear skies',
-  effects: emptyEffects,
-};
-
-const rainWeather: Weather = {
-  type: 'rain',
-  intensity: 'moderate',
-  temperature: 'cool',
-  description: 'Steady rain',
-  effects: emptyEffects,
-};
-
-const activeClear: ActiveWeather = {
-  weather: clearWeather,
-  startedAt: { day: 1, slot: 0 },
-  duration: { type: 'slots', count: 6 },
-};
-
-const activeRain: ActiveWeather = {
-  weather: rainWeather,
-  startedAt: { day: 1, slot: 0 },
-  duration: { type: 'slots', count: 4 },
-};
 
 const forest: Location = {
   id: 'loc-forest',
   name: 'Thornwood Forest',
   climate: 'temperate',
   terrain: 'forest',
-  weatherTableId: 'wt-forest',
-  currentWeather: activeClear,
   modifiers: { gathering: 1, hunting: 1, foraging: 1, travel: 0 },
-  connections: [],
   createdAt: 0,
   modifiedAt: 0,
 };
@@ -88,10 +32,7 @@ const desert: Location = {
   name: 'Sandspire Desert',
   climate: 'arid',
   terrain: 'desert',
-  // No weatherTableId — exercises that branch
-  currentWeather: activeRain,
   modifiers: { gathering: -1, hunting: 0, foraging: -1, travel: -2 },
-  connections: [],
   createdAt: 0,
   modifiedAt: 0,
 };
@@ -176,26 +117,6 @@ describe('locationSelectors', () => {
     });
   });
 
-  describe('weather selectors', () => {
-    it('selectCurrentWeather returns the active weather for the current location', () => {
-      expect(selectCurrentWeather(buildState())).toBe(activeClear);
-    });
-
-    it('selectCurrentWeather returns undefined when there is no current location', () => {
-      const state = buildState();
-      state.locations.currentLocationId = null;
-      expect(selectCurrentWeather(state)).toBeUndefined();
-    });
-
-    it('selectWeatherForLocation returns the weather for a given location', () => {
-      expect(selectWeatherForLocation(buildState(), 'loc-desert')).toBe(activeRain);
-    });
-
-    it('selectWeatherForLocation returns undefined for an unknown location', () => {
-      expect(selectWeatherForLocation(buildState(), 'missing')).toBeUndefined();
-    });
-  });
-
   describe('weather table selectors', () => {
     it('selectWeatherTablesRecord returns the tables record', () => {
       expect(selectWeatherTablesRecord(buildState())).toEqual({
@@ -217,17 +138,6 @@ describe('locationSelectors', () => {
       expect(selectWeatherTableById(state, 'missing')).toBeUndefined();
     });
 
-    it('selectWeatherTableForLocation returns the table assigned to a location', () => {
-      expect(selectWeatherTableForLocation(buildState(), 'loc-forest')).toBe(forestTable);
-    });
-
-    it('selectWeatherTableForLocation returns undefined when the location has no table', () => {
-      expect(selectWeatherTableForLocation(buildState(), 'loc-desert')).toBeUndefined();
-    });
-
-    it('selectWeatherTableForLocation returns undefined for an unknown location', () => {
-      expect(selectWeatherTableForLocation(buildState(), 'missing')).toBeUndefined();
-    });
   });
 
 });

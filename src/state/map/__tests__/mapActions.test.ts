@@ -139,7 +139,7 @@ describe('mapActions', () => {
       const actions: MapAction[] = [
         {
           type: MAP_CREATE,
-          payload: { name: 'Eldoria', scaleMilesPerTile: 12, startTerrainId: 'terrain-1' },
+          payload: { name: 'Eldoria', climate: 'temperate', scaleMilesPerTile: 12, startTerrainId: 'terrain-1' },
         },
         { type: MAP_DELETE, payload: 'map-1' },
         { type: MAP_UPDATE, payload: { mapId: 'map-1', changes: { name: 'Renamed' } } },

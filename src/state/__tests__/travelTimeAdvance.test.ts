@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { campaignReducer, createCampaignState, type CampaignState } from '../campaignReducer';
 import { createNewMap } from '../../utils/mapUtils';
 import type { MapModel } from '../../types/map';
+import { BASE_WEATHER_EFFECTS } from '../../utils/weatherSystem';
+import type { WeatherEffects } from '../../types/location';
 
 type TravelFixture = {
   state: CampaignState;
@@ -21,8 +23,7 @@ const makeTravelFixture = (): TravelFixture => {
   const originTileId = map.grid[4][4];
   const destinationTileId = map.grid.flat().find((tileId) => tileId !== originTileId);
   if (!destinationTileId) throw new Error('Expected a destination tile');
-  state.maps.mapsById = { [map.id]: map };
-  state.maps.activeMapId = map.id;
+  state.maps = { ...state.maps, mapsById: { [map.id]: map }, activeMapId: map.id };
   const groupId = 'travel-group';
   state.entities.travelGroups = {
     [groupId]: {
@@ -51,11 +52,17 @@ const executeTravel = ({ state, map, originTileId, destinationTileId, groupId }:
   });
 
 const expireCurrentWeatherAt = (state: CampaignState, day: number, slot: number): void => {
-  const locationId = state.locations.currentLocationId;
-  if (!locationId) throw new Error('Expected a current location');
-  const location = state.locations.locations[locationId];
-  location.currentWeather = {
-    ...location.currentWeather,
+  const mapId = state.maps.activeMapId;
+  if (!mapId) throw new Error('Expected an active map');
+  state.maps.mapsById[mapId].currentWeather = {
+    weather: {
+      type: 'clear',
+      intensity: 'moderate',
+      temperature: 'mild',
+      description: 'Clear skies, mild',
+      effects: { ...BASE_WEATHER_EFFECTS.clear } as WeatherEffects,
+    },
+    duration: { type: 'slots', count: 1 },
     startedAt: { day: 0, slot: 0 },
     expiresAt: { day, slot },
   };
@@ -93,10 +100,7 @@ describe('campaign travel time advancement', () => {
     expireCurrentWeatherAt(fixture.state, 2, 1);
 
     const result = executeTravel(fixture);
-    const locationId = result.locations.currentLocationId;
-    if (!locationId) throw new Error('Expected a current location');
-
-    expect(result.locations.locations[locationId].currentWeather.startedAt).toEqual({ day: 2, slot: 1 });
+    expect(result.maps.mapsById[fixture.map.id].currentWeather?.startedAt).toEqual({ day: 2, slot: 1 });
   });
 
   it('blocks before movement, reveal, checkpoint, or time advance when an activity is paused', () => {
@@ -125,15 +129,13 @@ describe('campaign travel time advancement', () => {
     expect(blocked.checkpoints.entries).toHaveLength(0);
     expect(blocked.ui.blockingError?.type).toBe('pausedActivities');
 
-    const advancingState = createCampaignState();
-    expireCurrentWeatherAt(advancingState, 1, 1);
-    const advanced = campaignReducer(advancingState, { type: 'advanceTime' });
-    const locationId = advanced.locations.currentLocationId;
-    if (!locationId) throw new Error('Expected a current location');
+    const advancingFixture = makeTravelFixture();
+    expireCurrentWeatherAt(advancingFixture.state, 1, 1);
+    const advanced = campaignReducer(advancingFixture.state, { type: 'advanceTime' });
     expect(advanced.time).toMatchObject({ day: 1, slot: 1 });
     expect(advanced.checkpoints.entries).toHaveLength(1);
     expect(advanced.checkpoints.entries[0].label).toBe('Before time advance');
-    expect(advanced.locations.locations[locationId].currentWeather.startedAt)
+    expect(advanced.maps.mapsById[advancingFixture.map.id].currentWeather?.startedAt)
       .toEqual({ day: 1, slot: 1 });
     expect(advanced.ui.blockingError).toBeNull();
   });

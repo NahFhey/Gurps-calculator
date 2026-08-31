@@ -72,6 +72,7 @@ const mockMap: MapModel = ({
   id: mockMapId1,
   name: 'Thornwood Region',
   description: 'A lush forest region',
+  climate: 'temperate',
   visionMode: 'lineOfSight',
   scaleMilesPerTile: 12,
   rows: 3,
@@ -269,7 +270,7 @@ describe('MapHeader', () => {
     expect(onSelectMap).toHaveBeenCalledWith(mockMapId2);
   });
 
-  it('updates vision mode and sight range from the GM settings popover', () => {
+  it('updates vision, sight range, climate, and weather table from the GM settings popover', () => {
     const onUpdateMapSettings = vi.fn();
     render(
       <MapHeader
@@ -279,13 +280,19 @@ describe('MapHeader', () => {
         onSelectMap={vi.fn()}
         onCreateMap={vi.fn()}
         onUpdateMapSettings={onUpdateMapSettings}
+        climateLabels={{ temperate: 'Temperate', arid: 'Arid' }}
+        weatherTables={[{ id: 'weather-1', name: 'Regional Weather', entries: [] }]}
       />
     );
     fireEvent.click(screen.getByRole('button', { name: 'Map settings' }));
     fireEvent.change(screen.getByLabelText('Vision'), { target: { value: 'open' } });
     fireEvent.change(screen.getByLabelText('Sight range'), { target: { value: '12' } });
+    fireEvent.change(screen.getByLabelText('Climate'), { target: { value: 'arid' } });
+    fireEvent.change(screen.getByLabelText('Weather table'), { target: { value: 'weather-1' } });
     expect(onUpdateMapSettings).toHaveBeenCalledWith({ visionMode: 'open' });
     expect(onUpdateMapSettings).toHaveBeenCalledWith({ sightRangeTiles: 12 });
+    expect(onUpdateMapSettings).toHaveBeenCalledWith({ climate: 'arid' });
+    expect(onUpdateMapSettings).toHaveBeenCalledWith({ weatherTableId: 'weather-1' });
   });
 });
 
@@ -358,6 +365,7 @@ describe('MapCreateDialog', () => {
       const call = onConfirm.mock.calls[0][0];
       expect(call.name).toBe('My Map');
       expect(call.scaleMilesPerTile).toBe(12);
+      expect(call.climate).toBe('temperate');
     });
   });
 
@@ -662,6 +670,36 @@ describe('MarkerEditor', () => {
       expect(marker.tileId).toBe('tile-1');
     });
   });
+
+  it('links a location marker to an existing location', () => {
+    const onConfirm = vi.fn();
+    render(<MarkerEditor tileId="tile-1" locations={[{ id: 'town', name: 'Town', climate: 'temperate', terrain: 'urban', modifiers: { gathering: 0, hunting: 0, foraging: 0, travel: 0 }, createdAt: 1, modifiedAt: 1 }]} onConfirm={onConfirm} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Location/ }));
+    fireEvent.change(screen.getByLabelText('Location'), { target: { value: 'town' } });
+    fireEvent.change(screen.getByPlaceholderText(/Iron Deposit/), { target: { value: 'Town pin' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add Marker' }));
+    expect(onConfirm.mock.calls[0][0]).toMatchObject({ type: 'location', locationId: 'town' });
+  });
+
+  it('returns an inline new-location name with a generated location id', () => {
+    const onConfirm = vi.fn();
+    render(<MarkerEditor tileId="tile-1" onConfirm={onConfirm} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Location/ }));
+    fireEvent.change(screen.getByLabelText('Location'), { target: { value: '__create__' } });
+    fireEvent.change(screen.getByLabelText('New location name'), { target: { value: 'New Town' } });
+    fireEvent.change(screen.getByPlaceholderText(/Iron Deposit/), { target: { value: 'New Town' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add Marker' }));
+    expect(onConfirm.mock.calls[0][0].locationId).toEqual(expect.any(String));
+    expect(onConfirm.mock.calls[0][1]).toBe('New Town');
+  });
+
+  it('deletes an existing marker through the editor action', () => {
+    const onDelete = vi.fn();
+    const existing: MarkerModel = { id: 'marker-1', tileId: 'tile-1', type: 'note', label: 'Note', visibility: 'gm' };
+    render(<MarkerEditor tileId="tile-1" existing={existing} onConfirm={vi.fn()} onDelete={onDelete} onCancel={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(onDelete).toHaveBeenCalledWith(existing);
+  });
 });
 
 // ============================================================================
@@ -670,7 +708,7 @@ describe('MarkerEditor', () => {
 
 describe('MarkerIcon', () => {
   it('renders without crashing for different types', () => {
-    const types = ['note', 'settlement', 'mining_node', 'danger'];
+    const types = ['note', 'settlement', 'mining_node', 'danger', 'location'];
 
     types.forEach((type) => {
       const { container } = render(

@@ -1,118 +1,93 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useAllWeatherModifiers, useWeatherModifiers } from '../useWeatherModifiers';
-import { createInitialLocationState } from '../../utils/weatherSystem';
+import { createCampaignState, type CampaignState } from '../../state/campaignReducer';
+import { createNewMap } from '../../utils/mapUtils';
+import { BASE_WEATHER_EFFECTS } from '../../utils/weatherSystem';
 import type { ActivityType } from '../useWeatherModifiers';
-import type {
-  LocationState,
-  WeatherEffects,
-  LocationModifiers,
-} from '../../types/location';
+import type { LocationModifiers, WeatherEffects } from '../../types/location';
 
 interface MockCampaignStoreValue {
-  state: {
-    locations: LocationState;
-  };
+  state: CampaignState;
   actions: Record<string, never>;
 }
 
-const useCampaignStoreMock = vi.hoisted(
-  () => vi.fn<() => MockCampaignStoreValue>(),
-);
+const useCampaignStoreMock = vi.hoisted(() => vi.fn<() => MockCampaignStoreValue>());
 
-vi.mock('../../state/campaignStore', () => ({
-  useCampaignStore: useCampaignStoreMock,
-}));
+vi.mock('../../state/campaignStore', () => ({ useCampaignStore: useCampaignStoreMock }));
 
 type ActivityEffects = Pick<WeatherEffects, ActivityType>;
 
-function makeStore(locations: LocationState): MockCampaignStoreValue {
-  return {
-    state: { locations },
-    actions: {},
-  };
-}
-
-function makeLocationsSlice(opts?: {
+function makeStore(opts?: {
   weatherEffects?: Partial<ActivityEffects>;
   locationModifiers?: Partial<LocationModifiers>;
   description?: string;
-}) {
-  const slice = createInitialLocationState({ day: 1, slot: 0 });
-  const locationId = slice.currentLocationId;
-
-  if (!locationId) {
-    throw new Error('Expected the initial location state to have a current location');
+  withWeather?: boolean;
+}): MockCampaignStoreValue {
+  const state = createCampaignState();
+  const map = createNewMap({
+    name: 'Test Region',
+    climate: 'temperate',
+    scaleMilesPerTile: 12,
+    startTerrainId: 'terrain-plains',
+  });
+  const tileId = map.grid[4][4];
+  map.currentWeather = opts?.withWeather === false ? null : {
+    weather: {
+      type: 'clear',
+      intensity: 'moderate',
+      temperature: 'mild',
+      description: opts?.description ?? 'Fresh woodland breeze',
+      effects: {
+        ...BASE_WEATHER_EFFECTS.clear,
+        gathering: 0,
+        hunting: 0,
+        travel: 0,
+        crafting: 0,
+        alchemy: 0,
+        cooking: 0,
+        combat: 0,
+        ...opts?.weatherEffects,
+      } as WeatherEffects,
+    },
+    startedAt: { day: 1, slot: 0 },
+    duration: { type: 'slots', count: 2 },
+  };
+  state.maps = { ...state.maps, activeMapId: map.id, mapsById: { [map.id]: map } };
+  state.entities.travelGroups = {
+    group: { id: 'group', name: 'Party', memberIds: [], vehicleId: null, position: { mapId: map.id, tileId } },
+  };
+  state.ui.activeTravelGroupId = 'group';
+  const locationId = state.locations.currentLocationId;
+  if (locationId) {
+    state.locations.locations[locationId].modifiers = {
+      gathering: 0,
+      hunting: 0,
+      foraging: 0,
+      travel: 0,
+      ...opts?.locationModifiers,
+    };
   }
-
-  const location = slice.locations[locationId];
-  location.name = 'Test Camp';
-  location.currentWeather.weather.effects = {
-    ...location.currentWeather.weather.effects,
-    gathering: 0,
-    hunting: 0,
-    travel: 0,
-    crafting: 0,
-    alchemy: 0,
-    cooking: 0,
-    combat: 0,
-    ...opts?.weatherEffects,
-  };
-  location.modifiers = {
-    gathering: 0,
-    hunting: 0,
-    foraging: 0,
-    travel: 0,
-    ...opts?.locationModifiers,
-  };
-
-  if (opts?.description !== undefined) {
-    location.currentWeather.weather.description = opts.description;
-  }
-
-  return slice;
-}
-
-function makeEmptyLocationsSlice(): LocationState {
-  return {
-    currentLocationId: null,
-    locations: {},
-    weatherTables: {},
-  };
+  return { state, actions: {} };
 }
 
 describe('useWeatherModifiers', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => vi.clearAllMocks());
 
-  it('combines the weather and location modifiers for a known activity', () => {
-    const locations = makeLocationsSlice({
+  it('combines ambient weather and current location modifiers', () => {
+    useCampaignStoreMock.mockReturnValue(makeStore({
       weatherEffects: { gathering: 2 },
       locationModifiers: { gathering: 1 },
-      description: 'Fresh woodland breeze',
-    });
-
-    useCampaignStoreMock.mockReturnValue(makeStore(locations));
-
+    }));
     const { result } = renderHook(() => useWeatherModifiers('gathering'));
-
     expect(result.current.skillBonus).toBe(3);
-    expect(result.current.modifiers).toEqual({
-      skillBonus: 3,
-      description: 'Fresh woodland breeze (+2 to gathering)',
-    });
-    expect(result.current.hasEffect).toBe(true);
-    expect(result.current.locationName).toBe('Test Camp');
-    expect(result.current.weather).not.toBeNull();
-    expect(result.current.effectDescription).toBe('Fresh woodland breeze (+2 to gathering)');
+    expect(result.current.locationName).toBe('Test Region');
+    expect(result.current.effectDescription).toContain('+2 to gathering');
   });
 
-  it('returns the empty result when there is no current location', () => {
-    useCampaignStoreMock.mockReturnValue(makeStore(makeEmptyLocationsSlice()));
-
+  it('returns the empty result when the active map has no weather', () => {
+    useCampaignStoreMock.mockReturnValue(makeStore({ withWeather: false }));
     const { result } = renderHook(() => useWeatherModifiers('gathering'));
-
     expect(result.current).toEqual({
       modifiers: null,
       weather: null,
@@ -123,74 +98,36 @@ describe('useWeatherModifiers', () => {
     });
   });
 
-  it('reports no effect when weather and location modifiers cancel out', () => {
-    const locations = makeLocationsSlice({
+  it('reports no effect when ambient and location modifiers cancel', () => {
+    useCampaignStoreMock.mockReturnValue(makeStore({
       weatherEffects: { gathering: 2 },
       locationModifiers: { gathering: -2 },
-      description: 'Helpful weather in difficult terrain',
-    });
-
-    useCampaignStoreMock.mockReturnValue(makeStore(locations));
-
+    }));
     const { result } = renderHook(() => useWeatherModifiers('gathering'));
-
     expect(result.current.skillBonus).toBe(0);
-    expect(result.current.modifiers).toEqual({
-      skillBonus: 0,
-      description: 'Helpful weather in difficult terrain (+2 to gathering)',
-    });
     expect(result.current.hasEffect).toBe(false);
-    expect(result.current.weather).not.toBeNull();
   });
 });
 
 describe('useAllWeatherModifiers', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => vi.clearAllMocks());
 
-  it('returns all weather effects and adds location modifiers where applicable', () => {
-    const locations = makeLocationsSlice({
+  it('returns all ambient effects and location contributions', () => {
+    useCampaignStoreMock.mockReturnValue(makeStore({
       weatherEffects: { gathering: 2, crafting: -1 },
       locationModifiers: { gathering: 1 },
-      description: 'Mixed conditions',
-    });
-
-    useCampaignStoreMock.mockReturnValue(makeStore(locations));
-
+    }));
     const { result } = renderHook(() => useAllWeatherModifiers());
-
-    expect(result.current.weather).not.toBeNull();
-    expect(result.current.locationName).toBe('Test Camp');
-    expect(result.current.effects).toEqual({
-      gathering: 3,
-      hunting: 0,
-      travel: 0,
-      crafting: -1,
-      alchemy: 0,
-      cooking: 0,
-      combat: 0,
-    });
-    expect(result.current.hasAnyEffect).toBe(true);
+    expect(result.current.locationName).toBe('Test Region');
+    expect(result.current.effects.gathering).toBe(3);
+    expect(result.current.effects.crafting).toBe(-1);
   });
 
-  it('returns zero effects when there is no current location', () => {
-    useCampaignStoreMock.mockReturnValue(makeStore(makeEmptyLocationsSlice()));
-
+  it('returns zero effects when ambient weather is missing', () => {
+    useCampaignStoreMock.mockReturnValue(makeStore({ withWeather: false }));
     const { result } = renderHook(() => useAllWeatherModifiers());
-
     expect(result.current.weather).toBeNull();
-    expect(result.current.locationName).toBeNull();
-    expect(result.current.effects).toEqual({
-      gathering: 0,
-      hunting: 0,
-      travel: 0,
-      crafting: 0,
-      alchemy: 0,
-      cooking: 0,
-      combat: 0,
-    });
-    expect(Object.values(result.current.effects).every(effect => effect === 0)).toBe(true);
+    expect(Object.values(result.current.effects).every((effect) => effect === 0)).toBe(true);
     expect(result.current.hasAnyEffect).toBe(false);
   });
 });

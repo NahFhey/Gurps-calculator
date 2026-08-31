@@ -22,6 +22,11 @@ import type {
 
 export type Id = string;
 
+export type FacilityAttachment =
+  | { kind: 'party' }
+  | { kind: 'location'; locationId: Id }
+  | { kind: 'vehicle'; vehicleId: Id };
+
 // ============================================================================
 // SHARED TYPES
 // ============================================================================
@@ -608,6 +613,7 @@ export interface AlchemyLab {
   name: string;
   rating: number;  // Bonus to alchemy skill
   description: string;
+  attachment?: FacilityAttachment;
 }
 
 export interface AlchemySettings {
@@ -794,6 +800,7 @@ export interface Kitchen {
   name: string;
   rating: number;  // Bonus to cooking skill
   description: string;
+  attachment?: FacilityAttachment;
 }
 
 export interface CookingSkill {
@@ -853,6 +860,7 @@ export interface ContactEntry {
   kind: ContactKind;
   modifier: number;
   notes?: string;
+  locationId?: Id | null;
   history: ContactShift[];
   createdAt: number;
   updatedAt: number;
@@ -918,6 +926,7 @@ export interface Facility {
   rating: number;
   /** Optional description */
   description?: string;
+  attachment?: FacilityAttachment;
   /** Condition tracking (good, worn, damaged, etc.) */
   conditionId?: Id;
   /**

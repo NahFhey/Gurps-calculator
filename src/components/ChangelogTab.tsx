@@ -3,6 +3,7 @@ import { useCampaignStore } from '../state/campaignStore';
 import type { LogEntry } from '../state/campaignReducer';
 
 const ACTIVITY_FAMILIES = [
+  'location',
   'alchemy',
   'cooking',
   'crafting',

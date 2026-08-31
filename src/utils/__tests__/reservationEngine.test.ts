@@ -37,7 +37,6 @@ describe('ReservationEngine', () => {
       },
       toolTemplates: {},
       toolInstances: { [tool.toolId]: tool },
-      facilities: {},
       currencyLogs: [],
     };
 

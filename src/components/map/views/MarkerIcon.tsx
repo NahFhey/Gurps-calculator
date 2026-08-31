@@ -10,6 +10,7 @@ const MARKER_ICONS: Record<string, { icon: typeof MapPin; color: string }> = {
   settlement: { icon: Home, color: '#10b981' },
   danger: { icon: AlertTriangle, color: '#ef4444' },
   note: { icon: StickyNote, color: '#8b5cf6' },
+  location: { icon: MapPin, color: '#10b981' },
 };
 
 interface MarkerIconProps {

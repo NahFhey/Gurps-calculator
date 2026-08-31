@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Plus, Save, X, Trash2 } from 'lucide-react';
 import { toNumberOr } from '../../../utils/helpers';
 import type { LabsViewProps } from '../../../types/views';
-import type { AlchemyLab } from '../../../types/campaign';
+import type { AlchemyLab, FacilityAttachment } from '../../../types/campaign';
+import { FacilityAttachmentControl } from './FacilityAttachmentControl';
 
 /**
  * LabsView - Manages alchemy laboratory facilities
@@ -10,12 +11,13 @@ import type { AlchemyLab } from '../../../types/campaign';
  * Labs provide skill bonuses to alchemy processing based on their rating.
  * Higher-rated labs reduce difficulty and improve success rates.
  */
-export function LabsView({ alchemyLabs, saveAlchemyLabs, onDelete }: LabsViewProps) {
+export function LabsView({ alchemyLabs, saveAlchemyLabs, onDelete, locations = [], vehicles = [] }: LabsViewProps) {
   const [showAdd, setShowAdd] = useState(false);
   const [newLabName, setNewLabName] = useState('');
   const [newLabRating, setNewLabRating] = useState('0');
   const [newLabDescription, setNewLabDescription] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [newAttachment, setNewAttachment] = useState<FacilityAttachment | undefined>();
 
   function addLab() {
     if (!newLabName.trim()) {
@@ -33,13 +35,15 @@ export function LabsView({ alchemyLabs, saveAlchemyLabs, onDelete }: LabsViewPro
       id: crypto.randomUUID(),
       name: newLabName.trim(),
       rating: rating,
-      description: newLabDescription.trim()
+      description: newLabDescription.trim(),
+      attachment: newAttachment,
     };
 
     saveAlchemyLabs([...alchemyLabs, newLab]);
     setNewLabName('');
     setNewLabRating('0');
     setNewLabDescription('');
+    setNewAttachment(undefined);
     setShowAdd(false);
   }
 
@@ -66,6 +70,7 @@ export function LabsView({ alchemyLabs, saveAlchemyLabs, onDelete }: LabsViewPro
               className="w-full bg-gray-600 px-3 py-2 rounded"
             />
           </div>
+          <FacilityAttachmentControl value={newAttachment} locations={locations} vehicles={vehicles} onChange={setNewAttachment} />
           <div>
             <label className="block text-xs text-gray-400 mb-1">Lab Rating (0-4)</label>
             <input
@@ -166,6 +171,12 @@ export function LabsView({ alchemyLabs, saveAlchemyLabs, onDelete }: LabsViewPro
                     rows={2}
                   />
                 </div>
+                <FacilityAttachmentControl
+                  value={lab.attachment}
+                  locations={locations}
+                  vehicles={vehicles}
+                  onChange={(attachment) => saveAlchemyLabs(alchemyLabs.map((entry) => entry.id === lab.id ? { ...entry, attachment } : entry))}
+                />
                 <button
                   onClick={() => onDelete('lab', lab.name, { id: lab.id })}
                   className="w-full bg-red-600 py-2 rounded text-sm"

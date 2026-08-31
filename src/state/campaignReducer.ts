@@ -1,7 +1,13 @@
 import { enableMapSet, produce } from 'immer';
 import type { Draft } from 'immer';
 import { createPartyToolState, PARTY_TOOL_SKILLS } from '../components/partyToolSeed';
-import { advanceTimeSlot, type TimeLogEntry } from '../utils/timeSystem';
+import {
+  advanceTimeSlot,
+  DEFAULT_CALENDAR,
+  getCurrentSeason,
+  type CalendarConfig,
+  type TimeLogEntry,
+} from '../utils/timeSystem';
 import { DEFAULT_STUDY_CONFIG, SLOT_NAMES, SLOTS_PER_DAY } from '../constants';
 import { logger } from '../utils/logger';
 import type {
@@ -68,7 +74,6 @@ import { DEFAULT_FORAGING_CONFIG } from '../constants/foraging';
 import {
   createInitialLocationState,
   generateWeather,
-  isWeatherExpired,
   getTerrainModifiers
 } from '../utils/weatherSystem';
 import { downtimeInitialState, DOWNTIME_SCHEMA_VERSION } from './downtime';
@@ -82,6 +87,7 @@ import { isMapAction, handleMapAction, type MapAction } from './map';
 import { isPartyAction, handlePartyAction, type PartyAction } from './party';
 import { resolveLocationTerrain } from '../utils/mapUtils';
 import { resolveGroupPosition } from '../utils/partyPosition';
+import { mapsWithPresence, regenerateMapWeatherIfNeeded, resolveWeatherContext } from '../utils/ambientWeather';
 
 export const CAMPAIGN_META = {
   rulesVersion: '1.0.0',
@@ -208,6 +214,7 @@ export type CampaignState = {
     slotsPerDay: number;
     slotLabels: string[];
     history: Array<TimeLogEntry & { day: number }>;
+    calendar?: CalendarConfig;
   };
   inventory: {
     // UI state for inventory tab
@@ -329,6 +336,63 @@ export const logEvent = (
   payload
 });
 
+const handleLocationArrival = (
+  draft: Draft<CampaignState>,
+  mapId: string,
+  tileId: string,
+  switchCurrentLocation: boolean
+): void => {
+  const map = draft.maps.mapsById[mapId];
+  if (!map) return;
+
+  const locationMarkers = Object.values(map.markersById).filter(
+    (marker) => marker.tileId === tileId
+      && marker.locationId
+      && draft.locations.locations[marker.locationId]
+  );
+
+  for (const marker of locationMarkers) {
+    if (marker.visibility !== 'gm' || !marker.locationId) continue;
+    marker.visibility = 'player';
+    marker.discoveredAt = { day: draft.time.day, slot: draft.time.slot };
+    const location = draft.locations.locations[marker.locationId];
+    appendLogEntry(draft, {
+      ...logEvent('location.discovered', 'player', {
+        message: `Discovered ${location.name}`,
+      }),
+      day: draft.time.day,
+    });
+  }
+
+  if (!switchCurrentLocation) return;
+  const pinnedLocationId = locationMarkers[0]?.locationId;
+  if (pinnedLocationId) {
+    const location = draft.locations.locations[pinnedLocationId];
+    draft.locations.currentLocationId = pinnedLocationId;
+    appendLogEntry(draft, logEvent('location.changed', 'player', {
+      message: `Party arrived at ${location.name}`,
+    }));
+    return;
+  }
+
+  const currentLocId = draft.locations.currentLocationId;
+  const location = currentLocId ? draft.locations.locations[currentLocId] : undefined;
+  if (!location) return;
+  const newTerrain = resolveLocationTerrain(map, tileId);
+  if (newTerrain === location.terrain) return;
+  const oldLabel = TERRAIN_LABELS[location.terrain] ?? location.terrain;
+  const newLabel = TERRAIN_LABELS[newTerrain] ?? newTerrain;
+  location.terrain = newTerrain;
+  location.modifiers = getTerrainModifiers(
+    newTerrain,
+    draft.locations.terrainModifierOverrides
+  );
+  location.modifiedAt = Date.now();
+  appendLogEntry(draft, logEvent('terrain.changed', 'player', {
+    message: `Terrain changed from ${oldLabel} to ${newLabel}`,
+  }));
+};
+
 const createCheckpointSnapshot = (state: CampaignState): CampaignSnapshot => {
   const { checkpoints, ...rest } = state;
   // Sets become {} under JSON.stringify, so snapshots store them as arrays
@@ -417,28 +481,22 @@ const advanceSlotAndRegenerateWeather = (
   );
   draft.ui.blockingError = null;
 
-  const newTime = { day: nextDay, slot: nextSlot };
-  for (const location of Object.values(draft.locations.locations)) {
-    if (location.currentWeather && isWeatherExpired(location.currentWeather, newTime)) {
-      const weatherTable = location.weatherTableId
-        ? draft.locations.weatherTables[location.weatherTableId]
-        : undefined;
-      const result = generateWeather({
-        location: location as Location,
-        weatherTable,
-        currentTime: newTime,
-        weatherEffectOverrides: draft.locations.weatherEffectOverrides,
-      });
-      location.currentWeather = result.weather;
-      location.modifiedAt = Date.now();
-
-      if (location.id === draft.locations.currentLocationId) {
-        appendLogEntry(draft,
-          logEvent('weather.changed', 'player', {
-            message: result.logMessage
-          })
-        );
-      }
+  const newTime = { day: nextDay, slot: nextSlot, slotsPerDay };
+  const season = getCurrentSeason(nextDay, draft.time.calendar ?? DEFAULT_CALENDAR);
+  const activeGroup = draft.ui.activeTravelGroupId
+    ? draft.entities.travelGroups?.[draft.ui.activeTravelGroupId]
+    : undefined;
+  const activeGroupMapId = activeGroup ? resolveGroupPosition(draft, activeGroup)?.mapId : undefined;
+  const activeMapId = activeGroupMapId && draft.maps.mapsById[activeGroupMapId]
+    ? activeGroupMapId
+    : draft.maps.activeMapId;
+  for (const mapId of mapsWithPresence(draft)) {
+    const changed = regenerateMapWeatherIfNeeded(draft, mapId, newTime, season);
+    if (changed && mapId === activeMapId) {
+      const map = draft.maps.mapsById[mapId];
+      appendLogEntry(draft, logEvent('weather.changed', 'player', {
+        message: `Weather on ${map.name} changed to: ${map.currentWeather?.weather.description ?? 'Unknown'}`,
+      }));
     }
   }
 };
@@ -569,7 +627,8 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
     slot: 0,
     slotsPerDay: SLOTS_PER_DAY,
     slotLabels: [...SLOT_NAMES],
-    history: []
+    history: [],
+    calendar: DEFAULT_CALENDAR,
   },
   inventory: {
     activeTab: 'materials'
@@ -819,8 +878,9 @@ export type CampaignAction =
   | { type: 'updateLocation'; payload: { id: Id; changes: Partial<Location> } }
   | { type: 'removeLocation'; payload: Id }
   | { type: 'setCurrentLocation'; payload: Id }
-  | { type: 'setLocationWeather'; payload: { locationId: Id; weather: ActiveWeather } }
-  | { type: 'rollNewWeather'; payload: { locationId: Id } }
+  | { type: 'setMapWeather'; payload: { mapId: Id; weather: ActiveWeather } }
+  | { type: 'rollNewWeather'; payload: { mapId: Id } }
+  | { type: 'setCalendarConfig'; payload: CalendarConfig }
   | { type: 'addWeatherTable'; payload: WeatherTable }
   | { type: 'updateWeatherTable'; payload: { id: Id; changes: Partial<WeatherTable> } }
   | { type: 'removeWeatherTable'; payload: Id }
@@ -868,37 +928,30 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
     if (isPartyAction(action)) {
       handlePartyAction(draft, action);
 
-      // Interim until Lane D derives named location from each group: only the
-      // active group's manual placement updates the campaign's current terrain.
+      // Campaign currentLocationId remains active-group-scoped until Phase 15a;
+      // discovery is objective and therefore applies to every arriving group.
       const placedGroup = action.type === 'party/placeGroup'
         ? draft.entities.travelGroups?.[action.payload.groupId]
         : undefined;
       if (action.type === 'party/placeGroup'
-        && action.payload.groupId === draft.ui.activeTravelGroupId
-        && placedGroup?.vehicleId === null
+        && placedGroup
         && placedGroup.position?.mapId === action.payload.mapId
         && placedGroup.position.tileId === action.payload.tileId) {
-        const map = draft.maps.mapsById[action.payload.mapId];
-        const currentLocId = draft.locations.currentLocationId;
-        if (map && currentLocId) {
-          const location = draft.locations.locations[currentLocId];
-          if (location) {
-            const newTerrain = resolveLocationTerrain(map, action.payload.tileId);
-            if (newTerrain !== location.terrain) {
-              const oldLabel = TERRAIN_LABELS[location.terrain] ?? location.terrain;
-              const newLabel = TERRAIN_LABELS[newTerrain] ?? newTerrain;
-              location.terrain = newTerrain;
-              location.modifiers = getTerrainModifiers(
-                newTerrain,
-                draft.locations.terrainModifierOverrides
-              );
-              location.modifiedAt = Date.now();
-              appendLogEntry(draft, logEvent('terrain.changed', 'player', {
-                message: `Terrain changed from ${oldLabel} to ${newLabel}`
-              }));
-            }
-          }
-        }
+        handleLocationArrival(
+          draft,
+          action.payload.mapId,
+          action.payload.tileId,
+          action.payload.groupId === draft.ui.activeTravelGroupId
+        );
+      }
+      const placedPosition = placedGroup ? resolveGroupPosition(draft, placedGroup) : null;
+      if (action.type === 'party/placeGroup' && placedPosition?.mapId === action.payload.mapId) {
+        regenerateMapWeatherIfNeeded(
+          draft,
+          action.payload.mapId,
+          { day: draft.time.day, slot: draft.time.slot, slotsPerDay: draft.time.slotsPerDay },
+          getCurrentSeason(draft.time.day, draft.time.calendar ?? DEFAULT_CALENDAR)
+        );
       }
       return;
     }
@@ -923,38 +976,13 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
 
       handleMapAction(draft, action);
 
-      // Sync location terrain from map tile after party movement (cross-slice)
-      if (action.type === 'map/executeTravel'
-        && action.payload.groupId === draft.ui.activeTravelGroupId) {
-        // Interim until Lane D derives named location from each group's position.
-        const destinationTileId = action.payload.destinationTileId;
-        const mapId = action.payload.mapId;
-        const map = draft.maps.mapsById[mapId];
-        const currentLocId = draft.locations.currentLocationId;
-
-        if (map && destinationTileId && currentLocId) {
-          const location = draft.locations.locations[currentLocId];
-          if (location) {
-            const newTerrain = resolveLocationTerrain(map, destinationTileId);
-            if (newTerrain !== location.terrain) {
-              const oldLabel = TERRAIN_LABELS[location.terrain] ?? location.terrain;
-              const newLabel = TERRAIN_LABELS[newTerrain] ?? newTerrain;
-              location.terrain = newTerrain;
-              // Auto-set location modifiers from terrain defaults (or GM overrides)
-              const terrainMods = getTerrainModifiers(
-                newTerrain,
-                draft.locations.terrainModifierOverrides
-              );
-              location.modifiers = terrainMods;
-              location.modifiedAt = Date.now();
-              appendLogEntry(draft,
-                logEvent('terrain.changed', 'player', {
-                  message: `Terrain changed from ${oldLabel} to ${newLabel}`
-                })
-              );
-            }
-          }
-        }
+      if (action.type === 'map/executeTravel') {
+        regenerateMapWeatherIfNeeded(
+          draft,
+          action.payload.mapId,
+          { day: draft.time.day, slot: draft.time.slot, slotsPerDay: draft.time.slotsPerDay },
+          getCurrentSeason(draft.time.day, draft.time.calendar ?? DEFAULT_CALENDAR)
+        );
       }
 
       // After travel execution, advance time by one slot (cross-slice operation)
@@ -965,6 +993,14 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
           draft,
           (day, slot, label) =>
             `Travel completed — advanced to Day ${day}, Slot ${slot + 1} (${label})`
+        );
+        // Campaign currentLocationId remains active-group-scoped until Phase 15a;
+        // discovery is objective and therefore applies to every arriving group.
+        handleLocationArrival(
+          draft,
+          action.payload.mapId,
+          action.payload.destinationTileId,
+          action.payload.groupId === draft.ui.activeTravelGroupId
         );
       }
       return;
@@ -1377,34 +1413,39 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         }
         return;
 
-      case 'setLocationWeather': {
-        const { locationId, weather } = action.payload;
-        if (draft.locations.locations[locationId]) {
-          draft.locations.locations[locationId].currentWeather = weather;
-          draft.locations.locations[locationId].modifiedAt = Date.now();
+      case 'setCalendarConfig':
+        draft.time.calendar = action.payload;
+        return;
+
+      case 'setMapWeather': {
+        const { mapId, weather } = action.payload;
+        if (draft.maps.mapsById[mapId]) {
+          draft.maps.mapsById[mapId].currentWeather = weather;
         }
         return;
       }
 
       case 'rollNewWeather': {
-        const { locationId } = action.payload;
-        const location = draft.locations.locations[locationId];
-        if (location) {
-          const weatherTable = location.weatherTableId
-            ? draft.locations.weatherTables[location.weatherTableId]
-            : undefined;
+        const { mapId } = action.payload;
+        const map = draft.maps.mapsById[mapId];
+        if (map) {
+          const { climate, weatherTable } = resolveWeatherContext(draft, mapId);
           const currentTime = { day: draft.time.day, slot: draft.time.slot };
           const result = generateWeather({
-            location: location as Location,
+            climate,
             weatherTable,
             currentTime,
+            season: getCurrentSeason(
+              draft.time.day,
+              draft.time.calendar ?? DEFAULT_CALENDAR
+            ).def,
             weatherEffectOverrides: draft.locations.weatherEffectOverrides,
+            slotsPerDay: draft.time.slotsPerDay,
           });
-          location.currentWeather = result.weather;
-          location.modifiedAt = Date.now();
+          map.currentWeather = result.weather;
           appendLogEntry(draft,
             logEvent('weather.changed', 'player', {
-              message: result.logMessage
+              message: `Weather on ${map.name} changed to: ${result.weather.weather.description}`,
             })
           );
         }
@@ -1426,10 +1467,10 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
 
       case 'removeWeatherTable':
         delete draft.locations.weatherTables[action.payload];
-        // Clear references from locations
-        for (const loc of Object.values(draft.locations.locations)) {
-          if (loc.weatherTableId === action.payload) {
-            loc.weatherTableId = undefined;
+        // Clear dangling map overrides.
+        for (const map of Object.values(draft.maps.mapsById)) {
+          if (map.weatherTableId === action.payload) {
+            map.weatherTableId = undefined;
           }
         }
         return;

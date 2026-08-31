@@ -37,7 +37,6 @@ describe('InventoryManager', () => {
       },
       toolTemplates: {},
       toolInstances: { [tool.toolId]: tool },
-      facilities: {},
       currencyLogs: [],
     };
 

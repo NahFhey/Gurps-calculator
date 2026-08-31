@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react';
 import { Users, X } from 'lucide-react';
 import { selectAvailableCharacterIdsForSlot } from '../../../state/downtime/downtimeSelectors';
 import { getInfluenceSkill, INFLUENCE_SKILLS } from '../../../utils/social';
-import type { Character, ContactEntry, ContactKind } from '../../../types/campaign';
+import type { Character, ContactEntry, ContactKind, Id } from '../../../types/campaign';
 import type { DowntimeState, SocialData } from '../../../types/downtime';
+import type { Location } from '../../../types/location';
 
 export interface NewContactInput {
   name: string;
@@ -21,6 +22,8 @@ interface SocialTaskFormProps {
     newContact?: NewContactInput
   ) => void;
   onCancel: () => void;
+  locations?: Location[];
+  currentLocationId?: Id | null;
 }
 
 const NEW_CONTACT = '__new__';
@@ -37,6 +40,8 @@ export function SocialTaskForm({
   currentSlot,
   onSubmit,
   onCancel,
+  locations = [],
+  currentLocationId = null,
 }: SocialTaskFormProps) {
   const [leaderId, setLeaderId] = useState('');
   const [contactId, setContactId] = useState('');
@@ -60,6 +65,9 @@ export function SocialTaskForm({
   const isNewContact = contactId === NEW_CONTACT;
   const contactName = isNewContact ? newContactName.trim() : contact?.name ?? '';
   const currentModifier = contact?.modifier ?? 0;
+  const contactLocation = contact?.locationId
+    ? locations.find((location) => location.id === contact.locationId)
+    : undefined;
   const canSubmit = Boolean(leader && contactName && (contact || isNewContact));
 
   const handleSubmit = () => {
@@ -90,6 +98,12 @@ export function SocialTaskForm({
           {availableCharacters.map((character) => <option key={character.id} value={character.id}>{character.name}</option>)}
         </select>
       </label>
+
+      {contactLocation && (
+        <p className="-mt-2 mb-3 text-xs text-gray-500" data-testid="contact-presence-hint">
+          at {contactLocation.name}{contactLocation.id !== currentLocationId ? ' — party elsewhere' : ''}
+        </p>
+      )}
 
       <label className="mb-3 block text-sm text-gray-300">
         <span className="mb-1 block font-medium">Contact</span>

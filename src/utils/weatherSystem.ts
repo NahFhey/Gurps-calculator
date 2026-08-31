@@ -24,6 +24,7 @@ import type {
   LocationModifiers,
 } from '../types/location';
 import { WEATHER_ICONS, TEMPERATURE_LABELS } from '../types/location';
+import type { SeasonDef } from './timeSystem';
 
 // ============================================================================
 // DEFAULT WEATHER EFFECTS
@@ -456,7 +457,7 @@ function weightedRandom<T extends { probability: number }>(items: T[]): T {
 /**
  * Temperature ordering for range selection
  */
-const TEMPERATURE_ORDER: Temperature[] = [
+export const TEMPERATURE_ORDER: Temperature[] = [
   'extreme_cold',
   'freezing',
   'cold',
@@ -466,6 +467,42 @@ const TEMPERATURE_ORDER: Temperature[] = [
   'hot',
   'extreme_heat',
 ];
+
+const PRECIPITATION_TYPES: ReadonlySet<WeatherType> = new Set([
+  'lightRain',
+  'rain',
+  'heavyRain',
+  'thunderstorm',
+  'snow',
+  'blizzard',
+  'hail',
+]);
+
+/** Apply a season's precipitation weighting without mutating the authored table. */
+export function applySeasonToEntries(
+  entries: WeatherTableEntry[],
+  season?: SeasonDef
+): WeatherTableEntry[] {
+  if (!season) return entries;
+  return entries.map((entry) => PRECIPITATION_TYPES.has(entry.weather)
+    ? { ...entry, probability: entry.probability * season.precipitationMultiplier }
+    : entry
+  );
+}
+
+/** Shift both ends of a temperature band, clamped to the canonical ordering. */
+export function shiftTemperatureRange(
+  range: [Temperature, Temperature],
+  shift?: number
+): [Temperature, Temperature] {
+  if (!shift) return range;
+  const shiftBand = (temperature: Temperature): Temperature => {
+    const index = TEMPERATURE_ORDER.indexOf(temperature);
+    const shifted = Math.max(0, Math.min(TEMPERATURE_ORDER.length - 1, index + Math.trunc(shift)));
+    return TEMPERATURE_ORDER[shifted];
+  };
+  return [shiftBand(range[0]), shiftBand(range[1])];
+}
 
 /**
  * Get a random temperature within a range
@@ -630,18 +667,26 @@ function generateWeatherDescription(
  * Generate new weather for a location
  */
 export function generateWeather(input: WeatherGenerationInput): WeatherGenerationResult {
-  const { location, weatherTable, currentTime, weatherEffectOverrides } = input;
+  const {
+    climate,
+    weatherTable,
+    currentTime,
+    weatherEffectOverrides,
+    season,
+    slotsPerDay = 3,
+  } = input;
 
   // Get weather entries from custom table or climate defaults
-  const entries = weatherTable?.entries ?? DEFAULT_CLIMATE_TABLES[location.climate] ?? DEFAULT_CLIMATE_TABLES.temperate;
+  const baseEntries = weatherTable?.entries ?? DEFAULT_CLIMATE_TABLES[climate] ?? DEFAULT_CLIMATE_TABLES.temperate;
+  const entries = applySeasonToEntries(baseEntries, season);
 
   // Select a random weather entry
   const selected = weightedRandom(entries);
 
   // Determine specific values
-  const temperature = randomTemperature(selected.temperatureRange);
+  const temperature = randomTemperature(shiftTemperatureRange(selected.temperatureRange, season?.temperatureShift));
   const intensity = randomIntensity(selected.intensityWeights);
-  const duration = randomDuration(selected.durationRange);
+  const duration = randomDuration(selected.durationRange, slotsPerDay);
 
   // Calculate effects (merge GM overrides with defaults before intensity scaling)
   const defaults = BASE_WEATHER_EFFECTS[selected.weather] ?? {};
@@ -666,12 +711,12 @@ export function generateWeather(input: WeatherGenerationInput): WeatherGeneratio
     weather,
     startedAt: currentTime,
     duration,
-    expiresAt: calculateExpiration(currentTime, duration),
+    expiresAt: calculateExpiration(currentTime, duration, slotsPerDay),
   };
 
   return {
     weather: activeWeather,
-    logMessage: `Weather in ${location.name} changed to: ${description}`,
+    logMessage: `Weather changed to: ${description}`,
   };
 }
 
@@ -680,14 +725,15 @@ export function generateWeather(input: WeatherGenerationInput): WeatherGeneratio
  */
 export function isWeatherExpired(
   weather: ActiveWeather,
-  currentTime: { day: number; slot: number }
+  currentTime: { day: number; slot: number },
+  slotsPerDay: number = 3
 ): boolean {
   if (!weather.expiresAt) {
     return false;
   }
 
-  const currentTotal = currentTime.day * 3 + currentTime.slot;
-  const expiresTotal = weather.expiresAt.day * 3 + weather.expiresAt.slot;
+  const currentTotal = currentTime.day * slotsPerDay + currentTime.slot;
+  const expiresTotal = weather.expiresAt.day * slotsPerDay + weather.expiresAt.slot;
 
   return currentTotal >= expiresTotal;
 }
@@ -825,31 +871,18 @@ export function getTerrainModifiers(
 /**
  * Create a default "Camp" location
  */
-export function createDefaultLocation(currentTime: { day: number; slot: number }): Location {
+export function createDefaultLocation(_currentTime: { day: number; slot: number }): Location {
   const id = `loc-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-  // Generate initial weather
-  const tempLocation: Location = {
+  return {
     id,
     name: 'Camp',
     description: 'Your current base of operations',
     climate: 'temperate',
     terrain: 'plains',
     modifiers: createDefaultLocationModifiers(),
-    connections: [],
-    currentWeather: null as unknown as ActiveWeather, // Will be set below
     createdAt: Date.now(),
     modifiedAt: Date.now(),
-  };
-
-  const { weather } = generateWeather({
-    location: tempLocation,
-    currentTime,
-  });
-
-  return {
-    ...tempLocation,
-    currentWeather: weather,
   };
 }
 
@@ -874,12 +907,4 @@ export function createInitialLocationState(currentTime: { day: number; slot: num
 export function getCurrentLocation(state: LocationState): Location | null {
   if (!state.currentLocationId) return null;
   return state.locations[state.currentLocationId] ?? null;
-}
-
-/**
- * Get current weather from state
- */
-export function getCurrentWeather(state: LocationState): Weather | null {
-  const location = getCurrentLocation(state);
-  return location?.currentWeather?.weather ?? null;
 }

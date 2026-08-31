@@ -10,6 +10,9 @@ import type { DowntimeState } from '../../types/downtime';
 import type { DowntimeAction } from '../../state/downtime/downtimeActions';
 import { createAndResolveTask } from '../../utils/createAutoResolvedTask';
 import { selectCharacterAssignmentForSlot } from '../../state/downtime/downtimeSelectors';
+import { useCampaignStore } from '../../state/campaignStore';
+import { isAttachmentReachable } from '../../utils/facilityAccess';
+import type { CampaignState } from '../../state/campaignReducer';
 
 // ============================================================================
 // TYPES
@@ -104,6 +107,7 @@ export interface BatchesViewProps {
 // ============================================================================
 
 function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatches, saveFormulas, saveReagents, downtimeState, downtimeDispatch, currentDayKey, currentSlot }: BatchesViewProps) {
+  const campaignState: CampaignState | undefined = useCampaignStore()?.state;
   const [selectedBatch, setSelectedBatch] = useState<ExtendedBatch | null>(null);
   const [workerName, setWorkerName] = useState('');
   const [skill, setSkill] = useState('');
@@ -127,6 +131,13 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [selectedVector, setSelectedVector] = useState('Potion');
   const [selectedLabId, setSelectedLabId] = useState(labs?.[0]?.id || 'default');
+  const activeLeaderId = campaignState?.entities.travelGroups?.[campaignState.ui.activeTravelGroupId ?? '']?.memberIds[0] ?? '';
+  const accessibleLabs = useMemo(
+    () => campaignState
+      ? labs.filter((lab) => isAttachmentReachable(campaignState, lab.attachment, activeLeaderId))
+      : labs,
+    [activeLeaderId, campaignState, labs]
+  );
 
   const ingredientAvailability = useMemo(() => ingredients.map(ingredient => {
     const reagent = reagents.find(entry => entry.id === ingredient.reagentId);
@@ -272,7 +283,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
     }
 
     const reagentsMap = new Map(reagents.map(r => [r.id, r]));
-    const selectedLab = labs?.find(l => l.id === selectedLabId) || { id: 'default', name: 'Basic Lab', rating: 0 };
+    const selectedLab = accessibleLabs.find(l => l.id === selectedLabId) || { id: 'default', name: 'Basic Lab', rating: 0 };
 
     const ingredientsSnapshot: FormulaIngredientSnapshot[] = ingredients.map(ing => {
       const r = reagentsMap.get(ing.reagentId);
@@ -738,7 +749,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                     onChange={(e) => setSelectedLabId(e.target.value)}
                     className="w-full bg-gray-600 px-3 py-2 rounded"
                   >
-                    {(labs || [{id: 'default', name: 'Basic Lab', rating: 0}]).map(lab => (
+                    {(accessibleLabs.length > 0 ? accessibleLabs : [{id: 'default', name: 'Basic Lab', rating: 0}]).map(lab => (
                       <option key={lab.id} value={lab.id}>
                         {lab.name} (+{lab.rating})
                       </option>

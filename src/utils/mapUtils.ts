@@ -380,6 +380,7 @@ export function createNewMap(params: {
   description?: string;
   scaleMilesPerTile: MapScale;
   startTerrainId: TerrainId;
+  climate?: import('../types/location').ClimateType;
 }): MapModel {
   const terrainById = createDefaultTerrainSet();
   const { grid, tilesById, revealedTileIds } = createInitialGrid(
@@ -390,6 +391,7 @@ export function createNewMap(params: {
     id: crypto.randomUUID(),
     name: params.name,
     description: params.description,
+    climate: params.climate ?? 'temperate',
     visionMode: 'lineOfSight',
     scaleMilesPerTile: params.scaleMilesPerTile,
     rows: INITIAL_GRID_SIZE,

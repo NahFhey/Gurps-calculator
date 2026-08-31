@@ -1,8 +1,9 @@
-import type { Location, WeatherTable } from '../../../types/location';
+import type { WeatherTable } from '../../../types/location';
+import type { MapModel } from '../../../types/map';
 import { WeatherTableEditor } from '../WeatherTableEditor';
 
 export interface WeatherTablesListViewProps {
-  locations: Location[];
+  maps: MapModel[];
   weatherTables: WeatherTable[];
   onCreate: () => void;
   onEdit: (tableId: string) => void;
@@ -10,17 +11,17 @@ export interface WeatherTablesListViewProps {
 }
 
 export function WeatherTablesListView({
-  locations,
+  maps,
   weatherTables,
   onCreate,
   onEdit,
   onDelete,
 }: WeatherTablesListViewProps) {
   const tableUsage: Record<string, string[]> = {};
-  for (const location of locations) {
-    if (location.weatherTableId) {
-      if (!tableUsage[location.weatherTableId]) tableUsage[location.weatherTableId] = [];
-      tableUsage[location.weatherTableId].push(location.name);
+  for (const map of maps) {
+    if (map.weatherTableId) {
+      if (!tableUsage[map.weatherTableId]) tableUsage[map.weatherTableId] = [];
+      tableUsage[map.weatherTableId].push(map.name);
     }
   }
 
@@ -40,7 +41,7 @@ export function WeatherTablesListView({
         <div className="text-center py-6">
           <p className="text-gray-400 text-sm">No custom weather tables yet.</p>
           <p className="text-gray-500 text-xs mt-1">
-            Locations use climate-based defaults. Create a table to customize weather probabilities.
+            Maps use climate-based defaults. Create a table to customize weather probabilities.
           </p>
         </div>
       ) : (

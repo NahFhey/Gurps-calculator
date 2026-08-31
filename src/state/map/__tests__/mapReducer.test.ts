@@ -82,6 +82,7 @@ function makeMinimalMap(id: string, terrainId = 't-plains'): MapModel {
   return {
     id,
     name: `map-${id}`,
+    climate: 'temperate',
     visionMode: 'lineOfSight',
     scaleMilesPerTile: 12,
     rows: 1,
@@ -124,7 +125,7 @@ describe('mapReducer', () => {
     it('MAP_CREATE inserts a new map and sets it active when none was active', () => {
       const next = applyAction(state, {
         type: MAP_CREATE,
-        payload: { name: 'World', scaleMilesPerTile: 12, startTerrainId: 'plains' },
+        payload: { name: 'World', climate: 'temperate', scaleMilesPerTile: 12, startTerrainId: 'plains' },
       });
       const ids = Object.keys(next.maps.mapsById);
       expect(ids).toHaveLength(1);
@@ -136,7 +137,7 @@ describe('mapReducer', () => {
       state.maps.activeMapId = 'pre-existing';
       const next = applyAction(state, {
         type: MAP_CREATE,
-        payload: { name: 'Second', scaleMilesPerTile: 50, startTerrainId: 'plains' },
+        payload: { name: 'Second', climate: 'temperate', scaleMilesPerTile: 50, startTerrainId: 'plains' },
       });
       expect(next.maps.activeMapId).toBe('pre-existing');
     });
@@ -196,6 +197,16 @@ describe('mapReducer', () => {
         payload: { mapId: 'm1', changes: { sightRangeTiles: -4 } },
       });
       expect(lower.maps.mapsById.m1.sightRangeTiles).toBe(1);
+    });
+
+    it('MAP_UPDATE applies map climate and weather table settings', () => {
+      state.maps.mapsById = { m1: makeMinimalMap('m1') };
+      const next = applyAction(state, {
+        type: MAP_UPDATE,
+        payload: { mapId: 'm1', changes: { climate: 'arid', weatherTableId: 'weather-1' } },
+      });
+      expect(next.maps.mapsById.m1.climate).toBe('arid');
+      expect(next.maps.mapsById.m1.weatherTableId).toBe('weather-1');
     });
 
     it('MAP_UPDATE is a no-op when mapId does not exist', () => {
@@ -528,7 +539,7 @@ describe('mapReducer', () => {
     it('MAP_CREATE produces a map with default terrains and a revealed center tile', () => {
       const next = applyAction(state, {
         type: MAP_CREATE,
-        payload: { name: 'Created', scaleMilesPerTile: 50, startTerrainId: 'plains' },
+        payload: { name: 'Created', climate: 'temperate', scaleMilesPerTile: 50, startTerrainId: 'plains' },
       });
       const id = Object.keys(next.maps.mapsById)[0];
       const m = next.maps.mapsById[id];

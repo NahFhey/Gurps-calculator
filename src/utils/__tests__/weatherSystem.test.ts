@@ -13,7 +13,8 @@ import {
   createDefaultLocation,
   createInitialLocationState,
   getCurrentLocation,
-  getCurrentWeather,
+  applySeasonToEntries,
+  shiftTemperatureRange,
 } from '../weatherSystem';
 import type {
   ActiveWeather,
@@ -21,7 +22,10 @@ import type {
   LocationState,
   Weather,
   WeatherEffects,
+  WeatherTableEntry,
+  WeatherTable,
 } from '../../types/location';
+import type { SeasonDef } from '../timeSystem';
 
 function buildLocation(overrides: Partial<Location> = {}): Location {
   return {
@@ -31,8 +35,6 @@ function buildLocation(overrides: Partial<Location> = {}): Location {
     climate: 'temperate',
     terrain: 'plains',
     modifiers: createDefaultLocationModifiers(),
-    connections: [],
-    currentWeather: null as unknown as ActiveWeather,
     createdAt: 0,
     modifiedAt: 0,
     ...overrides,
@@ -53,7 +55,7 @@ describe('weatherSystem', () => {
     it('produces a well-formed ActiveWeather for the temperate climate', () => {
       const location = buildLocation({ climate: 'temperate' });
       const result = generateWeather({
-        location,
+        climate: location.climate,
         currentTime: { day: 0, slot: 0 },
       });
 
@@ -62,14 +64,14 @@ describe('weatherSystem', () => {
       expect(result.weather.startedAt).toEqual({ day: 0, slot: 0 });
       expect(result.weather.duration).toBeDefined();
       expect(result.weather.expiresAt).toBeDefined();
-      expect(result.logMessage).toContain('Test Location');
+      expect(result.logMessage).toContain('Weather changed');
       expect(result.logMessage).toContain('Clear skies');
     });
 
     it('falls back to the temperate table for an unknown climate', () => {
       const location = buildLocation({ climate: 'unknown-climate' as never });
       const result = generateWeather({
-        location,
+        climate: location.climate,
         currentTime: { day: 1, slot: 1 },
       });
       // The temperate table's first entry is "clear"
@@ -79,7 +81,7 @@ describe('weatherSystem', () => {
     it('uses a custom weather table when provided', () => {
       const location = buildLocation();
       const result = generateWeather({
-        location,
+        climate: location.climate,
         currentTime: { day: 0, slot: 0 },
         weatherTable: {
           id: 'wt-custom',
@@ -104,7 +106,7 @@ describe('weatherSystem', () => {
     it('applies GM effect overrides before intensity scaling', () => {
       const location = buildLocation();
       const result = generateWeather({
-        location,
+        climate: location.climate,
         currentTime: { day: 0, slot: 0 },
         weatherEffectOverrides: {
           clear: { gathering: 10 },
@@ -270,19 +272,18 @@ describe('weatherSystem', () => {
       vi.restoreAllMocks();
     });
 
-    it('produces a "Camp" location with generated weather', () => {
+    it('produces a "Camp" location without ambient weather fields', () => {
       vi.spyOn(Math, 'random').mockReturnValue(0);
       const location = createDefaultLocation({ day: 0, slot: 0 });
       expect(location.name).toBe('Camp');
       expect(location.climate).toBe('temperate');
       expect(location.terrain).toBe('plains');
-      expect(location.currentWeather).toBeDefined();
-      expect(location.currentWeather.weather.type).toBeDefined();
+      expect('currentWeather' in location).toBe(false);
       expect(location.id.startsWith('loc-')).toBe(true);
     });
   });
 
-  describe('createInitialLocationState / getCurrentLocation / getCurrentWeather', () => {
+  describe('createInitialLocationState / getCurrentLocation', () => {
     afterEach(() => {
       vi.restoreAllMocks();
     });
@@ -296,9 +297,6 @@ describe('weatherSystem', () => {
       const loc = getCurrentLocation(state);
       expect(loc?.name).toBe('Camp');
 
-      const weather = getCurrentWeather(state);
-      expect(weather).toBeDefined();
-      expect(weather?.type).toBeDefined();
     });
 
     it('getCurrentLocation returns null when currentLocationId is missing', () => {
@@ -308,7 +306,6 @@ describe('weatherSystem', () => {
         weatherTables: {},
       };
       expect(getCurrentLocation(state)).toBeNull();
-      expect(getCurrentWeather(state)).toBeNull();
     });
 
     it('getCurrentLocation returns null when the id points at a missing location', () => {
@@ -318,6 +315,107 @@ describe('weatherSystem', () => {
         weatherTables: {},
       };
       expect(getCurrentLocation(state)).toBeNull();
+    });
+  });
+
+  describe('seasonal weather hooks', () => {
+    const dry: WeatherTableEntry = {
+      weather: 'clear',
+      probability: 10,
+      temperatureRange: ['cool', 'warm'],
+      durationRange: { min: { type: 'slots', count: 1 }, max: { type: 'slots', count: 1 } },
+    };
+    const wet: WeatherTableEntry = {
+      ...dry,
+      weather: 'rain',
+      probability: 20,
+    };
+    const winter: SeasonDef = {
+      name: 'Winter',
+      days: 90,
+      temperatureShift: -2,
+      precipitationMultiplier: 1.5,
+    };
+
+    it('returns the original entries when no season is supplied', () => {
+      const entries = [dry, wet];
+      expect(applySeasonToEntries(entries, undefined)).toBe(entries);
+    });
+
+    it('scales rain probability', () => {
+      expect(applySeasonToEntries([wet], winter)[0].probability).toBe(30);
+    });
+
+    it('leaves clear probability unchanged', () => {
+      expect(applySeasonToEntries([dry], winter)[0].probability).toBe(10);
+    });
+
+    it.each(['lightRain', 'rain', 'heavyRain', 'thunderstorm', 'snow', 'blizzard', 'hail'] as const)(
+      'classifies %s as precipitation',
+      (weather) => {
+        const entry = { ...wet, weather };
+        expect(applySeasonToEntries([entry], winter)[0].probability).toBe(30);
+      }
+    );
+
+    it('does not mutate authored entries', () => {
+      applySeasonToEntries([wet], winter);
+      expect(wet.probability).toBe(20);
+    });
+
+    it('returns the original range for a zero shift', () => {
+      const range: ['cool', 'warm'] = ['cool', 'warm'];
+      expect(shiftTemperatureRange(range, 0)).toBe(range);
+    });
+
+    it('shifts a temperature range colder', () => {
+      expect(shiftTemperatureRange(['mild', 'warm'], -2)).toEqual(['cold', 'cool']);
+    });
+
+    it('shifts a temperature range warmer', () => {
+      expect(shiftTemperatureRange(['cool', 'mild'], 2)).toEqual(['warm', 'hot']);
+    });
+
+    it('clamps shifts at extreme cold', () => {
+      expect(shiftTemperatureRange(['extreme_cold', 'freezing'], -3)).toEqual(['extreme_cold', 'extreme_cold']);
+    });
+
+    it('clamps shifts at extreme heat', () => {
+      expect(shiftTemperatureRange(['hot', 'extreme_heat'], 3)).toEqual(['extreme_heat', 'extreme_heat']);
+    });
+
+    it('applies winter temperature shift to a custom table deterministically', () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0);
+      const weatherTable: WeatherTable = { id: 'stable', name: 'Stable', entries: [{ ...dry, temperatureRange: ['mild', 'mild'] }] };
+      const baseline = generateWeather({ climate: 'temperate', weatherTable, currentTime: { day: 1, slot: 0 } });
+      const seasonal = generateWeather({ climate: 'temperate', weatherTable, currentTime: { day: 1, slot: 0 }, season: winter });
+      expect(baseline.weather.weather.temperature).toBe('mild');
+      expect(seasonal.weather.weather.temperature).toBe('cold');
+      vi.restoreAllMocks();
+    });
+
+    it('uses slotsPerDay for duration expiration', () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0);
+      const weatherTable = {
+        id: 'duration', name: 'Duration', entries: [{
+          ...dry,
+          durationRange: { min: { type: 'days' as const, count: 1 }, max: { type: 'days' as const, count: 1 } },
+        }],
+      };
+      const result = generateWeather({ climate: 'temperate', weatherTable, currentTime: { day: 2, slot: 3 }, slotsPerDay: 4 });
+      expect(result.weather.expiresAt).toEqual({ day: 3, slot: 3 });
+      vi.restoreAllMocks();
+    });
+
+    it('checks expiration with a non-default slot count', () => {
+      const weather: ActiveWeather = {
+        weather: { type: 'clear', intensity: 'light', temperature: 'mild', description: '', effects: { ...BASE_WEATHER_EFFECTS.clear } as WeatherEffects },
+        startedAt: { day: 1, slot: 0 },
+        duration: { type: 'slots', count: 1 },
+        expiresAt: { day: 1, slot: 3 },
+      };
+      expect(isWeatherExpired(weather, { day: 1, slot: 2 }, 4)).toBe(false);
+      expect(isWeatherExpired(weather, { day: 1, slot: 3 }, 4)).toBe(true);
     });
   });
 });
