@@ -4,6 +4,7 @@ import { hydrateCampaignState } from '../../persistence/campaignStorage';
 import { DEFAULT_STUDY_CONFIG } from '../../constants';
 import { selectContactByName, selectContacts, selectStudyConfig, selectStudyProjects, selectStudyProjectsForCharacter } from '../selectors';
 import type { ContactEntry, StudyProject } from '../../types/campaign';
+import type { MapModel } from '../../types/map';
 
 describe('campaignReducer', () => {
   const studyProject: StudyProject = {
@@ -291,6 +292,106 @@ describe('campaignReducer', () => {
     expect(result.time.slot).toBe(slotBefore);
     expect(result.logs.entries.length).toBe(logsBefore);
     expect(result.checkpoints.entries).toHaveLength(1);
+  });
+
+  it('checkpoint round-trip preserves map and combat reveal Sets', () => {
+    const makeMap = (): MapModel => ({
+      id: 'map-1',
+      name: 'Test Map',
+      visionMode: 'lineOfSight',
+      scaleMilesPerTile: 12,
+      rows: 1,
+      cols: 1,
+      grid: [['tile-1']],
+      tilesById: {
+        'tile-1': { id: 'tile-1', terrainId: null, markerIds: [], linkIds: [] }
+      },
+      terrainById: {},
+      markersById: {},
+      linksById: {},
+      revealedTileIds: new Set(['tile-1', 'tile-2']),
+      lastSelectedTerrainId: '',
+      lastPlacedTerrainId: ''
+    });
+    const state = createCampaignState();
+    state.maps = { ...state.maps, mapsById: { 'map-1': makeMap() } };
+    state.combat.reveal.revealedTargets.add('target-a');
+    state.combat.reveal.revealedTargets.add('target-b');
+    state.combat.reveal.revealedHP.add('target-a');
+
+    const withCheckpoint = campaignReducer(state, { type: 'createCheckpoint', payload: 'Before wipe' });
+    const checkpointId = withCheckpoint.checkpoints.entries[0].id;
+
+    // Snapshots store Sets as arrays so they survive campaign save/load too.
+    const snapshot = withCheckpoint.checkpoints.entries[0].snapshot;
+    expect(Array.isArray(snapshot.combat.reveal.revealedTargets)).toBe(true);
+    expect(Array.isArray(snapshot.maps.mapsById['map-1'].revealedTileIds)).toBe(true);
+
+    const diverged = campaignReducer(withCheckpoint, {
+      type: 'registerCombatDamage',
+      payload: { targetId: 'target-c', remainingHp: 5 }
+    });
+    const restored = campaignReducer(diverged, { type: 'restoreCheckpoint', payload: checkpointId });
+
+    expect(restored.combat.reveal.revealedTargets).toBeInstanceOf(Set);
+    expect(restored.combat.reveal.revealedTargets.has('target-a')).toBe(true);
+    expect(restored.combat.reveal.revealedTargets.has('target-b')).toBe(true);
+    expect(restored.combat.reveal.revealedTargets.has('target-c')).toBe(false);
+    expect(restored.combat.reveal.revealedHP).toBeInstanceOf(Set);
+    expect(restored.combat.reveal.revealedHP.has('target-a')).toBe(true);
+    const map = restored.maps.mapsById['map-1'];
+    expect(map.revealedTileIds).toBeInstanceOf(Set);
+    expect(map.revealedTileIds.has('tile-1')).toBe(true);
+    expect(map.revealedTileIds.has('tile-2')).toBe(true);
+    expect(map.revealedTileIds.size).toBe(2);
+
+    // The restored Sets must be mutable through subsequent actions.
+    const afterRestore = campaignReducer(restored, {
+      type: 'registerCombatDamage',
+      payload: { targetId: 'target-d', remainingHp: 3 }
+    });
+    expect(afterRestore.combat.reveal.revealedTargets.has('target-d')).toBe(true);
+  });
+
+  it('restoreCheckpoint tolerates pre-fix snapshots whose Sets were corrupted to {}', () => {
+    const state = createCampaignState();
+    state.maps = { ...state.maps, mapsById: { 'map-1': {
+      id: 'map-1',
+      name: 'Test Map',
+      visionMode: 'lineOfSight',
+      scaleMilesPerTile: 12,
+      rows: 1,
+      cols: 1,
+      grid: [['tile-1']],
+      tilesById: {
+        'tile-1': { id: 'tile-1', terrainId: null, markerIds: [], linkIds: [] }
+      },
+      terrainById: {},
+      markersById: {},
+      linksById: {},
+      revealedTileIds: new Set(['tile-1']),
+      lastSelectedTerrainId: '',
+      lastPlacedTerrainId: ''
+    } } };
+    // Snapshots written before Sets were serialized went through a plain JSON
+    // round-trip, which turned every Set into {}.
+    const { checkpoints: _checkpoints, ...rest } = state;
+    const legacySnapshot = JSON.parse(JSON.stringify(rest));
+    expect(legacySnapshot.combat.reveal.revealedTargets).toEqual({});
+    state.checkpoints.entries.push({
+      id: 'legacy-cp',
+      label: 'Legacy',
+      createdAt: 0,
+      snapshot: legacySnapshot
+    });
+
+    const restored = campaignReducer(state, { type: 'restoreCheckpoint', payload: 'legacy-cp' });
+
+    expect(restored.combat.reveal.revealedTargets).toBeInstanceOf(Set);
+    expect(restored.combat.reveal.revealedTargets.size).toBe(0);
+    expect(restored.combat.reveal.revealedHP).toBeInstanceOf(Set);
+    expect(restored.maps.mapsById['map-1'].revealedTileIds).toBeInstanceOf(Set);
+    expect(restored.maps.mapsById['map-1'].revealedTileIds.size).toBe(0);
   });
 
   it('restoreCheckpoint appends player-visible rollback log', () => {
