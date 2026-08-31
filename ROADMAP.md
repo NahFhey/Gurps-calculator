@@ -319,7 +319,13 @@ Shipped as a four-lane bundle (design: [`docs/ACTIVITY_SYSTEM_13B_PLAN.md`](./do
 ### Lane A: Groups & Vehicles ✅ COMPLETE (2026-08-31, codex-shepherd ×2, specs `2026-08-31-lane-a1/a2-*`, merge `codex/lane-a-groups-vehicles`)
 - ✅ A1 state model: `TravelGroup`/`Vehicle`/`VehicleTypeDef` (seeded catalog: Lancer/Skyship/Riverboat/Sailing Ship), `party/` domain with co-location-gated split/merge/board, one-level docking with `hangarSlots`, `partyTileId` removed (group-aware `map/executeTravel`, union vision), rewritten travel validation (PARTY_INCAPACITATED implemented, INSUFFICIENT_CREW, vehicle speed budgets), schema 1.5.6 + `ensureTravelGroups`
 - ✅ A2 UI: group/vehicle map tokens (portrait sprites, per-tile fan-out, dimmed parked, active ring), active-group selector + generalized placement, wizard Party step (staged dnd-kit Traveling/Staying composition + conveyance, applied atomically at confirm), Manager Vehicles view (catalog + instances + dock/undock)
-- Browser-verified headless (SwiftShader): fresh boot seeds The Party, map create + group placement + token render, zero console errors. 70 new tests (suite: 3,904). Known pre-existing shell reload bug filed as a separate task (predates lane A, verified at baseline).
+- Browser-verified headless (SwiftShader): fresh boot seeds The Party, map create + group placement + token render, zero console errors. 70 new tests (suite: 3,904). Known pre-existing shell reload bug filed as a separate task (predates lane A, verified at baseline; fixed same day — see Interstitial below).
+
+### Interstitial: Map-tab data-loss investigation ✅ COMPLETE (2026-08-31, direct fixes)
+Three fixes out of the "Map tab wiped / maps missing after reload" investigation, landed on main between lanes A and B:
+- ✅ Shell reload bug: rail buttons no longer toggle the active tab off, so the Map tab no longer vanishes after reload (`src/unified/UnifiedShell.tsx`) — the primary reported symptom
+- ✅ Checkpoint snapshots no longer corrupt Set fields (`campaignReducer.ts`)
+- ✅ Cross-tab overwrite guard for campaign state saves (`src/persistence/campaignStorage.ts`): every save stamps a monotonic revision into `campaignStateRevision`; a session whose baseline is older than storage refuses to save (`CampaignStateConflictError` + one-time `campaign-state-conflict` window event, reload to recover) instead of letting a stale tab's whole-blob save silently erase another session's state — the leading candidate for the intermittent `maps.mapsById` localStorage data loss. 6 new tests.
 
 ### Lane B: Climate, Season & Weather
 - Per-map climate scalar; per-map ambient weather (terrain applies at consumption time)
