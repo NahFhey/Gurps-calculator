@@ -5,6 +5,8 @@
  * terrain, markers, links (portals), and route-based travel.
  */
 
+import type { ActiveWeather, ClimateType, Id } from './location';
+
 // ============================================================================
 // TYPE ALIASES
 // ============================================================================
@@ -252,6 +254,12 @@ export interface MapModel {
   name: string;
   /** Optional description */
   description?: string;
+
+  /** Ambient climate and weather shared by every presence on this map. */
+  climate: ClimateType;
+  currentWeather?: ActiveWeather | null;
+  /** Optional custom weather table stored in the location-authoring slice. */
+  weatherTableId?: Id | null;
 
   /** Vision regime for players. */
   visionMode: VisionMode;

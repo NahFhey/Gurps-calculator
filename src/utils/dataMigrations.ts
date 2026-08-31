@@ -25,6 +25,7 @@ import {
 import { ensureParticipantConditionVisibility } from './conditionsEngine';
 import { deriveCombatCategory } from './combatHelpers';
 import { upgradeCombatHistory } from './legacyCombatHistory';
+import { DEFAULT_CALENDAR } from './timeSystem';
 
 type MigratableData = Record<string, unknown> & { schemaVersion?: string };
 
@@ -64,6 +65,7 @@ const migrationHandlers: Record<string, MigrationHandler> = {
   '1.5.3:1.5.4': migrateTo1_5_4,
   '1.5.4:1.5.5': migrateTo1_5_5,
   '1.5.5:1.5.6': migrateTo1_5_6,
+  '1.5.6:1.5.7': migrateTo1_5_7,
 };
 
 /**
@@ -501,6 +503,58 @@ export function migrateTo1_5_6(data: MigratableData): MigratableData {
     next.ui = ui;
   }
   next.entities = entities;
+  return next;
+}
+
+/** Migration: 1.5.6 → 1.5.7 (per-map ambient weather and derived seasons). */
+export function migrateTo1_5_7(data: MigratableData): MigratableData {
+  const next: MigratableData = { ...data };
+  const locationsState = isRecord(data.locations) ? { ...data.locations } : {};
+  const rawLocations = isRecord(locationsState.locations) ? locationsState.locations : {};
+  const activeLocationId = typeof locationsState.currentLocationId === 'string'
+    ? locationsState.currentLocationId
+    : null;
+  const activeLocation = activeLocationId && isRecord(rawLocations[activeLocationId])
+    ? rawLocations[activeLocationId]
+    : undefined;
+  // Legacy keys are intentionally plain string literals for migration honesty.
+  const inheritedWeather = activeLocation?.['currentWeather'];
+
+  const cleanedLocations: Record<string, unknown> = {};
+  for (const [locationId, location] of Object.entries(rawLocations)) {
+    cleanedLocations[locationId] = isRecord(location)
+      ? omitKeys(location, ['currentWeather', 'weatherTableId'])
+      : location;
+  }
+  next.locations = { ...locationsState, locations: cleanedLocations };
+
+  const mapsState = isRecord(data.maps) ? { ...data.maps } : {};
+  const rawMaps = isRecord(mapsState.mapsById) ? mapsState.mapsById : {};
+  const requestedMapId = typeof mapsState.activeMapId === 'string' ? mapsState.activeMapId : null;
+  const activeMapId = requestedMapId && rawMaps[requestedMapId]
+    ? requestedMapId
+    : Object.keys(rawMaps)[0] ?? null;
+  const migratedMaps: Record<string, unknown> = {};
+  for (const [mapId, map] of Object.entries(rawMaps)) {
+    if (!isRecord(map)) {
+      migratedMaps[mapId] = map;
+      continue;
+    }
+    migratedMaps[mapId] = {
+      ...map,
+      climate: typeof map.climate === 'string' ? map.climate : 'temperate',
+      ...(mapId === activeMapId && map.currentWeather === undefined && inheritedWeather !== undefined
+        ? { currentWeather: inheritedWeather }
+        : {}),
+    };
+  }
+  next.maps = { ...mapsState, mapsById: migratedMaps };
+
+  const time = isRecord(data.time) ? { ...data.time } : {};
+  if (!isRecord(time.calendar)) {
+    time.calendar = DEFAULT_CALENDAR;
+  }
+  next.time = time;
   return next;
 }
 

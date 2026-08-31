@@ -62,8 +62,10 @@ import type {
   LocationModifiers,
   WeatherTable,
   WeatherEffects,
-  ActiveWeather
+  ActiveWeather,
+  ClimateType,
 } from '../types/location';
+import type { CalendarConfig } from '../utils/timeSystem';
 import type { DowntimeState } from '../types/downtime';
 import type { ForageZoneProfile } from '../types/foraging';
 import type { CombatState, RevealState } from '../types/combatTracker';
@@ -106,6 +108,7 @@ type CampaignStoreValue = {
 
     // Time & Activities
     advanceTime: () => void;
+    setCalendarConfig: (config: CalendarConfig) => void;
     setPausedSessionIds: (ids: string[]) => void;
     setActivitiesState: (payload: Partial<CampaignState['activities']>) => void;
     setPartyToolState: (payload: CampaignState['activities']['partyToolState']) => void;
@@ -293,8 +296,8 @@ type CampaignStoreValue = {
     updateLocation: (id: Id, changes: Partial<Location>) => void;
     removeLocation: (id: Id) => void;
     setCurrentLocation: (id: Id) => void;
-    setLocationWeather: (locationId: Id, weather: ActiveWeather) => void;
-    rollNewWeather: (locationId: Id) => void;
+    setMapWeather: (mapId: Id, weather: ActiveWeather) => void;
+    rollNewWeather: (mapId: Id) => void;
     addWeatherTable: (table: WeatherTable) => void;
     updateWeatherTable: (id: Id, changes: Partial<WeatherTable>) => void;
     removeWeatherTable: (id: Id) => void;
@@ -308,9 +311,9 @@ type CampaignStoreValue = {
 
     // Map Actions
     setMaps: (maps: MapState) => void;
-    mapCreateMap: (params: { name: string; description?: string; scaleMilesPerTile: MapScale; startTerrainId: TerrainId }) => void;
+    mapCreateMap: (params: { name: string; description?: string; scaleMilesPerTile: MapScale; startTerrainId: TerrainId; climate: ClimateType }) => void;
     mapDeleteMap: (mapId: MapId) => void;
-    mapUpdateMap: (mapId: MapId, changes: Partial<Pick<MapModel, 'name' | 'description' | 'visionMode' | 'sightRangeTiles'>>) => void;
+    mapUpdateMap: (mapId: MapId, changes: Partial<Pick<MapModel, 'name' | 'description' | 'visionMode' | 'sightRangeTiles' | 'climate' | 'weatherTableId'>>) => void;
     mapSetActiveMap: (mapId: MapId | null) => void;
     mapSetTileTerrain: (mapId: MapId, tileId: TileId, terrainId: TerrainId, elevationOverride?: number) => void;
     mapStampTerrain: (mapId: MapId, tileIds: TileId[], terrainId: TerrainId) => void;
@@ -393,6 +396,8 @@ export function CampaignStoreProvider({
       setActivitiesSubview: (view: string | null) => dispatch({ type: 'setActivitiesSubview', payload: view }),
       setMealBuff: (buff: MealBuff | null) => dispatch({ type: 'setMealBuff', payload: buff }),
       advanceTime: () => dispatch({ type: 'advanceTime' }),
+      setCalendarConfig: (config: CalendarConfig) =>
+        dispatch({ type: 'setCalendarConfig', payload: config }),
       setPausedSessionIds: (ids: string[]) => dispatch({ type: 'setPausedSessionIds', payload: ids }),
       setActivitiesState: (payload: Partial<CampaignState['activities']>) =>
         dispatch({ type: 'setActivitiesState', payload }),
@@ -646,9 +651,9 @@ export function CampaignStoreProvider({
         dispatch({ type: 'updateLocation', payload: { id, changes } }),
       removeLocation: (id: Id) => dispatch({ type: 'removeLocation', payload: id }),
       setCurrentLocation: (id: Id) => dispatch({ type: 'setCurrentLocation', payload: id }),
-      setLocationWeather: (locationId: Id, weather: ActiveWeather) =>
-        dispatch({ type: 'setLocationWeather', payload: { locationId, weather } }),
-      rollNewWeather: (locationId: Id) => dispatch({ type: 'rollNewWeather', payload: { locationId } }),
+      setMapWeather: (mapId: Id, weather: ActiveWeather) =>
+        dispatch({ type: 'setMapWeather', payload: { mapId, weather } }),
+      rollNewWeather: (mapId: Id) => dispatch({ type: 'rollNewWeather', payload: { mapId } }),
       addWeatherTable: (table: WeatherTable) => dispatch({ type: 'addWeatherTable', payload: table }),
       updateWeatherTable: (id: Id, changes: Partial<WeatherTable>) =>
         dispatch({ type: 'updateWeatherTable', payload: { id, changes } }),
@@ -669,10 +674,10 @@ export function CampaignStoreProvider({
 
       // Map Actions
       setMaps: (maps: MapState) => dispatch({ type: 'setMaps', payload: maps }),
-      mapCreateMap: (params: { name: string; description?: string; scaleMilesPerTile: MapScale; startTerrainId: TerrainId }) =>
+      mapCreateMap: (params: { name: string; description?: string; scaleMilesPerTile: MapScale; startTerrainId: TerrainId; climate: ClimateType }) =>
         dispatch({ type: 'map/createMap', payload: params }),
       mapDeleteMap: (mapId: MapId) => dispatch({ type: 'map/deleteMap', payload: mapId }),
-      mapUpdateMap: (mapId: MapId, changes: Partial<Pick<MapModel, 'name' | 'description' | 'visionMode' | 'sightRangeTiles'>>) =>
+      mapUpdateMap: (mapId: MapId, changes: Partial<Pick<MapModel, 'name' | 'description' | 'visionMode' | 'sightRangeTiles' | 'climate' | 'weatherTableId'>>) =>
         dispatch({ type: 'map/updateMap', payload: { mapId, changes } }),
       mapSetActiveMap: (mapId: MapId | null) => dispatch({ type: 'map/setActiveMap', payload: mapId }),
       mapSetTileTerrain: (mapId: MapId, tileId: TileId, terrainId: TerrainId, elevationOverride?: number) =>

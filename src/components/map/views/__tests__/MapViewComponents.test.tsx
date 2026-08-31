@@ -72,6 +72,7 @@ const mockMap: MapModel = ({
   id: mockMapId1,
   name: 'Thornwood Region',
   description: 'A lush forest region',
+  climate: 'temperate',
   visionMode: 'lineOfSight',
   scaleMilesPerTile: 12,
   rows: 3,
@@ -269,7 +270,7 @@ describe('MapHeader', () => {
     expect(onSelectMap).toHaveBeenCalledWith(mockMapId2);
   });
 
-  it('updates vision mode and sight range from the GM settings popover', () => {
+  it('updates vision, sight range, climate, and weather table from the GM settings popover', () => {
     const onUpdateMapSettings = vi.fn();
     render(
       <MapHeader
@@ -279,13 +280,19 @@ describe('MapHeader', () => {
         onSelectMap={vi.fn()}
         onCreateMap={vi.fn()}
         onUpdateMapSettings={onUpdateMapSettings}
+        climateLabels={{ temperate: 'Temperate', arid: 'Arid' }}
+        weatherTables={[{ id: 'weather-1', name: 'Regional Weather', entries: [] }]}
       />
     );
     fireEvent.click(screen.getByRole('button', { name: 'Map settings' }));
     fireEvent.change(screen.getByLabelText('Vision'), { target: { value: 'open' } });
     fireEvent.change(screen.getByLabelText('Sight range'), { target: { value: '12' } });
+    fireEvent.change(screen.getByLabelText('Climate'), { target: { value: 'arid' } });
+    fireEvent.change(screen.getByLabelText('Weather table'), { target: { value: 'weather-1' } });
     expect(onUpdateMapSettings).toHaveBeenCalledWith({ visionMode: 'open' });
     expect(onUpdateMapSettings).toHaveBeenCalledWith({ sightRangeTiles: 12 });
+    expect(onUpdateMapSettings).toHaveBeenCalledWith({ climate: 'arid' });
+    expect(onUpdateMapSettings).toHaveBeenCalledWith({ weatherTableId: 'weather-1' });
   });
 });
 
@@ -358,6 +365,7 @@ describe('MapCreateDialog', () => {
       const call = onConfirm.mock.calls[0][0];
       expect(call.name).toBe('My Map');
       expect(call.scaleMilesPerTile).toBe(12);
+      expect(call.climate).toBe('temperate');
     });
   });
 

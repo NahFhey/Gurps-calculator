@@ -1,15 +1,12 @@
-import type { Location, WeatherTable } from '../../../types/location';
-import { getWeatherIcon } from '../../../utils/weatherSystem';
+import type { Location } from '../../../types/location';
 
 export interface LocationListViewProps {
   locations: Location[];
   currentLocationId?: string | null;
-  weatherTablesById: Record<string, WeatherTable>;
   allClimateLabels: Record<string, string>;
   allTerrainLabels: Record<string, string>;
   onCreate: () => void;
   onSetCurrent: (locationId: string) => void;
-  onRollWeather: (locationId: string) => void;
   onEdit: (location: Location) => void;
   onDelete: (locationId: string) => void;
 }
@@ -17,12 +14,10 @@ export interface LocationListViewProps {
 export function LocationListView({
   locations,
   currentLocationId,
-  weatherTablesById,
   allClimateLabels,
   allTerrainLabels,
   onCreate,
   onSetCurrent,
-  onRollWeather,
   onEdit,
   onDelete,
 }: LocationListViewProps) {
@@ -47,10 +42,6 @@ export function LocationListView({
           {locations.map((location) => {
             const climateLabel = allClimateLabels[location.climate] ?? location.climate;
             const terrainLabel = allTerrainLabels[location.terrain] ?? location.terrain;
-            const tableName = location.weatherTableId
-              ? weatherTablesById[location.weatherTableId]?.name
-              : null;
-
             return (
               <div
                 key={location.id}
@@ -72,16 +63,7 @@ export function LocationListView({
                     </div>
                     <div className="text-xs text-gray-400 mt-0.5">
                       {climateLabel} | {terrainLabel}
-                      {tableName && (
-                        <span className="text-cyan-400 ml-1">| {tableName}</span>
-                      )}
                     </div>
-                    {location.currentWeather && (
-                      <div className="text-sm text-gray-300 mt-1 flex items-center gap-1">
-                        <span>{getWeatherIcon(location.currentWeather.weather.type)}</span>
-                        <span>{location.currentWeather.weather.description}</span>
-                      </div>
-                    )}
                   </div>
                   <div className="flex items-center gap-1 ml-2">
                     {location.id !== currentLocationId && (
@@ -93,13 +75,6 @@ export function LocationListView({
                         Go Here
                       </button>
                     )}
-                    <button
-                      onClick={() => onRollWeather(location.id)}
-                      className="p-1.5 text-xs bg-gray-600 hover:bg-gray-500 text-gray-200 rounded"
-                      title="Roll new weather"
-                    >
-                      🎲
-                    </button>
                     <button
                       onClick={() => onEdit(location)}
                       className="p-1.5 text-xs bg-gray-600 hover:bg-gray-500 text-gray-200 rounded"

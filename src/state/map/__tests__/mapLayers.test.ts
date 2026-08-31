@@ -45,6 +45,7 @@ function makeMap(id: string): MapModel {
   return {
     id,
     name: `map-${id}`,
+    climate: 'temperate',
     visionMode: 'open',
     scaleMilesPerTile: 12,
     rows: 1,

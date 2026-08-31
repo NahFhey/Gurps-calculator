@@ -20,6 +20,18 @@ const mockCampaignStore = {
         'loc-1': {
           name: 'Darkwood Forest',
           climate: 'temperate',
+        },
+      },
+      customClimates: [],
+      weatherEffectOverrides: {},
+    },
+    maps: {
+      activeMapId: 'map-1',
+      mapsById: {
+        'map-1': {
+          id: 'map-1',
+          name: 'Darkwood Forest',
+          climate: 'temperate',
           currentWeather: {
             weather: {
               type: 'rain',
@@ -40,15 +52,19 @@ const mockCampaignStore = {
                 trackingMod: 0,
               },
             },
-            startDay: 2,
-            startSlot: 0,
-            durationSlots: 6,
+            startedAt: { day: 2, slot: 0 },
+            duration: { type: 'slots', count: 6 },
           },
         },
       },
-      weatherEffectOverrides: {},
     },
-    ui: { gmModeEnabled: false },
+    entities: {
+      travelGroups: {
+        group: { id: 'group', name: 'Party', memberIds: [], vehicleId: null, position: { mapId: 'map-1', tileId: 'tile-1' } },
+      },
+      vehicles: {},
+    },
+    ui: { gmModeEnabled: false, activeTravelGroupId: 'group' },
   },
   actions: {
     rollNewWeather: vi.fn(),
@@ -122,6 +138,13 @@ describe('TimeDisplay', () => {
     render(<TimeDisplay />);
     expect(screen.getByText('Day')).toBeInTheDocument();
     expect(screen.getByText('Time')).toBeInTheDocument();
+  });
+
+  it('renders the current season and day of season', () => {
+    render(<TimeDisplay />);
+    expect(screen.getByText('Season')).toBeInTheDocument();
+    expect(screen.getByText(/Spring/)).toBeInTheDocument();
+    expect(screen.getByText('Day 3')).toBeInTheDocument();
   });
 });
 

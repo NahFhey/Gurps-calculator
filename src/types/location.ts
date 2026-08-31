@@ -9,6 +9,8 @@
  * - Travel (movement between locations)
  */
 
+import type { SeasonDef } from '../utils/timeSystem';
+
 export type Id = string;
 
 // ============================================================================
@@ -29,7 +31,7 @@ export type PresetClimateType =
 
 /**
  * Climate types — includes presets + GM-defined custom types
- * Custom types use a weatherTableId on the location for weather generation
+ * Custom types can be paired with a custom weather table by the owning map.
  */
 export type ClimateType = PresetClimateType | (string & {});
 
@@ -234,10 +236,6 @@ export interface Location {
   climate: ClimateType;
   terrain: TerrainType;
 
-  // Weather configuration
-  weatherTableId?: Id;        // Custom weather table (optional, uses climate default)
-  currentWeather: ActiveWeather;
-
   // Location-specific modifiers
   modifiers: LocationModifiers;
 
@@ -281,9 +279,11 @@ export interface LocationState {
  * Input for weather generation
  */
 export interface WeatherGenerationInput {
-  location: Location;
+  climate: ClimateType;
   weatherTable?: WeatherTable;
   currentTime: { day: number; slot: number };
+  season?: SeasonDef;
+  slotsPerDay?: number;
   /** GM overrides for base weather effects (applied before intensity scaling) */
   weatherEffectOverrides?: Record<string, Partial<WeatherEffects>>;
 }

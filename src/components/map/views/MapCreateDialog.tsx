@@ -4,6 +4,8 @@
 
 import React, { useEffect, useId, useState } from 'react';
 import type { MapScale, TerrainId } from '../../../types/map';
+import type { ClimateType } from '../../../types/location';
+import { CLIMATE_LABELS } from '../../../types/location';
 import { MAP_SCALES, createPresetTerrains } from '../../../constants/map';
 import { X } from 'lucide-react';
 
@@ -13,17 +15,20 @@ interface MapCreateDialogProps {
     description?: string;
     scaleMilesPerTile: MapScale;
     startTerrainId: TerrainId;
+    climate: ClimateType;
   }) => void;
+  climateLabels?: Record<string, string>;
   onCancel: () => void;
 }
 
 const presetTerrains = createPresetTerrains();
 
-export function MapCreateDialog({ onConfirm, onCancel }: MapCreateDialogProps) {
+export function MapCreateDialog({ onConfirm, onCancel, climateLabels = CLIMATE_LABELS }: MapCreateDialogProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [scale, setScale] = useState<MapScale>(12);
   const [startTerrainId, setStartTerrainId] = useState<TerrainId>(presetTerrains[0].id);
+  const [climate, setClimate] = useState<ClimateType>('temperate');
 
   const titleId = useId();
   const nameInputId = useId();
@@ -49,6 +54,7 @@ export function MapCreateDialog({ onConfirm, onCancel }: MapCreateDialogProps) {
       description: description.trim() || undefined,
       scaleMilesPerTile: scale,
       startTerrainId,
+      climate,
     });
   };
 
@@ -106,6 +112,22 @@ export function MapCreateDialog({ onConfirm, onCancel }: MapCreateDialogProps) {
               placeholder="Optional description"
               className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+          </div>
+
+          <div>
+            <label htmlFor="map-climate" className="block text-sm font-medium text-gray-300 mb-1">
+              Climate
+            </label>
+            <select
+              id="map-climate"
+              value={climate}
+              onChange={(event) => setClimate(event.target.value as ClimateType)}
+              className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-sm text-gray-200"
+            >
+              {Object.entries(climateLabels).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
           </div>
 
           {/* Scale */}

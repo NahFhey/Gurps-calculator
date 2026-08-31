@@ -9,7 +9,6 @@ import type {
   Location,
   LocationState,
   WeatherTable,
-  ActiveWeather
 } from '../../types/location';
 import type { Id } from '../../types/campaign';
 
@@ -61,29 +60,6 @@ export const selectLocationCount = (state: CampaignState): number =>
   Object.keys(state.locations.locations).length;
 
 // ============================================================================
-// WEATHER SELECTORS
-// ============================================================================
-
-/**
- * Select current location's active weather
- */
-export const selectCurrentWeather = (state: CampaignState): ActiveWeather | undefined => {
-  const location = selectCurrentLocation(state);
-  return location?.currentWeather;
-};
-
-/**
- * Select weather for a specific location
- */
-export const selectWeatherForLocation = (
-  state: CampaignState,
-  locationId: Id
-): ActiveWeather | undefined => {
-  const location = state.locations.locations[locationId];
-  return location?.currentWeather;
-};
-
-// ============================================================================
 // WEATHER TABLE SELECTORS
 // ============================================================================
 
@@ -104,16 +80,3 @@ export const selectAllWeatherTables = (state: CampaignState): WeatherTable[] =>
  */
 export const selectWeatherTableById = (state: CampaignState, id: Id): WeatherTable | undefined =>
   state.locations.weatherTables[id];
-
-/**
- * Select weather table for a location
- */
-export const selectWeatherTableForLocation = (
-  state: CampaignState,
-  locationId: Id
-): WeatherTable | undefined => {
-  const location = state.locations.locations[locationId];
-  return location?.weatherTableId
-    ? state.locations.weatherTables[location.weatherTableId]
-    : undefined;
-};

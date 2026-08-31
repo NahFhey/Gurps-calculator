@@ -20,6 +20,62 @@ import { deriveCombatCategory } from '../utils/combatHelpers';
 import { isLegacyCombatSession, upgradeCombatHistory } from '../utils/legacyCombatHistory';
 import type { Id, Material, Food, Recipe, Craft, CraftDesign, AlchemyReagent, AlchemyFormula, AlchemyBatch, AlchemyLab, GatheringSpecies, GatheringTool, GatheringTable, GatheringEnvironment, GatheringSession, GatheringBait, GatheringCategory, GatheringItem, CombatCharacter, CombatItem, Kitchen, Inventory } from '../types/campaign';
 import type { TravelGroup } from '../types/party';
+import type { ActiveWeather, Location } from '../types/location';
+import { DEFAULT_CALENDAR } from '../utils/timeSystem';
+
+/** Move legacy location weather to maps and fill Phase 14 ambient defaults. */
+export function ensureAmbientWeather(state: CampaignState): CampaignState {
+  let mapsChanged = false;
+  let locationsChanged = false;
+  const mapsById = { ...state.maps.mapsById };
+  const locations = { ...state.locations.locations };
+  const requestedMapId = state.maps.activeMapId;
+  const activeMapId = requestedMapId && mapsById[requestedMapId]
+    ? requestedMapId
+    : Object.keys(mapsById)[0] ?? null;
+  const activeLocation = state.locations.currentLocationId
+    ? locations[state.locations.currentLocationId]
+    : undefined;
+  // Legacy keys are intentionally plain string literals for migration honesty.
+  const legacyActive = activeLocation as (Location & Record<string, unknown>) | undefined;
+  const inheritedWeather = legacyActive?.['currentWeather'];
+
+  for (const [mapId, map] of Object.entries(mapsById)) {
+    let nextMap = map;
+    if (!map.climate) {
+      nextMap = { ...nextMap, climate: 'temperate' };
+    }
+    if (mapId === activeMapId && !map.currentWeather && inheritedWeather && typeof inheritedWeather === 'object') {
+      nextMap = { ...nextMap, currentWeather: inheritedWeather as ActiveWeather };
+    }
+    if (nextMap !== map) {
+      mapsById[mapId] = nextMap;
+      mapsChanged = true;
+    }
+  }
+
+  for (const [locationId, location] of Object.entries(locations)) {
+    const legacy = location as Location & Record<string, unknown>;
+    // Legacy keys are intentionally plain string literals for migration honesty.
+    if (Object.prototype.hasOwnProperty.call(legacy, 'currentWeather')
+      || Object.prototype.hasOwnProperty.call(legacy, 'weatherTableId')) {
+      const cleaned = { ...legacy };
+      delete cleaned['currentWeather'];
+      delete cleaned['weatherTableId'];
+      locations[locationId] = cleaned as Location;
+      locationsChanged = true;
+    }
+  }
+
+  const calendarChanged = state.time.calendar === undefined;
+  if (!mapsChanged && !locationsChanged && !calendarChanged) return state;
+  return {
+    ...state,
+    maps: mapsChanged ? { ...state.maps, mapsById } : state.maps,
+    locations: locationsChanged ? { ...state.locations, locations } : state.locations,
+    time: calendarChanged ? { ...state.time, calendar: DEFAULT_CALENDAR } : state.time,
+  };
+}
 
 /** Seed missing built-in character templates while honoring persisted deletions and edits. */
 export function ensureCharacterTemplates(state: CampaignState): CampaignState {

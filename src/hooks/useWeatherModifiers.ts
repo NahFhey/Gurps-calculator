@@ -8,7 +8,8 @@
 
 import { useMemo } from 'react';
 import { useCampaignStore } from '../state/campaignStore';
-import { getWeatherModifierForActivity, getCurrentWeather, getCurrentLocation } from '../utils/weatherSystem';
+import { getWeatherModifierForActivity, getCurrentLocation } from '../utils/weatherSystem';
+import { getActiveAmbientWeather } from '../utils/ambientWeather';
 import type { WeatherModifiers } from '../utils/activityCalculator';
 import type { Weather } from '../types/location';
 
@@ -56,11 +57,10 @@ export function useWeatherModifiers(activityType: ActivityType): UseWeatherModif
   const { state } = useCampaignStore();
 
   return useMemo(() => {
-    const locationState = state.locations;
-    const currentLocation = getCurrentLocation(locationState);
-    const weather = getCurrentWeather(locationState);
+    const currentLocation = getCurrentLocation(state.locations);
+    const { weather, mapName } = getActiveAmbientWeather(state);
 
-    if (!currentLocation || !weather) {
+    if (!weather) {
       return {
         modifiers: null,
         weather: null,
@@ -81,7 +81,7 @@ export function useWeatherModifiers(activityType: ActivityType): UseWeatherModif
     }
 
     // Location modifiers also affect activities
-    const locationBonus = getLocationModifierForActivity(currentLocation.modifiers, activityType);
+    const locationBonus = getLocationModifierForActivity(currentLocation?.modifiers, activityType);
     const totalSkillBonus = skillBonus + locationBonus;
 
     const modifiers: WeatherModifiers = {
@@ -92,12 +92,20 @@ export function useWeatherModifiers(activityType: ActivityType): UseWeatherModif
     return {
       modifiers,
       weather,
-      locationName: currentLocation.name,
+      // Kept for compatibility with existing consumers; ambient weather is map-sourced.
+      locationName: mapName,
       skillBonus: totalSkillBonus,
       effectDescription,
       hasEffect: totalSkillBonus !== 0,
     };
-  }, [state.locations, activityType]);
+  }, [
+    state.locations,
+    state.maps,
+    state.entities.travelGroups,
+    state.entities.vehicles,
+    state.ui.activeTravelGroupId,
+    activityType,
+  ]);
 }
 
 /**
@@ -135,11 +143,10 @@ export function useAllWeatherModifiers(): {
   const { state } = useCampaignStore();
 
   return useMemo(() => {
-    const locationState = state.locations;
-    const currentLocation = getCurrentLocation(locationState);
-    const weather = getCurrentWeather(locationState);
+    const currentLocation = getCurrentLocation(state.locations);
+    const { weather, mapName } = getActiveAmbientWeather(state);
 
-    if (!currentLocation || !weather) {
+    if (!weather) {
       return {
         weather: null,
         locationName: null,
@@ -157,9 +164,9 @@ export function useAllWeatherModifiers(): {
     }
 
     const effects: Record<ActivityType, number> = {
-      gathering: weather.effects.gathering + (currentLocation.modifiers.gathering ?? 0),
-      hunting: weather.effects.hunting + (currentLocation.modifiers.hunting ?? 0),
-      travel: weather.effects.travel + (currentLocation.modifiers.travel ?? 0),
+      gathering: weather.effects.gathering + (currentLocation?.modifiers.gathering ?? 0),
+      hunting: weather.effects.hunting + (currentLocation?.modifiers.hunting ?? 0),
+      travel: weather.effects.travel + (currentLocation?.modifiers.travel ?? 0),
       crafting: weather.effects.crafting,
       alchemy: weather.effects.alchemy,
       cooking: weather.effects.cooking,
@@ -170,11 +177,18 @@ export function useAllWeatherModifiers(): {
 
     return {
       weather,
-      locationName: currentLocation.name,
+      // Kept for compatibility with existing consumers; ambient weather is map-sourced.
+      locationName: mapName,
       effects,
       hasAnyEffect,
     };
-  }, [state.locations]);
+  }, [
+    state.locations,
+    state.maps,
+    state.entities.travelGroups,
+    state.entities.vehicles,
+    state.ui.activeTravelGroupId,
+  ]);
 }
 
 export default useWeatherModifiers;

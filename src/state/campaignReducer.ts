@@ -1,7 +1,13 @@
 import { enableMapSet, produce } from 'immer';
 import type { Draft } from 'immer';
 import { createPartyToolState, PARTY_TOOL_SKILLS } from '../components/partyToolSeed';
-import { advanceTimeSlot, type TimeLogEntry } from '../utils/timeSystem';
+import {
+  advanceTimeSlot,
+  DEFAULT_CALENDAR,
+  getCurrentSeason,
+  type CalendarConfig,
+  type TimeLogEntry,
+} from '../utils/timeSystem';
 import { DEFAULT_STUDY_CONFIG, SLOT_NAMES, SLOTS_PER_DAY } from '../constants';
 import { logger } from '../utils/logger';
 import type {
@@ -68,7 +74,6 @@ import { DEFAULT_FORAGING_CONFIG } from '../constants/foraging';
 import {
   createInitialLocationState,
   generateWeather,
-  isWeatherExpired,
   getTerrainModifiers
 } from '../utils/weatherSystem';
 import { downtimeInitialState, DOWNTIME_SCHEMA_VERSION } from './downtime';
@@ -82,6 +87,7 @@ import { isMapAction, handleMapAction, type MapAction } from './map';
 import { isPartyAction, handlePartyAction, type PartyAction } from './party';
 import { resolveLocationTerrain } from '../utils/mapUtils';
 import { resolveGroupPosition } from '../utils/partyPosition';
+import { mapsWithPresence, regenerateMapWeatherIfNeeded, resolveWeatherContext } from '../utils/ambientWeather';
 
 export const CAMPAIGN_META = {
   rulesVersion: '1.0.0',
@@ -208,6 +214,7 @@ export type CampaignState = {
     slotsPerDay: number;
     slotLabels: string[];
     history: Array<TimeLogEntry & { day: number }>;
+    calendar?: CalendarConfig;
   };
   inventory: {
     // UI state for inventory tab
@@ -394,28 +401,22 @@ const advanceSlotAndRegenerateWeather = (
   );
   draft.ui.blockingError = null;
 
-  const newTime = { day: nextDay, slot: nextSlot };
-  for (const location of Object.values(draft.locations.locations)) {
-    if (location.currentWeather && isWeatherExpired(location.currentWeather, newTime)) {
-      const weatherTable = location.weatherTableId
-        ? draft.locations.weatherTables[location.weatherTableId]
-        : undefined;
-      const result = generateWeather({
-        location: location as Location,
-        weatherTable,
-        currentTime: newTime,
-        weatherEffectOverrides: draft.locations.weatherEffectOverrides,
-      });
-      location.currentWeather = result.weather;
-      location.modifiedAt = Date.now();
-
-      if (location.id === draft.locations.currentLocationId) {
-        appendLogEntry(draft,
-          logEvent('weather.changed', 'player', {
-            message: result.logMessage
-          })
-        );
-      }
+  const newTime = { day: nextDay, slot: nextSlot, slotsPerDay };
+  const season = getCurrentSeason(nextDay, draft.time.calendar ?? DEFAULT_CALENDAR);
+  const activeGroup = draft.ui.activeTravelGroupId
+    ? draft.entities.travelGroups?.[draft.ui.activeTravelGroupId]
+    : undefined;
+  const activeGroupMapId = activeGroup ? resolveGroupPosition(draft, activeGroup)?.mapId : undefined;
+  const activeMapId = activeGroupMapId && draft.maps.mapsById[activeGroupMapId]
+    ? activeGroupMapId
+    : draft.maps.activeMapId;
+  for (const mapId of mapsWithPresence(draft)) {
+    const changed = regenerateMapWeatherIfNeeded(draft, mapId, newTime, season);
+    if (changed && mapId === activeMapId) {
+      const map = draft.maps.mapsById[mapId];
+      appendLogEntry(draft, logEvent('weather.changed', 'player', {
+        message: `Weather on ${map.name} changed to: ${map.currentWeather?.weather.description ?? 'Unknown'}`,
+      }));
     }
   }
 };
@@ -545,7 +546,8 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
     slot: 0,
     slotsPerDay: SLOTS_PER_DAY,
     slotLabels: [...SLOT_NAMES],
-    history: []
+    history: [],
+    calendar: DEFAULT_CALENDAR,
   },
   inventory: {
     activeTab: 'materials'
@@ -795,8 +797,9 @@ export type CampaignAction =
   | { type: 'updateLocation'; payload: { id: Id; changes: Partial<Location> } }
   | { type: 'removeLocation'; payload: Id }
   | { type: 'setCurrentLocation'; payload: Id }
-  | { type: 'setLocationWeather'; payload: { locationId: Id; weather: ActiveWeather } }
-  | { type: 'rollNewWeather'; payload: { locationId: Id } }
+  | { type: 'setMapWeather'; payload: { mapId: Id; weather: ActiveWeather } }
+  | { type: 'rollNewWeather'; payload: { mapId: Id } }
+  | { type: 'setCalendarConfig'; payload: CalendarConfig }
   | { type: 'addWeatherTable'; payload: WeatherTable }
   | { type: 'updateWeatherTable'; payload: { id: Id; changes: Partial<WeatherTable> } }
   | { type: 'removeWeatherTable'; payload: Id }
@@ -876,6 +879,15 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
           }
         }
       }
+      const placedPosition = placedGroup ? resolveGroupPosition(draft, placedGroup) : null;
+      if (action.type === 'party/placeGroup' && placedPosition?.mapId === action.payload.mapId) {
+        regenerateMapWeatherIfNeeded(
+          draft,
+          action.payload.mapId,
+          { day: draft.time.day, slot: draft.time.slot, slotsPerDay: draft.time.slotsPerDay },
+          getCurrentSeason(draft.time.day, draft.time.calendar ?? DEFAULT_CALENDAR)
+        );
+      }
       return;
     }
     if (isCombatAction(action)) {
@@ -931,6 +943,15 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
             }
           }
         }
+      }
+
+      if (action.type === 'map/executeTravel') {
+        regenerateMapWeatherIfNeeded(
+          draft,
+          action.payload.mapId,
+          { day: draft.time.day, slot: draft.time.slot, slotsPerDay: draft.time.slotsPerDay },
+          getCurrentSeason(draft.time.day, draft.time.calendar ?? DEFAULT_CALENDAR)
+        );
       }
 
       // After travel execution, advance time by one slot (cross-slice operation)
@@ -1344,34 +1365,39 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         }
         return;
 
-      case 'setLocationWeather': {
-        const { locationId, weather } = action.payload;
-        if (draft.locations.locations[locationId]) {
-          draft.locations.locations[locationId].currentWeather = weather;
-          draft.locations.locations[locationId].modifiedAt = Date.now();
+      case 'setCalendarConfig':
+        draft.time.calendar = action.payload;
+        return;
+
+      case 'setMapWeather': {
+        const { mapId, weather } = action.payload;
+        if (draft.maps.mapsById[mapId]) {
+          draft.maps.mapsById[mapId].currentWeather = weather;
         }
         return;
       }
 
       case 'rollNewWeather': {
-        const { locationId } = action.payload;
-        const location = draft.locations.locations[locationId];
-        if (location) {
-          const weatherTable = location.weatherTableId
-            ? draft.locations.weatherTables[location.weatherTableId]
-            : undefined;
+        const { mapId } = action.payload;
+        const map = draft.maps.mapsById[mapId];
+        if (map) {
+          const { climate, weatherTable } = resolveWeatherContext(draft, mapId);
           const currentTime = { day: draft.time.day, slot: draft.time.slot };
           const result = generateWeather({
-            location: location as Location,
+            climate,
             weatherTable,
             currentTime,
+            season: getCurrentSeason(
+              draft.time.day,
+              draft.time.calendar ?? DEFAULT_CALENDAR
+            ).def,
             weatherEffectOverrides: draft.locations.weatherEffectOverrides,
+            slotsPerDay: draft.time.slotsPerDay,
           });
-          location.currentWeather = result.weather;
-          location.modifiedAt = Date.now();
+          map.currentWeather = result.weather;
           appendLogEntry(draft,
             logEvent('weather.changed', 'player', {
-              message: result.logMessage
+              message: `Weather on ${map.name} changed to: ${result.weather.weather.description}`,
             })
           );
         }
@@ -1393,10 +1419,10 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
 
       case 'removeWeatherTable':
         delete draft.locations.weatherTables[action.payload];
-        // Clear references from locations
-        for (const loc of Object.values(draft.locations.locations)) {
-          if (loc.weatherTableId === action.payload) {
-            loc.weatherTableId = undefined;
+        // Clear dangling map overrides.
+        for (const map of Object.values(draft.maps.mapsById)) {
+          if (map.weatherTableId === action.payload) {
+            map.weatherTableId = undefined;
           }
         }
         return;

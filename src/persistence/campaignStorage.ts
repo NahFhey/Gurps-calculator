@@ -4,7 +4,8 @@ import { generateAllTestSampleData, isStateEmpty } from '../utils/testSampleData
 import { initialMapState } from '../types/map';
 import { logger } from '../utils/logger';
 import { removeLegacyTravelState } from '../utils/dataMigrations';
-import { ensureCharacterTemplates, ensureTravelGroups, ensureInventoryRecords, ensureOwnerAttributedHoldings, ensureConditionVisibility, ensureCombatCharacterCategories, ensureCombatHistoryShape } from './dataMigration';
+import { ensureAmbientWeather, ensureCharacterTemplates, ensureTravelGroups, ensureInventoryRecords, ensureOwnerAttributedHoldings, ensureConditionVisibility, ensureCombatCharacterCategories, ensureCombatHistoryShape } from './dataMigration';
+import { DEFAULT_CALENDAR } from '../utils/timeSystem';
 
 const CAMPAIGN_STORAGE_KEY = 'campaignState';
 // Legacy key as a string literal on purpose: the field no longer exists on
@@ -52,6 +53,7 @@ const hydrateMapState = (maps: any): CampaignState['maps'] => {
     delete mapWithoutPartyPosition[LEGACY_PARTY_POSITION_KEY];
     hydratedMaps[mapId] = {
       ...mapWithoutPartyPosition,
+      climate: map.climate ?? 'temperate',
       visionMode: map.visionMode ?? 'lineOfSight',
       revealedTileIds: new Set(map.revealedTileIds || []),
     };
@@ -67,7 +69,7 @@ export const hydrateCampaignState = (payload: CampaignState): CampaignState => {
   payload = removeLegacyTravelState(payload);
   const base = createCampaignState();
   const reveal = payload.combat?.reveal ?? base.combat.reveal;
-  return ensureTravelGroups(ensureCharacterTemplates(ensureCombatHistoryShape(ensureCombatCharacterCategories(ensureConditionVisibility(ensureOwnerAttributedHoldings(ensureInventoryRecords({
+  return ensureAmbientWeather(ensureTravelGroups(ensureCharacterTemplates(ensureCombatHistoryShape(ensureCombatCharacterCategories(ensureConditionVisibility(ensureOwnerAttributedHoldings(ensureInventoryRecords({
     ...base,
     ...payload,
     // Ensure all nested structures have proper defaults
@@ -85,6 +87,17 @@ export const hydrateCampaignState = (payload: CampaignState): CampaignState => {
       ...base.entities,
       ...payload.entities
     },
+    time: {
+      ...base.time,
+      ...payload.time,
+      calendar: payload.time?.calendar ?? DEFAULT_CALENDAR,
+    },
+    locations: {
+      ...base.locations,
+      ...payload.locations,
+      locations: payload.locations?.locations ?? base.locations.locations,
+      weatherTables: payload.locations?.weatherTables ?? base.locations.weatherTables,
+    },
     legacy: {
       ...base.legacy,
       ...payload.legacy,
@@ -101,7 +114,7 @@ export const hydrateCampaignState = (payload: CampaignState): CampaignState => {
       }
     },
     maps: hydrateMapState(payload.maps),
-  })))))));
+  }))))))));
 };
 
 export async function saveCampaignState(state: CampaignState) {

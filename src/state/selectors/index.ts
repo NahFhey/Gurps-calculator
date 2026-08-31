@@ -212,13 +212,10 @@ export {
   selectCurrentLocation,
   selectLocationCount,
   // Weather
-  selectCurrentWeather,
-  selectWeatherForLocation,
   // Weather tables
   selectWeatherTablesRecord,
   selectAllWeatherTables,
   selectWeatherTableById,
-  selectWeatherTableForLocation
 } from './locationSelectors';
 
 export { selectCurrencyConfig, selectPriceBook } from './tradingSelectors';

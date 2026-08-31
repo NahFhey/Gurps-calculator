@@ -28,6 +28,7 @@ function makeMap(overrides: Partial<MapModel> = {}): MapModel {
   return {
     id: 'map-1',
     name: 'Test Map',
+    climate: 'temperate',
     visionMode: 'lineOfSight',
     scaleMilesPerTile: 12,
     rows: 1,
@@ -137,6 +138,31 @@ describe('serializeCampaignState / hydrateCampaignState round-trip', () => {
     expect(hydrated.entities.vehicles).toEqual(state.entities.vehicles);
     expect(hydrated.entities.vehicleTypes?.['vt-lancer']).toEqual(state.entities.vehicleTypes['vt-lancer']);
     expect(hydrated.ui.activeTravelGroupId).toBe('g1');
+  });
+
+  it('round-trips map climate, ambient weather, and calendar config', () => {
+    const state = createCampaignState();
+    const map = makeMap({
+      climate: 'oceanic',
+      currentWeather: {
+        weather: {
+          type: 'rain', intensity: 'moderate', temperature: 'cool', description: 'Steady rain',
+          effects: { gathering: -1, hunting: -1, travel: -1, crafting: 0, alchemy: 0, cooking: 0, combat: 0, visibility: -1, hearing: 0, slipperyGround: true, reducedVisibility: true, difficultTerrain: false, coldExposure: false, heatExposure: false, fireRisk: -1, trackingMod: 0 },
+        },
+        startedAt: { day: 7, slot: 1 },
+        duration: { type: 'slots', count: 2 },
+        expiresAt: { day: 8, slot: 0 },
+      },
+    });
+    state.maps = { ...state.maps, activeMapId: map.id, mapsById: { [map.id]: map } };
+    state.time.calendar = {
+      seasons: [{ name: 'Flood', days: 30, temperatureShift: -1, precipitationMultiplier: 2 }],
+      startSeasonIndex: 0,
+    };
+    const hydrated = hydrateCampaignState(JSON.parse(JSON.stringify(serializeCampaignState(state))));
+    expect(hydrated.maps.mapsById[map.id].climate).toBe('oceanic');
+    expect(hydrated.maps.mapsById[map.id].currentWeather).toEqual(map.currentWeather);
+    expect(hydrated.time.calendar).toEqual(state.time.calendar);
   });
 
   it('survives JSON.stringify → JSON.parse → hydrate (simulates storage)', () => {

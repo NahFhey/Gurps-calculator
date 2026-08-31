@@ -19,6 +19,7 @@ import type {
   Temperature,
   WeatherDuration,
 } from '../../types/location';
+import { TEMPERATURE_ORDER } from '../../utils/weatherSystem';
 
 // ============================================================================
 // CONSTANTS
@@ -31,11 +32,6 @@ const WEATHER_TYPES: WeatherType[] = [
   'fog', 'mist',
   'snow', 'blizzard', 'hail',
   'sandstorm', 'wind', 'heatwave', 'coldSnap',
-];
-
-/** Temperature ordering (coldest to hottest) */
-const TEMPERATURE_ORDER: Temperature[] = [
-  'extreme_cold', 'freezing', 'cold', 'cool', 'mild', 'warm', 'hot', 'extreme_heat',
 ];
 
 // ============================================================================

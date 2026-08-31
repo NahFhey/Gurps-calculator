@@ -4,6 +4,7 @@
 
 import { useState } from 'react';
 import type { MapModel, MapId } from '../../../types/map';
+import type { WeatherTable } from '../../../types/location';
 import { DEFAULT_SIGHT_RANGE_TILES, MAP_SCALES } from '../../../constants/map';
 import { Plus, Map as MapIcon, ChevronDown, Navigation, MapPinned, Settings, Image as ImageIcon } from 'lucide-react';
 
@@ -34,8 +35,10 @@ interface MapHeaderProps {
   onSelectPlacement?: (kind: 'group' | 'vehicle', id: string) => void;
   onCancelPlacement?: () => void;
   onUpdateMapSettings?: (
-    changes: Partial<Pick<MapModel, 'visionMode' | 'sightRangeTiles'>>
+    changes: Partial<Pick<MapModel, 'visionMode' | 'sightRangeTiles' | 'climate' | 'weatherTableId'>>
   ) => void;
+  climateLabels?: Record<string, string>;
+  weatherTables?: WeatherTable[];
   /** Called when GM clicks the Images button (opens the image layers dialog) */
   onOpenImages?: () => void;
 }
@@ -58,6 +61,8 @@ export function MapHeader({
   onSelectPlacement,
   onCancelPlacement,
   onUpdateMapSettings,
+  climateLabels = {},
+  weatherTables = [],
   onOpenImages,
 }: MapHeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -237,6 +242,33 @@ export function MapHeader({
             <>
               <div className="fixed inset-0 z-20" onClick={() => setSettingsOpen(false)} />
               <div className="absolute right-0 top-full z-30 mt-1 w-64 space-y-3 rounded-lg border border-gray-600 bg-gray-800 p-3 shadow-xl">
+                <div>
+                  <label htmlFor="map-climate-setting" className="mb-1 block text-xs font-medium text-gray-300">
+                    Climate
+                  </label>
+                  <select
+                    id="map-climate-setting"
+                    value={activeMap.climate}
+                    onChange={(event) => onUpdateMapSettings?.({ climate: event.target.value })}
+                    className="w-full rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-sm text-gray-200"
+                  >
+                    {Object.entries(climateLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="map-weather-table" className="mb-1 block text-xs font-medium text-gray-300">
+                    Weather table
+                  </label>
+                  <select
+                    id="map-weather-table"
+                    value={activeMap.weatherTableId ?? ''}
+                    onChange={(event) => onUpdateMapSettings?.({ weatherTableId: event.target.value || null })}
+                    className="w-full rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-sm text-gray-200"
+                  >
+                    <option value="">Climate default</option>
+                    {weatherTables.map((table) => <option key={table.id} value={table.id}>{table.name}</option>)}
+                  </select>
+                </div>
                 <div>
                   <label htmlFor="map-vision-mode" className="mb-1 block text-xs font-medium text-gray-300">
                     Vision

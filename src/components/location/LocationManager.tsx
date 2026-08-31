@@ -13,7 +13,6 @@ import type {
 } from '../../types/location';
 import {
   createDefaultLocationModifiers,
-  generateWeather,
 } from '../../utils/weatherSystem';
 import { ConfirmDialog, useConfirmDialog, useToast } from '../ui';
 import type { LocationManagerProps, ManagerView } from './managerTypes';
@@ -79,13 +78,8 @@ export function LocationManager({ onClose }: LocationManagerProps) {
 
   const handleCreateLocation = () => {
     const id = `loc-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    const currentTime = { day: state.time.day, slot: state.time.slot };
     const climate = (editForm.climate as ClimateType) || 'temperate';
     const terrain = (editForm.terrain as TerrainType) || 'plains';
-    const weatherTableId = editForm.weatherTableId;
-    const weatherTable = weatherTableId
-      ? state.locations.weatherTables?.[weatherTableId]
-      : undefined;
 
     const newLocation: Location = {
       id,
@@ -93,23 +87,8 @@ export function LocationManager({ onClose }: LocationManagerProps) {
       description: editForm.description,
       climate,
       terrain,
-      weatherTableId,
       modifiers: editForm.modifiers || createDefaultLocationModifiers(),
       connections: [],
-      currentWeather: generateWeather({
-        location: {
-          id,
-          name: editForm.name || 'New Location',
-          climate,
-          terrain,
-          modifiers: createDefaultLocationModifiers(),
-          connections: [],
-          createdAt: Date.now(),
-          modifiedAt: Date.now(),
-        } as unknown as Location,
-        weatherTable,
-        currentTime,
-      }).weather,
       theme: editForm.theme,
       createdAt: Date.now(),
       modifiedAt: Date.now(),
@@ -127,7 +106,6 @@ export function LocationManager({ onClose }: LocationManagerProps) {
       description: editForm.description,
       climate: editForm.climate as ClimateType,
       terrain: editForm.terrain as TerrainType,
-      weatherTableId: editForm.weatherTableId || undefined,
       modifiers: editForm.modifiers,
       theme: editForm.theme,
     });
@@ -152,7 +130,6 @@ export function LocationManager({ onClose }: LocationManagerProps) {
       description: location.description,
       climate: location.climate,
       terrain: location.terrain,
-      weatherTableId: location.weatherTableId,
       modifiers: { ...location.modifiers },
       theme: location.theme ? { ...location.theme } : undefined,
     });
@@ -205,12 +182,10 @@ export function LocationManager({ onClose }: LocationManagerProps) {
           <LocationListView
             locations={locations}
             currentLocationId={state.locations.currentLocationId}
-            weatherTablesById={state.locations.weatherTables ?? {}}
             allClimateLabels={allClimateLabels}
             allTerrainLabels={allTerrainLabels}
             onCreate={handleStartCreate}
             onSetCurrent={actions.setCurrentLocation}
-            onRollWeather={actions.rollNewWeather}
             onEdit={handleStartEdit}
             onDelete={handleDeleteLocation}
           />
@@ -223,7 +198,6 @@ export function LocationManager({ onClose }: LocationManagerProps) {
             editForm={editForm}
             allClimateLabels={allClimateLabels}
             allTerrainLabels={allTerrainLabels}
-            weatherTables={weatherTables}
             onChange={setEditForm}
             onCancel={handleCancelForm}
             onSubmit={view === 'edit' ? handleUpdateLocation : handleCreateLocation}
@@ -232,7 +206,7 @@ export function LocationManager({ onClose }: LocationManagerProps) {
       case 'weatherTables':
         return (
           <WeatherTablesListView
-            locations={locations}
+            maps={Object.values(state.maps.mapsById)}
             weatherTables={weatherTables}
             onCreate={() => {
               setEditingTableId(null);

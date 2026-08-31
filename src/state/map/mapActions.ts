@@ -22,6 +22,7 @@ import type {
   MapModel,
 } from '../../types/map';
 import type { Id } from '../../types/campaign';
+import type { ClimateType } from '../../types/location';
 
 // ============================================================================
 // ACTION TYPE CONSTANTS
@@ -84,6 +85,7 @@ export type CreateMapAction = {
     description?: string;
     scaleMilesPerTile: MapScale;
     startTerrainId: TerrainId;
+    climate: ClimateType;
   };
 };
 
@@ -96,7 +98,7 @@ export type UpdateMapAction = {
   type: typeof MAP_UPDATE;
   payload: {
     mapId: MapId;
-    changes: Partial<Pick<MapModel, 'name' | 'description' | 'visionMode' | 'sightRangeTiles'>>;
+    changes: Partial<Pick<MapModel, 'name' | 'description' | 'visionMode' | 'sightRangeTiles' | 'climate' | 'weatherTableId'>>;
   };
 };
 

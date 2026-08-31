@@ -13,6 +13,7 @@ import { ManagerNavigation } from '../views/ManagerNavigation';
 import { TerrainModifiersEditor } from '../views/TerrainModifiersEditor';
 import { WeatherModifiersEditor } from '../views/WeatherModifiersEditor';
 import { WeatherTableFormView, WeatherTablesListView } from '../views/WeatherTableViews';
+import { createNewMap } from '../../../utils/mapUtils';
 
 type CampaignState = ReturnType<typeof createCampaignState>;
 
@@ -35,14 +36,12 @@ function makeState(locationCount = 1): CampaignState {
   const state = createCampaignState();
   const firstLocation = Object.values(state.locations.locations)[0];
   firstLocation.name = 'Home Camp';
-  firstLocation.weatherTableId = weatherTable.id;
   state.locations.weatherTables = { [weatherTable.id]: weatherTable };
   if (locationCount > 1) {
     state.locations.locations['location-2'] = {
       ...firstLocation,
       id: 'location-2',
       name: 'Pine Ridge',
-      weatherTableId: undefined,
       connections: [],
     };
   }
@@ -77,6 +76,13 @@ function renderRouter({
 const representativeState = makeState(2);
 const representativeLocations = Object.values(representativeState.locations.locations);
 const representativeLocation = representativeLocations[0];
+const representativeMap = createNewMap({
+  name: 'Home Region',
+  climate: 'temperate',
+  scaleMilesPerTile: 12,
+  startTerrainId: 'terrain-plains',
+});
+representativeMap.weatherTableId = weatherTable.id;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -154,17 +160,15 @@ describe('LocationListView', () => {
       <LocationListView
         locations={representativeLocations}
         currentLocationId={representativeLocation.id}
-        weatherTablesById={{ [weatherTable.id]: weatherTable }}
         allClimateLabels={{ temperate: 'Temperate' }}
         allTerrainLabels={{ plains: 'Plains' }}
         onCreate={vi.fn()}
         onSetCurrent={vi.fn()}
-        onRollWeather={vi.fn()}
         onEdit={onEdit}
         onDelete={vi.fn()}
       />,
     );
-    expect(screen.getByText(/Forest Weather/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Temperate/)).toHaveLength(2);
     fireEvent.click(screen.getAllByTitle('Edit location')[0]);
     expect(onEdit).toHaveBeenCalledWith(representativeLocation);
   });
@@ -180,17 +184,15 @@ describe('LocationFormView', () => {
           name: 'Home Camp',
           climate: 'temperate',
           terrain: 'plains',
-          weatherTableId: weatherTable.id,
         }}
         allClimateLabels={{ temperate: 'Temperate' }}
         allTerrainLabels={{ plains: 'Plains' }}
-        weatherTables={[weatherTable]}
         onChange={onChange}
         onCancel={vi.fn()}
         onSubmit={vi.fn()}
       />,
     );
-    expect(screen.getByDisplayValue('Forest Weather')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Home Camp')).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText('Location name'), { target: { value: 'New Camp' } });
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ name: 'New Camp' }));
   });
@@ -201,14 +203,14 @@ describe('WeatherTableViews', () => {
     const onEdit = vi.fn();
     render(
       <WeatherTablesListView
-        locations={[representativeLocation]}
+        maps={[representativeMap]}
         weatherTables={[weatherTable]}
         onCreate={vi.fn()}
         onEdit={onEdit}
         onDelete={vi.fn()}
       />,
     );
-    expect(screen.getByText('Used by: Home Camp')).toBeInTheDocument();
+    expect(screen.getByText('Used by: Home Region')).toBeInTheDocument();
     fireEvent.click(screen.getByTitle('Edit table'));
     expect(onEdit).toHaveBeenCalledWith(weatherTable.id);
   });

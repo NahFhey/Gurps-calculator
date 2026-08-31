@@ -7,6 +7,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useCampaignStore } from '../../state/campaignStore';
 import type { MapScale, StructureLayer, StructureLayerId, TerrainId, TerrainModel, TileId, MarkerModel, LinkModel } from '../../types/map';
 import type { Id } from '../../types/campaign';
+import { CLIMATE_LABELS, type ClimateType } from '../../types/location';
 import { MAX_ELEVATION } from '../../constants/map';
 import { findRoute, getReachableTiles } from '../../utils/mapRouter';
 import { computeVisibleTiles } from '../../utils/lineOfSight';
@@ -56,6 +57,11 @@ export function MapPanel() {
   const activeGroupTile = activeMap && activeGroupPosition?.mapId === activeMap.id
     ? activeGroupPosition.tileId
     : null;
+  const climateLabels = useMemo(() => {
+    const labels: Record<string, string> = { ...CLIMATE_LABELS };
+    for (const custom of state.locations.customClimates ?? []) labels[custom.key] = custom.label;
+    return labels;
+  }, [state.locations.customClimates]);
   // UI state
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [interactionMode, setInteractionMode] = useState<MapInteractionMode>('view');
@@ -248,7 +254,7 @@ export function MapPanel() {
 
   // Create map
   const handleCreateMap = useCallback(
-    (params: { name: string; description?: string; scaleMilesPerTile: MapScale; startTerrainId: TerrainId }) => {
+    (params: { name: string; description?: string; scaleMilesPerTile: MapScale; startTerrainId: TerrainId; climate: ClimateType }) => {
       actions.mapCreateMap(params);
       setShowCreateDialog(false);
     },
@@ -543,6 +549,8 @@ export function MapPanel() {
           groups={headerGroups}
           activeGroupId={activeGroup?.id ?? null}
           onSelectGroup={handleSelectGroup}
+          climateLabels={climateLabels}
+          weatherTables={Object.values(state.locations.weatherTables)}
         />
         <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-4">
           <MapIcon className="w-12 h-12 opacity-30" />
@@ -560,6 +568,7 @@ export function MapPanel() {
           <MapCreateDialog
             onConfirm={handleCreateMap}
             onCancel={() => setShowCreateDialog(false)}
+            climateLabels={climateLabels}
           />
         )}
       </div>
@@ -586,6 +595,8 @@ export function MapPanel() {
         onSelectPlacement={(kind, id) => setPlacing({ kind, id })}
         onCancelPlacement={() => setPlacing(null)}
         onUpdateMapSettings={(changes) => actions.mapUpdateMap(activeMap.id, changes)}
+        climateLabels={climateLabels}
+        weatherTables={Object.values(state.locations.weatherTables)}
         onOpenImages={() => setShowImageLayers(true)}
       />
 
@@ -726,6 +737,7 @@ export function MapPanel() {
         <MapCreateDialog
           onConfirm={handleCreateMap}
           onCancel={() => setShowCreateDialog(false)}
+          climateLabels={climateLabels}
         />
       )}
 

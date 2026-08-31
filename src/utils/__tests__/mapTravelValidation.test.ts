@@ -36,6 +36,7 @@ function makeMap(scale: MapScale = 12, overrides: Record<string, string | null> 
   return {
     id: 'map-1',
     name: 'Test',
+    climate: 'temperate',
     visionMode: 'lineOfSight',
     scaleMilesPerTile: scale,
     rows: 1,

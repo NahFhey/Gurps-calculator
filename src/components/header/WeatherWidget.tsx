@@ -4,6 +4,7 @@ import { getWeatherIcon, getRemainingWeatherSlots, BASE_WEATHER_EFFECTS } from '
 import { LocationManager } from '../location/LocationManager';
 import type { Weather, WeatherEffects } from '../../types/location';
 import { TEMPERATURE_LABELS, CLIMATE_LABELS } from '../../types/location';
+import { getActiveAmbientWeather } from '../../utils/ambientWeather';
 
 /**
  * WeatherWidget - Displays current weather conditions and effects
@@ -34,13 +35,15 @@ export function WeatherWidget({
   const [editingEffects, setEditingEffects] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
-  // Get current location and weather from state
-  const currentLocation = state.locations.currentLocationId
-    ? state.locations.locations[state.locations.currentLocationId]
-    : null;
-
-  const weather: Weather | null = currentLocation?.currentWeather?.weather ?? null;
-  const activeWeather = currentLocation?.currentWeather ?? null;
+  const ambient = getActiveAmbientWeather(state);
+  const activeMap = ambient.mapId ? state.maps.mapsById[ambient.mapId] : null;
+  const weather: Weather | null = ambient.weather;
+  const activeWeather = activeMap?.currentWeather ?? null;
+  const allClimateLabels = useMemo(() => {
+    const labels: Record<string, string> = { ...CLIMATE_LABELS };
+    for (const custom of state.locations.customClimates ?? []) labels[custom.key] = custom.label;
+    return labels;
+  }, [state.locations.customClimates]);
 
   // Calculate remaining weather duration
   const remainingSlots = useMemo(() => {
@@ -91,21 +94,21 @@ export function WeatherWidget({
 
   // Handle roll new weather
   const handleRollWeather = () => {
-    if (state.locations.currentLocationId) {
-      actions.rollNewWeather(state.locations.currentLocationId);
+    if (ambient.mapId) {
+      actions.rollNewWeather(ambient.mapId);
     }
   };
 
-  // No location available
-  if (!currentLocation) {
+  // No map available
+  if (!activeMap) {
     return (
       <div
         className="rounded border border-gray-600 bg-gray-700/50 px-4 py-2 cursor-pointer hover:bg-gray-700"
         onClick={() => setShowManager(true)}
         data-testid="weather-widget"
       >
-        <div className="text-sm text-gray-400">No location set</div>
-        <div className="text-xs text-gray-500">Click to manage locations</div>
+        <div className="text-sm text-gray-400">No map set</div>
+        <div className="text-xs text-gray-500">Select or place the active group on a map</div>
 
         {showManager && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={(e) => e.stopPropagation()}>
@@ -124,7 +127,7 @@ export function WeatherWidget({
       <>
         <div
           className="flex items-center gap-2 rounded border border-gray-600 bg-gray-700/50 px-3 py-1.5 cursor-pointer hover:bg-gray-700"
-          title={`${currentLocation.name}: ${weather?.description ?? 'Unknown'}\n${effectsSummary}`}
+          title={`${activeMap.name}: ${weather?.description ?? 'Unknown'}\n${effectsSummary}`}
           onClick={() => setShowManager(true)}
           data-testid="weather-widget-compact"
         >
@@ -167,9 +170,9 @@ export function WeatherWidget({
             {/* Location */}
             {showLocation && (
               <div className="text-xs text-gray-400 mb-0.5 flex items-center gap-1">
-                <span>{currentLocation.name}</span>
+                <span>{activeMap.name}</span>
                 <span className="text-gray-500">
-                  ({CLIMATE_LABELS[currentLocation.climate]})
+                  ({allClimateLabels[activeMap.climate] ?? activeMap.climate})
                 </span>
               </div>
             )}
