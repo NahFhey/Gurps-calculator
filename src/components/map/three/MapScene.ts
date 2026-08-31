@@ -57,6 +57,7 @@ export interface MapToken {
 
 export interface MapSceneFrameData {
   map: MapModel;
+  activeGroupTileId?: TileId | null;
   fog: FogMode;
   visibleTileIds: Set<TileId> | null;
   selectedTileIds: Set<TileId> | null;
@@ -160,7 +161,8 @@ export class MapScene {
       || oldData.map.cols !== data.map.cols
       || oldData.fog !== data.fog
       || oldData.visibleTileIds !== data.visibleTileIds
-      || oldData.tokens !== data.tokens;
+      || oldData.tokens !== data.tokens
+      || oldData.activeGroupTileId !== data.activeGroupTileId;
     if (rebuildTiles) this.rebuildWorld();
     else this.rebuildOverlays();
     this.applyCamera();
@@ -181,8 +183,8 @@ export class MapScene {
 
   frameParty(): void {
     if (!this.data) return;
-    const partyPosition = this.data.map.partyTileId
-      ? findTileGridPos(this.data.map, this.data.map.partyTileId)
+    const partyPosition = this.data.activeGroupTileId
+      ? findTileGridPos(this.data.map, this.data.activeGroupTileId)
       : null;
     const row = partyPosition?.row ?? (this.data.map.rows - 1) / 2;
     const col = partyPosition?.col ?? (this.data.map.cols - 1) / 2;
@@ -693,10 +695,10 @@ export class MapScene {
   }
 
   private buildParty(): void {
-    if (!this.data?.map.partyTileId) return;
-    const position = findTileGridPos(this.data.map, this.data.map.partyTileId);
+    if (!this.data?.activeGroupTileId) return;
+    const position = findTileGridPos(this.data.map, this.data.activeGroupTileId);
     if (!position) return;
-    const height = this.tileHeight(this.data.map.partyTileId);
+    const height = this.tileHeight(this.data.activeGroupTileId);
     const group = new THREE.Group();
     const sphereGeometry = new THREE.SphereGeometry(0.22, 16, 12);
     const sphereMaterial = new THREE.MeshBasicMaterial({ color: '#ffffff' });

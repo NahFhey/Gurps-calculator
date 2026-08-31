@@ -63,6 +63,7 @@ const migrationHandlers: Record<string, MigrationHandler> = {
   '1.5.2:1.5.3': migrateTo1_5_3,
   '1.5.3:1.5.4': migrateTo1_5_4,
   '1.5.4:1.5.5': migrateTo1_5_5,
+  '1.5.5:1.5.6': migrateTo1_5_6,
 };
 
 /**
@@ -403,6 +404,10 @@ const omitKeys = (
   Object.entries(record).filter(([key]) => !keys.includes(key))
 );
 
+// Legacy key as a string literal on purpose: the field no longer exists on
+// MapModel, but pre-1.5.6 saves still carry it.
+const LEGACY_PARTY_POSITION_KEY = 'partyTileId';
+
 /** Remove persisted fields belonging to the retired location-graph travel path. */
 export function removeLegacyTravelState<T>(data: T): T {
   if (!isRecord(data)) return data;
@@ -444,6 +449,59 @@ export function removeLegacyTravelState<T>(data: T): T {
 /** Migration: 1.5.4 → 1.5.5 (retired travel state cleanup) */
 function migrateTo1_5_5(data: MigratableData): MigratableData {
   return removeLegacyTravelState(data);
+}
+
+/** Migration: 1.5.5 → 1.5.6 (singleton map position to a main travel group). */
+export function migrateTo1_5_6(data: MigratableData): MigratableData {
+  if (!isRecord(data)) return data;
+  const next: MigratableData = { ...data };
+  let savedPosition: { mapId: string; tileId: string } | null = null;
+
+  if (isRecord(data.maps) && isRecord(data.maps.mapsById)) {
+    const mapsState = data.maps;
+    const mapsById = data.maps.mapsById;
+    const activeMapId = typeof mapsState.activeMapId === 'string' ? mapsState.activeMapId : null;
+    const activeMap = activeMapId ? mapsById[activeMapId] : undefined;
+    const activePosition = isRecord(activeMap) ? activeMap[LEGACY_PARTY_POSITION_KEY] : null;
+    if (activeMapId && typeof activePosition === 'string') {
+      savedPosition = { mapId: activeMapId, tileId: activePosition };
+    }
+
+    const cleanedMaps: Record<string, unknown> = {};
+    for (const [mapId, map] of Object.entries(mapsById)) {
+      if (!isRecord(map)) {
+        cleanedMaps[mapId] = map;
+        continue;
+      }
+      const legacyPosition = map[LEGACY_PARTY_POSITION_KEY];
+      if (!savedPosition && typeof legacyPosition === 'string') {
+        savedPosition = { mapId, tileId: legacyPosition };
+      }
+      cleanedMaps[mapId] = omitKeys(map, [LEGACY_PARTY_POSITION_KEY]);
+    }
+    next.maps = { ...mapsState, mapsById: cleanedMaps };
+  }
+
+  const entities = isRecord(data.entities) ? { ...data.entities } : {};
+  const existingGroups = isRecord(entities.travelGroups) ? entities.travelGroups : {};
+  if (Object.keys(existingGroups).length === 0) {
+    const characters = isRecord(entities.characters) ? entities.characters : {};
+    const groupId = 'travel-group-main';
+    entities.travelGroups = {
+      [groupId]: {
+        id: groupId,
+        name: 'The Party',
+        memberIds: Object.keys(characters),
+        vehicleId: null,
+        position: savedPosition,
+      },
+    };
+    const ui = isRecord(data.ui) ? { ...data.ui } : {};
+    if (typeof ui.activeTravelGroupId !== 'string') ui.activeTravelGroupId = groupId;
+    next.ui = ui;
+  }
+  next.entities = entities;
+  return next;
 }
 
 /**

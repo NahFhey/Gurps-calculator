@@ -9,6 +9,7 @@ import {
   type CharacterAction
 } from '../characterActions';
 import type { CampaignState } from '../../campaignReducer';
+import { createCampaignState } from '../../campaignReducer';
 import type { Character, Inventory } from '../../../types/campaign';
 
 const createMockCharacter = (overrides?: Partial<Character>): Character => ({
@@ -30,12 +31,14 @@ const createMockInventory = (overrides?: Partial<Inventory>): Inventory => ({
   ...overrides
 });
 
-const createMinimalCampaignState = (): CampaignState => (({
-  entities: {
-    characters: {},
-    inventories: {}
-  }
-} as unknown)) as CampaignState;
+const createMinimalCampaignState = (): CampaignState => {
+  const state = createCampaignState();
+  state.entities.characters = {};
+  state.entities.inventories = {};
+  state.entities.travelGroups = {};
+  state.ui.activeTravelGroupId = null;
+  return state;
+};
 
 function applyAction(state: CampaignState, action: CharacterAction): CampaignState {
   return produce(state, draft => {

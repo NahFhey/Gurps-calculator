@@ -42,14 +42,13 @@ describe('createTile', () => {
 
 describe('createInitialGrid', () => {
   it('builds a 9x9 grid with terrain only at the center', () => {
-    const { grid, tilesById, partyTileId, revealedTileIds } =
+    const { grid, tilesById, revealedTileIds } =
       createInitialGrid('terrain-plains');
 
     expect(grid.length).toBe(INITIAL_GRID_SIZE);
     expect(grid[0].length).toBe(INITIAL_GRID_SIZE);
 
     const centerId = grid[INITIAL_CENTER][INITIAL_CENTER];
-    expect(partyTileId).toBe(centerId);
     expect(tilesById[centerId].terrainId).toBe('terrain-plains');
     expect(revealedTileIds.has(centerId)).toBe(true);
     expect(revealedTileIds.size).toBe(1);
@@ -83,9 +82,9 @@ function buildMap(startTerrain = 'terrain-plains'): MapModel {
 }
 
 describe('findTileGridPos & getTileIdAt', () => {
-  it('locates the party tile and returns null for missing ids', () => {
+  it('locates the center tile and returns null for missing ids', () => {
     const map = buildMap();
-    const pos = findTileGridPos(map, map.partyTileId!);
+    const pos = findTileGridPos(map, map.grid[INITIAL_CENTER][INITIAL_CENTER]);
     expect(pos).toEqual({ row: INITIAL_CENTER, col: INITIAL_CENTER });
     expect(findTileGridPos(map, 'no-such-tile')).toBeNull();
   });
@@ -96,14 +95,14 @@ describe('findTileGridPos & getTileIdAt', () => {
     expect(getTileIdAt(map, 0, -1)).toBeNull();
     expect(getTileIdAt(map, map.rows, 0)).toBeNull();
     expect(getTileIdAt(map, 0, map.cols)).toBeNull();
-    expect(getTileIdAt(map, INITIAL_CENTER, INITIAL_CENTER)).toBe(map.partyTileId);
+    expect(getTileIdAt(map, INITIAL_CENTER, INITIAL_CENTER)).toBe(map.grid[INITIAL_CENTER][INITIAL_CENTER]);
   });
 });
 
 describe('adjacency helpers', () => {
   it('getAdjacentTileIds returns 8 neighbors for an interior tile', () => {
     const map = buildMap();
-    const neighbors = getAdjacentTileIds(map, map.partyTileId!);
+    const neighbors = getAdjacentTileIds(map, map.grid[INITIAL_CENTER][INITIAL_CENTER]);
     expect(neighbors.length).toBe(8);
   });
 
@@ -190,14 +189,14 @@ describe('checkExpansionNeeded & expandMap', () => {
 
   it('expandMap grows rows/cols and preserves existing tile ids', () => {
     const map = buildMap();
-    const originalPartyId = map.partyTileId!;
+    const originalCenterId = map.grid[INITIAL_CENTER][INITIAL_CENTER];
     const result = expandMap(map, { top: 1, bottom: 2, left: 3, right: 0 });
     expect(result.rows).toBe(map.rows + 3);
     expect(result.cols).toBe(map.cols + 3);
     // Original party tile shifts to (center+1, center+3)
-    expect(result.grid[INITIAL_CENTER + 1][INITIAL_CENTER + 3]).toBe(originalPartyId);
+    expect(result.grid[INITIAL_CENTER + 1][INITIAL_CENTER + 3]).toBe(originalCenterId);
     // Existing tiles are kept in tilesById
-    expect(result.tilesById[originalPartyId]).toBeDefined();
+    expect(result.tilesById[originalCenterId]).toBeDefined();
     // New tiles are added
     expect(Object.keys(result.tilesById).length).toBeGreaterThan(
       Object.keys(map.tilesById).length
@@ -236,7 +235,7 @@ describe('paint-based expansion', () => {
   it('checkPaintExpansionNeeded returns zeros when nothing is painted', () => {
     const map = buildMap();
     // Unpaint the center
-    map.tilesById[map.partyTileId!].terrainId = null;
+    map.tilesById[map.grid[INITIAL_CENTER][INITIAL_CENTER]].terrainId = null;
     expect(checkPaintExpansionNeeded(map)).toEqual({
       top: 0,
       bottom: 0,
@@ -276,8 +275,8 @@ describe('createNewMap', () => {
     expect(map.description).toBe('desc');
     expect(map.lastSelectedTerrainId).toBe('terrain-water');
     expect(map.lastPlacedTerrainId).toBe('terrain-water');
-    expect(map.partyTileId).toBeTruthy();
     expect(map.revealedTileIds.size).toBe(1);
+    expect(map.revealedTileIds.has(map.grid[INITIAL_CENTER][INITIAL_CENTER])).toBe(true);
     expect(map.visionMode).toBe('lineOfSight');
     expect(Object.keys(map.terrainById).length).toBeGreaterThan(0);
   });
@@ -298,7 +297,7 @@ describe('resolveLocationTerrain', () => {
   it('uses locationTerrain for direct-mapped preset terrains', () => {
     const map = buildMap();
     // Plains preset has locationTerrain set; verify it propagates.
-    const center = map.partyTileId!;
+    const center = map.grid[INITIAL_CENTER][INITIAL_CENTER];
     const result = resolveLocationTerrain(map, center);
     // Plains preset maps to plains location terrain
     expect(result).toBe('plains');
@@ -330,7 +329,7 @@ describe('resolveLocationTerrain', () => {
         map.tilesById[map.grid[r][c]].terrainId = 'terrain-water';
       }
     }
-    expect(resolveLocationTerrain(map, map.partyTileId!)).toBe('coastal');
+    expect(resolveLocationTerrain(map, map.grid[INITIAL_CENTER][INITIAL_CENTER])).toBe('coastal');
   });
 
   it('water with land on opposite sides resolves to river', () => {

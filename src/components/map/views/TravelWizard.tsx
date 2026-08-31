@@ -10,6 +10,8 @@ import { useCallback, useEffect, useId, useMemo } from 'react';
 import type { TileId, TravelMode, MapModel } from '../../../types/map';
 import type { TravelBlocker } from '../../../types/map';
 import type { DowntimeState } from '../../../types/downtime';
+import type { Character, Id } from '../../../types/campaign';
+import type { TravelGroup, Vehicle, VehicleTypeDef } from '../../../types/party';
 import { validateTravelRoute } from '../../../utils/mapTravelValidation';
 import { useWeatherModifiers } from '../../../hooks/useWeatherModifiers';
 import { TravelStep1Mode } from './TravelStep1Mode';
@@ -23,7 +25,12 @@ interface TravelWizardProps {
   selectedMode: TravelMode | null;
   routeTileIds: TileId[];
   isGmMode: boolean;
-  partyCharacterIds: string[];
+  memberIds: Id[];
+  group: TravelGroup;
+  characters: Record<Id, Character>;
+  vehicle: Vehicle | null;
+  vehicleType: VehicleTypeDef | null;
+  startTileId: TileId | null;
   day: number;
   slot: number;
   downtimeState: DowntimeState;
@@ -42,7 +49,12 @@ export function TravelWizard({
   selectedMode,
   routeTileIds,
   isGmMode,
-  partyCharacterIds,
+  memberIds,
+  group,
+  characters,
+  vehicle,
+  vehicleType,
+  startTileId,
   day,
   slot,
   downtimeState,
@@ -54,6 +66,7 @@ export function TravelWizard({
 }: TravelWizardProps) {
   const { skillBonus: weatherTravelMod } = useWeatherModifiers('travel');
   const titleId = useId();
+  const travelingGroup = useMemo(() => ({ ...group, memberIds }), [group, memberIds]);
 
   useEffect(() => {
     const handleKeyDown = (e: globalThis.KeyboardEvent) => {
@@ -66,18 +79,21 @@ export function TravelWizard({
   // Compute blockers for step 3
   const blockers: TravelBlocker[] = useMemo(() => {
     if (!selectedMode || routeTileIds.length < 2) return [];
-    return validateTravelRoute(
+    return validateTravelRoute({
       map,
       routeTileIds,
-      selectedMode,
-      partyCharacterIds,
+      mode: selectedMode,
+      group: travelingGroup,
+      characters,
+      vehicle,
+      vehicleType,
       day,
       slot,
       downtimeState,
       isGmMode,
-      weatherTravelMod
-    );
-  }, [map, routeTileIds, selectedMode, partyCharacterIds, day, slot, downtimeState, isGmMode, weatherTravelMod]);
+      weatherTravelModifier: weatherTravelMod,
+    });
+  }, [map, routeTileIds, selectedMode, travelingGroup, characters, vehicle, vehicleType, day, slot, downtimeState, isGmMode, weatherTravelMod]);
 
   // Check if route has null terrain tiles
   const hasNullTerrain = useMemo(() => {
@@ -157,6 +173,8 @@ export function TravelWizard({
             mapScale={map.scaleMilesPerTile}
             selectedMode={selectedMode}
             onSelectMode={handleModeSelect}
+            lockedMode={vehicleType?.mode ?? 'foot'}
+            vehicleName={vehicle ? vehicle.name : null}
           />
         )}
         {step === 2 && selectedMode && (
@@ -164,9 +182,11 @@ export function TravelWizard({
             map={map}
             mode={selectedMode}
             routeTileIds={routeTileIds}
-            startTileId={map.partyTileId}
+            startTileId={startTileId}
             onClearRoute={onClearRoute}
             weatherTravelModifier={weatherTravelMod}
+            vehicle={vehicle}
+            vehicleType={vehicleType}
           />
         )}
         {step === 3 && selectedMode && (

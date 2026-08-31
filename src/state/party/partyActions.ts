@@ -1,0 +1,55 @@
+import type { Id } from '../../types/campaign';
+import type { MapId, TileId } from '../../types/map';
+import type { Vehicle, VehicleTypeDef } from '../../types/party';
+
+export const PARTY_CREATE_GROUP = 'party/createGroup' as const;
+export const PARTY_MOVE_MEMBERS = 'party/moveMembers' as const;
+export const PARTY_RENAME_GROUP = 'party/renameGroup' as const;
+export const PARTY_SET_ACTIVE_GROUP = 'party/setActiveGroup' as const;
+export const PARTY_BOARD_VEHICLE = 'party/boardVehicle' as const;
+export const PARTY_DISEMBARK = 'party/disembark' as const;
+export const PARTY_PLACE_GROUP = 'party/placeGroup' as const;
+export const PARTY_UPSERT_VEHICLE = 'party/upsertVehicle' as const;
+export const PARTY_REMOVE_VEHICLE = 'party/removeVehicle' as const;
+export const PARTY_PLACE_VEHICLE = 'party/placeVehicle' as const;
+export const PARTY_DOCK_VEHICLE = 'party/dockVehicle' as const;
+export const PARTY_UNDOCK_VEHICLE = 'party/undockVehicle' as const;
+export const PARTY_UPSERT_VEHICLE_TYPE = 'party/upsertVehicleType' as const;
+export const PARTY_REMOVE_VEHICLE_TYPE = 'party/removeVehicleType' as const;
+
+export type PartyAction =
+  | { type: typeof PARTY_CREATE_GROUP; payload: { name: string; memberIds: Id[]; fromGroupId: Id } }
+  | { type: typeof PARTY_MOVE_MEMBERS; payload: { memberIds: Id[]; toGroupId: Id } }
+  | { type: typeof PARTY_RENAME_GROUP; payload: { groupId: Id; name: string } }
+  | { type: typeof PARTY_SET_ACTIVE_GROUP; payload: { groupId: Id } }
+  | { type: typeof PARTY_BOARD_VEHICLE; payload: { groupId: Id; vehicleId: Id } }
+  | { type: typeof PARTY_DISEMBARK; payload: { groupId: Id } }
+  | { type: typeof PARTY_PLACE_GROUP; payload: { groupId: Id; mapId: MapId; tileId: TileId } }
+  | { type: typeof PARTY_UPSERT_VEHICLE; payload: { vehicle: Vehicle } }
+  | { type: typeof PARTY_REMOVE_VEHICLE; payload: { vehicleId: Id } }
+  | { type: typeof PARTY_PLACE_VEHICLE; payload: { vehicleId: Id; mapId: MapId; tileId: TileId } }
+  | { type: typeof PARTY_DOCK_VEHICLE; payload: { vehicleId: Id; carrierId: Id } }
+  | { type: typeof PARTY_UNDOCK_VEHICLE; payload: { vehicleId: Id } }
+  | { type: typeof PARTY_UPSERT_VEHICLE_TYPE; payload: { def: VehicleTypeDef } }
+  | { type: typeof PARTY_REMOVE_VEHICLE_TYPE; payload: { typeId: string } };
+
+export const PARTY_ACTION_TYPES = new Set<string>([
+  PARTY_CREATE_GROUP,
+  PARTY_MOVE_MEMBERS,
+  PARTY_RENAME_GROUP,
+  PARTY_SET_ACTIVE_GROUP,
+  PARTY_BOARD_VEHICLE,
+  PARTY_DISEMBARK,
+  PARTY_PLACE_GROUP,
+  PARTY_UPSERT_VEHICLE,
+  PARTY_REMOVE_VEHICLE,
+  PARTY_PLACE_VEHICLE,
+  PARTY_DOCK_VEHICLE,
+  PARTY_UNDOCK_VEHICLE,
+  PARTY_UPSERT_VEHICLE_TYPE,
+  PARTY_REMOVE_VEHICLE_TYPE,
+]);
+
+export function isPartyAction(action: { type: string }): action is PartyAction {
+  return PARTY_ACTION_TYPES.has(action.type);
+}

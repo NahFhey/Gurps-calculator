@@ -6,6 +6,7 @@
 import { createCampaignState } from '../state/campaignReducer';
 import type { CampaignState } from '../state/campaignReducer';
 import { CHARACTER_TEMPLATE_SEEDS } from '../constants/characterTemplateSeeds';
+import { VEHICLE_TYPE_SEEDS } from '../constants/vehicleSeeds';
 import { safeDeepClone } from '../utils/helpers';
 import {
   normalizeArray,
@@ -18,6 +19,7 @@ import { ensureParticipantConditionVisibility } from '../utils/conditionsEngine'
 import { deriveCombatCategory } from '../utils/combatHelpers';
 import { isLegacyCombatSession, upgradeCombatHistory } from '../utils/legacyCombatHistory';
 import type { Id, Material, Food, Recipe, Craft, CraftDesign, AlchemyReagent, AlchemyFormula, AlchemyBatch, AlchemyLab, GatheringSpecies, GatheringTool, GatheringTable, GatheringEnvironment, GatheringSession, GatheringBait, GatheringCategory, GatheringItem, CombatCharacter, CombatItem, Kitchen, Inventory } from '../types/campaign';
+import type { TravelGroup } from '../types/party';
 
 /** Seed missing built-in character templates while honoring persisted deletions and edits. */
 export function ensureCharacterTemplates(state: CampaignState): CampaignState {
@@ -37,6 +39,78 @@ export function ensureCharacterTemplates(state: CampaignState): CampaignState {
       ...state.entities,
       characterTemplates: templates,
       deletedBuiltinTemplateIds: [...deleted],
+    },
+  };
+}
+
+/** Repair travel membership and seed vehicle catalogs after hydration. */
+export function ensureTravelGroups(state: CampaignState): CampaignState {
+  const originalGroups = state.entities.travelGroups;
+  const groups: Record<Id, TravelGroup> = {};
+  let changed = originalGroups === undefined
+    || state.entities.vehicles === undefined
+    || state.entities.vehicleTypes === undefined;
+
+  for (const [id, group] of Object.entries(originalGroups ?? {})) {
+    groups[id] = group;
+  }
+  if (Object.keys(groups).length === 0) {
+    const id = 'travel-group-main';
+    groups[id] = {
+      id,
+      name: 'The Party',
+      memberIds: [],
+      vehicleId: null,
+      position: null,
+    };
+    changed = true;
+  }
+
+  const seen = new Set<Id>();
+  for (const group of Object.values(groups)) {
+    const memberIds = group.memberIds.filter((id) => {
+      if (!state.entities.characters[id] || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+    if (memberIds.length !== group.memberIds.length
+      || memberIds.some((id, index) => id !== group.memberIds[index])) {
+      groups[group.id] = { ...group, memberIds };
+      changed = true;
+    }
+  }
+  const firstGroup = Object.values(groups)[0];
+  const strays = Object.keys(state.entities.characters).filter((id) => !seen.has(id));
+  if (strays.length > 0) {
+    const repairedFirst = groups[firstGroup.id];
+    groups[firstGroup.id] = {
+      ...repairedFirst,
+      memberIds: [...repairedFirst.memberIds, ...strays],
+    };
+    changed = true;
+  }
+
+  const vehicleTypes = { ...(state.entities.vehicleTypes ?? {}) };
+  const deleted = new Set(state.entities.deletedBuiltinVehicleTypeIds ?? []);
+  for (const seed of VEHICLE_TYPE_SEEDS) {
+    if (!vehicleTypes[seed.id] && !deleted.has(seed.id)) {
+      vehicleTypes[seed.id] = safeDeepClone(seed);
+      changed = true;
+    }
+  }
+
+  const activeId = state.ui.activeTravelGroupId;
+  const activeTravelGroupId = activeId && groups[activeId] ? activeId : Object.keys(groups)[0];
+  if (activeTravelGroupId !== activeId) changed = true;
+  if (!changed) return state;
+  return {
+    ...state,
+    ui: { ...state.ui, activeTravelGroupId },
+    entities: {
+      ...state.entities,
+      travelGroups: groups,
+      vehicles: state.entities.vehicles ?? {},
+      vehicleTypes,
     },
   };
 }

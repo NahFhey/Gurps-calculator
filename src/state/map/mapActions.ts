@@ -21,6 +21,7 @@ import type {
   TravelMode,
   MapModel,
 } from '../../types/map';
+import type { Id } from '../../types/campaign';
 
 // ============================================================================
 // ACTION TYPE CONSTANTS
@@ -64,7 +65,6 @@ export const MAP_SET_STRUCTURE_CELLS = 'map/setStructureCells' as const;
 
 // Reveal & position
 export const MAP_REVEAL_TILES = 'map/revealTiles' as const;
-export const MAP_SET_PARTY_TILE = 'map/setPartyTile' as const;
 
 // Travel execution
 export const MAP_EXECUTE_TRAVEL = 'map/executeTravel' as const;
@@ -206,11 +206,6 @@ export type RevealTilesAction = {
   payload: { mapId: MapId; tileIds: TileId[] };
 };
 
-export type SetPartyTileAction = {
-  type: typeof MAP_SET_PARTY_TILE;
-  payload: { mapId: MapId; tileId: TileId | null };
-};
-
 export type MapTravelExecutionAction = {
   type: typeof MAP_EXECUTE_TRAVEL;
   payload: {
@@ -219,6 +214,7 @@ export type MapTravelExecutionAction = {
     destinationTileId: TileId;
     mode: TravelMode;
     gmOverride: boolean;
+    groupId: Id;
   };
 };
 
@@ -259,7 +255,6 @@ export type MapAction =
   | RemoveStructureLayerAction
   | SetStructureCellsAction
   | RevealTilesAction
-  | SetPartyTileAction
   | MapTravelExecutionAction
   | SetPendingTerrainAction
   | ClearPendingTerrainAction;
@@ -292,7 +287,6 @@ const MAP_ACTION_TYPES = new Set<string>([
   MAP_REMOVE_STRUCTURE_LAYER,
   MAP_SET_STRUCTURE_CELLS,
   MAP_REVEAL_TILES,
-  MAP_SET_PARTY_TILE,
   MAP_EXECUTE_TRAVEL,
   MAP_SET_PENDING_TERRAIN,
   MAP_CLEAR_PENDING_TERRAIN,

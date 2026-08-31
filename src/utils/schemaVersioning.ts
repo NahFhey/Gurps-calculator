@@ -13,7 +13,7 @@ export interface SchemaMetadataEntry {
   migratesFrom?: string[];
 }
 
-export const CURRENT_SCHEMA_VERSION = '1.5.5';
+export const CURRENT_SCHEMA_VERSION = '1.5.6';
 
 export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
   '1.0.0': {
@@ -110,6 +110,14 @@ export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
     description: 'Remove legacy location-graph travel semantics and persisted map travel UI state',
     features: ['map_tile_travel', 'legacy_travel_cleanup'],
     migratesFrom: ['1.5.4'],
+  },
+  '1.5.6': {
+    name: 'Travel Groups & Vehicles',
+    timestamp: '2026-08-31',
+    breaking: true,
+    description: 'Replace the singleton map party position with persistent travel groups and vehicles',
+    features: ['travel_groups', 'vehicles', 'group_positions'],
+    migratesFrom: ['1.5.5'],
   },
 };
 

@@ -8,6 +8,7 @@ type TravelFixture = {
   map: MapModel;
   originTileId: string;
   destinationTileId: string;
+  groupId: string;
 };
 
 const makeTravelFixture = (): TravelFixture => {
@@ -17,16 +18,26 @@ const makeTravelFixture = (): TravelFixture => {
     scaleMilesPerTile: 12,
     startTerrainId: 'terrain-plains',
   });
-  const originTileId = map.partyTileId;
-  if (!originTileId) throw new Error('Expected a starting party tile');
+  const originTileId = map.grid[4][4];
   const destinationTileId = map.grid.flat().find((tileId) => tileId !== originTileId);
   if (!destinationTileId) throw new Error('Expected a destination tile');
   state.maps.mapsById = { [map.id]: map };
   state.maps.activeMapId = map.id;
-  return { state, map, originTileId, destinationTileId };
+  const groupId = 'travel-group';
+  state.entities.travelGroups = {
+    [groupId]: {
+      id: groupId,
+      name: 'The Party',
+      memberIds: [],
+      vehicleId: null,
+      position: { mapId: map.id, tileId: originTileId },
+    },
+  };
+  state.ui.activeTravelGroupId = groupId;
+  return { state, map, originTileId, destinationTileId, groupId };
 };
 
-const executeTravel = ({ state, map, originTileId, destinationTileId }: TravelFixture) =>
+const executeTravel = ({ state, map, originTileId, destinationTileId, groupId }: TravelFixture) =>
   campaignReducer(state, {
     type: 'map/executeTravel',
     payload: {
@@ -35,6 +46,7 @@ const executeTravel = ({ state, map, originTileId, destinationTileId }: TravelFi
       destinationTileId,
       mode: 'foot',
       gmOverride: false,
+      groupId,
     },
   });
 
@@ -68,9 +80,10 @@ describe('campaign travel time advancement', () => {
 
     expect(result.checkpoints.entries).toHaveLength(1);
     expect(result.checkpoints.entries[0].label).toBe('Before travel');
-    expect(result.checkpoints.entries[0].snapshot.maps.mapsById[fixture.map.id].partyTileId)
-      .toBe(fixture.originTileId);
-    expect(result.maps.mapsById[fixture.map.id].partyTileId).toBe(fixture.destinationTileId);
+    expect(result.checkpoints.entries[0].snapshot.entities.travelGroups?.[fixture.groupId].position)
+      .toEqual({ mapId: fixture.map.id, tileId: fixture.originTileId });
+    expect(result.entities.travelGroups?.[fixture.groupId].position)
+      .toEqual({ mapId: fixture.map.id, tileId: fixture.destinationTileId });
   });
 
   it('regenerates weather that expires at the post-travel time', () => {
@@ -93,7 +106,8 @@ describe('campaign travel time advancement', () => {
 
     const result = executeTravel(fixture);
 
-    expect(result.maps.mapsById[fixture.map.id].partyTileId).toBe(fixture.originTileId);
+    expect(result.entities.travelGroups?.[fixture.groupId].position)
+      .toEqual({ mapId: fixture.map.id, tileId: fixture.originTileId });
     expect(result.maps.mapsById[fixture.map.id].revealedTileIds).toEqual(revealedBefore);
     expect(result.time).toMatchObject({ day: 1, slot: 0 });
     expect(result.checkpoints.entries).toHaveLength(0);

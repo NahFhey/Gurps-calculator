@@ -13,6 +13,7 @@ interface MapHeaderProps {
   isGmMode: boolean;
   onSelectMap: (mapId: MapId) => void;
   onCreateMap: () => void;
+  mapsWithPresence?: Set<MapId>;
   /** Whether the active map has a party tile placed */
   hasPartyOnMap?: boolean;
   /** Whether the travel wizard is currently open */
@@ -38,6 +39,7 @@ export function MapHeader({
   isGmMode,
   onSelectMap,
   onCreateMap,
+  mapsWithPresence,
   hasPartyOnMap,
   showTravelWizard,
   onTravel,
@@ -107,8 +109,8 @@ export function MapHeader({
                           {scale.label}
                         </span>
                       )}
-                      {m.partyTileId && (
-                        <span className="w-2 h-2 rounded-full bg-green-400" title="Party is here" />
+                      {mapsWithPresence?.has(m.id) && (
+                        <span className="w-2 h-2 rounded-full bg-green-400" title="Group or vehicle is here" />
                       )}
                     </button>
                   );

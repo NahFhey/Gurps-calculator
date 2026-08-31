@@ -41,12 +41,11 @@ export function createTile(terrainId: TerrainId | null = null): TileModel {
 
 /**
  * Create the initial 9x9 grid for a new map.
- * Party starts at center (4,4). Only the center tile gets terrain assigned.
+ * Only the center tile gets terrain assigned and starts revealed.
  */
 export function createInitialGrid(startTerrainId: TerrainId): {
   grid: TileId[][];
   tilesById: Record<TileId, TileModel>;
-  partyTileId: TileId;
   revealedTileIds: Set<TileId>;
 } {
   const tilesById: Record<TileId, TileModel> = {};
@@ -63,10 +62,9 @@ export function createInitialGrid(startTerrainId: TerrainId): {
     grid.push(row);
   }
 
-  const partyTileId = grid[INITIAL_CENTER][INITIAL_CENTER];
-  const revealedTileIds = new Set<TileId>([partyTileId]);
+  const revealedTileIds = new Set<TileId>([grid[INITIAL_CENTER][INITIAL_CENTER]]);
 
-  return { grid, tilesById, partyTileId, revealedTileIds };
+  return { grid, tilesById, revealedTileIds };
 }
 
 /**
@@ -384,7 +382,7 @@ export function createNewMap(params: {
   startTerrainId: TerrainId;
 }): MapModel {
   const terrainById = createDefaultTerrainSet();
-  const { grid, tilesById, partyTileId, revealedTileIds } = createInitialGrid(
+  const { grid, tilesById, revealedTileIds } = createInitialGrid(
     params.startTerrainId
   );
 
@@ -402,7 +400,6 @@ export function createNewMap(params: {
     markersById: {},
     linksById: {},
     revealedTileIds,
-    partyTileId,
     lastSelectedTerrainId: params.startTerrainId,
     lastPlacedTerrainId: params.startTerrainId,
   };

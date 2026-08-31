@@ -31,9 +31,9 @@ export function LinkEditor({
   // Selected target map
   const targetMap = toMapId ? maps[toMapId] : null;
 
-  // For v1, link to center tile of target map (or party tile if set)
+  // Links default to the stable tile id currently at the target map's center.
   const toTileId = targetMap
-    ? targetMap.partyTileId ?? targetMap.grid[Math.floor(targetMap.rows / 2)]?.[Math.floor(targetMap.cols / 2)]
+    ? targetMap.grid[Math.floor(targetMap.rows / 2)]?.[Math.floor(targetMap.cols / 2)]
     : null;
 
   const canConfirm = toMapId && toTileId;

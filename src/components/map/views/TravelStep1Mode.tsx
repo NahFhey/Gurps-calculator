@@ -16,24 +16,30 @@ interface TravelStep1ModeProps {
   mapScale: MapScale;
   selectedMode: TravelMode | null;
   onSelectMode: (mode: TravelMode) => void;
+  lockedMode: TravelMode;
+  vehicleName: string | null;
 }
 
 export function TravelStep1Mode({
   mapScale,
   selectedMode,
   onSelectMode,
+  lockedMode,
+  vehicleName,
 }: TravelStep1ModeProps) {
   const allowedModes = SCALE_TO_MODES[mapScale];
 
   return (
     <div className="space-y-3">
       <p className="text-xs text-gray-400">
-        Choose a travel mode. Higher-tier modes work on smaller maps too.
+        {vehicleName
+          ? `${vehicleName} travels by ${lockedMode}; other modes are unavailable.`
+          : 'This group is on foot; boat and airship travel require a vehicle.'}
       </p>
 
       <div className="space-y-2">
         {TRAVEL_MODE_DEFINITIONS.map((modeDef) => {
-          const isAllowed = allowedModes.includes(modeDef.id);
+          const isAllowed = modeDef.id === lockedMode && allowedModes.includes(modeDef.id);
           const isSelected = selectedMode === modeDef.id;
           const Icon = MODE_ICONS[modeDef.id];
           const minScale = Math.min(...modeDef.allowedScales);

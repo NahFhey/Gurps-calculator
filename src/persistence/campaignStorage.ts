@@ -4,9 +4,12 @@ import { generateAllTestSampleData, isStateEmpty } from '../utils/testSampleData
 import { initialMapState } from '../types/map';
 import { logger } from '../utils/logger';
 import { removeLegacyTravelState } from '../utils/dataMigrations';
-import { ensureCharacterTemplates, ensureInventoryRecords, ensureOwnerAttributedHoldings, ensureConditionVisibility, ensureCombatCharacterCategories, ensureCombatHistoryShape } from './dataMigration';
+import { ensureCharacterTemplates, ensureTravelGroups, ensureInventoryRecords, ensureOwnerAttributedHoldings, ensureConditionVisibility, ensureCombatCharacterCategories, ensureCombatHistoryShape } from './dataMigration';
 
 const CAMPAIGN_STORAGE_KEY = 'campaignState';
+// Legacy key as a string literal on purpose: the field no longer exists on
+// MapModel, but pre-1.5.6 saves still carry it.
+const LEGACY_PARTY_POSITION_KEY = 'partyTileId';
 
 const serializeMapState = (maps: CampaignState['maps']) => {
   const serializedMaps: Record<string, unknown> = {};
@@ -45,8 +48,10 @@ const hydrateMapState = (maps: any): CampaignState['maps'] => {
   }
   const hydratedMaps: Record<string, any> = {};
   for (const [mapId, map] of Object.entries(maps.mapsById as Record<string, any>)) {
+    const mapWithoutPartyPosition = { ...map };
+    delete mapWithoutPartyPosition[LEGACY_PARTY_POSITION_KEY];
     hydratedMaps[mapId] = {
-      ...map,
+      ...mapWithoutPartyPosition,
       visionMode: map.visionMode ?? 'lineOfSight',
       revealedTileIds: new Set(map.revealedTileIds || []),
     };
@@ -62,7 +67,7 @@ export const hydrateCampaignState = (payload: CampaignState): CampaignState => {
   payload = removeLegacyTravelState(payload);
   const base = createCampaignState();
   const reveal = payload.combat?.reveal ?? base.combat.reveal;
-  return ensureCharacterTemplates(ensureCombatHistoryShape(ensureCombatCharacterCategories(ensureConditionVisibility(ensureOwnerAttributedHoldings(ensureInventoryRecords({
+  return ensureTravelGroups(ensureCharacterTemplates(ensureCombatHistoryShape(ensureCombatCharacterCategories(ensureConditionVisibility(ensureOwnerAttributedHoldings(ensureInventoryRecords({
     ...base,
     ...payload,
     // Ensure all nested structures have proper defaults
@@ -96,7 +101,7 @@ export const hydrateCampaignState = (payload: CampaignState): CampaignState => {
       }
     },
     maps: hydrateMapState(payload.maps),
-  }))))));
+  })))))));
 };
 
 export async function saveCampaignState(state: CampaignState) {

@@ -6,7 +6,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useCampaignStore } from '../../state/campaignStore';
 import type { MapScale, StructureLayer, StructureLayerId, TerrainId, TerrainModel, TileId, MarkerModel, LinkModel, TravelMode } from '../../types/map';
-import { MAX_ELEVATION, SCALE_TO_MODES } from '../../constants/map';
+import { MAX_ELEVATION } from '../../constants/map';
 import { findRoute, getReachableTiles } from '../../utils/mapRouter';
 import { computeVisibleTiles } from '../../utils/lineOfSight';
 import { Map3DView } from './views/Map3DView';
@@ -24,6 +24,13 @@ import { TerrainAssignmentModal } from './views/TerrainAssignmentModal';
 import { ElevationDialog } from './views/ElevationDialog';
 import { ImageLayersDialog } from './views/ImageLayersDialog';
 import { Map as MapIcon, ExternalLink } from 'lucide-react';
+import {
+  selectActiveTravelGroup,
+  selectGroupPosition,
+  selectGroupsOnMap,
+  selectVehiclesOnMap,
+} from '../../state/selectors';
+import { groupsOnMap, vehiclesOnMap } from '../../utils/partyPosition';
 
 /** Interaction mode for the map */
 export type MapInteractionMode = 'view' | 'paint' | 'select';
@@ -33,6 +40,17 @@ export function MapPanel() {
   const isGmMode = state.ui.gmModeEnabled;
   const maps = state.maps;
   const activeMap = maps.activeMapId ? maps.mapsById[maps.activeMapId] : null;
+  const activeGroup = selectActiveTravelGroup(state);
+  const activeGroupPosition = activeGroup ? selectGroupPosition(state, activeGroup.id) : null;
+  const activeGroupTile = activeMap && activeGroupPosition?.mapId === activeMap.id
+    ? activeGroupPosition.tileId
+    : null;
+  const activeVehicle = activeGroup?.vehicleId
+    ? state.entities.vehicles?.[activeGroup.vehicleId] ?? null
+    : null;
+  const activeVehicleType = activeVehicle
+    ? state.entities.vehicleTypes?.[activeVehicle.typeId] ?? null
+    : null;
 
   // UI state
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -76,32 +94,55 @@ export function MapPanel() {
 
   // Links on the party's current tile
   const partyTileLinks = useMemo(() => {
-    if (!activeMap || !activeMap.partyTileId) return [];
-    const tile = activeMap.tilesById[activeMap.partyTileId];
+    if (!activeMap || !activeGroupTile) return [];
+    const tile = activeMap.tilesById[activeGroupTile];
     if (!tile) return [];
     return tile.linkIds
       .map((lid) => activeMap.linksById[lid])
       .filter(Boolean);
-  }, [activeMap]);
+  }, [activeMap, activeGroupTile]);
 
   // Party character IDs for travel validation
-  const partyCharacterIds = useMemo(() => {
-    return Object.keys(state.entities.characters);
-  }, [state.entities.characters]);
+  const memberIds = activeGroup?.memberIds ?? [];
 
   // Reachable tiles (computed when in travel step 2)
   const reachableTileIds = useMemo(() => {
-    if (!showTravelWizard || travelStep < 2 || !travelMode || !activeMap || !activeMap.partyTileId) {
+    if (!showTravelWizard || travelStep < 2 || !travelMode || !activeMap || !activeGroupTile) {
       return undefined;
     }
-    const reachable = getReachableTiles(activeMap, activeMap.partyTileId, travelMode, isGmMode);
+    const reachable = getReachableTiles(activeMap, activeGroupTile, travelMode, isGmMode);
     return reachable.size > 0 ? reachable : undefined;
-  }, [showTravelWizard, travelStep, travelMode, activeMap, isGmMode]);
+  }, [showTravelWizard, travelStep, travelMode, activeMap, activeGroupTile, isGmMode]);
 
   const visibleTileIds = useMemo(() => {
     if (!activeMap || isGmMode || activeMap.visionMode === 'open') return undefined;
-    return computeVisibleTiles(activeMap, activeMap.partyTileId ? [activeMap.partyTileId] : []);
-  }, [activeMap, isGmMode]);
+    const observers = new Set<TileId>([
+      ...selectGroupsOnMap(state, activeMap.id).map(({ tileId }) => tileId),
+      ...selectVehiclesOnMap(state, activeMap.id).map(({ tileId }) => tileId),
+    ]);
+    return computeVisibleTiles(activeMap, [...observers]);
+  }, [activeMap, isGmMode, state]);
+
+  const occupantsByTile = useMemo(() => {
+    if (!activeMap) return new Map<TileId, string[]>();
+    const occupants = new Map<TileId, string[]>();
+    const add = (tileId: TileId, name: string) => {
+      occupants.set(tileId, [...(occupants.get(tileId) ?? []), name]);
+    };
+    for (const { group, tileId } of selectGroupsOnMap(state, activeMap.id)) add(tileId, group.name);
+    for (const { vehicle, tileId } of selectVehiclesOnMap(state, activeMap.id)) add(tileId, vehicle.name);
+    return occupants;
+  }, [activeMap, state]);
+
+  const mapsWithPresence = useMemo(() => {
+    const present = new Set<string>();
+    for (const mapId of Object.keys(maps.mapsById)) {
+      if (groupsOnMap(state, mapId).length > 0 || vehiclesOnMap(state, mapId).length > 0) {
+        present.add(mapId);
+      }
+    }
+    return present;
+  }, [maps.mapsById, state]);
 
   // Select map
   const handleSelectMap = useCallback(
@@ -124,17 +165,17 @@ export function MapPanel() {
       if (!activeMap || !maps.activeMapId) return;
 
       // Party placement mode: click a tile to place the party
-      if (isPlacingParty) {
-        actions.mapSetPartyTile(maps.activeMapId, tileId);
+      if (isPlacingParty && activeGroup) {
+        actions.partyPlaceGroup(activeGroup.id, maps.activeMapId, tileId);
         actions.mapRevealTiles(maps.activeMapId, [tileId]);
         setIsPlacingParty(false);
         return;
       }
 
       // Travel wizard step 2: click to set destination
-      if (showTravelWizard && travelStep === 2 && travelMode && activeMap.partyTileId) {
-        if (tileId === activeMap.partyTileId) return; // Can't route to self
-        const route = findRoute(activeMap, activeMap.partyTileId, tileId, travelMode, isGmMode);
+      if (showTravelWizard && travelStep === 2 && travelMode && activeGroupTile) {
+        if (tileId === activeGroupTile) return; // Can't route to self
+        const route = findRoute(activeMap, activeGroupTile, tileId, travelMode, isGmMode);
         if (route.valid) {
           setTravelRoute(route.path);
         }
@@ -162,7 +203,7 @@ export function MapPanel() {
         });
       }
     },
-    [activeMap, maps.activeMapId, interactionMode, selectedTerrainId, isGmMode, actions, showTravelWizard, travelStep, travelMode, isPlacingParty, activeStructureLayer, structureEraseMode]
+    [activeMap, activeGroup, activeGroupTile, maps.activeMapId, interactionMode, selectedTerrainId, isGmMode, actions, showTravelWizard, travelStep, travelMode, isPlacingParty, activeStructureLayer, structureEraseMode]
   );
 
   const paintTile = useCallback(
@@ -312,22 +353,27 @@ export function MapPanel() {
   // Use link (portal)
   const handleUseLink = useCallback(
     (link: LinkModel) => {
+      if (!activeGroup) return;
       actions.mapSetActiveMap(link.toMapId);
-      actions.mapSetPartyTile(link.toMapId, link.toTileId);
+      if (activeGroup.vehicleId) {
+        actions.partyPlaceVehicle(activeGroup.vehicleId, link.toMapId, link.toTileId);
+      } else {
+        actions.partyPlaceGroup(activeGroup.id, link.toMapId, link.toTileId);
+      }
       setShowLinksMenu(false);
     },
-    [actions]
+    [actions, activeGroup]
   );
 
   // Travel wizard handlers
   const handleOpenTravel = useCallback(() => {
     if (!activeMap) return;
-    const defaultMode = SCALE_TO_MODES[activeMap.scaleMilesPerTile][0];
+    const defaultMode = activeVehicleType?.mode ?? 'foot';
     setTravelMode(defaultMode);
     setTravelStep(1);
     setTravelRoute([]);
     setShowTravelWizard(true);
-  }, [activeMap]);
+  }, [activeMap, activeVehicleType]);
 
   const handleCloseTravel = useCallback(() => {
     setShowTravelWizard(false);
@@ -337,7 +383,7 @@ export function MapPanel() {
   }, []);
 
   const handleTravelConfirm = useCallback(() => {
-    if (!maps.activeMapId || !travelMode || travelRoute.length < 2) return;
+    if (!maps.activeMapId || !activeGroup || !travelMode || travelRoute.length < 2) return;
     const destTileId = travelRoute[travelRoute.length - 1];
     actions.mapExecuteTravel({
       mapId: maps.activeMapId,
@@ -345,9 +391,10 @@ export function MapPanel() {
       destinationTileId: destTileId,
       mode: travelMode,
       gmOverride: isGmMode,
+      groupId: activeGroup.id,
     });
     handleCloseTravel();
-  }, [maps.activeMapId, travelMode, travelRoute, isGmMode, actions, handleCloseTravel]);
+  }, [maps.activeMapId, activeGroup, travelMode, travelRoute, isGmMode, actions, handleCloseTravel]);
 
   // Pending terrain assignment handlers
   const handleFillPendingTerrain = useCallback(
@@ -374,6 +421,7 @@ export function MapPanel() {
           onSelectMap={handleSelectMap}
           onCreateMap={() => setShowCreateDialog(true)}
           hasPartyOnMap={false}
+          mapsWithPresence={mapsWithPresence}
           showTravelWizard={false}
         />
         <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-4">
@@ -406,7 +454,8 @@ export function MapPanel() {
         isGmMode={isGmMode}
         onSelectMap={handleSelectMap}
         onCreateMap={() => setShowCreateDialog(true)}
-        hasPartyOnMap={!!activeMap.partyTileId}
+        hasPartyOnMap={!!activeGroupTile}
+        mapsWithPresence={mapsWithPresence}
         showTravelWizard={showTravelWizard}
         onTravel={handleOpenTravel}
         onPlaceParty={() => setIsPlacingParty(true)}
@@ -453,6 +502,8 @@ export function MapPanel() {
             && (!!selectedTerrainId || (!!activeStructureLayer && structureEraseMode))
           }
           placingParty={isPlacingParty}
+          activeGroupTileId={activeGroupTile}
+          occupantsByTile={occupantsByTile}
           onTileClick={handleTileClick}
           onTileContextMenu={handleTileContextMenu}
           onTilePaintStart={handleTilePaintStart}
@@ -460,14 +511,19 @@ export function MapPanel() {
         />
 
         {/* Travel wizard panel */}
-        {showTravelWizard && (
+        {showTravelWizard && activeGroup && (
           <TravelWizard
             map={activeMap}
             step={travelStep}
             selectedMode={travelMode}
             routeTileIds={travelRoute}
             isGmMode={isGmMode}
-            partyCharacterIds={partyCharacterIds}
+            memberIds={memberIds}
+            group={activeGroup}
+            characters={state.entities.characters}
+            vehicle={activeVehicle}
+            vehicleType={activeVehicleType}
+            startTileId={activeGroupTile}
             day={state.time.day}
             slot={state.time.slot}
             downtimeState={state.downtime}

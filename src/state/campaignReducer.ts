@@ -62,6 +62,7 @@ import type { LocationModifiers, WeatherEffects } from '../types/location';
 import type { DowntimeState } from '../types/downtime';
 import type { MapState } from '../types/map';
 import { initialMapState } from '../types/map';
+import type { TravelGroup, Vehicle, VehicleTypeDef } from '../types/party';
 import type { ForageZoneProfile, ForageItem, ForagingConfig } from '../types/foraging';
 import { DEFAULT_FORAGING_CONFIG } from '../constants/foraging';
 import {
@@ -78,7 +79,9 @@ import { isCraftingAction, handleCraftingAction } from './crafting';
 import { isCharacterAction, handleCharacterAction } from './character';
 import { isCombatAction, handleCombatAction } from './combat';
 import { isMapAction, handleMapAction, type MapAction } from './map';
+import { isPartyAction, handlePartyAction, type PartyAction } from './party';
 import { resolveLocationTerrain } from '../utils/mapUtils';
+import { resolveGroupPosition } from '../utils/partyPosition';
 
 export const CAMPAIGN_META = {
   rulesVersion: '1.0.0',
@@ -102,6 +105,7 @@ export type CampaignState = {
     selectedCharacterId: string | null;
     characterPanelView: CharacterPanelView;
     gmModeEnabled: boolean;
+    activeTravelGroupId?: Id | null;
     gmSessionUnlocked: boolean;
     debugMode: boolean;
     activitiesSubview: string | null;
@@ -123,6 +127,10 @@ export type CampaignState = {
     characters: Record<Id, Character>;
     characterTemplates?: Record<Id, CharacterTemplateEntity>;
     deletedBuiltinTemplateIds?: string[];
+    travelGroups?: Record<Id, TravelGroup>;
+    vehicles?: Record<Id, Vehicle>;
+    vehicleTypes?: Record<string, VehicleTypeDef>;
+    deletedBuiltinVehicleTypeIds?: string[];
 
     // Inventory system
     recipes: Record<Id, Recipe>;
@@ -435,6 +443,7 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
     selectedCharacterId: null,
     characterPanelView: 'sheet',
     gmModeEnabled: false,
+    activeTravelGroupId: null,
     gmSessionUnlocked: false,
     debugMode: false,
     activitiesSubview: null,
@@ -451,6 +460,10 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
     characters: initialPartyToolState.characters,
     characterTemplates: {},
     deletedBuiltinTemplateIds: [],
+    travelGroups: {},
+    vehicles: {},
+    vehicleTypes: {},
+    deletedBuiltinVehicleTypeIds: [],
 
     // Inventory system (empty initially)
     recipes: {},
@@ -802,6 +815,7 @@ export type CampaignAction =
   | { type: 'setMaps'; payload: MapState }
   | { type: 'setTerrainModifierOverrides'; payload: Record<string, Partial<LocationModifiers>> }
   | { type: 'setWeatherEffectOverrides'; payload: Record<string, Partial<WeatherEffects>> }
+  | PartyAction
   | MapAction;
 
 export function campaignReducer(state: CampaignState, action: CampaignAction) {
@@ -827,12 +841,56 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
       handleCharacterAction(draft, action);
       return;
     }
+    if (isPartyAction(action)) {
+      handlePartyAction(draft, action);
+
+      // Interim until Lane D derives named location from each group: only the
+      // active group's manual placement updates the campaign's current terrain.
+      const placedGroup = action.type === 'party/placeGroup'
+        ? draft.entities.travelGroups?.[action.payload.groupId]
+        : undefined;
+      if (action.type === 'party/placeGroup'
+        && action.payload.groupId === draft.ui.activeTravelGroupId
+        && placedGroup?.vehicleId === null
+        && placedGroup.position?.mapId === action.payload.mapId
+        && placedGroup.position.tileId === action.payload.tileId) {
+        const map = draft.maps.mapsById[action.payload.mapId];
+        const currentLocId = draft.locations.currentLocationId;
+        if (map && currentLocId) {
+          const location = draft.locations.locations[currentLocId];
+          if (location) {
+            const newTerrain = resolveLocationTerrain(map, action.payload.tileId);
+            if (newTerrain !== location.terrain) {
+              const oldLabel = TERRAIN_LABELS[location.terrain] ?? location.terrain;
+              const newLabel = TERRAIN_LABELS[newTerrain] ?? newTerrain;
+              location.terrain = newTerrain;
+              location.modifiers = getTerrainModifiers(
+                newTerrain,
+                draft.locations.terrainModifierOverrides
+              );
+              location.modifiedAt = Date.now();
+              appendLogEntry(draft, logEvent('terrain.changed', 'player', {
+                message: `Terrain changed from ${oldLabel} to ${newLabel}`
+              }));
+            }
+          }
+        }
+      }
+      return;
+    }
     if (isCombatAction(action)) {
       handleCombatAction(draft, action);
       return;
     }
     if (isMapAction(action)) {
       if (action.type === 'map/executeTravel') {
+        const group = draft.entities.travelGroups?.[action.payload.groupId];
+        const map = draft.maps.mapsById[action.payload.mapId];
+        const position = group ? resolveGroupPosition(draft, group) : null;
+        if (!group || !map || position?.mapId !== action.payload.mapId
+          || !map.tilesById[position.tileId]) {
+          return;
+        }
         if (!guardTimeAdvance(draft)) {
           return;
         }
@@ -842,10 +900,10 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
       handleMapAction(draft, action);
 
       // Sync location terrain from map tile after party movement (cross-slice)
-      if (action.type === 'map/executeTravel' || action.type === 'map/setPartyTile') {
-        const destinationTileId = action.type === 'map/executeTravel'
-          ? action.payload.destinationTileId
-          : action.payload.tileId;
+      if (action.type === 'map/executeTravel'
+        && action.payload.groupId === draft.ui.activeTravelGroupId) {
+        // Interim until Lane D derives named location from each group's position.
+        const destinationTileId = action.payload.destinationTileId;
         const mapId = action.payload.mapId;
         const map = draft.maps.mapsById[mapId];
         const currentLocId = draft.locations.currentLocationId;
@@ -853,7 +911,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         if (map && destinationTileId && currentLocId) {
           const location = draft.locations.locations[currentLocId];
           if (location) {
-            const newTerrain = resolveLocationTerrain(map as any, destinationTileId);
+            const newTerrain = resolveLocationTerrain(map, destinationTileId);
             if (newTerrain !== location.terrain) {
               const oldLabel = TERRAIN_LABELS[location.terrain] ?? location.terrain;
               const newLabel = TERRAIN_LABELS[newTerrain] ?? newTerrain;
@@ -877,6 +935,8 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
 
       // After travel execution, advance time by one slot (cross-slice operation)
       if (action.type === 'map/executeTravel') {
+        // Interim quirk: moving two groups sequentially advances two slots.
+        // Lane C's journey model replaces this per-execution time advance.
         advanceSlotAndRegenerateWeather(
           draft,
           (day, slot, label) =>

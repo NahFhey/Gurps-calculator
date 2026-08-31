@@ -16,6 +16,20 @@ import {
   CHARACTER_TEMPLATE_REMOVE
 } from './characterActions';
 
+function createMainGroup(draft: Draft<CampaignState>, memberId: string): void {
+  const id = crypto.randomUUID();
+  draft.entities.travelGroups = {
+    [id]: {
+      id,
+      name: 'The Party',
+      memberIds: [memberId],
+      vehicleId: null,
+      position: null,
+    },
+  };
+  draft.ui.activeTravelGroupId = id;
+}
+
 /**
  * Process character actions on the campaign state draft.
  */
@@ -26,6 +40,19 @@ export function handleCharacterAction(
   switch (action.type) {
     case CHARACTER_ADD:
       draft.entities.characters[action.payload.id] = action.payload;
+      {
+        const groups = draft.entities.travelGroups ?? {};
+        const active = draft.ui.activeTravelGroupId
+          ? groups[draft.ui.activeTravelGroupId]
+          : undefined;
+        const target = active ?? Object.values(groups)[0];
+        if (target) {
+          if (!target.memberIds.includes(action.payload.id)) target.memberIds.push(action.payload.id);
+          if (!draft.ui.activeTravelGroupId) draft.ui.activeTravelGroupId = target.id;
+        } else {
+          createMainGroup(draft, action.payload.id);
+        }
+      }
       return true;
 
     case CHARACTER_UPDATE:
@@ -43,6 +70,20 @@ export function handleCharacterAction(
       for (const [invId, inv] of Object.entries(draft.entities.inventories)) {
         if (inv.ownerType === 'character' && inv.ownerId === action.payload) {
           delete draft.entities.inventories[invId];
+        }
+      }
+      if (draft.entities.travelGroups) {
+        const group = Object.values(draft.entities.travelGroups)
+          .find((candidate) => candidate.memberIds.includes(action.payload));
+        if (group) {
+          group.memberIds = group.memberIds.filter((id) => id !== action.payload);
+          if (group.memberIds.length === 0
+            && Object.keys(draft.entities.travelGroups).length > 1) {
+            delete draft.entities.travelGroups[group.id];
+            if (draft.ui.activeTravelGroupId === group.id) {
+              draft.ui.activeTravelGroupId = Object.keys(draft.entities.travelGroups)[0] ?? null;
+            }
+          }
         }
       }
       return true;

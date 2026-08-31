@@ -18,6 +18,8 @@ interface Map3DViewProps {
   selectedTileIds?: Set<TileId>;
   routeTileIds?: TileId[];
   reachableTileIds?: Set<TileId>;
+  activeGroupTileId?: TileId | null;
+  occupantsByTile?: Map<TileId, string[]>;
   /** Combat/actor tokens rendered on tiles (category-colored spheres). */
   tokens?: MapToken[];
   paintModeActive: boolean;
@@ -106,6 +108,7 @@ export function Map3DView(props: Map3DViewProps) {
       tokens: props.tokens ?? null,
       paintModeActive: props.paintModeActive,
       placingParty: props.placingParty,
+      activeGroupTileId: props.activeGroupTileId ?? null,
     });
   }, [
     props.map,
@@ -118,6 +121,7 @@ export function Map3DView(props: Map3DViewProps) {
     props.tokens,
     props.paintModeActive,
     props.placingParty,
+    props.activeGroupTileId,
     sceneReady,
   ]);
 
@@ -152,7 +156,9 @@ export function Map3DView(props: Map3DViewProps) {
         >
           <div className="font-medium">{terrain?.name ?? 'Unassigned'} ({hover.row}, {hover.col})</div>
           <div className="text-gray-400">Elev {getEffectiveElevation(props.map, hover.tileId)}</div>
-          {props.map.partyTileId === hover.tileId && <div>Party here</div>}
+          {props.occupantsByTile?.get(hover.tileId)?.map((name, index) => (
+            <div key={`${name}-${index}`}>{name}</div>
+          ))}
           {markerCount > 0 && <div>{markerCount} marker(s)</div>}
           {hoverTile.linkIds.length > 0 && <div>Has links</div>}
         </div>

@@ -67,7 +67,6 @@ function makeUniformMap(
     markersById: {},
     linksById: {},
     revealedTileIds: new Set(),
-    partyTileId: null,
     lastSelectedTerrainId: terrain.id,
     lastPlacedTerrainId: terrain.id,
   };

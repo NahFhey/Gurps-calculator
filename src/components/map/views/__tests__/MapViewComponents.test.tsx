@@ -77,7 +77,6 @@ const mockMap: MapModel = ({
   scaleMilesPerTile: 12,
   rows: 3,
   cols: 3,
-  partyTileId: null,
   grid: Array(3)
     .fill(null)
     .map((_, r) =>
@@ -662,6 +661,8 @@ describe('TravelStep1Mode', () => {
         mapScale={12}
         selectedMode={null}
         onSelectMode={vi.fn()}
+        lockedMode="foot"
+        vehicleName={null}
       />
     );
 
@@ -675,6 +676,8 @@ describe('TravelStep1Mode', () => {
         mapScale={12}
         selectedMode={null}
         onSelectMode={vi.fn()}
+        lockedMode="foot"
+        vehicleName={null}
       />
     );
 
@@ -694,6 +697,8 @@ describe('TravelStep1Mode', () => {
         mapScale={50}
         selectedMode={null}
         onSelectMode={onSelectMode}
+        lockedMode="boat"
+        vehicleName="Riverboat"
       />
     );
 

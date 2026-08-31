@@ -1,50 +1,59 @@
-/**
- * mapTravelValidation — Route validation for map travel.
- *
- * Distance is measured in MILES. Each mode has a milesPerSlot budget
- * (foot=12, boat=50, airship=457). The budget check compares
- * route miles against mode.milesPerSlot.
- *
- * Checks all 7 blocking conditions before travel can be confirmed:
- * 1. Mode compatible with map scale
- * 2. Party members available (none in downtime tasks this slot)
- * 3. No party members incapacitated
- * 4. Personnel requirements met for mode
- * 5. All route tiles have terrain assigned (player enforcement)
- * 6. All route tiles passable for mode
- * 7. Route within mile budget for the mode
- */
-
-import type { MapModel, TileId, TravelMode, TravelBlocker } from '../types/map';
+import type { Character, Id } from '../types/campaign';
 import type { DowntimeState } from '../types/downtime';
+import type { MapModel, TileId, TravelBlocker, TravelMode } from '../types/map';
 import { TRAVEL_BLOCKER_CODES } from '../types/map';
-import { SCALE_TO_MODES } from '../constants/map';
-import { getTravelModeDefinition } from '../constants/map';
-import { findTileGridPos } from './mapUtils';
-import { computeRouteMiles } from './mapRouter';
+import type { TravelGroup, Vehicle, VehicleTypeDef } from '../types/party';
+import { getTravelModeDefinition, SCALE_TO_MODES } from '../constants/map';
 import { selectAssignedCharacterIdsForSlot } from '../state/downtime/downtimeSelectors';
+import { computeRouteMiles } from './mapRouter';
+import { findTileGridPos } from './mapUtils';
+import { isAbleBodied } from './partyPosition';
 
-/**
- * Validate a travel route and return all blocking reasons.
- * Returns an empty array if travel is valid.
- */
-export function validateTravelRoute(
-  map: MapModel,
-  routeTileIds: TileId[],
-  mode: TravelMode,
-  partyCharacterIds: string[],
-  day: number,
-  slot: number,
-  downtimeState: DowntimeState,
-  isGmMode: boolean,
-  weatherTravelModifier: number = 0
-): TravelBlocker[] {
+export interface TravelValidationInput {
+  map: MapModel;
+  routeTileIds: TileId[];
+  mode: TravelMode;
+  group: TravelGroup;
+  characters: Record<Id, Character>;
+  vehicle: Vehicle | null;
+  vehicleType: VehicleTypeDef | null;
+  day: number;
+  slot: number;
+  downtimeState: DowntimeState;
+  isGmMode: boolean;
+  weatherTravelModifier?: number;
+}
+
+export function validateTravelRoute(input: TravelValidationInput): TravelBlocker[] {
+  const {
+    map,
+    routeTileIds,
+    mode,
+    group,
+    characters,
+    vehicle,
+    vehicleType,
+    day,
+    slot,
+    downtimeState,
+    isGmMode,
+    weatherTravelModifier = 0,
+  } = input;
   const blockers: TravelBlocker[] = [];
   const modeDef = getTravelModeDefinition(mode);
-
-  // 1. Mode compatible with map scale
   const allowedModes = SCALE_TO_MODES[map.scaleMilesPerTile];
-  if (!allowedModes.includes(mode)) {
+
+  if (group.vehicleId) {
+    if (!vehicleType || vehicleType.mode !== mode || !allowedModes.includes(vehicleType.mode)) {
+      blockers.push({
+        code: TRAVEL_BLOCKER_CODES.VEHICLE_MODE_INCOMPATIBLE,
+        message: vehicle && vehicleType
+          ? `${vehicleType.name} cannot travel in ${mode} mode on this map scale.`
+          : 'The group has no valid vehicle and vehicle type for travel.',
+        details: [`Available modes: ${allowedModes.join(', ')}.`],
+      });
+    }
+  } else if (mode !== 'foot' || !allowedModes.includes(mode)) {
     blockers.push({
       code: TRAVEL_BLOCKER_CODES.MODE_INCOMPATIBLE,
       message: `${mode} travel is not available on ${map.scaleMilesPerTile}-mile maps.`,
@@ -52,47 +61,54 @@ export function validateTravelRoute(
     });
   }
 
-  // 2. Party members available (none in downtime tasks this slot)
   const assignedIds = selectAssignedCharacterIdsForSlot(downtimeState, day, slot);
-  const busyMembers = partyCharacterIds.filter((id) => assignedIds.has(id));
+  const busyMembers = group.memberIds.filter((id) => assignedIds.has(id));
   if (busyMembers.length > 0) {
     blockers.push({
       code: TRAVEL_BLOCKER_CODES.PARTY_IN_DOWNTIME,
-      message: `${busyMembers.length} party member(s) are assigned to downtime tasks this slot.`,
-      details: busyMembers,
+      message: `${busyMembers.length} group member(s) are assigned to downtime tasks this slot.`,
+      details: busyMembers.map((id) => characters[id]?.name ?? id),
     });
   }
 
-  // 3. No party members incapacitated
-  // Note: In the current system, incapacitation is tracked via combat session status.
-  // For now, we skip this check since it requires combat state which is separate.
-  // This can be extended later when combat/health tracking is integrated.
+  const incapacitatedMembers = group.memberIds.filter((id) => {
+    const character = characters[id];
+    return character ? !isAbleBodied(character) : false;
+  });
+  const ableBodiedIds = group.memberIds.filter((id) => {
+    const character = characters[id];
+    return character ? isAbleBodied(character) : false;
+  });
+  if (!group.vehicleId && ableBodiedIds.length === 0) {
+    const names = incapacitatedMembers.map((id) => characters[id]?.name ?? id);
+    blockers.push({
+      code: TRAVEL_BLOCKER_CODES.PARTY_INCAPACITATED,
+      message: names.length > 0
+        ? `No able-bodied members can travel: ${names.join(', ')}.`
+        : 'No able-bodied members can travel.',
+      details: names,
+    });
+  }
 
-  // 4. Personnel requirements met for mode
-  if (modeDef.personnel.length > 0) {
-    const availableCount = partyCharacterIds.length - busyMembers.length;
-    const totalRequired = modeDef.personnel.reduce((sum, p) => sum + p.count, 0);
-    if (availableCount < totalRequired) {
-      const requirementsList = modeDef.personnel.map(
-        (p) => `${p.count} ${p.role}(s)`
-      );
+  if (vehicle && vehicleType) {
+    const availableCrew = ableBodiedIds.filter((id) => !assignedIds.has(id));
+    if (availableCrew.length < vehicleType.minCrew) {
       blockers.push({
-        code: TRAVEL_BLOCKER_CODES.INSUFFICIENT_PERSONNEL,
-        message: `Insufficient personnel for ${mode} travel.`,
+        code: TRAVEL_BLOCKER_CODES.INSUFFICIENT_CREW,
+        message: `Insufficient crew to operate ${vehicle.name}.`,
         details: [
-          `Required: ${requirementsList.join(', ')}`,
-          `Available party members: ${availableCount}`,
+          `Required able-bodied crew: ${vehicleType.minCrew}`,
+          `Available able-bodied crew: ${availableCrew.length}`,
         ],
       });
     }
   }
 
-  // 5. All route tiles have terrain assigned (player enforcement, GM can override)
   if (!isGmMode && routeTileIds.length > 0) {
     const nullTerrainTiles: string[] = [];
     for (const tileId of routeTileIds) {
       const tile = map.tilesById[tileId];
-      if (tile && tile.terrainId === null) {
+      if (tile?.terrainId === null) {
         const pos = findTileGridPos(map, tileId);
         nullTerrainTiles.push(pos ? `(${pos.row}, ${pos.col})` : tileId);
       }
@@ -106,21 +122,17 @@ export function validateTravelRoute(
     }
   }
 
-  // 6. All route tiles passable for mode
   if (routeTileIds.length > 0) {
     const impassableTiles: string[] = [];
     for (const tileId of routeTileIds) {
       const tile = map.tilesById[tileId];
-      if (!tile) continue;
-      if (tile.terrainId === null) continue; // Handled by check 5
+      if (!tile?.terrainId) continue;
       const terrain = map.terrainById[tile.terrainId];
       if (!terrain) continue;
       const modeProps = terrain.perMode[mode];
-      if (!modeProps || !modeProps.passable) {
+      if (!modeProps?.passable) {
         const pos = findTileGridPos(map, tileId);
-        impassableTiles.push(
-          `${terrain.name} at ${pos ? `(${pos.row}, ${pos.col})` : tileId}`
-        );
+        impassableTiles.push(`${terrain.name} at ${pos ? `(${pos.row}, ${pos.col})` : tileId}`);
       }
     }
     if (impassableTiles.length > 0) {
@@ -132,11 +144,9 @@ export function validateTravelRoute(
     }
   }
 
-  // 7. Route within distance budget (miles per slot), adjusted for weather
   if (routeTileIds.length > 1) {
     const totalMiles = computeRouteMiles(map, routeTileIds, mode);
-    const baseBudget = modeDef.milesPerSlot;
-    // Weather travel modifier adjusts budget: -2 = 20% slower, +1 = 10% faster
+    const baseBudget = vehicleType?.speedMilesPerSlot ?? modeDef.milesPerSlot;
     const budget = Math.max(1, baseBudget + baseBudget * (weatherTravelModifier / 10));
     if (totalMiles > budget) {
       const weatherNote = weatherTravelModifier !== 0
@@ -144,8 +154,8 @@ export function validateTravelRoute(
         : '';
       blockers.push({
         code: TRAVEL_BLOCKER_CODES.EXCEEDS_TIME_BUDGET,
-        message: `Route is ${(totalMiles ?? 0).toFixed(0)} mi, exceeding the ${budget.toFixed(0)} mi/${mode} range.`,
-        details: [`${mode} base range: ${baseBudget} miles per slot.${weatherNote}`],
+        message: `Route is ${totalMiles.toFixed(0)} mi, exceeding the ${budget.toFixed(0)} mi/${mode} range.`,
+        details: [`${vehicleType?.name ?? mode} base range: ${baseBudget} miles per slot.${weatherNote}`],
       });
     }
   }
@@ -153,14 +163,13 @@ export function validateTravelRoute(
   return blockers;
 }
 
-/**
- * Get a summary of route statistics for display.
- */
 export function getRouteStats(
   map: MapModel,
   routeTileIds: TileId[],
   mode: TravelMode,
-  weatherTravelModifier: number = 0
+  weatherTravelModifier: number = 0,
+  vehicle: Vehicle | null = null,
+  vehicleType: VehicleTypeDef | null = null
 ): {
   tileCount: number;
   totalMiles: number;
@@ -169,16 +178,10 @@ export function getRouteStats(
   terrainBreakdown: { name: string; count: number }[];
 } {
   const modeDef = getTravelModeDefinition(mode);
-  const baseBudget = modeDef.milesPerSlot;
-  // Apply weather modifier to budget
+  const baseBudget = vehicle ? vehicleType?.speedMilesPerSlot ?? modeDef.milesPerSlot : modeDef.milesPerSlot;
   const budgetMiles = Math.max(1, baseBudget + baseBudget * (weatherTravelModifier / 10));
-  const rawMiles =
-    routeTileIds.length > 1
-      ? computeRouteMiles(map, routeTileIds, mode)
-      : 0;
+  const rawMiles = routeTileIds.length > 1 ? computeRouteMiles(map, routeTileIds, mode) : 0;
   const totalMiles = Number.isFinite(rawMiles) ? rawMiles : 0;
-
-  // Build terrain breakdown
   const terrainCounts = new Map<string, number>();
   for (const tileId of routeTileIds) {
     const tile = map.tilesById[tileId];
@@ -188,11 +191,9 @@ export function getRouteStats(
       : 'Unassigned';
     terrainCounts.set(name, (terrainCounts.get(name) ?? 0) + 1);
   }
-
   const terrainBreakdown = Array.from(terrainCounts.entries())
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count);
-
   return {
     tileCount: routeTileIds.length,
     totalMiles,
