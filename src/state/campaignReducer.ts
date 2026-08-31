@@ -60,7 +60,7 @@ import type {
 import { TERRAIN_LABELS } from '../types/location';
 import type { LocationModifiers, WeatherEffects } from '../types/location';
 import type { DowntimeState } from '../types/downtime';
-import type { MapState } from '../types/map';
+import type { MapState, TileId } from '../types/map';
 import { initialMapState } from '../types/map';
 import type { TravelGroup, Vehicle, VehicleTypeDef } from '../types/party';
 import type { ForageZoneProfile, ForageItem, ForagingConfig } from '../types/foraging';
@@ -331,8 +331,31 @@ export const logEvent = (
 
 const createCheckpointSnapshot = (state: CampaignState): CampaignSnapshot => {
   const { checkpoints, ...rest } = state;
+  // Sets become {} under JSON.stringify, so snapshots store them as arrays
+  // (mirroring serializeCampaignState) — this also keeps checkpoints intact
+  // through campaign save/load. restoreCheckpoint rebuilds the Sets.
+  const serializable = {
+    ...rest,
+    combat: {
+      ...rest.combat,
+      reveal: {
+        ...rest.combat.reveal,
+        revealedTargets: Array.from(rest.combat.reveal.revealedTargets || []),
+        revealedHP: Array.from(rest.combat.reveal.revealedHP || [])
+      }
+    },
+    maps: {
+      ...rest.maps,
+      mapsById: Object.fromEntries(
+        Object.entries(rest.maps.mapsById).map(([mapId, map]) => [
+          mapId,
+          { ...map, revealedTileIds: Array.from(map.revealedTileIds || []) }
+        ])
+      )
+    }
+  };
   try {
-    return JSON.parse(JSON.stringify(rest)) as CampaignSnapshot;
+    return JSON.parse(JSON.stringify(serializable)) as CampaignSnapshot;
   } catch (err) {
     logger.error('Failed to create checkpoint snapshot:', err);
     return rest as unknown as CampaignSnapshot;
@@ -420,22 +443,23 @@ const advanceSlotAndRegenerateWeather = (
   }
 };
 
-const normalizeCombatReveal = (combat: CampaignState['combat']): CampaignState['combat'] => {
-  const revealedTargets =
-    combat.reveal.revealedTargets instanceof Set
-      ? combat.reveal.revealedTargets
-      : new Set<string>(combat.reveal.revealedTargets || []);
-  const revealedHP =
-    combat.reveal.revealedHP instanceof Set ? combat.reveal.revealedHP : new Set<string>(combat.reveal.revealedHP || []);
-  return {
-    ...combat,
-    reveal: {
-      ...combat.reveal,
-      revealedTargets,
-      revealedHP
-    }
-  };
+// Accepts a Set, a serialized array, or the {} left behind by pre-fix
+// checkpoints that JSON.stringify'd a Set.
+const reviveSet = <T>(value: unknown): Set<T> => {
+  if (value instanceof Set) {
+    return value as Set<T>;
+  }
+  return new Set(Array.isArray(value) ? (value as T[]) : []);
 };
+
+const normalizeCombatReveal = (combat: CampaignState['combat']): CampaignState['combat'] => ({
+  ...combat,
+  reveal: {
+    ...combat.reveal,
+    revealedTargets: reviveSet<string>(combat.reveal.revealedTargets),
+    revealedHP: reviveSet<string>(combat.reveal.revealedHP)
+  }
+});
 
 export const createCampaignState = (legacyAppState: LegacyAppState = initialLegacyAppState): CampaignState => ({
   ui: {
@@ -1142,10 +1166,19 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
           entries: restoredSnapshot.logs.entries
         };
         appendLogEntry(draft, rollbackEntry);
-        draft.combat = restoredSnapshot.combat;
+        draft.combat = normalizeCombatReveal(restoredSnapshot.combat);
         draft.locations = (restoredSnapshot as CampaignState).locations || createInitialLocationState(restoredSnapshot.time || { day: 1, slot: 0 });
         draft.downtime = (restoredSnapshot as CampaignState).downtime || downtimeInitialState;
-        draft.maps = (restoredSnapshot as CampaignState).maps || initialMapState;
+        const restoredMaps = (restoredSnapshot as CampaignState).maps || initialMapState;
+        draft.maps = {
+          ...restoredMaps,
+          mapsById: Object.fromEntries(
+            Object.entries(restoredMaps.mapsById || {}).map(([mapId, map]) => [
+              mapId,
+              { ...map, revealedTileIds: reviveSet<TileId>(map.revealedTileIds) }
+            ])
+          )
+        };
         return;
       }
       case 'advanceTime': {
