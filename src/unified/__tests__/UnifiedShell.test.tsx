@@ -70,7 +70,7 @@ describe('UnifiedShell module routing', () => {
     state = campaignReducer(state, { type: 'setGmMode', payload: true });
     state = campaignReducer(state, {
       type: 'map/createMap',
-      payload: { name: 'Test Map', scaleMilesPerTile: 12, startTerrainId: createPresetTerrains()[0].id },
+      payload: { name: 'Test Map', scaleMilesPerTile: 12, startTerrainId: createPresetTerrains()[0].id, climate: 'temperate' },
     });
     state = campaignReducer(state, { type: 'setActiveModule', payload: 'map' });
 

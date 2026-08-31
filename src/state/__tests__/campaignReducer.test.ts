@@ -298,6 +298,7 @@ describe('campaignReducer', () => {
     const makeMap = (): MapModel => ({
       id: 'map-1',
       name: 'Test Map',
+      climate: 'temperate',
       visionMode: 'lineOfSight',
       scaleMilesPerTile: 12,
       rows: 1,
@@ -358,6 +359,7 @@ describe('campaignReducer', () => {
     state.maps = { ...state.maps, mapsById: { 'map-1': {
       id: 'map-1',
       name: 'Test Map',
+      climate: 'temperate',
       visionMode: 'lineOfSight',
       scaleMilesPerTile: 12,
       rows: 1,
