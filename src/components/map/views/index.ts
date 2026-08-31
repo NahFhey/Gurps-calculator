@@ -11,6 +11,5 @@ export { TravelWizard } from './TravelWizard';
 export { TravelStep1Mode } from './TravelStep1Mode';
 export { TravelStep2Route } from './TravelStep2Route';
 export { TravelStep3Confirm } from './TravelStep3Confirm';
-export { TravelBlockerList } from './TravelBlockerList';
 export { TerrainAssignmentModal } from './TerrainAssignmentModal';
 export { ElevationDialog } from './ElevationDialog';

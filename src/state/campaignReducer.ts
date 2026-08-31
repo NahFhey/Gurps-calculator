@@ -55,7 +55,6 @@ import type {
   Location,
   LocationState,
   WeatherTable,
-  TravelAction,
   ActiveWeather
 } from '../types/location';
 import { TERRAIN_LABELS } from '../types/location';
@@ -338,6 +337,80 @@ const createCheckpointEntry = (state: CampaignState, label: string): Checkpoint 
   createdAt: Date.now(),
   snapshot: createCheckpointSnapshot(state)
 });
+
+const guardTimeAdvance = (draft: Draft<CampaignState>): boolean => {
+  if (draft.activities.pausedSessionIds.length === 0) {
+    return true;
+  }
+  draft.ui.blockingError = {
+    type: 'pausedActivities',
+    system: 'time',
+    reason: 'Paused activities are blocking time advance.',
+    suggestedFixes: [
+      'Resume or complete all paused activities.',
+      'Clear paused sessions in the Activities module.'
+    ]
+  };
+  return false;
+};
+
+const pushTimeCheckpoint = (draft: Draft<CampaignState>, label: string): void => {
+  const checkpoint = createCheckpointEntry(draft as CampaignState, label);
+  draft.checkpoints.entries.unshift(checkpoint);
+  if (draft.checkpoints.entries.length > draft.checkpoints.maxSize) {
+    draft.checkpoints.entries.pop();
+  }
+};
+
+const advanceSlotAndRegenerateWeather = (
+  draft: Draft<CampaignState>,
+  logMessage: (day: number, slot: number, label: string | undefined) => string
+): void => {
+  const { slot, slotsPerDay, slotLabels, day } = draft.time;
+  const { nextSlot, logEntry } = advanceTimeSlot(
+    slot,
+    { clearAllReservations() {} },
+    {
+      totalSlots: slotsPerDay,
+      slotLabels
+    }
+  );
+  const nextDay = nextSlot < slot ? day + 1 : day;
+  draft.time.slot = nextSlot;
+  draft.time.day = nextDay;
+  draft.time.history.push({ ...logEntry, day: nextDay });
+  appendLogEntry(draft,
+    logEvent('time.advance', 'player', {
+      message: logMessage(nextDay, nextSlot, slotLabels[nextSlot])
+    })
+  );
+  draft.ui.blockingError = null;
+
+  const newTime = { day: nextDay, slot: nextSlot };
+  for (const location of Object.values(draft.locations.locations)) {
+    if (location.currentWeather && isWeatherExpired(location.currentWeather, newTime)) {
+      const weatherTable = location.weatherTableId
+        ? draft.locations.weatherTables[location.weatherTableId]
+        : undefined;
+      const result = generateWeather({
+        location: location as Location,
+        weatherTable,
+        currentTime: newTime,
+        weatherEffectOverrides: draft.locations.weatherEffectOverrides,
+      });
+      location.currentWeather = result.weather;
+      location.modifiedAt = Date.now();
+
+      if (location.id === draft.locations.currentLocationId) {
+        appendLogEntry(draft,
+          logEvent('weather.changed', 'player', {
+            message: result.logMessage
+          })
+        );
+      }
+    }
+  }
+};
 
 const normalizeCombatReveal = (combat: CampaignState['combat']): CampaignState['combat'] => {
   const revealedTargets =
@@ -714,10 +787,6 @@ export type CampaignAction =
   | { type: 'addWeatherTable'; payload: WeatherTable }
   | { type: 'updateWeatherTable'; payload: { id: Id; changes: Partial<WeatherTable> } }
   | { type: 'removeWeatherTable'; payload: Id }
-  | { type: 'addTravel'; payload: TravelAction }
-  | { type: 'updateTravel'; payload: { id: Id; changes: Partial<TravelAction> } }
-  | { type: 'completeTravel'; payload: Id }
-  | { type: 'cancelTravel'; payload: Id }
   // Custom climate/terrain actions
   | { type: 'addCustomClimate'; payload: { key: string; label: string } }
   | { type: 'removeCustomClimate'; payload: string }
@@ -763,6 +832,13 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
       return;
     }
     if (isMapAction(action)) {
+      if (action.type === 'map/executeTravel') {
+        if (!guardTimeAdvance(draft)) {
+          return;
+        }
+        pushTimeCheckpoint(draft, 'Before travel');
+      }
+
       handleMapAction(draft, action);
 
       // Sync location terrain from map tile after party movement (cross-slice)
@@ -801,26 +877,10 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
 
       // After travel execution, advance time by one slot (cross-slice operation)
       if (action.type === 'map/executeTravel') {
-        const { slot, slotsPerDay, slotLabels, day } = draft.time;
-        const { nextSlot, logEntry } = advanceTimeSlot(
-          slot,
-          {
-            reserveTool() {},
-            validateReservations() { return true; },
-            invalidateReservationsForTool() {},
-            clearAllReservations() {},
-            activeReservations: {}
-          } as any,
-          { totalSlots: slotsPerDay, slotLabels }
-        );
-        const nextDay = nextSlot < slot ? day + 1 : day;
-        draft.time.slot = nextSlot;
-        draft.time.day = nextDay;
-        draft.time.history.push({ ...logEntry, day: nextDay });
-        appendLogEntry(draft,
-          logEvent('time.advance', 'player', {
-            message: `Travel completed — advanced to Day ${nextDay}, Slot ${nextSlot + 1} (${slotLabels[nextSlot]})`
-          })
+        advanceSlotAndRegenerateWeather(
+          draft,
+          (day, slot, label) =>
+            `Travel completed — advanced to Day ${day}, Slot ${slot + 1} (${label})`
         );
       }
       return;
@@ -1029,75 +1089,15 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         return;
       }
       case 'advanceTime': {
-        if (draft.activities.pausedSessionIds.length > 0) {
-          draft.ui.blockingError = {
-            type: 'pausedActivities',
-            system: 'time',
-            reason: 'Paused activities are blocking time advance.',
-            suggestedFixes: [
-              'Resume or complete all paused activities.',
-              'Clear paused sessions in the Activities module.'
-            ]
-          };
+        if (!guardTimeAdvance(draft)) {
           return;
         }
-        const checkpoint = createCheckpointEntry(draft as CampaignState, 'Before time advance');
-        draft.checkpoints.entries.unshift(checkpoint);
-        if (draft.checkpoints.entries.length > draft.checkpoints.maxSize) {
-          draft.checkpoints.entries.pop();
-        }
-        const { slot, slotsPerDay, slotLabels, day } = draft.time;
-        const { nextSlot, logEntry } = advanceTimeSlot(
-          slot,
-          {
-            reserveTool() {},
-            validateReservations() { return true; },
-            invalidateReservationsForTool() {},
-            clearAllReservations() {},
-            activeReservations: {}
-          } as any,
-          {
-            totalSlots: slotsPerDay,
-            slotLabels
-          }
+        pushTimeCheckpoint(draft, 'Before time advance');
+        advanceSlotAndRegenerateWeather(
+          draft,
+          (day, slot, label) =>
+            `Advanced to Day ${day}, Slot ${slot + 1} (${label})`
         );
-        const nextDay = nextSlot < slot ? day + 1 : day;
-        draft.time.slot = nextSlot;
-        draft.time.day = nextDay;
-        draft.time.history.push({ ...logEntry, day: nextDay });
-        appendLogEntry(draft,
-          logEvent('time.advance', 'player', {
-            message: `Advanced to Day ${nextDay}, Slot ${nextSlot + 1} (${slotLabels[nextSlot]})`
-          })
-        );
-        draft.ui.blockingError = null;
-
-        // Check weather expiration for all locations and generate new weather if needed
-        const newTime = { day: nextDay, slot: nextSlot };
-        for (const location of Object.values(draft.locations.locations)) {
-          if (location.currentWeather && isWeatherExpired(location.currentWeather, newTime)) {
-            const weatherTable = location.weatherTableId
-              ? draft.locations.weatherTables[location.weatherTableId]
-              : undefined;
-            const result = generateWeather({
-              location: location as Location,
-              weatherTable,
-              currentTime: newTime,
-              weatherEffectOverrides: draft.locations.weatherEffectOverrides,
-            });
-            location.currentWeather = result.weather;
-            location.modifiedAt = Date.now();
-
-            // Only log if this is the current location
-            if (location.id === draft.locations.currentLocationId) {
-              appendLogEntry(draft,
-                logEvent('weather.changed', 'player', {
-                  message: result.logMessage
-                })
-              );
-            }
-          }
-        }
         return;
       }
 
@@ -1340,54 +1340,6 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
           }
         }
         return;
-
-      case 'addTravel':
-        draft.locations.activeTravels.push(action.payload);
-        return;
-
-      case 'updateTravel': {
-        const travelIndex = draft.locations.activeTravels.findIndex(t => t.id === action.payload.id);
-        if (travelIndex !== -1) {
-          draft.locations.activeTravels[travelIndex] = {
-            ...draft.locations.activeTravels[travelIndex],
-            ...action.payload.changes
-          };
-        }
-        return;
-      }
-
-      case 'completeTravel': {
-        const travel = draft.locations.activeTravels.find(t => t.id === action.payload);
-        if (travel) {
-          travel.status = 'completed';
-          travel.actualArrival = { day: draft.time.day, slot: draft.time.slot };
-          // Set current location to destination
-          if (draft.locations.locations[travel.toLocationId]) {
-            draft.locations.currentLocationId = travel.toLocationId;
-            appendLogEntry(draft,
-              logEvent('travel.completed', 'player', {
-                message: `Party arrived at ${draft.locations.locations[travel.toLocationId].name}`
-              })
-            );
-          }
-          // Remove completed travel
-          draft.locations.activeTravels = draft.locations.activeTravels.filter(t => t.id !== action.payload);
-        }
-        return;
-      }
-
-      case 'cancelTravel': {
-        const travelToCancel = draft.locations.activeTravels.find(t => t.id === action.payload);
-        if (travelToCancel) {
-          draft.locations.activeTravels = draft.locations.activeTravels.filter(t => t.id !== action.payload);
-          appendLogEntry(draft,
-            logEvent('travel.cancelled', 'player', {
-              message: 'Travel was cancelled'
-            })
-          );
-        }
-        return;
-      }
 
       // ========================================================================
       // CUSTOM CLIMATE/TERRAIN ACTIONS

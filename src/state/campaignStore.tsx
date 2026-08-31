@@ -62,7 +62,6 @@ import type {
   LocationModifiers,
   WeatherTable,
   WeatherEffects,
-  TravelAction,
   ActiveWeather
 } from '../types/location';
 import type { DowntimeState } from '../types/downtime';
@@ -85,7 +84,6 @@ import type {
   LinkModel,
   MapImageLayer,
   StructureLayer,
-  TravelWizardState,
   TravelMode,
 } from '../types/map';
 
@@ -299,10 +297,6 @@ type CampaignStoreValue = {
     addWeatherTable: (table: WeatherTable) => void;
     updateWeatherTable: (id: Id, changes: Partial<WeatherTable>) => void;
     removeWeatherTable: (id: Id) => void;
-    addTravel: (travel: TravelAction) => void;
-    updateTravel: (id: Id, changes: Partial<TravelAction>) => void;
-    completeTravel: (id: Id) => void;
-    cancelTravel: (id: Id) => void;
     // Custom climate/terrain
     addCustomClimate: (key: string, label: string) => void;
     removeCustomClimate: (key: string) => void;
@@ -337,8 +331,6 @@ type CampaignStoreValue = {
     mapSetStructureCells: (mapId: MapId, layerId: StructureLayerId, tileIds: TileId[], terrainId: TerrainId | null) => void;
     mapRevealTiles: (mapId: MapId, tileIds: TileId[]) => void;
     mapSetPartyTile: (mapId: MapId, tileId: TileId | null) => void;
-    mapSetTravelWizard: (wizard: TravelWizardState) => void;
-    mapClearTravelWizard: () => void;
     mapExecuteTravel: (params: { mapId: MapId; routeTileIds: TileId[]; destinationTileId: TileId; mode: TravelMode; gmOverride: boolean }) => void;
     mapSetPendingTerrain: (tileIds: TileId[]) => void;
     mapClearPendingTerrain: () => void;
@@ -645,11 +637,6 @@ export function CampaignStoreProvider({
       updateWeatherTable: (id: Id, changes: Partial<WeatherTable>) =>
         dispatch({ type: 'updateWeatherTable', payload: { id, changes } }),
       removeWeatherTable: (id: Id) => dispatch({ type: 'removeWeatherTable', payload: id }),
-      addTravel: (travel: TravelAction) => dispatch({ type: 'addTravel', payload: travel }),
-      updateTravel: (id: Id, changes: Partial<TravelAction>) =>
-        dispatch({ type: 'updateTravel', payload: { id, changes } }),
-      completeTravel: (id: Id) => dispatch({ type: 'completeTravel', payload: id }),
-      cancelTravel: (id: Id) => dispatch({ type: 'cancelTravel', payload: id }),
       // Custom climate/terrain
       addCustomClimate: (key: string, label: string) =>
         dispatch({ type: 'addCustomClimate', payload: { key, label } }),
@@ -711,9 +698,6 @@ export function CampaignStoreProvider({
         dispatch({ type: 'map/revealTiles', payload: { mapId, tileIds } }),
       mapSetPartyTile: (mapId: MapId, tileId: TileId | null) =>
         dispatch({ type: 'map/setPartyTile', payload: { mapId, tileId } }),
-      mapSetTravelWizard: (wizard: TravelWizardState) =>
-        dispatch({ type: 'map/setTravelWizard', payload: wizard }),
-      mapClearTravelWizard: () => dispatch({ type: 'map/clearTravelWizard' }),
       mapExecuteTravel: (params: { mapId: MapId; routeTileIds: TileId[]; destinationTileId: TileId; mode: TravelMode; gmOverride: boolean }) =>
         dispatch({ type: 'map/executeTravel', payload: params }),
       mapSetPendingTerrain: (tileIds: TileId[]) =>

@@ -7,7 +7,6 @@ export interface LocationListViewProps {
   weatherTablesById: Record<string, WeatherTable>;
   allClimateLabels: Record<string, string>;
   allTerrainLabels: Record<string, string>;
-  onTravel: () => void;
   onCreate: () => void;
   onSetCurrent: (locationId: string) => void;
   onRollWeather: (locationId: string) => void;
@@ -21,7 +20,6 @@ export function LocationListView({
   weatherTablesById,
   allClimateLabels,
   allTerrainLabels,
-  onTravel,
   onCreate,
   onSetCurrent,
   onRollWeather,
@@ -33,14 +31,6 @@ export function LocationListView({
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-lg font-semibold text-gray-100">Locations</h3>
         <div className="flex gap-2">
-          {locations.length > 1 && (
-            <button
-              onClick={onTravel}
-              className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 text-white rounded"
-            >
-              Travel
-            </button>
-          )}
           <button
             onClick={onCreate}
             className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded"

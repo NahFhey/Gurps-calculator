@@ -11,7 +11,6 @@ import { LocationFormView } from '../views/LocationFormView';
 import { LocationListView } from '../views/LocationListView';
 import { ManagerNavigation } from '../views/ManagerNavigation';
 import { TerrainModifiersEditor } from '../views/TerrainModifiersEditor';
-import { TravelView } from '../views/TravelView';
 import { WeatherModifiersEditor } from '../views/WeatherModifiersEditor';
 import { WeatherTableFormView, WeatherTablesListView } from '../views/WeatherTableViews';
 
@@ -119,14 +118,6 @@ describe('LocationManager router', () => {
     expect(screen.getByDisplayValue('Home Camp')).toBeInTheDocument();
   });
 
-  it('switches into travel view and returns with Back', () => {
-    renderRouter({ state: makeState(2) });
-    fireEvent.click(screen.getByRole('button', { name: 'Travel' }));
-    expect(screen.getAllByRole('heading', { name: 'Travel' })).toHaveLength(2);
-    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
-    expect(screen.getByRole('heading', { name: 'Locations' })).toBeInTheDocument();
-  });
-
   it('dispatches a newly created location into campaign state', () => {
     let latest = makeState();
     renderRouter({ capture: (state) => { latest = state; } });
@@ -166,7 +157,6 @@ describe('LocationListView', () => {
         weatherTablesById={{ [weatherTable.id]: weatherTable }}
         allClimateLabels={{ temperate: 'Temperate' }}
         allTerrainLabels={{ plains: 'Plains' }}
-        onTravel={vi.fn()}
         onCreate={vi.fn()}
         onSetCurrent={vi.fn()}
         onRollWeather={vi.fn()}
@@ -203,16 +193,6 @@ describe('LocationFormView', () => {
     expect(screen.getByDisplayValue('Forest Weather')).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText('Location name'), { target: { value: 'New Camp' } });
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ name: 'New Camp' }));
-  });
-});
-
-describe('TravelView', () => {
-  it('renders supplied travel content and forwards Back', () => {
-    const onBack = vi.fn();
-    render(<TravelView onBack={onBack}><p>Travel options</p></TravelView>);
-    expect(screen.getByText('Travel options')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
-    expect(onBack).toHaveBeenCalledOnce();
   });
 });
 

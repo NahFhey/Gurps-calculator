@@ -19,8 +19,6 @@ import {
   MAP_REMOVE_LINK,
   MAP_REVEAL_TILES,
   MAP_SET_PARTY_TILE,
-  MAP_SET_TRAVEL_WIZARD,
-  MAP_CLEAR_TRAVEL_WIZARD,
   MAP_EXECUTE_TRAVEL,
   MAP_SET_PENDING_TERRAIN,
   MAP_CLEAR_PENDING_TERRAIN,
@@ -34,7 +32,6 @@ import type {
   MarkerModel,
   LinkModel,
   TileModel,
-  TravelWizardState,
 } from '../../../types/map';
 import { initialMapState } from '../../../types/map';
 import { createNewMap } from '../../../utils/mapUtils';
@@ -468,44 +465,14 @@ describe('mapReducer', () => {
     });
   });
 
-  describe('travel wizard', () => {
-    it('MAP_SET_TRAVEL_WIZARD assigns the payload', () => {
-      const wizard: TravelWizardState = {
-        step: 2,
-        selectedMode: 'foot',
-        routeTileIds: ['a', 'b'],
-        blockers: [],
-      };
-      const next = applyAction(state, { type: MAP_SET_TRAVEL_WIZARD, payload: wizard });
-      expect(next.maps.travelWizard).toEqual(wizard);
-    });
-
-    it('MAP_CLEAR_TRAVEL_WIZARD clears the wizard', () => {
-      state.maps.travelWizard = {
-        step: 1,
-        selectedMode: null,
-        routeTileIds: [],
-        blockers: [],
-      };
-      const next = applyAction(state, { type: MAP_CLEAR_TRAVEL_WIZARD });
-      expect(next.maps.travelWizard).toBeNull();
-    });
-  });
-
   describe('MAP_EXECUTE_TRAVEL', () => {
     beforeEach(() => {
       state.maps.mapsById = { m1: makeMinimalMap('m1'), m2: makeMinimalMap('m2') };
       state.maps.mapsById['m2'].partyTileId = 'm2-a';
       state.maps.activeMapId = 'm1';
-      state.maps.travelWizard = {
-        step: 3,
-        selectedMode: 'foot',
-        routeTileIds: ['m1-a', 'm1-b', 'm1-c'],
-        blockers: [],
-      };
     });
 
-    it('moves the party, reveals route tiles, clears wizard, and clears party on other maps', () => {
+    it('moves the party, reveals route tiles, and clears party on other maps', () => {
       const next = applyAction(state, {
         type: MAP_EXECUTE_TRAVEL,
         payload: {
@@ -520,7 +487,6 @@ describe('mapReducer', () => {
       expect(next.maps.mapsById['m2'].partyTileId).toBeNull();
       expect(next.maps.mapsById['m1'].revealedTileIds.has('m1-b')).toBe(true);
       expect(next.maps.mapsById['m1'].revealedTileIds.has('m1-c')).toBe(true);
-      expect(next.maps.travelWizard).toBeNull();
       expect(next.maps.pendingTerrainAssignment).toBeNull();
     });
 
@@ -566,8 +532,6 @@ describe('mapReducer', () => {
         },
       });
       expect(next.maps.mapsById['ghost']).toBeUndefined();
-      // Wizard should not be cleared on no-op
-      expect(next.maps.travelWizard).not.toBeNull();
     });
   });
 

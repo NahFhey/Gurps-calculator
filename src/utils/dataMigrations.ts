@@ -62,6 +62,7 @@ const migrationHandlers: Record<string, MigrationHandler> = {
   '1.5.1:1.5.2': migrateTo1_5_2,
   '1.5.2:1.5.3': migrateTo1_5_3,
   '1.5.3:1.5.4': migrateTo1_5_4,
+  '1.5.4:1.5.5': migrateTo1_5_5,
 };
 
 /**
@@ -390,6 +391,59 @@ export function migrateTo1_5_4(data: MigratableData): MigratableData {
 
   const { materials: _materials, foods: _foods, ...withoutPools } = data;
   return { ...withoutPools, inventories };
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
+const omitKeys = (
+  record: Record<string, unknown>,
+  keys: readonly string[]
+): Record<string, unknown> => Object.fromEntries(
+  Object.entries(record).filter(([key]) => !keys.includes(key))
+);
+
+/** Remove persisted fields belonging to the retired location-graph travel path. */
+export function removeLegacyTravelState<T>(data: T): T {
+  if (!isRecord(data)) return data;
+
+  // Legacy key names referenced as strings on purpose: these fields no longer
+  // exist on the types, but persisted saves from <=1.5.4 still carry them.
+  const locationTravelsKey = 'activeTravels';
+  const mapWizardKey = 'travelWizard';
+  const connectionKeys = ['travelTime', 'travelDifficulty', 'requirements'];
+  const next: Record<string, unknown> = { ...data };
+
+  if (isRecord(data.locations)) {
+    const locationsState = omitKeys(data.locations, [locationTravelsKey]);
+    if (isRecord(data.locations.locations)) {
+      locationsState.locations = Object.fromEntries(
+        Object.entries(data.locations.locations).map(([id, location]) => {
+          if (!isRecord(location) || !Array.isArray(location.connections)) {
+            return [id, location];
+          }
+          return [id, {
+            ...location,
+            connections: location.connections.map((connection) =>
+              isRecord(connection) ? omitKeys(connection, connectionKeys) : connection
+            ),
+          }];
+        })
+      );
+    }
+    next.locations = locationsState;
+  }
+
+  if (isRecord(data.maps)) {
+    next.maps = omitKeys(data.maps, [mapWizardKey]);
+  }
+
+  return next as T;
+}
+
+/** Migration: 1.5.4 → 1.5.5 (retired travel state cleanup) */
+function migrateTo1_5_5(data: MigratableData): MigratableData {
+  return removeLegacyTravelState(data);
 }
 
 /**

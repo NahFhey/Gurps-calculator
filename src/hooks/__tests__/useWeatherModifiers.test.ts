@@ -78,7 +78,6 @@ function makeEmptyLocationsSlice(): LocationState {
     currentLocationId: null,
     locations: {},
     weatherTables: {},
-    activeTravels: [],
   };
 }
 

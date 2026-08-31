@@ -211,10 +211,7 @@ export interface LocationModifiers {
  */
 export interface LocationConnection {
   targetLocationId: Id;
-  travelTime: number;         // In time slots
-  travelDifficulty: number;   // Modifier to travel rolls
   description?: string;       // "A winding mountain path"
-  requirements?: string[];    // "Requires climbing gear"
 }
 
 /**
@@ -256,45 +253,6 @@ export interface Location {
 }
 
 // ============================================================================
-// TRAVEL TYPES
-// ============================================================================
-
-/**
- * Status of a travel action
- */
-export type TravelStatus = 'planning' | 'inProgress' | 'completed' | 'interrupted';
-
-/**
- * Travel between locations
- */
-export interface TravelAction {
-  id: Id;
-  type: 'travel';
-  fromLocationId: Id;
-  toLocationId: Id;
-  travelers: Id[];            // Character IDs
-  startTime: { day: number; slot: number };
-  estimatedArrival: { day: number; slot: number };
-  actualArrival?: { day: number; slot: number };
-  status: TravelStatus;
-  notes?: string;
-}
-
-/**
- * Local travel within current location
- */
-export interface LocalTravel {
-  id: Id;
-  type: 'localTravel';
-  locationId: Id;
-  activity: 'explore' | 'forage' | 'hunt' | 'patrol' | 'other';
-  duration: number;           // Time slots
-  travelers: Id[];
-  startTime: { day: number; slot: number };
-  status: TravelStatus;
-}
-
-// ============================================================================
 // LOCATION STATE
 // ============================================================================
 
@@ -305,7 +263,6 @@ export interface LocationState {
   currentLocationId: Id | null;
   locations: Record<Id, Location>;
   weatherTables: Record<Id, WeatherTable>;
-  activeTravels: TravelAction[];
   /** GM-defined custom climate types beyond the 7 presets */
   customClimates?: Array<{ key: string; label: string }>;
   /** GM-defined custom terrain types beyond the 8 presets */

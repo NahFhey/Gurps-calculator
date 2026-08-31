@@ -17,13 +17,11 @@ import {
 } from '../../utils/weatherSystem';
 import { ConfirmDialog, useConfirmDialog, useToast } from '../ui';
 import type { LocationManagerProps, ManagerView } from './managerTypes';
-import { TravelPanel } from './TravelPanel';
 import { ClimateView, TerrainView } from './views/ClimateTerrainViews';
 import { LocationFormView } from './views/LocationFormView';
 import { LocationListView } from './views/LocationListView';
 import { ManagerNavigation } from './views/ManagerNavigation';
 import { TerrainModifiersEditor } from './views/TerrainModifiersEditor';
-import { TravelView } from './views/TravelView';
 import { WeatherModifiersEditor } from './views/WeatherModifiersEditor';
 import {
   WeatherTableFormView,
@@ -210,7 +208,6 @@ export function LocationManager({ onClose }: LocationManagerProps) {
             weatherTablesById={state.locations.weatherTables ?? {}}
             allClimateLabels={allClimateLabels}
             allTerrainLabels={allTerrainLabels}
-            onTravel={() => setView('travel')}
             onCreate={handleStartCreate}
             onSetCurrent={actions.setCurrentLocation}
             onRollWeather={actions.rollNewWeather}
@@ -231,12 +228,6 @@ export function LocationManager({ onClose }: LocationManagerProps) {
             onCancel={handleCancelForm}
             onSubmit={view === 'edit' ? handleUpdateLocation : handleCreateLocation}
           />
-        );
-      case 'travel':
-        return (
-          <TravelView onBack={() => setView('list')}>
-            <TravelPanel onClose={() => setView('list')} />
-          </TravelView>
         );
       case 'weatherTables':
         return (
@@ -303,7 +294,7 @@ export function LocationManager({ onClose }: LocationManagerProps) {
       <ManagerNavigation view={view} onChangeView={setView} />
       {renderView()}
 
-      {onClose && !['travel', 'editWeatherTable'].includes(view) && (
+      {onClose && view !== 'editWeatherTable' && (
         <button
           onClick={onClose}
           className="mt-4 w-full py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded"

@@ -5,4 +5,3 @@
  */
 
 export { LocationManager } from './LocationManager';
-export { TravelPanel } from './TravelPanel';
