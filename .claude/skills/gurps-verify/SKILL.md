@@ -85,6 +85,12 @@ cd <vtt-project-root> && npx vite build 2>&1 | tail -15
 ```
 **Pass criteria:** Build succeeds. Note the bundle size — baseline is ~624KB. If it grew by more than 10% (>686KB), flag it and explain what's adding weight.
 
+#### 2b.5. Theme Token Gate (since 15c phase 1, 2026-09-01)
+```bash
+cd <vtt-project-root> && npm run check:tokens 2>&1 | tail -5
+```
+**Pass criteria:** "Theme token gate passed." Raw Tailwind gray-family classes (`gray|slate|zinc|neutral|stone`) and swapped status families (`blue|green|red|amber|sky`) are banned in `src/` — use the semantic tokens (`surface-*`, `fg-*`, `edge-*`, `accent/success/danger/warning/info-*`). Deliberate exceptions go in `scripts/theme-token-allowlist.json` with a reason.
+
 #### 2c. Targeted Tests
 The full Vitest suite OOMs in the Cowork VM. Run only the tests relevant to what you changed:
 ```bash
