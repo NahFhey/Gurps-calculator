@@ -641,12 +641,12 @@ export function MapPanel() {
           weatherTables={Object.values(state.locations.weatherTables)}
           travelEventTableSets={Object.values(state.entities.travelEventTableSets ?? {})}
         />
-        <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-4">
+        <div className="flex-1 flex flex-col items-center justify-center text-fg-muted gap-4">
           <MapIcon className="w-12 h-12 opacity-30" />
           <p className="text-sm">No maps created yet.</p>
           {isGmMode && (
             <button
-              className="px-4 py-2 text-sm font-medium rounded bg-blue-600 hover:bg-blue-500 text-white transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded bg-accent-600 hover:bg-accent-500 text-white transition-colors"
               onClick={() => setShowCreateDialog(true)}
             >
               Create Your First Map

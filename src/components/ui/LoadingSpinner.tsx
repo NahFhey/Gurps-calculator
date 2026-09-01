@@ -57,12 +57,12 @@ export function LoadingSpinner({
   const spinner = (
     <div className={`flex flex-col items-center gap-2 ${className}`}>
       <div
-        className={`${sizeClasses} rounded-full border-gray-600 border-t-blue-500 animate-spin`}
+        className={`${sizeClasses} rounded-full border-edge-strong border-t-accent-500 animate-spin`}
         role="status"
         aria-label={label || 'Loading'}
       />
       {label && (
-        <span className={`${textSizeClasses} text-gray-400`}>{label}</span>
+        <span className={`${textSizeClasses} text-fg-muted`}>{label}</span>
       )}
     </div>
   );
@@ -105,7 +105,7 @@ export function LoadingOverlay({
 
   return (
     <div
-      className={`${positionClass} inset-0 bg-gray-900/70 flex items-center justify-center z-40`}
+      className={`${positionClass} inset-0 bg-surface-0/70 flex items-center justify-center z-40`}
       role="progressbar"
       aria-busy="true"
       aria-label={label || 'Loading'}
@@ -153,7 +153,7 @@ export function Skeleton({
 }: SkeletonProps) {
   return (
     <div
-      className={`${width} ${height} bg-gray-700 animate-pulse ${
+      className={`${width} ${height} bg-surface-2 animate-pulse ${
         rounded ? 'rounded' : ''
       } ${className}`}
       role="presentation"
@@ -205,7 +205,7 @@ export function SkeletonText({
 export function SkeletonCard({ className = '' }: { className?: string }) {
   return (
     <div
-      className={`bg-gray-800 border border-gray-700 rounded-lg p-4 ${className}`}
+      className={`bg-surface-1 border border-edge rounded-lg p-4 ${className}`}
     >
       <div className="flex items-center gap-3 mb-4">
         <Skeleton width="w-10" height="h-10" className="rounded-full" />

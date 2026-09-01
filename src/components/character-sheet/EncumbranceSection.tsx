@@ -10,27 +10,27 @@ interface EncumbranceSectionProps {
 }
 
 const LEVEL_COLORS: Record<EncumbranceLevel, string> = {
-  0: 'text-green-400',
+  0: 'text-success-400',
   1: 'text-yellow-400',
   2: 'text-orange-400',
-  3: 'text-red-400',
-  4: 'text-red-600',
+  3: 'text-danger-400',
+  4: 'text-danger-600',
 };
 
 const LEVEL_BG_COLORS: Record<EncumbranceLevel, string> = {
-  0: 'bg-green-900/30',
+  0: 'bg-success-900/30',
   1: 'bg-yellow-900/30',
   2: 'bg-orange-900/30',
-  3: 'bg-red-900/30',
-  4: 'bg-red-900/50',
+  3: 'bg-danger-900/30',
+  4: 'bg-danger-900/50',
 };
 
 const LEVEL_BAR_COLORS: Record<EncumbranceLevel, string> = {
-  0: 'bg-green-500',
+  0: 'bg-success-500',
   1: 'bg-yellow-500',
   2: 'bg-orange-500',
-  3: 'bg-red-500',
-  4: 'bg-red-700',
+  3: 'bg-danger-500',
+  4: 'bg-danger-700',
 };
 
 export function EncumbranceSection({ attributes, secondaryAttributes, equipment }: EncumbranceSectionProps) {
@@ -54,39 +54,39 @@ export function EncumbranceSection({ attributes, secondaryAttributes, equipment 
   const baseDodge = Math.floor(secondaryAttributes.basicSpeed.value) + 3;
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4">
+    <div className="bg-surface-1 rounded-lg p-4">
       <div className="flex items-center gap-2 mb-3">
-        <Weight size={20} className="text-amber-400" />
-        <h3 className="text-lg font-semibold text-gray-100">Encumbrance</h3>
+        <Weight size={20} className="text-warning-400" />
+        <h3 className="text-lg font-semibold text-fg-bright">Encumbrance</h3>
       </div>
 
       {/* Main stats row */}
       <div className="grid grid-cols-4 gap-3 mb-3">
         <div className="text-center">
-          <div className="text-xs text-gray-400">Basic Lift</div>
-          <div className="text-lg font-bold text-gray-100">{encumbrance.basicLift} lb</div>
+          <div className="text-xs text-fg-muted">Basic Lift</div>
+          <div className="text-lg font-bold text-fg-bright">{encumbrance.basicLift} lb</div>
         </div>
         <div className="text-center">
-          <div className="text-xs text-gray-400">Carried</div>
+          <div className="text-xs text-fg-muted">Carried</div>
           <div className={`text-lg font-bold ${LEVEL_COLORS[encumbrance.level]}`}>
             {encumbrance.carriedWeight} lb
           </div>
         </div>
         <div className="text-center">
-          <div className="text-xs text-gray-400">Move</div>
-          <div className={`text-lg font-bold ${encumbrance.level > 0 ? LEVEL_COLORS[encumbrance.level] : 'text-gray-100'}`}>
+          <div className="text-xs text-fg-muted">Move</div>
+          <div className={`text-lg font-bold ${encumbrance.level > 0 ? LEVEL_COLORS[encumbrance.level] : 'text-fg-bright'}`}>
             {encumbrance.adjustedMove}
             {encumbrance.level > 0 && (
-              <span className="text-xs text-gray-500 ml-1">({baseMove})</span>
+              <span className="text-xs text-fg-faint ml-1">({baseMove})</span>
             )}
           </div>
         </div>
         <div className="text-center">
-          <div className="text-xs text-gray-400">Dodge</div>
-          <div className={`text-lg font-bold ${encumbrance.level > 0 ? LEVEL_COLORS[encumbrance.level] : 'text-gray-100'}`}>
+          <div className="text-xs text-fg-muted">Dodge</div>
+          <div className={`text-lg font-bold ${encumbrance.level > 0 ? LEVEL_COLORS[encumbrance.level] : 'text-fg-bright'}`}>
             {encumbrance.adjustedDodge}
             {encumbrance.level > 0 && (
-              <span className="text-xs text-gray-500 ml-1">({baseDodge})</span>
+              <span className="text-xs text-fg-faint ml-1">({baseDodge})</span>
             )}
           </div>
         </div>
@@ -99,12 +99,12 @@ export function EncumbranceSection({ attributes, secondaryAttributes, equipment 
             {encumbrance.level > 0 && <AlertTriangle size={14} className="inline mr-1" />}
             {encumbrance.thresholds[encumbrance.level].label} Encumbrance
           </span>
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-fg-muted">
             {encumbrance.carriedWeight} / {encumbrance.thresholds[encumbrance.level].maxWeight} lb
           </span>
         </div>
         {/* Progress bar */}
-        <div className="w-full bg-gray-700 rounded-full h-2">
+        <div className="w-full bg-surface-2 rounded-full h-2">
           <div
             className={`h-2 rounded-full transition-all ${LEVEL_BAR_COLORS[encumbrance.level]}`}
             style={{ width: `${fillPct}%` }}
@@ -113,7 +113,7 @@ export function EncumbranceSection({ attributes, secondaryAttributes, equipment 
       </div>
 
       {/* Threshold table */}
-      <div className="text-xs text-gray-400 mb-3">
+      <div className="text-xs text-fg-muted mb-3">
         <div className="flex gap-1">
           {encumbrance.thresholds.map((t) => (
             <div
@@ -133,14 +133,14 @@ export function EncumbranceSection({ attributes, secondaryAttributes, equipment 
       {locationDR.length > 0 && (
         <div>
           <div className="flex items-center gap-1 mb-2">
-            <Shield size={14} className="text-blue-400" />
-            <h4 className="text-sm font-medium text-gray-300">Armor by Location</h4>
+            <Shield size={14} className="text-accent-400" />
+            <h4 className="text-sm font-medium text-fg-secondary">Armor by Location</h4>
           </div>
           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
             {locationDR.map((loc) => (
               <div key={loc.location} className="flex justify-between">
-                <span className="text-gray-400 capitalize">{loc.location}</span>
-                <span className="text-blue-300 font-medium">DR {loc.dr}</span>
+                <span className="text-fg-muted capitalize">{loc.location}</span>
+                <span className="text-accent-300 font-medium">DR {loc.dr}</span>
               </div>
             ))}
           </div>

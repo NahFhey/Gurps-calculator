@@ -65,68 +65,68 @@ export function WorkersView({ workers, saveWorkers, onDelete }: WorkersViewProps
         <h2 className="text-xl font-bold">Workers</h2>
         <button
           onClick={() => setShowAdd(!showAdd)}
-          className="bg-green-600 px-4 py-2 rounded"
+          className="bg-success-600 px-4 py-2 rounded"
         >
           <Plus size={20} className="inline" /> Add
         </button>
       </div>
 
       {showAdd && (
-        <div className="bg-gray-700 p-4 rounded mb-4 space-y-3">
+        <div className="bg-surface-2 p-4 rounded mb-4 space-y-3">
           <input
             value={newType}
             onChange={(e) => setNewType(e.target.value)}
             placeholder="Worker name"
-            className="w-full bg-gray-600 px-3 py-2 rounded"
+            className="w-full bg-surface-3 px-3 py-2 rounded"
           />
           <div className="grid grid-cols-4 gap-3">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Cooking</label>
+              <label className="block text-xs text-fg-muted mb-1">Cooking</label>
               <input
                 type="number"
                 value={newCooking}
                 onChange={(e) => setNewCooking(e.target.value)}
-                className="w-full bg-gray-600 px-3 py-2 rounded"
+                className="w-full bg-surface-3 px-3 py-2 rounded"
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Designing</label>
+              <label className="block text-xs text-fg-muted mb-1">Designing</label>
               <input
                 type="number"
                 value={newDesigning}
                 onChange={(e) => setNewDesigning(e.target.value)}
-                className="w-full bg-gray-600 px-3 py-2 rounded"
+                className="w-full bg-surface-3 px-3 py-2 rounded"
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Crafting</label>
+              <label className="block text-xs text-fg-muted mb-1">Crafting</label>
               <input
                 type="number"
                 value={newCrafting}
                 onChange={(e) => setNewCrafting(e.target.value)}
-                className="w-full bg-gray-600 px-3 py-2 rounded"
+                className="w-full bg-surface-3 px-3 py-2 rounded"
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Alchemy</label>
+              <label className="block text-xs text-fg-muted mb-1">Alchemy</label>
               <input
                 type="number"
                 value={newAlchemy}
                 onChange={(e) => setNewAlchemy(e.target.value)}
-                className="w-full bg-gray-600 px-3 py-2 rounded"
+                className="w-full bg-surface-3 px-3 py-2 rounded"
               />
             </div>
           </div>
           <div className="flex gap-2">
             <button
               onClick={addWorker}
-              className="flex-1 bg-green-600 px-4 py-2 rounded"
+              className="flex-1 bg-success-600 px-4 py-2 rounded"
             >
               <Save size={20} className="inline" /> Save
             </button>
             <button
               onClick={() => setShowAdd(false)}
-              className="bg-red-600 px-4 py-2 rounded"
+              className="bg-danger-600 px-4 py-2 rounded"
             >
               <X size={20} />
             </button>
@@ -136,24 +136,24 @@ export function WorkersView({ workers, saveWorkers, onDelete }: WorkersViewProps
 
       <div className="space-y-2">
         {workers.map(w => (
-          <div key={w.id} className="bg-gray-700 rounded">
+          <div key={w.id} className="bg-surface-2 rounded">
             <div
-              className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-600"
+              className="flex items-center gap-3 p-3 cursor-pointer hover:bg-surface-3"
               onClick={() => setExpanded(p => ({...p, [w.id]: !p[w.id]}))}
             >
               <span className="flex-1 font-semibold">{w.name}</span>
-              <span className="text-xs text-gray-400">Cook: {w.skills?.cooking || 10}</span>
-              <span className="text-xs text-gray-400">Design: {w.skills?.designing || 10}</span>
-              <span className="text-xs text-gray-400">Craft: {w.skills?.crafting || 10}</span>
-              <span className="text-xs text-gray-400">Alch: {w.skills?.alchemy || 10}</span>
-              <span className="text-xs text-gray-400">Surv: {w.skills?.survival || 10}</span>
-              <span className="text-gray-400">{expanded[w.id] ? '▼' : '▶'}</span>
+              <span className="text-xs text-fg-muted">Cook: {w.skills?.cooking || 10}</span>
+              <span className="text-xs text-fg-muted">Design: {w.skills?.designing || 10}</span>
+              <span className="text-xs text-fg-muted">Craft: {w.skills?.crafting || 10}</span>
+              <span className="text-xs text-fg-muted">Alch: {w.skills?.alchemy || 10}</span>
+              <span className="text-xs text-fg-muted">Surv: {w.skills?.survival || 10}</span>
+              <span className="text-fg-muted">{expanded[w.id] ? '▼' : '▶'}</span>
             </div>
 
             {expanded[w.id] && (
-              <div className="px-3 pb-3 space-y-3 border-t border-gray-600 pt-3">
+              <div className="px-3 pb-3 space-y-3 border-t border-edge-strong pt-3">
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Worker Name</label>
+                  <label className="block text-xs text-fg-muted mb-1">Worker Name</label>
                   <input
                     value={w.name}
                     onChange={(e) => {
@@ -164,79 +164,79 @@ export function WorkersView({ workers, saveWorkers, onDelete }: WorkersViewProps
                       }
                       saveWorkers(workers.map(x => x.id === w.id ? {...x, name: newName} : x));
                     }}
-                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                    className="w-full bg-surface-3 px-3 py-2 rounded"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">Cooking Skill</label>
+                    <label className="block text-xs text-fg-muted mb-1">Cooking Skill</label>
                     <input
                       type="number"
                       value={w.skills?.cooking || 10}
                       onChange={(e) => updateSkill(w.id, 'cooking', e.target.value)}
-                      className="w-full bg-gray-600 px-3 py-2 rounded"
+                      className="w-full bg-surface-3 px-3 py-2 rounded"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">Designing Skill</label>
+                    <label className="block text-xs text-fg-muted mb-1">Designing Skill</label>
                     <input
                       type="number"
                       value={w.skills?.designing || 10}
                       onChange={(e) => updateSkill(w.id, 'designing', e.target.value)}
-                      className="w-full bg-gray-600 px-3 py-2 rounded"
+                      className="w-full bg-surface-3 px-3 py-2 rounded"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">Crafting Skill</label>
+                    <label className="block text-xs text-fg-muted mb-1">Crafting Skill</label>
                     <input
                       type="number"
                       value={w.skills?.crafting || 10}
                       onChange={(e) => updateSkill(w.id, 'crafting', e.target.value)}
-                      className="w-full bg-gray-600 px-3 py-2 rounded"
+                      className="w-full bg-surface-3 px-3 py-2 rounded"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">Alchemy Skill</label>
+                    <label className="block text-xs text-fg-muted mb-1">Alchemy Skill</label>
                     <input
                       type="number"
                       value={w.skills?.alchemy || 10}
                       onChange={(e) => updateSkill(w.id, 'alchemy', e.target.value)}
-                      className="w-full bg-gray-600 px-3 py-2 rounded"
+                      className="w-full bg-surface-3 px-3 py-2 rounded"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">Survival Skill</label>
+                    <label className="block text-xs text-fg-muted mb-1">Survival Skill</label>
                     <input
                       type="number"
                       value={w.skills?.survival || 10}
                       onChange={(e) => updateSkill(w.id, 'survival', e.target.value)}
-                      className="w-full bg-gray-600 px-3 py-2 rounded"
+                      className="w-full bg-surface-3 px-3 py-2 rounded"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">Naturalist Skill</label>
+                    <label className="block text-xs text-fg-muted mb-1">Naturalist Skill</label>
                     <input
                       type="number"
                       value={w.skills?.naturalist || 10}
                       onChange={(e) => updateSkill(w.id, 'naturalist', e.target.value)}
-                      className="w-full bg-gray-600 px-3 py-2 rounded"
+                      className="w-full bg-surface-3 px-3 py-2 rounded"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">Herb Lore Skill</label>
+                    <label className="block text-xs text-fg-muted mb-1">Herb Lore Skill</label>
                     <input
                       type="number"
                       value={w.skills?.herbLore || 10}
                       onChange={(e) => updateSkill(w.id, 'herbLore', e.target.value)}
-                      className="w-full bg-gray-600 px-3 py-2 rounded"
+                      className="w-full bg-surface-3 px-3 py-2 rounded"
                     />
                   </div>
                 </div>
 
                 <button
                   onClick={() => onDelete('worker', w.name, { id: w.id })}
-                  className="w-full bg-red-600 py-2 rounded text-sm"
+                  className="w-full bg-danger-600 py-2 rounded text-sm"
                 >
                   <Trash2 size={16} className="inline" /> Delete Worker
                 </button>

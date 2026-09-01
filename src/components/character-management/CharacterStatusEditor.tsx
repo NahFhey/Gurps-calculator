@@ -33,28 +33,28 @@ export function CharacterStatusEditor({
       onClick={onClose}
     >
       <div
-        className="m-4 w-full max-w-md rounded-lg border border-gray-600 bg-gray-800 p-5 shadow-xl"
+        className="m-4 w-full max-w-md rounded-lg border border-edge-strong bg-surface-1 p-5 shadow-xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 id="character-status-title" className="text-lg font-semibold text-gray-100">Status</h2>
-            <p className="text-sm text-gray-400">{character.name}</p>
+            <h2 id="character-status-title" className="text-lg font-semibold text-fg-bright">Status</h2>
+            <p className="text-sm text-fg-muted">{character.name}</p>
           </div>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-200" aria-label="Close status editor">
+          <button type="button" onClick={onClose} className="text-fg-muted hover:text-fg-primary" aria-label="Close status editor">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="space-y-4">
           <section>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Conditions</h3>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-fg-muted">Conditions</h3>
             {conditions.length === 0 ? (
-              <p className="text-sm text-gray-500">No persistent conditions.</p>
+              <p className="text-sm text-fg-faint">No persistent conditions.</p>
             ) : (
               <div className="space-y-1">
                 {conditions.map((condition) => (
-                  <div key={condition.instanceId} className="flex items-center justify-between rounded bg-gray-900/70 px-3 py-2 text-sm">
+                  <div key={condition.instanceId} className="flex items-center justify-between rounded bg-surface-0/70 px-3 py-2 text-sm">
                     <span>{getConditionIcon(condition.conditionId)} {condition.label}</span>
                     <button
                       type="button"
@@ -64,7 +64,7 @@ export function CharacterStatusEditor({
                         ...status,
                         conditions: conditions.filter(item => item.instanceId !== condition.instanceId),
                       })}
-                      className="text-gray-400 hover:text-red-300"
+                      className="text-fg-muted hover:text-danger-300"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -75,9 +75,9 @@ export function CharacterStatusEditor({
           </section>
 
           <section>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Crippled limbs</h3>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-fg-muted">Crippled limbs</h3>
             {crippled.length === 0 ? (
-              <p className="text-sm text-gray-500">No crippled limbs.</p>
+              <p className="text-sm text-fg-faint">No crippled limbs.</p>
             ) : (
               <div className="space-y-1">
                 {crippled.map((locationKey) => {
@@ -86,7 +86,7 @@ export function CharacterStatusEditor({
                     locationKey
                   )?.label ?? locationKey;
                   return (
-                    <div key={locationKey} className="flex items-center justify-between rounded bg-gray-900/70 px-3 py-2 text-sm">
+                    <div key={locationKey} className="flex items-center justify-between rounded bg-surface-0/70 px-3 py-2 text-sm">
                       <span>🦴 {label}</span>
                       <button
                         type="button"
@@ -96,7 +96,7 @@ export function CharacterStatusEditor({
                           ...status,
                           crippled: crippled.filter(item => item !== locationKey),
                         })}
-                        className="text-gray-400 hover:text-red-300"
+                        className="text-fg-muted hover:text-danger-300"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -113,8 +113,8 @@ export function CharacterStatusEditor({
             onClick={() => writeStatus({ ...status, dead: status?.dead === true ? undefined : true })}
             className={`flex w-full items-center justify-center gap-2 rounded px-3 py-2 text-sm font-medium ${
               status?.dead
-                ? 'bg-green-700 text-white hover:bg-green-600'
-                : 'bg-red-800 text-red-100 hover:bg-red-700'
+                ? 'bg-success-700 text-white hover:bg-success-600'
+                : 'bg-danger-800 text-danger-100 hover:bg-danger-700'
             }`}
           >
             <Skull className="h-4 w-4" />

@@ -79,15 +79,15 @@ export default function ActionPanelItemsWorkflow({
   };
 
   return (
-    <div className="border-t border-gray-700 pt-4">
+    <div className="border-t border-edge pt-4">
       <h4 className="text-lg font-semibold mb-3">Use Item</h4>
 
       {!characterId ? (
-        <p className="text-gray-400 text-sm mb-4">
+        <p className="text-fg-muted text-sm mb-4">
           No linked inventory — library combatants don't carry items.
         </p>
       ) : !characterInventory || characterInventory.items.length === 0 ? (
-        <p className="text-gray-500 text-sm italic mb-4">No items.</p>
+        <p className="text-fg-faint text-sm italic mb-4">No items.</p>
       ) : (
         <ul className="space-y-1 mb-4">
           {characterInventory.items.map((item) => {
@@ -95,16 +95,16 @@ export default function ActionPanelItemsWorkflow({
             return (
               <li
                 key={item.id}
-                className="flex items-center justify-between gap-2 px-3 py-2 rounded bg-gray-700/50"
+                className="flex items-center justify-between gap-2 px-3 py-2 rounded bg-surface-2/50"
               >
-                <span className="text-gray-200">
+                <span className="text-fg-primary">
                   {itemName}
-                  <span className="text-gray-400 ml-2">x{item.quantity ?? 0}</span>
+                  <span className="text-fg-muted ml-2">x{item.quantity ?? 0}</span>
                 </span>
                 <button
                   type="button"
                   onClick={() => handleUse(item)}
-                  className="px-3 py-1 bg-amber-600 hover:bg-amber-500 rounded text-sm font-medium"
+                  className="px-3 py-1 bg-warning-600 hover:bg-warning-500 rounded text-sm font-medium"
                   aria-label={`Use ${itemName}`}
                 >
                   Use
@@ -115,10 +115,10 @@ export default function ActionPanelItemsWorkflow({
         </ul>
       )}
 
-      <div className="border-t border-gray-700 pt-3 mb-4">
-        <h5 className="text-sm font-semibold text-gray-300 mb-2">Used this encounter</h5>
+      <div className="border-t border-edge pt-3 mb-4">
+        <h5 className="text-sm font-semibold text-fg-secondary mb-2">Used this encounter</h5>
         {consumptions.length === 0 ? (
-          <p className="text-gray-500 text-sm italic">No items used.</p>
+          <p className="text-fg-faint text-sm italic">No items used.</p>
         ) : (
           <ul className="space-y-1">
             {consumptions.map((entry) => {
@@ -126,15 +126,15 @@ export default function ActionPanelItemsWorkflow({
               return (
                 <li
                   key={entry.id}
-                  className="flex items-center justify-between gap-2 px-3 py-2 rounded bg-gray-700/30"
+                  className="flex items-center justify-between gap-2 px-3 py-2 rounded bg-surface-2/30"
                 >
-                  <span className="text-sm text-gray-300">
+                  <span className="text-sm text-fg-secondary">
                     {itemName} x{entry.quantity} · {entry.participantName} · Round {entry.round}
                   </span>
                   <button
                     type="button"
                     onClick={() => handleRevert(entry)}
-                    className="px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs"
+                    className="px-2 py-1 bg-surface-3 hover:bg-surface-4 rounded text-xs"
                     aria-label={`Undo use of ${itemName}`}
                   >
                     undo use
@@ -148,7 +148,7 @@ export default function ActionPanelItemsWorkflow({
 
       <button
         onClick={onClose}
-        className="w-full px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded"
+        className="w-full px-4 py-2 bg-surface-3 hover:bg-surface-4 rounded"
         aria-label="Close items panel"
       >
         Close

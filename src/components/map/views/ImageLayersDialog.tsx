@@ -54,7 +54,7 @@ function numberField(value: number, onChange: (value: number) => void, opts: {
   label: string; min?: number; max?: number; step?: number;
 }) {
   return (
-    <label className="flex flex-col gap-0.5 text-[10px] uppercase tracking-wider text-gray-500">
+    <label className="flex flex-col gap-0.5 text-[10px] uppercase tracking-wider text-fg-faint">
       {opts.label}
       <input
         type="number"
@@ -66,7 +66,7 @@ function numberField(value: number, onChange: (value: number) => void, opts: {
           const next = event.target.valueAsNumber;
           if (Number.isFinite(next)) onChange(next);
         }}
-        className="w-16 rounded border border-gray-600 bg-gray-900 px-1.5 py-1 text-xs normal-case tracking-normal text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="w-16 rounded border border-edge-strong bg-surface-0 px-1.5 py-1 text-xs normal-case tracking-normal text-fg-primary focus:outline-none focus:ring-1 focus:ring-accent-500"
       />
     </label>
   );
@@ -137,25 +137,25 @@ function LayerCard({ layer, map, onUpdateLayer, onRemoveLayer }: LayerCardProps)
   };
 
   return (
-    <div className="rounded border border-gray-700 bg-gray-900/50 p-3 space-y-2">
+    <div className="rounded border border-edge bg-surface-0/50 p-3 space-y-2">
       <div className="flex items-center gap-2">
         <img
           src={layer.src}
           alt=""
-          className="h-10 w-10 rounded object-cover border border-gray-700 flex-shrink-0"
+          className="h-10 w-10 rounded object-cover border border-edge flex-shrink-0"
         />
         <input
           type="text"
           value={layer.name}
           onChange={(event) => onUpdateLayer(layer.id, { name: event.target.value })}
-          className="flex-1 min-w-0 rounded border border-gray-600 bg-gray-900 px-2 py-1 text-sm text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="flex-1 min-w-0 rounded border border-edge-strong bg-surface-0 px-2 py-1 text-sm text-fg-primary focus:outline-none focus:ring-1 focus:ring-accent-500"
         />
         <button
           type="button"
           aria-label={layer.visible ? 'Hide image' : 'Show image'}
           title={layer.visible ? 'Hide image' : 'Show image'}
           onClick={() => onUpdateLayer(layer.id, { visible: !layer.visible })}
-          className="rounded p-1.5 text-gray-300 hover:bg-gray-700"
+          className="rounded p-1.5 text-fg-secondary hover:bg-surface-2"
         >
           {layer.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
         </button>
@@ -164,27 +164,27 @@ function LayerCard({ layer, map, onUpdateLayer, onRemoveLayer }: LayerCardProps)
           aria-label="Delete image"
           title="Delete image"
           onClick={() => onRemoveLayer(layer.id)}
-          className="rounded p-1.5 text-red-400 hover:bg-gray-700"
+          className="rounded p-1.5 text-danger-400 hover:bg-surface-2"
         >
           <Trash2 className="h-4 w-4" />
         </button>
       </div>
 
       <div className="flex flex-wrap items-end gap-2">
-        <label className="flex flex-col gap-0.5 text-[10px] uppercase tracking-wider text-gray-500">
+        <label className="flex flex-col gap-0.5 text-[10px] uppercase tracking-wider text-fg-faint">
           Placement
           <select
             value={layer.placement}
             onChange={(event) => onUpdateLayer(layer.id, {
               placement: event.target.value === 'overlay' ? 'overlay' : 'underlay',
             })}
-            className="rounded border border-gray-600 bg-gray-900 px-1.5 py-1 text-xs normal-case tracking-normal text-gray-200"
+            className="rounded border border-edge-strong bg-surface-0 px-1.5 py-1 text-xs normal-case tracking-normal text-fg-primary"
           >
             <option value="underlay">Underlay</option>
             <option value="overlay">Overlay</option>
           </select>
         </label>
-        <label className="flex flex-col gap-0.5 text-[10px] uppercase tracking-wider text-gray-500">
+        <label className="flex flex-col gap-0.5 text-[10px] uppercase tracking-wider text-fg-faint">
           Opacity {Math.round(layer.opacity * 100)}%
           <input
             type="range"
@@ -197,7 +197,7 @@ function LayerCard({ layer, map, onUpdateLayer, onRemoveLayer }: LayerCardProps)
           />
         </label>
         <label
-          className="flex items-center gap-1.5 pb-1 text-xs text-gray-300"
+          className="flex items-center gap-1.5 pb-1 text-xs text-fg-secondary"
           title="Only the GM ever sees this image (tracing reference)"
         >
           <input
@@ -218,7 +218,7 @@ function LayerCard({ layer, map, onUpdateLayer, onRemoveLayer }: LayerCardProps)
       </div>
 
       {/* Size to grid: match the image's printed grid to the tile grid */}
-      <div className="flex flex-wrap items-end gap-2 rounded border border-gray-700/60 bg-gray-800/40 px-2 py-1.5">
+      <div className="flex flex-wrap items-end gap-2 rounded border border-edge/60 bg-surface-1/40 px-2 py-1.5">
         {numberField(gridCols, handleColsChange, { label: 'Grid cols', min: 1 })}
         {numberField(gridRows, (rows) => {
           setRowsTouched(true);
@@ -227,7 +227,7 @@ function LayerCard({ layer, map, onUpdateLayer, onRemoveLayer }: LayerCardProps)
         <button
           type="button"
           onClick={applyGridSize}
-          className="flex items-center gap-1 rounded bg-blue-600 px-2 py-1.5 text-xs font-medium text-white hover:bg-blue-500"
+          className="flex items-center gap-1 rounded bg-accent-600 px-2 py-1.5 text-xs font-medium text-white hover:bg-accent-500"
           title="Scale the image so each of its grid cells is exactly one map tile, and snap its corner to a tile"
         >
           <Grid3x3 className="h-3 w-3" />
@@ -236,7 +236,7 @@ function LayerCard({ layer, map, onUpdateLayer, onRemoveLayer }: LayerCardProps)
         <button
           type="button"
           onClick={snapToTiles}
-          className="flex items-center gap-1 rounded bg-gray-700 px-2 py-1.5 text-xs text-gray-200 hover:bg-gray-600"
+          className="flex items-center gap-1 rounded bg-surface-2 px-2 py-1.5 text-xs text-fg-primary hover:bg-surface-3"
           title="Round position and size to whole tiles"
         >
           <Magnet className="h-3 w-3" />
@@ -245,7 +245,7 @@ function LayerCard({ layer, map, onUpdateLayer, onRemoveLayer }: LayerCardProps)
         <button
           type="button"
           onClick={fitToMap}
-          className="flex items-center gap-1 rounded bg-gray-700 px-2 py-1.5 text-xs text-gray-200 hover:bg-gray-600"
+          className="flex items-center gap-1 rounded bg-surface-2 px-2 py-1.5 text-xs text-fg-primary hover:bg-surface-3"
           title="Stretch the image across the entire map grid"
         >
           <Maximize2 className="h-3 w-3" />
@@ -293,17 +293,17 @@ export function ImageLayersDialog({ map, onAddLayer, onUpdateLayer, onRemoveLaye
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-full max-w-lg max-h-[80vh] flex flex-col rounded-lg border border-gray-600 bg-gray-800 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-gray-700 px-4 py-3">
-          <h2 className="text-lg font-semibold text-gray-100">Map Images</h2>
-          <button type="button" aria-label="Close" onClick={onClose} className="rounded p-1 hover:bg-gray-700">
-            <X className="h-4 w-4 text-gray-400" />
+      <div className="w-full max-w-lg max-h-[80vh] flex flex-col rounded-lg border border-edge-strong bg-surface-1 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-edge px-4 py-3">
+          <h2 className="text-lg font-semibold text-fg-bright">Map Images</h2>
+          <button type="button" aria-label="Close" onClick={onClose} className="rounded p-1 hover:bg-surface-2">
+            <X className="h-4 w-4 text-fg-muted" />
           </button>
         </div>
 
         <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
           {layers.length === 0 && (
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-fg-muted">
               No images yet. Import a battlemap to place it under the grid, or use an
               overlay as a tracing reference while painting terrain.
             </p>
@@ -319,8 +319,8 @@ export function ImageLayersDialog({ map, onAddLayer, onUpdateLayer, onRemoveLaye
             />
           ))}
 
-          {importError && <p className="text-xs text-red-400">{importError}</p>}
-          <p className="text-xs text-gray-500">
+          {importError && <p className="text-xs text-danger-400">{importError}</p>}
+          <p className="text-xs text-fg-faint">
             Position and size are in tiles. If your image has its own printed grid, enter its
             column/row count and use “Size to grid” — each image cell becomes one map tile.
             Underlays are hidden from players while a map uses line-of-sight vision (they
@@ -328,17 +328,17 @@ export function ImageLayersDialog({ map, onAddLayer, onUpdateLayer, onRemoveLaye
           </p>
         </div>
 
-        <div className="flex justify-between gap-2 border-t border-gray-700 px-4 py-3">
+        <div className="flex justify-between gap-2 border-t border-edge px-4 py-3">
           <button
             type="button"
             disabled={importing}
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded bg-accent-600 px-3 py-2 text-sm font-medium text-white hover:bg-accent-500 disabled:opacity-50"
           >
             <Upload className="h-3.5 w-3.5" />
             {importing ? 'Importing…' : 'Import Image'}
           </button>
-          <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-300 hover:text-white">
+          <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-fg-secondary hover:text-white">
             Done
           </button>
           <input

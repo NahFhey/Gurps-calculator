@@ -34,12 +34,12 @@ export function PlayerAssignmentPanel() {
 
   if (players.length === 0) {
     return (
-      <div className="mt-4 pt-4 border-t border-gray-700">
+      <div className="mt-4 pt-4 border-t border-edge">
         <div className="flex items-center gap-2 mb-2">
-          <Users className="h-4 w-4 text-gray-400" />
-          <h3 className="text-sm font-medium text-gray-300">Player Assignment</h3>
+          <Users className="h-4 w-4 text-fg-muted" />
+          <h3 className="text-sm font-medium text-fg-secondary">Player Assignment</h3>
         </div>
-        <p className="text-xs text-gray-500">No players connected yet. Share the join code above.</p>
+        <p className="text-xs text-fg-faint">No players connected yet. Share the join code above.</p>
       </div>
     );
   }
@@ -55,10 +55,10 @@ export function PlayerAssignmentPanel() {
   };
 
   return (
-    <div className="mt-4 pt-4 border-t border-gray-700">
+    <div className="mt-4 pt-4 border-t border-edge">
       <div className="flex items-center gap-2 mb-3">
-        <Users className="h-4 w-4 text-gray-400" />
-        <h3 className="text-sm font-medium text-gray-300">Player Assignment</h3>
+        <Users className="h-4 w-4 text-fg-muted" />
+        <h3 className="text-sm font-medium text-fg-secondary">Player Assignment</h3>
       </div>
 
       <div className="space-y-3">
@@ -67,10 +67,10 @@ export function PlayerAssignmentPanel() {
           const assignedChars = characters.filter(c => assignedIds.includes(c.id));
 
           return (
-            <div key={player.socketId} className="rounded bg-gray-900 p-3">
-              <div className="text-sm font-medium text-gray-200 mb-2">
+            <div key={player.socketId} className="rounded bg-surface-0 p-3">
+              <div className="text-sm font-medium text-fg-primary mb-2">
                 {player.displayName}
-                <span className="ml-2 text-xs text-gray-500 font-normal">
+                <span className="ml-2 text-xs text-fg-faint font-normal">
                   ({player.role})
                 </span>
               </div>
@@ -81,12 +81,12 @@ export function PlayerAssignmentPanel() {
                   {assignedChars.map(char => (
                     <span
                       key={char.id}
-                      className="inline-flex items-center gap-1 rounded bg-blue-500/20 border border-blue-500/40 px-2 py-0.5 text-xs text-blue-200"
+                      className="inline-flex items-center gap-1 rounded bg-accent-500/20 border border-accent-500/40 px-2 py-0.5 text-xs text-accent-200"
                     >
                       {char.name}
                       <button
                         onClick={() => handleUnassign(player.displayName, char.id)}
-                        className="hover:text-red-300"
+                        className="hover:text-danger-300"
                         title="Unassign"
                       >
                         <X className="h-3 w-3" />
@@ -99,7 +99,7 @@ export function PlayerAssignmentPanel() {
               {/* Assign dropdown */}
               {unassignedCharacters.length > 0 && (
                 <select
-                  className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-surface-1 border border-edge-strong rounded px-2 py-1 text-xs text-fg-secondary focus:outline-none focus:border-accent-500"
                   value=""
                   onChange={(e) => {
                     if (e.target.value) {
@@ -120,7 +120,7 @@ export function PlayerAssignmentPanel() {
               )}
 
               {unassignedCharacters.length === 0 && assignedChars.length === 0 && (
-                <p className="text-xs text-gray-500">No characters available to assign</p>
+                <p className="text-xs text-fg-faint">No characters available to assign</p>
               )}
             </div>
           );

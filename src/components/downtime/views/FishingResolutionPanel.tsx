@@ -56,7 +56,7 @@ interface ResolutionStep {
 }
 
 // Dice colors for display
-const DICE_COLORS = ['bg-red-500', 'bg-green-500', 'bg-blue-500'];
+const DICE_COLORS = ['bg-danger-500', 'bg-success-500', 'bg-accent-500'];
 
 // ============================================================================
 // DICE DISPLAY COMPONENT
@@ -108,8 +108,8 @@ function DiceDisplay({ dice, total, rolled, gmMode, onEdit }: DiceDisplayProps) 
             ?
           </div>
         ))}
-        <span className="text-gray-500">=</span>
-        <div className="px-3 py-1 bg-gray-700 rounded text-gray-400">
+        <span className="text-fg-faint">=</span>
+        <div className="px-3 py-1 bg-surface-2 rounded text-fg-muted">
           —
         </div>
       </div>
@@ -131,8 +131,8 @@ function DiceDisplay({ dice, total, rolled, gmMode, onEdit }: DiceDisplayProps) 
               className={`w-8 h-8 ${DICE_COLORS[i % DICE_COLORS.length]} rounded text-center text-white font-bold border-2 border-yellow-400`}
             />
           ))}
-          <span className="text-gray-400">=</span>
-          <div className="px-3 py-1 bg-gray-700 rounded text-gray-100 font-medium min-w-[3rem] text-center">
+          <span className="text-fg-muted">=</span>
+          <div className="px-3 py-1 bg-surface-2 rounded text-fg-bright font-medium min-w-[3rem] text-center">
             {editDice.reduce((sum, d) => sum + d, 0)}
           </div>
         </div>
@@ -140,14 +140,14 @@ function DiceDisplay({ dice, total, rolled, gmMode, onEdit }: DiceDisplayProps) 
           <button
             type="button"
             onClick={applyEdit}
-            className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+            className="px-2 py-1 text-xs bg-success-600 text-white rounded hover:bg-success-700"
           >
             Apply
           </button>
           <button
             type="button"
             onClick={cancelEdit}
-            className="px-2 py-1 text-xs bg-gray-600 text-gray-200 rounded hover:bg-gray-500"
+            className="px-2 py-1 text-xs bg-surface-3 text-fg-primary rounded hover:bg-surface-4"
           >
             Cancel
           </button>
@@ -166,8 +166,8 @@ function DiceDisplay({ dice, total, rolled, gmMode, onEdit }: DiceDisplayProps) 
           {value}
         </div>
       ))}
-      <span className="text-gray-400">=</span>
-      <div className="px-3 py-1 bg-gray-700 rounded text-gray-100 font-medium min-w-[3rem] text-center">
+      <span className="text-fg-muted">=</span>
+      <div className="px-3 py-1 bg-surface-2 rounded text-fg-bright font-medium min-w-[3rem] text-center">
         {total}
       </div>
       {gmMode && onEdit && (
@@ -202,11 +202,11 @@ function RollStep({ step, onRoll, disabled, gmMode, onReroll, onEdit }: RollStep
 
   const getResultColor = () => {
     switch (step.result) {
-      case 'crit_success': return 'text-green-400';
-      case 'success': return 'text-green-400';
-      case 'crit_failure': return 'text-red-400';
-      case 'failure': return 'text-red-400';
-      default: return 'text-gray-400';
+      case 'crit_success': return 'text-success-400';
+      case 'success': return 'text-success-400';
+      case 'crit_failure': return 'text-danger-400';
+      case 'failure': return 'text-danger-400';
+      default: return 'text-fg-muted';
     }
   };
 
@@ -221,12 +221,12 @@ function RollStep({ step, onRoll, disabled, gmMode, onReroll, onEdit }: RollStep
   };
 
   return (
-    <div className="roll-step bg-gray-800/50 border border-gray-700 rounded-lg p-3 mb-3">
+    <div className="roll-step bg-surface-1/50 border border-edge rounded-lg p-3 mb-3">
       <div className="flex justify-between items-center mb-2">
-        <span className="text-gray-200 font-medium">
+        <span className="text-fg-primary font-medium">
           {step.label}
           {step.targetSkill !== undefined && (
-            <span className="text-gray-400 ml-2">vs {step.targetSkill}</span>
+            <span className="text-fg-muted ml-2">vs {step.targetSkill}</span>
           )}
         </span>
         <div className="flex gap-1">
@@ -246,9 +246,9 @@ function RollStep({ step, onRoll, disabled, gmMode, onReroll, onEdit }: RollStep
             disabled={disabled || step.roll.rolled}
             className={`flex items-center gap-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
               step.roll.rolled
-                ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                ? 'bg-surface-2 text-fg-faint cursor-not-allowed'
                 : disabled
-                ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                ? 'bg-surface-2 text-fg-faint cursor-not-allowed'
                 : 'bg-purple-600 text-white hover:bg-purple-700'
             }`}
           >
@@ -273,7 +273,7 @@ function RollStep({ step, onRoll, disabled, gmMode, onReroll, onEdit }: RollStep
       )}
 
       {step.message && (
-        <div className="mt-2 text-sm text-gray-400">
+        <div className="mt-2 text-sm text-fg-muted">
           {step.message}
         </div>
       )}
@@ -298,11 +298,11 @@ interface YieldRollProps {
 
 function YieldRoll({ label, formula, roll, onRoll, disabled, gmMode, onReroll, onEdit }: YieldRollProps) {
   return (
-    <div className="yield-roll bg-gray-800/50 border border-gray-700 rounded-lg p-3 mb-2">
+    <div className="yield-roll bg-surface-1/50 border border-edge rounded-lg p-3 mb-2">
       <div className="flex justify-between items-center mb-2">
-        <span className="text-gray-200 font-medium">
+        <span className="text-fg-primary font-medium">
           {label}
-          <span className="text-gray-400 ml-2">({formula})</span>
+          <span className="text-fg-muted ml-2">({formula})</span>
         </span>
         <div className="flex gap-1">
           {gmMode && roll.rolled && onReroll && (
@@ -321,9 +321,9 @@ function YieldRoll({ label, formula, roll, onRoll, disabled, gmMode, onReroll, o
             disabled={disabled || roll.rolled}
             className={`flex items-center gap-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
               roll.rolled
-                ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                ? 'bg-surface-2 text-fg-faint cursor-not-allowed'
                 : disabled
-                ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                ? 'bg-surface-2 text-fg-faint cursor-not-allowed'
                 : 'bg-purple-600 text-white hover:bg-purple-700'
             }`}
           >
@@ -342,7 +342,7 @@ function YieldRoll({ label, formula, roll, onRoll, disabled, gmMode, onReroll, o
       />
 
       {roll.rolled && (
-        <div className="mt-2 text-sm text-green-400">
+        <div className="mt-2 text-sm text-success-400">
           +{roll.total} units
         </div>
       )}
@@ -846,64 +846,64 @@ export function FishingResolutionPanel({
   const secondaryType = hasSecondaryMaterial ? secondaryMaterialType : '';
 
   return (
-    <div className="fishing-resolution-panel bg-gray-900 border border-gray-700 rounded-lg p-4 max-w-md">
+    <div className="fishing-resolution-panel bg-surface-0 border border-edge rounded-lg p-4 max-w-md">
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-gray-100">Manual Resolution</h3>
+        <h3 className="text-lg font-semibold text-fg-bright">Manual Resolution</h3>
         <button
           type="button"
           onClick={onCancel}
-          className="text-gray-400 hover:text-gray-200"
+          className="text-fg-muted hover:text-fg-primary"
         >
           <X className="w-5 h-5" />
         </button>
       </div>
 
       {/* Skill Breakdown */}
-      <div className="bg-gray-800/50 border border-gray-700 rounded p-2 mb-3 text-xs space-y-0.5">
+      <div className="bg-surface-1/50 border border-edge rounded p-2 mb-3 text-xs space-y-0.5">
         <div className="flex justify-between">
-          <span className="text-gray-400">Base {isSpear ? 'Spear' : 'Fishing'} Skill:</span>
-          <span className="text-blue-400">{baseSkill}</span>
+          <span className="text-fg-muted">Base {isSpear ? 'Spear' : 'Fishing'} Skill:</span>
+          <span className="text-accent-400">{baseSkill}</span>
         </div>
         {data.skillModifier !== 0 && (
           <div className="flex justify-between">
-            <span className="text-gray-400">Tools/Helpers:</span>
-            <span className={data.skillModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
+            <span className="text-fg-muted">Tools/Helpers:</span>
+            <span className={data.skillModifier >= 0 ? 'text-success-400' : 'text-danger-400'}>
               {data.skillModifier >= 0 ? '+' : ''}{data.skillModifier}
             </span>
           </div>
         )}
         {stealthPenalty !== 0 && (
           <div className="flex justify-between">
-            <span className="text-gray-400">Stealth penalty:</span>
-            <span className="text-red-400">{stealthPenalty}</span>
+            <span className="text-fg-muted">Stealth penalty:</span>
+            <span className="text-danger-400">{stealthPenalty}</span>
           </div>
         )}
         {fatiguePenalty !== 0 && (
           <div className="flex justify-between">
-            <span className="text-gray-400">Fatigue ({fatigueStatus}):</span>
-            <span className="text-red-400">{fatiguePenalty}</span>
+            <span className="text-fg-muted">Fatigue ({fatigueStatus}):</span>
+            <span className="text-danger-400">{fatiguePenalty}</span>
           </div>
         )}
         {(hasCorrectBait || hasInappropriateBait) && (
           <div className="flex justify-between">
-            <span className="text-gray-400">Bait:</span>
-            <span className={hasCorrectBait ? 'text-green-400' : 'text-red-400'}>
+            <span className="text-fg-muted">Bait:</span>
+            <span className={hasCorrectBait ? 'text-success-400' : 'text-danger-400'}>
               {hasCorrectBait ? '+1' : '-2'}
             </span>
           </div>
         )}
         {(spot?.skillMod ?? 0) !== 0 && (
           <div className="flex justify-between">
-            <span className="text-gray-400">Environment ({spot?.name}):</span>
-            <span className={(spot?.skillMod ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}>
+            <span className="text-fg-muted">Environment ({spot?.name}):</span>
+            <span className={(spot?.skillMod ?? 0) >= 0 ? 'text-success-400' : 'text-danger-400'}>
               {(spot?.skillMod ?? 0) >= 0 ? '+' : ''}{spot?.skillMod}
             </span>
           </div>
         )}
-        <div className="flex justify-between border-t border-gray-600 pt-1 mt-1">
-          <span className="text-gray-200 font-medium">Effective Skill:</span>
-          <span className="text-green-400 font-bold">{effectiveSkill}</span>
+        <div className="flex justify-between border-t border-edge-strong pt-1 mt-1">
+          <span className="text-fg-primary font-medium">Effective Skill:</span>
+          <span className="text-success-400 font-bold">{effectiveSkill}</span>
         </div>
       </div>
 
@@ -961,8 +961,8 @@ export function FishingResolutionPanel({
 
       {/* Targeted Catch - Show species immediately after fishing success */}
       {fishingSuccess && !isRandomCatch && caughtSpecies && (
-        <div className="targeted-catch bg-green-900/30 border border-green-700 rounded-lg p-3 mb-3">
-          <div className="text-sm text-green-400 font-medium">
+        <div className="targeted-catch bg-success-900/30 border border-success-700 rounded-lg p-3 mb-3">
+          <div className="text-sm text-success-400 font-medium">
             Targeted Catch: {caughtSpecies.name}
           </div>
         </div>
@@ -970,9 +970,9 @@ export function FishingResolutionPanel({
 
       {/* Species Roll (Random catch only) */}
       {fishingSuccess && isRandomCatch && (
-        <div className="species-roll bg-gray-800/50 border border-gray-700 rounded-lg p-3 mb-3">
+        <div className="species-roll bg-surface-1/50 border border-edge rounded-lg p-3 mb-3">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-gray-200 font-medium">Random Catch (2d6)</span>
+            <span className="text-fg-primary font-medium">Random Catch (2d6)</span>
             <div className="flex gap-1">
               {gmMode && speciesRoll.rolled && (
                 <button
@@ -990,7 +990,7 @@ export function FishingResolutionPanel({
                 disabled={speciesRoll.rolled}
                 className={`flex items-center gap-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
                   speciesRoll.rolled
-                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                    ? 'bg-surface-2 text-fg-faint cursor-not-allowed'
                     : 'bg-purple-600 text-white hover:bg-purple-700'
                 }`}
               >
@@ -1007,7 +1007,7 @@ export function FishingResolutionPanel({
             onEdit={handleEditSpeciesRoll}
           />
           {speciesRoll.rolled && caughtSpecies && (
-            <div className="mt-2 text-sm text-green-400">
+            <div className="mt-2 text-sm text-success-400">
               Caught: {caughtSpecies.name}
             </div>
           )}
@@ -1025,9 +1025,9 @@ export function FishingResolutionPanel({
           <div className="text-sm text-orange-400 mb-2 font-medium">Large Fish Struggle!</div>
 
           {/* Player Struggle Roll */}
-          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3 mb-2">
+          <div className="bg-surface-1/50 border border-edge rounded-lg p-3 mb-2">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-200 font-medium">
+              <span className="text-fg-primary font-medium">
                 Your ST vs {leaderST}
               </span>
               <div className="flex gap-1">
@@ -1047,7 +1047,7 @@ export function FishingResolutionPanel({
                   disabled={struggleRoll.rolled}
                   className={`flex items-center gap-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
                     struggleRoll.rolled
-                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                      ? 'bg-surface-2 text-fg-faint cursor-not-allowed'
                       : 'bg-purple-600 text-white hover:bg-purple-700'
                   }`}
                 >
@@ -1067,9 +1067,9 @@ export function FishingResolutionPanel({
 
           {/* Fish Struggle Roll */}
           {struggleRoll.rolled && (
-            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3 mb-2">
+            <div className="bg-surface-1/50 border border-edge rounded-lg p-3 mb-2">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-gray-200 font-medium">
+                <span className="text-fg-primary font-medium">
                   Fish ST vs {caughtSpecies?.st ?? DEFAULT_FISH_ST}
                 </span>
                 <div className="flex gap-1">
@@ -1089,7 +1089,7 @@ export function FishingResolutionPanel({
                     disabled={fishStruggleRoll.rolled}
                     className={`flex items-center gap-1 px-3 py-1 rounded text-sm font-medium transition-colors ${
                       fishStruggleRoll.rolled
-                        ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                        ? 'bg-surface-2 text-fg-faint cursor-not-allowed'
                         : 'bg-purple-600 text-white hover:bg-purple-700'
                     }`}
                   >
@@ -1106,7 +1106,7 @@ export function FishingResolutionPanel({
                 onEdit={handleEditFishStruggleRoll}
               />
               {fishStruggleRoll.rolled && (
-                <div className={`mt-2 text-sm font-medium ${struggleWon ? 'text-green-400' : 'text-red-400'}`}>
+                <div className={`mt-2 text-sm font-medium ${struggleWon ? 'text-success-400' : 'text-danger-400'}`}>
                   {struggleWon ? 'You landed the fish!' : 'The fish escaped!'}
                 </div>
               )}
@@ -1117,8 +1117,8 @@ export function FishingResolutionPanel({
 
       {/* Yield Rolls */}
       {needsYieldRolls && (
-        <div className="yield-section border-l-2 border-green-500 pl-3 mb-3">
-          <div className="text-sm text-green-400 mb-2 font-medium">Calculate Yields</div>
+        <div className="yield-section border-l-2 border-success-500 pl-3 mb-3">
+          <div className="text-sm text-success-400 mb-2 font-medium">Calculate Yields</div>
 
           <YieldRoll
             label={`${caughtSpecies?.name} Meat`}
@@ -1149,7 +1149,7 @@ export function FishingResolutionPanel({
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 px-4 py-2 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors"
+          className="flex-1 px-4 py-2 bg-surface-2 text-fg-secondary rounded hover:bg-surface-3 transition-colors"
         >
           Cancel
         </button>
@@ -1159,8 +1159,8 @@ export function FishingResolutionPanel({
           disabled={!allRollsComplete}
           className={`flex-1 px-4 py-2 rounded font-medium transition-colors ${
             allRollsComplete
-              ? 'bg-green-600 text-white hover:bg-green-700'
-              : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+              ? 'bg-success-600 text-white hover:bg-success-700'
+              : 'bg-surface-2 text-fg-faint cursor-not-allowed'
           }`}
         >
           Finalize Task

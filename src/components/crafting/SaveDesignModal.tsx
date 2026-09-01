@@ -32,10 +32,10 @@ export function SaveDesignModal({ craft, onSave, onSkip }: SaveDesignModalProps)
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        className="bg-gray-800 p-6 rounded-lg max-w-md border-2 border-purple-500"
+        className="bg-surface-1 p-6 rounded-lg max-w-md border-2 border-purple-500"
       >
         <h3 id={titleId} className="text-xl font-bold mb-4 text-purple-400">Save Design?</h3>
-        <p id={descriptionId} className="mb-4 text-gray-300">
+        <p id={descriptionId} className="mb-4 text-fg-secondary">
           Design phase complete! Would you like to save this as a reusable craft design?
         </p>
         <div className="mb-4">
@@ -47,7 +47,7 @@ export function SaveDesignModal({ craft, onSave, onSkip }: SaveDesignModalProps)
             onChange={(e) => setDesignName(e.target.value)}
             placeholder={`${craft.currentQuality} ${craft.template}`}
             aria-label="Design Name"
-            className="w-full bg-gray-600 px-3 py-2 rounded"
+            className="w-full bg-surface-3 px-3 py-2 rounded"
           />
         </div>
         <div className="flex gap-3 justify-end">
@@ -55,7 +55,7 @@ export function SaveDesignModal({ craft, onSave, onSkip }: SaveDesignModalProps)
             type="button"
             onClick={onSkip}
             aria-label="Skip saving design"
-            className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-500"
+            className="px-4 py-2 bg-surface-3 rounded hover:bg-surface-4"
           >
             Skip
           </button>

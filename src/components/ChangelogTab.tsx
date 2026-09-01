@@ -107,25 +107,25 @@ export function ChangelogTab() {
 
 
   return (
-    <div className="bg-slate-800 rounded-lg p-6">
+    <div className="bg-surface-1 rounded-lg p-6">
       <h2 className="text-2xl font-bold mb-6">Changelog</h2>
       <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <label className="text-sm text-slate-300 lg:col-span-2">
+        <label className="text-sm text-fg-secondary lg:col-span-2">
           <span className="mb-1 block">Search</span>
           <input
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search log messages"
-            className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100 placeholder:text-slate-400"
+            className="w-full rounded border border-edge-strong bg-surface-2 px-3 py-2 text-fg-bright placeholder:text-fg-muted"
           />
         </label>
-        <label className="text-sm text-slate-300">
+        <label className="text-sm text-fg-secondary">
           <span className="mb-1 block">Category</span>
           <select
             value={family}
             onChange={(event) => setFamily(event.target.value)}
-            className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100"
+            className="w-full rounded border border-edge-strong bg-surface-2 px-3 py-2 text-fg-bright"
           >
             <option value="all">All</option>
             {ACTIVITY_FAMILIES.map((activityFamily) => (
@@ -135,30 +135,30 @@ export function ChangelogTab() {
             ))}
           </select>
         </label>
-        <label className="text-sm text-slate-300">
+        <label className="text-sm text-fg-secondary">
           <span className="mb-1 block">From day</span>
           <input
             type="number"
             value={fromDay}
             onChange={(event) => setFromDay(event.target.value)}
-            className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100"
+            className="w-full rounded border border-edge-strong bg-surface-2 px-3 py-2 text-fg-bright"
           />
         </label>
-        <label className="text-sm text-slate-300">
+        <label className="text-sm text-fg-secondary">
           <span className="mb-1 block">To day</span>
           <input
             type="number"
             value={toDay}
             onChange={(event) => setToDay(event.target.value)}
-            className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100"
+            className="w-full rounded border border-edge-strong bg-surface-2 px-3 py-2 text-fg-bright"
           />
         </label>
-        <label className="text-sm text-slate-300 sm:col-span-2 lg:col-span-2">
+        <label className="text-sm text-fg-secondary sm:col-span-2 lg:col-span-2">
           <span className="mb-1 block">Character</span>
           <select
             value={characterId}
             onChange={(event) => setCharacterId(event.target.value)}
-            className="w-full rounded border border-slate-600 bg-slate-700 px-3 py-2 text-slate-100"
+            className="w-full rounded border border-edge-strong bg-surface-2 px-3 py-2 text-fg-bright"
           >
             <option value="">All characters</option>
             {characters.map((character) => (
@@ -168,16 +168,16 @@ export function ChangelogTab() {
         </label>
       </div>
       {filteredEntries.length === 0 ? (
-        <div className="text-sm text-gray-400">No log entries yet.</div>
+        <div className="text-sm text-fg-muted">No log entries yet.</div>
       ) : (
         <div className="space-y-4">
           {filteredEntries.map(({ entry, message }) => (
-              <div key={entry.id} className="bg-slate-700 rounded-lg p-4">
-                <div className="flex items-center justify-between text-xs text-gray-400">
+              <div key={entry.id} className="bg-surface-2 rounded-lg p-4">
+                <div className="flex items-center justify-between text-xs text-fg-muted">
                   <span className="uppercase tracking-wide">{entry.type}</span>
                   <span>{new Date(entry.timestamp).toLocaleString()}</span>
                 </div>
-                <div className="mt-2 text-sm text-gray-200" data-testid={`log-entry-${entry.id}`}>
+                <div className="mt-2 text-sm text-fg-primary" data-testid={`log-entry-${entry.id}`}>
                   {message}
                 </div>
               </div>

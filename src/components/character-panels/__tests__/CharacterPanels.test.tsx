@@ -262,7 +262,7 @@ describe('CharacterInventoryPanel', () => {
   it('can remove items via trash button', () => {
     render(<CharacterInventoryPanel character={mockCharacter} />);
     const removeButtons = screen.getAllByRole('button');
-    const trashButtons = removeButtons.filter((btn) => btn.title === 'Remove' || btn.className.includes('text-red'));
+    const trashButtons = removeButtons.filter((btn) => btn.title === 'Remove' || btn.className.includes('text-danger'));
     expect(trashButtons.length).toBeGreaterThan(0);
   });
 

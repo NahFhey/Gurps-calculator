@@ -14,7 +14,7 @@ export function FacilityAttachmentControl({ value, onChange, locations = [], veh
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      <label className="block text-xs text-gray-400">
+      <label className="block text-xs text-fg-muted">
         Attachment
         <select
           aria-label="Attachment"
@@ -24,7 +24,7 @@ export function FacilityAttachmentControl({ value, onChange, locations = [], veh
             else if (event.target.value === 'vehicle' && vehicles[0]) onChange({ kind: 'vehicle', vehicleId: vehicles[0].id });
             else onChange(undefined);
           }}
-          className="mt-1 w-full rounded bg-gray-600 px-3 py-2 text-gray-100"
+          className="mt-1 w-full rounded bg-surface-3 px-3 py-2 text-fg-bright"
         >
           <option value="party">Party</option>
           <option value="location" disabled={locations.length === 0}>Location</option>
@@ -32,17 +32,17 @@ export function FacilityAttachmentControl({ value, onChange, locations = [], veh
         </select>
       </label>
       {kind === 'location' && value?.kind === 'location' && (
-        <label className="block text-xs text-gray-400">
+        <label className="block text-xs text-fg-muted">
           Location
-          <select aria-label="Attached location" value={value.locationId} onChange={(event) => onChange({ kind: 'location', locationId: event.target.value })} className="mt-1 w-full rounded bg-gray-600 px-3 py-2 text-gray-100">
+          <select aria-label="Attached location" value={value.locationId} onChange={(event) => onChange({ kind: 'location', locationId: event.target.value })} className="mt-1 w-full rounded bg-surface-3 px-3 py-2 text-fg-bright">
             {locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
           </select>
         </label>
       )}
       {kind === 'vehicle' && value?.kind === 'vehicle' && (
-        <label className="block text-xs text-gray-400">
+        <label className="block text-xs text-fg-muted">
           Vehicle
-          <select aria-label="Attached vehicle" value={value.vehicleId} onChange={(event) => onChange({ kind: 'vehicle', vehicleId: event.target.value })} className="mt-1 w-full rounded bg-gray-600 px-3 py-2 text-gray-100">
+          <select aria-label="Attached vehicle" value={value.vehicleId} onChange={(event) => onChange({ kind: 'vehicle', vehicleId: event.target.value })} className="mt-1 w-full rounded bg-surface-3 px-3 py-2 text-fg-bright">
             {vehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicle.name}</option>)}
           </select>
         </label>

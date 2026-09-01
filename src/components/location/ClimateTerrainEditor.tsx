@@ -67,18 +67,18 @@ export function ClimateEditor({
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-gray-100">Climate Types</h3>
+      <h3 className="text-lg font-semibold text-fg-bright">Climate Types</h3>
 
       {/* Preset climates */}
       <div className="space-y-1">
-        <p className="text-xs text-gray-500 mb-1">Presets (built-in)</p>
+        <p className="text-xs text-fg-faint mb-1">Presets (built-in)</p>
         {Object.entries(CLIMATE_LABELS).map(([key, label]) => (
           <div
             key={key}
-            className="flex items-center justify-between px-3 py-1.5 bg-gray-700/50 rounded text-sm"
+            className="flex items-center justify-between px-3 py-1.5 bg-surface-2/50 rounded text-sm"
           >
-            <span className="text-gray-300">{label}</span>
-            <span className="text-xs text-gray-500 font-mono">{key}</span>
+            <span className="text-fg-secondary">{label}</span>
+            <span className="text-xs text-fg-faint font-mono">{key}</span>
           </div>
         ))}
       </div>
@@ -86,19 +86,19 @@ export function ClimateEditor({
       {/* Custom climates */}
       {customClimates.length > 0 && (
         <div className="space-y-1">
-          <p className="text-xs text-gray-500 mb-1">Custom</p>
+          <p className="text-xs text-fg-faint mb-1">Custom</p>
           {customClimates.map((climate) => {
             const inUse = isClimateInUse(climate.key);
             return (
               <div
                 key={climate.key}
-                className="flex items-center justify-between px-3 py-1.5 bg-gray-700/50 rounded text-sm"
+                className="flex items-center justify-between px-3 py-1.5 bg-surface-2/50 rounded text-sm"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-gray-200">{climate.label}</span>
-                  <span className="text-xs text-gray-500 font-mono">{climate.key}</span>
+                  <span className="text-fg-primary">{climate.label}</span>
+                  <span className="text-xs text-fg-faint font-mono">{climate.key}</span>
                   {inUse && (
-                    <span className="text-xs text-blue-400">(in use)</span>
+                    <span className="text-xs text-accent-400">(in use)</span>
                   )}
                 </div>
                 <button
@@ -106,8 +106,8 @@ export function ClimateEditor({
                   disabled={inUse}
                   className={`p-1 rounded ${
                     inUse
-                      ? 'text-gray-600 cursor-not-allowed'
-                      : 'text-red-400 hover:bg-red-600/20'
+                      ? 'text-fg-disabled cursor-not-allowed'
+                      : 'text-danger-400 hover:bg-danger-600/20'
                   }`}
                   title={inUse ? 'Cannot delete: used by a location' : 'Delete custom climate'}
                 >
@@ -127,18 +127,18 @@ export function ClimateEditor({
           onChange={(e) => setNewClimateLabel(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleAddClimate()}
           placeholder="New climate name..."
-          className="flex-1 px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-gray-100 placeholder-gray-500"
+          className="flex-1 px-3 py-1.5 bg-surface-2 border border-edge-strong rounded text-sm text-fg-bright placeholder-fg-faint"
         />
         <button
           onClick={handleAddClimate}
           disabled={!newClimateLabel.trim() || climateKeyConflict}
-          className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded"
+          className="px-3 py-1.5 text-sm bg-accent-600 hover:bg-accent-700 disabled:bg-surface-3 disabled:cursor-not-allowed text-white rounded"
         >
           Add
         </button>
       </div>
       {climateKeyConflict && (
-        <p className="text-xs text-red-400 mt-1">
+        <p className="text-xs text-danger-400 mt-1">
           Key &quot;{climateKeyFromLabel}&quot; already exists
         </p>
       )}
@@ -187,18 +187,18 @@ export function TerrainEditor({
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-gray-100">Terrain Types</h3>
+      <h3 className="text-lg font-semibold text-fg-bright">Terrain Types</h3>
 
       {/* Preset terrains */}
       <div className="space-y-1">
-        <p className="text-xs text-gray-500 mb-1">Presets (built-in)</p>
+        <p className="text-xs text-fg-faint mb-1">Presets (built-in)</p>
         {Object.entries(TERRAIN_LABELS).map(([key, label]) => (
           <div
             key={key}
-            className="flex items-center justify-between px-3 py-1.5 bg-gray-700/50 rounded text-sm"
+            className="flex items-center justify-between px-3 py-1.5 bg-surface-2/50 rounded text-sm"
           >
-            <span className="text-gray-300">{label}</span>
-            <span className="text-xs text-gray-500 font-mono">{key}</span>
+            <span className="text-fg-secondary">{label}</span>
+            <span className="text-xs text-fg-faint font-mono">{key}</span>
           </div>
         ))}
       </div>
@@ -206,19 +206,19 @@ export function TerrainEditor({
       {/* Custom terrains */}
       {customTerrains.length > 0 && (
         <div className="space-y-1">
-          <p className="text-xs text-gray-500 mb-1">Custom</p>
+          <p className="text-xs text-fg-faint mb-1">Custom</p>
           {customTerrains.map((terrain) => {
             const inUse = isTerrainInUse(terrain.key);
             return (
               <div
                 key={terrain.key}
-                className="flex items-center justify-between px-3 py-1.5 bg-gray-700/50 rounded text-sm"
+                className="flex items-center justify-between px-3 py-1.5 bg-surface-2/50 rounded text-sm"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-gray-200">{terrain.label}</span>
-                  <span className="text-xs text-gray-500 font-mono">{terrain.key}</span>
+                  <span className="text-fg-primary">{terrain.label}</span>
+                  <span className="text-xs text-fg-faint font-mono">{terrain.key}</span>
                   {inUse && (
-                    <span className="text-xs text-blue-400">(in use)</span>
+                    <span className="text-xs text-accent-400">(in use)</span>
                   )}
                 </div>
                 <button
@@ -226,8 +226,8 @@ export function TerrainEditor({
                   disabled={inUse}
                   className={`p-1 rounded ${
                     inUse
-                      ? 'text-gray-600 cursor-not-allowed'
-                      : 'text-red-400 hover:bg-red-600/20'
+                      ? 'text-fg-disabled cursor-not-allowed'
+                      : 'text-danger-400 hover:bg-danger-600/20'
                   }`}
                   title={inUse ? 'Cannot delete: used by a location' : 'Delete custom terrain'}
                 >
@@ -247,18 +247,18 @@ export function TerrainEditor({
           onChange={(e) => setNewTerrainLabel(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleAddTerrain()}
           placeholder="New terrain name..."
-          className="flex-1 px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-gray-100 placeholder-gray-500"
+          className="flex-1 px-3 py-1.5 bg-surface-2 border border-edge-strong rounded text-sm text-fg-bright placeholder-fg-faint"
         />
         <button
           onClick={handleAddTerrain}
           disabled={!newTerrainLabel.trim() || terrainKeyConflict}
-          className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded"
+          className="px-3 py-1.5 text-sm bg-accent-600 hover:bg-accent-700 disabled:bg-surface-3 disabled:cursor-not-allowed text-white rounded"
         >
           Add
         </button>
       </div>
       {terrainKeyConflict && (
-        <p className="text-xs text-red-400 mt-1">
+        <p className="text-xs text-danger-400 mt-1">
           Key &quot;{terrainKeyFromLabel}&quot; already exists
         </p>
       )}
@@ -294,10 +294,10 @@ export function ClimateTerrainEditor({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-100">Climates & Terrain</h3>
+        <h3 className="text-lg font-semibold text-fg-bright">Climates & Terrain</h3>
         <button
           onClick={onBack}
-          className="text-gray-400 hover:text-gray-200 text-sm"
+          className="text-fg-muted hover:text-fg-primary text-sm"
         >
           Back
         </button>

@@ -272,20 +272,20 @@ export default function CharacterLibrary() {
           </button>
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded"
+            className="flex items-center gap-2 px-4 py-2 bg-success-600 hover:bg-success-700 rounded"
           >
             <Plus size={16} />
             New Character
           </button>
           <button
             onClick={handleExport}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
+            className="flex items-center gap-2 px-4 py-2 bg-accent-600 hover:bg-accent-700 rounded"
             disabled={(combatCharacters as CombatCharacter[]).length === 0}
           >
             <Download size={16} />
             Export
           </button>
-          <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded cursor-pointer">
+          <label className="flex items-center gap-2 px-4 py-2 bg-accent-600 hover:bg-accent-700 rounded cursor-pointer">
             <Upload size={16} />
             Import
             <input
@@ -299,21 +299,21 @@ export default function CharacterLibrary() {
       </div>
 
       {/* Search and Filters */}
-      <div className="flex gap-4 items-center bg-gray-800 p-4 rounded">
+      <div className="flex gap-4 items-center bg-surface-1 p-4 rounded">
         <div className="flex-1 relative">
-          <Search size={20} className="absolute left-3 top-2.5 text-gray-400" />
+          <Search size={20} className="absolute left-3 top-2.5 text-fg-muted" />
           <input
             type="text"
             placeholder="Search characters..."
             value={searchTerm}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-gray-700 rounded"
+            className="w-full pl-10 pr-4 py-2 bg-surface-2 rounded"
           />
         </div>
         <select
           value={filterCategory}
           onChange={(e: ChangeEvent<HTMLSelectElement>) => setFilterCategory(e.target.value)}
-          className="px-4 py-2 bg-gray-700 rounded"
+          className="px-4 py-2 bg-surface-2 rounded"
         >
           <option value="all">All Categories</option>
           {COMBAT_CATEGORIES.map(cat => (
@@ -325,7 +325,7 @@ export default function CharacterLibrary() {
         <select
           value={sortBy}
           onChange={(e: ChangeEvent<HTMLSelectElement>) => setSortBy(e.target.value as SortByValue)}
-          className="px-4 py-2 bg-gray-700 rounded"
+          className="px-4 py-2 bg-surface-2 rounded"
         >
           <option value="name">Sort by Name</option>
           <option value="category">Sort by Category</option>
@@ -339,18 +339,18 @@ export default function CharacterLibrary() {
           <Users size={20} className="text-purple-400" />
           <div className="flex-1">
             <span className="text-purple-200 font-medium">{partyCharacterCount} Party Character{partyCharacterCount !== 1 ? 's' : ''}</span>
-            <span className="text-gray-400 ml-2 text-sm">
+            <span className="text-fg-muted ml-2 text-sm">
               Party characters are managed in the Party tab and can be added to encounters from Encounter Setup.
             </span>
           </div>
-          <Info size={16} className="text-gray-500" />
+          <Info size={16} className="text-fg-faint" />
         </div>
       )}
 
       {/* Character List */}
       <div className="space-y-2">
         {displayCharacters.length === 0 ? (
-          <div className="text-center text-gray-400 py-8">
+          <div className="text-center text-fg-muted py-8">
             {(combatCharacters as CombatCharacter[]).length === 0 ? (
               <p>No characters in library. Create one to get started!</p>
             ) : (

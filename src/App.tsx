@@ -68,7 +68,7 @@ export default function GURPSPartyTool() {
   // Show loading screen while migration/initialization is in progress
   if (migrationStatus === 'checking') {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900 text-gray-100">
+      <div className="flex items-center justify-center h-screen bg-surface-0 text-fg-bright">
         <LoadingSpinner size="lg" label="Checking for updates..." />
       </div>
     );
@@ -76,7 +76,7 @@ export default function GURPSPartyTool() {
 
   if (migrationStatus === 'migrating') {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900 text-gray-100">
+      <div className="flex items-center justify-center h-screen bg-surface-0 text-fg-bright">
         <LoadingSpinner size="lg" label="Migrating to new storage format..." />
       </div>
     );
@@ -85,7 +85,7 @@ export default function GURPSPartyTool() {
   // Wait for campaign state to load
   if (!initialCampaignState) {
     return (
-      <div className="min-h-screen bg-gray-900 text-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-surface-0 text-fg-bright flex items-center justify-center">
         <LoadingSpinner size="lg" label="Loading campaign..." />
       </div>
     );

@@ -195,17 +195,17 @@ export function CharacterImportFlow({ onBack, onComplete }: CharacterImportFlowP
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="inline-flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-slate-600 p-8 transition-colors hover:border-indigo-400 hover:bg-slate-700/50"
+            className="inline-flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-edge-strong p-8 transition-colors hover:border-indigo-400 hover:bg-surface-2/50"
           >
-            <Upload className="h-10 w-10 text-slate-400" />
-            <span className="text-slate-300">Click to select a file</span>
-            <span className="text-xs text-slate-500">Supports .txt (GCS text), .gcs, or .json formats</span>
+            <Upload className="h-10 w-10 text-fg-muted" />
+            <span className="text-fg-secondary">Click to select a file</span>
+            <span className="text-xs text-fg-faint">Supports .txt (GCS text), .gcs, or .json formats</span>
           </button>
         </div>
       )}
 
       {validation && validation.errors.length > 0 && (
-        <div className="rounded border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-200" role="alert">
+        <div className="rounded border border-danger-500/50 bg-danger-500/10 p-3 text-sm text-danger-200" role="alert">
           <div className="mb-1 font-semibold">Import blocked</div>
           <ul className="list-disc space-y-1 pl-5">
             {validation.errors.map((issue, index) => (
@@ -218,11 +218,11 @@ export function CharacterImportFlow({ onBack, onComplete }: CharacterImportFlowP
       )}
 
       {validation && validation.warnings.length > 0 && (
-        <details className="rounded border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-100">
+        <details className="rounded border border-warning-500/40 bg-warning-500/10 p-3 text-sm text-warning-100">
           <summary className="cursor-pointer font-medium">
             Warnings ({validation.warnings.length})
           </summary>
-          <ul className="mt-2 list-disc space-y-1 pl-5 text-amber-200">
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-warning-200">
             {validation.warnings.map((issue, index) => (
               <li key={`${issue.section ?? issue.line ?? 'warning'}-${index}`}>
                 {issue.line ? `Line ${issue.line}: ` : ''}{issue.message}
@@ -233,19 +233,19 @@ export function CharacterImportFlow({ onBack, onComplete }: CharacterImportFlowP
       )}
 
       {importError && (
-        <div className="rounded border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-300" role="alert">
+        <div className="rounded border border-danger-500/50 bg-danger-500/10 p-3 text-sm text-danger-300" role="alert">
           {importError}
         </div>
       )}
 
       {stage === 'single-new' && singleItem && (
         <div className="space-y-4">
-          <div className="rounded border border-slate-600 bg-slate-800/60 p-4">
-            <div className="font-semibold text-slate-100">{singleItem.character.name}</div>
-            <div className="text-sm text-slate-400">{singleItem.character.gcsData?.totalPoints ?? 0} points · new character</div>
+          <div className="rounded border border-edge-strong bg-surface-1/60 p-4">
+            <div className="font-semibold text-fg-bright">{singleItem.character.name}</div>
+            <div className="text-sm text-fg-muted">{singleItem.character.gcsData?.totalPoints ?? 0} points · new character</div>
           </div>
           <div className="flex gap-3">
-            <button type="button" onClick={resetImport} className="flex-1 rounded border border-slate-600 px-4 py-2 text-slate-300 hover:bg-slate-700">
+            <button type="button" onClick={resetImport} className="flex-1 rounded border border-edge-strong px-4 py-2 text-fg-secondary hover:bg-surface-2">
               Cancel
             </button>
             <button type="button" onClick={() => addPendingCharacter(singleItem)} className="flex-1 rounded bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-500">
@@ -257,28 +257,28 @@ export function CharacterImportFlow({ onBack, onComplete }: CharacterImportFlowP
 
       {stage === 'single-match' && singleItem && singleExisting && (
         <div className="space-y-4">
-          <div className="rounded border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100">
+          <div className="rounded border border-warning-500/40 bg-warning-500/10 p-4 text-sm text-warning-100">
             A character named <span className="font-semibold">{singleExisting.name}</span> already exists.
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <button type="button" onClick={() => addPendingCharacter(singleItem)} className="rounded border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-700">
+            <button type="button" onClick={() => addPendingCharacter(singleItem)} className="rounded border border-edge-strong px-4 py-2 text-fg-primary hover:bg-surface-2">
               Create as new
             </button>
             <button type="button" onClick={() => setStage('update-preview')} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-500">
               Update existing
             </button>
           </div>
-          <button type="button" onClick={resetImport} className="w-full text-sm text-slate-400 hover:text-slate-200">Cancel</button>
+          <button type="button" onClick={resetImport} className="w-full text-sm text-fg-muted hover:text-fg-primary">Cancel</button>
         </div>
       )}
 
       {stage === 'update-preview' && singleItem && singleExisting && updateDiff && (
         <div className="space-y-4">
-          <div className="max-h-[55vh] overflow-y-auto rounded border border-slate-600 bg-slate-900/40 p-4">
+          <div className="max-h-[55vh] overflow-y-auto rounded border border-edge-strong bg-surface-0/40 p-4">
             <CharacterDiffPreview diff={updateDiff} />
           </div>
           <div className="flex gap-3">
-            <button type="button" onClick={() => setStage('single-match')} className="flex-1 rounded border border-slate-600 px-4 py-2 text-slate-300 hover:bg-slate-700">Cancel</button>
+            <button type="button" onClick={() => setStage('single-match')} className="flex-1 rounded border border-edge-strong px-4 py-2 text-fg-secondary hover:bg-surface-2">Cancel</button>
             <button type="button" onClick={() => updatePendingCharacter(singleItem)} className="flex-1 rounded bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-500">Confirm update</button>
           </div>
         </div>
@@ -307,7 +307,7 @@ export function CharacterImportFlow({ onBack, onComplete }: CharacterImportFlowP
         <button
           type="button"
           onClick={onBack}
-          className="w-full rounded border border-slate-600 px-4 py-2 text-slate-300 hover:bg-slate-700"
+          className="w-full rounded border border-edge-strong px-4 py-2 text-fg-secondary hover:bg-surface-2"
         >
           Back
         </button>

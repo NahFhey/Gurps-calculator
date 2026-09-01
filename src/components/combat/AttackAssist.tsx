@@ -198,8 +198,8 @@ export default function AttackAssist({
                 onClick={() => handleSelectAttack(attack)}
                 className={`w-full text-left p-3 rounded border-2 ${
                   selectedAttack === attack
-                    ? 'border-blue-500 bg-blue-900/30'
-                    : 'border-gray-600 bg-gray-800 hover:bg-gray-700'
+                    ? 'border-accent-500 bg-accent-900/30'
+                    : 'border-edge-strong bg-surface-1 hover:bg-surface-2'
                 }`}
                 disabled={attack._hidden}
               >
@@ -207,23 +207,23 @@ export default function AttackAssist({
                   <div>
                     <div className="font-semibold">{attack.name}</div>
                     {attack._hidden ? (
-                      <div className="text-sm text-gray-500 italic">
+                      <div className="text-sm text-fg-faint italic">
                         Stats unknown (use Custom Attack to specify)
                       </div>
                     ) : (
                       <>
-                        <div className="text-sm text-gray-400">
+                        <div className="text-sm text-fg-muted">
                           Skill: {attack.skill}
                           {attack.damage && ` | Damage: ${attack.damage}`}
                         </div>
                         {attack.notes && (
-                          <div className="text-xs text-gray-500 mt-1">{attack.notes}</div>
+                          <div className="text-xs text-fg-faint mt-1">{attack.notes}</div>
                         )}
                       </>
                     )}
                   </div>
                   {selectedAttack === attack && !attack._hidden && (
-                    <Swords size={20} className="text-blue-400" />
+                    <Swords size={20} className="text-accent-400" />
                   )}
                 </div>
               </button>
@@ -233,47 +233,47 @@ export default function AttackAssist({
               onClick={handleUseCustomAttack}
               className={`w-full p-3 rounded border-2 ${
                 showCustomAttack
-                  ? 'border-blue-500 bg-blue-900/30'
-                  : 'border-gray-600 bg-gray-800 hover:bg-gray-700'
+                  ? 'border-accent-500 bg-accent-900/30'
+                  : 'border-edge-strong bg-surface-1 hover:bg-surface-2'
               }`}
             >
               + Custom Attack
             </button>
           </div>
         ) : (
-          <div className="text-sm text-gray-400 mb-2">No attacks configured. Use custom attack.</div>
+          <div className="text-sm text-fg-muted mb-2">No attacks configured. Use custom attack.</div>
         )}
 
         {/* Custom Attack Form */}
         {(showCustomAttack || attacks.length === 0) && (
-          <div className="bg-gray-800 rounded p-3 space-y-2 mt-2">
+          <div className="bg-surface-1 rounded p-3 space-y-2 mt-2">
             <input
               type="text"
               value={customAttack.name}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomAttack({ ...customAttack, name: e.target.value })}
               placeholder="Attack name"
-              className="w-full px-3 py-2 bg-gray-700 rounded"
+              className="w-full px-3 py-2 bg-surface-2 rounded"
             />
             <input
               type="number"
               value={customAttack.skill}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomAttack({ ...customAttack, skill: e.target.value })}
               placeholder="Base skill"
-              className="w-full px-3 py-2 bg-gray-700 rounded"
+              className="w-full px-3 py-2 bg-surface-2 rounded"
             />
             <input
               type="text"
               value={customAttack.damage}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomAttack({ ...customAttack, damage: e.target.value })}
               placeholder="Damage (e.g., 2d+1)"
-              className="w-full px-3 py-2 bg-gray-700 rounded"
+              className="w-full px-3 py-2 bg-surface-2 rounded"
             />
             <input
               type="text"
               value={customAttack.notes}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomAttack({ ...customAttack, notes: e.target.value })}
               placeholder="Notes (optional)"
-              className="w-full px-3 py-2 bg-gray-700 rounded"
+              className="w-full px-3 py-2 bg-surface-2 rounded"
             />
           </div>
         )}
@@ -288,7 +288,7 @@ export default function AttackAssist({
               <select
                 value={selectedTargetId || ''}
                 onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedTargetId(e.target.value || null)}
-                className="w-full px-3 py-2 bg-gray-700 rounded"
+                className="w-full px-3 py-2 bg-surface-2 rounded"
               >
                 <option value="">No target selected</option>
                 {targets.map((target) => (
@@ -298,7 +298,7 @@ export default function AttackAssist({
                 ))}
               </select>
             ) : (
-              <div className="text-sm text-gray-400">No valid targets available</div>
+              <div className="text-sm text-fg-muted">No valid targets available</div>
             )}
           </div>
 
@@ -312,9 +312,9 @@ export default function AttackAssist({
               }}
             />
             {selectedLocation && (
-              <div className="text-xs text-gray-400 mt-2">
+              <div className="text-xs text-fg-muted mt-2">
                 Called-shot modifier:{' '}
-                <span className={locationModifierValue >= 0 ? 'text-green-400' : 'text-red-400'}>
+                <span className={locationModifierValue >= 0 ? 'text-success-400' : 'text-danger-400'}>
                   {locationModifierValue >= 0 ? '+' : ''}{locationModifierValue}
                 </span>
               </div>
@@ -329,19 +329,19 @@ export default function AttackAssist({
           <h4 className="font-semibold mb-2">Attack Modifiers</h4>
           {lockedModifiers.length > 0 && (
             <div className="mb-3">
-              <div className="text-xs uppercase tracking-wide text-gray-400 mb-2">Injected Modifiers</div>
+              <div className="text-xs uppercase tracking-wide text-fg-muted mb-2">Injected Modifiers</div>
               <div className="flex flex-wrap gap-2">
                 {lockedModifiers.map((modifier, index) => (
                   <span
                     key={`${modifier.label}-${index}`}
-                    className="px-2 py-1 bg-gray-900/80 border border-gray-700 rounded text-xs"
+                    className="px-2 py-1 bg-surface-0/80 border border-edge rounded text-xs"
                   >
                     {modifier.label} {modifier.value >= 0 ? '+' : ''}{modifier.value}
                   </span>
                 ))}
               </div>
               {injectedTotal !== 0 && (
-                <div className="text-xs text-gray-400 mt-1">
+                <div className="text-xs text-fg-muted mt-1">
                   Injected total: {injectedTotal >= 0 ? '+' : ''}{injectedTotal}
                 </div>
               )}
@@ -371,13 +371,13 @@ export default function AttackAssist({
 
       {/* Roll Result */}
       {rollResult && (
-        <div className={`p-4 rounded ${rollResult.success ? 'bg-green-900/30 border border-green-600' : 'bg-red-900/30 border border-red-600'}`}>
+        <div className={`p-4 rounded ${rollResult.success ? 'bg-success-900/30 border border-success-600' : 'bg-danger-900/30 border border-danger-600'}`}>
           <div className="text-center">
             <div className="text-2xl font-bold">
               {rollResult.total} vs {rollResult.target}
             </div>
             <div className="text-lg mt-1">
-              Margin: <span className={rollResult.margin >= 0 ? 'text-green-400' : 'text-red-400'}>
+              Margin: <span className={rollResult.margin >= 0 ? 'text-success-400' : 'text-danger-400'}>
                 {rollResult.margin >= 0 ? '+' : ''}{rollResult.margin}
               </span>
             </div>
@@ -392,14 +392,14 @@ export default function AttackAssist({
       <div className="flex gap-2 pt-2">
         <button
           onClick={onCancel}
-          className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded"
+          className="flex-1 px-4 py-2 bg-surface-3 hover:bg-surface-4 rounded"
         >
           Cancel
         </button>
         <button
           onClick={handleComplete}
           disabled={!isValid()}
-          className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 px-4 py-2 bg-success-600 hover:bg-success-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {rollResult ? 'Confirm & Log' : 'Log (No Roll)'}
         </button>

@@ -32,7 +32,7 @@ export default function ManeuverWorkflowWidgets({
         <div className="space-y-2">
           <h5 className="text-sm font-semibold">Aim Tracking</h5>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Target</label>
+            <label className="block text-xs text-fg-muted mb-1">Target</label>
             <select
               value={turnDecision?.aim?.targetInstanceId || ''}
               onChange={(e: ChangeEvent<HTMLSelectElement>) =>
@@ -41,7 +41,7 @@ export default function ManeuverWorkflowWidgets({
                   targetInstanceId: e.target.value || undefined,
                 })
               }
-              className="w-full px-3 py-2 bg-gray-700 rounded"
+              className="w-full px-3 py-2 bg-surface-2 rounded"
             >
               <option value="">No target</option>
               {targets.map((target) => (
@@ -52,7 +52,7 @@ export default function ManeuverWorkflowWidgets({
             </select>
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">
+            <label className="block text-xs text-fg-muted mb-1">
               Turns Aimed
             </label>
             <input
@@ -65,7 +65,7 @@ export default function ManeuverWorkflowWidgets({
                   turnsAimed: parseInt(e.target.value, 10) || 0,
                 })
               }
-              className="w-full px-3 py-2 bg-gray-700 rounded"
+              className="w-full px-3 py-2 bg-surface-2 rounded"
             />
           </div>
         </div>
@@ -83,7 +83,7 @@ export default function ManeuverWorkflowWidgets({
               })
             }
             placeholder="Describe the trigger condition"
-            className="w-full px-3 py-2 bg-gray-700 rounded"
+            className="w-full px-3 py-2 bg-surface-2 rounded"
           />
         </div>
       )}

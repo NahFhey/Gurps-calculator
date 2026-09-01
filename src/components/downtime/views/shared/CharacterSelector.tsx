@@ -56,8 +56,8 @@ function FatigueBadge({ status }: FatigueBadgeProps) {
     },
     exhausted: {
       icon: AlertOctagon,
-      bg: 'bg-red-900/50',
-      text: 'text-red-300',
+      bg: 'bg-danger-900/50',
+      text: 'text-danger-300',
       label: 'Exhausted',
     },
   };
@@ -118,7 +118,7 @@ export function CharacterSelector({
 
   return (
     <div className={`character-selector ${className}`}>
-      <label className="block text-sm font-medium text-gray-300 mb-1">
+      <label className="block text-sm font-medium text-fg-secondary mb-1">
         {label}
       </label>
 
@@ -128,9 +128,9 @@ export function CharacterSelector({
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
           className={`
-            block w-full rounded-md border px-3 py-2 pr-10 text-sm text-gray-100
-            ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-600 focus:border-blue-500 focus:ring-blue-500'}
-            ${disabled ? 'bg-gray-800 cursor-not-allowed' : 'bg-gray-900'}
+            block w-full rounded-md border px-3 py-2 pr-10 text-sm text-fg-bright
+            ${error ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-500' : 'border-edge-strong focus:border-accent-500 focus:ring-accent-500'}
+            ${disabled ? 'bg-surface-1 cursor-not-allowed' : 'bg-surface-0'}
           `}
           data-testid="character-selector"
         >
@@ -158,9 +158,9 @@ export function CharacterSelector({
         {/* Status Icon */}
         <div className="absolute inset-y-0 right-8 flex items-center pointer-events-none">
           {value && (
-            <span className="text-gray-500">
+            <span className="text-fg-faint">
               {getCharacterStatus(value).isAssigned ? (
-                <UserCheck className="w-4 h-4 text-green-400" />
+                <UserCheck className="w-4 h-4 text-success-400" />
               ) : (
                 <User className="w-4 h-4" />
               )}
@@ -178,7 +178,7 @@ export function CharacterSelector({
 
       {/* Error Message */}
       {error && (
-        <p className="mt-1 text-sm text-red-400" role="alert">
+        <p className="mt-1 text-sm text-danger-400" role="alert">
           {error}
         </p>
       )}
@@ -252,18 +252,18 @@ export function MultiCharacterSelector({
 
   return (
     <div className={`multi-character-selector ${className}`}>
-      <label className="block text-sm font-medium text-gray-300 mb-1">
+      <label className="block text-sm font-medium text-fg-secondary mb-1">
         {label}
         {maxSelections && (
-          <span className="text-gray-500 font-normal ml-1">
+          <span className="text-fg-faint font-normal ml-1">
             ({value.length}/{maxSelections})
           </span>
         )}
       </label>
 
-      <div className="space-y-1 max-h-32 overflow-y-auto border border-gray-600 rounded-md p-2 bg-gray-900">
+      <div className="space-y-1 max-h-32 overflow-y-auto border border-edge-strong rounded-md p-2 bg-surface-0">
         {availableCharacters.length === 0 ? (
-          <p className="text-sm text-gray-500 italic">No characters available</p>
+          <p className="text-sm text-fg-faint italic">No characters available</p>
         ) : (
           availableCharacters.map((char) => {
             const status = getCharacterStatus(char.id);
@@ -275,7 +275,7 @@ export function MultiCharacterSelector({
                 key={char.id}
                 className={`
                   flex items-center gap-2 p-1 rounded cursor-pointer
-                  ${isSelected ? 'bg-blue-900/50' : 'hover:bg-gray-800'}
+                  ${isSelected ? 'bg-accent-900/50' : 'hover:bg-surface-1'}
                   ${disabled || isDisabledByMax ? 'opacity-50 cursor-not-allowed' : ''}
                 `}
               >
@@ -284,9 +284,9 @@ export function MultiCharacterSelector({
                   checked={isSelected}
                   onChange={() => toggleCharacter(char.id)}
                   disabled={disabled || !!isDisabledByMax}
-                  className="rounded border-gray-600 bg-gray-800 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-edge-strong bg-surface-1 text-accent-600 focus:ring-accent-500"
                 />
-                <span className="text-sm flex-1 text-gray-200">{char.name}</span>
+                <span className="text-sm flex-1 text-fg-primary">{char.name}</span>
                 {status.fatigueStatus !== 'rested' && (
                   <FatigueBadge status={status.fatigueStatus} />
                 )}

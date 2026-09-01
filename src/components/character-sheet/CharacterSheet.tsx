@@ -101,7 +101,7 @@ export function CharacterSheet({ character, editRequestToken = 0, onSpendPoints 
   const totalPoints = calculateTotalPoints(displayData);
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-900 p-4">
+    <div className="h-full overflow-y-auto bg-surface-0 p-4">
       {/* Header with Portrait, Name, and Edit Controls */}
       <div className="flex items-start gap-4 mb-4">
         {/* Portrait / Token images */}
@@ -120,12 +120,12 @@ export function CharacterSheet({ character, editRequestToken = 0, onSpendPoints 
                   type="text"
                   value={draftName}
                   onChange={(e) => setDraftName(e.target.value)}
-                  className="text-2xl font-bold bg-gray-800 border border-gray-600 rounded px-2 py-1 text-gray-100"
+                  className="text-2xl font-bold bg-surface-1 border border-edge-strong rounded px-2 py-1 text-fg-bright"
                 />
               ) : (
-                <h1 className="text-2xl font-bold text-gray-100">{displayName}</h1>
+                <h1 className="text-2xl font-bold text-fg-bright">{displayName}</h1>
               )}
-              <span className="text-gray-400">({totalPoints} pts)</span>
+              <span className="text-fg-muted">({totalPoints} pts)</span>
               {(displayData.unspentPoints ?? 0) > 0 && (
                 <button
                   type="button"
@@ -143,14 +143,14 @@ export function CharacterSheet({ character, editRequestToken = 0, onSpendPoints 
                 <>
                   <button
                     onClick={handleSave}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded"
+                    className="flex items-center gap-1 px-3 py-1.5 bg-success-600 hover:bg-success-700 text-white rounded"
                   >
                     <Save size={16} />
                     Save
                   </button>
                   <button
                     onClick={handleCancel}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white rounded"
+                    className="flex items-center gap-1 px-3 py-1.5 bg-surface-3 hover:bg-surface-2 text-white rounded"
                   >
                     <X size={16} />
                     Cancel
@@ -159,7 +159,7 @@ export function CharacterSheet({ character, editRequestToken = 0, onSpendPoints 
               ) : (
                 <button
                   onClick={() => setEditMode(true)}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded"
+                  className="flex items-center gap-1 px-3 py-1.5 bg-accent-600 hover:bg-accent-700 text-white rounded"
                 >
                   <Edit2 size={16} />
                   Edit

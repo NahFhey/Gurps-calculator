@@ -79,19 +79,19 @@ export default function GCSImportModal({ onImport, onCancel }: GCSImportModalPro
 
   const getConfidenceColor = (confidence: Confidence): string => {
     switch (confidence) {
-      case 'high': return 'text-green-400';
+      case 'high': return 'text-success-400';
       case 'medium': return 'text-yellow-400';
-      case 'low': return 'text-red-400';
-      default: return 'text-gray-400';
+      case 'low': return 'text-danger-400';
+      default: return 'text-fg-muted';
     }
   };
 
   const getConfidenceIcon = (confidence: Confidence): ReactNode => {
     switch (confidence) {
-      case 'high': return <CheckCircle size={20} className="text-green-400" />;
+      case 'high': return <CheckCircle size={20} className="text-success-400" />;
       case 'medium': return <AlertTriangle size={20} className="text-yellow-400" />;
-      case 'low': return <AlertTriangle size={20} className="text-red-400" />;
-      default: return <FileText size={20} className="text-gray-400" />;
+      case 'low': return <AlertTriangle size={20} className="text-danger-400" />;
+      default: return <FileText size={20} className="text-fg-muted" />;
     }
   };
 
@@ -101,7 +101,7 @@ export default function GCSImportModal({ onImport, onCancel }: GCSImportModalPro
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="bg-gray-800 p-6 rounded-lg max-w-4xl w-full m-4 max-h-[90vh] overflow-y-auto"
+        className="bg-surface-1 p-6 rounded-lg max-w-4xl w-full m-4 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex justify-between items-center mb-6">
           <h2 id={titleId} className="text-2xl font-bold">Import from GCS</h2>
@@ -109,7 +109,7 @@ export default function GCSImportModal({ onImport, onCancel }: GCSImportModalPro
             type="button"
             onClick={onCancel}
             aria-label="Close"
-            className="text-gray-400 hover:text-white"
+            className="text-fg-muted hover:text-white"
           >
             <X size={24} aria-hidden="true" />
           </button>
@@ -125,13 +125,13 @@ export default function GCSImportModal({ onImport, onCancel }: GCSImportModalPro
               <textarea
                 value={gcsText}
                 onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setGcsText(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 rounded font-mono text-sm"
+                className="w-full px-3 py-2 bg-surface-2 rounded font-mono text-sm"
                 rows={20}
                 placeholder="Paste your GCS character sheet text here...&#10;&#10;Example:&#10;Name: John Doe&#10;ST: 12&#10;DX: 14&#10;IQ: 10&#10;HT: 11&#10;HP: 12&#10;..."
               />
             </div>
 
-            <div className="bg-blue-900 border border-blue-700 p-4 rounded">
+            <div className="bg-accent-900 border border-accent-700 p-4 rounded">
               <h3 className="font-semibold mb-2 flex items-center gap-2">
                 <FileText size={16} />
                 How to Import from GCS
@@ -149,13 +149,13 @@ export default function GCSImportModal({ onImport, onCancel }: GCSImportModalPro
             <div className="flex gap-4 justify-end">
               <button
                 onClick={onCancel}
-                className="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded"
+                className="px-6 py-2 bg-surface-2 hover:bg-surface-3 rounded"
               >
                 Cancel
               </button>
               <button
                 onClick={handleParse}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded"
+                className="px-6 py-2 bg-accent-600 hover:bg-accent-700 rounded"
                 disabled={!gcsText.trim()}
               >
                 Parse & Preview
@@ -168,7 +168,7 @@ export default function GCSImportModal({ onImport, onCancel }: GCSImportModalPro
             {/* Confidence & Issues */}
             {parseResult && (
               <div className={`border rounded p-4 ${
-                parseResult.needsReview ? 'border-red-500 bg-red-900 bg-opacity-20' : 'border-blue-500 bg-blue-900 bg-opacity-20'
+                parseResult.needsReview ? 'border-danger-500 bg-danger-900 bg-opacity-20' : 'border-accent-500 bg-accent-900 bg-opacity-20'
               }`}>
                 <div className="flex items-center gap-3 mb-3">
                   {getConfidenceIcon(parseResult.confidence)}
@@ -179,7 +179,7 @@ export default function GCSImportModal({ onImport, onCancel }: GCSImportModalPro
                       </span>
                     </h3>
                     {parseResult.needsReview && (
-                      <p className="text-sm text-red-400">
+                      <p className="text-sm text-danger-400">
                         Review required - please verify the data below
                       </p>
                     )}
@@ -204,57 +204,57 @@ export default function GCSImportModal({ onImport, onCancel }: GCSImportModalPro
 
             {/* Preview Data */}
             {parseResult && (
-              <div className="bg-gray-900 border border-gray-700 rounded p-4">
+              <div className="bg-surface-0 border border-edge rounded p-4">
                 <h3 className="font-semibold mb-4">Preview Character Data</h3>
 
                 <div className="space-y-4">
                   {/* Basic Info */}
                   <div>
-                    <h4 className="text-sm text-gray-400 uppercase mb-2">Basic Info</h4>
+                    <h4 className="text-sm text-fg-muted uppercase mb-2">Basic Info</h4>
                     <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>Name: <span className="text-blue-400">{parseResult.data.name || '(unnamed)'}</span></div>
-                      <div>Category: <span className="text-blue-400">{parseResult.data.category}</span></div>
+                      <div>Name: <span className="text-accent-400">{parseResult.data.name || '(unnamed)'}</span></div>
+                      <div>Category: <span className="text-accent-400">{parseResult.data.category}</span></div>
                     </div>
                   </div>
 
                   {/* Attributes */}
                   <div>
-                    <h4 className="text-sm text-gray-400 uppercase mb-2">Attributes</h4>
+                    <h4 className="text-sm text-fg-muted uppercase mb-2">Attributes</h4>
                     <div className="grid grid-cols-4 gap-2 text-sm">
-                      <div>ST: <span className="text-blue-400">{parseResult.data.st}</span></div>
-                      <div>DX: <span className="text-blue-400">{parseResult.data.dx}</span></div>
-                      <div>IQ: <span className="text-blue-400">{parseResult.data.iq}</span></div>
-                      <div>HT: <span className="text-blue-400">{parseResult.data.ht}</span></div>
+                      <div>ST: <span className="text-accent-400">{parseResult.data.st}</span></div>
+                      <div>DX: <span className="text-accent-400">{parseResult.data.dx}</span></div>
+                      <div>IQ: <span className="text-accent-400">{parseResult.data.iq}</span></div>
+                      <div>HT: <span className="text-accent-400">{parseResult.data.ht}</span></div>
                     </div>
                   </div>
 
                   {/* Secondary */}
                   <div>
-                    <h4 className="text-sm text-gray-400 uppercase mb-2">Secondary Characteristics</h4>
+                    <h4 className="text-sm text-fg-muted uppercase mb-2">Secondary Characteristics</h4>
                     <div className="grid grid-cols-3 gap-2 text-sm">
-                      <div>HP: <span className="text-blue-400">{parseResult.data.hp}</span></div>
-                      <div>FP: <span className="text-blue-400">{parseResult.data.fp}</span></div>
-                      <div>MP: <span className="text-blue-400">{parseResult.data.mp}</span></div>
+                      <div>HP: <span className="text-accent-400">{parseResult.data.hp}</span></div>
+                      <div>FP: <span className="text-accent-400">{parseResult.data.fp}</span></div>
+                      <div>MP: <span className="text-accent-400">{parseResult.data.mp}</span></div>
                     </div>
                   </div>
 
                   {/* Combat */}
                   <div>
-                    <h4 className="text-sm text-gray-400 uppercase mb-2">Combat Stats</h4>
+                    <h4 className="text-sm text-fg-muted uppercase mb-2">Combat Stats</h4>
                     <div className="grid grid-cols-3 gap-2 text-sm">
-                      <div>Speed: <span className="text-blue-400">{parseResult.data.basicSpeed}</span></div>
-                      <div>Move: <span className="text-blue-400">{parseResult.data.basicMove}</span></div>
-                      <div>Dodge: <span className="text-blue-400">{parseResult.data.dodge}</span></div>
+                      <div>Speed: <span className="text-accent-400">{parseResult.data.basicSpeed}</span></div>
+                      <div>Move: <span className="text-accent-400">{parseResult.data.basicMove}</span></div>
+                      <div>Dodge: <span className="text-accent-400">{parseResult.data.dodge}</span></div>
                     </div>
                   </div>
 
                   {/* Defenses */}
                   <div>
-                    <h4 className="text-sm text-gray-400 uppercase mb-2">Defenses</h4>
+                    <h4 className="text-sm text-fg-muted uppercase mb-2">Defenses</h4>
                     <div className="grid grid-cols-3 gap-2 text-sm">
-                      <div>Parry: <span className="text-blue-400">{parseResult.data.parry}</span></div>
-                      <div>Block: <span className="text-blue-400">{parseResult.data.block}</span></div>
-                      <div>DR: <span className="text-blue-400">{parseResult.data.dr}</span></div>
+                      <div>Parry: <span className="text-accent-400">{parseResult.data.parry}</span></div>
+                      <div>Block: <span className="text-accent-400">{parseResult.data.block}</span></div>
+                      <div>DR: <span className="text-accent-400">{parseResult.data.dr}</span></div>
                     </div>
                   </div>
                 </div>
@@ -268,13 +268,13 @@ export default function GCSImportModal({ onImport, onCancel }: GCSImportModalPro
                   setShowPreview(false);
                   setParseResult(null);
                 }}
-                className="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded"
+                className="px-6 py-2 bg-surface-2 hover:bg-surface-3 rounded"
               >
                 Back
               </button>
               <button
                 onClick={handleImport}
-                className="px-6 py-2 bg-green-600 hover:bg-green-700 rounded"
+                className="px-6 py-2 bg-success-600 hover:bg-success-700 rounded"
               >
                 Import Character
               </button>

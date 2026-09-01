@@ -57,17 +57,17 @@ function LootItemRow({
   const TypeIcon = LOOT_TYPES.find(t => t.value === item.type)?.icon || Package;
 
   return (
-    <div className="flex items-center gap-3 bg-gray-800 rounded-lg p-3">
-      <TypeIcon size={18} className="text-gray-400 flex-shrink-0" />
+    <div className="flex items-center gap-3 bg-surface-1 rounded-lg p-3">
+      <TypeIcon size={18} className="text-fg-muted flex-shrink-0" />
 
       <div className="flex-1 min-w-0">
         <div className="font-semibold text-sm truncate">{item.name}</div>
-        <div className="text-xs text-gray-400">
+        <div className="text-xs text-fg-muted">
           {item.type}{item.materialType ? ` (${item.materialType})` : ''} × {item.quantity}
           {item.value != null && ` — ${item.value} cp`}
         </div>
         {item.notes && (
-          <div className="text-xs text-gray-500 mt-0.5">{item.notes}</div>
+          <div className="text-xs text-fg-faint mt-0.5">{item.notes}</div>
         )}
       </div>
 
@@ -77,7 +77,7 @@ function LootItemRow({
         onChange={(e: ChangeEvent<HTMLSelectElement>) =>
           onUpdateDistribution(item.id, e.target.value, item.quantity)
         }
-        className="px-2 py-1 bg-gray-700 rounded text-sm w-36"
+        className="px-2 py-1 bg-surface-2 rounded text-sm w-36"
       >
         <option value="party">Party Pool</option>
         {partyCharacters.map(c => (
@@ -87,7 +87,7 @@ function LootItemRow({
 
       <button
         onClick={() => onRemove(item.id)}
-        className="p-1.5 text-red-400 hover:bg-red-900/30 rounded transition-colors"
+        className="p-1.5 text-danger-400 hover:bg-danger-900/30 rounded transition-colors"
         title="Remove loot item"
       >
         <Trash2 size={16} />
@@ -236,27 +236,27 @@ export default function LootDistribution({ onComplete }: LootDistributionProps) 
           Loot Distribution
         </h2>
         {lootItems.length > 0 && totalValue > 0 && (
-          <div className="text-sm text-gray-400">Total value: {totalValue} cp</div>
+          <div className="text-sm text-fg-muted">Total value: {totalValue} cp</div>
         )}
       </div>
 
       {/* Add new loot item */}
       {!distributed && (
-        <div className="bg-gray-800 rounded-lg p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-gray-300">Add Loot</h3>
+        <div className="bg-surface-1 rounded-lg p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-fg-secondary">Add Loot</h3>
           <div className="grid grid-cols-2 gap-3">
             <input
               type="text"
               value={newName}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setNewName(e.target.value)}
               placeholder="Item name"
-              className="px-3 py-2 bg-gray-700 rounded text-sm"
+              className="px-3 py-2 bg-surface-2 rounded text-sm"
               onKeyDown={e => e.key === 'Enter' && handleAddItem()}
             />
             <select
               value={newType}
               onChange={(e: ChangeEvent<HTMLSelectElement>) => setNewType(e.target.value as LootItem['type'])}
-              className="px-3 py-2 bg-gray-700 rounded text-sm"
+              className="px-3 py-2 bg-surface-2 rounded text-sm"
             >
               {LOOT_TYPES.map(t => (
                 <option key={t.value} value={t.value}>{t.label}</option>
@@ -268,21 +268,21 @@ export default function LootDistribution({ onComplete }: LootDistributionProps) 
               onChange={(e: ChangeEvent<HTMLInputElement>) => setNewQuantity(parseInt(e.target.value) || 1)}
               min={1}
               placeholder="Qty"
-              className="px-3 py-2 bg-gray-700 rounded text-sm"
+              className="px-3 py-2 bg-surface-2 rounded text-sm"
             />
             <input
               type="number"
               value={newValue}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setNewValue(e.target.value)}
               placeholder="Value (cp)"
-              className="px-3 py-2 bg-gray-700 rounded text-sm"
+              className="px-3 py-2 bg-surface-2 rounded text-sm"
             />
           </div>
           {newType === 'material' && (
             <select
               value={newMaterialType}
               onChange={(e: ChangeEvent<HTMLSelectElement>) => setNewMaterialType(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+              className="w-full px-3 py-2 bg-surface-2 rounded text-sm"
               title="Material type (optional)"
             >
               <option value="">Untyped loot material</option>
@@ -292,12 +292,12 @@ export default function LootDistribution({ onComplete }: LootDistributionProps) 
             </select>
           )}
           {(newType === 'equipment' || newType === 'other') && (
-            <label className="flex items-center gap-2 text-sm text-gray-300">
+            <label className="flex items-center gap-2 text-sm text-fg-secondary">
               <input
                 type="checkbox"
                 checked={newMagical}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setNewMagical(e.target.checked)}
-                className="rounded border-gray-600 bg-gray-700 text-violet-500"
+                className="rounded border-edge-strong bg-surface-2 text-violet-500"
               />
               Magical
             </label>
@@ -307,12 +307,12 @@ export default function LootDistribution({ onComplete }: LootDistributionProps) 
             value={newNotes}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setNewNotes(e.target.value)}
             placeholder="Notes (optional)"
-            className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+            className="w-full px-3 py-2 bg-surface-2 rounded text-sm"
           />
           <button
             onClick={handleAddItem}
             disabled={!newName.trim()}
-            className="flex items-center gap-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded text-sm font-medium transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-surface-3 disabled:cursor-not-allowed rounded text-sm font-medium transition-colors"
           >
             <Plus size={16} />
             Add Item
@@ -338,24 +338,24 @@ export default function LootDistribution({ onComplete }: LootDistributionProps) 
 
       {/* Empty state */}
       {lootItems.length === 0 && !distributed && (
-        <div className="text-center text-gray-400 py-8 bg-gray-800 rounded-lg">
+        <div className="text-center text-fg-muted py-8 bg-surface-1 rounded-lg">
           No loot items added yet. Add items above or skip to finish.
         </div>
       )}
 
       {/* Distribution summary */}
       {distributed && (
-        <div className="bg-green-900/30 border border-green-700/50 rounded-lg p-4 space-y-2">
-          <div className="flex items-center gap-2 text-green-300 font-semibold">
+        <div className="bg-success-900/30 border border-success-700/50 rounded-lg p-4 space-y-2">
+          <div className="flex items-center gap-2 text-success-300 font-semibold">
             <Check size={18} />
             Loot Distributed
           </div>
           {partyItems.length > 0 && (
             <div className="text-sm">
-              <span className="flex items-center gap-1 text-gray-300">
+              <span className="flex items-center gap-1 text-fg-secondary">
                 <Users size={14} /> Party Pool:
               </span>
-              <div className="ml-5 text-gray-400">
+              <div className="ml-5 text-fg-muted">
                 {partyItems.map(i => `${i.name} × ${i.quantity}`).join(', ')}
               </div>
             </div>
@@ -365,10 +365,10 @@ export default function LootDistribution({ onComplete }: LootDistributionProps) 
             const char = (partyCharacters as Character[]).find(c => c.id === dist?.targetId);
             return (
               <div key={item.id} className="text-sm">
-                <span className="flex items-center gap-1 text-gray-300">
+                <span className="flex items-center gap-1 text-fg-secondary">
                   <User size={14} /> {char?.name || 'Unknown'}:
                 </span>
-                <div className="ml-5 text-gray-400">
+                <div className="ml-5 text-fg-muted">
                   {item.name} × {item.quantity}
                 </div>
               </div>
@@ -378,11 +378,11 @@ export default function LootDistribution({ onComplete }: LootDistributionProps) 
       )}
 
       {/* Actions */}
-      <div className="flex gap-3 justify-center pt-4 border-t border-gray-700">
+      <div className="flex gap-3 justify-center pt-4 border-t border-edge">
         {!distributed && lootItems.length > 0 && (
           <button
             onClick={handleDistribute}
-            className="flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition-colors"
+            className="flex items-center gap-2 px-6 py-3 bg-success-600 hover:bg-success-700 rounded-lg font-semibold transition-colors"
           >
             <Check size={18} />
             Distribute
@@ -390,7 +390,7 @@ export default function LootDistribution({ onComplete }: LootDistributionProps) 
         )}
         <button
           onClick={onComplete}
-          className="px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg transition-colors"
+          className="px-6 py-3 bg-surface-3 hover:bg-surface-2 rounded-lg transition-colors"
         >
           {distributed || lootItems.length === 0 ? 'Finish' : 'Skip Loot'}
         </button>

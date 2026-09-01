@@ -21,8 +21,8 @@ export function ConnectionStatus() {
         onClick={() => setDialogOpen(true)}
         className={`flex items-center gap-1.5 rounded border px-2.5 py-1 text-xs font-medium transition-colors ${
           isConnected
-            ? 'border-green-500/60 bg-green-500/10 text-green-300 hover:bg-green-500/20'
-            : 'border-gray-600 bg-gray-800 text-gray-400 hover:border-gray-500 hover:text-gray-300'
+            ? 'border-success-500/60 bg-success-500/10 text-success-300 hover:bg-success-500/20'
+            : 'border-edge-strong bg-surface-1 text-fg-muted hover:border-edge-bright hover:text-fg-secondary'
         }`}
         title={isConnected ? `Connected (${playerCount} players)` : 'Multiplayer — click to connect'}
       >

@@ -46,13 +46,13 @@ interface RevealPanelProps {
 function RevealControl({ label, value, options, onChange, compact = false }: RevealControlProps) {
   return (
     <div className={compact ? 'space-y-1' : 'space-y-2'}>
-      <label className={`text-${compact ? 'xs' : 'sm'} font-medium text-gray-300`}>
+      <label className={`text-${compact ? 'xs' : 'sm'} font-medium text-fg-secondary`}>
         {label}
       </label>
       <select
         value={value}
         onChange={(e: ChangeEvent<HTMLSelectElement>) => onChange(e.target.value)}
-        className={`w-full px-2 py-${compact ? '1' : '1.5'} bg-gray-700 rounded text-${compact ? 'xs' : 'sm'} border border-gray-600 focus:border-blue-500 focus:outline-none`}
+        className={`w-full px-2 py-${compact ? '1' : '1.5'} bg-surface-2 rounded text-${compact ? 'xs' : 'sm'} border border-edge-strong focus:border-accent-500 focus:outline-none`}
       >
         {options.map(opt => (
           <option key={opt.value} value={opt.value}>
@@ -101,7 +101,7 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
 
   if (controllableCombatants.length === 0) {
     return (
-      <div className="bg-gray-800 rounded-lg p-4 text-gray-400 text-center">
+      <div className="bg-surface-1 rounded-lg p-4 text-fg-muted text-center">
         No enemy combatants to reveal (all participants are players/allies/objects)
       </div>
     );
@@ -128,12 +128,12 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4">
+    <div className="bg-surface-1 rounded-lg p-4">
       <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
         <Eye size={20} />
         Reveal Controls (GM Only)
       </h3>
-      <p className="text-sm text-gray-400 mb-4">
+      <p className="text-sm text-fg-muted mb-4">
         Control what information is visible to players. Changes apply immediately.
       </p>
 
@@ -147,15 +147,15 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
           const isExpanded = expandedCombatants[participant.instanceId];
 
           return (
-            <div key={participant.instanceId} className="bg-gray-900 rounded-lg border border-gray-700">
+            <div key={participant.instanceId} className="bg-surface-0 rounded-lg border border-edge">
               {/* Header */}
               <div
-                className="flex justify-between items-center p-3 cursor-pointer hover:bg-gray-850"
+                className="flex justify-between items-center p-3 cursor-pointer hover:bg-surface-1"
                 onClick={() => toggleExpanded(participant.instanceId)}
               >
                 <div>
                   <h4 className="font-semibold">{participant.name}</h4>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-fg-muted">
                     {participant.side} • {getRevealSummary(reveal)}
                   </p>
                 </div>
@@ -164,7 +164,7 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
 
               {/* Expanded Controls */}
               {isExpanded && (
-                <div className="p-3 border-t border-gray-700 space-y-3">
+                <div className="p-3 border-t border-edge space-y-3">
                   {/* Name Reveal */}
                   <RevealControl
                     label="Name"
@@ -191,7 +191,7 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
 
                   {/* Defense Reveals */}
                   <div className="space-y-2">
-                    <div className="text-sm font-medium text-gray-300">Defenses</div>
+                    <div className="text-sm font-medium text-fg-secondary">Defenses</div>
                     <div className="grid grid-cols-3 gap-2">
                       <RevealControl
                         label="Dodge"
@@ -245,12 +245,12 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
                     {/* DR Min input */}
                     {reveal.dr.general === RevealMode.DR_MIN_KNOWN && (
                       <div className="ml-4">
-                        <label className="text-xs text-gray-400">Minimum DR:</label>
+                        <label className="text-xs text-fg-muted">Minimum DR:</label>
                         <input
                           type="number"
                           value={reveal.dr.generalMin || 0}
                           onChange={(e: ChangeEvent<HTMLInputElement>) => handleRevealChange(participant.instanceId, 'dr.generalMin', parseInt(e.target.value) || 0)}
-                          className="w-20 ml-2 px-2 py-1 bg-gray-700 rounded text-sm"
+                          className="w-20 ml-2 px-2 py-1 bg-surface-2 rounded text-sm"
                           min="0"
                         />
                       </div>
@@ -281,7 +281,7 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
                   />
 
                   {/* Quick Actions */}
-                  <div className="flex gap-2 pt-2 border-t border-gray-700">
+                  <div className="flex gap-2 pt-2 border-t border-edge">
                     <button
                       onClick={() => {
                         // Reveal all
@@ -296,7 +296,7 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
                           { field: 'notes', value: RevealMode.NOTES_FULL }
                         ]);
                       }}
-                      className="flex-1 px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
+                      className="flex-1 px-3 py-1 bg-success-600 hover:bg-success-700 rounded text-sm"
                     >
                       Reveal All
                     </button>
@@ -314,7 +314,7 @@ export default function RevealPanel({ combatActive, combatReveal, saveCombatReve
                           { field: 'notes', value: RevealMode.NOTES_HIDDEN }
                         ]);
                       }}
-                      className="flex-1 px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm"
+                      className="flex-1 px-3 py-1 bg-danger-600 hover:bg-danger-700 rounded text-sm"
                     >
                       Hide All
                     </button>

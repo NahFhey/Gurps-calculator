@@ -28,44 +28,44 @@ export function ToolTemplatesView() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-lg font-semibold text-slate-200">
+        <div className="flex items-center gap-2 text-lg font-semibold text-fg-primary">
           <Hammer className="h-5 w-5" /> Tool Templates
         </div>
-        <span className="text-sm text-gray-400">{toolTemplates.length} templates</span>
+        <span className="text-sm text-fg-muted">{toolTemplates.length} templates</span>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {toolTemplates.map((template) => (
           <div
             key={template.templateId}
-            className="rounded-lg border border-slate-700 bg-slate-800/60 p-4"
+            className="rounded-lg border border-edge bg-surface-1/60 p-4"
           >
             <div className="font-semibold text-white">{template.name}</div>
             <div className="mt-3 space-y-2 text-sm">
               {Object.entries(template.activityCategories || {}).map(([category, modifiers]) => (
                 <div
                   key={category}
-                  className="flex items-center justify-between rounded bg-slate-900/50 px-3 py-2"
+                  className="flex items-center justify-between rounded bg-surface-0/50 px-3 py-2"
                 >
-                  <span className="capitalize text-slate-300">{category}</span>
+                  <span className="capitalize text-fg-secondary">{category}</span>
                   <div className="flex gap-3 text-xs">
                     {modifiers.skillBonus !== undefined && modifiers.skillBonus !== 0 && (
-                      <span className={modifiers.skillBonus > 0 ? 'text-green-400' : 'text-red-400'}>
+                      <span className={modifiers.skillBonus > 0 ? 'text-success-400' : 'text-danger-400'}>
                         Skill {formatNumber(modifiers.skillBonus)}
                       </span>
                     )}
                     {modifiers.timeBonus !== undefined && modifiers.timeBonus !== 0 && (
-                      <span className={modifiers.timeBonus > 0 ? 'text-green-400' : 'text-red-400'}>
+                      <span className={modifiers.timeBonus > 0 ? 'text-success-400' : 'text-danger-400'}>
                         Time {formatNumber(modifiers.timeBonus)}
                       </span>
                     )}
                     {modifiers.qualityModifier !== undefined && modifiers.qualityModifier !== 0 && (
-                      <span className={modifiers.qualityModifier > 0 ? 'text-green-400' : 'text-red-400'}>
+                      <span className={modifiers.qualityModifier > 0 ? 'text-success-400' : 'text-danger-400'}>
                         Quality {formatNumber(modifiers.qualityModifier)}
                       </span>
                     )}
                     {modifiers.yieldFlat !== undefined && modifiers.yieldFlat !== 0 && (
-                      <span className={modifiers.yieldFlat > 0 ? 'text-green-400' : 'text-red-400'}>
+                      <span className={modifiers.yieldFlat > 0 ? 'text-success-400' : 'text-danger-400'}>
                         Yield {formatNumber(modifiers.yieldFlat)}
                       </span>
                     )}
@@ -73,7 +73,7 @@ export function ToolTemplatesView() {
                 </div>
               ))}
               {Object.keys(template.activityCategories || {}).length === 0 && (
-                <div className="text-xs text-slate-500">No activity modifiers</div>
+                <div className="text-xs text-fg-faint">No activity modifiers</div>
               )}
             </div>
           </div>
@@ -81,7 +81,7 @@ export function ToolTemplatesView() {
       </div>
 
       {toolTemplates.length === 0 && (
-        <div className="text-center text-slate-400 py-8">
+        <div className="text-center text-fg-muted py-8">
           No tool templates defined.
         </div>
       )}

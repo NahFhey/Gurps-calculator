@@ -41,9 +41,9 @@ interface StatusBadgeProps {
 function StatusBadge({ status }: StatusBadgeProps) {
   const config: Record<TaskStatus, { bg: string; text: string; icon: React.ElementType; label: string }> = {
     pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: Clock, label: 'Pending' },
-    in_progress: { bg: 'bg-blue-100', text: 'text-blue-800', icon: Loader, label: 'In Progress' },
-    resolved: { bg: 'bg-green-100', text: 'text-green-800', icon: Check, label: 'Resolved' },
-    cancelled: { bg: 'bg-gray-100', text: 'text-gray-600', icon: Ban, label: 'Cancelled' },
+    in_progress: { bg: 'bg-accent-100', text: 'text-accent-800', icon: Loader, label: 'In Progress' },
+    resolved: { bg: 'bg-success-100', text: 'text-success-800', icon: Check, label: 'Resolved' },
+    cancelled: { bg: 'bg-surface-2', text: 'text-fg-secondary', icon: Ban, label: 'Cancelled' },
   };
 
   const { bg, text, icon: Icon, label } = config[status];
@@ -97,16 +97,16 @@ export function AlchemyTaskCard({
   // Determine card border color based on status
   const statusBorders: Record<TaskStatus, string> = {
     pending: 'border-yellow-300',
-    in_progress: 'border-blue-300',
-    resolved: 'border-green-300',
-    cancelled: 'border-gray-300',
+    in_progress: 'border-accent-300',
+    resolved: 'border-success-300',
+    cancelled: 'border-edge-bright',
   };
 
   const isActionable = !readonly && (task.status === 'pending' || task.status === 'in_progress');
 
   return (
     <div
-      className={`alchemy-task-card p-3 rounded-lg border-2 bg-white ${statusBorders[task.status]}`}
+      className={`alchemy-task-card p-3 rounded-lg border-2 bg-surface-1 ${statusBorders[task.status]}`}
       data-testid="alchemy-task-card"
       data-task-id={task.id}
     >
@@ -120,7 +120,7 @@ export function AlchemyTaskCard({
       </div>
 
       {/* Task Details */}
-      <div className="task-details text-sm text-gray-600 space-y-1 mb-3">
+      <div className="task-details text-sm text-fg-secondary space-y-1 mb-3">
         <p>
           <span className="font-medium">Alchemist:</span> {leaderName}
         </p>
@@ -137,10 +137,10 @@ export function AlchemyTaskCard({
         </p>
         <p>
           <span className="font-medium">Modifier:</span>{' '}
-          <span className={skillMod >= 0 ? 'text-green-600' : 'text-red-600'}>
+          <span className={skillMod >= 0 ? 'text-success-600' : 'text-danger-600'}>
             {skillMod >= 0 ? '+' : ''}{skillMod}
           </span>
-          <span className="text-xs text-gray-500 ml-1">
+          <span className="text-xs text-fg-faint ml-1">
             (Lab +{labMod}, Helpers +{helperMod})
           </span>
         </p>
@@ -150,7 +150,7 @@ export function AlchemyTaskCard({
       {task.results && (
         <div
           className={`task-results p-2 rounded text-sm ${
-            task.results.success ? 'bg-green-50 text-green-800' : 'bg-gray-50 text-gray-700'
+            task.results.success ? 'bg-success-50 text-success-800' : 'bg-surface-2 text-fg-primary'
           }`}
           data-testid="task-results"
         >
@@ -159,7 +159,7 @@ export function AlchemyTaskCard({
             <ul className="list-disc list-inside">
               {task.results.inventoryChanges.map((change, i) => (
                 <li key={i}>
-                  <span className={change.quantity > 0 ? 'text-green-600' : 'text-red-600'}>
+                  <span className={change.quantity > 0 ? 'text-success-600' : 'text-danger-600'}>
                     {change.quantity > 0 ? '+' : ''}{change.quantity}
                   </span>{' '}
                   {change.itemName}
@@ -168,14 +168,14 @@ export function AlchemyTaskCard({
             </ul>
           )}
           {task.results.experienceGained !== undefined && task.results.experienceGained > 0 && (
-            <p className="text-blue-600 mt-1">+{task.results.experienceGained} XP</p>
+            <p className="text-accent-600 mt-1">+{task.results.experienceGained} XP</p>
           )}
         </div>
       )}
 
       {/* Cancelled Message */}
       {task.status === 'cancelled' && (
-        <div className="task-cancelled p-2 rounded bg-gray-50 text-gray-600 text-sm italic">
+        <div className="task-cancelled p-2 rounded bg-surface-2 text-fg-secondary text-sm italic">
           Work session was cancelled
         </div>
       )}
@@ -196,7 +196,7 @@ export function AlchemyTaskCard({
           <button
             type="button"
             onClick={onCancel}
-            className="flex items-center gap-1 px-3 py-1.5 border border-red-300 text-red-600 text-sm rounded hover:bg-red-50 transition-colors"
+            className="flex items-center gap-1 px-3 py-1.5 border border-danger-300 text-danger-600 text-sm rounded hover:bg-danger-50 transition-colors"
             disabled={task.status === 'in_progress'}
             data-testid="cancel-button"
           >

@@ -211,7 +211,7 @@ describe('ItemsView', () => {
 
     fireEvent.click(screen.getByText('Test Item'));
 
-    const deleteButton = document.querySelector('button.text-red-400');
+    const deleteButton = document.querySelector('button.text-danger-400');
     expect(deleteButton).not.toBeNull();
     if (deleteButton) fireEvent.click(deleteButton);
 

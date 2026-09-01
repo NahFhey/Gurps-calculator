@@ -291,13 +291,13 @@ export default function InjuryResolutionPanel({
     <div className="space-y-4">
       {/* Step Indicator */}
       <div className="flex items-center gap-2 text-sm">
-        <div className={`px-3 py-1 rounded ${step === 'location' ? 'bg-blue-600' : 'bg-gray-700'}`}>
+        <div className={`px-3 py-1 rounded ${step === 'location' ? 'bg-accent-600' : 'bg-surface-2'}`}>
           1. Location
         </div>
-        <div className={`px-3 py-1 rounded ${step === 'damage' ? 'bg-blue-600' : 'bg-gray-700'}`}>
+        <div className={`px-3 py-1 rounded ${step === 'damage' ? 'bg-accent-600' : 'bg-surface-2'}`}>
           2. Damage
         </div>
-        <div className={`px-3 py-1 rounded ${step === 'effects' ? 'bg-blue-600' : 'bg-gray-700'}`}>
+        <div className={`px-3 py-1 rounded ${step === 'effects' ? 'bg-accent-600' : 'bg-surface-2'}`}>
           3. Effects
         </div>
       </div>
@@ -313,14 +313,14 @@ export default function InjuryResolutionPanel({
           <div className="flex gap-2">
             <button
               onClick={onCancel}
-              className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded"
+              className="flex-1 px-4 py-2 bg-surface-3 hover:bg-surface-4 rounded"
             >
               Cancel
             </button>
             <button
               onClick={handleLocationConfirm}
               disabled={!selectedLocation}
-              className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-2 bg-accent-600 hover:bg-accent-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Next: Damage
             </button>
@@ -332,14 +332,14 @@ export default function InjuryResolutionPanel({
       {step === 'damage' && selectedLocation && (
         <>
           {/* Show selected location */}
-          <div className="bg-gray-800 rounded p-3">
-            <div className="text-sm text-gray-400">Hit Location:</div>
+          <div className="bg-surface-1 rounded p-3">
+            <div className="text-sm text-fg-muted">Hit Location:</div>
             <div className="text-lg font-semibold text-yellow-400">
               {selectedLocation.label}
             </div>
             <button
               onClick={() => setStep('location')}
-              className="mt-2 text-xs text-blue-300 hover:text-blue-200"
+              className="mt-2 text-xs text-accent-300 hover:text-accent-200"
               type="button"
             >
               Change Hit Location
@@ -348,11 +348,11 @@ export default function InjuryResolutionPanel({
 
           {/* Damage Type */}
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Damage Type</label>
+            <label className="block text-sm text-fg-muted mb-1">Damage Type</label>
             <select
               value={damageType}
               onChange={(e: ChangeEvent<HTMLSelectElement>) => setDamageType(e.target.value as any)}
-              className="w-full px-3 py-2 bg-gray-700 rounded"
+              className="w-full px-3 py-2 bg-surface-2 rounded"
             >
               {getDamageTypeOptions().map((option: { value: string; label: string }) => (
                 <option key={option.value} value={option.value}>
@@ -369,7 +369,7 @@ export default function InjuryResolutionPanel({
             <div className="space-y-2">
               {/* Expression Input */}
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Damage Expression</label>
+                <label className="block text-sm text-fg-muted mb-1">Damage Expression</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -379,7 +379,7 @@ export default function InjuryResolutionPanel({
                       setUseManual(false);
                     }}
                     placeholder="e.g., 2d+1, sw+2, 1d6-1"
-                    className="flex-1 px-3 py-2 bg-gray-700 rounded"
+                    className="flex-1 px-3 py-2 bg-surface-2 rounded"
                   />
                   <button
                     onClick={handleRollDamage}
@@ -390,17 +390,17 @@ export default function InjuryResolutionPanel({
                   </button>
                 </div>
                 {attacker && (expression.includes('sw') || expression.includes('thr')) && (
-                  <div className="text-xs text-gray-400 mt-1">
+                  <div className="text-xs text-fg-muted mt-1">
                     Will resolve based on attacker ST {attacker.st}
                   </div>
                 )}
               </div>
 
               {/* OR Manual Input */}
-              <div className="text-center text-gray-500 text-sm">OR</div>
+              <div className="text-center text-fg-faint text-sm">OR</div>
 
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Manual Damage</label>
+                <label className="block text-sm text-fg-muted mb-1">Manual Damage</label>
                 <input
                   type="number"
                   value={manualDamage}
@@ -410,7 +410,7 @@ export default function InjuryResolutionPanel({
                     setRollResult(null);
                   }}
                   placeholder="Enter damage number"
-                  className="w-full px-3 py-2 bg-gray-700 rounded"
+                  className="w-full px-3 py-2 bg-surface-2 rounded"
                 />
               </div>
             </div>
@@ -418,8 +418,8 @@ export default function InjuryResolutionPanel({
 
           {/* Roll Result */}
           {rollResult && !useManual && (
-            <div className="bg-gray-800 rounded p-3">
-              <div className="text-sm text-gray-400 mb-1">Rolled</div>
+            <div className="bg-surface-1 rounded p-3">
+              <div className="text-sm text-fg-muted mb-1">Rolled</div>
               <div className="text-xl font-bold">
                 {rollResult.dice.join(' + ')}
                 {rollResult.modifier !== 0 && ` ${rollResult.modifier > 0 ? '+' : ''}${rollResult.modifier}`}
@@ -457,32 +457,32 @@ export default function InjuryResolutionPanel({
 
           {/* Injury Result */}
           {injuryResult && (
-            <div className="bg-red-900/30 border border-red-600 rounded p-4">
+            <div className="bg-danger-900/30 border border-danger-600 rounded p-4">
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Raw Damage:</span>
+                  <span className="text-fg-muted">Raw Damage:</span>
                   <span className="font-semibold">{injuryResult.rawDamage}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Location DR:</span>
+                  <span className="text-fg-muted">Location DR:</span>
                   <span className="font-semibold">-{injuryResult.locationDR}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Penetrating:</span>
+                  <span className="text-fg-muted">Penetrating:</span>
                   <span className="font-semibold">{injuryResult.penetrating}</span>
                 </div>
                 {injuryResult.woundingMultiplier !== 1 && (
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Wounding Multiplier:</span>
+                    <span className="text-fg-muted">Wounding Multiplier:</span>
                     <span className="font-semibold">×{injuryResult.woundingMultiplier}</span>
                   </div>
                 )}
-                <div className="flex justify-between pt-2 border-t border-red-700">
+                <div className="flex justify-between pt-2 border-t border-danger-700">
                   <span className="font-bold">Injury:</span>
-                  <span className="font-bold text-xl text-red-400">{injuryResult.injury} HP</span>
+                  <span className="font-bold text-xl text-danger-400">{injuryResult.injury} HP</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Target HP after:</span>
+                  <span className="text-fg-muted">Target HP after:</span>
                   <span className="font-semibold">
                     {target.currentHP} → {target.currentHP - injuryResult.injury}
                   </span>
@@ -506,7 +506,7 @@ export default function InjuryResolutionPanel({
           <div className="flex gap-2">
             <button
               onClick={() => setStep('damage')}
-              className="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded"
+              className="px-4 py-2 bg-surface-3 hover:bg-surface-4 rounded"
             >
               Back
             </button>

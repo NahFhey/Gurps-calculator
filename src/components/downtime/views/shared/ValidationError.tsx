@@ -63,25 +63,25 @@ const ERROR_CONFIG: Record<string, ErrorConfig> = {
   [DOWNTIME_ERROR_CODES.TOOL_CONFLICT]: {
     icon: AlertCircle,
     title: 'Tool Already In Use',
-    bgColor: 'bg-red-900/30',
-    borderColor: 'border-red-700/50',
-    textColor: 'text-red-300',
+    bgColor: 'bg-danger-900/30',
+    borderColor: 'border-danger-700/50',
+    textColor: 'text-danger-300',
   },
   [DOWNTIME_ERROR_CODES.UNKNOWN_ERROR]: {
     icon: AlertCircle,
     title: 'Error',
-    bgColor: 'bg-red-900/30',
-    borderColor: 'border-red-700/50',
-    textColor: 'text-red-300',
+    bgColor: 'bg-danger-900/30',
+    borderColor: 'border-danger-700/50',
+    textColor: 'text-danger-300',
   },
 };
 
 const DEFAULT_CONFIG: ErrorConfig = {
   icon: AlertCircle,
   title: 'Validation Error',
-  bgColor: 'bg-red-900/30',
-  borderColor: 'border-red-700/50',
-  textColor: 'text-red-300',
+  bgColor: 'bg-danger-900/30',
+  borderColor: 'border-danger-700/50',
+  textColor: 'text-danger-300',
 };
 
 // ============================================================================
@@ -146,7 +146,7 @@ function ErrorMetadata({ code, meta }: ErrorMetadataProps) {
     case DOWNTIME_ERROR_CODES.LEADER_ALREADY_ASSIGNED:
     case DOWNTIME_ERROR_CODES.HELPER_ALREADY_ASSIGNED: {
       return (
-        <div className="text-xs mt-2 space-y-0.5 text-gray-400">
+        <div className="text-xs mt-2 space-y-0.5 text-fg-muted">
           {meta.existingRole ? (
             <p>Currently assigned as: {formatValue(meta.existingRole)}</p>
           ) : null}
@@ -159,7 +159,7 @@ function ErrorMetadata({ code, meta }: ErrorMetadataProps) {
 
     case DOWNTIME_ERROR_CODES.LOCK_CONFLICT:
       return (
-        <div className="text-xs mt-2 space-y-0.5 text-gray-400">
+        <div className="text-xs mt-2 space-y-0.5 text-fg-muted">
           <p>You cannot retry the same activity target in this slot.</p>
           <p>Try a different target or wait for the next time slot.</p>
         </div>
@@ -168,7 +168,7 @@ function ErrorMetadata({ code, meta }: ErrorMetadataProps) {
     case DOWNTIME_ERROR_CODES.TOOL_CONFLICT:
       if (Array.isArray(meta.conflictingToolIds)) {
         return (
-          <div className="text-xs mt-2 text-gray-400">
+          <div className="text-xs mt-2 text-fg-muted">
             <p>Conflicting tools: {(meta.conflictingToolIds as string[]).join(', ')}</p>
           </div>
         );
@@ -197,7 +197,7 @@ interface InlineErrorProps {
 export function InlineError({ message, className = '' }: InlineErrorProps) {
   return (
     <p
-      className={`text-sm text-red-400 flex items-center gap-1 ${className}`}
+      className={`text-sm text-danger-400 flex items-center gap-1 ${className}`}
       role="alert"
       data-testid="inline-error"
     >

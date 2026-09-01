@@ -57,7 +57,7 @@ describe('SkillsView', () => {
       render(<SkillsView {...defaultProps} cookingSkills={cookingSkills} gmMode={true} />);
 
       // Find all buttons with red delete styling
-      const deleteButtons = document.querySelectorAll('button.text-red-400');
+      const deleteButtons = document.querySelectorAll('button.text-danger-400');
       expect(deleteButtons.length).toBe(2);
     });
   });
@@ -81,7 +81,7 @@ describe('SkillsView', () => {
       render(<SkillsView {...defaultProps} cookingSkills={cookingSkills} gmMode={false} />);
 
       // Should have no delete buttons when GM mode is disabled
-      const deleteButtons = document.querySelectorAll('button.text-red-400');
+      const deleteButtons = document.querySelectorAll('button.text-danger-400');
       expect(deleteButtons.length).toBe(0);
     });
   });
@@ -163,7 +163,7 @@ describe('SkillsView', () => {
 
     render(<SkillsView {...defaultProps} cookingSkills={cookingSkills} gmMode={true} />);
 
-    const deleteButtons = document.querySelectorAll('button.text-red-400');
+    const deleteButtons = document.querySelectorAll('button.text-danger-400');
     expect(deleteButtons.length).toBe(1);
 
     fireEvent.click(deleteButtons[0]);

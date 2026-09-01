@@ -245,9 +245,9 @@ export function AnalysisView({ reagents, labs, workers, saveReagents, downtimeSt
   }
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
+    <div className="bg-surface-1 rounded-lg p-6">
       <h2 className="text-xl font-bold mb-4">Reagent Analysis</h2>
-      <p className="text-sm text-gray-400 mb-6">
+      <p className="text-sm text-fg-muted mb-6">
         Analyze reagents to identify their properties. Each analysis consumes 1U of the reagent.
       </p>
 
@@ -257,37 +257,37 @@ export function AnalysisView({ reagents, labs, workers, saveReagents, downtimeSt
             <h3 className="text-lg font-semibold">{selectedReagent.name}</h3>
             <button
               onClick={() => setSelectedReagent(null)}
-              className="bg-gray-600 px-4 py-2 rounded"
+              className="bg-surface-3 px-4 py-2 rounded"
             >
               ← Back to List
             </button>
           </div>
 
-          <div className="bg-gray-700 p-4 rounded">
+          <div className="bg-surface-2 p-4 rounded">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-400">Quantity:</span>{' '}
-                <span className={selectedReagent.quantity < 1 ? 'text-red-400' : 'text-white'}>
+                <span className="text-fg-muted">Quantity:</span>{' '}
+                <span className={selectedReagent.quantity < 1 ? 'text-danger-400' : 'text-white'}>
                   {selectedReagent.quantity}U
                 </span>
               </div>
               <div>
-                <span className="text-gray-400">Identification Level:</span>{' '}
-                <span className="text-blue-400">
+                <span className="text-fg-muted">Identification Level:</span>{' '}
+                <span className="text-accent-400">
                   {selectedReagent.identificationLevel ?? 0}/4 - {levelNames[selectedReagent.identificationLevel ?? 0]}
                 </span>
               </div>
             </div>
 
             {selectedReagent.falseProfile && (
-              <div className="mt-3 p-2 bg-red-900 bg-opacity-30 border border-red-500 rounded text-xs text-red-300">
+              <div className="mt-3 p-2 bg-danger-900 bg-opacity-30 border border-danger-500 rounded text-xs text-danger-300">
                 ⚠️ Warning: This reagent has a false profile from a critical failure. Edit in Manager tab to correct.
               </div>
             )}
           </div>
 
           {selectedReagent.quantity >= 1 && (selectedReagent.identificationLevel ?? 0) < 4 && (
-            <div className="bg-gray-700 p-4 rounded space-y-3">
+            <div className="bg-surface-2 p-4 rounded space-y-3">
               <h4 className="font-semibold">Perform Analysis</h4>
               <div className="grid grid-cols-3 gap-3">
                 <div>
@@ -301,7 +301,7 @@ export function AnalysisView({ reagents, labs, workers, saveReagents, downtimeSt
                         setSkill(String(worker.skills.alchemy || 10));
                       }
                     }}
-                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                    className="w-full bg-surface-3 px-3 py-2 rounded"
                   >
                     <option value="">Select worker...</option>
                     {availableWorkers.map(w => (
@@ -316,7 +316,7 @@ export function AnalysisView({ reagents, labs, workers, saveReagents, downtimeSt
                   <select
                     value={selectedLabId}
                     onChange={(e) => setSelectedLabId(e.target.value)}
-                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                    className="w-full bg-surface-3 px-3 py-2 rounded"
                   >
                     {(labs || [{ id: 'default', name: 'Basic Lab', rating: 0 }]).map(lab => (
                       <option key={lab.id} value={lab.id}>
@@ -331,7 +331,7 @@ export function AnalysisView({ reagents, labs, workers, saveReagents, downtimeSt
                     type="number"
                     value={skill}
                     onChange={(e) => setSkill(e.target.value)}
-                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                    className="w-full bg-surface-3 px-3 py-2 rounded"
                     placeholder="e.g., 14"
                   />
                 </div>
@@ -342,7 +342,7 @@ export function AnalysisView({ reagents, labs, workers, saveReagents, downtimeSt
                       type="number"
                       value={roll.total || ''}
                       onChange={(e) => setRoll({ dice: [], total: parseInt(e.target.value) || 0 })}
-                      className="flex-1 bg-gray-600 px-3 py-2 rounded"
+                      className="flex-1 bg-surface-3 px-3 py-2 rounded"
                       placeholder="3-18"
                       min="3"
                       max="18"
@@ -355,7 +355,7 @@ export function AnalysisView({ reagents, labs, workers, saveReagents, downtimeSt
                     />
                   </div>
                   {skill && (
-                    <div className="text-xs text-gray-400 mt-1">
+                    <div className="text-xs text-fg-muted mt-1">
                       {(() => {
                         const selectedLab = labs?.find(l => l.id === selectedLabId) || { rating: 0 };
                         const labBonus = selectedLab.rating || 0;
@@ -371,12 +371,12 @@ export function AnalysisView({ reagents, labs, workers, saveReagents, downtimeSt
               </div>
               <button
                 onClick={performAnalysis}
-                className="w-full bg-green-600 px-4 py-2 rounded hover:bg-green-700"
+                className="w-full bg-success-600 px-4 py-2 rounded hover:bg-success-700"
               >
                 Perform Analysis (Consumes 1U)
               </button>
 
-              <div className="text-xs text-gray-400 bg-gray-800 p-3 rounded">
+              <div className="text-xs text-fg-muted bg-surface-1 p-3 rounded">
                 <div className="font-semibold mb-1">Identification Levels:</div>
                 <div>MoS 0-1: Level 1 (Primary Aspect)</div>
                 <div>MoS 2-3: Level 2 (Primary + Secondary)</div>
@@ -389,9 +389,9 @@ export function AnalysisView({ reagents, labs, workers, saveReagents, downtimeSt
           )}
 
           {(selectedReagent.identificationLevel ?? 0) >= 4 && (
-            <div className="bg-green-900 bg-opacity-30 border border-green-500 p-4 rounded text-center">
-              <div className="text-green-400 font-semibold">Fully Identified</div>
-              <div className="text-sm text-gray-300 mt-1">
+            <div className="bg-success-900 bg-opacity-30 border border-success-500 p-4 rounded text-center">
+              <div className="text-success-400 font-semibold">Fully Identified</div>
+              <div className="text-sm text-fg-secondary mt-1">
                 All properties of this reagent are known.
               </div>
             </div>
@@ -401,12 +401,12 @@ export function AnalysisView({ reagents, labs, workers, saveReagents, downtimeSt
             <div className="space-y-2">
               <h4 className="font-semibold">Analysis History</h4>
               {(selectedReagent.analysisHistory as AnalysisRecord[]).map((a) => (
-                <div key={a.id} className="bg-gray-700 p-3 rounded text-sm">
+                <div key={a.id} className="bg-surface-2 p-3 rounded text-sm">
                   <div className="flex justify-between">
                     <span>{a.result}</span>
-                    <span className="text-gray-400">{new Date(a.date).toLocaleDateString()}</span>
+                    <span className="text-fg-muted">{new Date(a.date).toLocaleDateString()}</span>
                   </div>
-                  <div className="text-xs text-gray-400 mt-1">
+                  <div className="text-xs text-fg-muted mt-1">
                     {a.worker} | Skill {a.skill} | Roll: {a.roll} | MoS: {a.mos} | Level {a.identificationLevelBefore} → {a.identificationLevelAfter}
                   </div>
                 </div>
@@ -420,25 +420,25 @@ export function AnalysisView({ reagents, labs, workers, saveReagents, downtimeSt
           {reagents.filter(r => r.quantity > 0).map((r) => (
             <div
               key={r.id}
-              className="bg-gray-700 p-3 rounded cursor-pointer hover:bg-gray-600"
+              className="bg-surface-2 p-3 rounded cursor-pointer hover:bg-surface-3"
               onClick={() => setSelectedReagent(r)}
             >
               <div className="flex justify-between items-center">
                 <div className="flex-1">
                   <div className="font-medium">{r.name}</div>
-                  <div className="text-xs text-gray-400 mt-1">
+                  <div className="text-xs text-fg-muted mt-1">
                     Quantity: {r.quantity}U | ID Level: {r.identificationLevel ?? 0}/4 - {levelNames[r.identificationLevel ?? 0]}
-                    {r.falseProfile && <span className="text-red-400 ml-2">⚠️ False Profile</span>}
+                    {r.falseProfile && <span className="text-danger-400 ml-2">⚠️ False Profile</span>}
                   </div>
                 </div>
                 <div className="text-sm">
                   <div
                     className={`px-2 py-1 rounded ${
                       (r.identificationLevel ?? 0) === 4
-                        ? 'bg-green-600'
+                        ? 'bg-success-600'
                         : (r.identificationLevel ?? 0) >= 2
                         ? 'bg-yellow-600'
-                        : 'bg-gray-600'
+                        : 'bg-surface-3'
                     }`}
                   >
                     {levelNames[r.identificationLevel ?? 0]}
@@ -448,7 +448,7 @@ export function AnalysisView({ reagents, labs, workers, saveReagents, downtimeSt
             </div>
           ))}
           {reagents.filter(r => r.quantity > 0).length === 0 && (
-            <div className="text-gray-500 text-center py-4">No reagents available for analysis</div>
+            <div className="text-fg-faint text-center py-4">No reagents available for analysis</div>
           )}
         </div>
       )}

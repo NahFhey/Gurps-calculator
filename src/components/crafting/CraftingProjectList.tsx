@@ -77,14 +77,14 @@ export function CraftingProjectList({
   }
 
   const phaseStyles = {
-    setup: { bg: 'bg-blue-900 bg-opacity-30', border: 'border-blue-600', text: 'text-blue-400' },
+    setup: { bg: 'bg-accent-900 bg-opacity-30', border: 'border-accent-600', text: 'text-accent-400' },
     design: { bg: 'bg-purple-900 bg-opacity-30', border: 'border-purple-600', text: 'text-purple-400' },
-    craft: { bg: 'bg-green-900 bg-opacity-30', border: 'border-green-600', text: 'text-green-400' },
-    complete: { bg: 'bg-green-900 bg-opacity-30', border: 'border-green-600', text: 'text-green-400' },
+    craft: { bg: 'bg-success-900 bg-opacity-30', border: 'border-success-600', text: 'text-success-400' },
+    complete: { bg: 'bg-success-900 bg-opacity-30', border: 'border-success-600', text: 'text-success-400' },
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6 space-y-6">
+    <div className="bg-surface-1 rounded-lg p-6 space-y-6">
       {/* In-Progress Projects */}
       <div>
         <h2 className="text-xl font-bold mb-4 text-yellow-400">In-Progress Projects</h2>
@@ -116,33 +116,33 @@ export function CraftingProjectList({
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg capitalize">{c.name || `${c.currentQuality} ${c.template}`}</h3>
-                    <div className="text-sm text-gray-400">Phase: <span className={phaseStyle.text}>{c.phase}</span> | Started: {c.startDate || 'unknown'} {c.startDay && <span className="text-green-400">[Day {c.startDay}]</span>}</div>
+                    <div className="text-sm text-fg-muted">Phase: <span className={phaseStyle.text}>{c.phase}</span> | Started: {c.startDate || 'unknown'} {c.startDay && <span className="text-success-400">[Day {c.startDay}]</span>}</div>
                     {c.phase !== 'setup' && (
-                      <div className="text-xs text-gray-400 mt-1">Progress: {currentProgress}/{targetHours}h ({Math.round(progressPercent)}%)</div>
+                      <div className="text-xs text-fg-muted mt-1">Progress: {currentProgress}/{targetHours}h ({Math.round(progressPercent)}%)</div>
                     )}
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => {
                       onSelectProject(c);
-                    }} className="bg-blue-600 px-4 py-2 rounded">Resume</button>
+                    }} className="bg-accent-600 px-4 py-2 rounded">Resume</button>
                     <button
                       onClick={() => {
                         if (confirm(`Delete in-progress project "${c.name || c.template}"?`)) {
                           saveCrafts(crafts.filter(x => x.id !== c.id));
                         }
                       }}
-                      className="bg-red-600 px-4 py-2 rounded hover:bg-red-700"
+                      className="bg-danger-600 px-4 py-2 rounded hover:bg-danger-700"
                     >
                       Delete
                     </button>
                   </div>
                 </div>
-                <div className="text-sm text-gray-400">Materials: {materialList}</div>
-                <div className="text-sm text-gray-400 mb-2">W: {finalWeight} lbs | HP: {finalHP} | HT: {avgHT + q.htBonus}</div>
+                <div className="text-sm text-fg-muted">Materials: {materialList}</div>
+                <div className="text-sm text-fg-muted mb-2">W: {finalWeight} lbs | HP: {finalHP} | HT: {avgHT + q.htBonus}</div>
                 {c.phase !== 'setup' && (
-                  <div className="w-full bg-gray-600 rounded-full h-2">
+                  <div className="w-full bg-surface-3 rounded-full h-2">
                     <div
-                      className={`h-2 rounded-full transition-all duration-300 ${phaseStyle.text === 'text-purple-400' ? 'bg-purple-600' : 'bg-green-600'}`}
+                      className={`h-2 rounded-full transition-all duration-300 ${phaseStyle.text === 'text-purple-400' ? 'bg-purple-600' : 'bg-success-600'}`}
                       style={{ width: `${progressPercent}%` }}
                     />
                   </div>
@@ -151,14 +151,14 @@ export function CraftingProjectList({
             );
           }).filter(Boolean)}
           {crafts.filter(c => !c.completed).length === 0 && (
-            <div className="text-gray-500 italic">No in-progress projects</div>
+            <div className="text-fg-faint italic">No in-progress projects</div>
           )}
         </div>
       </div>
 
       {/* Completed Projects */}
       <div>
-        <h2 className="text-xl font-bold mb-4 text-green-400">Completed Projects</h2>
+        <h2 className="text-xl font-bold mb-4 text-success-400">Completed Projects</h2>
         <div className="space-y-4">
           {crafts.filter(c => c.completed).map(c => {
             if (!c.templateType || !c.template) return null;
@@ -167,16 +167,16 @@ export function CraftingProjectList({
             const materialList = getMaterialList(c, true);
 
             return (
-              <div key={c.id} className="bg-gray-700 rounded">
+              <div key={c.id} className="bg-surface-2 rounded">
                 <div
-                  className="flex items-center gap-3 p-4 cursor-pointer hover:bg-gray-600"
+                  className="flex items-center gap-3 p-4 cursor-pointer hover:bg-surface-3"
                   onClick={() => setExpandedCrafts(p => ({ ...p, [c.id]: !p[c.id] }))}
                 >
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg capitalize">{c.name || `${c.currentQuality} ${c.template}`}</h3>
-                    <div className="text-sm text-gray-400 mt-1">Completed: {c.completedDate || 'unknown'} | Materials: {materialList}</div>
+                    <div className="text-sm text-fg-muted mt-1">Completed: {c.completedDate || 'unknown'} | Materials: {materialList}</div>
                   </div>
-                  <div className="text-sm text-gray-400">
+                  <div className="text-sm text-fg-muted">
                     <div>W: {finalWeight} lbs</div>
                     <div>HP: {finalHP} | HT: {avgHT + q.htBonus}</div>
                   </div>
@@ -187,118 +187,118 @@ export function CraftingProjectList({
                         saveCrafts(crafts.filter(x => x.id !== c.id));
                       }
                     }}
-                    className="bg-red-600 px-3 py-1 rounded hover:bg-red-700 text-sm"
+                    className="bg-danger-600 px-3 py-1 rounded hover:bg-danger-700 text-sm"
                   >
                     Delete
                   </button>
-                  <span className="text-gray-400">{expandedCrafts[c.id] ? '\u25BC' : '\u25B6'}</span>
+                  <span className="text-fg-muted">{expandedCrafts[c.id] ? '\u25BC' : '\u25B6'}</span>
                 </div>
 
                 {expandedCrafts[c.id] && (
-                  <div className="px-4 pb-4 space-y-3 border-t border-gray-600 pt-3">
+                  <div className="px-4 pb-4 space-y-3 border-t border-edge-strong pt-3">
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Custom Name</label>
+                      <label className="block text-xs text-fg-muted mb-1">Custom Name</label>
                       <input
                         value={c.name || ''}
                         onChange={(e) => saveCrafts(crafts.map(x => x.id === c.id ? { ...x, name: e.target.value } : x))}
                         placeholder={`${c.currentQuality} ${c.template}`}
-                        className="w-full bg-gray-600 px-3 py-2 rounded"
+                        className="w-full bg-surface-3 px-3 py-2 rounded"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Quality</label>
+                      <label className="block text-xs text-fg-muted mb-1">Quality</label>
                       <select
                         value={c.currentQuality}
                         onChange={(e) => saveCrafts(crafts.map(x => x.id === c.id ? { ...x, currentQuality: e.target.value } : x))}
-                        className="w-full bg-gray-600 px-3 py-2 rounded"
+                        className="w-full bg-surface-3 px-3 py-2 rounded"
                       >
                         {Object.keys(QUALITIES).map(qKey => <option key={qKey} value={qKey}>{qKey.charAt(0).toUpperCase() + qKey.slice(1)}</option>)}
                       </select>
                     </div>
 
-                    <div className="bg-gray-600 p-3 rounded">
+                    <div className="bg-surface-3 p-3 rounded">
                       <div className="text-sm font-semibold mb-2">Template Details</div>
                       <div className="text-sm space-y-1">
-                        <div>Type: <span className="text-gray-300 capitalize">{c.templateType} - {c.template}</span></div>
-                        <div>Started: <span className="text-gray-300">{c.startDate || 'unknown'}</span> {c.startDay && <span className="text-green-400">[Day {c.startDay}]</span>}</div>
-                        <div>Completed: <span className="text-gray-300">{c.completedDate || 'unknown'}</span> {c.completedDay && <span className="text-green-400">[Day {c.completedDay}]</span>}</div>
-                        <div>Materials Used: <span className="text-gray-300">{materialList}</span></div>
-                        <div>Base Weight: <span className="text-gray-300">{t.weight} lbs</span> &rarr; Final: <span className="text-blue-300">{finalWeight} lbs</span></div>
-                        <div>Base HP: <span className="text-gray-300">{t.hp}</span> &rarr; Final: <span className="text-blue-300">{finalHP}</span></div>
-                        <div>Final HT: <span className="text-gray-300">{avgHT + q.htBonus}</span></div>
+                        <div>Type: <span className="text-fg-secondary capitalize">{c.templateType} - {c.template}</span></div>
+                        <div>Started: <span className="text-fg-secondary">{c.startDate || 'unknown'}</span> {c.startDay && <span className="text-success-400">[Day {c.startDay}]</span>}</div>
+                        <div>Completed: <span className="text-fg-secondary">{c.completedDate || 'unknown'}</span> {c.completedDay && <span className="text-success-400">[Day {c.completedDay}]</span>}</div>
+                        <div>Materials Used: <span className="text-fg-secondary">{materialList}</span></div>
+                        <div>Base Weight: <span className="text-fg-secondary">{t.weight} lbs</span> &rarr; Final: <span className="text-accent-300">{finalWeight} lbs</span></div>
+                        <div>Base HP: <span className="text-fg-secondary">{t.hp}</span> &rarr; Final: <span className="text-accent-300">{finalHP}</span></div>
+                        <div>Final HT: <span className="text-fg-secondary">{avgHT + q.htBonus}</span></div>
 
                         {c.templateType === 'weapons' && (
                           <>
-                            {t.damage && <div>Damage: <span className="text-gray-300">{String(t.damage)}</span></div>}
-                            {t.reach && <div>Reach: <span className="text-gray-300">{String(t.reach)}</span></div>}
-                            {t.parry && <div>Parry: <span className="text-gray-300">{String(t.parry)}</span></div>}
-                            {t.cost !== undefined && <div>Cost: <span className="text-gray-300">${t.cost}</span></div>}
-                            {t.ST && <div>ST: <span className="text-gray-300">{String(t.ST)}</span></div>}
-                            {t.notes && <div>Notes: <span className="text-gray-300">{String(t.notes)}</span></div>}
+                            {t.damage && <div>Damage: <span className="text-fg-secondary">{String(t.damage)}</span></div>}
+                            {t.reach && <div>Reach: <span className="text-fg-secondary">{String(t.reach)}</span></div>}
+                            {t.parry && <div>Parry: <span className="text-fg-secondary">{String(t.parry)}</span></div>}
+                            {t.cost !== undefined && <div>Cost: <span className="text-fg-secondary">${t.cost}</span></div>}
+                            {t.ST && <div>ST: <span className="text-fg-secondary">{String(t.ST)}</span></div>}
+                            {t.notes && <div>Notes: <span className="text-fg-secondary">{String(t.notes)}</span></div>}
                           </>
                         )}
 
                         {c.templateType === 'ranged' && (
                           <>
-                            {t.damage && <div>Damage: <span className="text-gray-300">{String(t.damage)}</span></div>}
-                            {t.Acc !== undefined && <div>Acc: <span className="text-gray-300">{String(t.Acc)}</span></div>}
-                            {t.range && <div>Range: <span className="text-gray-300">{String(t.range)}</span></div>}
-                            {t.RoF && <div>RoF: <span className="text-gray-300">{String(t.RoF)}</span></div>}
-                            {t.shots && <div>Shots: <span className="text-gray-300">{String(t.shots)}</span></div>}
-                            {t.cost !== undefined && <div>Cost: <span className="text-gray-300">${t.cost}</span></div>}
-                            {t.ST && <div>ST: <span className="text-gray-300">{String(t.ST)}</span></div>}
-                            {t.bulk !== undefined && <div>Bulk: <span className="text-gray-300">{String(t.bulk)}</span></div>}
-                            {t.RCl !== undefined && <div>RCl: <span className="text-gray-300">{String(t.RCl)}</span></div>}
-                            {t.LC !== undefined && <div>LC: <span className="text-gray-300">{String(t.LC)}</span></div>}
-                            {t.notes && <div>Notes: <span className="text-gray-300">{String(t.notes)}</span></div>}
+                            {t.damage && <div>Damage: <span className="text-fg-secondary">{String(t.damage)}</span></div>}
+                            {t.Acc !== undefined && <div>Acc: <span className="text-fg-secondary">{String(t.Acc)}</span></div>}
+                            {t.range && <div>Range: <span className="text-fg-secondary">{String(t.range)}</span></div>}
+                            {t.RoF && <div>RoF: <span className="text-fg-secondary">{String(t.RoF)}</span></div>}
+                            {t.shots && <div>Shots: <span className="text-fg-secondary">{String(t.shots)}</span></div>}
+                            {t.cost !== undefined && <div>Cost: <span className="text-fg-secondary">${t.cost}</span></div>}
+                            {t.ST && <div>ST: <span className="text-fg-secondary">{String(t.ST)}</span></div>}
+                            {t.bulk !== undefined && <div>Bulk: <span className="text-fg-secondary">{String(t.bulk)}</span></div>}
+                            {t.RCl !== undefined && <div>RCl: <span className="text-fg-secondary">{String(t.RCl)}</span></div>}
+                            {t.LC !== undefined && <div>LC: <span className="text-fg-secondary">{String(t.LC)}</span></div>}
+                            {t.notes && <div>Notes: <span className="text-fg-secondary">{String(t.notes)}</span></div>}
                           </>
                         )}
 
                         {c.templateType === 'armor' && (
                           <>
-                            {t.location && <div>Location: <span className="text-gray-300">{String(t.location)}</span></div>}
-                            {(t.DR !== undefined || t.dr !== undefined) && <div>DR: <span className="text-gray-300">{String(t.DR ?? t.dr)}</span></div>}
-                            {t.cost !== undefined && <div>Cost: <span className="text-gray-300">${t.cost}</span></div>}
-                            {t.LC !== undefined && <div>LC: <span className="text-gray-300">{String(t.LC)}</span></div>}
-                            {t.notes && <div>Notes: <span className="text-gray-300">{String(t.notes)}</span></div>}
+                            {t.location && <div>Location: <span className="text-fg-secondary">{String(t.location)}</span></div>}
+                            {(t.DR !== undefined || t.dr !== undefined) && <div>DR: <span className="text-fg-secondary">{String(t.DR ?? t.dr)}</span></div>}
+                            {t.cost !== undefined && <div>Cost: <span className="text-fg-secondary">${t.cost}</span></div>}
+                            {t.LC !== undefined && <div>LC: <span className="text-fg-secondary">{String(t.LC)}</span></div>}
+                            {t.notes && <div>Notes: <span className="text-fg-secondary">{String(t.notes)}</span></div>}
                           </>
                         )}
 
                         {c.templateType === 'explosives' && (
                           <>
-                            {t.damage && <div>Damage: <span className="text-gray-300">{String(t.damage)}</span></div>}
-                            {t.fuse && <div>Fuse: <span className="text-gray-300">{String(t.fuse)}</span></div>}
-                            {t.cost !== undefined && <div>Cost: <span className="text-gray-300">${t.cost}</span></div>}
-                            {t.LC !== undefined && <div>LC: <span className="text-gray-300">{String(t.LC)}</span></div>}
-                            {t.notes && <div>Notes: <span className="text-gray-300">{String(t.notes)}</span></div>}
+                            {t.damage && <div>Damage: <span className="text-fg-secondary">{String(t.damage)}</span></div>}
+                            {t.fuse && <div>Fuse: <span className="text-fg-secondary">{String(t.fuse)}</span></div>}
+                            {t.cost !== undefined && <div>Cost: <span className="text-fg-secondary">${t.cost}</span></div>}
+                            {t.LC !== undefined && <div>LC: <span className="text-fg-secondary">{String(t.LC)}</span></div>}
+                            {t.notes && <div>Notes: <span className="text-fg-secondary">{String(t.notes)}</span></div>}
                           </>
                         )}
                       </div>
                     </div>
 
                     {((c.designShifts && c.designShifts.length > 0) || (c.shifts && c.shifts.length > 0)) && (
-                      <div className="bg-gray-600 p-3 rounded">
+                      <div className="bg-surface-3 p-3 rounded">
                         <div className="text-sm font-semibold mb-2">Project History</div>
                         <div className="space-y-2 max-h-48 overflow-y-auto">
                           {Array.isArray(c.designShifts) && c.designShifts.length > 0 && (
                             <>
                               <div className="text-xs font-semibold text-yellow-400 mt-2">Design Phase</div>
                               {c.designShifts.filter(s => s).map((s, i) => (
-                                <div key={s.id || i} className="text-xs bg-gray-700 p-2 rounded">
-                                  <div>Shift {i + 1}: {s.result || 'unknown'} {s.date && <span className="text-blue-400">({s.date})</span>} {s.day && <span className="text-green-400">[Day {s.day}]</span>}</div>
-                                  <div className="text-gray-400">{s.worker && <span>Worker: {s.worker} | </span>}Skill {s.skill || '?'} &rarr; Eff {s.effectiveSkill || '?'} | Roll: {s.roll || '?'} | +{s.hoursAdded || 0}h{(s.qualityChange ?? s.qualityShift) !== 0 && (s.qualityChange ?? s.qualityShift) !== undefined && ` | Qual ${(s.qualityChange ?? s.qualityShift ?? 0) > 0 ? '+' : ''}${s.qualityChange ?? s.qualityShift}`}</div>
+                                <div key={s.id || i} className="text-xs bg-surface-2 p-2 rounded">
+                                  <div>Shift {i + 1}: {s.result || 'unknown'} {s.date && <span className="text-accent-400">({s.date})</span>} {s.day && <span className="text-success-400">[Day {s.day}]</span>}</div>
+                                  <div className="text-fg-muted">{s.worker && <span>Worker: {s.worker} | </span>}Skill {s.skill || '?'} &rarr; Eff {s.effectiveSkill || '?'} | Roll: {s.roll || '?'} | +{s.hoursAdded || 0}h{(s.qualityChange ?? s.qualityShift) !== 0 && (s.qualityChange ?? s.qualityShift) !== undefined && ` | Qual ${(s.qualityChange ?? s.qualityShift ?? 0) > 0 ? '+' : ''}${s.qualityChange ?? s.qualityShift}`}</div>
                                 </div>
                               ))}
                             </>
                           )}
                           {Array.isArray(c.shifts) && c.shifts.length > 0 && (
                             <>
-                              <div className="text-xs font-semibold text-green-400 mt-2">Craft Phase</div>
+                              <div className="text-xs font-semibold text-success-400 mt-2">Craft Phase</div>
                               {c.shifts.filter(s => s).map((s, i) => (
-                                <div key={s.id || i} className="text-xs bg-gray-700 p-2 rounded">
-                                  <div>Shift {i + 1}: {s.result || 'unknown'} {s.date && <span className="text-blue-400">({s.date})</span>} {s.day && <span className="text-green-400">[Day {s.day}]</span>}</div>
-                                  <div className="text-gray-400">{s.worker && <span>Worker: {s.worker} | </span>}Skill {s.skill || '?'} &rarr; Eff {s.effectiveSkill || '?'} | Roll: {s.roll || '?'} | +{s.hoursAdded || 0}h{(s.qualityChange ?? s.qualityShift) !== 0 && (s.qualityChange ?? s.qualityShift) !== undefined && ` | Qual ${(s.qualityChange ?? s.qualityShift ?? 0) > 0 ? '+' : ''}${s.qualityChange ?? s.qualityShift}`}</div>
+                                <div key={s.id || i} className="text-xs bg-surface-2 p-2 rounded">
+                                  <div>Shift {i + 1}: {s.result || 'unknown'} {s.date && <span className="text-accent-400">({s.date})</span>} {s.day && <span className="text-success-400">[Day {s.day}]</span>}</div>
+                                  <div className="text-fg-muted">{s.worker && <span>Worker: {s.worker} | </span>}Skill {s.skill || '?'} &rarr; Eff {s.effectiveSkill || '?'} | Roll: {s.roll || '?'} | +{s.hoursAdded || 0}h{(s.qualityChange ?? s.qualityShift) !== 0 && (s.qualityChange ?? s.qualityShift) !== undefined && ` | Qual ${(s.qualityChange ?? s.qualityShift ?? 0) > 0 ? '+' : ''}${s.qualityChange ?? s.qualityShift}`}</div>
                                 </div>
                               ))}
                             </>
@@ -307,14 +307,14 @@ export function CraftingProjectList({
                       </div>
                     )}
 
-                    <div className="pt-3 border-t border-gray-600">
+                    <div className="pt-3 border-t border-edge-strong">
                       <button
                         onClick={() => {
                           if (confirm(`Delete completed project "${c.name || c.template}"?`)) {
                             saveCrafts(crafts.filter(x => x.id !== c.id));
                           }
                         }}
-                        className="w-full px-4 py-2 bg-red-600 rounded hover:bg-red-700 text-sm"
+                        className="w-full px-4 py-2 bg-danger-600 rounded hover:bg-danger-700 text-sm"
                       >
                         Delete Completed Project
                       </button>
@@ -325,7 +325,7 @@ export function CraftingProjectList({
             );
           }).filter(Boolean)}
           {crafts.filter(c => c.completed).length === 0 && (
-            <div className="text-gray-500 italic">No completed projects</div>
+            <div className="text-fg-faint italic">No completed projects</div>
           )}
         </div>
       </div>

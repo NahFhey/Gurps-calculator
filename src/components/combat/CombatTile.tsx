@@ -119,25 +119,25 @@ export function CombatTile({ onExpand, compact = false }: CombatTileProps) {
   if (!combatActive || !session) {
     return (
       <div
-        className={`rounded border border-gray-700 bg-gray-800/60 ${compact ? 'p-2' : 'p-4'}`}
+        className={`rounded border border-edge bg-surface-1/60 ${compact ? 'p-2' : 'p-4'}`}
         data-testid="combat-tile-inactive"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-gray-700/50">
-              <Swords className="h-4 w-4 text-gray-400" />
+            <div className="flex h-8 w-8 items-center justify-center rounded bg-surface-2/50">
+              <Swords className="h-4 w-4 text-fg-muted" />
             </div>
             <div>
-              <div className="text-sm font-medium text-gray-300">No Active Combat</div>
+              <div className="text-sm font-medium text-fg-secondary">No Active Combat</div>
               {!compact && (
-                <div className="text-xs text-gray-500">Start an encounter to begin tracking</div>
+                <div className="text-xs text-fg-faint">Start an encounter to begin tracking</div>
               )}
             </div>
           </div>
           <button
             type="button"
             onClick={handleStartCombat}
-            className="flex items-center gap-2 rounded border border-red-500/50 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-200 transition-colors hover:border-red-400 hover:bg-red-500/20"
+            className="flex items-center gap-2 rounded border border-danger-500/50 bg-danger-500/10 px-4 py-2 text-sm font-semibold text-danger-200 transition-colors hover:border-danger-400 hover:bg-danger-500/20"
             data-testid="start-combat-button"
           >
             <Play className="h-4 w-4" />
@@ -159,7 +159,7 @@ export function CombatTile({ onExpand, compact = false }: CombatTileProps) {
           handleClick();
         }
       }}
-      className={`cursor-pointer rounded border border-red-500/40 bg-red-500/5 transition-colors hover:border-red-400 hover:bg-red-500/10 ${
+      className={`cursor-pointer rounded border border-danger-500/40 bg-danger-500/5 transition-colors hover:border-danger-400 hover:bg-danger-500/10 ${
         compact ? 'p-2' : 'p-4'
       }`}
       data-testid="combat-tile-active"
@@ -167,25 +167,25 @@ export function CombatTile({ onExpand, compact = false }: CombatTileProps) {
       <div className="flex items-center justify-between gap-4">
         {/* Left: Combat Status */}
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-red-500/20">
-            <Swords className="h-4 w-4 text-red-400" />
+          <div className="flex h-8 w-8 items-center justify-center rounded bg-danger-500/20">
+            <Swords className="h-4 w-4 text-danger-400" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-red-200">
+              <span className="text-sm font-semibold text-danger-200">
                 Round {session.currentRound || 1}
               </span>
               {currentTurnCharacter && (
                 <>
-                  <span className="text-gray-500">|</span>
-                  <span className="text-sm text-gray-300">
+                  <span className="text-fg-faint">|</span>
+                  <span className="text-sm text-fg-secondary">
                     Turn: <span className="text-white">{currentTurnCharacter}</span>
                   </span>
                 </>
               )}
             </div>
             {!compact && session.name && (
-              <div className="text-xs text-gray-400">{session.name}</div>
+              <div className="text-xs text-fg-muted">{session.name}</div>
             )}
           </div>
         </div>
@@ -193,30 +193,30 @@ export function CombatTile({ onExpand, compact = false }: CombatTileProps) {
         {/* Center: Participants */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-sm">
-            <Users className="h-4 w-4 text-gray-400" />
-            <span className="text-gray-300">
-              <span className="text-blue-300">{participantStats.allies}</span>
-              <span className="text-gray-500"> vs </span>
-              <span className="text-red-300">{participantStats.enemies}</span>
+            <Users className="h-4 w-4 text-fg-muted" />
+            <span className="text-fg-secondary">
+              <span className="text-accent-300">{participantStats.allies}</span>
+              <span className="text-fg-faint"> vs </span>
+              <span className="text-danger-300">{participantStats.enemies}</span>
             </span>
           </div>
 
           {/* HP Summary */}
           {!compact && hpSummary && hpSummary.length > 0 && (
-            <div className="flex items-center gap-3 border-l border-gray-700 pl-4">
+            <div className="flex items-center gap-3 border-l border-edge pl-4">
               {hpSummary.map((char, idx) => (
                 <div key={idx} className="flex items-center gap-1 text-xs">
                   <Heart
                     className={`h-3 w-3 ${
                       char.percentage > 50
-                        ? 'text-green-400'
+                        ? 'text-success-400'
                         : char.percentage > 25
                         ? 'text-yellow-400'
-                        : 'text-red-400'
+                        : 'text-danger-400'
                     }`}
                   />
-                  <span className="text-gray-400">{char.name}</span>
-                  <span className="text-gray-300">
+                  <span className="text-fg-muted">{char.name}</span>
+                  <span className="text-fg-secondary">
                     {char.hp}/{char.maxHP}
                   </span>
                 </div>
@@ -226,7 +226,7 @@ export function CombatTile({ onExpand, compact = false }: CombatTileProps) {
         </div>
 
         {/* Right: Action hint */}
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-fg-faint">
           Click to {activeModuleId === 'combat' ? 'view' : 'return to'} combat
         </div>
       </div>

@@ -85,22 +85,22 @@ export function AlchemyActivity({ currentDayKey, currentSlot }: AlchemyActivityP
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
         <FlaskConical className="w-6 h-6 text-purple-400" />
-        <h3 className="text-lg font-semibold text-gray-100">Alchemy</h3>
+        <h3 className="text-lg font-semibold text-fg-bright">Alchemy</h3>
       </div>
 
       {/* Weather Effects Banner */}
       {weather.hasEffect && (
-        <div className="mb-4 px-3 py-2 rounded bg-blue-900/30 border border-blue-700/50">
+        <div className="mb-4 px-3 py-2 rounded bg-accent-900/30 border border-accent-700/50">
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-blue-400">Weather Effect:</span>
-            <span className="text-gray-300">{weather.effectDescription}</span>
-            {weather.locationName && <span className="text-gray-500 text-xs">at {weather.locationName}</span>}
+            <span className="text-accent-400">Weather Effect:</span>
+            <span className="text-fg-secondary">{weather.effectDescription}</span>
+            {weather.locationName && <span className="text-fg-faint text-xs">at {weather.locationName}</span>}
           </div>
         </div>
       )}
 
       {/* Sub-view Tab Bar */}
-      <div className="flex gap-1 mb-4 border-b border-gray-700 overflow-x-auto">
+      <div className="flex gap-1 mb-4 border-b border-edge overflow-x-auto">
         {TABS.map((tab) => {
           const badge = tab.getBadge?.(badgeCtx);
           return (
@@ -110,11 +110,11 @@ export function AlchemyActivity({ currentDayKey, currentSlot }: AlchemyActivityP
               className={`px-3 py-2 text-sm whitespace-nowrap transition-colors ${
                 activeTab === tab.key
                   ? 'border-b-2 border-purple-500 text-purple-400'
-                  : 'text-gray-400 hover:text-gray-200'
+                  : 'text-fg-muted hover:text-fg-primary'
               }`}
             >
               {tab.label}
-              {badge && <span className="ml-1 text-xs text-gray-500">({badge})</span>}
+              {badge && <span className="ml-1 text-xs text-fg-faint">({badge})</span>}
             </button>
           );
         })}

@@ -29,16 +29,16 @@ export function MealBuffWidget({ compact = false }: MealBuffWidgetProps) {
   if (compact) {
     return (
       <div
-        className="flex items-center gap-2 rounded border border-amber-600/60 bg-amber-900/30 px-3 py-1.5"
+        className="flex items-center gap-2 rounded border border-warning-600/60 bg-warning-900/30 px-3 py-1.5"
         title={tooltip}
         data-testid="meal-buff-widget-compact"
       >
         <span className="text-lg" aria-hidden="true">🍲</span>
-        <span className="text-sm text-amber-100">
+        <span className="text-sm text-warning-100">
           {buff.recipeName} — {skills}
         </span>
         {abstainerClause && (
-          <span className="text-xs text-amber-200/60">{abstainerClause}</span>
+          <span className="text-xs text-warning-200/60">{abstainerClause}</span>
         )}
       </div>
     );
@@ -46,18 +46,18 @@ export function MealBuffWidget({ compact = false }: MealBuffWidgetProps) {
 
   return (
     <div
-      className="rounded border border-amber-600/60 bg-amber-900/30 px-4 py-2"
+      className="rounded border border-warning-600/60 bg-warning-900/30 px-4 py-2"
       title={tooltip}
       data-testid="meal-buff-widget"
     >
       <div className="flex items-center gap-3">
         <span className="text-2xl" aria-hidden="true">🍲</span>
         <div className="min-w-0">
-          <div className="text-sm font-medium text-amber-100">{buff.recipeName}</div>
-          <div className="text-xs text-amber-200/80">
+          <div className="text-sm font-medium text-warning-100">{buff.recipeName}</div>
+          <div className="text-xs text-warning-200/80">
             {skills}
             {abstainerClause && (
-              <span className="ml-2 text-amber-200/60">{abstainerClause}</span>
+              <span className="ml-2 text-warning-200/60">{abstainerClause}</span>
             )}
           </div>
         </div>

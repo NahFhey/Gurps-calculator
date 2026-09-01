@@ -129,28 +129,28 @@ export function TallyWorksheetView({ reagents }: TallyWorksheetViewProps) {
   const sortedTally = Object.entries(tally).sort((a, b) => b[1] - a[1]);
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
+    <div className="bg-surface-1 rounded-lg p-6">
       <div className="flex justify-between items-center mb-4">
         <div>
           <h2 className="text-xl font-bold">Aspect Tally Worksheet</h2>
-          <p className="text-sm text-gray-400">Build and preview aspect tallies for formula planning</p>
+          <p className="text-sm text-fg-muted">Build and preview aspect tallies for formula planning</p>
         </div>
-        <button onClick={addItem} className="flex items-center gap-2 bg-green-600 px-4 py-2 rounded">
+        <button onClick={addItem} className="flex items-center gap-2 bg-success-600 px-4 py-2 rounded">
           <Plus size={20} /> Add Reagent
         </button>
       </div>
 
       {/* Info box about identification */}
-      <div className="mb-4 bg-blue-900 bg-opacity-30 border border-blue-500 p-3 rounded text-sm">
+      <div className="mb-4 bg-accent-900 bg-opacity-30 border border-accent-500 p-3 rounded text-sm">
         <div className="font-semibold mb-1">Identification-Based Tally</div>
-        <div className="text-xs text-gray-300">
+        <div className="text-xs text-fg-secondary">
           This worksheet only shows <strong>identified aspects</strong> based on each reagent's identification level.
           Use the <strong>Analysis</strong> tab to identify reagents and reveal their aspects before adding them to your tally.
         </div>
       </div>
 
       {worksheetItems.length === 0 && (
-        <div className="text-gray-500 text-center py-8">
+        <div className="text-fg-faint text-center py-8">
           No reagents added yet. Click "Add Reagent" to start building your tally.
         </div>
       )}
@@ -159,18 +159,18 @@ export function TallyWorksheetView({ reagents }: TallyWorksheetViewProps) {
         <div className="space-y-4">
           {/* Reagent List */}
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-gray-300">Reagents</h3>
+            <h3 className="text-sm font-semibold text-fg-secondary">Reagents</h3>
             {worksheetItems.map(item => {
               const reagent = reagentsMap.get(item.reagentId);
               const aspectPoints = reagent ? getKnownAspectPoints(reagent, item.refinement) : {};
 
               return (
-                <div key={item.id} className="bg-gray-700 p-3 rounded">
+                <div key={item.id} className="bg-surface-2 p-3 rounded">
                   <div className="grid grid-cols-4 gap-2">
                     <select
                       value={item.reagentId}
                       onChange={(e) => updateItem(item.id, 'reagentId', e.target.value)}
-                      className="bg-gray-600 px-3 py-2 rounded text-sm"
+                      className="bg-surface-3 px-3 py-2 rounded text-sm"
                     >
                       {reagents.map(r => (
                         <option key={r.id} value={r.id}>
@@ -182,7 +182,7 @@ export function TallyWorksheetView({ reagents }: TallyWorksheetViewProps) {
                     <select
                       value={item.refinement}
                       onChange={(e) => updateItem(item.id, 'refinement', e.target.value as RefinementLevel)}
-                      className="bg-gray-600 px-3 py-2 rounded text-sm"
+                      className="bg-surface-3 px-3 py-2 rounded text-sm"
                     >
                       <option value="crude">Crude</option>
                       <option value="prepared">Prepared</option>
@@ -194,13 +194,13 @@ export function TallyWorksheetView({ reagents }: TallyWorksheetViewProps) {
                       min="1"
                       value={item.units}
                       onChange={(e) => updateItem(item.id, 'units', Math.max(1, toNumberOr(e.target.value, 1)))}
-                      className="bg-gray-600 px-3 py-2 rounded text-sm"
+                      className="bg-surface-3 px-3 py-2 rounded text-sm"
                       placeholder="Units"
                     />
 
                     <button
                       onClick={() => removeItem(item.id)}
-                      className="bg-red-600 px-3 py-2 rounded text-sm"
+                      className="bg-danger-600 px-3 py-2 rounded text-sm"
                     >
                       <Trash2 size={16} className="inline" />
                     </button>
@@ -211,16 +211,16 @@ export function TallyWorksheetView({ reagents }: TallyWorksheetViewProps) {
                     <div className="mt-2 text-xs">
                       <div className="flex items-center gap-2">
                         <span className={`px-2 py-0.5 rounded ${
-                          (reagent.identificationLevel || 0) === 0 ? 'bg-red-600' :
-                          (reagent.identificationLevel || 0) >= 4 ? 'bg-green-600' :
+                          (reagent.identificationLevel || 0) === 0 ? 'bg-danger-600' :
+                          (reagent.identificationLevel || 0) >= 4 ? 'bg-success-600' :
                           'bg-yellow-600'
                         }`}>
                           ID: Level {reagent.identificationLevel || 0}
                         </span>
                         {Object.keys(aspectPoints).length === 0 ? (
-                          <span className="text-gray-500">Unknown aspects - identify reagent first</span>
+                          <span className="text-fg-faint">Unknown aspects - identify reagent first</span>
                         ) : (
-                          <span className="text-gray-400">
+                          <span className="text-fg-muted">
                             Known aspects: {Object.entries(aspectPoints).map(([asp, val]) => `${asp}:${val * item.units}`).join(', ')}
                           </span>
                         )}
@@ -233,19 +233,19 @@ export function TallyWorksheetView({ reagents }: TallyWorksheetViewProps) {
           </div>
 
           {/* Tally Results */}
-          <div className="bg-gray-700 p-4 rounded">
-            <h3 className="text-sm font-semibold text-gray-300 mb-3">Aspect Tally Results</h3>
+          <div className="bg-surface-2 p-4 rounded">
+            <h3 className="text-sm font-semibold text-fg-secondary mb-3">Aspect Tally Results</h3>
 
             <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="bg-gray-800 p-3 rounded">
-                <div className="text-xs text-gray-400 mb-1">Dominant Aspect</div>
-                <div className="text-lg font-bold text-blue-400">
+              <div className="bg-surface-1 p-3 rounded">
+                <div className="text-xs text-fg-muted mb-1">Dominant Aspect</div>
+                <div className="text-lg font-bold text-accent-400">
                   {dominant || 'None'} {dominantValue > 0 && `(${dominantValue})`}
                 </div>
               </div>
-              <div className="bg-gray-800 p-3 rounded">
-                <div className="text-xs text-gray-400 mb-1">Secondary Aspect</div>
-                <div className="text-lg font-bold text-blue-400">
+              <div className="bg-surface-1 p-3 rounded">
+                <div className="text-xs text-fg-muted mb-1">Secondary Aspect</div>
+                <div className="text-lg font-bold text-accent-400">
                   {secondary || 'None'} {secondaryValue > 0 && `(${secondaryValue})`}
                 </div>
               </div>
@@ -253,11 +253,11 @@ export function TallyWorksheetView({ reagents }: TallyWorksheetViewProps) {
 
             {/* Bar chart visualization - only show known aspects */}
             <div className="space-y-2">
-              <div className="text-xs text-gray-400 mb-2">
+              <div className="text-xs text-fg-muted mb-2">
                 Full Breakdown (Known Aspects Only):
               </div>
               {sortedTally.length === 0 ? (
-                <div className="text-center text-gray-500 py-4">
+                <div className="text-center text-fg-faint py-4">
                   No aspects identified yet. Identify reagents to see their aspects.
                 </div>
               ) : (
@@ -267,13 +267,13 @@ export function TallyWorksheetView({ reagents }: TallyWorksheetViewProps) {
 
                   return (
                     <div key={aspect} className="flex items-center gap-2">
-                      <div className="w-16 text-xs text-gray-300">{aspect}</div>
-                      <div className="flex-1 bg-gray-600 rounded-full h-6 relative">
+                      <div className="w-16 text-xs text-fg-secondary">{aspect}</div>
+                      <div className="flex-1 bg-surface-3 rounded-full h-6 relative">
                         <div
                           className={`h-6 rounded-full ${
-                            aspect === dominant ? 'bg-blue-500' :
-                            aspect === secondary ? 'bg-blue-400' :
-                            'bg-gray-500'
+                            aspect === dominant ? 'bg-accent-500' :
+                            aspect === secondary ? 'bg-accent-400' :
+                            'bg-surface-4'
                           }`}
                           style={{ width: `${percentage}%` }}
                         />
@@ -289,7 +289,7 @@ export function TallyWorksheetView({ reagents }: TallyWorksheetViewProps) {
 
             {/* Summary */}
             {sortedTally.length > 0 && (
-              <div className="mt-4 text-xs text-gray-400 bg-gray-800 p-2 rounded">
+              <div className="mt-4 text-xs text-fg-muted bg-surface-1 p-2 rounded">
                 Total: {Object.entries(tally).map(([asp, val]) => `${asp}:${val}`).join(', ')}
               </div>
             )}

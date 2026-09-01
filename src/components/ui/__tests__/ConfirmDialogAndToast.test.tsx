@@ -91,7 +91,7 @@ describe('ConfirmDialog', () => {
   it('applies danger variant styling', () => {
     render(<ConfirmDialog {...defaultProps} variant="danger" />);
     const confirmBtn = screen.getByText('Confirm');
-    expect(confirmBtn.className).toContain('red');
+    expect(confirmBtn.className).toContain('danger');
   });
 
   it('applies warning variant styling', () => {
@@ -103,7 +103,7 @@ describe('ConfirmDialog', () => {
   it('does not propagate click from dialog content to backdrop', () => {
     render(<ConfirmDialog {...defaultProps} />);
     // Click on the dialog content area (not the backdrop)
-    const dialogContent = screen.getByText('Delete Item').closest('div.bg-gray-800');
+    const dialogContent = screen.getByText('Delete Item').closest('div.bg-surface-1');
     if (dialogContent) {
       fireEvent.click(dialogContent);
     }
@@ -234,7 +234,7 @@ describe('SkeletonText', () => {
 describe('SkeletonCard', () => {
   it('renders card structure', () => {
     const { container } = render(<SkeletonCard />);
-    expect(container.querySelector('.bg-gray-800')).toBeInTheDocument();
+    expect(container.querySelector('.bg-surface-1')).toBeInTheDocument();
     const skeletons = container.querySelectorAll('[aria-hidden="true"]');
     expect(skeletons.length).toBeGreaterThan(3);
   });

@@ -22,9 +22,9 @@ export default function ActionPanelConditionsWorkflow({
   onClose,
 }: ActionPanelConditionsWorkflowProps) {
   return (
-    <div className="border-t border-gray-700 pt-4">
+    <div className="border-t border-edge pt-4">
       <ConditionsPanel participant={{ ...currentActor, id: currentActor.instanceId }} currentRound={currentRound} currentTurn={currentTurn} onAddCondition={onAddCondition} onRemoveCondition={onRemoveCondition} onCycleRevealed={onCycleRevealed} />
-      <button onClick={onClose} className="w-full mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded" aria-label="Close conditions panel">Close</button>
+      <button onClick={onClose} className="w-full mt-4 px-4 py-2 bg-surface-3 hover:bg-surface-4 rounded" aria-label="Close conditions panel">Close</button>
     </div>
   );
 }

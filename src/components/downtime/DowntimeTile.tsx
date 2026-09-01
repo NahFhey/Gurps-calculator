@@ -53,15 +53,15 @@ export function DowntimeTile({
     <button
       type="button"
       onClick={handleClick}
-      className="flex flex-col items-center justify-center p-4 bg-slate-800 hover:bg-slate-700
-                 border border-slate-600 hover:border-slate-500 rounded-lg
+      className="flex flex-col items-center justify-center p-4 bg-surface-1 hover:bg-surface-2
+                 border border-edge-strong hover:border-edge-bright rounded-lg
                  transition-all duration-200 cursor-pointer
-                 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900
+        focus:outline-none focus:ring-2 focus:ring-accent-500 focus:ring-offset-2 focus:ring-offset-surface-0
                  min-h-[120px] relative group"
     >
       {/* Active count badge */}
       {activeCount !== undefined && activeCount > 0 && (
-        <span className="absolute top-2 right-2 bg-blue-600 text-white text-xs font-bold
+        <span className="absolute top-2 right-2 bg-accent-600 text-white text-xs font-bold
                         px-2 py-0.5 rounded-full min-w-[20px] text-center">
           {activeCount}
         </span>
@@ -73,12 +73,12 @@ export function DowntimeTile({
       </span>
 
       {/* Title */}
-      <span className="text-sm font-semibold text-slate-100 mb-1">
+      <span className="text-sm font-semibold text-fg-bright mb-1">
         {title}
       </span>
 
       {/* Description */}
-      <span className="text-xs text-slate-400 text-center">
+      <span className="text-xs text-fg-muted text-center">
         {description}
       </span>
     </button>

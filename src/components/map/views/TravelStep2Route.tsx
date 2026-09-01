@@ -44,22 +44,22 @@ export function TravelStep2Route({
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-fg-muted">
         Click a destination tile on the map to auto-compute a route.
       </p>
 
       {/* Start/End info */}
       <div className="space-y-1.5">
         <div className="flex items-center gap-2 text-xs">
-          <MapPin className="w-3.5 h-3.5 text-green-400" />
-          <span className="text-gray-300">
+          <MapPin className="w-3.5 h-3.5 text-success-400" />
+          <span className="text-fg-secondary">
             Start: {startPos ? `(${startPos.row}, ${startPos.col})` : 'None'}
           </span>
         </div>
         {destPos && (
           <div className="flex items-center gap-2 text-xs">
-            <MapPin className="w-3.5 h-3.5 text-red-400" />
-            <span className="text-gray-300">
+            <MapPin className="w-3.5 h-3.5 text-danger-400" />
+            <span className="text-fg-secondary">
               Dest: ({destPos.row}, {destPos.col})
             </span>
           </div>
@@ -68,19 +68,19 @@ export function TravelStep2Route({
 
       {/* Route stats */}
       {stats && (
-        <div className="bg-gray-900/50 rounded-lg p-2.5 space-y-2">
-          <div className="flex items-center gap-2 text-xs font-medium text-gray-200">
+        <div className="bg-surface-0/50 rounded-lg p-2.5 space-y-2">
+          <div className="flex items-center gap-2 text-xs font-medium text-fg-primary">
             <Route className="w-3.5 h-3.5" />
             Route Summary
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <div className="text-[10px] text-gray-400">
-              Tiles: <span className="text-gray-200">{stats.tileCount}</span>
+            <div className="text-[10px] text-fg-muted">
+              Tiles: <span className="text-fg-primary">{stats.tileCount}</span>
             </div>
-            <div className="text-[10px] text-gray-400">
+            <div className="text-[10px] text-fg-muted">
               <Ruler className="w-2.5 h-2.5 inline mr-0.5" />
-              <span className="text-green-300">
+              <span className="text-success-300">
                 {(stats.totalMiles ?? 0).toFixed(0)} mi — ~{stats.estimatedMovingSlots} slots (~{stats.estimatedDays} days)
               </span>
             </div>
@@ -89,11 +89,11 @@ export function TravelStep2Route({
           {/* Terrain breakdown */}
           {stats.terrainBreakdown.length > 0 && (
             <div className="space-y-0.5">
-              <div className="text-[10px] text-gray-500 uppercase tracking-wider">Terrain</div>
+              <div className="text-[10px] text-fg-faint uppercase tracking-wider">Terrain</div>
               {stats.terrainBreakdown.map((t) => (
                 <div key={t.name} className="flex justify-between text-[10px]">
-                  <span className="text-gray-300">{t.name}</span>
-                  <span className="text-gray-500">{t.count}</span>
+                  <span className="text-fg-secondary">{t.name}</span>
+                  <span className="text-fg-faint">{t.count}</span>
                 </div>
               ))}
             </div>
@@ -101,7 +101,7 @@ export function TravelStep2Route({
 
           <button
             onClick={onClearRoute}
-            className="w-full text-[10px] text-gray-400 hover:text-gray-200 py-1 transition-colors"
+            className="w-full text-[10px] text-fg-muted hover:text-fg-primary py-1 transition-colors"
           >
             Clear Route
           </button>
@@ -109,7 +109,7 @@ export function TravelStep2Route({
       )}
 
       {!hasRoute && (
-        <div className="text-center py-4 text-xs text-gray-500">
+        <div className="text-center py-4 text-xs text-fg-faint">
           No route selected. Click a tile on the map.
         </div>
       )}

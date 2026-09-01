@@ -42,7 +42,7 @@ interface SellOption {
   fallbackPrice: number;
 }
 
-const inputClass = 'rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-sm text-gray-100';
+const inputClass = 'rounded border border-edge-strong bg-surface-0 px-2 py-1.5 text-sm text-fg-bright';
 
 function formatSigned(value: number): string {
   return `${value >= 0 ? '+' : ''}${value}`;
@@ -266,23 +266,23 @@ export function TradingResolutionPanel({ task, leader, onFinalize, onCancel }: T
   };
 
   return (
-    <div className="rounded-lg border border-amber-500/50 bg-gray-800 p-4" data-testid="trading-resolution-panel">
+    <div className="rounded-lg border border-warning-500/50 bg-surface-1 p-4" data-testid="trading-resolution-panel">
       <header className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h4 className="flex items-center gap-2 font-semibold text-gray-100"><Coins className="h-5 w-5 text-amber-400" /> Trade with {task.activityData.merchantName}</h4>
-        <p className="rounded bg-gray-900 px-3 py-1.5 text-sm text-gray-200" data-testid="party-funds">
-          Party funds: <span className="font-semibold text-amber-300">{balance} {primaryCurrency.name}</span>
+        <h4 className="flex items-center gap-2 font-semibold text-fg-bright"><Coins className="h-5 w-5 text-warning-400" /> Trade with {task.activityData.merchantName}</h4>
+        <p className="rounded bg-surface-0 px-3 py-1.5 text-sm text-fg-primary" data-testid="party-funds">
+          Party funds: <span className="font-semibold text-warning-300">{balance} {primaryCurrency.name}</span>
         </p>
       </header>
 
       {locked && (
-        <div className="mb-4 flex items-center gap-2 rounded border border-red-600/60 bg-red-900/30 p-3 text-sm text-red-200" role="alert">
+        <div className="mb-4 flex items-center gap-2 rounded border border-danger-600/60 bg-danger-900/30 p-3 text-sm text-danger-200" role="alert">
           <AlertTriangle className="h-4 w-4" /> The merchant refuses to deal.
         </div>
       )}
 
       <fieldset disabled={locked} className="space-y-5 disabled:opacity-50">
         <section>
-          <h5 className="mb-2 font-medium text-gray-200">Sell</h5>
+          <h5 className="mb-2 font-medium text-fg-primary">Sell</h5>
           <div className="grid gap-2 sm:grid-cols-[minmax(0,2fr)_5rem_7rem_auto]">
             <select value={sellKey} onChange={(event) => selectSellOption(event.target.value)} data-testid="sell-picker" aria-label="Sell item" className={inputClass}>
               <option value="">Choose party goods...</option>
@@ -292,12 +292,12 @@ export function TradingResolutionPanel({ task, leader, onFinalize, onCancel }: T
             </select>
             <input type="number" min={1} max={selectedSell?.available} value={sellQuantity} onChange={(event) => setSellQuantity(Number(event.target.value))} aria-label="Sell quantity" data-testid="sell-quantity-input" className={inputClass} />
             <input type="number" min={0} value={sellPrice} onChange={(event) => setSellPrice(Number(event.target.value))} aria-label="Sell unit price" data-testid="sell-unit-price-input" className={inputClass} />
-            <button type="button" onClick={addSellLine} disabled={!selectedSell} data-testid="add-sell-line-button" className="rounded bg-amber-700 px-3 py-1.5 text-sm text-white disabled:bg-gray-700"><Plus className="inline h-4 w-4" /> Add</button>
+            <button type="button" onClick={addSellLine} disabled={!selectedSell} data-testid="add-sell-line-button" className="rounded bg-warning-700 px-3 py-1.5 text-sm text-white disabled:bg-surface-2"><Plus className="inline h-4 w-4" /> Add</button>
           </div>
         </section>
 
         <section>
-          <h5 className="mb-2 font-medium text-gray-200">Buy</h5>
+          <h5 className="mb-2 font-medium text-fg-primary">Buy</h5>
           <div className="grid gap-2 sm:grid-cols-6">
             <select value={buyKind} onChange={(event) => updateBuyKind(event.target.value as 'material' | 'food' | 'item')} aria-label="Buy kind" data-testid="buy-kind-select" className={inputClass}>
               <option value="material">Material</option><option value="food">Food</option><option value="item">Item</option>
@@ -306,38 +306,38 @@ export function TradingResolutionPanel({ task, leader, onFinalize, onCancel }: T
             {buyKind === 'material' && <input value={buyType} onChange={(event) => setBuyType(event.target.value)} placeholder="Type" aria-label="Buy material type" data-testid="buy-type-input" className={inputClass} />}
             <input type="number" min={1} value={buyQuantity} onChange={(event) => setBuyQuantity(Number(event.target.value))} aria-label="Buy quantity" data-testid="buy-quantity-input" className={inputClass} />
             <input type="number" min={0} value={buyPrice} onChange={(event) => setBuyPrice(Number(event.target.value))} aria-label="Buy unit price" data-testid="buy-unit-price-input" className={inputClass} />
-            <button type="button" onClick={addBuyLine} disabled={!buyName.trim()} data-testid="add-buy-line-button" className="rounded bg-blue-700 px-3 py-1.5 text-sm text-white disabled:bg-gray-700"><Plus className="inline h-4 w-4" /> Add</button>
+            <button type="button" onClick={addBuyLine} disabled={!buyName.trim()} data-testid="add-buy-line-button" className="rounded bg-accent-700 px-3 py-1.5 text-sm text-white disabled:bg-surface-2"><Plus className="inline h-4 w-4" /> Add</button>
           </div>
         </section>
 
         <section>
-          <h5 className="mb-2 font-medium text-gray-200">Adjust</h5>
+          <h5 className="mb-2 font-medium text-fg-primary">Adjust</h5>
           <div className="grid gap-2 sm:grid-cols-[minmax(0,2fr)_8rem_auto]">
             <input value={adjustNote} onChange={(event) => setAdjustNote(event.target.value)} placeholder="Note or reason" aria-label="Adjustment note" data-testid="adjust-note-input" className={inputClass} />
             <input type="number" value={adjustAmount} onChange={(event) => setAdjustAmount(Number(event.target.value))} aria-label="Signed adjustment amount" data-testid="adjust-amount-input" className={inputClass} />
-            <button type="button" onClick={addAdjustLine} disabled={!adjustNote.trim() || adjustAmount === 0} data-testid="add-adjust-line-button" className="rounded bg-gray-600 px-3 py-1.5 text-sm text-white disabled:bg-gray-700"><Plus className="inline h-4 w-4" /> Add</button>
+            <button type="button" onClick={addAdjustLine} disabled={!adjustNote.trim() || adjustAmount === 0} data-testid="add-adjust-line-button" className="rounded bg-surface-3 px-3 py-1.5 text-sm text-white disabled:bg-surface-2"><Plus className="inline h-4 w-4" /> Add</button>
           </div>
         </section>
 
         {lines.length > 0 && (
           <section className="space-y-2" data-testid="trade-lines">
             {lines.map((line) => (
-              <div key={line.id} className="grid items-center gap-2 rounded bg-gray-900/60 p-2 text-sm sm:grid-cols-[5rem_minmax(0,1fr)_5rem_7rem_6rem_auto]">
-                <span className={line.kind === 'sell' ? 'text-green-300' : line.kind === 'buy' ? 'text-blue-300' : 'text-gray-300'}>{line.kind}</span>
-                <span className="text-gray-100">{line.name}</span>
+              <div key={line.id} className="grid items-center gap-2 rounded bg-surface-0/60 p-2 text-sm sm:grid-cols-[5rem_minmax(0,1fr)_5rem_7rem_6rem_auto]">
+                <span className={line.kind === 'sell' ? 'text-success-300' : line.kind === 'buy' ? 'text-accent-300' : 'text-fg-secondary'}>{line.kind}</span>
+                <span className="text-fg-bright">{line.name}</span>
                 <input type="number" min={1} value={line.quantity} disabled={line.kind === 'adjust'} onChange={(event) => line.kind === 'sell' ? updateSellQuantity(line, Number(event.target.value)) : updateLine(line.id, { quantity: Math.max(1, Number(event.target.value)) })} aria-label={`${line.name} quantity`} className={inputClass} />
                 <input type="number" min={line.kind === 'adjust' ? undefined : 0} value={line.unitPrice} onChange={(event) => updateLine(line.id, { unitPrice: Number(event.target.value) })} aria-label={`${line.name} unit price`} className={inputClass} />
-                <span className="text-right text-gray-200">{computeLineTotal(line, shiftPct)} {primaryCurrency.key}</span>
-                <button type="button" onClick={() => setLines((current) => current.filter((candidate) => candidate.id !== line.id))} aria-label={`Remove ${line.name}`} className="text-red-400 hover:text-red-300"><Trash2 className="h-4 w-4" /></button>
+                <span className="text-right text-fg-primary">{computeLineTotal(line, shiftPct)} {primaryCurrency.key}</span>
+                <button type="button" onClick={() => setLines((current) => current.filter((candidate) => candidate.id !== line.id))} aria-label={`Remove ${line.name}`} className="text-danger-400 hover:text-danger-300"><Trash2 className="h-4 w-4" /></button>
               </div>
             ))}
           </section>
         )}
 
-        <section className="rounded border border-gray-700 bg-gray-900/40 p-3">
+        <section className="rounded border border-edge bg-surface-0/40 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm text-gray-300">Merchant-{merchantSkill.level} vs Merchant-{task.activityData.opposingSkill}</p>
-            <button type="button" onClick={() => setHaggle(resolveHaggle(merchantSkill.level, task.activityData.opposingSkill))} disabled={Boolean(haggle)} data-testid="roll-haggle-button" className="rounded bg-purple-700 px-3 py-1.5 text-sm text-white disabled:bg-gray-700">Roll Haggle</button>
+            <p className="text-sm text-fg-secondary">Merchant-{merchantSkill.level} vs Merchant-{task.activityData.opposingSkill}</p>
+            <button type="button" onClick={() => setHaggle(resolveHaggle(merchantSkill.level, task.activityData.opposingSkill))} disabled={Boolean(haggle)} data-testid="roll-haggle-button" className="rounded bg-purple-700 px-3 py-1.5 text-sm text-white disabled:bg-surface-2">Roll Haggle</button>
           </div>
           {haggle && (
             <div className="mt-2 text-sm text-purple-200" data-testid="haggle-result">
@@ -347,14 +347,14 @@ export function TradingResolutionPanel({ task, leader, onFinalize, onCancel }: T
         </section>
       </fieldset>
 
-      <footer className="mt-5 rounded bg-gray-900 p-3">
-        <div className="grid grid-cols-2 gap-2 text-sm text-gray-300 sm:grid-cols-5" data-testid="trade-totals">
+      <footer className="mt-5 rounded bg-surface-0 p-3">
+        <div className="grid grid-cols-2 gap-2 text-sm text-fg-secondary sm:grid-cols-5" data-testid="trade-totals">
           <span>Proceeds: {totals.proceeds}</span><span>Costs: {totals.costs}</span><span>Adjustments: {formatSigned(totals.adjustNet)}</span><span>Net: {formatSigned(totals.net)}</span><span>Balance: {balance + totals.net}</span>
         </div>
-        {insufficientFunds && !locked && <p className="mt-2 text-sm text-red-300" role="alert">Insufficient funds for this trade.</p>}
+        {insufficientFunds && !locked && <p className="mt-2 text-sm text-danger-300" role="alert">Insufficient funds for this trade.</p>}
         <div className="mt-3 flex gap-2">
-          <button type="button" onClick={handleApply} disabled={!locked && (lines.length === 0 || insufficientFunds)} data-testid="apply-trade-button" className="rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-700 disabled:text-gray-500">Apply</button>
-          <button type="button" onClick={onCancel} className="rounded border border-gray-600 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Cancel</button>
+          <button type="button" onClick={handleApply} disabled={!locked && (lines.length === 0 || insufficientFunds)} data-testid="apply-trade-button" className="rounded bg-success-600 px-4 py-2 text-sm font-medium text-white hover:bg-success-700 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-fg-faint">Apply</button>
+          <button type="button" onClick={onCancel} className="rounded border border-edge-strong px-4 py-2 text-sm text-fg-secondary hover:bg-surface-2">Cancel</button>
         </div>
       </footer>
     </div>

@@ -436,23 +436,23 @@ export function FishingTaskForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="fishing-task-form bg-gray-800/60 border border-gray-700 rounded-lg p-4 mb-4"
+      className="fishing-task-form bg-surface-1/60 border border-edge rounded-lg p-4 mb-4"
       data-testid="fishing-task-form"
     >
       {/* Form Header */}
       <div className="flex justify-between items-center mb-4">
-        <h4 className="font-medium text-gray-100">New Fishing Task</h4>
+        <h4 className="font-medium text-fg-bright">New Fishing Task</h4>
         <button
           type="button"
           onClick={onCancel}
-          className="text-gray-400 hover:text-gray-200"
+          className="text-fg-muted hover:text-fg-primary"
           aria-label="Close form"
         >
           <X className="w-5 h-5" />
         </button>
       </div>
 
-      <label className="mb-4 flex items-center gap-2 text-sm text-gray-300">
+      <label className="mb-4 flex items-center gap-2 text-sm text-fg-secondary">
         <input
           type="checkbox"
           checked={isBatchMode}
@@ -461,15 +461,15 @@ export function FishingTaskForm({
             setBatchErrors({});
           }}
           data-testid="batch-assign-toggle"
-          className="rounded border-gray-600 bg-gray-900 text-blue-600 focus:ring-blue-500"
+          className="rounded border-edge-strong bg-surface-0 text-accent-600 focus:ring-accent-500"
         />
         Batch assign
       </label>
 
       {/* Fishing Method Selection */}
       <div className="form-group mb-4">
-        <label className="block text-sm font-medium text-gray-300 mb-2">
-          Fishing Method <span className="text-red-400">*</span>
+        <label className="block text-sm font-medium text-fg-secondary mb-2">
+          Fishing Method <span className="text-danger-400">*</span>
         </label>
         <div className="flex flex-wrap gap-3">
           {Object.entries(FISHING_METHODS).map(([key, config]) => (
@@ -477,8 +477,8 @@ export function FishingTaskForm({
               key={key}
               className={`flex items-center gap-2 px-3 py-2 rounded border cursor-pointer transition-colors ${
                 method === key
-                  ? 'bg-blue-900/50 border-blue-500 text-blue-200'
-                  : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
+                  ? 'bg-accent-900/50 border-accent-500 text-accent-200'
+                  : 'bg-surface-1 border-edge-strong text-fg-secondary hover:bg-surface-2'
               }`}
             >
               <input
@@ -493,19 +493,19 @@ export function FishingTaskForm({
             </label>
           ))}
         </div>
-        <p className="text-xs text-gray-500 mt-1">{methodConfig?.description}</p>
+        <p className="text-xs text-fg-faint mt-1">{methodConfig?.description}</p>
       </div>
 
       {/* Leader Selection */}
       {!isBatchMode ? <div className="form-group mb-4">
-        <label htmlFor="leader-select" className="block text-sm font-medium text-gray-300 mb-1">
-          Leader <span className="text-red-400">*</span>
+        <label htmlFor="leader-select" className="block text-sm font-medium text-fg-secondary mb-1">
+          Leader <span className="text-danger-400">*</span>
         </label>
         <select
           id="leader-select"
           value={leaderId}
           onChange={(e) => setLeaderId(e.target.value)}
-          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 py-2 bg-surface-0 border border-edge-strong rounded text-fg-bright focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
           required
           data-testid="leader-select"
         >
@@ -523,8 +523,8 @@ export function FishingTaskForm({
         )}
       </div> : (
         <div className="form-group mb-4">
-          <label htmlFor="fishing-batch-leaders" className="block text-sm font-medium text-gray-300 mb-1">
-            Leaders <span className="text-red-400">*</span>
+          <label htmlFor="fishing-batch-leaders" className="block text-sm font-medium text-fg-secondary mb-1">
+            Leaders <span className="text-danger-400">*</span>
           </label>
           <select
             id="fishing-batch-leaders"
@@ -539,7 +539,7 @@ export function FishingTaskForm({
               setBatchErrors({});
             }}
             data-testid="batch-leader-select"
-            className="w-full min-h-24 px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100"
+            className="w-full min-h-24 px-3 py-2 bg-surface-0 border border-edge-strong rounded text-fg-bright"
           >
             {availableCharacters.map((character) => (
               <option key={character.id} value={character.id}>{character.name}</option>
@@ -550,11 +550,11 @@ export function FishingTaskForm({
 
       {/* Helper Selection */}
       {!isBatchMode && <div className="form-group mb-4">
-        <label className="block text-sm font-medium text-gray-300 mb-1">
+        <label className="block text-sm font-medium text-fg-secondary mb-1">
           Helpers (optional)
         </label>
         {availableHelpers.length === 0 ? (
-          <p className="text-sm text-gray-500 italic">No available helpers</p>
+          <p className="text-sm text-fg-faint italic">No available helpers</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {availableHelpers.map((c) => (
@@ -562,8 +562,8 @@ export function FishingTaskForm({
                 key={c.id}
                 className={`flex items-center gap-1 px-2 py-1 rounded border cursor-pointer transition-colors ${
                   helperIds.includes(c.id)
-                    ? 'bg-blue-900/50 border-blue-500 text-blue-200'
-                    : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
+                    ? 'bg-accent-900/50 border-accent-500 text-accent-200'
+                    : 'bg-surface-1 border-edge-strong text-fg-secondary hover:bg-surface-2'
                 }`}
               >
                 <input
@@ -581,8 +581,8 @@ export function FishingTaskForm({
 
       {/* Fishing Spot Selection */}
       <div className="form-group mb-4">
-        <label htmlFor="spot-select" className="block text-sm font-medium text-gray-300 mb-1">
-          Fishing Spot <span className="text-red-400">*</span>
+        <label htmlFor="spot-select" className="block text-sm font-medium text-fg-secondary mb-1">
+          Fishing Spot <span className="text-danger-400">*</span>
         </label>
         {spots.length === 0 ? (
           <p className="text-sm text-yellow-400 italic" data-testid="no-spots-message">
@@ -590,17 +590,17 @@ export function FishingTaskForm({
           </p>
         ) : spots.length === 1 ? (
           <div
-            className="w-full px-3 py-2 bg-gray-900/50 border border-gray-600 rounded text-gray-100"
+            className="w-full px-3 py-2 bg-surface-0/50 border border-edge-strong rounded text-fg-bright"
             data-testid="spot-select"
           >
-            {spots[0].name} <span className="text-xs text-gray-400">— current location</span>
+            {spots[0].name} <span className="text-xs text-fg-muted">— current location</span>
           </div>
         ) : (
           <select
             id="spot-select"
             value={spotId}
             onChange={(e) => setSpotId(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 bg-surface-0 border border-edge-strong rounded text-fg-bright focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
             required
             data-testid="spot-select"
           >
@@ -616,16 +616,16 @@ export function FishingTaskForm({
 
       {/* Targeted vs Random Catch - Only for methods that can target */}
       {canTarget && (
-        <div className="form-group mb-4 bg-gray-900/50 border border-gray-700 rounded p-3">
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+        <div className="form-group mb-4 bg-surface-0/50 border border-edge rounded p-3">
+          <label className="block text-sm font-medium text-fg-secondary mb-2">
             Fishing Intent
           </label>
           <div className="flex gap-4">
             <label
               className={`flex items-center gap-2 px-3 py-2 rounded border cursor-pointer transition-colors ${
                 isRandomCatch
-                  ? 'bg-green-900/50 border-green-500 text-green-200'
-                  : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
+                  ? 'bg-success-900/50 border-success-500 text-success-200'
+                  : 'bg-surface-1 border-edge-strong text-fg-secondary hover:bg-surface-2'
               }`}
             >
               <input
@@ -645,7 +645,7 @@ export function FishingTaskForm({
               className={`flex items-center gap-2 px-3 py-2 rounded border cursor-pointer transition-colors ${
                 !isRandomCatch
                   ? 'bg-purple-900/50 border-purple-500 text-purple-200'
-                  : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
+                  : 'bg-surface-1 border-edge-strong text-fg-secondary hover:bg-surface-2'
               }`}
             >
               <input
@@ -665,8 +665,8 @@ export function FishingTaskForm({
       {/* Species Selection - Only when targeting AND spot is selected */}
       {canTarget && !isRandomCatch && (
         <div className="form-group mb-4">
-          <label htmlFor="species-select" className="block text-sm font-medium text-gray-300 mb-1">
-            Target Species <span className="text-red-400">*</span>
+          <label htmlFor="species-select" className="block text-sm font-medium text-fg-secondary mb-1">
+            Target Species <span className="text-danger-400">*</span>
           </label>
           {!spotId ? (
             <p className="text-sm text-yellow-400 italic">Select a fishing spot first to see available species</p>
@@ -677,7 +677,7 @@ export function FishingTaskForm({
               id="species-select"
               value={speciesId}
               onChange={(e) => setSpeciesId(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 bg-surface-0 border border-edge-strong rounded text-fg-bright focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
               required
               data-testid="species-select"
             >
@@ -703,14 +703,14 @@ export function FishingTaskForm({
 
       {/* Bait Selection - Primarily for Line fishing */}
       <div className="form-group mb-4">
-        <label htmlFor="bait-select" className="block text-sm font-medium text-gray-300 mb-1">
+        <label htmlFor="bait-select" className="block text-sm font-medium text-fg-secondary mb-1">
           Bait (optional)
         </label>
         <select
           id="bait-select"
           value={baitId || ''}
           onChange={(e) => setBaitId(e.target.value || null)}
-          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 py-2 bg-surface-0 border border-edge-strong rounded text-fg-bright focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
           data-testid="bait-select"
         >
           <option value="">No bait</option>
@@ -721,10 +721,10 @@ export function FishingTaskForm({
           ))}
         </select>
         {baitStatus.correct && (
-          <p className="text-xs text-green-400 mt-1">✓ Correct bait for target (+1 to Fishing)</p>
+          <p className="text-xs text-success-400 mt-1">✓ Correct bait for target (+1 to Fishing)</p>
         )}
         {baitStatus.inappropriate && (
-          <p className="text-xs text-red-400 mt-1">✗ Wrong bait for target (-2 to Fishing)</p>
+          <p className="text-xs text-danger-400 mt-1">✗ Wrong bait for target (-2 to Fishing)</p>
         )}
         {method === 'Net' && selectedBait && (
           <p className="text-xs text-yellow-400 mt-1">Note: Bait has limited effect with net fishing</p>
@@ -733,11 +733,11 @@ export function FishingTaskForm({
 
       {/* Tool Selection */}
       {!isBatchMode ? <div className="form-group mb-4">
-        <label className="block text-sm font-medium text-gray-300 mb-1">
+        <label className="block text-sm font-medium text-fg-secondary mb-1">
           Equipment (optional)
         </label>
         {availableTools.length === 0 ? (
-          <p className="text-sm text-gray-500 italic">No tools available for {methodConfig?.label}</p>
+          <p className="text-sm text-fg-faint italic">No tools available for {methodConfig?.label}</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {availableTools.map((tool) => {
@@ -752,10 +752,10 @@ export function FishingTaskForm({
                   key={tool.id}
                   className={`flex items-center gap-1 px-2 py-1 rounded border transition-colors ${
                     isReserved
-                      ? 'bg-gray-900/50 border-gray-700 text-gray-500 cursor-not-allowed'
+                      ? 'bg-surface-0/50 border-edge text-fg-faint cursor-not-allowed'
                       : isSelected
-                      ? 'bg-blue-900/50 border-blue-500 text-blue-200 cursor-pointer'
-                      : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700 cursor-pointer'
+                      ? 'bg-accent-900/50 border-accent-500 text-accent-200 cursor-pointer'
+                      : 'bg-surface-1 border-edge-strong text-fg-secondary hover:bg-surface-2 cursor-pointer'
                   }`}
                   title={isReserved ? 'Tool already in use' : undefined}
                 >
@@ -768,10 +768,10 @@ export function FishingTaskForm({
                   />
                   <span className="text-sm">{tool.name}</span>
                   {(displayBonus ?? 0) > 0 && (
-                    <span className="text-xs text-green-400">(+{displayBonus})</span>
+                    <span className="text-xs text-success-400">(+{displayBonus})</span>
                   )}
                   {isReserved && (
-                    <span className="text-xs text-gray-500">(in use)</span>
+                    <span className="text-xs text-fg-faint">(in use)</span>
                   )}
                 </label>
               );
@@ -788,8 +788,8 @@ export function FishingTaskForm({
             const rowReservedToolIds = new Set([...reservedToolIds, ...otherDraftTools]);
             const error = batchErrors[characterId];
             return (
-              <div key={characterId} className="rounded border border-gray-700 bg-gray-900/40 p-3" data-testid={`batch-row-${characterId}`}>
-                <p className="mb-2 text-sm font-medium text-gray-200">{character?.name ?? characterId}</p>
+              <div key={characterId} className="rounded border border-edge bg-surface-0/40 p-3" data-testid={`batch-row-${characterId}`}>
+                <p className="mb-2 text-sm font-medium text-fg-primary">{character?.name ?? characterId}</p>
                 <ToolSelector
                   label={`${character?.name ?? characterId} tools`}
                   value={batchToolIds[characterId] ?? []}
@@ -819,51 +819,51 @@ export function FishingTaskForm({
       )}
 
       {/* Skill Summary */}
-      <div className="bg-gray-900/50 border border-gray-700 rounded p-3 mb-4">
+      <div className="bg-surface-0/50 border border-edge rounded p-3 mb-4">
         {/* Leader's base skill */}
         {selectedLeader && (
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-300">
+            <span className="text-sm text-fg-secondary">
               {selectedLeader.name}'s {method === 'Spear' ? 'Spear/Fishing' : 'Fishing'} Skill:
             </span>
-            <span className="text-sm font-medium text-blue-400">{leaderFishingSkill}</span>
+            <span className="text-sm font-medium text-accent-400">{leaderFishingSkill}</span>
           </div>
         )}
 
         {/* Modifier breakdown */}
-        <div className="border-t border-gray-700 pt-2 space-y-1">
+        <div className="border-t border-edge pt-2 space-y-1">
           {toolModifier !== 0 && (
             <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-400">Equipment:</span>
-              <span className={toolModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
+              <span className="text-fg-muted">Equipment:</span>
+              <span className={toolModifier >= 0 ? 'text-success-400' : 'text-danger-400'}>
                 {toolModifier >= 0 ? '+' : ''}{toolModifier}
               </span>
             </div>
           )}
           {helperModifier > 0 && (
             <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-400">Helpers ({helperIds.length}):</span>
-              <span className="text-green-400">+{helperModifier}</span>
+              <span className="text-fg-muted">Helpers ({helperIds.length}):</span>
+              <span className="text-success-400">+{helperModifier}</span>
             </div>
           )}
           {baitModifier !== 0 && (
             <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-400">Bait:</span>
-              <span className={baitModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
+              <span className="text-fg-muted">Bait:</span>
+              <span className={baitModifier >= 0 ? 'text-success-400' : 'text-danger-400'}>
                 {baitModifier >= 0 ? '+' : ''}{baitModifier}
               </span>
             </div>
           )}
           {leaderFatiguePenalty !== 0 && (
             <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-400">Fatigue ({leaderFatigueStatus}):</span>
-              <span className="text-red-400">{leaderFatiguePenalty}</span>
+              <span className="text-fg-muted">Fatigue ({leaderFatigueStatus}):</span>
+              <span className="text-danger-400">{leaderFatiguePenalty}</span>
             </div>
           )}
           {environmentMod !== 0 && (
             <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-400">Environment ({selectedSpot?.name}):</span>
-              <span className={environmentMod >= 0 ? 'text-green-400' : 'text-red-400'}>
+              <span className="text-fg-muted">Environment ({selectedSpot?.name}):</span>
+              <span className={environmentMod >= 0 ? 'text-success-400' : 'text-danger-400'}>
                 {environmentMod >= 0 ? '+' : ''}{environmentMod}
               </span>
             </div>
@@ -872,15 +872,15 @@ export function FishingTaskForm({
 
         {/* Total effective skill */}
         {selectedLeader && (
-          <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-600">
-            <span className="text-sm text-gray-200 font-medium">Effective Skill:</span>
-            <span className="text-sm font-bold text-green-400">
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-edge-strong">
+            <span className="text-sm text-fg-primary font-medium">Effective Skill:</span>
+            <span className="text-sm font-bold text-success-400">
               {(leaderFishingSkill ?? 10) + skillModifier + baitModifier + leaderFatiguePenalty + environmentMod}
             </span>
           </div>
         )}
 
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="text-xs text-fg-faint mt-2">
           Large fish penalty (-2) and retry penalties applied during resolution
         </p>
       </div>
@@ -890,7 +890,7 @@ export function FishingTaskForm({
         <button
           type="submit"
           disabled={!isFormValid}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed"
+          className="px-4 py-2 bg-accent-600 text-white rounded hover:bg-accent-700 transition-colors disabled:bg-surface-2 disabled:text-fg-faint disabled:cursor-not-allowed"
           data-testid="submit-button"
         >
           Create Task
@@ -898,7 +898,7 @@ export function FishingTaskForm({
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 border border-gray-600 text-gray-300 rounded hover:bg-gray-700 transition-colors"
+          className="px-4 py-2 border border-edge-strong text-fg-secondary rounded hover:bg-surface-2 transition-colors"
           data-testid="cancel-button"
         >
           Cancel

@@ -19,31 +19,31 @@ export function TransferConsole({
   onConfirmTransfer,
 }: TransferConsoleProps) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 h-fit">
+    <div className="rounded-2xl border border-edge-subtle bg-surface-0/60 p-6 h-fit">
       <h3 className="text-lg font-semibold text-white">Transfer Console</h3>
       {!transferState && (
-        <p className="mt-3 text-sm text-slate-400">
+        <p className="mt-3 text-sm text-fg-muted">
           Select an item, tool, material, food, or currency to initiate a transfer between inventories.
         </p>
       )}
       {transferState && (
-        <div className="mt-4 space-y-4 text-sm text-slate-200">
-          <div className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2">
-            <p className="text-xs uppercase text-slate-400">Source</p>
+        <div className="mt-4 space-y-4 text-sm text-fg-primary">
+          <div className="rounded-lg border border-edge-subtle bg-surface-sunken/60 px-3 py-2">
+            <p className="text-xs uppercase text-fg-muted">Source</p>
             <p>{getInventoryLabel(
               inventories.find(inv => inv.id === transferState.sourceInventoryId),
               characters
             )}</p>
           </div>
-          <div className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2">
-            <p className="text-xs uppercase text-slate-400">Transferring</p>
+          <div className="rounded-lg border border-edge-subtle bg-surface-sunken/60 px-3 py-2">
+            <p className="text-xs uppercase text-fg-muted">Transferring</p>
             <p className="flex items-center gap-2">
               {transferState.type === 'item' && 'Item'}
               {transferState.type === 'tool' && 'Tool'}
               {transferState.type === 'currency' && `Currency: ${transferState.currencyKey}`}
               {transferState.type === 'material' && 'Material'}
               {transferState.type === 'food' && 'Food'}
-              <ArrowRight size={14} className="text-slate-400" />
+              <ArrowRight size={14} className="text-fg-muted" />
             </p>
           </div>
           <label className="flex flex-col gap-2">
@@ -56,7 +56,7 @@ export function TransferConsole({
                   targetInventoryId: event.target.value,
                 })
               }
-              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+              className="rounded-lg border border-edge bg-surface-0 px-3 py-2 text-white"
             >
               <option value="">Select destination</option>
               {inventories
@@ -77,7 +77,7 @@ export function TransferConsole({
                 onChange={(event) =>
                   onTransferStateChange({ ...transferState, amount: event.target.value })
                 }
-                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+                className="rounded-lg border border-edge bg-surface-0 px-3 py-2 text-white"
               />
             </label>
           )}
@@ -91,7 +91,7 @@ export function TransferConsole({
                 onChange={(event) =>
                   onTransferStateChange({ ...transferState, quantity: event.target.value })
                 }
-                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white"
+                className="rounded-lg border border-edge bg-surface-0 px-3 py-2 text-white"
               />
             </label>
           )}
@@ -104,7 +104,7 @@ export function TransferConsole({
             </button>
             <button
               onClick={() => onTransferStateChange(null)}
-              className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"
+              className="flex-1 rounded-lg border border-edge bg-surface-0 px-4 py-2 text-sm text-fg-secondary hover:bg-surface-1"
             >
               Cancel
             </button>

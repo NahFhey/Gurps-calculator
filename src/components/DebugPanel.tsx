@@ -60,27 +60,27 @@ export function DebugPanel() {
   };
 
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
+    <div className="rounded-lg border border-edge bg-surface-1 p-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-100">Debug Mode</h3>
-          <p className="text-xs text-gray-400">Edit raw campaign JSON and apply it directly.</p>
+          <h3 className="text-lg font-semibold text-fg-bright">Debug Mode</h3>
+          <p className="text-xs text-fg-muted">Edit raw campaign JSON and apply it directly.</p>
         </div>
         <button
           type="button"
           onClick={handleApply}
-          className="rounded bg-amber-600 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-500"
+          className="rounded bg-warning-600 px-3 py-2 text-xs font-semibold text-white hover:bg-warning-500"
         >
           Apply JSON
         </button>
       </div>
       {error && (
-        <div className="mt-3 rounded border border-red-700 bg-red-900/30 px-3 py-2 text-xs text-red-200" data-testid="debug-error">
+        <div className="mt-3 rounded border border-danger-700 bg-danger-900/30 px-3 py-2 text-xs text-danger-200" data-testid="debug-error">
           {error}
         </div>
       )}
       <textarea
-        className="mt-4 h-80 w-full rounded bg-gray-900 px-3 py-2 text-xs text-gray-100"
+        className="mt-4 h-80 w-full rounded bg-surface-0 px-3 py-2 text-xs text-fg-bright"
         value={jsonText}
         onChange={(event: ChangeEvent<HTMLTextAreaElement>) => setJsonText(event.target.value)}
         data-testid="debug-json"

@@ -19,15 +19,15 @@ import { computeVisibleTiles } from '../../utils/lineOfSight';
 function categoryColorClass(cat: string): string {
   switch (cat) {
     case 'pc':
-      return 'bg-blue-500 border-blue-300';
+      return 'bg-accent-500 border-accent-300';
     case 'ally':
-      return 'bg-green-500 border-green-300';
+      return 'bg-success-500 border-success-300';
     case 'enemy':
-      return 'bg-red-500 border-red-300';
+      return 'bg-danger-500 border-danger-300';
     case 'neutral':
       return 'bg-yellow-500 border-yellow-300';
     default:
-      return 'bg-gray-500 border-gray-300';
+      return 'bg-surface-4 border-edge-bright';
   }
 }
 
@@ -160,7 +160,7 @@ export function CombatMapPanel({
 
   if (!linkedMap) {
     return (
-      <div className="h-full w-full flex items-center justify-center text-gray-500 text-sm">
+      <div className="h-full w-full flex items-center justify-center text-fg-faint text-sm">
         No linked map
       </div>
     );
@@ -306,8 +306,8 @@ function TokenOverlay({
   if (placedParticipants.length === 0 && unplacedParticipants.length === 0) return null;
 
   return (
-    <div className="absolute top-2 left-2 z-20 bg-gray-900/90 border border-gray-700 rounded-lg p-2 backdrop-blur-sm max-h-48 overflow-y-auto w-44">
-      <div className="text-[10px] font-medium text-gray-400 mb-1 uppercase tracking-wide">
+    <div className="absolute top-2 left-2 z-20 bg-surface-0/90 border border-edge rounded-lg p-2 backdrop-blur-sm max-h-48 overflow-y-auto w-44">
+      <div className="text-[10px] font-medium text-fg-muted mb-1 uppercase tracking-wide">
         Tokens
       </div>
       {placedParticipants.map((p) => {
@@ -319,19 +319,19 @@ function TokenOverlay({
             <button
               type="button"
               onClick={() => onSelectParticipant(isSelected ? null : p.instanceId)}
-              className={`flex-1 min-w-0 flex items-center gap-1.5 py-0.5 px-1 rounded text-[10px] text-left cursor-pointer hover:bg-gray-700/50 ${
+              className={`flex-1 min-w-0 flex items-center gap-1.5 py-0.5 px-1 rounded text-[10px] text-left cursor-pointer hover:bg-surface-2/50 ${
                 isCurrent
-                  ? 'bg-blue-500/20 text-blue-200'
+                  ? 'bg-accent-500/20 text-accent-200'
                   : isSelected
                     ? 'bg-yellow-500/20 text-yellow-200'
-                    : 'text-gray-300'
+                    : 'text-fg-secondary'
               }`}
             >
               <div
                 className={`w-2.5 h-2.5 rounded-full border ${categoryColor(p.category)} flex-shrink-0`}
               />
               <span className="truncate">{p.name}</span>
-              <span className="text-gray-500 ml-auto flex-shrink-0">
+              <span className="text-fg-faint ml-auto flex-shrink-0">
                 {pos.q},{pos.r}
               </span>
             </button>
@@ -344,7 +344,7 @@ function TokenOverlay({
                 }
                 aria-label={`Manage conditions for ${p.name}`}
                 title="Add / manage conditions"
-                className="flex-none p-0.5 rounded text-gray-500 hover:text-purple-300 hover:bg-gray-700/70 transition-colors"
+                className="flex-none p-0.5 rounded text-fg-faint hover:text-purple-300 hover:bg-surface-2/70 transition-colors"
               >
                 <Sparkles className="w-3 h-3" />
               </button>
@@ -354,7 +354,7 @@ function TokenOverlay({
       })}
       {unplacedParticipants.length > 0 && (
         <>
-          <div className="text-[10px] text-gray-500 mt-1 mb-0.5">
+          <div className="text-[10px] text-fg-faint mt-1 mb-0.5">
             Unplaced{selectedParticipantId ? '' : ' · click to select'}:
           </div>
           {unplacedParticipants.map((p) => {
@@ -364,10 +364,10 @@ function TokenOverlay({
                 key={p.instanceId}
                 type="button"
                 onClick={() => onSelectParticipant(isSelected ? null : p.instanceId)}
-                className={`w-full flex items-center gap-1.5 py-0.5 px-1 rounded text-[10px] text-left cursor-pointer hover:bg-gray-700/50 ${
+                className={`w-full flex items-center gap-1.5 py-0.5 px-1 rounded text-[10px] text-left cursor-pointer hover:bg-surface-2/50 ${
                   isSelected
                     ? 'bg-yellow-500/20 text-yellow-200'
-                    : 'text-gray-500'
+                    : 'text-fg-faint'
                 }`}
               >
                 <div

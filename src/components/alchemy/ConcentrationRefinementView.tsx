@@ -429,20 +429,20 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
 
   return (
     <div className="space-y-4">
-      <div className="bg-gray-800 p-4 rounded">
+      <div className="bg-surface-1 p-4 rounded">
         <h3 className="text-xl font-bold mb-4">Reagent Processing</h3>
-        <p className="text-sm text-gray-400 mb-4">
+        <p className="text-sm text-fg-muted mb-4">
           Process reagents through refinement or concentration. Each operation requires Alchemy rolls and consumes 2U input per 1U output.
         </p>
 
         {/* Selection Grid */}
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-sm text-gray-400 mb-2">Select Reagent</label>
+            <label className="block text-sm text-fg-muted mb-2">Select Reagent</label>
             <select
               value={selectedReagentId || ''}
               onChange={(e) => setSelectedReagentId(e.target.value)}
-              className="w-full bg-gray-700 px-3 py-2 rounded"
+              className="w-full bg-surface-2 px-3 py-2 rounded"
               disabled={processingState !== 'idle'}
             >
               <option value="">-- Choose Reagent --</option>
@@ -455,11 +455,11 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-2">Operation</label>
+            <label className="block text-sm text-fg-muted mb-2">Operation</label>
             <select
               value={operation}
               onChange={(e) => setOperation(e.target.value as OperationType)}
-              className="w-full bg-gray-700 px-3 py-2 rounded"
+              className="w-full bg-surface-2 px-3 py-2 rounded"
               disabled={processingState !== 'idle'}
             >
               <option value="refine">Refine (Improve Quality)</option>
@@ -471,11 +471,11 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
         {/* Lab and Worker Selection */}
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-sm text-gray-400 mb-2">Lab</label>
+            <label className="block text-sm text-fg-muted mb-2">Lab</label>
             <select
               value={selectedLabId}
               onChange={(e) => setSelectedLabId(e.target.value)}
-              className="w-full bg-gray-700 px-3 py-2 rounded"
+              className="w-full bg-surface-2 px-3 py-2 rounded"
               disabled={processingState !== 'idle'}
             >
               {(labs || [{ id: 'default', name: 'Basic Lab', rating: 0 }]).map(lab => (
@@ -487,11 +487,11 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-2">Alchemist</label>
+            <label className="block text-sm text-fg-muted mb-2">Alchemist</label>
             <select
               value={selectedWorkerId}
               onChange={(e) => setSelectedWorkerId(e.target.value)}
-              className="w-full bg-gray-700 px-3 py-2 rounded"
+              className="w-full bg-surface-2 px-3 py-2 rounded"
               disabled={processingState !== 'idle'}
             >
               {availableWorkers.map(w => (
@@ -505,41 +505,41 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
 
         {/* Output Units */}
         <div className="mb-4">
-          <label className="block text-sm text-gray-400 mb-2">Output Units to Attempt</label>
+          <label className="block text-sm text-fg-muted mb-2">Output Units to Attempt</label>
           <input
             type="number"
             value={outputUnits}
             onChange={(e) => setOutputUnits(Math.max(1, parseInt(e.target.value) || 1))}
-            className="w-full bg-gray-700 px-3 py-2 rounded"
+            className="w-full bg-surface-2 px-3 py-2 rounded"
             min="1"
             disabled={processingState !== 'idle'}
           />
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-fg-faint mt-1">
             Requires {inputUnitsRequired}U input (2:1 ratio). Each unit gets cumulative batch penalty (-1, -2, -3, etc.).
           </p>
         </div>
 
         {/* Current Status */}
         {selectedReagent && (
-          <div className="bg-gray-700 p-4 rounded mb-4">
+          <div className="bg-surface-2 p-4 rounded mb-4">
             <h4 className="text-lg font-semibold mb-2">Current Status: {selectedReagent.name}</h4>
             <div className="grid grid-cols-2 gap-4 text-sm mb-3">
               <div>
-                <span className="text-gray-400">Available:</span>
+                <span className="text-fg-muted">Available:</span>
                 <span className="ml-2 font-semibold text-yellow-400">{selectedReagent.quantity}U</span>
               </div>
               <div>
-                <span className="text-gray-400">Required Input:</span>
+                <span className="text-fg-muted">Required Input:</span>
                 <span className="ml-2 font-semibold text-orange-400">{inputUnitsRequired}U</span>
               </div>
               <div>
-                <span className="text-gray-400">Refinement:</span>
-                <span className="ml-2 capitalize font-semibold text-blue-400">
+                <span className="text-fg-muted">Refinement:</span>
+                <span className="ml-2 capitalize font-semibold text-accent-400">
                   {REFINEMENT_LEVELS[(selectedReagent.refinement || 'crude') as RefinementLevel].label}
                 </span>
               </div>
               <div>
-                <span className="text-gray-400">Potency:</span>
+                <span className="text-fg-muted">Potency:</span>
                 <span className="ml-2 font-semibold text-purple-400">
                   {selectedReagent.basePotency || 'P1'}{(selectedReagent.concentrationSteps || 0) > 0 ? ` +${selectedReagent.concentrationSteps}` : ''}
                 </span>
@@ -547,32 +547,32 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
             </div>
 
             {operation === 'refine' && targetRefinement && (
-              <div className="p-2 bg-gray-800 rounded">
-                <p className="text-sm text-green-400">
+              <div className="p-2 bg-surface-1 rounded">
+                <p className="text-sm text-success-400">
                   ✓ Will refine to: <span className="font-semibold capitalize">{REFINEMENT_LEVELS[targetRefinement].label}</span>
                 </p>
               </div>
             )}
 
             {operation === 'refine' && !targetRefinement && (
-              <div className="p-2 bg-gray-800 rounded">
-                <p className="text-sm text-red-400">
+              <div className="p-2 bg-surface-1 rounded">
+                <p className="text-sm text-danger-400">
                   ✗ Already at maximum refinement level
                 </p>
               </div>
             )}
 
             {operation === 'concentrate' && targetPotency && (
-              <div className="p-2 bg-gray-800 rounded">
-                <p className="text-sm text-green-400">
+              <div className="p-2 bg-surface-1 rounded">
+                <p className="text-sm text-success-400">
                   ✓ Will concentrate to: <span className="font-semibold">{targetPotency}</span> (+{(selectedReagent.concentrationSteps || 0) + 1} steps)
                 </p>
               </div>
             )}
 
             {!canProcess && selectedReagent.quantity < inputUnitsRequired && (
-              <div className="p-2 bg-red-900 rounded mt-2">
-                <p className="text-sm text-red-200">
+              <div className="p-2 bg-danger-900 rounded mt-2">
+                <p className="text-sm text-danger-200">
                   Insufficient quantity: need {inputUnitsRequired}U, have {selectedReagent.quantity}U
                 </p>
               </div>
@@ -595,48 +595,48 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
           }) as ProcessingDifficulty;
 
           return (
-            <div className="bg-gray-700 p-4 rounded mb-4">
+            <div className="bg-surface-2 p-4 rounded mb-4">
               <h4 className="text-lg font-semibold mb-2">
                 Processing Difficulty Preview
-                <span className="text-xs text-gray-400 ml-2 font-normal">(First Unit)</span>
+                <span className="text-xs text-fg-muted ml-2 font-normal">(First Unit)</span>
               </h4>
               <div className="grid grid-cols-2 gap-3 text-sm mb-2">
                 <div>
-                  <span className="text-gray-400">Base Skill:</span>
-                  <span className="ml-2 font-semibold text-blue-400">{firstUnitDifficulty.alchemySkill}</span>
+                  <span className="text-fg-muted">Base Skill:</span>
+                  <span className="ml-2 font-semibold text-accent-400">{firstUnitDifficulty.alchemySkill}</span>
                 </div>
                 <div>
-                  <span className="text-gray-400">Lab Rating:</span>
-                  <span className="ml-2 font-semibold text-green-400">+{firstUnitDifficulty.labRating}</span>
+                  <span className="text-fg-muted">Lab Rating:</span>
+                  <span className="ml-2 font-semibold text-success-400">+{firstUnitDifficulty.labRating}</span>
                 </div>
                 <div>
-                  <span className="text-gray-400">Process Step:</span>
+                  <span className="text-fg-muted">Process Step:</span>
                   <span className="ml-2 font-semibold text-orange-400">{firstUnitDifficulty.processStepDM}</span>
                 </div>
                 <div>
-                  <span className="text-gray-400">Batch Penalty (1st):</span>
+                  <span className="text-fg-muted">Batch Penalty (1st):</span>
                   <span className="ml-2 font-semibold text-yellow-400">{firstUnitDifficulty.batchSizePenalty}</span>
                 </div>
                 <div>
-                  <span className="text-gray-400">Potency Control:</span>
+                  <span className="text-fg-muted">Potency Control:</span>
                   <span className="ml-2 font-semibold text-purple-400">{firstUnitDifficulty.potencyControlPenalty}</span>
                 </div>
                 <div>
-                  <span className="text-gray-400">Effective Skill:</span>
+                  <span className="text-fg-muted">Effective Skill:</span>
                   <span className="ml-2 font-bold text-cyan-400">{firstUnitDifficulty.effectiveSkill}</span>
                 </div>
               </div>
               <p className="text-xs mt-2 font-mono">
-                <span className="text-blue-400">{firstUnitDifficulty.alchemySkill}</span>
-                <span className="text-gray-400"> + </span>
-                <span className="text-green-400">{firstUnitDifficulty.labRating}</span>
-                <span className="text-gray-400"> + </span>
+                <span className="text-accent-400">{firstUnitDifficulty.alchemySkill}</span>
+                <span className="text-fg-muted"> + </span>
+                <span className="text-success-400">{firstUnitDifficulty.labRating}</span>
+                <span className="text-fg-muted"> + </span>
                 <span className="text-orange-400">{firstUnitDifficulty.processStepDM}</span>
-                <span className="text-gray-400"> + </span>
+                <span className="text-fg-muted"> + </span>
                 <span className="text-yellow-400">{firstUnitDifficulty.batchSizePenalty}</span>
-                <span className="text-gray-400"> + </span>
+                <span className="text-fg-muted"> + </span>
                 <span className="text-purple-400">{firstUnitDifficulty.potencyControlPenalty}</span>
-                <span className="text-gray-400"> = </span>
+                <span className="text-fg-muted"> = </span>
                 <span className="text-cyan-400 font-bold">{firstUnitDifficulty.effectiveSkill}</span>
               </p>
               {outputUnits > 1 && (
@@ -653,7 +653,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
           <button
             onClick={startProcessing}
             disabled={!canProcess}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-4 py-2 rounded font-semibold"
+            className="w-full bg-accent-600 hover:bg-accent-700 disabled:bg-surface-3 disabled:cursor-not-allowed px-4 py-2 rounded font-semibold"
           >
             Start Processing
           </button>
@@ -662,11 +662,11 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
 
       {/* Visual Progress Bar */}
       {(processingState === 'processing' || processingState === 'completed' || processingState === 'aborted') && (
-        <div className="bg-gray-800 p-4 rounded">
+        <div className="bg-surface-1 p-4 rounded">
           <div className="flex justify-between items-center mb-3">
             <h4 className="text-lg font-semibold">Processing Progress</h4>
             {processingState === 'completed' && (
-              <span className="text-green-400 font-semibold">✓ Complete</span>
+              <span className="text-success-400 font-semibold">✓ Complete</span>
             )}
             {processingState === 'aborted' && (
               <span className="text-orange-400 font-semibold">⚠ Aborted</span>
@@ -677,23 +677,23 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
           <div className="flex gap-2 mb-4 flex-wrap">
             {Array.from({ length: outputUnits }, (_, i) => {
               const result = unitResults[i];
-              let bgColor = 'bg-gray-700';
-              let borderColor = 'border-gray-600';
+              let bgColor = 'bg-surface-2';
+              let borderColor = 'border-edge-strong';
 
               if (result) {
                 if (result.success && !result.minor) {
-                  bgColor = 'bg-green-600';
-                  borderColor = 'border-green-500';
+                  bgColor = 'bg-success-600';
+                  borderColor = 'border-success-500';
                 } else if (result.minor) {
                   bgColor = 'bg-yellow-600';
                   borderColor = 'border-yellow-500';
                 } else {
-                  bgColor = 'bg-red-600';
-                  borderColor = 'border-red-500';
+                  bgColor = 'bg-danger-600';
+                  borderColor = 'border-danger-500';
                 }
               } else if (i === currentUnitIndex && processingState === 'processing') {
-                bgColor = 'bg-blue-600';
-                borderColor = 'border-blue-500';
+                bgColor = 'bg-accent-600';
+                borderColor = 'border-accent-500';
               }
 
               return (
@@ -719,7 +719,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
                 setProcessingLog([]);
                 setShowResults(false);
               }}
-              className="w-full bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-semibold"
+              className="w-full bg-accent-600 hover:bg-accent-700 px-4 py-2 rounded font-semibold"
             >
               Start New Batch
             </button>
@@ -727,7 +727,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
 
           {/* Current Unit Roll Input */}
           {processingState === 'processing' && selectedReagent && (
-            <div className="bg-gray-700 p-4 rounded mb-4">
+            <div className="bg-surface-2 p-4 rounded mb-4">
               <h5 className="font-semibold mb-2">
                 Unit {currentUnitIndex + 1} of {outputUnits}
                 <span className="text-yellow-400 ml-2">(Batch Penalty: -{currentUnitIndex + 1})</span>
@@ -749,27 +749,27 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
 
                 return (
                   <div className="mb-3 text-sm">
-                    <div className="text-gray-400">
+                    <div className="text-fg-muted">
                       Effective Skill: <span className="text-cyan-400 font-semibold">{unitDifficulty.effectiveSkill}</span>
                     </div>
                     <div className="text-xs font-mono mt-1">
-                      <span className="text-blue-400">{unitDifficulty.alchemySkill}</span>
-                      <span className="text-gray-400"> + </span>
-                      <span className="text-green-400">{unitDifficulty.labRating}</span>
-                      <span className="text-gray-400"> + </span>
+                      <span className="text-accent-400">{unitDifficulty.alchemySkill}</span>
+                      <span className="text-fg-muted"> + </span>
+                      <span className="text-success-400">{unitDifficulty.labRating}</span>
+                      <span className="text-fg-muted"> + </span>
                       <span className="text-orange-400">{unitDifficulty.processStepDM}</span>
-                      <span className="text-gray-400"> + </span>
+                      <span className="text-fg-muted"> + </span>
                       <span className="text-yellow-400">{unitDifficulty.batchSizePenalty}</span>
-                      <span className="text-gray-400"> + </span>
+                      <span className="text-fg-muted"> + </span>
                       <span className="text-purple-400">{unitDifficulty.potencyControlPenalty}</span>
-                      <span className="text-gray-400"> = </span>
+                      <span className="text-fg-muted"> = </span>
                       <span className="text-cyan-400 font-bold">{unitDifficulty.effectiveSkill}</span>
                     </div>
                   </div>
                 );
               })()}
 
-              <label className="block text-sm text-gray-400 mb-2">Roll Result (3d6)</label>
+              <label className="block text-sm text-fg-muted mb-2">Roll Result (3d6)</label>
               <div className="flex items-center gap-2 mb-3">
                 <input
                   type="number"
@@ -778,7 +778,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
                   placeholder="3-18"
                   min="3"
                   max="18"
-                  className="flex-1 bg-gray-600 px-3 py-2 rounded"
+                  className="flex-1 bg-surface-3 px-3 py-2 rounded"
                 />
                 <DiceRoller
                   dice={currentRoll.dice}
@@ -792,13 +792,13 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
                 <button
                   onClick={processCurrentUnit}
                   disabled={!currentRoll.total}
-                  className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed px-4 py-2 rounded font-semibold"
+                  className="flex-1 bg-success-600 hover:bg-success-700 disabled:bg-surface-3 disabled:cursor-not-allowed px-4 py-2 rounded font-semibold"
                 >
                   Process Unit {currentUnitIndex + 1}
                 </button>
                 <button
                   onClick={abortProcessing}
-                  className="flex-1 bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-semibold"
+                  className="flex-1 bg-danger-600 hover:bg-danger-700 px-4 py-2 rounded font-semibold"
                 >
                   Abort Batch
                 </button>
@@ -810,7 +810,7 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
 
       {/* Processing Results Log */}
       {showResults && processingLog.length > 0 && (
-        <div className="bg-gray-800 p-4 rounded">
+        <div className="bg-surface-1 p-4 rounded">
           <h4 className="text-lg font-semibold mb-3">Processing Results</h4>
           <div className="space-y-2">
             {processingLog.map((result, idx) => (
@@ -818,14 +818,14 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
                 key={idx}
                 className={`p-3 rounded ${
                   result.critical && result.success
-                    ? 'bg-green-900 border-2 border-green-500'
+                    ? 'bg-success-900 border-2 border-success-500'
                     : result.critical && !result.success
-                    ? 'bg-red-900 border-2 border-red-500'
+                    ? 'bg-danger-900 border-2 border-danger-500'
                     : result.minor
                     ? 'bg-yellow-900 border-2 border-yellow-500'
                     : result.success
-                    ? 'bg-green-800 border border-green-600'
-                    : 'bg-red-800 border border-red-600'
+                    ? 'bg-success-800 border border-success-600'
+                    : 'bg-danger-800 border border-danger-600'
                 }`}
               >
                 <div className="flex justify-between items-start">
@@ -855,29 +855,29 @@ export function ConcentrationRefinementView({ reagents, labs, workers, saveReage
       )}
 
       {/* Information Panel */}
-      <div className="bg-gray-800 p-4 rounded">
+      <div className="bg-surface-1 p-4 rounded">
         <h4 className="text-lg font-semibold mb-3">Processing Rules</h4>
         <div className="space-y-3 text-sm">
-          <div className="bg-gray-700 p-3 rounded">
-            <h5 className="font-semibold text-blue-400 mb-2">Material Cost</h5>
-            <ul className="list-disc list-inside space-y-1 text-gray-300">
+          <div className="bg-surface-2 p-3 rounded">
+            <h5 className="font-semibold text-accent-400 mb-2">Material Cost</h5>
+            <ul className="list-disc list-inside space-y-1 text-fg-secondary">
               <li>All processing requires 2U input → 1U output</li>
               <li>Each output unit attempt consumes input regardless of success</li>
               <li>Critical success may reclaim +1U input at GM discretion</li>
             </ul>
           </div>
-          <div className="bg-gray-700 p-3 rounded">
-            <h5 className="font-semibold text-green-400 mb-2">Roll Results</h5>
-            <ul className="list-disc list-inside space-y-1 text-gray-300">
+          <div className="bg-surface-2 p-3 rounded">
+            <h5 className="font-semibold text-success-400 mb-2">Roll Results</h5>
+            <ul className="list-disc list-inside space-y-1 text-fg-secondary">
               <li>Success: Output produced</li>
               <li>Minor Failure (MoF -1 to -2): Output produced but gains hazard</li>
               <li>Failure (MoF ≤ -3): Input consumed, no output</li>
               <li>Critical Success/Failure: Special effects apply</li>
             </ul>
           </div>
-          <div className="bg-gray-700 p-3 rounded">
+          <div className="bg-surface-2 p-3 rounded">
             <h5 className="font-semibold text-purple-400 mb-2">Derived Reagents</h5>
-            <ul className="list-disc list-inside space-y-1 text-gray-300">
+            <ul className="list-disc list-inside space-y-1 text-fg-secondary">
               <li>Processing creates new reagent variants (not upgrades)</li>
               <li>Variants share identification progress via identityId</li>
               <li>Hazards from processing apply only to output variant</li>

@@ -97,7 +97,7 @@ export function PartyStashView({
               aria-label="Give selected items to character"
               value={bulkCharacterId}
               onChange={(event) => setBulkCharacterChoice(event.target.value)}
-              className="max-w-40 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-white"
+              className="max-w-40 rounded-lg border border-edge bg-surface-0 px-2 py-1 text-xs text-white"
             >
               <option value="">Give to…</option>
               {sortedCharacters.map((character) => (
@@ -117,7 +117,7 @@ export function PartyStashView({
             <button
               type="button"
               onClick={clearSelection}
-              className="rounded-full bg-slate-700 px-3 py-1 text-xs text-slate-200 hover:bg-slate-600"
+              className="rounded-full bg-surface-2 px-3 py-1 text-xs text-fg-primary hover:bg-surface-3"
             >
               Clear
             </button>
@@ -126,22 +126,22 @@ export function PartyStashView({
         {partyInventories.map((inventory) => (
           <div
             key={inventory.id}
-            className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6"
+            className="rounded-2xl border border-edge-subtle bg-surface-0/60 p-6"
           >
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-white">
                 {getInventoryLabel(inventory, characters)}
               </h3>
-              <span className="text-xs text-slate-400">{inventory.id}</span>
+              <span className="text-xs text-fg-muted">{inventory.id}</span>
             </div>
             <div className="mt-4 grid gap-4 md:grid-cols-3">
               <div>
-                <h4 className="text-sm font-semibold text-slate-300">Items</h4>
-                <ul className="mt-2 space-y-2 text-sm text-slate-200">
+                <h4 className="text-sm font-semibold text-fg-secondary">Items</h4>
+                <ul className="mt-2 space-y-2 text-sm text-fg-primary">
                   {inventory.items.map((item) => (
                     <li
                       key={item.id}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2"
+                      className="flex items-center justify-between gap-2 rounded-lg border border-edge-subtle bg-surface-sunken/60 px-3 py-2"
                     >
                       <span className="flex items-center gap-2">
                         <input
@@ -153,10 +153,10 @@ export function PartyStashView({
                           onChange={(event) =>
                             setItemSelected(inventory.id, item.id, event.target.checked)
                           }
-                          className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-indigo-500"
+                          className="h-4 w-4 rounded border-edge-strong bg-surface-0 text-indigo-500"
                         />
                         <span>
-                          {item.name} <span className="text-slate-400">x{item.quantity}</span>
+                          {item.name} <span className="text-fg-muted">x{item.quantity}</span>
                         </span>
                       </span>
                       <span className="flex items-center gap-2">
@@ -172,7 +172,7 @@ export function PartyStashView({
                               onGiveItem(inventory.id, item.id, event.target.value);
                             }
                           }}
-                          className="max-w-28 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-white"
+                          className="max-w-28 rounded-lg border border-edge bg-surface-0 px-2 py-1 text-xs text-white"
                         >
                           <option value="">Give to…</option>
                           {sortedCharacters.map((character) => (
@@ -189,7 +189,7 @@ export function PartyStashView({
                               onEquipItem?.(inventory.id, item.id, event.target.value);
                             }
                           }}
-                          className="max-w-28 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-white"
+                          className="max-w-28 rounded-lg border border-edge bg-surface-0 px-2 py-1 text-xs text-white"
                         >
                           <option value="">Equip…</option>
                           {sortedCharacters.map((character) => (
@@ -215,24 +215,24 @@ export function PartyStashView({
                     </li>
                   ))}
                   {inventory.items.length === 0 && (
-                    <li className="text-xs text-slate-500">No items.</li>
+                    <li className="text-xs text-fg-faint">No items.</li>
                   )}
                 </ul>
               </div>
 
               <div>
-                <h4 className="text-sm font-semibold text-slate-300">Tools</h4>
-                <ul className="mt-2 space-y-2 text-sm text-slate-200">
+                <h4 className="text-sm font-semibold text-fg-secondary">Tools</h4>
+                <ul className="mt-2 space-y-2 text-sm text-fg-primary">
                   {inventory.tools.map((tool) => {
                     const template = toolTemplates[tool.templateId];
                     return (
                       <li
                         key={tool.toolId}
-                        className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2"
+                        className="flex items-center justify-between gap-2 rounded-lg border border-edge-subtle bg-surface-sunken/60 px-3 py-2"
                       >
                         <span>
                           {template?.name ?? 'Unknown Tool'}
-                          <span className="text-slate-400"> ({tool.conditionId})</span>
+                          <span className="text-fg-muted"> ({tool.conditionId})</span>
                         </span>
                         <button
                           onClick={() =>
@@ -251,21 +251,21 @@ export function PartyStashView({
                     );
                   })}
                   {inventory.tools.length === 0 && (
-                    <li className="text-xs text-slate-500">No tools.</li>
+                    <li className="text-xs text-fg-faint">No tools.</li>
                   )}
                 </ul>
               </div>
 
               <div>
-                <h4 className="text-sm font-semibold text-slate-300">Currency</h4>
-                <ul className="mt-2 space-y-2 text-sm text-slate-200">
+                <h4 className="text-sm font-semibold text-fg-secondary">Currency</h4>
+                <ul className="mt-2 space-y-2 text-sm text-fg-primary">
                   {Object.entries(inventory.currency).map(([currencyKey, amount]) => (
                     <li
                       key={currencyKey}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2"
+                      className="flex items-center justify-between gap-2 rounded-lg border border-edge-subtle bg-surface-sunken/60 px-3 py-2"
                     >
                       <span>
-                        {currencyKey}: <span className="text-slate-400">{amount}</span>
+                        {currencyKey}: <span className="text-fg-muted">{amount}</span>
                       </span>
                       <button
                         onClick={() =>
@@ -284,18 +284,18 @@ export function PartyStashView({
                     </li>
                   ))}
                   {Object.keys(inventory.currency).length === 0 && (
-                    <li className="text-xs text-slate-500">No currency.</li>
+                    <li className="text-xs text-fg-faint">No currency.</li>
                   )}
                 </ul>
               </div>
             </div>
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <div>
-                <h4 className="text-sm font-semibold text-slate-300">Materials</h4>
-                <ul className="mt-2 space-y-2 text-sm text-slate-200">
+                <h4 className="text-sm font-semibold text-fg-secondary">Materials</h4>
+                <ul className="mt-2 space-y-2 text-sm text-fg-primary">
                   {inventory.materials.map((material) => (
-                    <li key={material.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2">
-                      <span>{material.name} <span className="text-slate-400">× {material.quantity}</span></span>
+                    <li key={material.id} className="flex items-center justify-between gap-2 rounded-lg border border-edge-subtle bg-surface-sunken/60 px-3 py-2">
+                      <span>{material.name} <span className="text-fg-muted">× {material.quantity}</span></span>
                       <button
                         onClick={() => onTransferStateChange({
                           type: 'material', entryId: material.id, quantity: '',
@@ -305,15 +305,15 @@ export function PartyStashView({
                       >Transfer</button>
                     </li>
                   ))}
-                  {inventory.materials.length === 0 && <li className="text-xs text-slate-500">No materials.</li>}
+                  {inventory.materials.length === 0 && <li className="text-xs text-fg-faint">No materials.</li>}
                 </ul>
               </div>
               <div>
-                <h4 className="text-sm font-semibold text-slate-300">Food</h4>
-                <ul className="mt-2 space-y-2 text-sm text-slate-200">
+                <h4 className="text-sm font-semibold text-fg-secondary">Food</h4>
+                <ul className="mt-2 space-y-2 text-sm text-fg-primary">
                   {inventory.food.map((food) => (
-                    <li key={food.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2">
-                      <span>{food.name} <span className="text-slate-400">× {food.quantity}</span></span>
+                    <li key={food.id} className="flex items-center justify-between gap-2 rounded-lg border border-edge-subtle bg-surface-sunken/60 px-3 py-2">
+                      <span>{food.name} <span className="text-fg-muted">× {food.quantity}</span></span>
                       <button
                         onClick={() => onTransferStateChange({
                           type: 'food', entryId: food.id, quantity: '',
@@ -323,14 +323,14 @@ export function PartyStashView({
                       >Transfer</button>
                     </li>
                   ))}
-                  {inventory.food.length === 0 && <li className="text-xs text-slate-500">No food.</li>}
+                  {inventory.food.length === 0 && <li className="text-xs text-fg-faint">No food.</li>}
                 </ul>
               </div>
             </div>
           </div>
         ))}
         {partyInventories.length === 0 && (
-          <div className="text-center text-slate-400 py-8">
+          <div className="text-center text-fg-muted py-8">
             No party stash found.
           </div>
         )}

@@ -436,14 +436,14 @@ export function MiningActivity({ currentDayKey, currentSlot }: MiningActivityPro
       {/* Header */}
       <header className="activity-header flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">
-          <HardHat className="w-5 h-5 text-amber-400" />
-          <h3 className="text-lg font-semibold text-gray-100">Mining</h3>
+          <HardHat className="w-5 h-5 text-warning-400" />
+          <h3 className="text-lg font-semibold text-fg-bright">Mining</h3>
         </div>
         {!isCreating && !resolvingTask && (
           <button
             type="button"
             onClick={() => setIsCreating(true)}
-            className="flex items-center gap-1 px-3 py-1.5 bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors text-sm"
+            className="flex items-center gap-1 px-3 py-1.5 bg-warning-600 text-white rounded hover:bg-warning-700 transition-colors text-sm"
             data-testid="new-mining-task-button"
           >
             <Plus className="w-4 h-4" />
@@ -454,15 +454,15 @@ export function MiningActivity({ currentDayKey, currentSlot }: MiningActivityPro
 
       {/* Mapped Sites Summary */}
       {miningSites.length > 0 && !resolvingTask && (
-        <div className="mb-4 bg-gray-900/50 border border-gray-700 rounded p-3">
-          <h4 className="text-sm font-medium text-gray-200 mb-2">Mapped Sites ({miningSites.length})</h4>
+        <div className="mb-4 bg-surface-0/50 border border-edge rounded p-3">
+          <h4 className="text-sm font-medium text-fg-primary mb-2">Mapped Sites ({miningSites.length})</h4>
           <div className="space-y-1">
             {miningSites.map((site) => (
-              <div key={site.id} className="flex items-center justify-between text-xs text-gray-300">
+              <div key={site.id} className="flex items-center justify-between text-xs text-fg-secondary">
                 <span>
                   {site.name} — {site.depositSize}
                 </span>
-                <span className={site.depleted ? 'text-red-400' : 'text-green-400'}>
+                <span className={site.depleted ? 'text-danger-400' : 'text-success-400'}>
                   {site.depleted ? 'Depleted' : `${site.remainingUnits}/${site.totalUnits} units`}
                 </span>
               </div>
@@ -474,7 +474,7 @@ export function MiningActivity({ currentDayKey, currentSlot }: MiningActivityPro
       {/* Validation Error */}
       {validationError && (
         <div
-          className="flex items-center gap-2 bg-red-900/30 border border-red-500 text-red-300 px-3 py-2 rounded mb-4"
+          className="flex items-center gap-2 bg-danger-900/30 border border-danger-500 text-danger-300 px-3 py-2 rounded mb-4"
           role="alert"
           data-testid="validation-error"
         >
@@ -483,7 +483,7 @@ export function MiningActivity({ currentDayKey, currentSlot }: MiningActivityPro
           <button
             type="button"
             onClick={() => setValidationError(null)}
-            className="ml-auto text-red-300 hover:text-red-100"
+            className="ml-auto text-danger-300 hover:text-danger-100"
             aria-label="Dismiss error"
           >
             &times;
@@ -521,11 +521,11 @@ export function MiningActivity({ currentDayKey, currentSlot }: MiningActivityPro
       {/* Pending Tasks */}
       {!resolvingTask && (
         <section className="pending-tasks mb-6" data-testid="pending-tasks-section">
-          <h4 className="font-medium mb-2 text-gray-200">
+          <h4 className="font-medium mb-2 text-fg-primary">
             Pending ({pendingTasks.length})
           </h4>
           {pendingTasks.length === 0 ? (
-            <p className="text-gray-400 text-sm italic">No pending mining tasks</p>
+            <p className="text-fg-muted text-sm italic">No pending mining tasks</p>
           ) : (
             <div className="space-y-2">
               {pendingTasks.map((task) => (
@@ -546,11 +546,11 @@ export function MiningActivity({ currentDayKey, currentSlot }: MiningActivityPro
       {/* Completed Tasks */}
       {!resolvingTask && (
         <section className="completed-tasks" data-testid="completed-tasks-section">
-          <h4 className="font-medium mb-2 text-gray-200">
+          <h4 className="font-medium mb-2 text-fg-primary">
             Completed ({completedTasks.length})
           </h4>
           {completedTasks.length === 0 ? (
-            <p className="text-gray-400 text-sm italic">No completed mining tasks</p>
+            <p className="text-fg-muted text-sm italic">No completed mining tasks</p>
           ) : (
             <div className="space-y-2">
               {completedTasks.map((task) => (

@@ -273,7 +273,7 @@ export function ManagerTab() {
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
+    <div className="bg-surface-1 rounded-lg p-6">
       {/* GM Lock Modal */}
       <GMLockModal
         isOpen={showGMLockModal}
@@ -286,18 +286,18 @@ export function ManagerTab() {
       />
 
       {/* GM/Player Mode Toggle */}
-      <div className="mb-6 flex items-center justify-between bg-gray-700 border border-gray-600 rounded-lg p-4">
+      <div className="mb-6 flex items-center justify-between bg-surface-2 border border-edge-strong rounded-lg p-4">
         <div className="flex items-center gap-3">
           {gmMode ? (
             <Shield className="text-yellow-400" size={24} />
           ) : (
-            <ShieldOff className="text-gray-400" size={24} />
+            <ShieldOff className="text-fg-muted" size={24} />
           )}
           <div>
-            <h3 className="text-lg font-semibold text-gray-100">
+            <h3 className="text-lg font-semibold text-fg-bright">
               {gmMode ? 'GM Mode Active' : 'Player Mode'}
             </h3>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-fg-muted">
               {gmMode
                 ? 'Full access to all features, hazards, and GM content'
                 : 'Limited access - GM content hidden'}
@@ -309,7 +309,7 @@ export function ManagerTab() {
           className={`px-6 py-3 rounded-lg font-semibold transition flex items-center gap-2 ${
             gmMode
               ? 'bg-yellow-600 hover:bg-yellow-500 text-white'
-              : 'bg-blue-600 hover:bg-blue-500 text-white'
+              : 'bg-accent-600 hover:bg-accent-500 text-white'
           }`}
         >
           {gmMode ? (
@@ -328,37 +328,37 @@ export function ManagerTab() {
 
       {/* Checkpoints (GM Only) */}
       {gmMode && (
-        <div className="mb-6 rounded-lg border border-gray-700 bg-gray-700/40 p-4">
+        <div className="mb-6 rounded-lg border border-edge bg-surface-2/40 p-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h3 className="text-lg font-semibold text-gray-100">Checkpoints</h3>
-              <p className="text-sm text-gray-400">
+              <h3 className="text-lg font-semibold text-fg-bright">Checkpoints</h3>
+              <p className="text-sm text-fg-muted">
                 Snapshots are created before major changes. Restore to roll back campaign state.
               </p>
             </div>
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-fg-muted">
               {(campaignState.checkpoints?.entries?.length ?? 0)}/{campaignState.checkpoints?.maxSize ?? 10}
             </span>
           </div>
           {(campaignState.checkpoints?.entries?.length ?? 0) === 0 ? (
-            <div className="mt-3 text-sm text-gray-500">No checkpoints yet.</div>
+            <div className="mt-3 text-sm text-fg-faint">No checkpoints yet.</div>
           ) : (
             <div className="mt-3 space-y-2">
               {(campaignState.checkpoints?.entries ?? []).map((checkpoint) => (
                 <div
                   key={checkpoint.id}
-                  className="flex items-center justify-between rounded-lg bg-gray-800 px-3 py-2"
+                  className="flex items-center justify-between rounded-lg bg-surface-1 px-3 py-2"
                 >
                   <div>
-                    <div className="text-sm font-semibold text-gray-100">{checkpoint.label}</div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-sm font-semibold text-fg-bright">{checkpoint.label}</div>
+                    <div className="text-xs text-fg-faint">
                       {new Date(checkpoint.createdAt).toLocaleString()}
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => campaignActions.restoreCheckpoint(checkpoint.id)}
-                    className="rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-500"
+                    className="rounded-md bg-accent-600 px-3 py-1 text-xs font-semibold text-white hover:bg-accent-500"
                   >
                     Restore
                   </button>
@@ -372,7 +372,7 @@ export function ManagerTab() {
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg max-w-md border-2 border-gray-600">
+          <div className="bg-surface-1 p-6 rounded-lg max-w-md border-2 border-edge-strong">
             <h3 className="text-xl font-bold mb-4">Confirm Delete</h3>
             <p className="mb-6">
               {deleteConfirm.type === 'foodType' ? `Delete type "${deleteConfirm.value}"?` :
@@ -387,7 +387,7 @@ export function ManagerTab() {
                `Delete template "${deleteConfirm.value}"?`}
             </p>
             <div className="flex gap-3 justify-end">
-              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 bg-gray-600 rounded">
+              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 bg-surface-3 rounded">
                 Cancel
               </button>
               <button
@@ -427,7 +427,7 @@ export function ManagerTab() {
                   }
                   setDeleteConfirm(null);
                 }}
-                className="px-4 py-2 bg-red-600 rounded"
+                className="px-4 py-2 bg-danger-600 rounded"
               >
                 Delete
               </button>
@@ -437,74 +437,74 @@ export function ManagerTab() {
       )}
 
       {/* Navigation Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-gray-700 flex-wrap">
-        <button onClick={() => setView('importExport')} className={`px-4 py-2 ${view === 'importExport' ? 'border-b-2 border-green-500 text-green-400' : 'text-gray-400'}`}>
+      <div className="flex gap-2 mb-6 border-b border-edge flex-wrap">
+        <button onClick={() => setView('importExport')} className={`px-4 py-2 ${view === 'importExport' ? 'border-b-2 border-success-500 text-success-400' : 'text-fg-muted'}`}>
           Import/Export
         </button>
-        <button onClick={() => setView('foodTypes')} className={`px-4 py-2 ${view === 'foodTypes' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+        <button onClick={() => setView('foodTypes')} className={`px-4 py-2 ${view === 'foodTypes' ? 'border-b-2 border-accent-500 text-accent-400' : 'text-fg-muted'}`}>
           Food Types
         </button>
-        <button onClick={() => setView('materialTypes')} className={`px-4 py-2 ${view === 'materialTypes' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+        <button onClick={() => setView('materialTypes')} className={`px-4 py-2 ${view === 'materialTypes' ? 'border-b-2 border-accent-500 text-accent-400' : 'text-fg-muted'}`}>
           Material Types
         </button>
-        <button onClick={() => setView('labs')} className={`px-4 py-2 ${view === 'labs' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+        <button onClick={() => setView('labs')} className={`px-4 py-2 ${view === 'labs' ? 'border-b-2 border-accent-500 text-accent-400' : 'text-fg-muted'}`}>
           Labs
         </button>
-        <button onClick={() => setView('kitchens')} className={`px-4 py-2 ${view === 'kitchens' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+        <button onClick={() => setView('kitchens')} className={`px-4 py-2 ${view === 'kitchens' ? 'border-b-2 border-accent-500 text-accent-400' : 'text-fg-muted'}`}>
           Kitchens
         </button>
-        <button onClick={() => setView('skills')} className={`px-4 py-2 ${view === 'skills' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+        <button onClick={() => setView('skills')} className={`px-4 py-2 ${view === 'skills' ? 'border-b-2 border-accent-500 text-accent-400' : 'text-fg-muted'}`}>
           Skills
         </button>
-        <button onClick={() => setView('projects')} className={`px-4 py-2 ${view === 'projects' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+        <button onClick={() => setView('projects')} className={`px-4 py-2 ${view === 'projects' ? 'border-b-2 border-accent-500 text-accent-400' : 'text-fg-muted'}`}>
           Projects
         </button>
-        <button onClick={() => setView('templates')} className={`px-4 py-2 ${view === 'templates' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+        <button onClick={() => setView('templates')} className={`px-4 py-2 ${view === 'templates' ? 'border-b-2 border-accent-500 text-accent-400' : 'text-fg-muted'}`}>
           Templates
         </button>
-        <button onClick={() => setView('reagents')} className={`px-4 py-2 ${view === 'reagents' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+        <button onClick={() => setView('reagents')} className={`px-4 py-2 ${view === 'reagents' ? 'border-b-2 border-accent-500 text-accent-400' : 'text-fg-muted'}`}>
           Reagents
         </button>
-        <button onClick={() => setView('formulas')} className={`px-4 py-2 ${view === 'formulas' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+        <button onClick={() => setView('formulas')} className={`px-4 py-2 ${view === 'formulas' ? 'border-b-2 border-accent-500 text-accent-400' : 'text-fg-muted'}`}>
           Formulas
         </button>
-        <button onClick={() => setView('effectFamilyMap')} className={`px-4 py-2 ${view === 'effectFamilyMap' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+        <button onClick={() => setView('effectFamilyMap')} className={`px-4 py-2 ${view === 'effectFamilyMap' ? 'border-b-2 border-accent-500 text-accent-400' : 'text-fg-muted'}`}>
           Effect Map
         </button>
-        <button onClick={() => setView('alchemySettings')} className={`px-4 py-2 ${view === 'alchemySettings' ? 'border-b-2 border-blue-500 text-blue-400' : 'text-gray-400'}`}>
+        <button onClick={() => setView('alchemySettings')} className={`px-4 py-2 ${view === 'alchemySettings' ? 'border-b-2 border-accent-500 text-accent-400' : 'text-fg-muted'}`}>
           Alchemy Settings
         </button>
-        <button onClick={() => setView('gathering')} className={`px-4 py-2 ${view === 'gathering' ? 'border-b-2 border-cyan-500 text-cyan-400' : 'text-gray-400'}`}>
+        <button onClick={() => setView('gathering')} className={`px-4 py-2 ${view === 'gathering' ? 'border-b-2 border-cyan-500 text-cyan-400' : 'text-fg-muted'}`}>
           Gathering
         </button>
-        <button onClick={() => setView('toolTemplates')} className={`px-4 py-2 ${view === 'toolTemplates' ? 'border-b-2 border-purple-500 text-purple-400' : 'text-gray-400'}`}>
+        <button onClick={() => setView('toolTemplates')} className={`px-4 py-2 ${view === 'toolTemplates' ? 'border-b-2 border-purple-500 text-purple-400' : 'text-fg-muted'}`}>
           Tool Templates
         </button>
-        <button onClick={() => setView('facilities')} className={`px-4 py-2 ${view === 'facilities' ? 'border-b-2 border-purple-500 text-purple-400' : 'text-gray-400'}`}>
+        <button onClick={() => setView('facilities')} className={`px-4 py-2 ${view === 'facilities' ? 'border-b-2 border-purple-500 text-purple-400' : 'text-fg-muted'}`}>
           Facilities
         </button>
-        <button onClick={() => setView('trading')} className={`px-4 py-2 ${view === 'trading' ? 'border-b-2 border-amber-500 text-amber-400' : 'text-gray-400'}`}>
+        <button onClick={() => setView('trading')} className={`px-4 py-2 ${view === 'trading' ? 'border-b-2 border-warning-500 text-warning-400' : 'text-fg-muted'}`}>
           Trading
         </button>
-        <button onClick={() => setView('characterTemplates')} className={`px-4 py-2 ${view === 'characterTemplates' ? 'border-b-2 border-emerald-500 text-emerald-400' : 'text-gray-400'}`}>
+        <button onClick={() => setView('characterTemplates')} className={`px-4 py-2 ${view === 'characterTemplates' ? 'border-b-2 border-emerald-500 text-emerald-400' : 'text-fg-muted'}`}>
           Character Templates
         </button>
-        <button onClick={() => setView('locations')} className={`px-4 py-2 ${view === 'locations' ? 'border-b-2 border-teal-500 text-teal-400' : 'text-gray-400'}`}>
+        <button onClick={() => setView('locations')} className={`px-4 py-2 ${view === 'locations' ? 'border-b-2 border-teal-500 text-teal-400' : 'text-fg-muted'}`}>
           Locations
         </button>
-        <button onClick={() => setView('vehicles')} className={`px-4 py-2 ${view === 'vehicles' ? 'border-b-2 border-orange-500 text-orange-400' : 'text-gray-400'}`}>
+        <button onClick={() => setView('vehicles')} className={`px-4 py-2 ${view === 'vehicles' ? 'border-b-2 border-orange-500 text-orange-400' : 'text-fg-muted'}`}>
           Vehicles
         </button>
-        <button onClick={() => setView('travelEvents')} className={`px-4 py-2 ${view === 'travelEvents' ? 'border-b-2 border-rose-500 text-rose-400' : 'text-gray-400'}`}>
+        <button onClick={() => setView('travelEvents')} className={`px-4 py-2 ${view === 'travelEvents' ? 'border-b-2 border-rose-500 text-rose-400' : 'text-fg-muted'}`}>
           Travel Events
         </button>
-        <button onClick={() => setView('calendar')} className={`px-4 py-2 ${view === 'calendar' ? 'border-b-2 border-sky-500 text-sky-400' : 'text-gray-400'}`}>
+        <button onClick={() => setView('calendar')} className={`px-4 py-2 ${view === 'calendar' ? 'border-b-2 border-info-500 text-info-400' : 'text-fg-muted'}`}>
           Calendar
         </button>
         {gmMode && (
           <button
             onClick={() => setView('debug')}
-            className={`px-4 py-2 ${view === 'debug' ? 'border-b-2 border-amber-500 text-amber-400' : 'text-gray-400'}`}
+            className={`px-4 py-2 ${view === 'debug' ? 'border-b-2 border-warning-500 text-warning-400' : 'text-fg-muted'}`}
           >
             Debug
           </button>

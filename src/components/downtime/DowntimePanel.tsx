@@ -59,18 +59,18 @@ export function DowntimePanel({ currentDayKey, currentSlot }: DowntimePanelProps
   return (
     <DowntimeProvider currentDayKey={currentDayKey} currentSlot={currentSlot}>
       <div className="flex flex-col h-full">
-        <header className="flex items-center gap-2 p-4 border-b border-gray-200">
+        <header className="flex items-center gap-2 p-4 border-b border-edge-subtle">
           {activeView !== 'tiles' && (
             <button
               onClick={navigateBack}
-              className="p-1 hover:bg-gray-100 rounded"
+              className="p-1 hover:bg-surface-2 rounded"
               aria-label="Back to activities"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
           )}
           <h2 className="text-lg font-semibold">Downtime</h2>
-          <Moon className="w-5 h-5 text-gray-500" />
+          <Moon className="w-5 h-5 text-fg-faint" />
         </header>
 
         <main className="flex-1 overflow-y-auto p-4">

@@ -25,8 +25,8 @@ interface TaskResultsDisplayProps {
 
 export function TaskResultsDisplay({ results, className = '' }: TaskResultsDisplayProps) {
   const backgroundClass = results.success
-    ? 'bg-green-900/30 border border-green-700/50 text-green-200'
-    : 'bg-gray-800 border border-gray-700 text-gray-300';
+    ? 'bg-success-900/30 border border-success-700/50 text-success-200'
+    : 'bg-surface-1 border border-edge text-fg-secondary';
 
   return (
     <div
@@ -41,7 +41,7 @@ export function TaskResultsDisplay({ results, className = '' }: TaskResultsDispl
         <ul className="list-disc list-inside">
           {results.inventoryChanges.map((change, index) => (
             <li key={index}>
-              <span className={change.quantity > 0 ? 'text-green-400' : 'text-red-400'}>
+              <span className={change.quantity > 0 ? 'text-success-400' : 'text-danger-400'}>
                 {change.quantity > 0 ? '+' : ''}
                 {change.quantity}
               </span>{' '}
@@ -53,7 +53,7 @@ export function TaskResultsDisplay({ results, className = '' }: TaskResultsDispl
 
       {/* Experience Gained */}
       {results.experienceGained !== undefined && results.experienceGained > 0 && (
-        <p className="text-blue-400 mt-1">+{results.experienceGained} XP</p>
+        <p className="text-accent-400 mt-1">+{results.experienceGained} XP</p>
       )}
     </div>
   );
@@ -79,7 +79,7 @@ export function CancelledMessage({
 }: CancelledMessageProps) {
   return (
     <div
-      className={`task-cancelled p-2 rounded bg-gray-800 border border-gray-700 text-gray-400 text-sm italic ${className}`}
+      className={`task-cancelled p-2 rounded bg-surface-1 border border-edge text-fg-muted text-sm italic ${className}`}
       data-testid="cancelled-message"
     >
       {message}

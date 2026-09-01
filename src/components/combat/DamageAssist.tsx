@@ -175,7 +175,7 @@ export default function DamageAssist({
         <div className="space-y-2">
           {/* Expression Input */}
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Damage Expression</label>
+            <label className="block text-sm text-fg-muted mb-1">Damage Expression</label>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -185,7 +185,7 @@ export default function DamageAssist({
                   setUseManual(false);
                 }}
                 placeholder="e.g., 2d+1, sw+2, 1d6-1"
-                className="flex-1 px-3 py-2 bg-gray-700 rounded"
+                className="flex-1 px-3 py-2 bg-surface-2 rounded"
               />
               <button
                 onClick={handleRollDamage}
@@ -196,17 +196,17 @@ export default function DamageAssist({
               </button>
             </div>
             {attacker && (expression.includes('sw') || expression.includes('thr')) && (
-              <div className="text-xs text-gray-400 mt-1">
+              <div className="text-xs text-fg-muted mt-1">
                 Will resolve based on attacker ST {attacker.st}
               </div>
             )}
           </div>
 
           {/* OR Manual Input */}
-          <div className="text-center text-gray-500 text-sm">OR</div>
+          <div className="text-center text-fg-faint text-sm">OR</div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Manual Damage</label>
+            <label className="block text-sm text-fg-muted mb-1">Manual Damage</label>
             <input
               type="number"
               value={manualDamage}
@@ -216,7 +216,7 @@ export default function DamageAssist({
                 setRollResult(null);
               }}
               placeholder="Enter damage number"
-              className="w-full px-3 py-2 bg-gray-700 rounded"
+              className="w-full px-3 py-2 bg-surface-2 rounded"
             />
           </div>
         </div>
@@ -224,8 +224,8 @@ export default function DamageAssist({
 
       {/* Roll Result */}
       {rollResult && !useManual && (
-        <div className="bg-gray-800 rounded p-3">
-          <div className="text-sm text-gray-400 mb-1">Rolled</div>
+        <div className="bg-surface-1 rounded p-3">
+          <div className="text-sm text-fg-muted mb-1">Rolled</div>
           <div className="text-xl font-bold">
             {rollResult.dice.join(' + ')}
             {rollResult.modifier !== 0 && ` ${rollResult.modifier > 0 ? '+' : ''}${rollResult.modifier}`}
@@ -257,9 +257,9 @@ export default function DamageAssist({
           value={drValue}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setDrValue(e.target.value)}
           placeholder="Damage Resistance"
-          className="w-full px-3 py-2 bg-gray-700 rounded"
+          className="w-full px-3 py-2 bg-surface-2 rounded"
         />
-        <div className="text-xs text-gray-400 mt-1">
+        <div className="text-xs text-fg-muted mt-1">
           General DR only (no hit location or damage type effects in Phase 3)
         </div>
       </div>
@@ -277,22 +277,22 @@ export default function DamageAssist({
 
       {/* Damage Result */}
       {damageResult && (
-        <div className="bg-red-900/30 border border-red-600 rounded p-4">
+        <div className="bg-danger-900/30 border border-danger-600 rounded p-4">
           <div className="space-y-2">
             <div className="flex justify-between">
-              <span className="text-gray-400">Raw Damage:</span>
+              <span className="text-fg-muted">Raw Damage:</span>
               <span className="font-semibold">{damageResult.raw}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">DR:</span>
+              <span className="text-fg-muted">DR:</span>
               <span className="font-semibold">-{damageResult.dr}</span>
             </div>
-            <div className="flex justify-between pt-2 border-t border-red-700">
+            <div className="flex justify-between pt-2 border-t border-danger-700">
               <span className="font-bold">Penetrating:</span>
-              <span className="font-bold text-xl text-red-400">{damageResult.penetrating} HP</span>
+              <span className="font-bold text-xl text-danger-400">{damageResult.penetrating} HP</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-400">Target HP after:</span>
+              <span className="text-fg-muted">Target HP after:</span>
               <span className="font-semibold">
                 {target.currentHP} → {target.currentHP - damageResult.penetrating}
               </span>
@@ -305,14 +305,14 @@ export default function DamageAssist({
       <div className="flex gap-2 pt-2">
         <button
           onClick={onCancel}
-          className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded"
+          className="flex-1 px-4 py-2 bg-surface-3 hover:bg-surface-4 rounded"
         >
           Cancel
         </button>
         <button
           onClick={handleComplete}
           disabled={!damageResult}
-          className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 px-4 py-2 bg-success-600 hover:bg-success-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Apply Damage
         </button>

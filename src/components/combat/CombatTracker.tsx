@@ -160,11 +160,11 @@ export default function CombatTracker() {
   // --------------------------------------------------------------------------
 
   if (!combat) {
-    return <div className="text-center text-gray-400 py-8">No active combat</div>;
+    return <div className="text-center text-fg-muted py-8">No active combat</div>;
   }
 
   if (!combat.participants || !combat.turnOrder) {
-    return <div className="text-center text-gray-400 py-8">Invalid combat state - missing participants or turn order</div>;
+    return <div className="text-center text-fg-muted py-8">Invalid combat state - missing participants or turn order</div>;
   }
 
   // --------------------------------------------------------------------------
@@ -622,16 +622,16 @@ export default function CombatTracker() {
 
       {/* Battle map link (GM only) — linking switches the shell into map-combat layout */}
       {gmMode && (
-        <div className="flex items-center gap-2 bg-gray-800 rounded-lg px-3 py-2">
-          <MapIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
-          <span className="text-sm font-medium text-gray-300">Battle Map</span>
+        <div className="flex items-center gap-2 bg-surface-1 rounded-lg px-3 py-2">
+          <MapIcon className="w-4 h-4 text-fg-muted flex-shrink-0" />
+          <span className="text-sm font-medium text-fg-secondary">Battle Map</span>
           <select
             aria-label="Battle map"
             value={combat.mapId ?? ''}
             onChange={(e) =>
               saveCombatActive({ ...combat, mapId: e.target.value || undefined })
             }
-            className="flex-1 min-w-0 rounded border border-gray-600 bg-gray-900 px-2 py-1 text-sm text-gray-200"
+            className="flex-1 min-w-0 rounded border border-edge-strong bg-surface-0 px-2 py-1 text-sm text-fg-primary"
           >
             <option value="">None (tracker only)</option>
             {availableMaps.map((m) => (
@@ -639,7 +639,7 @@ export default function CombatTracker() {
             ))}
           </select>
           {!combat.mapId && (
-            <span className="text-xs text-gray-500">tokens, movement &amp; LOS need a map</span>
+            <span className="text-xs text-fg-faint">tokens, movement &amp; LOS need a map</span>
           )}
         </div>
       )}
@@ -664,7 +664,7 @@ export default function CombatTracker() {
           disabledReason={turnContext.isUnconscious ? 'Unconscious' : undefined}
         />
       ) : (
-        <div className="bg-gray-800 rounded-lg p-4 text-sm text-gray-400">
+        <div className="bg-surface-1 rounded-lg p-4 text-sm text-fg-muted">
           Enemy maneuver selection hidden in Player View.
         </div>
       )}

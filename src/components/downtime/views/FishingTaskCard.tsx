@@ -49,9 +49,9 @@ interface StatusBadgeProps {
 function StatusBadge({ status }: StatusBadgeProps) {
   const config: Record<TaskStatus, { bg: string; text: string; icon: React.ElementType; label: string }> = {
     pending: { bg: 'bg-yellow-900/50', text: 'text-yellow-300', icon: Clock, label: 'Pending' },
-    in_progress: { bg: 'bg-blue-900/50', text: 'text-blue-300', icon: Loader, label: 'In Progress' },
-    resolved: { bg: 'bg-green-900/50', text: 'text-green-300', icon: Check, label: 'Resolved' },
-    cancelled: { bg: 'bg-gray-800', text: 'text-gray-400', icon: Ban, label: 'Cancelled' },
+    in_progress: { bg: 'bg-accent-900/50', text: 'text-accent-300', icon: Loader, label: 'In Progress' },
+    resolved: { bg: 'bg-success-900/50', text: 'text-success-300', icon: Check, label: 'Resolved' },
+    cancelled: { bg: 'bg-surface-1', text: 'text-fg-muted', icon: Ban, label: 'Cancelled' },
   };
 
   const { bg, text, icon: Icon, label } = config[status];
@@ -70,8 +70,8 @@ function StatusBadge({ status }: StatusBadgeProps) {
 // Method badge component
 function MethodBadge({ method }: { method: FishingMethod }) {
   const config: Record<FishingMethod, { bg: string; text: string; label: string }> = {
-    Line: { bg: 'bg-blue-900/50', text: 'text-blue-300', label: 'Line' },
-    Net: { bg: 'bg-green-900/50', text: 'text-green-300', label: 'Net' },
+    Line: { bg: 'bg-accent-900/50', text: 'text-accent-300', label: 'Line' },
+    Net: { bg: 'bg-success-900/50', text: 'text-success-300', label: 'Net' },
     Spear: { bg: 'bg-orange-900/50', text: 'text-orange-300', label: 'Spear' },
   };
 
@@ -92,14 +92,14 @@ interface ResolutionModeToggleProps {
 
 function ResolutionModeToggle({ mode, onChange }: ResolutionModeToggleProps) {
   return (
-    <div className="flex items-center gap-1 bg-gray-900/50 rounded p-0.5">
+    <div className="flex items-center gap-1 bg-surface-0/50 rounded p-0.5">
       <button
         type="button"
         onClick={() => onChange('auto')}
         className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
           mode === 'auto'
             ? 'bg-purple-600 text-white'
-            : 'text-gray-400 hover:text-gray-200'
+            : 'text-fg-muted hover:text-fg-primary'
         }`}
         title="Auto-roll all dice"
       >
@@ -112,7 +112,7 @@ function ResolutionModeToggle({ mode, onChange }: ResolutionModeToggleProps) {
         className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
           mode === 'manual'
             ? 'bg-purple-600 text-white'
-            : 'text-gray-400 hover:text-gray-200'
+            : 'text-fg-muted hover:text-fg-primary'
         }`}
         title="Roll dice manually"
       >
@@ -166,9 +166,9 @@ export function FishingTaskCard({
   // Determine card border color based on status
   const statusBorders: Record<TaskStatus, string> = {
     pending: 'border-yellow-600/50',
-    in_progress: 'border-blue-600/50',
-    resolved: 'border-green-600/50',
-    cancelled: 'border-gray-600/50',
+    in_progress: 'border-accent-600/50',
+    resolved: 'border-success-600/50',
+    cancelled: 'border-edge-strong/50',
   };
 
   const isActionable = !readonly && (task.status === 'pending' || task.status === 'in_progress');
@@ -185,15 +185,15 @@ export function FishingTaskCard({
 
   return (
     <div
-      className={`fishing-task-card p-3 rounded-lg border-2 bg-gray-800/60 ${statusBorders[task.status]}`}
+      className={`fishing-task-card p-3 rounded-lg border-2 bg-surface-1/60 ${statusBorders[task.status]}`}
       data-testid="fishing-task-card"
       data-task-id={task.id}
     >
       {/* Card Header */}
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center gap-2">
-          <Fish className="w-4 h-4 text-blue-400" />
-          <span className="font-medium text-gray-100">{title}</span>
+          <Fish className="w-4 h-4 text-accent-400" />
+          <span className="font-medium text-fg-bright">{title}</span>
         </div>
         <StatusBadge status={task.status} />
       </div>
@@ -202,7 +202,7 @@ export function FishingTaskCard({
       <div className="flex flex-wrap gap-2 mb-3">
         <MethodBadge method={method} />
         {isRandomCatch ? (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-gray-700 text-gray-300">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-surface-2 text-fg-secondary">
             <Shuffle className="w-3 h-3" />
             Random
           </span>
@@ -220,26 +220,26 @@ export function FishingTaskCard({
       </div>
 
       {/* Task Details */}
-      <div className="task-details text-sm text-gray-300 space-y-1 mb-3">
+      <div className="task-details text-sm text-fg-secondary space-y-1 mb-3">
         <p>
-          <span className="font-medium text-gray-200">Leader:</span> {leaderName}
+          <span className="font-medium text-fg-primary">Leader:</span> {leaderName}
         </p>
         {task.helperIds.length > 0 && (
           <p>
-            <span className="font-medium text-gray-200">Helpers:</span> {helperNames}
+            <span className="font-medium text-fg-primary">Helpers:</span> {helperNames}
           </p>
         )}
         <p>
-          <span className="font-medium text-gray-200">Spot:</span> {spotName}
+          <span className="font-medium text-fg-primary">Spot:</span> {spotName}
         </p>
         {baitName && (
           <p>
-            <span className="font-medium text-gray-200">Bait:</span> {baitName}
+            <span className="font-medium text-fg-primary">Bait:</span> {baitName}
           </p>
         )}
         <p>
-          <span className="font-medium text-gray-200">Modifier:</span>{' '}
-          <span className={data.skillModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
+          <span className="font-medium text-fg-primary">Modifier:</span>{' '}
+          <span className={data.skillModifier >= 0 ? 'text-success-400' : 'text-danger-400'}>
             {data.skillModifier >= 0 ? '+' : ''}{data.skillModifier}
           </span>
         </p>
@@ -254,7 +254,7 @@ export function FishingTaskCard({
       {task.results && (
         <div
           className={`task-results p-2 rounded text-sm ${
-            task.results.success ? 'bg-green-900/30 text-green-200' : 'bg-gray-900/50 text-gray-300'
+            task.results.success ? 'bg-success-900/30 text-success-200' : 'bg-surface-0/50 text-fg-secondary'
           }`}
           data-testid="task-results"
         >
@@ -263,7 +263,7 @@ export function FishingTaskCard({
             <ul className="list-disc list-inside">
               {task.results.inventoryChanges.map((change, i) => (
                 <li key={i}>
-                  <span className={change.quantity > 0 ? 'text-green-400' : 'text-red-400'}>
+                  <span className={change.quantity > 0 ? 'text-success-400' : 'text-danger-400'}>
                     {change.quantity > 0 ? '+' : ''}{change.quantity}
                   </span>{' '}
                   {change.itemName}
@@ -277,7 +277,7 @@ export function FishingTaskCard({
 
       {/* Cancelled Message */}
       {task.status === 'cancelled' && (
-        <div className="task-cancelled p-2 rounded bg-gray-900/50 text-gray-400 text-sm italic">
+        <div className="task-cancelled p-2 rounded bg-surface-0/50 text-fg-muted text-sm italic">
           Task was cancelled
         </div>
       )}
@@ -287,7 +287,7 @@ export function FishingTaskCard({
         <div className="task-actions mt-3 space-y-2">
           {/* Resolution Mode Toggle */}
           <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-400">Resolution Mode:</span>
+            <span className="text-xs text-fg-muted">Resolution Mode:</span>
             <ResolutionModeToggle mode={resolutionMode} onChange={setResolutionMode} />
           </div>
 
@@ -296,7 +296,7 @@ export function FishingTaskCard({
             <button
               type="button"
               onClick={handleResolve}
-              className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
+              className="flex items-center gap-1 px-3 py-1.5 bg-success-600 text-white text-sm rounded hover:bg-success-700 transition-colors"
               disabled={task.status === 'in_progress'}
               data-testid="resolve-button"
             >
@@ -315,7 +315,7 @@ export function FishingTaskCard({
             <button
               type="button"
               onClick={onCancel}
-              className="flex items-center gap-1 px-3 py-1.5 border border-red-500/50 text-red-400 text-sm rounded hover:bg-red-900/30 transition-colors"
+              className="flex items-center gap-1 px-3 py-1.5 border border-danger-500/50 text-danger-400 text-sm rounded hover:bg-danger-900/30 transition-colors"
               disabled={task.status === 'in_progress'}
               data-testid="cancel-button"
             >

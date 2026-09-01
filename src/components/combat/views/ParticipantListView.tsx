@@ -126,11 +126,11 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, onOpenC
 
   const getHPStatusColor = (status: string): string => {
     switch (status) {
-      case 'healthy': return 'text-green-400';
+      case 'healthy': return 'text-success-400';
       case 'injured': return 'text-yellow-400';
       case 'critical': return 'text-orange-400';
-      case 'dead': return 'text-red-400';
-      default: return 'text-gray-400';
+      case 'dead': return 'text-danger-400';
+      default: return 'text-fg-muted';
     }
   };
 
@@ -165,11 +165,11 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, onOpenC
   };
 
   return (
-    <div className={`bg-gray-800 rounded p-3 ${isCurrent ? 'border-2 border-blue-500' : ''}`}>
+    <div className={`bg-surface-1 rounded p-3 ${isCurrent ? 'border-2 border-accent-500' : ''}`}>
       <div className="flex justify-between items-start mb-2">
         <div>
           <h4 className="font-semibold">{participant.name}</h4>
-          <p className="text-xs text-gray-400">{participant.category}</p>
+          <p className="text-xs text-fg-muted">{participant.category}</p>
         </div>
         <span className={`text-xs font-semibold ${getHPStatusColor(hpStatus)}`}>
           {hpStatus.toUpperCase()}
@@ -179,9 +179,9 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, onOpenC
       <div className="grid grid-cols-3 gap-2 text-sm">
         {/* HP */}
         <div>
-          <div className="text-xs text-gray-400">HP</div>
+          <div className="text-xs text-fg-muted">HP</div>
           {hp.mode === 'unknown' ? (
-            <div className="text-gray-500 italic">Unknown</div>
+            <div className="text-fg-faint italic">Unknown</div>
           ) : hp.mode === 'band' ? (
             <div className="text-yellow-400">{hp.bandText}</div>
           ) : editing === 'HP' ? (
@@ -194,13 +194,13 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, onOpenC
                 if (e.key === 'Enter') saveEdit();
                 if (e.key === 'Escape') cancelEdit();
               }}
-              className="w-full px-1 py-0.5 bg-gray-600 rounded text-sm"
+              className="w-full px-1 py-0.5 bg-surface-3 rounded text-sm"
               autoFocus
             />
           ) : (
             <div
               onClick={() => startEdit('HP')}
-              className="cursor-pointer hover:bg-gray-700 px-1 rounded"
+              className="cursor-pointer hover:bg-surface-2 px-1 rounded"
             >
               {hp.current}/{hp.max}
             </div>
@@ -209,9 +209,9 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, onOpenC
 
         {/* FP */}
         <div>
-          <div className="text-xs text-gray-400">FP</div>
+          <div className="text-xs text-fg-muted">FP</div>
           {fp.mode === 'unknown' ? (
-            <div className="text-gray-500 italic">Unknown</div>
+            <div className="text-fg-faint italic">Unknown</div>
           ) : editing === 'FP' ? (
             <input
               type="number"
@@ -222,13 +222,13 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, onOpenC
                 if (e.key === 'Enter') saveEdit();
                 if (e.key === 'Escape') cancelEdit();
               }}
-              className="w-full px-1 py-0.5 bg-gray-600 rounded text-sm"
+              className="w-full px-1 py-0.5 bg-surface-3 rounded text-sm"
               autoFocus
             />
           ) : (
             <div
               onClick={() => startEdit('FP')}
-              className="cursor-pointer hover:bg-gray-700 px-1 rounded"
+              className="cursor-pointer hover:bg-surface-2 px-1 rounded"
             >
               {fp.current}/{fp.max}
             </div>
@@ -238,9 +238,9 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, onOpenC
         {/* MP */}
         {(mp.max || 0) > 0 && (
           <div>
-            <div className="text-xs text-gray-400">MP</div>
+            <div className="text-xs text-fg-muted">MP</div>
             {mp.mode === 'unknown' ? (
-              <div className="text-gray-500 italic">Unknown</div>
+              <div className="text-fg-faint italic">Unknown</div>
             ) : editing === 'MP' ? (
               <input
                 type="number"
@@ -251,13 +251,13 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, onOpenC
                   if (e.key === 'Enter') saveEdit();
                   if (e.key === 'Escape') cancelEdit();
                 }}
-                className="w-full px-1 py-0.5 bg-gray-600 rounded text-sm"
+                className="w-full px-1 py-0.5 bg-surface-3 rounded text-sm"
                 autoFocus
               />
             ) : (
               <div
                 onClick={() => startEdit('MP')}
-                className="cursor-pointer hover:bg-gray-700 px-1 rounded"
+                className="cursor-pointer hover:bg-surface-2 px-1 rounded"
               >
                 {mp.current}/{mp.max}
               </div>
@@ -271,13 +271,13 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, onOpenC
         const effects = getActiveEffects(participant) as string[];
         if (effects.length === 0) return null;
         return (
-          <div className="mt-2 pt-2 border-t border-gray-700">
-            <div className="text-xs text-gray-400 mb-1">Effects:</div>
+          <div className="mt-2 pt-2 border-t border-edge">
+            <div className="text-xs text-fg-muted mb-1">Effects:</div>
             <div className="flex flex-wrap gap-1">
               {effects.map((effect, index) => (
                 <span
                   key={index}
-                  className="text-xs px-2 py-0.5 bg-red-900/50 text-red-300 rounded"
+                  className="text-xs px-2 py-0.5 bg-danger-900/50 text-danger-300 rounded"
                 >
                   {effect}
                 </span>
@@ -296,9 +296,9 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, onOpenC
         const visible = sorted.slice(0, TRACKER_CONDITION_CAP);
         const overflow = sorted.length - visible.length;
         return (
-          <div className="mt-2 pt-2 border-t border-gray-700">
+          <div className="mt-2 pt-2 border-t border-edge">
             <div className="flex items-center gap-1.5 mb-1">
-              <div className="text-xs text-gray-400">Conditions:</div>
+              <div className="text-xs text-fg-muted">Conditions:</div>
               {onOpenConditions && (
                 <button
                   type="button"
@@ -307,7 +307,7 @@ function ParticipantCardBase({ participant, isCurrent, onUpdateResource, onOpenC
                   }
                   aria-label={`Manage conditions for ${participant.name}`}
                   title="Add / manage conditions"
-                  className="flex-none p-0.5 rounded bg-gray-700 hover:bg-blue-600 text-gray-300 hover:text-white transition-colors"
+                  className="flex-none p-0.5 rounded bg-surface-2 hover:bg-accent-600 text-fg-secondary hover:text-white transition-colors"
                 >
                   <Plus size={11} />
                 </button>

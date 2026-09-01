@@ -255,8 +255,8 @@ export function CraftingWorkbench({
   if (!current) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-400 mb-4">No active project. Start a new one or select from the Projects tab.</p>
-        <button onClick={startNew} className="bg-green-600 px-6 py-3 rounded hover:bg-green-700">
+        <p className="text-fg-muted mb-4">No active project. Start a new one or select from the Projects tab.</p>
+        <button onClick={startNew} className="bg-success-600 px-6 py-3 rounded hover:bg-success-700">
           New Project
         </button>
       </div>
@@ -267,10 +267,10 @@ export function CraftingWorkbench({
   const progress = current.shifts ? current.shifts.reduce((s, x) => s + x.hoursAdded, 0) : 0;
 
   const phaseColors = {
-    setup: { bg: 'bg-gray-800', border: 'border-blue-500', text: 'text-blue-400' },
-    design: { bg: 'bg-gray-800', border: 'border-purple-500', text: 'text-purple-400' },
-    craft: { bg: 'bg-gray-800', border: 'border-green-500', text: 'text-green-400' },
-    complete: { bg: 'bg-gray-800', border: 'border-green-500', text: 'text-green-400' },
+    setup: { bg: 'bg-surface-1', border: 'border-accent-500', text: 'text-accent-400' },
+    design: { bg: 'bg-surface-1', border: 'border-purple-500', text: 'text-purple-400' },
+    craft: { bg: 'bg-surface-1', border: 'border-success-500', text: 'text-success-400' },
+    complete: { bg: 'bg-surface-1', border: 'border-success-500', text: 'text-success-400' },
   };
   const colors = phaseColors[current.phase] || phaseColors.setup;
 
@@ -475,7 +475,7 @@ export function CraftingWorkbench({
       {/* Abandon Confirm Modal */}
       {abandonConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg max-w-md">
+          <div className="bg-surface-1 p-6 rounded-lg max-w-md">
             <h3 className="text-xl font-bold mb-4">Abandon Project?</h3>
             <p className="mb-6">
               This will cancel the current project and refund all materials.
@@ -483,7 +483,7 @@ export function CraftingWorkbench({
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setAbandonConfirm(false)}
-                className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-500"
+                className="px-4 py-2 bg-surface-3 rounded hover:bg-surface-4"
               >
                 Keep Working
               </button>
@@ -513,7 +513,7 @@ export function CraftingWorkbench({
 
       {/* Action buttons */}
       <div className="flex gap-2 mb-4">
-        <button onClick={startNew} className="bg-green-600 px-4 py-2 rounded">New Project</button>
+        <button onClick={startNew} className="bg-success-600 px-4 py-2 rounded">New Project</button>
         {current && (
           <button onClick={() => setAbandonConfirm(true)} className="bg-orange-600 px-4 py-2 rounded">
             Cancel Current
@@ -545,7 +545,7 @@ export function CraftingWorkbench({
                 const updated = { ...current, templateType: newType as Craft['templateType'], template: firstTemplate, selectedMaterials: selectedMats };
                 setCurrent(updated);
                 onCraftUpdated(updated);
-              }} className="w-full bg-gray-700 px-3 py-2 rounded">
+              }} className="w-full bg-surface-2 px-3 py-2 rounded">
                 <option value="weapons">Weapons</option>
                 <option value="armor">Armor</option>
                 <option value="ranged">Ranged</option>
@@ -566,7 +566,7 @@ export function CraftingWorkbench({
                 const updated = { ...current, template: newTemplate, selectedMaterials: selectedMats };
                 setCurrent(updated);
                 onCraftUpdated(updated);
-              }} className="w-full bg-gray-700 px-3 py-2 rounded">
+              }} className="w-full bg-surface-2 px-3 py-2 rounded">
                 {Object.keys(customTemplates[current.templateType] || {}).map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
@@ -576,19 +576,19 @@ export function CraftingWorkbench({
                 const updated = { ...current, quality: e.target.value, currentQuality: e.target.value };
                 setCurrent(updated);
                 onCraftUpdated(updated);
-              }} className="w-full bg-gray-700 px-3 py-2 rounded">
+              }} className="w-full bg-surface-2 px-3 py-2 rounded">
                 {Object.keys(QUALITIES).map(q => <option key={q} value={q}>{q.charAt(0).toUpperCase() + q.slice(1)}</option>)}
               </select>
             </div>
 
             {current.selectedMaterials && current.selectedMaterials.length > 0 && (
-              <div className="bg-gray-600 p-4 rounded">
+              <div className="bg-surface-3 p-4 rounded">
                 <label className="block mb-3 font-semibold">Required Materials</label>
                 {current.selectedMaterials.map((req, idx) => {
                   const availableMats = materials.filter(m => m.type === req.requiredType);
                   return (
                     <div key={idx} className="mb-3">
-                      <div className="text-sm text-gray-300 mb-1">
+                      <div className="text-sm text-fg-secondary mb-1">
                         {req.requiredType} - {req.requiredAmount} lbs required
                       </div>
                       <select
@@ -600,7 +600,7 @@ export function CraftingWorkbench({
                           setCurrent(updated);
                           onCraftUpdated(updated);
                         }}
-                        className="w-full bg-gray-700 px-3 py-2 rounded"
+                        className="w-full bg-surface-2 px-3 py-2 rounded"
                       >
                         <option value="">Select material...</option>
                         {availableMats.map(m => (
@@ -621,7 +621,7 @@ export function CraftingWorkbench({
                 const updated = { ...current, startDate: e.target.value };
                 setCurrent(updated);
                 onCraftUpdated(updated);
-              }} className="w-full bg-gray-700 px-3 py-2 rounded" />
+              }} className="w-full bg-surface-2 px-3 py-2 rounded" />
             </div>
 
             <div>
@@ -630,41 +630,41 @@ export function CraftingWorkbench({
                 const updated = { ...current, startDay: Math.max(1, toNumberOr(e.target.value, 1)) };
                 setCurrent(updated);
                 onCraftUpdated(updated);
-              }} className="w-full bg-gray-700 px-3 py-2 rounded" />
+              }} className="w-full bg-surface-2 px-3 py-2 rounded" />
             </div>
 
-            <div className="bg-gray-700 p-4 rounded text-sm">
+            <div className="bg-surface-2 p-4 rounded text-sm">
               <div>Weight: {stats.finalWeight} lbs | HP: {stats.finalHP} | HT: {stats.finalHT} | Difficulty: {stats.totalDifficulty}</div>
               <div>Design: {stats.designTime}h | Craft: {stats.craftTime}h</div>
             </div>
-            <button onClick={handleStartDesign} className="w-full bg-green-600 py-3 rounded">Start Design</button>
+            <button onClick={handleStartDesign} className="w-full bg-success-600 py-3 rounded">Start Design</button>
           </div>
         )}
 
         {/* Design / Craft Phase */}
         {(current.phase === 'design' || current.phase === 'craft') && (
           <div className="space-y-4">
-            <div className="bg-gray-700 p-4 rounded">
+            <div className="bg-surface-2 p-4 rounded">
               <div className="mb-2 text-sm">Target: {current.phase === 'design' ? stats.designTime : stats.craftTime}h | Progress: {progress}h | Difficulty: {stats.totalDifficulty} | Quality: {current.currentQuality}</div>
-              <div className="w-full bg-gray-600 rounded-full h-4">
-                <div className="bg-blue-600 h-4 rounded-full" style={{ width: `${Math.min(100, (progress / (current.phase === 'design' ? stats.designTime : stats.craftTime)) * 100)}%` }} />
+              <div className="w-full bg-surface-3 rounded-full h-4">
+                <div className="bg-accent-600 h-4 rounded-full" style={{ width: `${Math.min(100, (progress / (current.phase === 'design' ? stats.designTime : stats.craftTime)) * 100)}%` }} />
               </div>
             </div>
             {current.shifts.map((s, i) => (
-              <div key={s.id || i} className="bg-gray-700 p-3 rounded text-sm">
-                <div>Shift {i + 1}: {s.result} {s.date && <span className="text-blue-400">({s.date})</span>} {s.day && <span className="text-green-400">[Day {s.day}]</span>}</div>
-                <div className="text-gray-400">{s.worker && <span>Worker: {s.worker} | </span>}{s.workshop && <span>Workshop: {s.workshop} | </span>}Skill {s.skill} &rarr; Eff {s.effectiveSkill} | Roll: {s.roll} | +{s.hoursAdded}h{(s.qualityChange ?? s.qualityShift ?? 0) !== 0 && ` | Qual ${(s.qualityChange ?? s.qualityShift ?? 0) > 0 ? '+' : ''}${s.qualityChange ?? s.qualityShift}`}</div>
+              <div key={s.id || i} className="bg-surface-2 p-3 rounded text-sm">
+                <div>Shift {i + 1}: {s.result} {s.date && <span className="text-accent-400">({s.date})</span>} {s.day && <span className="text-success-400">[Day {s.day}]</span>}</div>
+                <div className="text-fg-muted">{s.worker && <span>Worker: {s.worker} | </span>}{s.workshop && <span>Workshop: {s.workshop} | </span>}Skill {s.skill} &rarr; Eff {s.effectiveSkill} | Roll: {s.roll} | +{s.hoursAdded}h{(s.qualityChange ?? s.qualityShift ?? 0) !== 0 && ` | Qual ${(s.qualityChange ?? s.qualityShift ?? 0) > 0 ? '+' : ''}${s.qualityChange ?? s.qualityShift}`}</div>
               </div>
             ))}
-            <div className="bg-gray-700 p-4 rounded grid grid-cols-2 gap-4">
-              <div><label className="block mb-2 text-sm">Date</label><input type="date" value={currentDate} onChange={(e) => setCurrentDate(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded" /></div>
-              <div><label className="block mb-2 text-sm">Day (In-Universe)</label><input type="number" min="1" value={currentDay} onChange={(e) => setCurrentDay(Math.max(1, toNumberOr(e.target.value, 1)))} className="w-full bg-gray-600 px-3 py-2 rounded" /></div>
-              <div><label className="block mb-2 text-sm">Worker</label><select value={selectedWorker} onChange={(e) => setSelectedWorker(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded"><option value="">Select worker...</option>{availableWorkers.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}</select></div>
-              <div><label className="block mb-2 text-sm">Skill</label><input type="number" value={skill} onChange={(e) => setSkill(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded" /></div>
+            <div className="bg-surface-2 p-4 rounded grid grid-cols-2 gap-4">
+              <div><label className="block mb-2 text-sm">Date</label><input type="date" value={currentDate} onChange={(e) => setCurrentDate(e.target.value)} className="w-full bg-surface-3 px-3 py-2 rounded" /></div>
+              <div><label className="block mb-2 text-sm">Day (In-Universe)</label><input type="number" min="1" value={currentDay} onChange={(e) => setCurrentDay(Math.max(1, toNumberOr(e.target.value, 1)))} className="w-full bg-surface-3 px-3 py-2 rounded" /></div>
+              <div><label className="block mb-2 text-sm">Worker</label><select value={selectedWorker} onChange={(e) => setSelectedWorker(e.target.value)} className="w-full bg-surface-3 px-3 py-2 rounded"><option value="">Select worker...</option>{availableWorkers.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}</select></div>
+              <div><label className="block mb-2 text-sm">Skill</label><input type="number" value={skill} onChange={(e) => setSkill(e.target.value)} className="w-full bg-surface-3 px-3 py-2 rounded" /></div>
               {(workshops?.length ?? 0) > 0 && (
                 <div className="col-span-2">
                   <label className="block mb-2 text-sm">Workshop</label>
-                  <select value={selectedWorkshopId} onChange={(e) => setSelectedWorkshopId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                  <select value={selectedWorkshopId} onChange={(e) => setSelectedWorkshopId(e.target.value)} className="w-full bg-surface-3 px-3 py-2 rounded">
                     <option value="">No workshop (+0)</option>
                     {(workshops ?? []).map((w) => {
                       const bonus = w.activityCategories?.crafting?.skillBonus ?? w.rating ?? 0;
@@ -676,12 +676,12 @@ export function CraftingWorkbench({
               <div className="col-span-2">
                 <label className="block mb-2 text-sm">Roll (3d6)</label>
                 <div className="flex gap-2">
-                  <input type="number" value={roll.total || ''} onChange={(e) => setRoll({ dice: [], total: parseInt(e.target.value) || 0 })} className="flex-1 bg-gray-600 px-3 py-2 rounded" />
+                  <input type="number" value={roll.total || ''} onChange={(e) => setRoll({ dice: [], total: parseInt(e.target.value) || 0 })} className="flex-1 bg-surface-3 px-3 py-2 rounded" />
                   <DiceRoller dice={roll.dice} total={roll.total} onRoll={(dice: number[], total: number) => setRoll({ dice, total })} onTotalChange={(total: number) => setRoll(prev => ({ ...prev, total }))} />
                 </div>
               </div>
             </div>
-            <button onClick={handleAddShift} className="w-full bg-green-600 py-3 rounded">Add Shift</button>
+            <button onClick={handleAddShift} className="w-full bg-success-600 py-3 rounded">Add Shift</button>
           </div>
         )}
       </div>

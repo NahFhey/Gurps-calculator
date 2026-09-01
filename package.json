@@ -15,6 +15,7 @@
     "lint:fix": "eslint src/**/*.{js,jsx} --fix",
     "format": "prettier --write \"src/**/*.{js,jsx,css}\"",
     "format:check": "prettier --check \"src/**/*.{js,jsx,css}\"",
+    "check:tokens": "node scripts/check-theme-tokens.mjs",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage"

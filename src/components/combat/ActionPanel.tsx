@@ -227,7 +227,7 @@ export default function ActionPanel({
 
   // ---- Render ----
   return (
-    <div className="bg-gray-800 rounded-lg p-4 space-y-4">
+    <div className="bg-surface-1 rounded-lg p-4 space-y-4">
       <ActionPanelHeader onToggleExpanded={onToggleExpanded} />
 
       {/* Maneuver-specific aim/wait widgets */}
@@ -238,16 +238,16 @@ export default function ActionPanel({
 
       {/* Active workflows */}
       {activeWorkflow === 'attack' && (
-        <div className="border-t border-gray-700 pt-4">
+        <div className="border-t border-edge pt-4">
           <h4 className="text-lg font-semibold mb-3">Attack Workflow</h4>
           <AttackAssist actor={currentActor} targets={targets} injectedModifiers={maneuverWorkflow?.attack?.modifiers || []} onComplete={handleAttackComplete} onCancel={() => setActiveWorkflow(null)} />
         </div>
       )}
 
       {activeWorkflow === 'defense' && (
-        <div className="border-t border-gray-700 pt-4">
+        <div className="border-t border-edge pt-4">
           <h4 className="text-lg font-semibold mb-3">Defense Workflow</h4>
-          <div className="mb-3 text-sm text-gray-300">
+          <div className="mb-3 text-sm text-fg-secondary">
             Defender: <span className="font-semibold">{getPublicDefenderLabel(combatState, revealState, boundTarget?.instanceId || currentActor.instanceId)}</span>
           </div>
           <DefenseAssist defender={boundTarget || currentActor} defenderId={boundTarget?.instanceId || currentActor.instanceId} combatState={combatState} revealState={revealState} viewMode={viewMode} injectedModifiers={maneuverWorkflow?.defense?.modifiers || []} onComplete={handleDefenseComplete} onCancel={() => setActiveWorkflow(null)} />

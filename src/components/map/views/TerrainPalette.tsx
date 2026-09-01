@@ -60,17 +60,17 @@ export function TerrainPalette({
 }: TerrainPaletteProps) {
   const activeLayer = structureLayers?.find((l) => l.id === activeStructureLayerId) ?? null;
   return (
-    <div className="w-36 bg-gray-800/80 border-r border-gray-700/50 flex flex-col overflow-y-auto">
+    <div className="w-36 bg-surface-1/80 border-r border-edge/50 flex flex-col overflow-y-auto">
       {/* Mode buttons */}
-      <div className="px-2 py-2 border-b border-gray-700/50">
-        <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5">Mode</div>
+      <div className="px-2 py-2 border-b border-edge/50">
+        <div className="text-[10px] uppercase tracking-wider text-fg-faint mb-1.5">Mode</div>
         <div className="flex gap-1">
           <button
             className={[
               'flex-1 p-1.5 rounded text-xs flex items-center justify-center gap-1 transition-colors',
               interactionMode === 'view'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-700/50 text-gray-400 hover:bg-gray-600/50',
+                ? 'bg-accent-600 text-white'
+                : 'bg-surface-2/50 text-fg-muted hover:bg-surface-3/50',
             ].join(' ')}
             onClick={() => onSetMode('view')}
             title="View mode"
@@ -81,8 +81,8 @@ export function TerrainPalette({
             className={[
               'flex-1 p-1.5 rounded text-xs flex items-center justify-center gap-1 transition-colors',
               interactionMode === 'paint'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-700/50 text-gray-400 hover:bg-gray-600/50',
+                ? 'bg-accent-600 text-white'
+                : 'bg-surface-2/50 text-fg-muted hover:bg-surface-3/50',
             ].join(' ')}
             onClick={() => onSetMode('paint')}
             title="Paint mode"
@@ -93,8 +93,8 @@ export function TerrainPalette({
             className={[
               'flex-1 p-1.5 rounded text-xs flex items-center justify-center gap-1 transition-colors',
               interactionMode === 'select'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-700/50 text-gray-400 hover:bg-gray-600/50',
+                ? 'bg-accent-600 text-white'
+                : 'bg-surface-2/50 text-fg-muted hover:bg-surface-3/50',
             ].join(' ')}
             onClick={() => onSetMode('select')}
             title="Select mode"
@@ -106,15 +106,15 @@ export function TerrainPalette({
 
       {/* Structure layers */}
       {onSelectStructureLayer && (
-        <div className="px-2 py-2 border-b border-gray-700/50">
-          <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5">Layer</div>
+        <div className="px-2 py-2 border-b border-edge/50">
+          <div className="text-[10px] uppercase tracking-wider text-fg-faint mb-1.5">Layer</div>
           <div className="space-y-1">
             <button
               className={[
                 'w-full px-2 py-1 rounded text-xs text-left transition-colors',
                 activeStructureLayerId === null
-                  ? 'bg-gray-600 ring-1 ring-white/30 text-white'
-                  : 'bg-gray-700/30 text-gray-300 hover:bg-gray-600/30',
+                  ? 'bg-surface-3 ring-1 ring-white/30 text-white'
+                  : 'bg-surface-2/30 text-fg-secondary hover:bg-surface-3/30',
               ].join(' ')}
               onClick={() => onSelectStructureLayer(null)}
             >
@@ -126,8 +126,8 @@ export function TerrainPalette({
                   className={[
                     'flex-1 min-w-0 px-2 py-1 rounded text-xs text-left truncate transition-colors',
                     activeStructureLayerId === layer.id
-                      ? 'bg-gray-600 ring-1 ring-white/30 text-white'
-                      : 'bg-gray-700/30 text-gray-300 hover:bg-gray-600/30',
+                      ? 'bg-surface-3 ring-1 ring-white/30 text-white'
+                      : 'bg-surface-2/30 text-fg-secondary hover:bg-surface-3/30',
                   ].join(' ')}
                   onClick={() => onSelectStructureLayer(layer.id)}
                   title={`Paint on ${layer.name} (base ${layer.baseElevation})`}
@@ -135,7 +135,7 @@ export function TerrainPalette({
                   {layer.name}
                 </button>
                 <button
-                  className="p-1 rounded text-gray-400 hover:bg-gray-600/50"
+                  className="p-1 rounded text-fg-muted hover:bg-surface-3/50"
                   onClick={() => onUpdateStructureLayer?.(layer.id, { visible: !layer.visible })}
                   title={layer.visible ? 'Hide layer' : 'Show layer'}
                   aria-label={layer.visible ? 'Hide layer' : 'Show layer'}
@@ -147,7 +147,7 @@ export function TerrainPalette({
           </div>
           {onAddStructureLayer && (
             <button
-              className="mt-1.5 w-full flex items-center justify-center gap-1 px-2 py-1 rounded text-xs bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 transition-colors"
+              className="mt-1.5 w-full flex items-center justify-center gap-1 px-2 py-1 rounded text-xs bg-surface-2/50 hover:bg-surface-3/50 text-fg-secondary transition-colors"
               onClick={onAddStructureLayer}
             >
               <Plus className="w-3 h-3" />
@@ -162,7 +162,7 @@ export function TerrainPalette({
                 type="text"
                 value={activeLayer.name}
                 onChange={(e) => onUpdateStructureLayer?.(activeLayer.id, { name: e.target.value })}
-                className="w-full px-1.5 py-1 rounded bg-gray-900 border border-gray-600 text-xs text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full px-1.5 py-1 rounded bg-surface-0 border border-edge-strong text-xs text-fg-primary focus:outline-none focus:ring-1 focus:ring-accent-500"
                 title="Layer name"
               />
               <div className="flex items-center gap-1">
@@ -178,7 +178,7 @@ export function TerrainPalette({
                       onUpdateStructureLayer?.(activeLayer.id, { baseElevation: value });
                     }
                   }}
-                  className="w-12 px-1.5 py-1 rounded bg-gray-900 border border-gray-600 text-xs text-gray-200"
+                  className="w-12 px-1.5 py-1 rounded bg-surface-0 border border-edge-strong text-xs text-fg-primary"
                   title="Base elevation (levels above ground)"
                 />
                 <input
@@ -193,15 +193,15 @@ export function TerrainPalette({
                       onUpdateStructureLayer?.(activeLayer.id, { heightLevels: value });
                     }
                   }}
-                  className="w-12 px-1.5 py-1 rounded bg-gray-900 border border-gray-600 text-xs text-gray-200"
+                  className="w-12 px-1.5 py-1 rounded bg-surface-0 border border-edge-strong text-xs text-fg-primary"
                   title="Thickness (levels)"
                 />
                 <button
                   className={[
                     'p-1 rounded transition-colors',
                     structureEraseMode
-                      ? 'bg-red-700 text-white'
-                      : 'text-gray-400 hover:bg-gray-600/50',
+                      ? 'bg-danger-700 text-white'
+                      : 'text-fg-muted hover:bg-surface-3/50',
                   ].join(' ')}
                   onClick={() => onSetStructureEraseMode?.(!structureEraseMode)}
                   title="Erase cells from this layer while painting"
@@ -210,7 +210,7 @@ export function TerrainPalette({
                   <Eraser className="w-3 h-3" />
                 </button>
                 <button
-                  className="p-1 rounded text-red-400 hover:bg-gray-600/50"
+                  className="p-1 rounded text-danger-400 hover:bg-surface-3/50"
                   onClick={() => onRemoveStructureLayer?.(activeLayer.id)}
                   title="Delete layer"
                   aria-label="Delete layer"
@@ -225,13 +225,13 @@ export function TerrainPalette({
 
       {/* Brush (paint mode only) */}
       {interactionMode === 'paint' && onSetBrushSize && (
-        <div className="px-2 py-2 border-b border-gray-700/50">
-          <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5">
-            Brush <span className="normal-case text-gray-600">(Ctrl+scroll)</span>
+        <div className="px-2 py-2 border-b border-edge/50">
+          <div className="text-[10px] uppercase tracking-wider text-fg-faint mb-1.5">
+            Brush <span className="normal-case text-fg-disabled">(Ctrl+scroll)</span>
           </div>
           <div className="flex items-center gap-1">
             <button
-              className="p-1 rounded bg-gray-700/50 text-gray-300 hover:bg-gray-600/50 disabled:opacity-40"
+              className="p-1 rounded bg-surface-2/50 text-fg-secondary hover:bg-surface-3/50 disabled:opacity-40"
               onClick={() => onSetBrushSize(Math.max(1, brushSize - 1))}
               disabled={brushSize <= 1}
               title="Smaller brush"
@@ -239,9 +239,9 @@ export function TerrainPalette({
             >
               <Minus className="w-3 h-3" />
             </button>
-            <span className="flex-1 text-center text-xs text-gray-200" data-testid="brush-size">{brushSize}</span>
+            <span className="flex-1 text-center text-xs text-fg-primary" data-testid="brush-size">{brushSize}</span>
             <button
-              className="p-1 rounded bg-gray-700/50 text-gray-300 hover:bg-gray-600/50 disabled:opacity-40"
+              className="p-1 rounded bg-surface-2/50 text-fg-secondary hover:bg-surface-3/50 disabled:opacity-40"
               onClick={() => onSetBrushSize(Math.min(MAX_BRUSH_SIZE, brushSize + 1))}
               disabled={brushSize >= MAX_BRUSH_SIZE}
               title="Larger brush"
@@ -254,7 +254,7 @@ export function TerrainPalette({
                 <button
                   className={[
                     'p-1 rounded transition-colors',
-                    brushShape === 'circle' ? 'bg-blue-600 text-white' : 'bg-gray-700/50 text-gray-400 hover:bg-gray-600/50',
+                    brushShape === 'circle' ? 'bg-accent-600 text-white' : 'bg-surface-2/50 text-fg-muted hover:bg-surface-3/50',
                   ].join(' ')}
                   onClick={() => onSetBrushShape('circle')}
                   title="Round brush"
@@ -265,7 +265,7 @@ export function TerrainPalette({
                 <button
                   className={[
                     'p-1 rounded transition-colors',
-                    brushShape === 'square' ? 'bg-blue-600 text-white' : 'bg-gray-700/50 text-gray-400 hover:bg-gray-600/50',
+                    brushShape === 'square' ? 'bg-accent-600 text-white' : 'bg-surface-2/50 text-fg-muted hover:bg-surface-3/50',
                   ].join(' ')}
                   onClick={() => onSetBrushShape('square')}
                   title="Square brush"
@@ -281,17 +281,17 @@ export function TerrainPalette({
 
       {/* Paint elevation (paint mode only; ground layer only — structure layers carry their own base) */}
       {interactionMode === 'paint' && onSetPaintElevation && activeStructureLayerId === null && (
-        <div className="px-2 py-2 border-b border-gray-700/50">
-          <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5">
-            Elevation <span className="normal-case text-gray-600">(Shift+scroll)</span>
+        <div className="px-2 py-2 border-b border-edge/50">
+          <div className="text-[10px] uppercase tracking-wider text-fg-faint mb-1.5">
+            Elevation <span className="normal-case text-fg-disabled">(Shift+scroll)</span>
           </div>
           <div className="flex items-center gap-1">
             <button
               className={[
                 'px-1.5 py-1 rounded text-xs transition-colors',
                 paintElevation === null
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700/50 text-gray-400 hover:bg-gray-600/50',
+                  ? 'bg-accent-600 text-white'
+                  : 'bg-surface-2/50 text-fg-muted hover:bg-surface-3/50',
               ].join(' ')}
               onClick={() => onSetPaintElevation(null)}
               title="Paint with the terrain's default elevation (leaves overrides alone)"
@@ -299,7 +299,7 @@ export function TerrainPalette({
               Auto
             </button>
             <button
-              className="p-1 rounded bg-gray-700/50 text-gray-300 hover:bg-gray-600/50 disabled:opacity-40"
+              className="p-1 rounded bg-surface-2/50 text-fg-secondary hover:bg-surface-3/50 disabled:opacity-40"
               onClick={() => onSetPaintElevation(Math.max(0, (paintElevation ?? 0) - 1))}
               disabled={paintElevation !== null && paintElevation <= 0}
               title="Lower paint elevation"
@@ -324,11 +324,11 @@ export function TerrainPalette({
               // in some browsers — blur so map zoom/elevation scrolling can't
               // edit this field by accident.
               onWheel={(e) => e.currentTarget.blur()}
-              className="w-10 px-1 py-1 rounded bg-gray-900 border border-gray-600 text-center text-xs text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-10 px-1 py-1 rounded bg-surface-0 border border-edge-strong text-center text-xs text-fg-primary focus:outline-none focus:ring-1 focus:ring-accent-500"
               title="Paint every touched tile at this elevation"
             />
             <button
-              className="p-1 rounded bg-gray-700/50 text-gray-300 hover:bg-gray-600/50 disabled:opacity-40"
+              className="p-1 rounded bg-surface-2/50 text-fg-secondary hover:bg-surface-3/50 disabled:opacity-40"
               onClick={() => onSetPaintElevation(Math.min(MAX_ELEVATION, (paintElevation ?? 0) + 1))}
               disabled={paintElevation !== null && paintElevation >= MAX_ELEVATION}
               title="Raise paint elevation"
@@ -342,7 +342,7 @@ export function TerrainPalette({
 
       {/* Terrain list */}
       <div className="px-2 py-2 flex-1">
-        <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5">Terrain</div>
+        <div className="text-[10px] uppercase tracking-wider text-fg-faint mb-1.5">Terrain</div>
         <div className="space-y-1">
           {terrains.map((t) => (
             <button
@@ -350,8 +350,8 @@ export function TerrainPalette({
               className={[
                 'w-full flex items-center gap-2 px-2 py-1 rounded text-xs transition-colors',
                 selectedTerrainId === t.id
-                  ? 'bg-gray-600 ring-1 ring-white/30 text-white'
-                  : 'bg-gray-700/30 text-gray-300 hover:bg-gray-600/30',
+                  ? 'bg-surface-3 ring-1 ring-white/30 text-white'
+                  : 'bg-surface-2/30 text-fg-secondary hover:bg-surface-3/30',
               ].join(' ')}
               onClick={() => onSelectTerrain(t.id)}
             >
@@ -367,9 +367,9 @@ export function TerrainPalette({
 
       {/* Add Terrain button */}
       {onAddTerrain && (
-        <div className="px-2 py-2 border-t border-gray-700/50">
+        <div className="px-2 py-2 border-t border-edge/50">
           <button
-            className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-xs font-medium bg-blue-600/80 hover:bg-blue-500/80 text-white transition-colors"
+            className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-xs font-medium bg-accent-600/80 hover:bg-accent-500/80 text-white transition-colors"
             onClick={onAddTerrain}
           >
             <Plus className="w-3 h-3" />

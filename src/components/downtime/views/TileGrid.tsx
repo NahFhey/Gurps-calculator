@@ -24,21 +24,21 @@ const TILES: TileConfig[] = [
     label: 'Fishing',
     description: 'Fish & Seafood',
     icon: Fish,
-    color: 'bg-blue-900/50 hover:bg-blue-800/60 border-blue-700/50',
+    color: 'bg-accent-900/50 hover:bg-accent-800/60 border-accent-700/50',
   },
   {
     id: 'foraging',
     label: 'Foraging',
     description: 'Herbs & Materials',
     icon: Leaf,
-    color: 'bg-green-900/50 hover:bg-green-800/60 border-green-700/50',
+    color: 'bg-success-900/50 hover:bg-success-800/60 border-success-700/50',
   },
   {
     id: 'mining',
     label: 'Mining',
     description: 'Ore & Minerals',
     icon: HardHat,
-    color: 'bg-stone-900/50 hover:bg-stone-800/60 border-stone-700/50',
+    color: 'bg-surface-0/50 hover:bg-surface-1/60 border-edge/50',
   },
   {
     id: 'rest',
@@ -80,7 +80,7 @@ const TILES: TileConfig[] = [
     label: 'Crafting',
     description: 'Gear & Projects',
     icon: Hammer,
-    color: 'bg-amber-900/50 hover:bg-amber-800/60 border-amber-700/50',
+    color: 'bg-warning-900/50 hover:bg-warning-800/60 border-warning-700/50',
   },
   {
     id: 'cooking',
@@ -123,9 +123,9 @@ function ActivityTile({ config, onClick, disabled, taskCount }: ActivityTileProp
 
   return (
     <button
-      className={`activity-tile relative p-4 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+      className={`activity-tile relative p-4 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-500 ${
         disabled
-          ? 'bg-gray-800/50 border-gray-700/50 opacity-40 cursor-not-allowed'
+          ? 'bg-surface-1/50 border-edge/50 opacity-40 cursor-not-allowed'
           : config.color
       }`}
       onClick={onClick}
@@ -133,11 +133,11 @@ function ActivityTile({ config, onClick, disabled, taskCount }: ActivityTileProp
       aria-label={`Open ${config.label} activity`}
       title={disabled ? `No characters have ${config.label.toLowerCase()} skills` : undefined}
     >
-      <Icon className={`w-8 h-8 mb-2 ${disabled ? 'text-gray-500' : 'text-gray-200'}`} />
-      <h3 className={`font-semibold ${disabled ? 'text-gray-500' : 'text-gray-100'}`}>{config.label}</h3>
-      <p className={`text-sm ${disabled ? 'text-gray-600' : 'text-gray-400'}`}>{config.description}</p>
+      <Icon className={`w-8 h-8 mb-2 ${disabled ? 'text-fg-faint' : 'text-fg-primary'}`} />
+      <h3 className={`font-semibold ${disabled ? 'text-fg-faint' : 'text-fg-bright'}`}>{config.label}</h3>
+      <p className={`text-sm ${disabled ? 'text-fg-disabled' : 'text-fg-muted'}`}>{config.description}</p>
       {taskCount !== undefined && taskCount > 0 && (
-        <span className="task-badge absolute top-2 right-2 bg-red-500 text-white text-xs rounded-full px-2 py-1">
+        <span className="task-badge absolute top-2 right-2 bg-danger-500 text-white text-xs rounded-full px-2 py-1">
           {taskCount}
         </span>
       )}

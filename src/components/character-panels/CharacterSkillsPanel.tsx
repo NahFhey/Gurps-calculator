@@ -38,16 +38,16 @@ export function CharacterSkillsPanel({ character }: CharacterSkillsPanelProps) {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-700">
+      <div className="flex items-center justify-between p-4 border-b border-edge">
         <div className="flex items-center gap-3">
           <button
             onClick={handleBack}
-            className="p-1.5 rounded hover:bg-gray-700 text-gray-400 hover:text-gray-200"
+            className="p-1.5 rounded hover:bg-surface-2 text-fg-muted hover:text-fg-primary"
             title="Back to character sheet"
           >
             <ArrowLeft size={20} />
           </button>
-          <h2 className="text-lg font-semibold text-gray-100">
+          <h2 className="text-lg font-semibold text-fg-bright">
             {character.name} - Skills & Spells
           </h2>
         </div>
@@ -56,14 +56,14 @@ export function CharacterSkillsPanel({ character }: CharacterSkillsPanelProps) {
             <>
               <button
                 onClick={handleCancel}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-2 hover:bg-surface-3 rounded text-sm"
               >
                 <X size={16} />
                 Cancel
               </button>
               <button
                 onClick={handleSave}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-accent-600 hover:bg-accent-500 rounded text-sm"
               >
                 <Save size={16} />
                 Save
@@ -72,7 +72,7 @@ export function CharacterSkillsPanel({ character }: CharacterSkillsPanelProps) {
           ) : (
             <button
               onClick={() => setEditMode(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-2 hover:bg-surface-3 rounded text-sm"
             >
               <Edit2 size={16} />
               Edit

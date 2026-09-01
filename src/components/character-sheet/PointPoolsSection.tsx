@@ -65,21 +65,21 @@ export function PointPoolsSection({
   const fpPercent = (pools.FP.current / pools.FP.max) * 100;
 
   const getBarColor = (percent: number) => {
-    if (percent <= 25) return 'bg-red-600';
+    if (percent <= 25) return 'bg-danger-600';
     if (percent <= 50) return 'bg-yellow-600';
-    return 'bg-green-600';
+    return 'bg-success-600';
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4">
-      <h3 className="text-lg font-semibold text-gray-100 mb-3">Point Pools</h3>
+    <div className="bg-surface-1 rounded-lg p-4">
+      <h3 className="text-lg font-semibold text-fg-bright mb-3">Point Pools</h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* HP */}
-        <div className="bg-gray-700 rounded p-3">
+        <div className="bg-surface-2 rounded p-3">
           <div className="flex items-center gap-2 mb-2">
-            <Heart size={18} className="text-red-500" />
-            <span className="font-semibold text-gray-200">Hit Points (HP)</span>
+            <Heart size={18} className="text-danger-500" />
+            <span className="font-semibold text-fg-primary">Hit Points (HP)</span>
           </div>
 
           <div className="flex items-center gap-2 mb-2">
@@ -89,39 +89,39 @@ export function PointPoolsSection({
                   type="number"
                   value={pools.HP.current}
                   onChange={(e) => handleCurrentChange('HP', parseInt(e.target.value) || 0)}
-                  className="w-16 text-xl font-bold bg-gray-600 border border-gray-500 rounded px-2 py-1 text-gray-100 text-center"
+                  className="w-16 text-xl font-bold bg-surface-3 border border-edge-bright rounded px-2 py-1 text-fg-bright text-center"
                 />
-                <span className="text-gray-400">/</span>
+                <span className="text-fg-muted">/</span>
                 <input
                   type="number"
                   value={pools.HP.max}
                   onChange={(e) => handleHPMaxChange(parseInt(e.target.value) || 1)}
-                  className="w-16 text-xl font-bold bg-gray-600 border border-gray-500 rounded px-2 py-1 text-gray-100 text-center"
+                  className="w-16 text-xl font-bold bg-surface-3 border border-edge-bright rounded px-2 py-1 text-fg-bright text-center"
                 />
               </>
             ) : (
-              <span className="text-xl font-bold text-gray-100">
+              <span className="text-xl font-bold text-fg-bright">
                 {pools.HP.current} / {pools.HP.max}
               </span>
             )}
-            <span className="text-sm text-gray-400">[{pools.HP.points >= 0 ? '+' : ''}{pools.HP.points}]</span>
+            <span className="text-sm text-fg-muted">[{pools.HP.points >= 0 ? '+' : ''}{pools.HP.points}]</span>
           </div>
 
           {/* HP Bar */}
-          <div className="h-2 bg-gray-600 rounded overflow-hidden">
+          <div className="h-2 bg-surface-3 rounded overflow-hidden">
             <div
               className={`h-full transition-all ${getBarColor(hpPercent)}`}
               style={{ width: `${Math.max(0, Math.min(100, hpPercent))}%` }}
             />
           </div>
-          <div className="text-xs text-gray-500 mt-1">Base: {hpBase} (ST) | Cost: 2 pts/level</div>
+          <div className="text-xs text-fg-faint mt-1">Base: {hpBase} (ST) | Cost: 2 pts/level</div>
         </div>
 
         {/* FP */}
-        <div className="bg-gray-700 rounded p-3">
+        <div className="bg-surface-2 rounded p-3">
           <div className="flex items-center gap-2 mb-2">
             <Zap size={18} className="text-yellow-500" />
-            <span className="font-semibold text-gray-200">Fatigue Points (FP)</span>
+            <span className="font-semibold text-fg-primary">Fatigue Points (FP)</span>
           </div>
 
           <div className="flex items-center gap-2 mb-2">
@@ -131,40 +131,40 @@ export function PointPoolsSection({
                   type="number"
                   value={pools.FP.current}
                   onChange={(e) => handleCurrentChange('FP', parseInt(e.target.value) || 0)}
-                  className="w-16 text-xl font-bold bg-gray-600 border border-gray-500 rounded px-2 py-1 text-gray-100 text-center"
+                  className="w-16 text-xl font-bold bg-surface-3 border border-edge-bright rounded px-2 py-1 text-fg-bright text-center"
                 />
-                <span className="text-gray-400">/</span>
+                <span className="text-fg-muted">/</span>
                 <input
                   type="number"
                   value={pools.FP.max}
                   onChange={(e) => handleFPMaxChange(parseInt(e.target.value) || 1)}
-                  className="w-16 text-xl font-bold bg-gray-600 border border-gray-500 rounded px-2 py-1 text-gray-100 text-center"
+                  className="w-16 text-xl font-bold bg-surface-3 border border-edge-bright rounded px-2 py-1 text-fg-bright text-center"
                 />
               </>
             ) : (
-              <span className="text-xl font-bold text-gray-100">
+              <span className="text-xl font-bold text-fg-bright">
                 {pools.FP.current} / {pools.FP.max}
               </span>
             )}
-            <span className="text-sm text-gray-400">[{pools.FP.points >= 0 ? '+' : ''}{pools.FP.points}]</span>
+            <span className="text-sm text-fg-muted">[{pools.FP.points >= 0 ? '+' : ''}{pools.FP.points}]</span>
           </div>
 
           {/* FP Bar */}
-          <div className="h-2 bg-gray-600 rounded overflow-hidden">
+          <div className="h-2 bg-surface-3 rounded overflow-hidden">
             <div
               className={`h-full transition-all ${getBarColor(fpPercent)}`}
               style={{ width: `${Math.max(0, Math.min(100, fpPercent))}%` }}
             />
           </div>
-          <div className="text-xs text-gray-500 mt-1">Base: {fpBase} (HT) | Cost: 3 pts/level</div>
+          <div className="text-xs text-fg-faint mt-1">Base: {fpBase} (HT) | Cost: 3 pts/level</div>
         </div>
       </div>
 
       {/* Hit Location Profile */}
-      <div className="mt-4 bg-gray-700 rounded p-3">
+      <div className="mt-4 bg-surface-2 rounded p-3">
         <div className="flex items-center gap-2 mb-2">
-          <Target size={18} className="text-blue-400" />
-          <span className="font-semibold text-gray-200">Hit Location Profile</span>
+          <Target size={18} className="text-accent-400" />
+          <span className="font-semibold text-fg-primary">Hit Location Profile</span>
         </div>
 
         <div className="flex items-center gap-3">
@@ -172,7 +172,7 @@ export function PointPoolsSection({
             <select
               value={currentProfileId}
               onChange={(e) => onHitLocationProfileChange(e.target.value)}
-              className="flex-1 bg-gray-600 border border-gray-500 rounded px-3 py-2 text-gray-100"
+              className="flex-1 bg-surface-3 border border-edge-bright rounded px-3 py-2 text-fg-bright"
             >
               {profileOptions.map((profile) => (
                 <option key={profile.id} value={profile.id}>
@@ -181,11 +181,11 @@ export function PointPoolsSection({
               ))}
             </select>
           ) : (
-            <span className="text-gray-100">{currentProfile?.name || 'Humanoid'}</span>
+            <span className="text-fg-bright">{currentProfile?.name || 'Humanoid'}</span>
           )}
         </div>
 
-        <div className="text-xs text-gray-500 mt-2">
+        <div className="text-xs text-fg-faint mt-2">
           Determines hit location table used in combat ({currentProfile?.locations?.length || 0} locations)
         </div>
       </div>

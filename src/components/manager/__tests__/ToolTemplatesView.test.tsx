@@ -68,7 +68,7 @@ describe('ToolTemplatesView', () => {
   it('shows skill bonus in green when positive', () => {
     const { container } = render(<ToolTemplatesView />);
 
-    const greenText = container.querySelectorAll('.text-green-400');
+    const greenText = container.querySelectorAll('.text-success-400');
     expect(greenText.length).toBeGreaterThan(0);
   });
 

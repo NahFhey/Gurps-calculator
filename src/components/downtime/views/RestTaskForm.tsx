@@ -95,18 +95,18 @@ export function RestTaskForm({
   const isValid = isBatchMode ? batchLeaderIds.length > 0 : Boolean(leaderId);
 
   return (
-    <div className="rest-task-form rounded-lg border border-gray-700 bg-gray-800/60 p-4" data-testid="rest-task-form">
+    <div className="rest-task-form rounded-lg border border-edge bg-surface-1/60 p-4" data-testid="rest-task-form">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="flex items-center gap-2 font-medium text-gray-100">
+        <h3 className="flex items-center gap-2 font-medium text-fg-bright">
           <Bed className="h-4 w-4 text-indigo-400" />
           New Rest Task
         </h3>
-        <button type="button" onClick={onCancel} aria-label="Close form" className="text-gray-400 hover:text-gray-200">
+        <button type="button" onClick={onCancel} aria-label="Close form" className="text-fg-muted hover:text-fg-primary">
           <X className="h-5 w-5" />
         </button>
       </div>
 
-      <label className="mb-4 flex items-center gap-2 text-sm text-gray-300">
+      <label className="mb-4 flex items-center gap-2 text-sm text-fg-secondary">
         <input
           type="checkbox"
           checked={isBatchMode}
@@ -115,20 +115,20 @@ export function RestTaskForm({
             setBatchErrors({});
           }}
           data-testid="batch-assign-toggle"
-          className="rounded border-gray-600 bg-gray-900 text-indigo-600 focus:ring-indigo-500"
+          className="rounded border-edge-strong bg-surface-0 text-indigo-600 focus:ring-indigo-500"
         />
         Batch assign
       </label>
 
       {!isBatchMode ? (
         <div className="mb-3">
-          <label htmlFor="rest-leader-select" className="mb-1 block text-sm font-medium text-gray-300">Leader</label>
+          <label htmlFor="rest-leader-select" className="mb-1 block text-sm font-medium text-fg-secondary">Leader</label>
           <select
             id="rest-leader-select"
             value={leaderId}
             onChange={(event) => setLeaderId(event.target.value)}
             data-testid="leader-select"
-            className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-gray-100"
+            className="w-full rounded border border-edge-strong bg-surface-0 px-3 py-2 text-sm text-fg-bright"
           >
             <option value="">Select a leader...</option>
             {availableCharacters.map((character) => (
@@ -138,7 +138,7 @@ export function RestTaskForm({
         </div>
       ) : (
         <div className="mb-3">
-          <label htmlFor="rest-batch-leaders" className="mb-1 block text-sm font-medium text-gray-300">Leaders</label>
+          <label htmlFor="rest-batch-leaders" className="mb-1 block text-sm font-medium text-fg-secondary">Leaders</label>
           <select
             id="rest-batch-leaders"
             multiple
@@ -148,7 +148,7 @@ export function RestTaskForm({
               setBatchErrors({});
             }}
             data-testid="batch-leader-select"
-            className="min-h-24 w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-gray-100"
+            className="min-h-24 w-full rounded border border-edge-strong bg-surface-0 px-3 py-2 text-sm text-fg-bright"
           >
             {availableCharacters.map((character) => (
               <option key={character.id} value={character.id}>{character.name}</option>
@@ -159,8 +159,8 @@ export function RestTaskForm({
               const character = characters.find((candidate) => candidate.id === characterId);
               const error = batchErrors[characterId];
               return (
-                <div key={characterId} className="rounded border border-gray-700 bg-gray-900/40 p-3" data-testid={`batch-row-${characterId}`}>
-                  <p className="text-sm font-medium text-gray-200">{character?.name ?? characterId}</p>
+                <div key={characterId} className="rounded border border-edge bg-surface-0/40 p-3" data-testid={`batch-row-${characterId}`}>
+                  <p className="text-sm font-medium text-fg-primary">{character?.name ?? characterId}</p>
                   {error && (
                     <ValidationError
                       code={error.code ?? 'UNKNOWN_ERROR'}
@@ -177,12 +177,12 @@ export function RestTaskForm({
       )}
 
       <div className="mb-3">
-        <label htmlFor="rest-type-select" className="mb-1 block text-sm font-medium text-gray-300">Rest type</label>
+        <label htmlFor="rest-type-select" className="mb-1 block text-sm font-medium text-fg-secondary">Rest type</label>
         <select
           id="rest-type-select"
           value={restType}
           onChange={(event) => setRestType(event.target.value as RestData['restType'])}
-          className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-gray-100"
+          className="w-full rounded border border-edge-strong bg-surface-0 px-3 py-2 text-sm text-fg-bright"
         >
           <option value="sleep">Sleep</option>
           <option value="light_rest">Light rest</option>
@@ -191,14 +191,14 @@ export function RestTaskForm({
       </div>
 
       <div className="mb-3">
-        <label htmlFor="healer-select" className="mb-1 block text-sm font-medium text-gray-300">Healer</label>
+        <label htmlFor="healer-select" className="mb-1 block text-sm font-medium text-fg-secondary">Healer</label>
         {physicians.length > 0 ? (
           <select
             id="healer-select"
             value={physicians.some((physician) => physician.id === healerId) ? healerId : ''}
             onChange={(event) => setHealerId(event.target.value)}
             data-testid="healer-select"
-            className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-gray-100"
+            className="w-full rounded border border-edge-strong bg-surface-0 px-3 py-2 text-sm text-fg-bright"
           >
             <option value="">No healer</option>
             {physicians.map((physician) => (
@@ -208,18 +208,18 @@ export function RestTaskForm({
             ))}
           </select>
         ) : (
-          <p className="text-sm text-gray-500">No physician in party</p>
+          <p className="text-sm text-fg-faint">No physician in party</p>
         )}
       </div>
 
       <div className="mb-4">
-        <label htmlFor="recovery-bonus" className="mb-1 block text-sm font-medium text-gray-300">Recovery bonus</label>
+        <label htmlFor="recovery-bonus" className="mb-1 block text-sm font-medium text-fg-secondary">Recovery bonus</label>
         <input
           id="recovery-bonus"
           type="number"
           value={recoveryBonus}
           onChange={(event) => setRecoveryBonus(Number(event.target.value))}
-          className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-gray-100"
+          className="w-full rounded border border-edge-strong bg-surface-0 px-3 py-2 text-sm text-fg-bright"
         />
       </div>
 
@@ -230,12 +230,12 @@ export function RestTaskForm({
           disabled={!isValid}
           data-testid="submit-button"
           className={`rounded px-4 py-2 text-sm font-medium ${
-            isValid ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'cursor-not-allowed bg-gray-700 text-gray-500'
+            isValid ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'cursor-not-allowed bg-surface-2 text-fg-faint'
           }`}
         >
           Create {isBatchMode ? 'Tasks' : 'Task'}
         </button>
-        <button type="button" onClick={onCancel} className="rounded border border-gray-600 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
+        <button type="button" onClick={onCancel} className="rounded border border-edge-strong px-4 py-2 text-sm text-fg-secondary hover:bg-surface-2">
           Cancel
         </button>
       </div>

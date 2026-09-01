@@ -55,29 +55,29 @@ export function LinkEditor({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-full max-w-sm bg-gray-800 border border-gray-600 rounded-lg shadow-2xl">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-          <h2 className="text-sm font-semibold text-gray-100">Create Link</h2>
-          <button onClick={onCancel} className="p-1 rounded hover:bg-gray-700">
-            <X className="w-4 h-4 text-gray-400" />
+      <div className="w-full max-w-sm bg-surface-1 border border-edge-strong rounded-lg shadow-2xl">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-edge">
+          <h2 className="text-sm font-semibold text-fg-bright">Create Link</h2>
+          <button onClick={onCancel} className="p-1 rounded hover:bg-surface-2">
+            <X className="w-4 h-4 text-fg-muted" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="px-4 py-3 space-y-3">
           {/* Target map */}
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1">
-              Target Map <span className="text-red-400">*</span>
+            <label className="block text-xs font-medium text-fg-muted mb-1">
+              Target Map <span className="text-danger-400">*</span>
             </label>
             {targetMaps.length === 0 ? (
-              <div className="px-2.5 py-1.5 bg-gray-900 border border-gray-600 rounded text-sm text-gray-500">
+              <div className="px-2.5 py-1.5 bg-surface-0 border border-edge-strong rounded text-sm text-fg-faint">
                 No other maps available. Create another map first.
               </div>
             ) : (
               <select
                 value={toMapId}
                 onChange={(e) => setToMapId(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-600 rounded text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-2.5 py-1.5 bg-surface-0 border border-edge-strong rounded text-sm text-fg-primary focus:outline-none focus:ring-2 focus:ring-accent-500"
               >
                 <option value="">Select a map...</option>
                 {targetMaps.map((m) => {
@@ -94,13 +94,13 @@ export function LinkEditor({
 
           {/* Label */}
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1">Label</label>
+            <label className="block text-xs font-medium text-fg-muted mb-1">Label</label>
             <input
               type="text"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder='e.g., "Enter Port City"'
-              className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-600 rounded text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2.5 py-1.5 bg-surface-0 border border-edge-strong rounded text-sm text-fg-primary placeholder-fg-faint focus:outline-none focus:ring-2 focus:ring-accent-500"
             />
           </div>
 
@@ -109,7 +109,7 @@ export function LinkEditor({
             <button
               type="button"
               onClick={onCancel}
-              className="px-3 py-1.5 text-xs text-gray-300 hover:text-gray-100"
+              className="px-3 py-1.5 text-xs text-fg-secondary hover:text-fg-bright"
             >
               Cancel
             </button>
@@ -119,8 +119,8 @@ export function LinkEditor({
               className={[
                 'px-3 py-1.5 text-xs font-medium rounded transition-colors',
                 canConfirm
-                  ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                  : 'bg-gray-700 text-gray-500 cursor-not-allowed',
+                  ? 'bg-accent-600 hover:bg-accent-500 text-white'
+                  : 'bg-surface-2 text-fg-faint cursor-not-allowed',
               ].join(' ')}
             >
               Create Link

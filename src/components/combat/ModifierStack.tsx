@@ -97,24 +97,24 @@ export default function ModifierStack({
   return (
     <div className="space-y-2">
       {/* Base and Total Display */}
-      <div className="bg-gray-700 rounded p-3">
+      <div className="bg-surface-2 rounded p-3">
         <div className="flex justify-between text-sm">
-          <span className="text-gray-400">{baseLabel}:</span>
+          <span className="text-fg-muted">{baseLabel}:</span>
           <span className="font-semibold">{baseValue}</span>
         </div>
 
         {(modifiers.length > 0 || lockedModifiers.length > 0) && (
           <div className="mt-1 flex justify-between text-sm">
-            <span className="text-gray-400">Modifiers:</span>
-            <span className={total >= 0 ? 'text-green-400' : 'text-red-400'}>
+            <span className="text-fg-muted">Modifiers:</span>
+            <span className={total >= 0 ? 'text-success-400' : 'text-danger-400'}>
               {total >= 0 ? '+' : ''}{total}
             </span>
           </div>
         )}
 
-        <div className="mt-2 pt-2 border-t border-gray-600 flex justify-between">
+        <div className="mt-2 pt-2 border-t border-edge-strong flex justify-between">
           <span className="font-semibold">Effective:</span>
-          <span className="font-bold text-lg text-blue-400">{effective}</span>
+          <span className="font-bold text-lg text-accent-400">{effective}</span>
         </div>
       </div>
 
@@ -124,27 +124,27 @@ export default function ModifierStack({
           {lockedModifiers.map((mod, index) => (
             <div
               key={`locked-${index}`}
-              className="flex justify-between items-center bg-gray-900/60 rounded px-3 py-2 text-sm border border-gray-700"
+              className="flex justify-between items-center bg-surface-0/60 rounded px-3 py-2 text-sm border border-edge"
             >
               <span className="flex-1">{mod.label}</span>
-              <span className={`font-semibold ${mod.value >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              <span className={`font-semibold ${mod.value >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
                 {mod.value >= 0 ? '+' : ''}{mod.value}
               </span>
-              <span className="ml-2 text-xs text-gray-400 uppercase tracking-wide">Injected</span>
+              <span className="ml-2 text-xs text-fg-muted uppercase tracking-wide">Injected</span>
             </div>
           ))}
           {modifiers.map((mod, index) => (
             <div
               key={index}
-              className="flex justify-between items-center bg-gray-800 rounded px-3 py-2 text-sm"
+              className="flex justify-between items-center bg-surface-1 rounded px-3 py-2 text-sm"
             >
               <span className="flex-1">{mod.label}</span>
-              <span className={`font-semibold ${mod.value >= 0 ? 'text-green-400' : 'text-red-400'} mr-2`}>
+              <span className={`font-semibold ${mod.value >= 0 ? 'text-success-400' : 'text-danger-400'} mr-2`}>
                 {mod.value >= 0 ? '+' : ''}{mod.value}
               </span>
               <button
                 onClick={() => removeModifier(index)}
-                className="p-1 hover:bg-gray-700 rounded"
+                className="p-1 hover:bg-surface-2 rounded"
                 title="Remove"
               >
                 <X size={14} />
@@ -160,32 +160,32 @@ export default function ModifierStack({
           <div className="relative flex-1">
             <button
               onClick={() => setShowPresets(!showPresets)}
-              className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm"
+              className="w-full px-3 py-2 bg-accent-600 hover:bg-accent-700 rounded text-sm"
             >
               Quick Add
             </button>
 
             {showPresets && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-600 rounded max-h-60 overflow-y-auto z-10 shadow-lg">
+              <div className="absolute top-full left-0 right-0 mt-1 bg-surface-1 border border-edge-strong rounded max-h-60 overflow-y-auto z-10 shadow-lg">
                 {Object.entries(presets).map(([key, preset]) => (
                   <button
                     key={key}
                     onClick={() => handlePresetSelect(key, preset)}
-                    className="w-full text-left px-3 py-2 hover:bg-gray-700 text-sm border-b border-gray-700 last:border-b-0"
+                    className="w-full text-left px-3 py-2 hover:bg-surface-2 text-sm border-b border-edge last:border-b-0"
                   >
                     <div className="flex justify-between items-center">
                       <span>{preset.label}</span>
                       {!preset.requireInput && (
-                        <span className={`font-semibold ${(preset.value ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        <span className={`font-semibold ${(preset.value ?? 0) >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
                           {(preset.value ?? 0) >= 0 ? '+' : ''}{preset.value}
                         </span>
                       )}
                       {preset.requireInput && (
-                        <span className="text-gray-400 text-xs">...</span>
+                        <span className="text-fg-muted text-xs">...</span>
                       )}
                     </div>
                     {preset.note && (
-                      <div className="text-xs text-gray-400 mt-1">{preset.note}</div>
+                      <div className="text-xs text-fg-muted mt-1">{preset.note}</div>
                     )}
                   </button>
                 ))}
@@ -197,7 +197,7 @@ export default function ModifierStack({
         {allowCustom && (
           <button
             onClick={() => setShowCustomInput(!showCustomInput)}
-            className="px-3 py-2 bg-gray-600 hover:bg-gray-500 rounded"
+            className="px-3 py-2 bg-surface-3 hover:bg-surface-4 rounded"
             title="Add custom modifier"
           >
             <Plus size={16} />
@@ -207,13 +207,13 @@ export default function ModifierStack({
 
       {/* Custom Modifier Input */}
       {showCustomInput && (
-        <div className="bg-gray-800 rounded p-3 space-y-2">
+        <div className="bg-surface-1 rounded p-3 space-y-2">
           <input
             type="text"
             value={customLabel}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomLabel(e.target.value)}
             placeholder="Modifier name"
-            className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+            className="w-full px-3 py-2 bg-surface-2 rounded text-sm"
           />
           <div className="flex gap-2">
             <input
@@ -221,11 +221,11 @@ export default function ModifierStack({
               value={customValue}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomValue(e.target.value)}
               placeholder="Value"
-              className="flex-1 px-3 py-2 bg-gray-700 rounded text-sm"
+              className="flex-1 px-3 py-2 bg-surface-2 rounded text-sm"
             />
             <button
               onClick={handleAddCustom}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-sm"
+              className="px-4 py-2 bg-success-600 hover:bg-success-700 rounded text-sm"
             >
               Add
             </button>
@@ -235,7 +235,7 @@ export default function ModifierStack({
                 setCustomLabel('');
                 setCustomValue('');
               }}
-              className="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-sm"
+              className="px-4 py-2 bg-surface-3 hover:bg-surface-4 rounded text-sm"
             >
               Cancel
             </button>

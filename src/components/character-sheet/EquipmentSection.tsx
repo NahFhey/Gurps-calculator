@@ -134,18 +134,18 @@ export function EquipmentSection({
   const isArmorOrShield = (item: Equipment) => item.category === 'armor' || item.category === 'shield';
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4">
+    <div className="bg-surface-1 rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Package size={20} className="text-amber-400" />
-          <h3 className="text-lg font-semibold text-gray-100">
-            Equipment <span className="text-sm text-gray-400">({equipment.length})</span>
+          <Package size={20} className="text-warning-400" />
+          <h3 className="text-lg font-semibold text-fg-bright">
+            Equipment <span className="text-sm text-fg-muted">({equipment.length})</span>
           </h3>
         </div>
         {editMode && (
           <button
             onClick={handleAdd}
-            className="flex items-center gap-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+            className="flex items-center gap-1 px-2 py-1 bg-surface-2 hover:bg-surface-3 rounded text-sm"
           >
             <Plus size={14} />
             Add Item
@@ -154,14 +154,14 @@ export function EquipmentSection({
       </div>
 
       {equipment.length === 0 ? (
-        <div className="text-gray-500 italic mb-4">No equipment</div>
+        <div className="text-fg-faint italic mb-4">No equipment</div>
       ) : (
         <div className="overflow-x-auto mb-4">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-gray-400 border-b border-gray-700">
+              <tr className="text-left text-fg-muted border-b border-edge">
                 <th
-                  className="pb-2 cursor-pointer hover:text-gray-200 w-10 text-center"
+                  className="pb-2 cursor-pointer hover:text-fg-primary w-10 text-center"
                   onClick={() => handleSort('equipped')}
                   title="Equipped"
                 >
@@ -170,7 +170,7 @@ export function EquipmentSection({
                   </div>
                 </th>
                 <th
-                  className="pb-2 cursor-pointer hover:text-gray-200 w-12 text-center"
+                  className="pb-2 cursor-pointer hover:text-fg-primary w-12 text-center"
                   onClick={() => handleSort('quantity')}
                 >
                   <div className="flex items-center justify-center gap-1">
@@ -178,7 +178,7 @@ export function EquipmentSection({
                   </div>
                 </th>
                 <th
-                  className="pb-2 cursor-pointer hover:text-gray-200"
+                  className="pb-2 cursor-pointer hover:text-fg-primary"
                   onClick={() => handleSort('name')}
                 >
                   <div className="flex items-center gap-1">
@@ -186,7 +186,7 @@ export function EquipmentSection({
                   </div>
                 </th>
                 <th
-                  className="pb-2 cursor-pointer hover:text-gray-200 w-24 text-right"
+                  className="pb-2 cursor-pointer hover:text-fg-primary w-24 text-right"
                   onClick={() => handleSort('cost')}
                 >
                   <div className="flex items-center justify-end gap-1">
@@ -194,7 +194,7 @@ export function EquipmentSection({
                   </div>
                 </th>
                 <th
-                  className="pb-2 cursor-pointer hover:text-gray-200 w-24 text-right"
+                  className="pb-2 cursor-pointer hover:text-fg-primary w-24 text-right"
                   onClick={() => handleSort('weight')}
                 >
                   <div className="flex items-center justify-end gap-1">
@@ -208,7 +208,7 @@ export function EquipmentSection({
               {sortedEquipment.map((item) => (
                 <React.Fragment key={item.id}>
                   <tr
-                    className={`border-b border-gray-700/50 hover:bg-gray-700/30 ${
+                    className={`border-b border-edge/50 hover:bg-surface-2/30 ${
                       item.equipped === false ? 'opacity-50' : ''
                     }`}
                   >
@@ -218,8 +218,8 @@ export function EquipmentSection({
                         onClick={() => handleToggleEquipped(item.id)}
                         className={`w-5 h-5 rounded border inline-flex items-center justify-center ${
                           item.equipped !== false
-                            ? 'bg-green-600 border-green-500 text-white'
-                            : 'bg-gray-700 border-gray-600 text-gray-500'
+                            ? 'bg-success-600 border-success-500 text-white'
+                            : 'bg-surface-2 border-edge-strong text-fg-faint'
                         }`}
                         title={item.equipped !== false ? 'Equipped' : 'Not equipped'}
                       >
@@ -232,11 +232,11 @@ export function EquipmentSection({
                           type="number"
                           value={item.quantity}
                           onChange={(e) => handleChange(item.id, { quantity: parseInt(e.target.value) || 1 })}
-                          className="w-12 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-gray-100 text-center"
+                          className="w-12 bg-surface-2 border border-edge-strong rounded px-1 py-0.5 text-fg-bright text-center"
                           min={1}
                         />
                       ) : (
-                        <span className="text-gray-300">{item.quantity}</span>
+                        <span className="text-fg-secondary">{item.quantity}</span>
                       )}
                     </td>
                     <td className="py-1.5">
@@ -247,11 +247,11 @@ export function EquipmentSection({
                             value={item.name}
                             onChange={(e) => handleChange(item.id, { name: e.target.value })}
                             placeholder="Item name"
-                            className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-0.5 text-gray-100"
+                            className="flex-1 bg-surface-2 border border-edge-strong rounded px-2 py-0.5 text-fg-bright"
                           />
                           <button
                             onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
-                            className="p-0.5 hover:bg-gray-600 rounded text-gray-400"
+                            className="p-0.5 hover:bg-surface-3 rounded text-fg-muted"
                             title="Expand details"
                           >
                             {expandedId === item.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -259,17 +259,17 @@ export function EquipmentSection({
                         </div>
                       ) : (
                         <div>
-                          <span className="text-gray-200">{item.name}</span>
+                          <span className="text-fg-primary">{item.name}</span>
                           {item.category && item.category !== 'general' && (
-                            <span className="ml-1 text-xs px-1 rounded bg-gray-700 text-gray-400">
+                            <span className="ml-1 text-xs px-1 rounded bg-surface-2 text-fg-muted">
                               {item.category}
                             </span>
                           )}
                           {item.dr !== undefined && item.dr > 0 && (
-                            <span className="ml-1 text-xs text-blue-400">DR{item.dr}</span>
+                            <span className="ml-1 text-xs text-accent-400">DR{item.dr}</span>
                           )}
                           {item.damage && (
-                            <span className="ml-1 text-xs text-red-400">{item.damage}</span>
+                            <span className="ml-1 text-xs text-danger-400">{item.damage}</span>
                           )}
                           {item.db !== undefined && item.db > 0 && (
                             <span className="ml-1 text-xs text-cyan-400">DB{item.db}</span>
@@ -283,11 +283,11 @@ export function EquipmentSection({
                           type="number"
                           value={item.cost}
                           onChange={(e) => handleChange(item.id, { cost: parseFloat(e.target.value) || 0 })}
-                          className="w-20 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-gray-100 text-right"
+                          className="w-20 bg-surface-2 border border-edge-strong rounded px-1 py-0.5 text-fg-bright text-right"
                           min={0}
                         />
                       ) : (
-                        <span className="text-green-400">{currencyUnit} {item.cost * item.quantity}</span>
+                        <span className="text-success-400">{currencyUnit} {item.cost * item.quantity}</span>
                       )}
                     </td>
                     <td className="py-1.5 text-right">
@@ -296,12 +296,12 @@ export function EquipmentSection({
                           type="number"
                           value={item.weight}
                           onChange={(e) => handleChange(item.id, { weight: parseFloat(e.target.value) || 0 })}
-                          className="w-16 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-gray-100 text-right"
+                          className="w-16 bg-surface-2 border border-edge-strong rounded px-1 py-0.5 text-fg-bright text-right"
                           min={0}
                           step={0.1}
                         />
                       ) : (
-                        <span className="text-gray-400">{(item.weight * item.quantity).toFixed(1)} lb</span>
+                        <span className="text-fg-muted">{(item.weight * item.quantity).toFixed(1)} lb</span>
                       )}
                     </td>
                     {(editMode || onDemote) && (
@@ -310,7 +310,7 @@ export function EquipmentSection({
                           {onDemote && (
                             <button
                               onClick={() => onDemote(item.id)}
-                              className="p-1 hover:bg-gray-600 rounded text-amber-300"
+                              className="p-1 hover:bg-surface-3 rounded text-warning-300"
                               title="Send to pack"
                               aria-label={`Send ${item.name} to pack`}
                             >
@@ -320,7 +320,7 @@ export function EquipmentSection({
                           {editMode && (
                             <button
                               onClick={() => handleRemove(item.id)}
-                              className="p-1 hover:bg-gray-600 rounded text-red-400"
+                              className="p-1 hover:bg-surface-3 rounded text-danger-400"
                               title="Remove"
                             >
                               <Trash2 size={14} />
@@ -332,16 +332,16 @@ export function EquipmentSection({
                   </tr>
                   {/* Expanded detail row (edit mode only) */}
                   {editMode && expandedId === item.id && (
-                    <tr className="bg-gray-750">
+                    <tr className="bg-surface-2">
                       <td colSpan={6} className="px-4 py-2">
                         <div className="grid grid-cols-2 gap-3 text-sm">
                           {/* Category */}
                           <div>
-                            <label className="text-xs text-gray-400 block mb-1">Category</label>
+                            <label className="text-xs text-fg-muted block mb-1">Category</label>
                             <select
                               value={item.category || 'general'}
                               onChange={(e) => handleChange(item.id, { category: e.target.value as EquipmentCategory })}
-                              className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-gray-100"
+                              className="w-full bg-surface-2 border border-edge-strong rounded px-2 py-1 text-fg-bright"
                             >
                               {EQUIPMENT_CATEGORIES.map((cat) => (
                                 <option key={cat.value} value={cat.value}>{cat.label}</option>
@@ -350,36 +350,36 @@ export function EquipmentSection({
                           </div>
                           {/* Location (general) */}
                           <div>
-                            <label className="text-xs text-gray-400 block mb-1">Carried Location</label>
+                            <label className="text-xs text-fg-muted block mb-1">Carried Location</label>
                             <input
                               type="text"
                               value={item.location || ''}
                               onChange={(e) => handleChange(item.id, { location: e.target.value })}
                               placeholder="Belt, Back, etc."
-                              className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-gray-100"
+                              className="w-full bg-surface-2 border border-edge-strong rounded px-2 py-1 text-fg-bright"
                             />
                           </div>
                           {/* Weapon stats */}
                           {(item.category === 'weapon' || item.damage) && (
                             <>
                               <div>
-                                <label className="text-xs text-gray-400 block mb-1">Damage</label>
+                                <label className="text-xs text-fg-muted block mb-1">Damage</label>
                                 <input
                                   type="text"
                                   value={item.damage || ''}
                                   onChange={(e) => handleChange(item.id, { damage: e.target.value })}
                                   placeholder="2d+1 cut"
-                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-gray-100"
+                                  className="w-full bg-surface-2 border border-edge-strong rounded px-2 py-1 text-fg-bright"
                                 />
                               </div>
                               <div>
-                                <label className="text-xs text-gray-400 block mb-1">Reach</label>
+                                <label className="text-xs text-fg-muted block mb-1">Reach</label>
                                 <input
                                   type="text"
                                   value={item.reach || ''}
                                   onChange={(e) => handleChange(item.id, { reach: e.target.value })}
                                   placeholder="1, 2 or C,1"
-                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-gray-100"
+                                  className="w-full bg-surface-2 border border-edge-strong rounded px-2 py-1 text-fg-bright"
                                 />
                               </div>
                             </>
@@ -388,30 +388,30 @@ export function EquipmentSection({
                           {isArmorOrShield(item) && (
                             <>
                               <div>
-                                <label className="text-xs text-gray-400 block mb-1">DR</label>
+                                <label className="text-xs text-fg-muted block mb-1">DR</label>
                                 <input
                                   type="number"
                                   value={item.dr || 0}
                                   onChange={(e) => handleChange(item.id, { dr: parseInt(e.target.value) || 0 })}
-                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-gray-100"
+                                  className="w-full bg-surface-2 border border-edge-strong rounded px-2 py-1 text-fg-bright"
                                   min={0}
                                 />
                               </div>
                               {item.category === 'shield' && (
                                 <div>
-                                  <label className="text-xs text-gray-400 block mb-1">DB (Defense Bonus)</label>
+                                  <label className="text-xs text-fg-muted block mb-1">DB (Defense Bonus)</label>
                                   <input
                                     type="number"
                                     value={item.db || 0}
                                     onChange={(e) => handleChange(item.id, { db: parseInt(e.target.value) || 0 })}
-                                    className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-gray-100"
+                                    className="w-full bg-surface-2 border border-edge-strong rounded px-2 py-1 text-fg-bright"
                                     min={0}
                                   />
                                 </div>
                               )}
                               {/* DR Locations multi-select */}
                               <div className="col-span-2">
-                                <label className="text-xs text-gray-400 block mb-1">DR Covers Locations</label>
+                                <label className="text-xs text-fg-muted block mb-1">DR Covers Locations</label>
                                 <div className="flex flex-wrap gap-1">
                                   {HIT_LOCATIONS.map((loc) => {
                                     const selected = (item.drLocations || []).includes(loc);
@@ -421,8 +421,8 @@ export function EquipmentSection({
                                         onClick={() => handleToggleDRLocation(item.id, loc)}
                                         className={`px-2 py-0.5 rounded text-xs ${
                                           selected
-                                            ? 'bg-blue-600 text-white'
-                                            : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                            ? 'bg-accent-600 text-white'
+                                            : 'bg-surface-2 text-fg-muted hover:bg-surface-3'
                                         }`}
                                       >
                                         {loc}
@@ -435,24 +435,24 @@ export function EquipmentSection({
                           )}
                           {/* Notes */}
                           <div className="col-span-2">
-                            <label className="text-xs text-gray-400 block mb-1">Notes</label>
+                            <label className="text-xs text-fg-muted block mb-1">Notes</label>
                             <input
                               type="text"
                               value={item.notes || ''}
                               onChange={(e) => handleChange(item.id, { notes: e.target.value })}
                               placeholder="Item notes..."
-                              className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-gray-100"
+                              className="w-full bg-surface-2 border border-edge-strong rounded px-2 py-1 text-fg-bright"
                             />
                           </div>
                           {/* Reference */}
                           <div>
-                            <label className="text-xs text-gray-400 block mb-1">Reference</label>
+                            <label className="text-xs text-fg-muted block mb-1">Reference</label>
                             <input
                               type="text"
                               value={item.reference || ''}
                               onChange={(e) => handleChange(item.id, { reference: e.target.value })}
                               placeholder="B270"
-                              className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-gray-100"
+                              className="w-full bg-surface-2 border border-edge-strong rounded px-2 py-1 text-fg-bright"
                             />
                           </div>
                         </div>
@@ -463,17 +463,17 @@ export function EquipmentSection({
               ))}
             </tbody>
             <tfoot>
-              <tr className="border-t border-gray-600 font-semibold">
-                <td colSpan={3} className="pt-2 text-gray-300">
+              <tr className="border-t border-edge-strong font-semibold">
+                <td colSpan={3} className="pt-2 text-fg-secondary">
                   Total
                   {totals.equippedWeight !== totals.weight && (
-                    <span className="text-xs text-gray-500 font-normal ml-2">
+                    <span className="text-xs text-fg-faint font-normal ml-2">
                       ({totals.equippedWeight.toFixed(1)} lb equipped)
                     </span>
                   )}
                 </td>
-                <td className="pt-2 text-right text-green-400">{currencyUnit} {totals.cost.toFixed(0)}</td>
-                <td className="pt-2 text-right text-gray-300">{totals.weight.toFixed(1)} lb</td>
+                <td className="pt-2 text-right text-success-400">{currencyUnit} {totals.cost.toFixed(0)}</td>
+                <td className="pt-2 text-right text-fg-secondary">{totals.weight.toFixed(1)} lb</td>
                 {(editMode || onDemote) && <td></td>}
               </tr>
             </tfoot>
@@ -483,16 +483,16 @@ export function EquipmentSection({
 
       {/* Other Equipment (text) */}
       <div>
-        <h4 className="text-sm font-medium text-gray-400 mb-2">Other Equipment</h4>
+        <h4 className="text-sm font-medium text-fg-muted mb-2">Other Equipment</h4>
         {editMode ? (
           <textarea
             value={otherEquipment}
             onChange={(e) => onOtherEquipmentChange(e.target.value)}
             placeholder="Additional equipment notes..."
-            className="w-full h-20 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-gray-100 text-sm resize-y"
+            className="w-full h-20 bg-surface-2 border border-edge-strong rounded px-3 py-2 text-fg-bright text-sm resize-y"
           />
         ) : (
-          <div className="text-sm text-gray-400">
+          <div className="text-sm text-fg-muted">
             {otherEquipment || <span className="italic">None</span>}
           </div>
         )}

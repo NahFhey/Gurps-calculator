@@ -313,18 +313,18 @@ export function ForagingTaskForm({
   );
 
   return (
-    <div className="foraging-task-form bg-gray-800/60 border border-gray-700 rounded-lg p-4 mb-4" data-testid="foraging-task-form">
+    <div className="foraging-task-form bg-surface-1/60 border border-edge rounded-lg p-4 mb-4" data-testid="foraging-task-form">
       <div className="flex justify-between items-center mb-3">
-        <h4 className="font-medium text-gray-100 flex items-center gap-2">
-          <Leaf className="w-4 h-4 text-green-400" />
+        <h4 className="font-medium text-fg-bright flex items-center gap-2">
+          <Leaf className="w-4 h-4 text-success-400" />
           New Foraging Task
         </h4>
-        <button type="button" onClick={onCancel} className="text-gray-400 hover:text-gray-200">
+        <button type="button" onClick={onCancel} className="text-fg-muted hover:text-fg-primary">
           <X className="w-5 h-5" />
         </button>
       </div>
 
-      <label className="mb-4 flex items-center gap-2 text-sm text-gray-300">
+      <label className="mb-4 flex items-center gap-2 text-sm text-fg-secondary">
         <input
           type="checkbox"
           checked={isBatchMode}
@@ -333,22 +333,22 @@ export function ForagingTaskForm({
             setBatchErrors({});
           }}
           data-testid="batch-assign-toggle"
-          className="rounded border-gray-600 bg-gray-900 text-green-600 focus:ring-green-500"
+          className="rounded border-edge-strong bg-surface-0 text-success-600 focus:ring-success-500"
         />
         Batch assign
       </label>
 
       {/* Mode Selector */}
       <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-300 mb-1">Mode</label>
+        <label className="block text-sm font-medium text-fg-secondary mb-1">Mode</label>
         <div className="flex gap-1" data-testid="mode-selector">
           <button
             type="button"
             onClick={() => handleModeChange('general')}
             className={`flex items-center gap-1 px-3 py-1.5 text-sm rounded-l-lg border transition-colors ${
               mode === 'general'
-                ? 'bg-green-600 text-white border-green-600'
-                : 'bg-gray-800 text-gray-300 border-gray-600 hover:bg-gray-700'
+                ? 'bg-success-600 text-white border-success-600'
+                : 'bg-surface-1 text-fg-secondary border-edge-strong hover:bg-surface-2'
             }`}
             data-testid="mode-general"
           >
@@ -360,8 +360,8 @@ export function ForagingTaskForm({
             onClick={() => handleModeChange('category')}
             className={`flex items-center gap-1 px-3 py-1.5 text-sm border-y transition-colors ${
               mode === 'category'
-                ? 'bg-green-600 text-white border-green-600'
-                : 'bg-gray-800 text-gray-300 border-gray-600 hover:bg-gray-700'
+                ? 'bg-success-600 text-white border-success-600'
+                : 'bg-surface-1 text-fg-secondary border-edge-strong hover:bg-surface-2'
             }`}
             data-testid="mode-category"
           >
@@ -373,8 +373,8 @@ export function ForagingTaskForm({
             onClick={() => handleModeChange('specific')}
             className={`flex items-center gap-1 px-3 py-1.5 text-sm rounded-r-lg border transition-colors ${
               mode === 'specific'
-                ? 'bg-green-600 text-white border-green-600'
-                : 'bg-gray-800 text-gray-300 border-gray-600 hover:bg-gray-700'
+                ? 'bg-success-600 text-white border-success-600'
+                : 'bg-surface-1 text-fg-secondary border-edge-strong hover:bg-surface-2'
             }`}
             data-testid="mode-specific"
           >
@@ -382,7 +382,7 @@ export function ForagingTaskForm({
             Specific
           </button>
         </div>
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-xs text-fg-muted mt-1">
           {mode === 'general' && 'Gather whatever the zone provides. No targeting penalty.'}
           {mode === 'category' && 'Target a specific category of items (e.g., Mushrooms, Herbs).'}
           {mode === 'specific' && 'Target a specific item. Rarity penalty applies.'}
@@ -391,7 +391,7 @@ export function ForagingTaskForm({
 
       {/* Leader Selection */}
       {!isBatchMode ? <div className="mb-3">
-        <label htmlFor="leader-select" className="block text-sm font-medium text-gray-300 mb-1">
+        <label htmlFor="leader-select" className="block text-sm font-medium text-fg-secondary mb-1">
           Leader
         </label>
         <select
@@ -401,7 +401,7 @@ export function ForagingTaskForm({
             setLeaderId(e.target.value);
             setHelperIds([]);
           }}
-          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+          className="w-full px-3 py-2 bg-surface-0 border border-edge-strong rounded text-fg-bright text-sm focus:outline-none focus:ring-2 focus:ring-success-500 focus:border-success-500"
           data-testid="leader-select"
         >
           <option value="">Select a leader...</option>
@@ -413,7 +413,7 @@ export function ForagingTaskForm({
         </select>
       </div> : (
         <div className="mb-3">
-          <label htmlFor="foraging-batch-leaders" className="block text-sm font-medium text-gray-300 mb-1">Leaders</label>
+          <label htmlFor="foraging-batch-leaders" className="block text-sm font-medium text-fg-secondary mb-1">Leaders</label>
           <select
             id="foraging-batch-leaders"
             multiple
@@ -427,7 +427,7 @@ export function ForagingTaskForm({
               setBatchErrors({});
             }}
             data-testid="batch-leader-select"
-            className="w-full min-h-24 px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 text-sm"
+            className="w-full min-h-24 px-3 py-2 bg-surface-0 border border-edge-strong rounded text-fg-bright text-sm"
           >
             {availableCharacters.map((character) => (
               <option key={character.id} value={character.id}>{character.name}</option>
@@ -439,14 +439,14 @@ export function ForagingTaskForm({
       {/* Skill Selection */}
       {(leaderId || isBatchMode) && (
         <div className="mb-3">
-          <label htmlFor="skill-select" className="block text-sm font-medium text-gray-300 mb-1">
+          <label htmlFor="skill-select" className="block text-sm font-medium text-fg-secondary mb-1">
             Skill
           </label>
           <select
             id="skill-select"
             value={skillUsed}
             onChange={(e) => setSkillUsed(e.target.value as ForageSkill)}
-            className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            className="w-full px-3 py-2 bg-surface-0 border border-edge-strong rounded text-fg-bright text-sm focus:outline-none focus:ring-2 focus:ring-success-500 focus:border-success-500"
             data-testid="skill-select"
           >
             {isBatchMode ? (
@@ -467,7 +467,7 @@ export function ForagingTaskForm({
       {/* Helpers */}
       {!isBatchMode && leaderId && availableHelpers.length > 0 && (
         <div className="mb-3">
-          <label className="block text-sm font-medium text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-fg-secondary mb-1">
             Helpers ({helperIds.length})
           </label>
           <div className="flex flex-wrap gap-1">
@@ -478,8 +478,8 @@ export function ForagingTaskForm({
                 onClick={() => toggleHelper(c.id)}
                 className={`px-2 py-1 text-xs rounded border transition-colors ${
                   helperIds.includes(c.id)
-                    ? 'bg-green-900/50 border-green-500 text-green-200'
-                    : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
+                    ? 'bg-success-900/50 border-success-500 text-success-200'
+                    : 'bg-surface-1 border-edge-strong text-fg-secondary hover:bg-surface-2'
                 }`}
               >
                 {c.name}
@@ -491,7 +491,7 @@ export function ForagingTaskForm({
 
       {/* Zone Selection */}
       <div className="mb-3">
-        <label htmlFor="zone-select" className="block text-sm font-medium text-gray-300 mb-1">
+        <label htmlFor="zone-select" className="block text-sm font-medium text-fg-secondary mb-1">
           Zone
         </label>
         {zones.length > 0 ? (
@@ -499,7 +499,7 @@ export function ForagingTaskForm({
             id="zone-select"
             value={zoneId}
             onChange={(e) => setZoneId(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            className="w-full px-3 py-2 bg-surface-0 border border-edge-strong rounded text-fg-bright text-sm focus:outline-none focus:ring-2 focus:ring-success-500 focus:border-success-500"
             data-testid="zone-select"
           >
             {zones.map((z) => (
@@ -518,7 +518,7 @@ export function ForagingTaskForm({
       {/* Category Selection (Category and Specific modes) */}
       {(mode === 'category' || mode === 'specific') && (
         <div className="mb-3">
-          <label htmlFor="category-select" className="block text-sm font-medium text-gray-300 mb-1">
+          <label htmlFor="category-select" className="block text-sm font-medium text-fg-secondary mb-1">
             Category
           </label>
           <select
@@ -528,7 +528,7 @@ export function ForagingTaskForm({
               setTargetCategory(e.target.value as ForageCategoryId);
               setTargetItemId('');
             }}
-            className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            className="w-full px-3 py-2 bg-surface-0 border border-edge-strong rounded text-fg-bright text-sm focus:outline-none focus:ring-2 focus:ring-success-500 focus:border-success-500"
             data-testid="category-select"
           >
             <option value="">Select a category...</option>
@@ -544,7 +544,7 @@ export function ForagingTaskForm({
       {/* Item Selection (Specific mode only) */}
       {mode === 'specific' && targetCategory && (
         <div className="mb-3">
-          <label htmlFor="item-select" className="block text-sm font-medium text-gray-300 mb-1">
+          <label htmlFor="item-select" className="block text-sm font-medium text-fg-secondary mb-1">
             Target Item
           </label>
           {filteredItems.length > 0 ? (
@@ -552,7 +552,7 @@ export function ForagingTaskForm({
               id="item-select"
               value={targetItemId}
               onChange={(e) => setTargetItemId(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              className="w-full px-3 py-2 bg-surface-0 border border-edge-strong rounded text-fg-bright text-sm focus:outline-none focus:ring-2 focus:ring-success-500 focus:border-success-500"
               data-testid="item-select"
             >
               <option value="">Select an item...</option>
@@ -568,7 +568,7 @@ export function ForagingTaskForm({
             </p>
           )}
           {targetItem && (
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-fg-muted mt-1">
               Targeting penalty: {FORAGE_SPECIFIC_PENALTIES[targetItem.tier]} (tier: {targetItem.tier})
             </p>
           )}
@@ -596,8 +596,8 @@ export function ForagingTaskForm({
             );
             const error = batchErrors[characterId];
             return (
-              <div key={characterId} className="rounded border border-gray-700 bg-gray-900/40 p-3" data-testid={`batch-row-${characterId}`}>
-                <p className="mb-2 text-sm font-medium text-gray-200">{character?.name ?? characterId}</p>
+              <div key={characterId} className="rounded border border-edge bg-surface-0/40 p-3" data-testid={`batch-row-${characterId}`}>
+                <p className="mb-2 text-sm font-medium text-fg-primary">{character?.name ?? characterId}</p>
                 <ToolSelector
                   label={`${character?.name ?? characterId} tools`}
                   value={batchToolIds[characterId] ?? []}
@@ -628,9 +628,9 @@ export function ForagingTaskForm({
 
       {/* Context Flags */}
       <div className="mb-3">
-        <label className="block text-sm font-medium text-gray-300 mb-1">Context Modifiers</label>
+        <label className="block text-sm font-medium text-fg-secondary mb-1">Context Modifiers</label>
         <div className="grid grid-cols-2 gap-2">
-          <label className="flex items-center gap-1.5 text-xs text-gray-300">
+          <label className="flex items-center gap-1.5 text-xs text-fg-secondary">
             <input
               type="checkbox"
               checked={hasMapOrGuide}
@@ -639,7 +639,7 @@ export function ForagingTaskForm({
             />
             Map/Local Guide (+1)
           </label>
-          <label className="flex items-center gap-1.5 text-xs text-gray-300">
+          <label className="flex items-center gap-1.5 text-xs text-fg-secondary">
             <input
               type="checkbox"
               checked={isUnfamiliarOrHostile}
@@ -648,7 +648,7 @@ export function ForagingTaskForm({
             />
             Unfamiliar/Hostile (-2)
           </label>
-          <label className="flex items-center gap-1.5 text-xs text-gray-300">
+          <label className="flex items-center gap-1.5 text-xs text-fg-secondary">
             <input
               type="checkbox"
               checked={isPeakSeason}
@@ -660,7 +660,7 @@ export function ForagingTaskForm({
             />
             Peak Season (+2)
           </label>
-          <label className="flex items-center gap-1.5 text-xs text-gray-300">
+          <label className="flex items-center gap-1.5 text-xs text-fg-secondary">
             <input
               type="checkbox"
               checked={isOffSeason}
@@ -672,7 +672,7 @@ export function ForagingTaskForm({
             />
             Off Season (-2)
           </label>
-          <label className="flex items-center gap-1.5 text-xs text-gray-300">
+          <label className="flex items-center gap-1.5 text-xs text-fg-secondary">
             <input
               type="checkbox"
               checked={hasProperTools}
@@ -681,7 +681,7 @@ export function ForagingTaskForm({
             />
             Proper Tools (+2)
           </label>
-          <label className="flex items-center gap-1.5 text-xs text-gray-300">
+          <label className="flex items-center gap-1.5 text-xs text-fg-secondary">
             <input
               type="checkbox"
               checked={isDenseOrDangerousTerrain}
@@ -695,22 +695,22 @@ export function ForagingTaskForm({
 
       {/* Skill Summary */}
       {!isBatchMode && leaderId && (
-        <div className="mb-4 bg-gray-900/50 border border-gray-700 rounded p-3 text-sm">
-          <p className="text-gray-200">
+        <div className="mb-4 bg-surface-0/50 border border-edge rounded p-3 text-sm">
+          <p className="text-fg-primary">
             <span className="font-medium">Base Skill:</span> {selectedSkillLevel}
             {toolBonus !== 0 && (
-              <span className={toolBonus >= 0 ? 'text-green-400' : 'text-red-400'}>
+              <span className={toolBonus >= 0 ? 'text-success-400' : 'text-danger-400'}>
                 {' '}| Tools: {toolBonus >= 0 ? '+' : ''}{toolBonus}
               </span>
             )}
             {fatiguePenalty !== 0 && (
-              <span className="text-red-400">
+              <span className="text-danger-400">
                 {' '}| Fatigue: {fatiguePenalty}
               </span>
             )}
           </p>
-          <p className="text-gray-400">
-            Total Modifier: <span className={totalSkillModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
+          <p className="text-fg-muted">
+            Total Modifier: <span className={totalSkillModifier >= 0 ? 'text-success-400' : 'text-danger-400'}>
               {totalSkillModifier >= 0 ? '+' : ''}{totalSkillModifier}
             </span>
           </p>
@@ -725,8 +725,8 @@ export function ForagingTaskForm({
           disabled={!isFormValid}
           className={`px-4 py-2 text-sm rounded font-medium transition-colors ${
             isFormValid
-              ? 'bg-green-600 text-white hover:bg-green-700'
-              : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+              ? 'bg-success-600 text-white hover:bg-success-700'
+              : 'bg-surface-2 text-fg-faint cursor-not-allowed'
           }`}
           data-testid="submit-button"
         >
@@ -735,7 +735,7 @@ export function ForagingTaskForm({
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 text-sm rounded border border-gray-600 text-gray-300 hover:bg-gray-700 transition-colors"
+          className="px-4 py-2 text-sm rounded border border-edge-strong text-fg-secondary hover:bg-surface-2 transition-colors"
           data-testid="cancel-button"
         >
           Cancel

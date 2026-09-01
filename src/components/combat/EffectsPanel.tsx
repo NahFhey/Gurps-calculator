@@ -136,21 +136,21 @@ export default function EffectsPanel({
       case 'shock':
         return <AlertCircle size={20} className="text-yellow-400" />;
       case 'majorWound':
-        return <Heart size={20} className="text-red-400" />;
+        return <Heart size={20} className="text-danger-400" />;
       case 'knockdownStun':
         return <AlertCircle size={20} className="text-orange-400" />;
       case 'consciousnessCheck':
         return <Heart size={20} className="text-purple-400" />;
       case 'deathCheck':
-        return <Skull size={20} className="text-red-600" />;
+        return <Skull size={20} className="text-danger-600" />;
       case 'autoDeath':
-        return <Skull size={20} className="text-red-900" />;
+        return <Skull size={20} className="text-danger-900" />;
       case 'bleeding':
-        return <Droplet size={20} className="text-red-400" />;
+        return <Droplet size={20} className="text-danger-400" />;
       case 'crippling':
         return <Cross size={20} className="text-orange-400" />;
       default:
-        return <AlertCircle size={20} className="text-gray-400" />;
+        return <AlertCircle size={20} className="text-fg-muted" />;
     }
   };
 
@@ -167,8 +167,8 @@ export default function EffectsPanel({
         return (
           <div
             key={index}
-            className={`bg-gray-800 rounded p-3 border-2 ${
-              resolved ? 'border-green-600' : 'border-orange-600'
+            className={`bg-surface-1 rounded p-3 border-2 ${
+              resolved ? 'border-success-600' : 'border-orange-600'
             }`}
           >
             <div className="flex items-start gap-3">
@@ -180,7 +180,7 @@ export default function EffectsPanel({
                 {prompt.autoApply && !resolved && (
                   <button
                     onClick={() => handleAutoApply(prompt, index)}
-                    className="mt-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm"
+                    className="mt-2 px-3 py-1 bg-accent-600 hover:bg-accent-700 rounded text-sm"
                   >
                     Apply
                   </button>
@@ -189,7 +189,7 @@ export default function EffectsPanel({
                 {/* Check prompts with roll option */}
                 {prompt.checkType && !resolved && (
                   <div className="mt-2 space-y-2">
-                    <div className="text-sm text-gray-400">
+                    <div className="text-sm text-fg-muted">
                       Target: {prompt.checkType} {prompt.target}
                       {prompt.penalty !== 0 && ` (${(prompt.penalty ?? 0) >= 0 ? '+' : ''}${prompt.penalty})`}
                     </div>
@@ -203,19 +203,19 @@ export default function EffectsPanel({
                       </button>
                       <button
                         onClick={() => handleManualResolve(prompt, index, 'success')}
-                        className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
+                        className="px-3 py-1 bg-success-600 hover:bg-success-700 rounded text-sm"
                       >
                         Success
                       </button>
                       <button
                         onClick={() => handleManualResolve(prompt, index, 'failure')}
-                        className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm"
+                        className="px-3 py-1 bg-danger-600 hover:bg-danger-700 rounded text-sm"
                       >
                         Failure
                       </button>
                       <button
                         onClick={() => handleSkip(prompt, index)}
-                        className="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm"
+                        className="px-3 py-1 bg-surface-3 hover:bg-surface-4 rounded text-sm"
                       >
                         Skip
                       </button>
@@ -228,13 +228,13 @@ export default function EffectsPanel({
                   <div className="mt-2 flex gap-2">
                     <button
                       onClick={() => handleManualResolve(prompt, index, 'yes')}
-                      className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
+                      className="px-3 py-1 bg-success-600 hover:bg-success-700 rounded text-sm"
                     >
                       Yes
                     </button>
                     <button
                       onClick={() => handleManualResolve(prompt, index, 'no')}
-                      className="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm"
+                      className="px-3 py-1 bg-surface-3 hover:bg-surface-4 rounded text-sm"
                     >
                       No
                     </button>
@@ -243,11 +243,11 @@ export default function EffectsPanel({
 
                 {/* Display roll result */}
                 {rollResult && (
-                  <div className="mt-2 bg-gray-900 rounded p-2">
+                  <div className="mt-2 bg-surface-0 rounded p-2">
                     <div className="text-sm">
                       Roll: {rollResult.dice.join(', ')} = {rollResult.total} vs {rollResult.target}
                       {' ['}
-                      <span className={rollResult.success ? 'text-green-400 font-bold' : 'text-red-400 font-bold'}>
+                      <span className={rollResult.success ? 'text-success-400 font-bold' : 'text-danger-400 font-bold'}>
                         {rollResult.success ? 'SUCCESS' : 'FAILURE'}
                       </span>
                       {']'}
@@ -257,7 +257,7 @@ export default function EffectsPanel({
 
                 {/* Display resolved status */}
                 {resolved && (
-                  <div className="mt-2 text-sm text-green-400">
+                  <div className="mt-2 text-sm text-success-400">
                     ✓ Resolved
                     {resolved.autoApplied && ' (auto-applied)'}
                     {resolved.skipped && ' (skipped)'}
@@ -274,14 +274,14 @@ export default function EffectsPanel({
       {allResolved && (
         <button
           onClick={onComplete}
-          className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 rounded font-semibold"
+          className="w-full px-4 py-3 bg-success-600 hover:bg-success-700 rounded font-semibold"
         >
           Complete Injury Resolution
         </button>
       )}
 
       {!allResolved && prompts.length > 0 && (
-        <div className="text-sm text-gray-400 text-center">
+        <div className="text-sm text-fg-muted text-center">
           Resolve all effects to continue
         </div>
       )}

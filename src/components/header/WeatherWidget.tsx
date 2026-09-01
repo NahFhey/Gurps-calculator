@@ -120,12 +120,12 @@ export function WeatherWidget({
   if (!activeMap) {
     return (
       <div
-        className="rounded border border-gray-600 bg-gray-700/50 px-4 py-2 cursor-pointer hover:bg-gray-700"
+        className="rounded border border-edge-strong bg-surface-2/50 px-4 py-2 cursor-pointer hover:bg-surface-2"
         onClick={() => setShowManager(true)}
         data-testid="weather-widget"
       >
-        <div className="text-sm text-gray-400">No map set</div>
-        <div className="text-xs text-gray-500">Select or place the active group on a map</div>
+        <div className="text-sm text-fg-muted">No map set</div>
+        <div className="text-xs text-fg-faint">Select or place the active group on a map</div>
 
         {showManager && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={(e) => e.stopPropagation()}>
@@ -143,13 +143,13 @@ export function WeatherWidget({
     return (
       <>
         <div
-          className="flex items-center gap-2 rounded border border-gray-600 bg-gray-700/50 px-3 py-1.5 cursor-pointer hover:bg-gray-700"
+          className="flex items-center gap-2 rounded border border-edge-strong bg-surface-2/50 px-3 py-1.5 cursor-pointer hover:bg-surface-2"
           title={`${activeMap.name}: ${weather?.description ?? 'Unknown'}\n${effectsSummary}`}
           onClick={() => setShowManager(true)}
           data-testid="weather-widget-compact"
         >
           <span className="text-lg">{weather ? getWeatherIcon(weather.type) : '🌡️'}</span>
-          <span className="text-sm text-gray-200">
+          <span className="text-sm text-fg-primary">
             {weather ? TEMPERATURE_LABELS[weather.temperature] : 'Unknown'}
           </span>
         </div>
@@ -169,16 +169,16 @@ export function WeatherWidget({
   return (
     <>
       <div
-        className="rounded border border-gray-600 bg-gray-700/50 px-4 py-2"
+        className="rounded border border-edge-strong bg-surface-2/50 px-4 py-2"
         data-testid="weather-widget"
       >
         {/* Main clickable row — opens location manager */}
         <div
-          className="flex items-start gap-3 cursor-pointer hover:bg-gray-700/50 rounded -mx-1 px-1 py-0.5"
+          className="flex items-start gap-3 cursor-pointer hover:bg-surface-2/50 rounded -mx-1 px-1 py-0.5"
           onClick={() => setShowManager(true)}
         >
           {/* Weather Icon */}
-          <div className="flex h-10 w-10 items-center justify-center rounded bg-gray-600/50 text-2xl flex-shrink-0">
+          <div className="flex h-10 w-10 items-center justify-center rounded bg-surface-3/50 text-2xl flex-shrink-0">
             {weather ? getWeatherIcon(weather.type) : '🌡️'}
           </div>
 
@@ -186,27 +186,27 @@ export function WeatherWidget({
           <div className="flex-1 min-w-0">
             {/* Location */}
             {showLocation && (
-              <div className="text-xs text-gray-400 mb-0.5 flex items-center gap-1">
+              <div className="text-xs text-fg-muted mb-0.5 flex items-center gap-1">
                 <span>{activeMap.name}</span>
-                <span className="text-gray-500">
+                <span className="text-fg-faint">
                   ({allClimateLabels[activeMap.climate] ?? activeMap.climate})
                 </span>
               </div>
             )}
 
             {/* Weather Description */}
-            <div className="text-sm font-medium text-gray-100">
+            <div className="text-sm font-medium text-fg-bright">
               {weather?.description ?? 'Unknown weather'}
             </div>
 
             {/* Duration */}
-            <div className="text-xs text-gray-500 mt-0.5">
+            <div className="text-xs text-fg-faint mt-0.5">
               {durationDisplay}
             </div>
 
             {/* Effects summary (collapsed) */}
             {showEffects && !expanded && (
-              <div className="text-xs text-gray-400 mt-0.5">
+              <div className="text-xs text-fg-muted mt-0.5">
                 {effectsSummary}
               </div>
             )}
@@ -215,10 +215,10 @@ export function WeatherWidget({
 
         {/* GM Controls — outside the clickable area */}
         {gmModeEnabled && (
-          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-600/50">
+          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-edge-strong/50">
             <button
               onClick={handleRollWeather}
-              className="px-2 py-1 text-xs bg-gray-600 hover:bg-gray-500 text-gray-200 rounded"
+              className="px-2 py-1 text-xs bg-surface-3 hover:bg-surface-4 text-fg-primary rounded"
               title="Roll new weather"
             >
               🎲 Reroll
@@ -227,8 +227,8 @@ export function WeatherWidget({
               onClick={() => setExpanded(!expanded)}
               className={`px-2 py-1 text-xs rounded ${
                 expanded
-                  ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                  : 'bg-gray-600 hover:bg-gray-500 text-gray-200'
+                  ? 'bg-accent-600 hover:bg-accent-500 text-white'
+                  : 'bg-surface-3 hover:bg-surface-4 text-fg-primary'
               }`}
               title="Show weather effects details"
             >
@@ -242,8 +242,8 @@ export function WeatherWidget({
                 }}
                 className={`px-2 py-1 text-xs rounded ${
                   editingEffects
-                    ? 'bg-amber-600 hover:bg-amber-500 text-white'
-                    : 'bg-gray-600 hover:bg-gray-500 text-gray-200'
+                    ? 'bg-warning-600 hover:bg-warning-500 text-white'
+                    : 'bg-surface-3 hover:bg-surface-4 text-fg-primary'
                 }`}
                 title="Edit weather effect values for this weather type"
               >
@@ -255,7 +255,7 @@ export function WeatherWidget({
 
         {/* Expanded effects display */}
         {expanded && weather && (
-          <div className="mt-2 pt-2 border-t border-gray-600/50">
+          <div className="mt-2 pt-2 border-t border-edge-strong/50">
             <WeatherEffectsDisplay
               weather={weather}
               editing={editingEffects}
@@ -366,16 +366,16 @@ function WeatherEffectsDisplay({
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-medium text-gray-300">
+        <span className="text-xs font-medium text-fg-secondary">
           Weather Effects: {weather.type}
           {weather.intensity && weather.intensity !== 'moderate' && (
-            <span className="text-gray-500 ml-1">({weather.intensity})</span>
+            <span className="text-fg-faint ml-1">({weather.intensity})</span>
           )}
         </span>
         {editing && hasOverrides && (
           <button
             onClick={handleResetAll}
-            className="text-xs text-gray-500 hover:text-gray-300"
+            className="text-xs text-fg-faint hover:text-fg-secondary"
           >
             Reset all
           </button>
@@ -393,7 +393,7 @@ function WeatherEffectsDisplay({
 
           return (
             <div key={key} className="flex items-center justify-between gap-1">
-              <span className="text-xs text-gray-400 truncate" title={label}>
+              <span className="text-xs text-fg-muted truncate" title={label}>
                 {label}
               </span>
               {editing ? (
@@ -403,13 +403,13 @@ function WeatherEffectsDisplay({
                   onChange={(e) => handleChange(key, parseInt(e.target.value) || 0)}
                   className={`w-12 px-1 py-0.5 text-center text-xs rounded border ${
                     overridden
-                      ? 'bg-amber-900/30 border-amber-600 text-amber-200'
-                      : 'bg-gray-700 border-gray-600 text-gray-100'
+                      ? 'bg-warning-900/30 border-warning-600 text-warning-200'
+                      : 'bg-surface-2 border-edge-strong text-fg-bright'
                   }`}
                 />
               ) : (
                 <span className={`text-xs font-mono ${
-                  liveVal > 0 ? 'text-green-400' : liveVal < 0 ? 'text-red-400' : 'text-gray-500'
+                  liveVal > 0 ? 'text-success-400' : liveVal < 0 ? 'text-danger-400' : 'text-fg-faint'
                 }`}>
                   {liveVal > 0 ? '+' : ''}{liveVal}
                 </span>
@@ -421,13 +421,13 @@ function WeatherEffectsDisplay({
 
       {/* Show all-zero message in view mode */}
       {!editing && EFFECT_KEYS.every(({ key }) => getLiveValue(key) === 0) && (
-        <p className="text-xs text-gray-500 italic">No active weather modifiers</p>
+        <p className="text-xs text-fg-faint italic">No active weather modifiers</p>
       )}
 
       {editing && (
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="text-xs text-fg-faint mt-2">
           Edit base values for &ldquo;{weather.type}&rdquo;. Changes apply to all future rolls (before intensity scaling).
-          {hasOverrides && <span className="text-amber-400 ml-1">Amber = overridden</span>}
+          {hasOverrides && <span className="text-warning-400 ml-1">Amber = overridden</span>}
         </p>
       )}
     </div>

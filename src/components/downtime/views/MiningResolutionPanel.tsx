@@ -454,34 +454,34 @@ export function MiningResolutionPanel({
   };
 
   return (
-    <div className="bg-gray-800 border border-amber-600 rounded-lg p-4 space-y-4">
+    <div className="bg-surface-1 border border-warning-600 rounded-lg p-4 space-y-4">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <HardHat className="w-5 h-5 text-amber-400" />
-          <h4 className="font-semibold text-gray-100">Manual Mining Resolution — {data.method}</h4>
+          <HardHat className="w-5 h-5 text-warning-400" />
+          <h4 className="font-semibold text-fg-bright">Manual Mining Resolution — {data.method}</h4>
         </div>
-        <button type="button" onClick={onCancel} className="text-gray-400 hover:text-gray-200" title="Cancel resolution">
+        <button type="button" onClick={onCancel} className="text-fg-muted hover:text-fg-primary" title="Cancel resolution">
           <X className="w-5 h-5" />
         </button>
       </div>
 
       {/* Skill Info */}
-      <div className="bg-gray-900/50 p-3 rounded text-sm space-y-1">
-        <p className="text-gray-300"><span className="font-medium text-gray-200">Leader:</span> {leaderName}</p>
+      <div className="bg-surface-0/50 p-3 rounded text-sm space-y-1">
+        <p className="text-fg-secondary"><span className="font-medium text-fg-primary">Leader:</span> {leaderName}</p>
         {isSurface && (
-          <p className="text-gray-300">
-            <span className="font-medium text-gray-200">Locate Skill:</span>{' '}
-            {MINING_SKILL_LABELS[data.locateSkill]} = <span className="text-amber-400 font-bold">{locateEffectiveSkill}</span>
+          <p className="text-fg-secondary">
+            <span className="font-medium text-fg-primary">Locate Skill:</span>{' '}
+            {MINING_SKILL_LABELS[data.locateSkill]} = <span className="text-warning-400 font-bold">{locateEffectiveSkill}</span>
           </p>
         )}
-        <p className="text-gray-300">
-          <span className="font-medium text-gray-200">Extraction Skill:</span>{' '}
-          {MINING_SKILL_LABELS[data.extractionSkill]} = <span className="text-amber-400 font-bold">{extractionEffectiveSkill}</span>
+        <p className="text-fg-secondary">
+          <span className="font-medium text-fg-primary">Extraction Skill:</span>{' '}
+          {MINING_SKILL_LABELS[data.extractionSkill]} = <span className="text-warning-400 font-bold">{extractionEffectiveSkill}</span>
         </p>
         {existingSite && (
-          <p className="text-gray-300">
-            <span className="font-medium text-gray-200">Site:</span> {existingSite.name} ({existingSite.remainingUnits}/{existingSite.totalUnits} units)
+          <p className="text-fg-secondary">
+            <span className="font-medium text-fg-primary">Site:</span> {existingSite.name} ({existingSite.remainingUnits}/{existingSite.totalUnits} units)
           </p>
         )}
       </div>
@@ -490,9 +490,9 @@ export function MiningResolutionPanel({
       {isSurface && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h5 className="text-sm font-medium text-gray-200">Step 1: Locate Site (3d6 vs {locateEffectiveSkill})</h5>
+            <h5 className="text-sm font-medium text-fg-primary">Step 1: Locate Site (3d6 vs {locateEffectiveSkill})</h5>
             {!locateRoll.rolled ? (
-              <button type="button" onClick={() => setLocateRoll(roll3d6())} className="flex items-center gap-1 px-3 py-1.5 bg-amber-600 text-white rounded hover:bg-amber-700 text-sm">
+              <button type="button" onClick={() => setLocateRoll(roll3d6())} className="flex items-center gap-1 px-3 py-1.5 bg-warning-600 text-white rounded hover:bg-warning-700 text-sm">
                 <Dices className="w-3.5 h-3.5" /> Roll 3d6
               </button>
             ) : (
@@ -503,34 +503,34 @@ export function MiningResolutionPanel({
           </div>
 
           {locateRoll.rolled && (
-            <div className="bg-gray-900/50 p-3 rounded">
+            <div className="bg-surface-0/50 p-3 rounded">
               <div className="flex items-center gap-3 mb-2">
                 <div className="flex gap-1">
                   {locateRoll.dice.map((d, i) => (
-                    <span key={i} className="w-8 h-8 bg-gray-700 border border-gray-600 rounded flex items-center justify-center font-bold text-lg">{d}</span>
+                    <span key={i} className="w-8 h-8 bg-surface-2 border border-edge-strong rounded flex items-center justify-center font-bold text-lg">{d}</span>
                   ))}
                 </div>
-                <span className="text-gray-400">=</span>
+                <span className="text-fg-muted">=</span>
                 <span className="font-bold text-xl">{locateRoll.total}</span>
-                <span className="text-gray-400">vs</span>
-                <span className="font-bold text-xl text-amber-400">{locateEffectiveSkill}</span>
+                <span className="text-fg-muted">vs</span>
+                <span className="font-bold text-xl text-warning-400">{locateEffectiveSkill}</span>
               </div>
               <div className="text-sm space-y-1">
                 <p>
                   {locateCritSuccess ? (
                     <span className="text-yellow-400 font-bold">Critical Success!</span>
                   ) : locateCritFailure ? (
-                    <span className="text-red-400 font-bold">Critical Failure!</span>
+                    <span className="text-danger-400 font-bold">Critical Failure!</span>
                   ) : locateSuccess ? (
-                    <span className="text-green-400">Success by {locateMargin}</span>
+                    <span className="text-success-400">Success by {locateMargin}</span>
                   ) : (
-                    <span className="text-red-400">Failure by {Math.abs(locateMargin)}</span>
+                    <span className="text-danger-400">Failure by {Math.abs(locateMargin)}</span>
                   )}
                 </p>
                 {locateOutcome && discoveredMineral && (
                   <>
-                    <p><span className="font-medium text-gray-200">Resource:</span> <span className="text-amber-300">{discoveredMineral.name}</span> ({discoveredMineral.rarity})</p>
-                    <p><span className="font-medium text-gray-200">Deposit Size:</span> {locateOutcome.depositSize}</p>
+                    <p><span className="font-medium text-fg-primary">Resource:</span> <span className="text-warning-300">{discoveredMineral.name}</span> ({discoveredMineral.rarity})</p>
+                    <p><span className="font-medium text-fg-primary">Deposit Size:</span> {locateOutcome.depositSize}</p>
                   </>
                 )}
               </div>
@@ -543,9 +543,9 @@ export function MiningResolutionPanel({
       {isSurface && locateRoll.rolled && locateSuccess && locateOutcome && discoveredMineral && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h5 className="text-sm font-medium text-gray-200">Step 2: Deposit Capacity ({depositCapFormula})</h5>
+            <h5 className="text-sm font-medium text-fg-primary">Step 2: Deposit Capacity ({depositCapFormula})</h5>
             {!depositCapRoll.rolled ? (
-              <button type="button" onClick={() => setDepositCapRoll(rollFormula(depositCapFormula))} className="flex items-center gap-1 px-3 py-1.5 bg-amber-600 text-white rounded hover:bg-amber-700 text-sm">
+              <button type="button" onClick={() => setDepositCapRoll(rollFormula(depositCapFormula))} className="flex items-center gap-1 px-3 py-1.5 bg-warning-600 text-white rounded hover:bg-warning-700 text-sm">
                 <Dices className="w-3.5 h-3.5" /> Roll Capacity
               </button>
             ) : (
@@ -555,8 +555,8 @@ export function MiningResolutionPanel({
             )}
           </div>
           {depositCapRoll.rolled && (
-            <div className="bg-gray-900/50 p-3 rounded text-sm">
-              <span className="text-gray-300">Deposit has <span className="text-amber-400 font-bold">{depositCapRoll.total}</span> total units</span>
+            <div className="bg-surface-0/50 p-3 rounded text-sm">
+              <span className="text-fg-secondary">Deposit has <span className="text-warning-400 font-bold">{depositCapRoll.total}</span> total units</span>
             </div>
           )}
         </div>
@@ -566,11 +566,11 @@ export function MiningResolutionPanel({
       {((!isSurface) || (isSurface && depositCapRoll.rolled)) && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h5 className="text-sm font-medium text-gray-200">
+            <h5 className="text-sm font-medium text-fg-primary">
               {isSurface ? 'Step 3' : 'Step 1'}: Extraction Roll (3d6 vs {extractionEffectiveSkill})
             </h5>
             {!extractionRoll.rolled ? (
-              <button type="button" onClick={() => setExtractionRoll(roll3d6())} className="flex items-center gap-1 px-3 py-1.5 bg-amber-600 text-white rounded hover:bg-amber-700 text-sm">
+              <button type="button" onClick={() => setExtractionRoll(roll3d6())} className="flex items-center gap-1 px-3 py-1.5 bg-warning-600 text-white rounded hover:bg-warning-700 text-sm">
                 <Dices className="w-3.5 h-3.5" /> Roll 3d6
               </button>
             ) : (
@@ -581,25 +581,25 @@ export function MiningResolutionPanel({
           </div>
 
           {extractionRoll.rolled && (
-            <div className="bg-gray-900/50 p-3 rounded">
+            <div className="bg-surface-0/50 p-3 rounded">
               <div className="flex items-center gap-3 mb-2">
                 <div className="flex gap-1">
                   {extractionRoll.dice.map((d, i) => (
-                    <span key={i} className="w-8 h-8 bg-gray-700 border border-gray-600 rounded flex items-center justify-center font-bold text-lg">{d}</span>
+                    <span key={i} className="w-8 h-8 bg-surface-2 border border-edge-strong rounded flex items-center justify-center font-bold text-lg">{d}</span>
                   ))}
                 </div>
-                <span className="text-gray-400">=</span>
+                <span className="text-fg-muted">=</span>
                 <span className="font-bold text-xl">{extractionRoll.total}</span>
-                <span className="text-gray-400">vs</span>
-                <span className="font-bold text-xl text-amber-400">{extractionEffectiveSkill}</span>
+                <span className="text-fg-muted">vs</span>
+                <span className="font-bold text-xl text-warning-400">{extractionEffectiveSkill}</span>
               </div>
               <div className="text-sm">
                 {extractionCritSuccess ? (
                   <span className="text-yellow-400 font-bold">Critical Success!</span>
                 ) : extractionCritFailure ? (
-                  <span className="text-red-400 font-bold">Critical Failure! No yield + hazard.</span>
+                  <span className="text-danger-400 font-bold">Critical Failure! No yield + hazard.</span>
                 ) : extractionSuccess ? (
-                  <span className="text-green-400">Success by {extractionMargin} — full yield</span>
+                  <span className="text-success-400">Success by {extractionMargin} — full yield</span>
                 ) : (
                   <span className="text-orange-400">Failure by {Math.abs(extractionMargin)} — half yield</span>
                 )}
@@ -630,11 +630,11 @@ export function MiningResolutionPanel({
       {extractionRoll.rolled && extractionOutcome !== 'criticalFailure' && activeMineral && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h5 className="text-sm font-medium text-gray-200">
+            <h5 className="text-sm font-medium text-fg-primary">
               {isSurface ? 'Step 4' : 'Step 2'}: Yield Roll ({yieldFormula})
             </h5>
             {!yieldRoll.rolled ? (
-              <button type="button" onClick={() => setYieldRoll(rollFormula(yieldFormula))} className="flex items-center gap-1 px-3 py-1.5 bg-amber-600 text-white rounded hover:bg-amber-700 text-sm">
+              <button type="button" onClick={() => setYieldRoll(rollFormula(yieldFormula))} className="flex items-center gap-1 px-3 py-1.5 bg-warning-600 text-white rounded hover:bg-warning-700 text-sm">
                 <Dices className="w-3.5 h-3.5" /> Roll Yield
               </button>
             ) : (
@@ -644,15 +644,15 @@ export function MiningResolutionPanel({
             )}
           </div>
           {yieldRoll.rolled && (
-            <div className="bg-gray-900/50 p-3 rounded text-sm">
+            <div className="bg-surface-0/50 p-3 rounded text-sm">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-gray-300">Base yield:</span>
+                <span className="text-fg-secondary">Base yield:</span>
                 <div className="flex gap-1">
                   {yieldRoll.dice.map((d, i) => (
-                    <span key={i} className="w-6 h-6 bg-gray-700 border border-gray-600 rounded flex items-center justify-center font-medium text-sm">{d}</span>
+                    <span key={i} className="w-6 h-6 bg-surface-2 border border-edge-strong rounded flex items-center justify-center font-medium text-sm">{d}</span>
                   ))}
                 </div>
-                <span className="text-gray-400">= {yieldRoll.total}</span>
+                <span className="text-fg-muted">= {yieldRoll.total}</span>
               </div>
             </div>
           )}
@@ -663,9 +663,9 @@ export function MiningResolutionPanel({
       {yieldRoll.rolled && needsSkill15Bonus && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h5 className="text-sm font-medium text-gray-200">Bonus: Skill 15+ (1d6)</h5>
+            <h5 className="text-sm font-medium text-fg-primary">Bonus: Skill 15+ (1d6)</h5>
             {!bonusYieldRoll.rolled ? (
-              <button type="button" onClick={() => setBonusYieldRoll(rollFormula('1d'))} className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+              <button type="button" onClick={() => setBonusYieldRoll(rollFormula('1d'))} className="flex items-center gap-1 px-3 py-1.5 bg-accent-600 text-white rounded hover:bg-accent-700 text-sm">
                 <Dices className="w-3.5 h-3.5" /> Roll Bonus
               </button>
             ) : (
@@ -675,8 +675,8 @@ export function MiningResolutionPanel({
             )}
           </div>
           {bonusYieldRoll.rolled && (
-            <div className="bg-gray-900/50 p-3 rounded text-sm">
-              <span className="text-gray-300">Bonus yield: +{bonusYieldRoll.total}</span>
+            <div className="bg-surface-0/50 p-3 rounded text-sm">
+              <span className="text-fg-secondary">Bonus yield: +{bonusYieldRoll.total}</span>
             </div>
           )}
         </div>
@@ -686,9 +686,9 @@ export function MiningResolutionPanel({
       {extractionRoll.rolled && shouldCheckEvent && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h5 className="text-sm font-medium text-gray-200">Event Check (3d6)</h5>
+            <h5 className="text-sm font-medium text-fg-primary">Event Check (3d6)</h5>
             {!eventCheckRoll.rolled ? (
-              <button type="button" onClick={() => setEventCheckRoll(roll3d6())} className="flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 text-sm">
+              <button type="button" onClick={() => setEventCheckRoll(roll3d6())} className="flex items-center gap-1 px-3 py-1.5 bg-danger-600 text-white rounded hover:bg-danger-700 text-sm">
                 <Dices className="w-3.5 h-3.5" /> Roll Event
               </button>
             ) : (
@@ -698,22 +698,22 @@ export function MiningResolutionPanel({
             )}
           </div>
           {eventCheckRoll.rolled && (
-            <div className="bg-gray-900/50 p-3 rounded text-sm">
+            <div className="bg-surface-0/50 p-3 rounded text-sm">
               <div className="flex items-center gap-3 mb-1">
                 <div className="flex gap-1">
                   {eventCheckRoll.dice.map((d, i) => (
-                    <span key={i} className="w-6 h-6 bg-gray-700 border border-gray-600 rounded flex items-center justify-center font-medium text-sm">{d}</span>
+                    <span key={i} className="w-6 h-6 bg-surface-2 border border-edge-strong rounded flex items-center justify-center font-medium text-sm">{d}</span>
                   ))}
                 </div>
-                <span className="text-gray-400">= {eventCheckRoll.total}</span>
+                <span className="text-fg-muted">= {eventCheckRoll.total}</span>
               </div>
               <p>
                 {eventSeverity === 'rare' ? (
-                  <span className="text-red-400 font-bold">Rare Event! (3-6)</span>
+                  <span className="text-danger-400 font-bold">Rare Event! (3-6)</span>
                 ) : eventSeverity === 'mild' ? (
                   <span className="text-yellow-400 font-bold">Mild Event (7-10)</span>
                 ) : (
-                  <span className="text-green-400">No Event (11-18)</span>
+                  <span className="text-success-400">No Event (11-18)</span>
                 )}
               </p>
             </div>
@@ -725,9 +725,9 @@ export function MiningResolutionPanel({
       {eventCheckRoll.rolled && eventSeverity !== 'none' && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h5 className="text-sm font-medium text-gray-200">Event Detail (2d6)</h5>
+            <h5 className="text-sm font-medium text-fg-primary">Event Detail (2d6)</h5>
             {!eventDetailRoll.rolled ? (
-              <button type="button" onClick={() => setEventDetailRoll(roll2d6())} className="flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 text-sm">
+              <button type="button" onClick={() => setEventDetailRoll(roll2d6())} className="flex items-center gap-1 px-3 py-1.5 bg-danger-600 text-white rounded hover:bg-danger-700 text-sm">
                 <Dices className="w-3.5 h-3.5" /> Roll Detail
               </button>
             ) : (
@@ -737,9 +737,9 @@ export function MiningResolutionPanel({
             )}
           </div>
           {eventDetailRoll.rolled && eventResult && (
-            <div className={`p-3 rounded text-sm ${eventSeverity === 'rare' ? 'bg-red-900/30 border border-red-700' : 'bg-yellow-900/30 border border-yellow-700'}`}>
+            <div className={`p-3 rounded text-sm ${eventSeverity === 'rare' ? 'bg-danger-900/30 border border-danger-700' : 'bg-yellow-900/30 border border-yellow-700'}`}>
               <p className="font-medium">{eventResult.name}</p>
-              <p className="text-gray-300 text-xs">{eventResult.description}</p>
+              <p className="text-fg-secondary text-xs">{eventResult.description}</p>
             </div>
           )}
         </div>
@@ -747,8 +747,8 @@ export function MiningResolutionPanel({
 
       {/* ── Yield Summary ── */}
       {extractionRoll.rolled && extractionOutcome !== 'criticalFailure' && yieldRoll.rolled && (!needsSkill15Bonus || bonusYieldRoll.rolled) && activeMineral && (
-        <div className="bg-amber-900/20 border border-amber-700 p-3 rounded text-sm">
-          <p className="font-medium text-amber-300 mb-1">Result Summary</p>
+        <div className="bg-warning-900/20 border border-warning-700 p-3 rounded text-sm">
+          <p className="font-medium text-warning-300 mb-1">Result Summary</p>
           {(() => {
             let baseYield = yieldRoll.total;
             if (needsSkill15Bonus && bonusYieldRoll.rolled) baseYield += bonusYieldRoll.total;
@@ -756,13 +756,13 @@ export function MiningResolutionPanel({
             if (extractionCritSuccess && critChoiceQuality) multiplier = 1.0;
             const finalYield = Math.max(0, Math.floor(baseYield * multiplier));
             return (
-              <div className="space-y-1 text-gray-300">
+              <div className="space-y-1 text-fg-secondary">
                 <p>
                   Base: {yieldRoll.total}
                   {needsSkill15Bonus && bonusYieldRoll.rolled ? ` + ${bonusYieldRoll.total} (skill 15+)` : ''}
                   {multiplier !== 1.0 ? ` x ${multiplier} (${extractionOutcome})` : ''}
                 </p>
-                <p className="text-amber-400 font-bold">
+                <p className="text-warning-400 font-bold">
                   {activeMineral.name}: {finalYield} units
                   {extractionCritSuccess && critChoiceQuality ? ' (High Quality!)' : ''}
                 </p>
@@ -774,26 +774,26 @@ export function MiningResolutionPanel({
 
       {/* ── Failed locate message ── */}
       {isSurface && locateRoll.rolled && !locateSuccess && (
-        <div className="bg-gray-900/50 p-3 rounded text-sm text-gray-400 italic">
+        <div className="bg-surface-0/50 p-3 rounded text-sm text-fg-muted italic">
           No mining site found this time.
         </div>
       )}
 
       {/* ── Critical failure message ── */}
       {extractionRoll.rolled && extractionOutcome === 'criticalFailure' && (
-        <div className="bg-red-900/30 border border-red-700 p-3 rounded text-sm text-red-300">
+        <div className="bg-danger-900/30 border border-danger-700 p-3 rounded text-sm text-danger-300">
           Critical failure! No yield extracted. Check for hazards.
         </div>
       )}
 
       {/* ── Finalize / Cancel ── */}
-      <div className="flex gap-2 pt-2 border-t border-gray-700">
+      <div className="flex gap-2 pt-2 border-t border-edge">
         <button
           type="button"
           onClick={handleFinalize}
           disabled={!allRollsComplete}
           className={`flex-1 px-4 py-2 rounded font-medium text-sm ${
-            allRollsComplete ? 'bg-amber-600 text-white hover:bg-amber-700' : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+            allRollsComplete ? 'bg-warning-600 text-white hover:bg-warning-700' : 'bg-surface-2 text-fg-faint cursor-not-allowed'
           }`}
         >
           Finalize Task
@@ -801,7 +801,7 @@ export function MiningResolutionPanel({
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 border border-red-500/50 text-red-400 rounded hover:bg-red-900/30 text-sm"
+          className="px-4 py-2 border border-danger-500/50 text-danger-400 rounded hover:bg-danger-900/30 text-sm"
         >
           Cancel
         </button>

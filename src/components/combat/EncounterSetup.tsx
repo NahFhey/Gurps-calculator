@@ -452,14 +452,14 @@ export default function EncounterSetup() {
         <div className="flex gap-2">
           <button
             onClick={() => setShowTemplatePanel(!showTemplatePanel)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm"
+            className="flex items-center gap-1.5 px-4 py-2 bg-accent-600 hover:bg-accent-700 rounded text-sm"
           >
             <FolderOpen size={16} />
             Templates
           </button>
           <button
             onClick={handleClear}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded"
+            className="px-4 py-2 bg-danger-600 hover:bg-danger-700 rounded"
             disabled={participants.length === 0}
           >
             Clear
@@ -469,8 +469,8 @@ export default function EncounterSetup() {
 
       {/* Encounter Templates Panel */}
       {showTemplatePanel && (
-        <div className="bg-gray-800 rounded-lg p-4 border border-blue-600/50 space-y-3">
-          <h3 className="font-semibold text-blue-300">Encounter Templates</h3>
+        <div className="bg-surface-1 rounded-lg p-4 border border-accent-600/50 space-y-3">
+          <h3 className="font-semibold text-accent-300">Encounter Templates</h3>
 
           {/* Save current encounter */}
           <div className="flex gap-2">
@@ -479,13 +479,13 @@ export default function EncounterSetup() {
               value={templateName}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setTemplateName(e.target.value)}
               placeholder="Template name..."
-              className="flex-1 px-3 py-2 bg-gray-700 rounded text-sm"
+              className="flex-1 px-3 py-2 bg-surface-2 rounded text-sm"
               onKeyDown={e => e.key === 'Enter' && handleSaveTemplate()}
             />
             <button
               onClick={handleSaveTemplate}
               disabled={!templateName.trim() || participants.length === 0}
-              className="flex items-center gap-1 px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded text-sm transition-colors"
+              className="flex items-center gap-1 px-3 py-2 bg-success-600 hover:bg-success-700 disabled:bg-surface-3 disabled:cursor-not-allowed rounded text-sm transition-colors"
             >
               <Save size={14} />
               Save
@@ -496,23 +496,23 @@ export default function EncounterSetup() {
           {Object.keys(encounterTemplates).length > 0 ? (
             <div className="space-y-2">
               {Object.values(encounterTemplates).map(t => (
-                <div key={t.id} className="flex items-center gap-2 bg-gray-700 rounded p-2">
+                <div key={t.id} className="flex items-center gap-2 bg-surface-2 rounded p-2">
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-sm truncate">{t.name}</div>
-                    <div className="text-xs text-gray-400">
+                    <div className="text-xs text-fg-muted">
                       {t.participants.reduce((sum, p) => sum + p.quantity, 0)} combatants
                       {t.description && ` — ${t.description}`}
                     </div>
                   </div>
                   <button
                     onClick={() => handleLoadTemplate(t)}
-                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs transition-colors"
+                    className="px-3 py-1 bg-accent-600 hover:bg-accent-700 rounded text-xs transition-colors"
                   >
                     Load
                   </button>
                   <button
                     onClick={() => handleDeleteTemplate(t.id)}
-                    className="p-1 text-red-400 hover:bg-red-900/30 rounded transition-colors"
+                    className="p-1 text-danger-400 hover:bg-danger-900/30 rounded transition-colors"
                     title="Delete template"
                   >
                     <Trash2 size={14} />
@@ -521,7 +521,7 @@ export default function EncounterSetup() {
               ))}
             </div>
           ) : (
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-fg-faint">
               No saved templates. Build an encounter and save it as a template.
             </div>
           )}
@@ -535,7 +535,7 @@ export default function EncounterSetup() {
           type="text"
           value={encounterName}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setEncounterName(e.target.value)}
-          className="w-full px-3 py-2 bg-gray-700 rounded"
+          className="w-full px-3 py-2 bg-surface-2 rounded"
           placeholder="e.g., Goblin Ambush"
         />
       </div>
@@ -560,7 +560,7 @@ export default function EncounterSetup() {
                   Add All
                 </button>
               </div>
-              <div className="bg-gray-800 rounded p-4 border-2 border-purple-600/50">
+              <div className="bg-surface-1 rounded p-4 border-2 border-purple-600/50">
                 <div className="space-y-2">
                   {partyCharsForCombat.map(char => {
                     const alreadyAdded = isPartyCharInEncounter(char.partyCharacterId || char.id);
@@ -572,19 +572,19 @@ export default function EncounterSetup() {
                       condition => condition.conditionId === 'unconscious'
                     ) === true;
                     return (
-                      <div key={char.id} className="flex items-center gap-2 bg-gray-700 rounded p-2">
+                      <div key={char.id} className="flex items-center gap-2 bg-surface-2 rounded p-2">
                         <div className="flex-1">
                           <div className="font-semibold text-sm flex items-center gap-2">
                             {char.name}
                             <span className="text-xs px-1.5 py-0.5 bg-purple-600/30 text-purple-300 rounded">Party</span>
                             {isPersistentlyDead && (
-                              <span className="rounded bg-red-900/60 px-1.5 py-0.5 text-xs text-red-200">dead</span>
+                              <span className="rounded bg-danger-900/60 px-1.5 py-0.5 text-xs text-danger-200">dead</span>
                             )}
                             {!isPersistentlyDead && isPersistentlyUnconscious && (
-                              <span className="rounded bg-amber-900/60 px-1.5 py-0.5 text-xs text-amber-200">KO</span>
+                              <span className="rounded bg-warning-900/60 px-1.5 py-0.5 text-xs text-warning-200">KO</span>
                             )}
                           </div>
-                          <div className="text-xs text-gray-400">
+                          <div className="text-xs text-fg-muted">
                             Speed: {char.basicSpeed} | HP: {char.hp}
                           </div>
                         </div>
@@ -593,8 +593,8 @@ export default function EncounterSetup() {
                           disabled={alreadyAdded}
                           className={`p-1.5 rounded ${
                             alreadyAdded
-                              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                              : 'bg-green-600 hover:bg-green-700'
+                              ? 'bg-surface-3 text-fg-muted cursor-not-allowed'
+                              : 'bg-success-600 hover:bg-success-700'
                           }`}
                           title={alreadyAdded ? 'Already in encounter' : 'Add to encounter'}
                         >
@@ -604,7 +604,7 @@ export default function EncounterSetup() {
                     );
                   })}
                 </div>
-                <div className="text-xs text-gray-500 mt-2">
+                <div className="text-xs text-fg-faint mt-2">
                   Party characters are locked as Players in combat
                 </div>
               </div>
@@ -616,8 +616,8 @@ export default function EncounterSetup() {
 
           {/* Players from library */}
           {players.length > 0 && (
-            <div className="bg-gray-800 rounded p-4">
-              <h4 className="font-semibold text-blue-400 mb-2">Player Characters (Library)</h4>
+            <div className="bg-surface-1 rounded p-4">
+              <h4 className="font-semibold text-accent-400 mb-2">Player Characters (Library)</h4>
               <div className="space-y-2">
                 {players.map(char => (
                   <CharacterSelector
@@ -633,8 +633,8 @@ export default function EncounterSetup() {
 
           {/* Allies */}
           {allies.length > 0 && (
-            <div className="bg-gray-800 rounded p-4">
-              <h4 className="font-semibold text-green-400 mb-2">Allies</h4>
+            <div className="bg-surface-1 rounded p-4">
+              <h4 className="font-semibold text-success-400 mb-2">Allies</h4>
               <div className="space-y-2">
                 {allies.map(char => (
                   <CharacterSelector
@@ -650,8 +650,8 @@ export default function EncounterSetup() {
 
           {/* Enemies */}
           {enemies.length > 0 && (
-            <div className="bg-gray-800 rounded p-4">
-              <h4 className="font-semibold text-red-400 mb-2">Enemies</h4>
+            <div className="bg-surface-1 rounded p-4">
+              <h4 className="font-semibold text-danger-400 mb-2">Enemies</h4>
               <div className="space-y-2">
                 {enemies.map(char => (
                   <CharacterSelector
@@ -667,8 +667,8 @@ export default function EncounterSetup() {
 
           {/* Objects */}
           {objects.length > 0 && (
-            <div className="bg-gray-800 rounded p-4">
-              <h4 className="font-semibold text-gray-400 mb-2">Objects</h4>
+            <div className="bg-surface-1 rounded p-4">
+              <h4 className="font-semibold text-fg-muted mb-2">Objects</h4>
               <div className="space-y-2">
                 {objects.map(char => (
                   <CharacterSelector
@@ -683,7 +683,7 @@ export default function EncounterSetup() {
           )}
 
           {characters.length === 0 && (
-            <div className="text-center text-gray-400 py-8">
+            <div className="text-center text-fg-muted py-8">
               No characters in library. Create some in the Character Library tab first.
             </div>
           )}
@@ -694,7 +694,7 @@ export default function EncounterSetup() {
           <h3 className="text-lg font-semibold">Current Encounter</h3>
 
           {participants.length === 0 ? (
-            <div className="bg-gray-800 rounded p-8 text-center text-gray-400">
+            <div className="bg-surface-1 rounded p-8 text-center text-fg-muted">
               Add participants from the party or library
             </div>
           ) : (
@@ -705,7 +705,7 @@ export default function EncounterSetup() {
 
                 return (
                   <div key={p.id} className={`flex justify-between items-center rounded p-3 ${
-                    isPartyChar ? 'bg-gray-800 border border-purple-600/50' : 'bg-gray-800'
+                    isPartyChar ? 'bg-surface-1 border border-purple-600/50' : 'bg-surface-1'
                   }`}>
                     <div className="flex-1">
                       <div className="font-semibold flex items-center gap-2">
@@ -717,7 +717,7 @@ export default function EncounterSetup() {
                           </span>
                         )}
                       </div>
-                      <div className="text-sm text-gray-400">
+                      <div className="text-sm text-fg-muted">
                         Speed: {p.basicSpeed} | HP: {p.hp}
                       </div>
                     </div>
@@ -725,7 +725,7 @@ export default function EncounterSetup() {
                     {/* Category Selector */}
                     <div className="flex items-center gap-2">
                       {categoryLocked ? (
-                        <div className="flex items-center gap-1 px-2 py-1 bg-gray-700 text-gray-300 rounded text-sm">
+                        <div className="flex items-center gap-1 px-2 py-1 bg-surface-2 text-fg-secondary rounded text-sm">
                           <Lock size={12} className="text-purple-400" />
                           Player
                         </div>
@@ -740,7 +740,7 @@ export default function EncounterSetup() {
                             className={`px-2 py-1 rounded text-sm ${
                               isPartyChar && gmModeEnabled
                                 ? 'bg-yellow-900/30 border border-yellow-600/50 text-yellow-200'
-                                : 'bg-gray-700 text-gray-100'
+                                : 'bg-surface-2 text-fg-bright'
                             }`}
                           >
                             {COMBAT_CATEGORIES.map(cat => (
@@ -754,7 +754,7 @@ export default function EncounterSetup() {
 
                       <button
                         onClick={() => removeCharacter(p.id)}
-                        className="p-2 bg-red-600 hover:bg-red-700 rounded"
+                        className="p-2 bg-danger-600 hover:bg-danger-700 rounded"
                       >
                         <X size={16} />
                       </button>
@@ -771,35 +771,35 @@ export default function EncounterSetup() {
               {!showTurnOrderPreview ? (
                 <button
                   onClick={handleGenerateTurnOrder}
-                  className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
+                  className="w-full px-4 py-2 bg-accent-600 hover:bg-accent-700 rounded"
                 >
                   Generate Turn Order
                 </button>
               ) : (
                 <>
-                  <div className="bg-gray-800 rounded p-4">
+                  <div className="bg-surface-1 rounded p-4">
                     <h4 className="font-semibold mb-3">Turn Order Preview</h4>
                     <div className="space-y-1">
                       {turnOrder.map((id, index) => {
                         const char = participants.find(p => p.id === id);
                         if (!char) return null;
                         return (
-                          <div key={id} className="flex items-center gap-2 bg-gray-700 rounded p-2">
-                            <span className="text-gray-400 w-6">{index + 1}.</span>
+                          <div key={id} className="flex items-center gap-2 bg-surface-2 rounded p-2">
+                            <span className="text-fg-muted w-6">{index + 1}.</span>
                             <span className="flex-1">{char.name}</span>
-                            <span className="text-sm text-gray-400">Speed: {char.basicSpeed}</span>
+                            <span className="text-sm text-fg-muted">Speed: {char.basicSpeed}</span>
                             <div className="flex gap-1">
                               <button
                                 onClick={() => moveUp(index)}
                                 disabled={index === 0}
-                                className="p-1 bg-gray-600 hover:bg-gray-500 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="p-1 bg-surface-3 hover:bg-surface-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 <ChevronUp size={16} />
                               </button>
                               <button
                                 onClick={() => moveDown(index)}
                                 disabled={index === turnOrder.length - 1}
-                                className="p-1 bg-gray-600 hover:bg-gray-500 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="p-1 bg-surface-3 hover:bg-surface-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 <ChevronDown size={16} />
                               </button>
@@ -811,7 +811,7 @@ export default function EncounterSetup() {
                   </div>
                   <button
                     onClick={handleStartCombat}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 rounded font-semibold"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-success-600 hover:bg-success-700 rounded font-semibold"
                   >
                     <Play size={20} />
                     Start Combat
@@ -842,10 +842,10 @@ function CharacterSelector({ character, onAdd, allowQuantity }: CharacterSelecto
   };
 
   return (
-    <div className="flex items-center gap-2 bg-gray-700 rounded p-2">
+    <div className="flex items-center gap-2 bg-surface-2 rounded p-2">
       <div className="flex-1">
         <div className="font-semibold text-sm">{character.name}</div>
-        <div className="text-xs text-gray-400">Speed: {character.basicSpeed}</div>
+        <div className="text-xs text-fg-muted">Speed: {character.basicSpeed}</div>
       </div>
       {allowQuantity && (
         <input
@@ -854,12 +854,12 @@ function CharacterSelector({ character, onAdd, allowQuantity }: CharacterSelecto
           max="20"
           value={quantity}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setQuantity(parseInt(e.target.value) || 1)}
-          className="w-16 px-2 py-1 bg-gray-600 rounded text-sm"
+          className="w-16 px-2 py-1 bg-surface-3 rounded text-sm"
         />
       )}
       <button
         onClick={handleAdd}
-        className="p-1.5 bg-green-600 hover:bg-green-700 rounded"
+        className="p-1.5 bg-success-600 hover:bg-success-700 rounded"
       >
         <Plus size={16} />
       </button>

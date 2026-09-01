@@ -178,12 +178,12 @@ export function WeatherTableEditor({
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-100">
+        <h3 className="text-lg font-semibold text-fg-bright">
           {isEdit ? 'Edit Weather Table' : 'New Weather Table'}
         </h3>
         <button
           onClick={onCancel}
-          className="text-gray-400 hover:text-gray-200 text-sm"
+          className="text-fg-muted hover:text-fg-primary text-sm"
         >
           Cancel
         </button>
@@ -192,34 +192,34 @@ export function WeatherTableEditor({
       {/* Table Name & Description */}
       <div className="space-y-2">
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Table Name</label>
+          <label className="block text-sm text-fg-muted mb-1">Table Name</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-gray-100"
+            className="w-full px-3 py-2 bg-surface-2 border border-edge-strong rounded text-fg-bright"
             placeholder="e.g., Temperate Forest - Summer"
           />
         </div>
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Description (optional)</label>
+          <label className="block text-sm text-fg-muted mb-1">Description (optional)</label>
           <input
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-gray-100"
+            className="w-full px-3 py-2 bg-surface-2 border border-edge-strong rounded text-fg-bright"
             placeholder="Optional description"
           />
         </div>
       </div>
 
       {/* Totals Bar */}
-      <div className="flex items-center justify-between px-3 py-2 bg-gray-900/50 border border-gray-600 rounded text-sm">
-        <span className="text-gray-300">
+      <div className="flex items-center justify-between px-3 py-2 bg-surface-0/50 border border-edge-strong rounded text-sm">
+        <span className="text-fg-secondary">
           {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
         </span>
-        <span className="text-gray-300">
-          Total weight: <span className="font-medium text-blue-400">{totalWeight}</span>
+        <span className="text-fg-secondary">
+          Total weight: <span className="font-medium text-accent-400">{totalWeight}</span>
         </span>
       </div>
 
@@ -230,7 +230,7 @@ export function WeatherTableEditor({
           return (
             <div
               key={index}
-              className="bg-gray-700/50 border border-gray-600 rounded p-3 space-y-2"
+              className="bg-surface-2/50 border border-edge-strong rounded p-3 space-y-2"
             >
               {/* Row 1: Weather type + probability + delete */}
               <div className="flex items-center gap-2">
@@ -239,7 +239,7 @@ export function WeatherTableEditor({
                   onChange={(e) =>
                     updateEntry(index, { weather: e.target.value as WeatherType })
                   }
-                  className="flex-1 px-2 py-1.5 bg-gray-800 border border-gray-600 rounded text-sm text-gray-100"
+                  className="flex-1 px-2 py-1.5 bg-surface-1 border border-edge-strong rounded text-sm text-fg-bright"
                 >
                   {WEATHER_TYPES.map((wt) => (
                     <option key={wt} value={wt}>
@@ -249,7 +249,7 @@ export function WeatherTableEditor({
                 </select>
 
                 <div className="flex items-center gap-1">
-                  <label className="text-xs text-gray-400">Wt:</label>
+                  <label className="text-xs text-fg-muted">Wt:</label>
                   <input
                     type="number"
                     min={0}
@@ -259,9 +259,9 @@ export function WeatherTableEditor({
                         probability: Math.max(0, parseInt(e.target.value) || 0),
                       })
                     }
-                    className="w-16 px-2 py-1.5 bg-gray-800 border border-gray-600 rounded text-sm text-gray-100 text-center"
+                    className="w-16 px-2 py-1.5 bg-surface-1 border border-edge-strong rounded text-sm text-fg-bright text-center"
                   />
-                  <span className="text-xs text-gray-500 w-12 text-right">{pct}%</span>
+                  <span className="text-xs text-fg-faint w-12 text-right">{pct}%</span>
                 </div>
 
                 <button
@@ -269,8 +269,8 @@ export function WeatherTableEditor({
                   disabled={entries.length <= 1}
                   className={`p-1 rounded ${
                     entries.length <= 1
-                      ? 'text-gray-600 cursor-not-allowed'
-                      : 'text-red-400 hover:bg-red-600/20'
+                      ? 'text-fg-disabled cursor-not-allowed'
+                      : 'text-danger-400 hover:bg-danger-600/20'
                   }`}
                   title="Remove entry"
                 >
@@ -280,13 +280,13 @@ export function WeatherTableEditor({
 
               {/* Row 2: Temperature range */}
               <div className="flex items-center gap-2">
-                <label className="text-xs text-gray-400 w-12">Temp:</label>
+                <label className="text-xs text-fg-muted w-12">Temp:</label>
                 <select
                   value={entry.temperatureRange[0]}
                   onChange={(e) =>
                     updateTempRange(index, 0, e.target.value as Temperature)
                   }
-                  className="flex-1 px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs text-gray-100"
+                  className="flex-1 px-2 py-1 bg-surface-1 border border-edge-strong rounded text-xs text-fg-bright"
                 >
                   {TEMPERATURE_ORDER.map((t) => (
                     <option key={t} value={t}>
@@ -294,13 +294,13 @@ export function WeatherTableEditor({
                     </option>
                   ))}
                 </select>
-                <span className="text-xs text-gray-500">to</span>
+                <span className="text-xs text-fg-faint">to</span>
                 <select
                   value={entry.temperatureRange[1]}
                   onChange={(e) =>
                     updateTempRange(index, 1, e.target.value as Temperature)
                   }
-                  className="flex-1 px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs text-gray-100"
+                  className="flex-1 px-2 py-1 bg-surface-1 border border-edge-strong rounded text-xs text-fg-bright"
                 >
                   {TEMPERATURE_ORDER.map((t) => (
                     <option key={t} value={t}>
@@ -312,7 +312,7 @@ export function WeatherTableEditor({
 
               {/* Row 3: Duration range */}
               <div className="flex items-center gap-2">
-                <label className="text-xs text-gray-400 w-12">Dur:</label>
+                <label className="text-xs text-fg-muted w-12">Dur:</label>
                 <input
                   type="number"
                   min={1}
@@ -323,7 +323,7 @@ export function WeatherTableEditor({
                       count: Math.max(1, parseInt(e.target.value) || 1),
                     })
                   }
-                  className="w-14 px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs text-gray-100 text-center"
+                  className="w-14 px-2 py-1 bg-surface-1 border border-edge-strong rounded text-xs text-fg-bright text-center"
                 />
                 <select
                   value={(entry.durationRange.min as { type: string }).type ?? 'slots'}
@@ -333,12 +333,12 @@ export function WeatherTableEditor({
                       count: (entry.durationRange.min as { count: number }).count ?? 1,
                     })
                   }
-                  className="px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs text-gray-100"
+                  className="px-2 py-1 bg-surface-1 border border-edge-strong rounded text-xs text-fg-bright"
                 >
                   <option value="slots">slots</option>
                   <option value="days">days</option>
                 </select>
-                <span className="text-xs text-gray-500">to</span>
+                <span className="text-xs text-fg-faint">to</span>
                 <input
                   type="number"
                   min={1}
@@ -349,7 +349,7 @@ export function WeatherTableEditor({
                       count: Math.max(1, parseInt(e.target.value) || 1),
                     })
                   }
-                  className="w-14 px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs text-gray-100 text-center"
+                  className="w-14 px-2 py-1 bg-surface-1 border border-edge-strong rounded text-xs text-fg-bright text-center"
                 />
                 <select
                   value={(entry.durationRange.max as { type: string }).type ?? 'days'}
@@ -359,7 +359,7 @@ export function WeatherTableEditor({
                       count: (entry.durationRange.max as { count: number }).count ?? 1,
                     })
                   }
-                  className="px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs text-gray-100"
+                  className="px-2 py-1 bg-surface-1 border border-edge-strong rounded text-xs text-fg-bright"
                 >
                   <option value="slots">slots</option>
                   <option value="days">days</option>
@@ -370,14 +370,14 @@ export function WeatherTableEditor({
               <div>
                 <button
                   onClick={() => toggleIntensity(index)}
-                  className="text-xs text-gray-400 hover:text-gray-200"
+                  className="text-xs text-fg-muted hover:text-fg-primary"
                 >
                   {showIntensity[index] ? '- Hide' : '+'} Intensity Weights
                 </button>
                 {showIntensity[index] && (
                   <div className="flex items-center gap-2 mt-1">
                     <div className="flex items-center gap-1">
-                      <label className="text-xs text-gray-500">Light:</label>
+                      <label className="text-xs text-fg-faint">Light:</label>
                       <input
                         type="number"
                         min={0}
@@ -389,11 +389,11 @@ export function WeatherTableEditor({
                             Math.max(0, parseInt(e.target.value) || 0)
                           )
                         }
-                        className="w-12 px-1 py-0.5 bg-gray-800 border border-gray-600 rounded text-xs text-gray-100 text-center"
+                        className="w-12 px-1 py-0.5 bg-surface-1 border border-edge-strong rounded text-xs text-fg-bright text-center"
                       />
                     </div>
                     <div className="flex items-center gap-1">
-                      <label className="text-xs text-gray-500">Mod:</label>
+                      <label className="text-xs text-fg-faint">Mod:</label>
                       <input
                         type="number"
                         min={0}
@@ -405,11 +405,11 @@ export function WeatherTableEditor({
                             Math.max(0, parseInt(e.target.value) || 0)
                           )
                         }
-                        className="w-12 px-1 py-0.5 bg-gray-800 border border-gray-600 rounded text-xs text-gray-100 text-center"
+                        className="w-12 px-1 py-0.5 bg-surface-1 border border-edge-strong rounded text-xs text-fg-bright text-center"
                       />
                     </div>
                     <div className="flex items-center gap-1">
-                      <label className="text-xs text-gray-500">Heavy:</label>
+                      <label className="text-xs text-fg-faint">Heavy:</label>
                       <input
                         type="number"
                         min={0}
@@ -421,7 +421,7 @@ export function WeatherTableEditor({
                             Math.max(0, parseInt(e.target.value) || 0)
                           )
                         }
-                        className="w-12 px-1 py-0.5 bg-gray-800 border border-gray-600 rounded text-xs text-gray-100 text-center"
+                        className="w-12 px-1 py-0.5 bg-surface-1 border border-edge-strong rounded text-xs text-fg-bright text-center"
                       />
                     </div>
                   </div>
@@ -435,7 +435,7 @@ export function WeatherTableEditor({
       {/* Add Entry Button */}
       <button
         onClick={addEntry}
-        className="w-full py-2 border border-dashed border-gray-500 rounded text-sm text-gray-400 hover:text-gray-200 hover:border-gray-400 flex items-center justify-center gap-1"
+        className="w-full py-2 border border-dashed border-edge-bright rounded text-sm text-fg-muted hover:text-fg-primary hover:border-edge-bright flex items-center justify-center gap-1"
       >
         <Plus size={14} />
         Add Weather Entry
@@ -446,13 +446,13 @@ export function WeatherTableEditor({
         <button
           onClick={handleSave}
           disabled={!isValid}
-          className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded"
+          className="flex-1 py-2 bg-accent-600 hover:bg-accent-700 disabled:bg-surface-3 disabled:cursor-not-allowed text-white rounded"
         >
           {isEdit ? 'Save Changes' : 'Create Weather Table'}
         </button>
         <button
           onClick={onCancel}
-          className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded"
+          className="px-4 py-2 bg-surface-2 hover:bg-surface-3 text-fg-primary rounded"
         >
           Cancel
         </button>

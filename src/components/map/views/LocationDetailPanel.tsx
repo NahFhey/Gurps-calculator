@@ -36,42 +36,42 @@ export function LocationDetailPanel({ locationId, pin, onClose }: LocationDetail
   };
 
   return (
-    <aside className="absolute bottom-12 right-4 z-40 w-72 rounded-lg border border-gray-600 bg-gray-900/95 shadow-2xl">
-      <header className="flex items-center justify-between border-b border-gray-700 px-4 py-3">
-        <h2 className="font-semibold text-gray-100">{location.name}</h2>
-        <button aria-label="Close location" onClick={onClose} className="text-gray-400 hover:text-white">
+    <aside className="absolute bottom-12 right-4 z-40 w-72 rounded-lg border border-edge-strong bg-surface-0/95 shadow-2xl">
+      <header className="flex items-center justify-between border-b border-edge px-4 py-3">
+        <h2 className="font-semibold text-fg-bright">{location.name}</h2>
+        <button aria-label="Close location" onClick={onClose} className="text-fg-muted hover:text-white">
           <X className="h-4 w-4" />
         </button>
       </header>
-      <div className="max-h-[65vh] space-y-3 overflow-y-auto px-4 py-3 text-sm text-gray-200">
-        <div className="text-xs text-gray-400">
+      <div className="max-h-[65vh] space-y-3 overflow-y-auto px-4 py-3 text-sm text-fg-primary">
+        <div className="text-xs text-fg-muted">
           {TERRAIN_LABELS[location.terrain] ?? location.terrain} · {CLIMATE_LABELS[location.climate] ?? location.climate}
         </div>
         {location.description && <p>{location.description}</p>}
         {state.ui.gmModeEnabled && location.gmNotes && (
           <div className="rounded bg-purple-950/40 p-2 text-purple-200">{location.gmNotes}</div>
         )}
-        <div className="text-xs text-gray-400">
+        <div className="text-xs text-fg-muted">
           {pin.discoveredAt ? `Discovered day ${pin.discoveredAt.day}` : 'Undiscovered'}
         </div>
 
         <section>
-          <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">Facilities</h3>
+          <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-fg-muted">Facilities</h3>
           {attached.length === 0
-            ? <div className="text-xs text-gray-500">None</div>
+            ? <div className="text-xs text-fg-faint">None</div>
             : attached.map((facility) => (
-              <div key={`${facility.kindLabel}-${facility.id}`}>{facility.name} <span className="text-xs text-gray-500">({facility.kindLabel})</span></div>
+              <div key={`${facility.kindLabel}-${facility.id}`}>{facility.name} <span className="text-xs text-fg-faint">({facility.kindLabel})</span></div>
             ))}
         </section>
 
         <section>
-          <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">Contacts</h3>
+          <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-fg-muted">Contacts</h3>
           {contacts.length === 0
-            ? <div className="text-xs text-gray-500">None</div>
+            ? <div className="text-xs text-fg-faint">None</div>
             : contacts.map((contact) => (
               <div key={contact.id} className="flex items-center justify-between">
                 <span>{contact.name}</span>
-                <span className={`rounded px-1.5 py-0.5 text-xs ${contact.modifier >= 0 ? 'bg-emerald-900 text-emerald-200' : 'bg-red-900 text-red-200'}`}>
+                <span className={`rounded px-1.5 py-0.5 text-xs ${contact.modifier >= 0 ? 'bg-emerald-900 text-emerald-200' : 'bg-danger-900 text-danger-200'}`}>
                   {contact.modifier >= 0 ? '+' : ''}{contact.modifier}
                 </span>
               </div>
@@ -79,7 +79,7 @@ export function LocationDetailPanel({ locationId, pin, onClose }: LocationDetail
         </section>
 
         {state.ui.gmModeEnabled && (
-          <section className="space-y-2 border-t border-gray-700 pt-3">
+          <section className="space-y-2 border-t border-edge pt-3">
             <button
               type="button"
               onClick={handleToggle}
@@ -87,7 +87,7 @@ export function LocationDetailPanel({ locationId, pin, onClose }: LocationDetail
             >
               {pin.visibility === 'player' ? 'Revealed' : 'Hidden'}
             </button>
-            <p className="text-xs text-gray-500">Edit location details in Manager.</p>
+            <p className="text-xs text-fg-faint">Edit location details in Manager.</p>
           </section>
         )}
       </div>

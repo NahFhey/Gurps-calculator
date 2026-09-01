@@ -84,17 +84,17 @@ export default function ConditionAddPopover({
       ref={containerRef}
       role="dialog"
       aria-label={`Conditions for ${participant.name}`}
-      className="fixed z-40 w-96 max-h-[30rem] overflow-y-auto bg-gray-900 border border-gray-600 rounded-lg shadow-2xl p-4"
+      className="fixed z-40 w-96 max-h-[30rem] overflow-y-auto bg-surface-0 border border-edge-strong rounded-lg shadow-2xl p-4"
       style={{ left, top }}
     >
       <div className="flex items-center justify-between mb-3">
-        <span className="font-semibold text-sm text-gray-300 truncate">
+        <span className="font-semibold text-sm text-fg-secondary truncate">
           {participant.name}
         </span>
         <button
           type="button"
           onClick={onClose}
-          className="flex-none p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-gray-200 transition-colors"
+          className="flex-none p-1 rounded hover:bg-surface-2 text-fg-muted hover:text-fg-primary transition-colors"
           aria-label="Close conditions popover"
         >
           <X size={14} />

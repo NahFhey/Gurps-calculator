@@ -72,9 +72,9 @@ function getUrgency(remaining: number | null): Urgency {
 /** Badge border + background classes by urgency. */
 const URGENCY_STYLES: Record<Urgency, { border: string; bg: string; durationText: string }> = {
   expiring: {
-    border: 'border-red-500',
-    bg: 'bg-red-900/60',
-    durationText: 'text-red-300 font-semibold',
+    border: 'border-danger-500',
+    bg: 'bg-danger-900/60',
+    durationText: 'text-danger-300 font-semibold',
   },
   low: {
     border: 'border-orange-500/70',
@@ -84,20 +84,20 @@ const URGENCY_STYLES: Record<Urgency, { border: string; bg: string; durationText
   normal: {
     border: 'border-purple-700',
     bg: 'bg-purple-900/50',
-    durationText: 'text-gray-400',
+    durationText: 'text-fg-muted',
   },
   none: {
     border: 'border-purple-700',
     bg: 'bg-purple-900/50',
-    durationText: 'text-gray-400',
+    durationText: 'text-fg-muted',
   },
 };
 
 /** Anonymous placeholder styling — deliberately free of urgency signals. */
 const PLACEHOLDER_STYLES = {
-  border: 'border-gray-600',
-  bg: 'bg-gray-800/80',
-  durationText: 'text-gray-500',
+  border: 'border-edge-strong',
+  bg: 'bg-surface-1/80',
+  durationText: 'text-fg-faint',
 };
 
 /** Display order for density-capped condition rows: most urgent first. */
@@ -158,9 +158,9 @@ function ConditionTooltipContent({
       <div>Duration: {formatConditionDuration(condition, currentRound)}</div>
       {condition.source && <div>Source: {condition.source}</div>}
       {definition?.description && (
-        <div className="text-gray-400">{definition.description}</div>
+        <div className="text-fg-muted">{definition.description}</div>
       )}
-      {condition.notes && <div className="text-gray-400 italic">Notes: {condition.notes}</div>}
+      {condition.notes && <div className="text-fg-muted italic">Notes: {condition.notes}</div>}
     </div>
   );
 }
@@ -241,7 +241,7 @@ export default function ConditionBadge({
 
         {/* Label */}
         {layout === 'full' && (
-          <span className={`font-medium truncate max-w-[8rem] ${isPlaceholder ? 'text-gray-400 italic' : ''}`}>
+          <span className={`font-medium truncate max-w-[8rem] ${isPlaceholder ? 'text-fg-muted italic' : ''}`}>
             {condition.label}
           </span>
         )}
@@ -266,7 +266,7 @@ export default function ConditionBadge({
           <button
             type="button"
             onClick={handleRemove}
-            className="flex-none ml-0.5 p-0.5 rounded hover:bg-red-700/60 text-gray-400 hover:text-red-300 transition-colors"
+            className="flex-none ml-0.5 p-0.5 rounded hover:bg-danger-700/60 text-fg-muted hover:text-danger-300 transition-colors"
             title={`Remove ${condition.label}`}
           >
             <X size={compact ? 10 : 12} />

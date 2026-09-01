@@ -70,7 +70,7 @@ export default function HitLocationPicker({
       {/* Roll Result Display */}
       {rollResult && (
         <div className="bg-purple-900/30 border border-purple-600 rounded p-3">
-          <div className="text-sm text-gray-400 mb-1">Rolled</div>
+          <div className="text-sm text-fg-muted mb-1">Rolled</div>
           <div className="text-lg font-bold">
             {rollResult.roll.dice.map((die, index) => (
               <span key={index} className="text-purple-400 mr-1">[{die}]</span>
@@ -85,7 +85,7 @@ export default function HitLocationPicker({
 
       {/* Manual Selection Grid */}
       <div>
-        <div className="text-sm text-gray-400 mb-2">Or select manually:</div>
+        <div className="text-sm text-fg-muted mb-2">Or select manually:</div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto">
           {locations.map(location => {
             const isSelected = selectedLocation && selectedLocation.key === location.key;
@@ -96,12 +96,12 @@ export default function HitLocationPicker({
                 className={`px-3 py-2 rounded text-sm transition-colors ${
                   isSelected
                     ? 'bg-yellow-600 hover:bg-yellow-700 font-semibold'
-                    : 'bg-gray-700 hover:bg-gray-600'
+                    : 'bg-surface-2 hover:bg-surface-3'
                 }`}
               >
                 <div>{location.label}</div>
                 {location.toHitPenalty !== 0 && (
-                  <div className="text-xs text-gray-400">
+                  <div className="text-xs text-fg-muted">
                     ({location.toHitPenalty >= 0 ? '+' : ''}{location.toHitPenalty})
                   </div>
                 )}
@@ -113,8 +113,8 @@ export default function HitLocationPicker({
 
       {/* Selected Location Display */}
       {selectedLocation && !rollResult && (
-        <div className="bg-gray-800 rounded p-3">
-          <div className="text-sm text-gray-400">Selected:</div>
+        <div className="bg-surface-1 rounded p-3">
+          <div className="text-sm text-fg-muted">Selected:</div>
           <div className="text-lg font-semibold text-yellow-400">
             {selectedLocation.label}
           </div>

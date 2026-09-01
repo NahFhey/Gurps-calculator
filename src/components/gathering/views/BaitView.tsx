@@ -72,36 +72,36 @@ export function BaitView({ bait, species, saveBait, onDelete }: BaitViewProps) {
     <div>
       <div className="flex justify-between mb-4">
         <h3 className="text-lg font-bold">Bait ({bait.length})</h3>
-        <button onClick={() => setShowAdd(!showAdd)} className="bg-green-600 px-3 py-1 rounded text-sm">
+        <button onClick={() => setShowAdd(!showAdd)} className="bg-success-600 px-3 py-1 rounded text-sm">
           <Plus size={16} className="inline" /> Add Bait
         </button>
       </div>
 
       {showAdd && (
-        <div className="bg-gray-700 p-4 rounded mb-4 space-y-3">
+        <div className="bg-surface-2 p-4 rounded mb-4 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Name *</label>
+              <label className="block text-xs text-fg-muted mb-1">Name *</label>
               <input
                 value={newBaitName}
                 onChange={(e) => setNewBaitName(e.target.value)}
                 placeholder="e.g., Glowing Worms"
-                className="w-full bg-gray-600 px-3 py-2 rounded"
+                className="w-full bg-surface-3 px-3 py-2 rounded"
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Quantity</label>
+              <label className="block text-xs text-fg-muted mb-1">Quantity</label>
               <input
                 type="number"
                 value={newBaitQuantity}
                 onChange={(e) => setNewBaitQuantity(e.target.value)}
-                className="w-full bg-gray-600 px-3 py-2 rounded"
+                className="w-full bg-surface-3 px-3 py-2 rounded"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Bait Tags</label>
+            <label className="block text-xs text-fg-muted mb-1">Bait Tags</label>
             <div className="flex flex-wrap gap-2">
               {BAIT_TAGS.map(tag => (
                 <label key={tag} className="flex items-center gap-1 text-sm">
@@ -124,38 +124,38 @@ export function BaitView({ bait, species, saveBait, onDelete }: BaitViewProps) {
           </div>
 
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Attracts Species (required) *</label>
+            <label className="block text-xs text-fg-muted mb-1">Attracts Species (required) *</label>
             <select
               multiple
               value={newBaitAttracts}
               onChange={(e) => setNewBaitAttracts(Array.from(e.target.selectedOptions, opt => opt.value))}
-              className="w-full bg-gray-600 px-3 py-2 rounded h-24"
+              className="w-full bg-surface-3 px-3 py-2 rounded h-24"
             >
               {species.map(s => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
-            <p className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple. Bait must attract at least one species.</p>
+            <p className="text-xs text-fg-faint mt-1">Hold Ctrl/Cmd to select multiple. Bait must attract at least one species.</p>
           </div>
 
           <div className="w-1/3">
-            <label className="block text-xs text-gray-400 mb-1">Roll Bonus (when used on random catch)</label>
+            <label className="block text-xs text-fg-muted mb-1">Roll Bonus (when used on random catch)</label>
             <input
               type="number"
               value={newBaitRollBonus}
               onChange={(e) => setNewBaitRollBonus(e.target.value)}
               min="0"
               max="10"
-              className="w-full bg-gray-600 px-3 py-2 rounded"
+              className="w-full bg-surface-3 px-3 py-2 rounded"
             />
-            <p className="text-xs text-gray-500 mt-1">Added to catch table roll when line fishing</p>
+            <p className="text-xs text-fg-faint mt-1">Added to catch table roll when line fishing</p>
           </div>
 
           <div className="flex gap-2 pt-2">
-            <button onClick={addBait} className="flex-1 bg-green-600 px-4 py-2 rounded">
+            <button onClick={addBait} className="flex-1 bg-success-600 px-4 py-2 rounded">
               <Save size={16} className="inline mr-1" /> {editingId ? 'Update' : 'Save'}
             </button>
-            <button onClick={resetForm} className="bg-red-600 px-4 py-2 rounded">
+            <button onClick={resetForm} className="bg-danger-600 px-4 py-2 rounded">
               <X size={16} />
             </button>
           </div>
@@ -164,20 +164,20 @@ export function BaitView({ bait, species, saveBait, onDelete }: BaitViewProps) {
 
       <div className="space-y-2">
         {bait.length === 0 ? (
-          <p className="text-gray-500 italic">No bait defined. Add some for fishing bonuses.</p>
+          <p className="text-fg-faint italic">No bait defined. Add some for fishing bonuses.</p>
         ) : (
           bait.map(b => (
-            <div key={b.id} className="bg-gray-700 p-3 rounded flex justify-between items-center">
+            <div key={b.id} className="bg-surface-2 p-3 rounded flex justify-between items-center">
               <div>
                 <span className="font-medium">{b.name}</span>
-                <span className="text-sm text-gray-400 ml-2">({b.quantity || 0} available)</span>
+                <span className="text-sm text-fg-muted ml-2">({b.quantity || 0} available)</span>
                 {b.rollBonus > 0 && (
-                  <span className="text-green-400 ml-2">+{b.rollBonus} to catch roll</span>
+                  <span className="text-success-400 ml-2">+{b.rollBonus} to catch roll</span>
                 )}
                 {b.baitTags?.length > 0 && (
                   <div className="flex gap-1 mt-1">
                     {b.baitTags.map(tag => (
-                      <span key={tag} className="text-xs bg-gray-600 px-2 py-0.5 rounded">{tag}</span>
+                      <span key={tag} className="text-xs bg-surface-3 px-2 py-0.5 rounded">{tag}</span>
                     ))}
                   </div>
                 )}
@@ -189,12 +189,12 @@ export function BaitView({ bait, species, saveBait, onDelete }: BaitViewProps) {
                   onChange={(e) => {
                     saveBait(bait.map(x => x.id === b.id ? { ...x, quantity: parseInt(e.target.value) || 0 } : x));
                   }}
-                  className="w-20 bg-gray-600 px-2 py-1 rounded"
+                  className="w-20 bg-surface-3 px-2 py-1 rounded"
                 />
-                <button onClick={() => editBaitItem(b)} className="text-blue-400">
+                <button onClick={() => editBaitItem(b)} className="text-accent-400">
                   <Edit2 size={16} />
                 </button>
-                <button onClick={() => onDelete('bait', b.id, b.name)} className="text-red-400">
+                <button onClick={() => onDelete('bait', b.id, b.name)} className="text-danger-400">
                   <Trash2 size={16} />
                 </button>
               </div>

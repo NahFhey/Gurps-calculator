@@ -39,12 +39,12 @@ interface ResolutionModeToggleProps {
 
 function ResolutionModeToggle({ mode, onChange }: ResolutionModeToggleProps) {
   return (
-    <div className="flex items-center gap-1 bg-gray-900/50 rounded p-0.5">
+    <div className="flex items-center gap-1 bg-surface-0/50 rounded p-0.5">
       <button
         type="button"
         onClick={() => onChange('auto')}
         className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
-          mode === 'auto' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-gray-200'
+          mode === 'auto' ? 'bg-purple-600 text-white' : 'text-fg-muted hover:text-fg-primary'
         }`}
         title="Auto-roll all dice"
       >
@@ -55,7 +55,7 @@ function ResolutionModeToggle({ mode, onChange }: ResolutionModeToggleProps) {
         type="button"
         onClick={() => onChange('manual')}
         className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
-          mode === 'manual' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-gray-200'
+          mode === 'manual' ? 'bg-purple-600 text-white' : 'text-fg-muted hover:text-fg-primary'
         }`}
         title="Roll dice manually"
       >
@@ -101,49 +101,49 @@ export function MiningTaskCard({
 
   return (
     <div
-      className={`mining-task-card p-3 rounded-lg border-2 bg-gray-800/60 ${getStatusBorderColor(task.status)}`}
+      className={`mining-task-card p-3 rounded-lg border-2 bg-surface-1/60 ${getStatusBorderColor(task.status)}`}
       data-testid="mining-task-card"
       data-task-id={task.id}
     >
       {/* Card Header */}
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center gap-2">
-          <HardHat className="w-4 h-4 text-amber-400" />
-          <MethodIcon className="w-3.5 h-3.5 text-amber-500" />
-          <span className="font-medium text-gray-100">{data.method}</span>
+          <HardHat className="w-4 h-4 text-warning-400" />
+          <MethodIcon className="w-3.5 h-3.5 text-warning-500" />
+          <span className="font-medium text-fg-bright">{data.method}</span>
         </div>
         <StatusBadge status={task.status} />
       </div>
 
       {/* Task Details */}
-      <div className="task-details text-sm text-gray-300 space-y-1 mb-3">
+      <div className="task-details text-sm text-fg-secondary space-y-1 mb-3">
         <p>
-          <span className="font-medium text-gray-200">Leader:</span> {leaderName}
+          <span className="font-medium text-fg-primary">Leader:</span> {leaderName}
         </p>
         {task.helperIds.length > 0 && (
           <p>
-            <span className="font-medium text-gray-200">Helpers:</span> {helperNames}
+            <span className="font-medium text-fg-primary">Helpers:</span> {helperNames}
           </p>
         )}
         {site && (
           <p>
-            <span className="font-medium text-gray-200">Site:</span> {site.name} ({site.depositSize}, {site.remainingUnits}/{site.totalUnits} units)
+            <span className="font-medium text-fg-primary">Site:</span> {site.name} ({site.depositSize}, {site.remainingUnits}/{site.totalUnits} units)
           </p>
         )}
         {targetMineral && (
           <p>
-            <span className="font-medium text-gray-200">Target:</span> {targetMineral.name}
+            <span className="font-medium text-fg-primary">Target:</span> {targetMineral.name}
           </p>
         )}
         <p>
-          <span className="font-medium text-gray-200">Locate:</span> {MINING_SKILL_LABELS[data.locateSkill]} ({data.leaderLocateSkill})
+          <span className="font-medium text-fg-primary">Locate:</span> {MINING_SKILL_LABELS[data.locateSkill]} ({data.leaderLocateSkill})
         </p>
         <p>
-          <span className="font-medium text-gray-200">Extract:</span> {MINING_SKILL_LABELS[data.extractionSkill]} ({data.leaderExtractionSkill})
+          <span className="font-medium text-fg-primary">Extract:</span> {MINING_SKILL_LABELS[data.extractionSkill]} ({data.leaderExtractionSkill})
         </p>
         <p>
-          <span className="font-medium text-gray-200">Modifier:</span>{' '}
-          <span className={data.skillModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
+          <span className="font-medium text-fg-primary">Modifier:</span>{' '}
+          <span className={data.skillModifier >= 0 ? 'text-success-400' : 'text-danger-400'}>
             {data.skillModifier >= 0 ? '+' : ''}{data.skillModifier}
           </span>
         </p>
@@ -151,22 +151,22 @@ export function MiningTaskCard({
         {data.contextFlags && (
           <div className="flex flex-wrap gap-1 mt-1">
             {data.contextFlags.hasDetailedMaps && (
-              <span className="text-xs px-1.5 py-0.5 bg-blue-900/50 text-blue-300 rounded">Maps (+1)</span>
+              <span className="text-xs px-1.5 py-0.5 bg-accent-900/50 text-accent-300 rounded">Maps (+1)</span>
             )}
             {data.contextFlags.knownRichDeposit && (
-              <span className="text-xs px-1.5 py-0.5 bg-green-900/50 text-green-300 rounded">Rich Deposit (+2)</span>
+              <span className="text-xs px-1.5 py-0.5 bg-success-900/50 text-success-300 rounded">Rich Deposit (+2)</span>
             )}
             {data.contextFlags.randomUnexplored && (
-              <span className="text-xs px-1.5 py-0.5 bg-red-900/50 text-red-300 rounded">Unexplored (-2)</span>
+              <span className="text-xs px-1.5 py-0.5 bg-danger-900/50 text-danger-300 rounded">Unexplored (-2)</span>
             )}
             {data.contextFlags.hasSupervisor && (
-              <span className="text-xs px-1.5 py-0.5 bg-green-900/50 text-green-300 rounded">Supervisor (+5)</span>
+              <span className="text-xs px-1.5 py-0.5 bg-success-900/50 text-success-300 rounded">Supervisor (+5)</span>
             )}
             {data.contextFlags.hasProperTools && (
-              <span className="text-xs px-1.5 py-0.5 bg-blue-900/50 text-blue-300 rounded">Proper Tools (+2)</span>
+              <span className="text-xs px-1.5 py-0.5 bg-accent-900/50 text-accent-300 rounded">Proper Tools (+2)</span>
             )}
             {data.contextFlags.isImprovisedTools && (
-              <span className="text-xs px-1.5 py-0.5 bg-red-900/50 text-red-300 rounded">Improvised (-2)</span>
+              <span className="text-xs px-1.5 py-0.5 bg-danger-900/50 text-danger-300 rounded">Improvised (-2)</span>
             )}
           </div>
         )}
@@ -176,7 +176,7 @@ export function MiningTaskCard({
       {task.results && (
         <div
           className={`task-results p-2 rounded text-sm ${
-            task.results.success ? 'bg-amber-900/30 text-amber-200' : 'bg-gray-900/50 text-gray-300'
+            task.results.success ? 'bg-warning-900/30 text-warning-200' : 'bg-surface-0/50 text-fg-secondary'
           }`}
           data-testid="task-results"
         >
@@ -185,7 +185,7 @@ export function MiningTaskCard({
             <ul className="list-disc list-inside">
               {task.results.inventoryChanges.map((change, i) => (
                 <li key={i}>
-                  <span className={change.quantity > 0 ? 'text-green-400' : 'text-red-400'}>
+                  <span className={change.quantity > 0 ? 'text-success-400' : 'text-danger-400'}>
                     {change.quantity > 0 ? '+' : ''}{change.quantity}
                   </span>{' '}
                   {change.itemName}
@@ -199,7 +199,7 @@ export function MiningTaskCard({
 
       {/* Cancelled */}
       {task.status === 'cancelled' && (
-        <div className="task-cancelled p-2 rounded bg-gray-900/50 text-gray-400 text-sm italic">
+        <div className="task-cancelled p-2 rounded bg-surface-0/50 text-fg-muted text-sm italic">
           Task was cancelled
         </div>
       )}
@@ -208,14 +208,14 @@ export function MiningTaskCard({
       {isActionable && (
         <div className="mt-3 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-400">Resolution Mode:</span>
+            <span className="text-xs text-fg-muted">Resolution Mode:</span>
             <ResolutionModeToggle mode={resolutionMode} onChange={setResolutionMode} />
           </div>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={handleResolve}
-              className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors text-sm font-medium"
+              className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-warning-600 text-white rounded hover:bg-warning-700 transition-colors text-sm font-medium"
               disabled={task.status === 'in_progress'}
             >
               {resolutionMode === 'manual' ? (
@@ -228,7 +228,7 @@ export function MiningTaskCard({
               <button
                 type="button"
                 onClick={onCancel}
-                className="px-3 py-1.5 border border-red-500/50 text-red-400 rounded hover:bg-red-900/30 transition-colors text-sm font-medium"
+                className="px-3 py-1.5 border border-danger-500/50 text-danger-400 rounded hover:bg-danger-900/30 transition-colors text-sm font-medium"
               >
                 Cancel
               </button>

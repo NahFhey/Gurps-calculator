@@ -55,7 +55,7 @@ export default function CombatHistory() {
 
   if (combatHistory.length === 0) {
     return (
-      <div className="text-center text-gray-400 py-8">
+      <div className="text-center text-fg-muted py-8">
         <History size={48} className="mx-auto mb-4 opacity-50" />
         <p>No combat history yet.</p>
         <p className="text-sm mt-2">Completed combats will appear here.</p>
@@ -67,20 +67,20 @@ export default function CombatHistory() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Combat History</h2>
-        <p className="text-gray-400">{combatHistory.length} / 50 entries</p>
+        <p className="text-fg-muted">{combatHistory.length} / 50 entries</p>
       </div>
 
       <div className="space-y-2">
         {combatHistory.map((combat) => (
-          <div key={combat.id} className="bg-gray-800 rounded-lg overflow-hidden">
+          <div key={combat.id} className="bg-surface-1 rounded-lg overflow-hidden">
             {/* Header */}
             <div
-              className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-700"
+              className="flex items-center justify-between p-4 cursor-pointer hover:bg-surface-2"
               onClick={() => toggleExpand(combat.id)}
             >
               <div className="flex-1">
                 <h3 className="text-lg font-semibold">{combat.name}</h3>
-                <div className="text-sm text-gray-400 flex gap-4 mt-1">
+                <div className="text-sm text-fg-muted flex gap-4 mt-1">
                   <span>{combat.currentRound} rounds</span>
                   <span>{combat.participants.length} participants</span>
                 </div>
@@ -89,21 +89,21 @@ export default function CombatHistory() {
               <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                 <button
                   onClick={() => toggleExpand(combat.id)}
-                  className="p-2 bg-gray-700 hover:bg-gray-600 rounded"
+                  className="p-2 bg-surface-2 hover:bg-surface-3 rounded"
                   title={expandedId === combat.id ? 'Collapse' : 'Expand'}
                 >
                   {expandedId === combat.id ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
                 <button
                   onClick={() => handleExport(combat)}
-                  className="p-2 bg-blue-600 hover:bg-blue-700 rounded"
+                  className="p-2 bg-accent-600 hover:bg-accent-700 rounded"
                   title="Export log"
                 >
                   <Download size={16} />
                 </button>
                 <button
                   onClick={() => handleDelete(combat.id)}
-                  className="p-2 bg-red-600 hover:bg-red-700 rounded"
+                  className="p-2 bg-danger-600 hover:bg-danger-700 rounded"
                   title="Delete"
                 >
                   <Trash2 size={16} />
@@ -113,16 +113,16 @@ export default function CombatHistory() {
 
             {/* Expanded Details */}
             {expandedId === combat.id && (
-              <div className="border-t border-gray-700 p-4">
+              <div className="border-t border-edge p-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Participants */}
                   <div>
                     <h4 className="font-semibold mb-2">Participants</h4>
                     <div className="space-y-1 max-h-64 overflow-y-auto">
                       {combat.participants.map((p, idx) => (
-                        <div key={p.instanceId || idx} className="text-sm bg-gray-700 rounded p-2">
+                        <div key={p.instanceId || idx} className="text-sm bg-surface-2 rounded p-2">
                           <div className="font-semibold">{p.name}</div>
-                          <div className="text-gray-400">
+                          <div className="text-fg-muted">
                             {p.category} | Final HP: {finalHP(p)}
                           </div>
                         </div>
@@ -133,7 +133,7 @@ export default function CombatHistory() {
                   {/* Combat Log */}
                   <div>
                     <h4 className="font-semibold mb-2">Combat Log</h4>
-                    <div className="bg-gray-900 rounded p-3 max-h-64 overflow-y-auto font-mono text-xs">
+                    <div className="bg-surface-0 rounded p-3 max-h-64 overflow-y-auto font-mono text-xs">
                       {combat.log.map((entry, index) => (
                         <div key={entry.id || index} className="mb-1">
                           {entry.text ?? entry.message ?? ''}

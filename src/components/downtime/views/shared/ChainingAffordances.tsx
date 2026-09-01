@@ -20,7 +20,7 @@ export function ChainingAffordances({ results }: ChainingAffordancesProps): JSX.
     return null;
   }
 
-  const buttonClass = 'px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-100 rounded text-xs font-medium transition-colors';
+  const buttonClass = 'px-3 py-1.5 bg-surface-2 hover:bg-surface-3 text-fg-bright rounded text-xs font-medium transition-colors';
 
   return (
     <div className="mt-2 flex flex-wrap gap-2" data-testid="chaining-affordances">

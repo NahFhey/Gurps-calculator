@@ -40,41 +40,41 @@ export function FoodTypesView({ foodTypes, saveFoodTypes, onDelete }: FoodTypesV
         <h2 className="text-xl font-bold">Food Types</h2>
         <button
           onClick={() => setShowAdd(!showAdd)}
-          className="bg-green-600 px-4 py-2 rounded"
+          className="bg-success-600 px-4 py-2 rounded"
         >
           <Plus size={20} className="inline" /> Add
         </button>
       </div>
 
       {showAdd && (
-        <div className="bg-gray-700 p-4 rounded mb-4 space-y-3">
+        <div className="bg-surface-2 p-4 rounded mb-4 space-y-3">
           <div className="flex gap-2">
             <input
               value={newType}
               onChange={(e) => setNewType(e.target.value)}
               placeholder="Type name"
-              className="flex-1 bg-gray-600 px-3 py-2 rounded"
+              className="flex-1 bg-surface-3 px-3 py-2 rounded"
             />
             <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-400">Color:</label>
+              <label className="text-sm text-fg-muted">Color:</label>
               <input
                 type="color"
                 value={newTypeColor}
                 onChange={(e) => setNewTypeColor(e.target.value)}
-                className="w-16 h-10 bg-gray-600 rounded cursor-pointer"
+                className="w-16 h-10 bg-surface-3 rounded cursor-pointer"
               />
             </div>
           </div>
           <div className="flex gap-2">
             <button
               onClick={addType}
-              className="flex-1 bg-green-600 px-4 py-2 rounded"
+              className="flex-1 bg-success-600 px-4 py-2 rounded"
             >
               <Save size={20} className="inline" /> Save
             </button>
             <button
               onClick={() => setShowAdd(false)}
-              className="bg-red-600 px-4 py-2 rounded"
+              className="bg-danger-600 px-4 py-2 rounded"
             >
               <X size={20} />
             </button>
@@ -88,7 +88,7 @@ export function FoodTypesView({ foodTypes, saveFoodTypes, onDelete }: FoodTypesV
           const tColor = typeof t === 'object' ? (t as FoodType).color : '#60A5FA';
 
           return (
-            <div key={tName} className="flex items-center gap-4 bg-gray-700 p-3 rounded">
+            <div key={tName} className="flex items-center gap-4 bg-surface-2 p-3 rounded">
               <span
                 className="w-6 h-6 rounded-full flex-shrink-0"
                 style={{backgroundColor: tColor}}
@@ -116,7 +116,7 @@ export function FoodTypesView({ foodTypes, saveFoodTypes, onDelete }: FoodTypesV
                     return x;
                   }));
                 }}
-                className="flex-1 bg-gray-600 px-3 py-1 rounded"
+                className="flex-1 bg-surface-3 px-3 py-1 rounded"
               />
               <input
                 type="color"
@@ -130,12 +130,12 @@ export function FoodTypesView({ foodTypes, saveFoodTypes, onDelete }: FoodTypesV
                     return x;
                   }));
                 }}
-                className="w-16 h-8 bg-gray-600 rounded cursor-pointer"
+                className="w-16 h-8 bg-surface-3 rounded cursor-pointer"
                 title="Change color"
               />
               <button
                 onClick={() => onDelete('foodType', tName)}
-                className="text-red-400"
+                className="text-danger-400"
               >
                 <Trash2 size={20} />
               </button>

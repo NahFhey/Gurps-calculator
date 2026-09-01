@@ -15,19 +15,19 @@ function TurnControlsViewBase({
   onNextTurn
 }: TurnControlsViewProps) {
   return (
-    <div className="bg-gradient-to-r from-blue-900 to-gray-800 rounded-lg p-4 border-2 border-blue-500">
+    <div className="bg-gradient-to-r from-accent-900 to-surface-1 rounded-lg p-4 border-2 border-accent-500">
       <div className="flex justify-between items-center">
         <div>
-          <p className="text-sm text-gray-400">Current Turn</p>
+          <p className="text-sm text-fg-muted">Current Turn</p>
           <h3 className="text-2xl font-bold">{currentActor?.name}</h3>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-fg-muted">
             Speed: {currentActor?.basicSpeed} | Turn {combat.currentTurnIndex + 1} of {combat.turnOrder.length}
           </p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={onPrevTurn}
-            className="p-3 bg-gray-700 hover:bg-gray-600 rounded"
+            className="p-3 bg-surface-2 hover:bg-surface-3 rounded"
             title="Previous turn"
             aria-label="Previous turn"
           >
@@ -35,7 +35,7 @@ function TurnControlsViewBase({
           </button>
           <button
             onClick={onNextTurn}
-            className="p-3 bg-green-600 hover:bg-green-700 rounded"
+            className="p-3 bg-success-600 hover:bg-success-700 rounded"
             title="Next turn"
             aria-label="Next turn"
           >

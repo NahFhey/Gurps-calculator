@@ -55,8 +55,8 @@ export function TerrainModifiersEditor({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-lg font-semibold text-gray-100">Terrain Modifiers</h3>
-      <p className="text-xs text-gray-400">
+      <h3 className="text-lg font-semibold text-fg-bright">Terrain Modifiers</h3>
+      <p className="text-xs text-fg-muted">
         Default activity modifiers per terrain type. These auto-apply when the party enters a terrain.
         Edited values are highlighted.
       </p>
@@ -64,7 +64,7 @@ export function TerrainModifiersEditor({
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-gray-400 text-xs">
+            <tr className="text-fg-muted text-xs">
               <th className="text-left py-1 px-2">Terrain</th>
               {MODIFIER_KEYS.map((key) => (
                 <th key={key} className="text-center py-1 px-2 capitalize">{key}</th>
@@ -74,8 +74,8 @@ export function TerrainModifiersEditor({
           </thead>
           <tbody>
             {terrainKeys.map((terrain) => (
-              <tr key={terrain} className="border-t border-gray-700">
-                <td className="py-1 px-2 text-gray-200">{allTerrainLabels[terrain]}</td>
+              <tr key={terrain} className="border-t border-edge">
+                <td className="py-1 px-2 text-fg-primary">{allTerrainLabels[terrain]}</td>
                 {MODIFIER_KEYS.map((key) => (
                   <td key={key} className="py-1 px-1 text-center">
                     <input
@@ -84,8 +84,8 @@ export function TerrainModifiersEditor({
                       onChange={(e) => handleChange(terrain, key, parseInt(e.target.value) || 0)}
                       className={`w-14 px-1 py-0.5 text-center text-sm rounded border ${
                         isOverridden(terrain, key)
-                          ? 'bg-amber-900/30 border-amber-600 text-amber-200'
-                          : 'bg-gray-700 border-gray-600 text-gray-100'
+                          ? 'bg-warning-900/30 border-warning-600 text-warning-200'
+                          : 'bg-surface-2 border-edge-strong text-fg-bright'
                       }`}
                     />
                   </td>
@@ -94,7 +94,7 @@ export function TerrainModifiersEditor({
                   {local[terrain] && (
                     <button
                       onClick={() => handleReset(terrain)}
-                      className="text-xs text-gray-500 hover:text-gray-300"
+                      className="text-xs text-fg-faint hover:text-fg-secondary"
                       title="Reset to defaults"
                     >
                       Reset

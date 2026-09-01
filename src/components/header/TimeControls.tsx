@@ -71,8 +71,8 @@ export function TimeControls({
           disabled={disabled || isBlocked}
           className={
             disabled || isBlocked
-              ? `${disabledButtonClass} border-gray-600 bg-gray-700 text-gray-400`
-              : `${activeButtonClass} border-blue-500 bg-blue-500/20 text-blue-100 hover:bg-blue-500/30`
+              ? `${disabledButtonClass} border-edge-strong bg-surface-2 text-fg-muted`
+              : `${activeButtonClass} border-accent-500 bg-accent-500/20 text-accent-100 hover:bg-accent-500/30`
           }
           title={isBlocked ? 'Blocked by paused activities' : 'Advance to next time slot'}
           data-testid="advance-slot-compact"
@@ -86,8 +86,8 @@ export function TimeControls({
             disabled={disabled || isBlocked}
             className={
               disabled || isBlocked
-                ? `${disabledButtonClass} border-gray-600 bg-gray-700 text-gray-400`
-                : `${activeButtonClass} border-amber-500 bg-amber-500/20 text-amber-100 hover:bg-amber-500/30`
+                ? `${disabledButtonClass} border-edge-strong bg-surface-2 text-fg-muted`
+                : `${activeButtonClass} border-warning-500 bg-warning-500/20 text-warning-100 hover:bg-warning-500/30`
             }
             title={isBlocked ? 'Blocked by paused activities' : 'Advance to next day'}
             data-testid="advance-day-compact"
@@ -101,10 +101,10 @@ export function TimeControls({
 
   return (
     <div
-      className="flex items-center gap-2 rounded border border-gray-600 bg-gray-700/50 px-3 py-2"
+      className="flex items-center gap-2 rounded border border-edge-strong bg-surface-2/50 px-3 py-2"
       data-testid="time-controls"
     >
-      <span className="text-xs uppercase tracking-wide text-gray-400 mr-2">Time</span>
+      <span className="text-xs uppercase tracking-wide text-fg-muted mr-2">Time</span>
 
       <button
         type="button"
@@ -112,8 +112,8 @@ export function TimeControls({
         disabled={disabled || isBlocked}
         className={
           disabled || isBlocked
-            ? `${disabledButtonClass} border-gray-600 bg-gray-700 text-gray-400`
-            : `${activeButtonClass} border-blue-500 bg-blue-500/20 text-blue-100 hover:bg-blue-500/30`
+            ? `${disabledButtonClass} border-edge-strong bg-surface-2 text-fg-muted`
+            : `${activeButtonClass} border-accent-500 bg-accent-500/20 text-accent-100 hover:bg-accent-500/30`
         }
         title={isBlocked ? 'Blocked by paused activities' : 'Advance to next time slot'}
         data-testid="advance-slot"
@@ -128,8 +128,8 @@ export function TimeControls({
           disabled={disabled || isBlocked}
           className={
             disabled || isBlocked
-              ? `${disabledButtonClass} border-gray-600 bg-gray-700 text-gray-400`
-              : `${activeButtonClass} border-amber-500 bg-amber-500/20 text-amber-100 hover:bg-amber-500/30`
+              ? `${disabledButtonClass} border-edge-strong bg-surface-2 text-fg-muted`
+              : `${activeButtonClass} border-warning-500 bg-warning-500/20 text-warning-100 hover:bg-warning-500/30`
           }
           title={isBlocked ? 'Blocked by paused activities' : 'Advance to next day'}
           data-testid="advance-day"
@@ -140,7 +140,7 @@ export function TimeControls({
 
       {isBlocked && (
         <span
-          className="ml-2 text-xs text-amber-400"
+          className="ml-2 text-xs text-warning-400"
           title="Complete or clear paused activities to advance time"
         >
           (blocked)

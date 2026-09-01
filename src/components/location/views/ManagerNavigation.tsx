@@ -10,13 +10,13 @@ export function ManagerNavigation({ view, onChangeView }: ManagerNavigationProps
   if (!tabViews.includes(view)) return null;
 
   return (
-    <div className="flex flex-wrap gap-1 mb-4 border-b border-gray-600 pb-2">
+    <div className="flex flex-wrap gap-1 mb-4 border-b border-edge-strong pb-2">
       <button
         onClick={() => onChangeView('list')}
         className={`px-3 py-1.5 text-sm rounded-t ${
           view === 'list'
-            ? 'bg-gray-700 text-blue-400 border-b-2 border-blue-400'
-            : 'text-gray-400 hover:text-gray-200'
+            ? 'bg-surface-2 text-accent-400 border-b-2 border-accent-400'
+            : 'text-fg-muted hover:text-fg-primary'
         }`}
       >
         Locations
@@ -25,8 +25,8 @@ export function ManagerNavigation({ view, onChangeView }: ManagerNavigationProps
         onClick={() => onChangeView('weatherTables')}
         className={`px-3 py-1.5 text-sm rounded-t ${
           view === 'weatherTables'
-            ? 'bg-gray-700 text-cyan-400 border-b-2 border-cyan-400'
-            : 'text-gray-400 hover:text-gray-200'
+            ? 'bg-surface-2 text-cyan-400 border-b-2 border-cyan-400'
+            : 'text-fg-muted hover:text-fg-primary'
         }`}
       >
         Weather
@@ -35,8 +35,8 @@ export function ManagerNavigation({ view, onChangeView }: ManagerNavigationProps
         onClick={() => onChangeView('climates')}
         className={`px-3 py-1.5 text-sm rounded-t ${
           view === 'climates'
-            ? 'bg-gray-700 text-green-400 border-b-2 border-green-400'
-            : 'text-gray-400 hover:text-gray-200'
+            ? 'bg-surface-2 text-success-400 border-b-2 border-success-400'
+            : 'text-fg-muted hover:text-fg-primary'
         }`}
       >
         Climates
@@ -45,8 +45,8 @@ export function ManagerNavigation({ view, onChangeView }: ManagerNavigationProps
         onClick={() => onChangeView('terrain')}
         className={`px-3 py-1.5 text-sm rounded-t ${
           view === 'terrain'
-            ? 'bg-gray-700 text-emerald-400 border-b-2 border-emerald-400'
-            : 'text-gray-400 hover:text-gray-200'
+            ? 'bg-surface-2 text-emerald-400 border-b-2 border-emerald-400'
+            : 'text-fg-muted hover:text-fg-primary'
         }`}
       >
         Terrain
@@ -55,8 +55,8 @@ export function ManagerNavigation({ view, onChangeView }: ManagerNavigationProps
         onClick={() => onChangeView('terrainModifiers')}
         className={`px-3 py-1.5 text-sm rounded-t ${
           view === 'terrainModifiers'
-            ? 'bg-gray-700 text-amber-400 border-b-2 border-amber-400'
-            : 'text-gray-400 hover:text-gray-200'
+            ? 'bg-surface-2 text-warning-400 border-b-2 border-warning-400'
+            : 'text-fg-muted hover:text-fg-primary'
         }`}
       >
         Terrain Mods
@@ -65,8 +65,8 @@ export function ManagerNavigation({ view, onChangeView }: ManagerNavigationProps
         onClick={() => onChangeView('weatherModifiers')}
         className={`px-3 py-1.5 text-sm rounded-t ${
           view === 'weatherModifiers'
-            ? 'bg-gray-700 text-orange-400 border-b-2 border-orange-400'
-            : 'text-gray-400 hover:text-gray-200'
+            ? 'bg-surface-2 text-orange-400 border-b-2 border-orange-400'
+            : 'text-fg-muted hover:text-fg-primary'
         }`}
       >
         Weather Mods

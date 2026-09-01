@@ -34,19 +34,19 @@ function DietRow({ label, foodTypes, vocabulary, editMode, onChange }: DietRowPr
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="w-32 text-sm text-gray-400">{label}</span>
+      <span className="w-32 text-sm text-fg-muted">{label}</span>
       <div className="flex flex-1 flex-wrap items-center gap-2">
         {foodTypes.map(foodType => (
           <span
             key={foodType}
-            className="inline-flex items-center gap-1 rounded-full bg-gray-700 px-2.5 py-1 text-xs text-gray-200"
+            className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2.5 py-1 text-xs text-fg-primary"
           >
             {foodType}
             {editMode && (
               <button
                 type="button"
                 onClick={() => onChange(foodTypes.filter(configuredType => configuredType !== foodType))}
-                className="rounded-full text-gray-400 hover:text-red-300"
+                className="rounded-full text-fg-muted hover:text-danger-300"
                 aria-label={`Remove ${foodType} from ${label}`}
               >
                 <X size={12} />
@@ -60,7 +60,7 @@ function DietRow({ label, foodTypes, vocabulary, editMode, onChange }: DietRowPr
               value={selectedFoodType}
               onChange={event => setSelectedFoodType(event.target.value)}
               aria-label={`Add food type to ${label}`}
-              className="rounded border border-gray-600 bg-gray-700 px-2 py-1 text-xs text-gray-100"
+              className="rounded border border-edge-strong bg-surface-2 px-2 py-1 text-xs text-fg-bright"
             >
               <option value="">Select food type…</option>
               {availableFoodTypes.map(foodType => (
@@ -71,14 +71,14 @@ function DietRow({ label, foodTypes, vocabulary, editMode, onChange }: DietRowPr
               type="button"
               onClick={addSelectedFoodType}
               disabled={!selectedFoodType}
-              className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded bg-accent-600 px-2 py-1 text-xs text-white hover:bg-accent-700 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Add
             </button>
           </div>
         )}
         {foodTypes.length === 0 && !editMode && (
-          <span className="text-sm italic text-gray-500">None</span>
+          <span className="text-sm italic text-fg-faint">None</span>
         )}
       </div>
     </div>
@@ -107,19 +107,19 @@ export function DietSection({
   const showNudge = !hasConfiguredDiet && hasDietTraitHint(character);
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4">
+    <div className="bg-surface-1 rounded-lg p-4">
       <div className="flex items-center gap-2 mb-3">
-        <Utensils size={20} className="text-blue-400" />
-        <h3 className="text-lg font-semibold text-gray-100">Dietary Restrictions</h3>
+        <Utensils size={20} className="text-accent-400" />
+        <h3 className="text-lg font-semibold text-fg-bright">Dietary Restrictions</h3>
       </div>
 
       {!hasConfiguredDiet && !editMode ? (
         showNudge ? (
-          <div className="text-xs italic text-amber-300/70">
+          <div className="text-xs italic text-warning-300/70">
             Has a diet-related trait — configure dietary restrictions?
           </div>
         ) : (
-          <div className="text-sm italic text-gray-500">No dietary restrictions</div>
+          <div className="text-sm italic text-fg-faint">No dietary restrictions</div>
         )
       ) : (
         <div className="space-y-3">
@@ -141,7 +141,7 @@ export function DietSection({
       )}
 
       {showNudge && editMode && (
-        <div className="mt-2 text-xs italic text-amber-300/70">
+        <div className="mt-2 text-xs italic text-warning-300/70">
           Has a diet-related trait — configure dietary restrictions?
         </div>
       )}

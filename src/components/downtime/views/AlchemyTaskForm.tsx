@@ -188,16 +188,16 @@ export function AlchemyTaskForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="alchemy-task-form bg-gray-800/60 border border-gray-700 rounded-lg p-4 mb-4"
+      className="alchemy-task-form bg-surface-1/60 border border-edge rounded-lg p-4 mb-4"
       data-testid="alchemy-task-form"
     >
       {/* Form Header */}
       <div className="flex justify-between items-center mb-4">
-        <h4 className="font-medium text-gray-100">New Work Session</h4>
+        <h4 className="font-medium text-fg-bright">New Work Session</h4>
         <button
           type="button"
           onClick={onCancel}
-          className="text-gray-400 hover:text-gray-200"
+          className="text-fg-muted hover:text-fg-primary"
           aria-label="Close form"
         >
           <X className="w-5 h-5" />
@@ -206,14 +206,14 @@ export function AlchemyTaskForm({
 
       {/* Worker Selection */}
       <div className="form-group mb-4">
-        <label htmlFor="leader-select" className="block text-sm font-medium text-gray-300 mb-1">
-          Alchemist <span className="text-red-400">*</span>
+        <label htmlFor="leader-select" className="block text-sm font-medium text-fg-secondary mb-1">
+          Alchemist <span className="text-danger-400">*</span>
         </label>
         <select
           id="leader-select"
           value={leaderId}
           onChange={(e) => setLeaderId(e.target.value)}
-          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+          className="w-full px-3 py-2 bg-surface-0 border border-edge-strong rounded text-fg-bright focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
           required
           data-testid="leader-select"
         >
@@ -233,11 +233,11 @@ export function AlchemyTaskForm({
 
       {/* Helper Selection */}
       <div className="form-group mb-4">
-        <label className="block text-sm font-medium text-gray-300 mb-1">
+        <label className="block text-sm font-medium text-fg-secondary mb-1">
           Assistants (optional, max +2 bonus)
         </label>
         {availableHelpers.length === 0 ? (
-          <p className="text-sm text-gray-500 italic">No available helpers</p>
+          <p className="text-sm text-fg-faint italic">No available helpers</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {availableHelpers.map((c) => (
@@ -246,7 +246,7 @@ export function AlchemyTaskForm({
                 className={`flex items-center gap-1 px-2 py-1 rounded border cursor-pointer transition-colors ${
                   helperIds.includes(c.id)
                     ? 'bg-purple-900/50 border-purple-500 text-purple-200'
-                    : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
+                    : 'bg-surface-1 border-edge-strong text-fg-secondary hover:bg-surface-2'
                 }`}
               >
                 <input
@@ -264,14 +264,14 @@ export function AlchemyTaskForm({
 
       {/* Batch Selection */}
       <div className="form-group mb-4">
-        <label htmlFor="batch-select" className="block text-sm font-medium text-gray-300 mb-1">
-          Batch <span className="text-red-400">*</span>
+        <label htmlFor="batch-select" className="block text-sm font-medium text-fg-secondary mb-1">
+          Batch <span className="text-danger-400">*</span>
         </label>
         <select
           id="batch-select"
           value={selectedBatchId}
           onChange={(e) => setSelectedBatchId(e.target.value)}
-          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+          className="w-full px-3 py-2 bg-surface-0 border border-edge-strong rounded text-fg-bright focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
           required
           data-testid="batch-select"
         >
@@ -296,14 +296,14 @@ export function AlchemyTaskForm({
 
       {/* Lab Selection */}
       <div className="form-group mb-4">
-        <label htmlFor="lab-select" className="block text-sm font-medium text-gray-300 mb-1">
+        <label htmlFor="lab-select" className="block text-sm font-medium text-fg-secondary mb-1">
           Laboratory
         </label>
         <select
           id="lab-select"
           value={selectedLabId}
           onChange={(e) => setSelectedLabId(e.target.value)}
-          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+          className="w-full px-3 py-2 bg-surface-0 border border-edge-strong rounded text-fg-bright focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
           data-testid="lab-select"
         >
           <option value="">No lab (0 bonus)</option>
@@ -345,13 +345,13 @@ export function AlchemyTaskForm({
       )}
 
       {/* Skill Modifier Summary */}
-      <div className="bg-gray-900/50 border border-gray-700 rounded p-2 mb-4">
-        <p className="text-sm text-gray-300">
+      <div className="bg-surface-0/50 border border-edge rounded p-2 mb-4">
+        <p className="text-sm text-fg-secondary">
           Total Skill Modifier:{' '}
-          <span className={`font-medium ${skillModifier >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+          <span className={`font-medium ${skillModifier >= 0 ? 'text-success-400' : 'text-danger-400'}`}>
             {skillModifier >= 0 ? '+' : ''}{skillModifier}
           </span>
-          <span className="text-xs text-gray-500 ml-2">
+          <span className="text-xs text-fg-faint ml-2">
             (Lab: +{selectedLab?.rating ?? 0}, Helpers: +{Math.min(helperIds.length, 2)})
           </span>
         </p>
@@ -362,7 +362,7 @@ export function AlchemyTaskForm({
         <button
           type="submit"
           disabled={!isFormValid}
-          className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed"
+          className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors disabled:bg-surface-2 disabled:text-fg-faint disabled:cursor-not-allowed"
           data-testid="submit-button"
         >
           Start Work Session
@@ -370,7 +370,7 @@ export function AlchemyTaskForm({
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 border border-gray-600 text-gray-300 rounded hover:bg-gray-700 transition-colors"
+          className="px-4 py-2 border border-edge-strong text-fg-secondary rounded hover:bg-surface-2 transition-colors"
           data-testid="cancel-button"
         >
           Cancel

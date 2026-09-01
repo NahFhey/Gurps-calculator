@@ -108,7 +108,7 @@ describe('ConditionAddPopover (Phase 12a.6)', () => {
     const submit = screen
       .getAllByText('Add Condition')
       .map((el) => el.closest('button')!)
-      .find((b) => b.className.includes('bg-green'))!;
+      .find((b) => b.className.includes('bg-success'))!;
     fireEvent.click(submit);
 
     expect(props.onAddCondition).toHaveBeenCalledExactlyOnceWith(FAKE_INSTANCE);
