@@ -46,7 +46,7 @@ import {
 } from '../../utils/travelComposition';
 import type { PartyColumn } from './views/TravelStep1Party';
 import { getTerrainModifiers } from '../../utils/weatherSystem';
-import { resolveLocationTerrain } from '../../utils/mapUtils';
+import { resolveLocationTerrain, getBrushTiles, MAX_BRUSH_SIZE, type BrushShape } from '../../utils/mapUtils';
 import { getNavigationSkill } from '../../utils/navigation';
 import { JourneyStatusPanel } from './views/JourneyStatusPanel';
 import { estimateProvisionDays } from '../../utils/provisioning';
@@ -75,6 +75,9 @@ export function MapPanel() {
   const [selectedTerrainId, setSelectedTerrainId] = useState<TerrainId | null>(null);
   /** Elevation to paint with; null = terrain default (leave overrides alone). */
   const [paintElevation, setPaintElevation] = useState<number | null>(null);
+  /** Brush radius in tiles (1 = single tile) and footprint shape. */
+  const [brushSize, setBrushSize] = useState(1);
+  const [brushShape, setBrushShape] = useState<BrushShape>('circle');
   const [selectedTileIds, setSelectedTileIds] = useState<Set<TileId>>(new Set());
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [elevationDialogTileIds, setElevationDialogTileIds] = useState<TileId[] | null>(null);
@@ -297,6 +300,42 @@ export function MapPanel() {
     [actions]
   );
 
+  const paintTile = useCallback(
+    (tileId: TileId) => {
+      if (!maps.activeMapId || !activeMap) return;
+      const brushTileIds = getBrushTiles(activeMap, tileId, brushSize, brushShape);
+      if (brushTileIds.length === 0) return;
+      if (activeStructureLayer) {
+        if (!structureEraseMode && !selectedTerrainId) return;
+        actions.mapSetStructureCells(
+          maps.activeMapId,
+          activeStructureLayer.id,
+          brushTileIds,
+          structureEraseMode ? null : selectedTerrainId
+        );
+      } else if (selectedTerrainId) {
+        actions.mapStampTerrain(maps.activeMapId, brushTileIds, selectedTerrainId, paintElevation ?? undefined);
+      }
+    },
+    [maps.activeMapId, activeMap, brushSize, brushShape, activeStructureLayer, structureEraseMode, selectedTerrainId, actions, paintElevation]
+  );
+
+  // Ctrl+wheel resizes the brush, Shift+wheel steps paint elevation (paint mode only).
+  const handleModifierWheel = useCallback(
+    (kind: 'brush' | 'elevation', direction: 1 | -1): boolean => {
+      if (!isGmMode || interactionMode !== 'paint' || showTravelWizard) return false;
+      if (kind === 'brush') {
+        setBrushSize((size) => Math.max(1, Math.min(MAX_BRUSH_SIZE, size + direction)));
+        return true;
+      }
+      // Elevation applies to ground painting; structure layers carry their own base.
+      if (activeStructureLayer) return false;
+      setPaintElevation((current) => Math.max(0, Math.min(MAX_ELEVATION, (current ?? 0) + direction)));
+      return true;
+    },
+    [isGmMode, interactionMode, showTravelWizard, activeStructureLayer]
+  );
+
   // Tile click
   const handleTileClick = useCallback(
     (tileId: TileId, _row: number, _col: number) => {
@@ -320,15 +359,8 @@ export function MapPanel() {
         return;
       }
 
-      if (interactionMode === 'paint' && isGmMode && activeStructureLayer && (structureEraseMode || selectedTerrainId)) {
-        actions.mapSetStructureCells(
-          maps.activeMapId,
-          activeStructureLayer.id,
-          [tileId],
-          structureEraseMode ? null : selectedTerrainId
-        );
-      } else if (interactionMode === 'paint' && selectedTerrainId && isGmMode) {
-        actions.mapSetTileTerrain(maps.activeMapId, tileId, selectedTerrainId);
+      if (interactionMode === 'paint' && isGmMode && (selectedTerrainId || (activeStructureLayer && structureEraseMode))) {
+        paintTile(tileId);
       } else if (interactionMode === 'select') {
         setSelectedTileIds((prev) => {
           const next = new Set(prev);
@@ -344,25 +376,7 @@ export function MapPanel() {
         if (pin) setSelectedLocationId(pin.locationId);
       }
     },
-    [activeMap, activeGroupTile, maps.activeMapId, interactionMode, selectedTerrainId, isGmMode, actions, showTravelWizard, travelStep, travelMode, placing, activeStructureLayer, structureEraseMode, visibleLocationPins]
-  );
-
-  const paintTile = useCallback(
-    (tileId: TileId) => {
-      if (!maps.activeMapId) return;
-      if (activeStructureLayer) {
-        if (!structureEraseMode && !selectedTerrainId) return;
-        actions.mapSetStructureCells(
-          maps.activeMapId,
-          activeStructureLayer.id,
-          [tileId],
-          structureEraseMode ? null : selectedTerrainId
-        );
-      } else if (selectedTerrainId) {
-        actions.mapSetTileTerrain(maps.activeMapId, tileId, selectedTerrainId, paintElevation ?? undefined);
-      }
-    },
-    [maps.activeMapId, activeStructureLayer, structureEraseMode, selectedTerrainId, actions, paintElevation]
+    [activeMap, activeGroupTile, maps.activeMapId, interactionMode, selectedTerrainId, isGmMode, actions, showTravelWizard, travelStep, travelMode, placing, activeStructureLayer, structureEraseMode, visibleLocationPins, paintTile]
   );
 
   const handleTilePaintStart = useCallback(
@@ -685,6 +699,10 @@ export function MapPanel() {
             interactionMode={interactionMode}
             paintElevation={paintElevation}
             onSetPaintElevation={setPaintElevation}
+            brushSize={brushSize}
+            brushShape={brushShape}
+            onSetBrushSize={setBrushSize}
+            onSetBrushShape={setBrushShape}
             onSelectTerrain={handleSelectTerrain}
             onSetMode={setInteractionMode}
             onAddTerrain={() => setShowTerrainEditor(true)}
@@ -721,6 +739,14 @@ export function MapPanel() {
           onTileContextMenu={handleTileContextMenu}
           onTilePaintStart={handleTilePaintStart}
           onTilePaintEnter={handleTilePaintEnter}
+          onModifierWheel={handleModifierWheel}
+          paintHud={{
+            brushSize,
+            brushShape,
+            elevationLabel: activeStructureLayer
+              ? `layer ${activeStructureLayer.baseElevation}`
+              : paintElevation === null ? 'auto' : String(paintElevation),
+          }}
         />
 
         {/* Travel wizard panel */}

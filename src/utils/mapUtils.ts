@@ -150,6 +150,41 @@ export function getAdjacentTileIds(
   return result;
 }
 
+/** Brush footprint for terrain painting (Phase 15c map polish). */
+export type BrushShape = 'square' | 'circle';
+
+/** Largest brush radius the painting UI offers. */
+export const MAX_BRUSH_SIZE = 5;
+
+/**
+ * All tile ids covered by a brush centered on a tile. `size` is the brush
+ * radius in tiles (1 = just the center). Square uses Chebyshev distance;
+ * circle keeps tiles within `size - 0.5` Euclidean, which rounds the corners
+ * off from size 3 up.
+ */
+export function getBrushTiles(
+  map: Pick<MapModel, 'grid' | 'rows' | 'cols'>,
+  centerTileId: TileId,
+  size: number,
+  shape: BrushShape
+): TileId[] {
+  const pos = findTileGridPos(map, centerTileId);
+  if (!pos) return [];
+  const radius = Math.max(1, Math.min(MAX_BRUSH_SIZE, Math.round(size))) - 1;
+  if (radius === 0) return [centerTileId];
+
+  const result: TileId[] = [];
+  const circleLimitSq = (radius + 0.5) ** 2;
+  for (let dr = -radius; dr <= radius; dr += 1) {
+    for (let dc = -radius; dc <= radius; dc += 1) {
+      if (shape === 'circle' && dr * dr + dc * dc > circleLimitSq) continue;
+      const tileId = getTileIdAt(map, pos.row + dr, pos.col + dc);
+      if (tileId) result.push(tileId);
+    }
+  }
+  return result;
+}
+
 /**
  * Check if two tiles are adjacent (8-directional).
  */

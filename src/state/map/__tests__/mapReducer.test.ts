@@ -270,6 +270,28 @@ describe('mapReducer', () => {
       expect(next.maps.mapsById['m1'].lastPlacedTerrainId).toBe('t-stamp');
     });
 
+    it('MAP_STAMP_TERRAIN applies a clamped elevation override when given one', () => {
+      const next = applyAction(state, {
+        type: MAP_STAMP_TERRAIN,
+        payload: { mapId: 'm1', tileIds: ['m1-a', 'm1-c'], terrainId: 't-stamp', elevationOverride: 23.8 },
+      });
+      expect(next.maps.mapsById['m1'].tilesById['m1-a'].elevationOverride).toBe(20);
+      expect(next.maps.mapsById['m1'].tilesById['m1-c'].elevationOverride).toBe(20);
+      expect(next.maps.mapsById['m1'].tilesById['m1-a'].terrainId).toBe('t-stamp');
+    });
+
+    it('MAP_STAMP_TERRAIN leaves elevation overrides alone when omitted', () => {
+      const withElevation = applyAction(state, {
+        type: MAP_SET_TILE_ELEVATION,
+        payload: { mapId: 'm1', tileIds: ['m1-a'], elevation: 3 },
+      });
+      const next = applyAction(withElevation, {
+        type: MAP_STAMP_TERRAIN,
+        payload: { mapId: 'm1', tileIds: ['m1-a'], terrainId: 't-stamp' },
+      });
+      expect(next.maps.mapsById['m1'].tilesById['m1-a'].elevationOverride).toBe(3);
+    });
+
     it('MAP_STAMP_TERRAIN ignores unknown tile ids', () => {
       const next = applyAction(state, {
         type: MAP_STAMP_TERRAIN,

@@ -32,6 +32,10 @@ interface Map3DViewProps {
   /** Return true to begin dragging the token on this tile (left-drag moves it instead of orbiting). */
   onTokenDragStart?: (tileId: TileId, row: number, col: number) => boolean;
   onTokenDrop?: (from: TokenDragTile, to: TokenDragTile) => void;
+  /** Ctrl+wheel ('brush') / Shift+wheel ('elevation'); return true when handled, false to zoom. */
+  onModifierWheel?: (kind: 'brush' | 'elevation', direction: 1 | -1) => boolean;
+  /** Shown in the paint HUD while paint mode is active. */
+  paintHud?: { brushSize: number; brushShape: string; elevationLabel: string } | null;
 }
 
 interface HoverInfo {
@@ -71,6 +75,8 @@ export function Map3DView(props: Map3DViewProps) {
       onTokenDragStart: (tileId, row, col) =>
         propsRef.current.onTokenDragStart?.(tileId, row, col) ?? false,
       onTokenDrop: (from, to) => propsRef.current.onTokenDrop?.(from, to),
+      onModifierWheel: (kind, direction) =>
+        propsRef.current.onModifierWheel?.(kind, direction) ?? false,
       onContextLost: () => setUnavailable(true),
       onContextRestored: () => setUnavailable(false),
     };
@@ -137,6 +143,15 @@ export function Map3DView(props: Map3DViewProps) {
       {unavailable && (
         <div role="alert" className="absolute inset-x-4 top-4 z-20 rounded border border-red-500/60 bg-red-950/90 px-4 py-3 text-sm text-red-200">
           3D map unavailable — WebGL could not start.
+        </div>
+      )}
+      {props.paintModeActive && props.paintHud && (
+        <div
+          className="pointer-events-none absolute left-3 top-3 z-10 rounded-md border border-gray-600 bg-gray-900/80 px-3 py-1.5 text-xs text-gray-200 shadow"
+          data-testid="paint-hud"
+        >
+          Brush {props.paintHud.brushSize} · {props.paintHud.brushShape} · Elev {props.paintHud.elevationLabel}
+          <span className="ml-2 text-gray-500">Ctrl+scroll size · Shift+scroll elev</span>
         </div>
       )}
       <button

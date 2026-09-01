@@ -105,6 +105,77 @@ type CampaignStoreHandle = {
   getRawState: () => CampaignState;
   dispatch: (action: CampaignAction) => void;
   subscribe: (listener: () => void) => () => void;
+  /** Global undo/redo (Phase 15c). Session-scoped, in-memory — never persisted. */
+  undo: () => boolean;
+  redo: () => boolean;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+};
+
+/** Maximum undo depth. Snapshots share structure via Immer, so this is cheap. */
+const HISTORY_LIMIT = 50;
+
+/**
+ * Actions that are pure view/navigation state: they are not recorded in undo
+ * history, and undo/redo preserves their current values instead of rewinding
+ * them (see preserveViewState).
+ */
+const NON_UNDOABLE_ACTIONS = new Set<string>([
+  'setActiveModule',
+  'setPendingIntent',
+  'clearPendingIntent',
+  'selectCharacter',
+  'setCharacterPanelView',
+  'toggleGmMode',
+  'setGmMode',
+  'setGmUnlocked',
+  'toggleDebug',
+  'setActivitiesSubview',
+  'setDayPlannerSlot',
+  'map/setActiveMap',
+  'map/setPendingTerrain',
+  'map/clearPendingTerrain',
+]);
+
+/**
+ * Undo/redo restores a whole-state snapshot, but the user's current view
+ * (active tab, selection, GM toggles, planner slot, active map) should not
+ * teleport with it. Data-coupled ui fields (blockingError,
+ * activeTravelGroupId) DO come from the snapshot, and preserved references
+ * are dropped when the snapshot no longer contains their target.
+ */
+const preserveViewState = (snapshot: CampaignState, current: CampaignState): CampaignState => {
+  const selectedCharacterId =
+    current.ui.selectedCharacterId && snapshot.entities.characters[current.ui.selectedCharacterId]
+      ? current.ui.selectedCharacterId
+      : snapshot.ui.selectedCharacterId && snapshot.entities.characters[snapshot.ui.selectedCharacterId]
+        ? snapshot.ui.selectedCharacterId
+        : null;
+  const keepCurrentMap =
+    current.maps.activeMapId !== null && !!snapshot.maps.mapsById[current.maps.activeMapId];
+  return {
+    ...snapshot,
+    ui: {
+      ...snapshot.ui,
+      activeModule: current.ui.activeModule,
+      selectedCharacterId,
+      characterPanelView: current.ui.characterPanelView,
+      gmModeEnabled: current.ui.gmModeEnabled,
+      gmSessionUnlocked: current.ui.gmSessionUnlocked,
+      debugMode: current.ui.debugMode,
+      activitiesSubview: current.ui.activitiesSubview,
+      pendingIntent: current.ui.pendingIntent,
+    },
+    maps: {
+      ...snapshot.maps,
+      activeMapId: keepCurrentMap ? current.maps.activeMapId : snapshot.maps.activeMapId,
+      pendingTerrainAssignment: keepCurrentMap ? current.maps.pendingTerrainAssignment : null,
+    },
+    dayPlanner: {
+      ...snapshot.dayPlanner,
+      currentSlot: current.dayPlanner.currentSlot,
+    },
+  };
 };
 
 type CampaignStoreValue = {
@@ -335,7 +406,7 @@ type CampaignStoreValue = {
     mapUpdateMap: (mapId: MapId, changes: Partial<Pick<MapModel, 'name' | 'description' | 'visionMode' | 'sightRangeTiles' | 'climate' | 'weatherTableId' | 'travelEventTableSetId'>>) => void;
     mapSetActiveMap: (mapId: MapId | null) => void;
     mapSetTileTerrain: (mapId: MapId, tileId: TileId, terrainId: TerrainId, elevationOverride?: number) => void;
-    mapStampTerrain: (mapId: MapId, tileIds: TileId[], terrainId: TerrainId) => void;
+    mapStampTerrain: (mapId: MapId, tileIds: TileId[], terrainId: TerrainId, elevationOverride?: number) => void;
     mapSetTileElevation: (mapId: MapId, tileIds: TileId[], elevation: number | null) => void;
     mapAddTerrain: (mapId: MapId, terrain: TerrainModel) => void;
     mapUpdateTerrain: (mapId: MapId, terrainId: TerrainId, changes: Partial<TerrainModel>) => void;
@@ -406,6 +477,14 @@ function createCampaignStoreHandle(
 
   let snapshot = pin(rawState);
   const listeners = new Set<() => void>();
+  const past: CampaignState[] = [];
+  const future: CampaignState[] = [];
+
+  const setState = (next: CampaignState) => {
+    rawState = next;
+    snapshot = pin(rawState);
+    listeners.forEach((listener) => listener());
+  };
 
   return {
     getState: () => snapshot,
@@ -413,9 +492,12 @@ function createCampaignStoreHandle(
     dispatch: (action) => {
       const next = campaignReducer(rawState, action);
       if (next === rawState) return;
-      rawState = next;
-      snapshot = pin(rawState);
-      listeners.forEach((listener) => listener());
+      if (!NON_UNDOABLE_ACTIONS.has(action.type)) {
+        past.push(rawState);
+        if (past.length > HISTORY_LIMIT) past.shift();
+        future.length = 0;
+      }
+      setState(next);
     },
     subscribe: (listener) => {
       listeners.add(listener);
@@ -423,6 +505,22 @@ function createCampaignStoreHandle(
         listeners.delete(listener);
       };
     },
+    undo: () => {
+      const previous = past.pop();
+      if (!previous) return false;
+      future.unshift(rawState);
+      setState(preserveViewState(previous, rawState));
+      return true;
+    },
+    redo: () => {
+      const next = future.shift();
+      if (!next) return false;
+      past.push(rawState);
+      setState(preserveViewState(next, rawState));
+      return true;
+    },
+    canUndo: () => past.length > 0,
+    canRedo: () => future.length > 0,
   };
 }
 
@@ -740,8 +838,8 @@ export function CampaignStoreProvider({
       mapSetActiveMap: (mapId: MapId | null) => dispatch({ type: 'map/setActiveMap', payload: mapId }),
       mapSetTileTerrain: (mapId: MapId, tileId: TileId, terrainId: TerrainId, elevationOverride?: number) =>
         dispatch({ type: 'map/setTileTerrain', payload: { mapId, tileId, terrainId, elevationOverride } }),
-      mapStampTerrain: (mapId: MapId, tileIds: TileId[], terrainId: TerrainId) =>
-        dispatch({ type: 'map/stampTerrain', payload: { mapId, tileIds, terrainId } }),
+      mapStampTerrain: (mapId: MapId, tileIds: TileId[], terrainId: TerrainId, elevationOverride?: number) =>
+        dispatch({ type: 'map/stampTerrain', payload: { mapId, tileIds, terrainId, elevationOverride } }),
       mapSetTileElevation: (mapId: MapId, tileIds: TileId[], elevation: number | null) =>
         dispatch({ type: 'map/setTileElevation', payload: { mapId, tileIds, elevation } }),
       mapAddTerrain: (mapId: MapId, terrain: TerrainModel) =>
@@ -920,6 +1018,26 @@ export function useCampaignSelector<T>(
     };
   }, [store, selector, isEqual]);
   return useSyncExternalStore(store.subscribe, getSelection, getSelection);
+}
+
+/**
+ * Global undo/redo (Phase 15c). Undo history is session-scoped and in-memory;
+ * view/navigation actions are neither recorded nor rewound (see
+ * NON_UNDOABLE_ACTIONS / preserveViewState).
+ */
+export function useCampaignHistory() {
+  const { store } = useCampaignStoreValue();
+  const flags = useSyncExternalStore(
+    store.subscribe,
+    () => (store.canUndo() ? 1 : 0) + (store.canRedo() ? 2 : 0),
+    () => (store.canUndo() ? 1 : 0) + (store.canRedo() ? 2 : 0)
+  );
+  return {
+    canUndo: (flags & 1) === 1,
+    canRedo: (flags & 2) === 2,
+    undo: store.undo,
+    redo: store.redo,
+  };
 }
 
 const selectLegacyAppState = (state: CampaignState) => state.legacy.appState;

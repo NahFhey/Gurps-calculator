@@ -375,9 +375,10 @@ Three fixes out of the "Map tab wiped / maps missing after reload" investigation
 - ~~**Known regression:** `@dnd-kit` (Phase 11b) pushed bundle from ~624KB to ~1,378KB~~ ✅ resolved via deferred `combat-dnd` chunk
 
 ### 15c: UX Polish
-- Keyboard shortcuts for common actions
-- Undo/redo across all systems (not just combat)
-- Notification system for completed activities, status changes
+- ✅ Keyboard shortcuts for common actions (2026-09-01, direct): Ctrl+Z/Ctrl+Shift+Z/Ctrl+Y undo/redo, Alt+1..7 module switching, `?` help overlay (`KeyboardShortcutsModal`); suppressed while typing. Hook: `useKeyboardShortcuts`, mounted in UnifiedShell.
+- ✅ Undo/redo across all systems (2026-09-01, direct): store-level history in `campaignStore` (50 snapshots, in-memory, Immer structural sharing). View/navigation actions neither recorded nor rewound (`NON_UNDOABLE_ACTIONS` + `preserveViewState` with stale-reference guards). Header Undo/Redo buttons with live enabled state (`useCampaignHistory`). Follow-up: coalesce paint-stroke/keystroke bursts into one undo step.
+- ✅ Notification system (2026-09-01, direct): `NotificationBridge` watches `logs.entries` and toasts completions/arrivals/status changes (curated types + `_resolved`/`_completed` suffixes), respecting log visibility vs GM mode, batch-capped at 3 + summary. Also wired the dormant `setToastRef` so `standaloneToast` (SyncProvider errors) actually renders. Browser-verified with 13 new tests in `campaignHistory.test.tsx`.
+- ✅ Map editor polish (2026-09-01, user request): terrain brush with size 1–5 and circle/square shapes (`getBrushTiles`), Ctrl+scroll brush size + Shift+scroll paint elevation on the canvas (`onModifierWheel`), paint HUD overlay, elevation stepper buttons + wheel-blur guard on the number input (no more accidental scroll edits), `map/stampTerrain` extended with elevation + edge expansion (one action per brush stamp = one undo step). **Fixed inverted camera grab-pan** in `dragPan` (target now moves opposite the drag so the world follows the cursor) — needs a hands-on feel check since the browser pane has no WebGL.
 - Responsive layout improvements
 - Dark mode / theme support
 

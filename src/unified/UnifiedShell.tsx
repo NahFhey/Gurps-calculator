@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo, useRef, useCallback, useState, useEffect, ReactNode, KeyboardEvent, MouseEvent, ChangeEvent } from 'react';
-import { ChevronLeft, ChevronRight, Plus, MoreVertical, Coins } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, MoreVertical, Coins, Undo2, Redo2 } from 'lucide-react';
 import {
   CharacterSkillsPanel,
   CharacterEquipmentPanel,
@@ -26,10 +26,13 @@ import { PanelLayoutProvider, usePanelLayout } from '../contexts/PanelLayoutCont
 import {
   useCampaignActions,
   useCampaignCharacters,
+  useCampaignHistory,
   useCampaignSelector,
   useSelectedCharacter,
   useSelectedCharacterId
 } from '../state/campaignStore';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { KeyboardShortcutsModal } from '../components/ui/KeyboardShortcutsModal';
 import type { CampaignState } from '../state/campaignReducer';
 import { useAllCharacterSlotSummaries } from '../hooks/useCharacterSlotSummary';
 import { isCharacterIncapacitated } from '../state/downtime/downtimeSelectors';
@@ -133,6 +136,12 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
   const combatMapId = useCampaignSelector(selectCombatMapId);
   const charactersById = useCampaignSelector(selectCharactersById);
   const characterTemplates = useCampaignSelector(selectCharacterTemplates);
+  const { canUndo, canRedo, undo, redo } = useCampaignHistory();
+
+  // Keyboard shortcuts + help overlay (Phase 15c)
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const toggleShortcutsHelp = useCallback(() => setShowShortcutsHelp((visible) => !visible), []);
+  useKeyboardShortcuts({ onToggleHelp: toggleShortcutsHelp });
 
   const availableModules = useMemo<ModuleDefinition[]>(() => {
     if (modules?.length) {
@@ -403,6 +412,30 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           <div className="flex items-center gap-3">
             <TimeDisplay />
             {gmModeEnabled && <TimeControls compact />}
+            <div className="flex items-center gap-1" data-testid="undo-redo-controls">
+              <button
+                type="button"
+                onClick={undo}
+                disabled={!canUndo}
+                className="rounded border border-gray-600 bg-gray-700/50 p-1.5 text-gray-300 hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+                title="Undo (Ctrl+Z)"
+                aria-label="Undo"
+                data-testid="undo-button"
+              >
+                <Undo2 className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={redo}
+                disabled={!canRedo}
+                className="rounded border border-gray-600 bg-gray-700/50 p-1.5 text-gray-300 hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+                title="Redo (Ctrl+Shift+Z)"
+                aria-label="Redo"
+                data-testid="redo-button"
+              >
+                <Redo2 className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           {/* Right: Debug controls and blocking errors */}
@@ -906,6 +939,9 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           onClose={() => setStatusCharacterId(null)}
         />
       )}
+
+      {/* Keyboard shortcuts help (Phase 15c) */}
+      {showShortcutsHelp && <KeyboardShortcutsModal onClose={() => setShowShortcutsHelp(false)} />}
 
       {/* Character Context Menu */}
       {contextMenu && (

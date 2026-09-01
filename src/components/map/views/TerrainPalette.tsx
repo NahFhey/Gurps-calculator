@@ -5,7 +5,8 @@
 import type { TerrainModel, TerrainId, StructureLayer, StructureLayerId } from '../../../types/map';
 import type { MapInteractionMode } from '../MapPanel';
 import { MAX_ELEVATION } from '../../../constants/map';
-import { Paintbrush, MousePointer, Hand, Plus, Eye, EyeOff, Trash2, Eraser } from 'lucide-react';
+import { MAX_BRUSH_SIZE, type BrushShape } from '../../../utils/mapUtils';
+import { Paintbrush, MousePointer, Hand, Plus, Eye, EyeOff, Trash2, Eraser, Circle, Square, Minus } from 'lucide-react';
 
 interface TerrainPaletteProps {
   terrains: TerrainModel[];
@@ -14,6 +15,11 @@ interface TerrainPaletteProps {
   /** Elevation painted alongside terrain; null = terrain default (don't touch overrides). */
   paintElevation?: number | null;
   onSetPaintElevation?: (elevation: number | null) => void;
+  /** Brush radius in tiles (1 = single tile). Ctrl+scroll over the map also adjusts it. */
+  brushSize?: number;
+  brushShape?: BrushShape;
+  onSetBrushSize?: (size: number) => void;
+  onSetBrushShape?: (shape: BrushShape) => void;
   onSelectTerrain: (terrainId: TerrainId) => void;
   onSetMode: (mode: MapInteractionMode) => void;
   onAddTerrain?: () => void;
@@ -36,6 +42,10 @@ export function TerrainPalette({
   interactionMode,
   paintElevation = null,
   onSetPaintElevation,
+  brushSize = 1,
+  brushShape = 'circle',
+  onSetBrushSize,
+  onSetBrushShape,
   onSelectTerrain,
   onSetMode,
   onAddTerrain,
@@ -213,14 +223,72 @@ export function TerrainPalette({
         </div>
       )}
 
+      {/* Brush (paint mode only) */}
+      {interactionMode === 'paint' && onSetBrushSize && (
+        <div className="px-2 py-2 border-b border-gray-700/50">
+          <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5">
+            Brush <span className="normal-case text-gray-600">(Ctrl+scroll)</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              className="p-1 rounded bg-gray-700/50 text-gray-300 hover:bg-gray-600/50 disabled:opacity-40"
+              onClick={() => onSetBrushSize(Math.max(1, brushSize - 1))}
+              disabled={brushSize <= 1}
+              title="Smaller brush"
+              aria-label="Smaller brush"
+            >
+              <Minus className="w-3 h-3" />
+            </button>
+            <span className="flex-1 text-center text-xs text-gray-200" data-testid="brush-size">{brushSize}</span>
+            <button
+              className="p-1 rounded bg-gray-700/50 text-gray-300 hover:bg-gray-600/50 disabled:opacity-40"
+              onClick={() => onSetBrushSize(Math.min(MAX_BRUSH_SIZE, brushSize + 1))}
+              disabled={brushSize >= MAX_BRUSH_SIZE}
+              title="Larger brush"
+              aria-label="Larger brush"
+            >
+              <Plus className="w-3 h-3" />
+            </button>
+            {onSetBrushShape && (
+              <>
+                <button
+                  className={[
+                    'p-1 rounded transition-colors',
+                    brushShape === 'circle' ? 'bg-blue-600 text-white' : 'bg-gray-700/50 text-gray-400 hover:bg-gray-600/50',
+                  ].join(' ')}
+                  onClick={() => onSetBrushShape('circle')}
+                  title="Round brush"
+                  aria-label="Round brush"
+                >
+                  <Circle className="w-3 h-3" />
+                </button>
+                <button
+                  className={[
+                    'p-1 rounded transition-colors',
+                    brushShape === 'square' ? 'bg-blue-600 text-white' : 'bg-gray-700/50 text-gray-400 hover:bg-gray-600/50',
+                  ].join(' ')}
+                  onClick={() => onSetBrushShape('square')}
+                  title="Square brush"
+                  aria-label="Square brush"
+                >
+                  <Square className="w-3 h-3" />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Paint elevation (paint mode only; ground layer only — structure layers carry their own base) */}
       {interactionMode === 'paint' && onSetPaintElevation && activeStructureLayerId === null && (
         <div className="px-2 py-2 border-b border-gray-700/50">
-          <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5">Elevation</div>
-          <div className="flex gap-1">
+          <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5">
+            Elevation <span className="normal-case text-gray-600">(Shift+scroll)</span>
+          </div>
+          <div className="flex items-center gap-1">
             <button
               className={[
-                'flex-1 px-1.5 py-1 rounded text-xs transition-colors',
+                'px-1.5 py-1 rounded text-xs transition-colors',
                 paintElevation === null
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-700/50 text-gray-400 hover:bg-gray-600/50',
@@ -229,6 +297,15 @@ export function TerrainPalette({
               title="Paint with the terrain's default elevation (leaves overrides alone)"
             >
               Auto
+            </button>
+            <button
+              className="p-1 rounded bg-gray-700/50 text-gray-300 hover:bg-gray-600/50 disabled:opacity-40"
+              onClick={() => onSetPaintElevation(Math.max(0, (paintElevation ?? 0) - 1))}
+              disabled={paintElevation !== null && paintElevation <= 0}
+              title="Lower paint elevation"
+              aria-label="Lower paint elevation"
+            >
+              <Minus className="w-3 h-3" />
             </button>
             <input
               type="number"
@@ -243,9 +320,22 @@ export function TerrainPalette({
                   ? Math.max(0, Math.min(MAX_ELEVATION, Math.round(value)))
                   : null);
               }}
-              className="w-14 px-1.5 py-1 rounded bg-gray-900 border border-gray-600 text-xs text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              // Scrolling over a focused number input silently changes its value
+              // in some browsers — blur so map zoom/elevation scrolling can't
+              // edit this field by accident.
+              onWheel={(e) => e.currentTarget.blur()}
+              className="w-10 px-1 py-1 rounded bg-gray-900 border border-gray-600 text-center text-xs text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
               title="Paint every touched tile at this elevation"
             />
+            <button
+              className="p-1 rounded bg-gray-700/50 text-gray-300 hover:bg-gray-600/50 disabled:opacity-40"
+              onClick={() => onSetPaintElevation(Math.min(MAX_ELEVATION, (paintElevation ?? 0) + 1))}
+              disabled={paintElevation !== null && paintElevation >= MAX_ELEVATION}
+              title="Raise paint elevation"
+              aria-label="Raise paint elevation"
+            >
+              <Plus className="w-3 h-3" />
+            </button>
           </div>
         </div>
       )}

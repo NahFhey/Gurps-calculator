@@ -45,11 +45,13 @@ describe('map scene camera math', () => {
     expect(input).toEqual(state());
   });
 
-  it('moves the camera target with the drag direction at azimuth zero', () => {
+  it('grab-pans: the camera target moves opposite the drag at azimuth zero', () => {
     const input = { ...state(), azimuth: 0, distance: 10 };
     const result = dragPan(input, 100, 50, 1000, 45, 30, 30);
-    expect(result.targetX).toBeGreaterThan(input.targetX);
-    expect(result.targetZ).toBeGreaterThan(input.targetZ);
+    // Dragging right/down pulls the world with the cursor, so the target
+    // moves left/away (-X, -Z), preserving the 2:1 pixel ratio.
+    expect(result.targetX).toBeLessThan(input.targetX);
+    expect(result.targetZ).toBeLessThan(input.targetZ);
     expect(result.targetX - input.targetX).toBeCloseTo(2 * (result.targetZ - input.targetZ), 5);
   });
 

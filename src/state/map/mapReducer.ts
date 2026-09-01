@@ -151,16 +151,24 @@ export function handleMapAction(
     }
 
     case MAP_STAMP_TERRAIN: {
-      const { mapId, tileIds, terrainId } = action.payload;
+      const { mapId, tileIds, terrainId, elevationOverride } = action.payload;
       const map = maps.mapsById[mapId];
       if (map) {
         for (const tileId of tileIds) {
           const tile = map.tilesById[tileId];
           if (tile) {
             tile.terrainId = terrainId;
+            if (elevationOverride !== undefined && Number.isFinite(elevationOverride)) {
+              tile.elevationOverride = Math.max(0, Math.min(MAX_ELEVATION, Math.round(elevationOverride)));
+            }
           }
         }
         map.lastPlacedTerrainId = terrainId;
+        // Brush painting reaches the edge the same way single-tile painting does.
+        const expanded = expandMapIfNeededForPaint(map);
+        if (expanded !== map) {
+          maps.mapsById[mapId] = expanded;
+        }
       }
       return;
     }

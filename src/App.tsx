@@ -6,6 +6,7 @@ import { loadCampaignState } from './persistence/campaignStorage';
 import { checkMigrationNeeded, migrateToV2 } from './persistence/dataMigration';
 import { ToastProvider, ToastContainer, LoadingSpinner } from './components/ui';
 import { StorageQuotaBanner } from './components/ui/StorageQuotaBanner';
+import { NotificationBridge } from './components/ui/NotificationBridge';
 import type { CampaignState } from './state/campaignReducer';
 
 type MigrationStatus = 'checking' | 'migrating' | 'ready';
@@ -94,6 +95,7 @@ export default function GURPSPartyTool() {
     <ToastProvider>
       <CampaignStoreProvider initialCampaignState={initialCampaignState}>
         <UnifiedShell />
+        <NotificationBridge />
         <ToastContainer position="top-right" />
         <StorageQuotaBanner />
       </CampaignStoreProvider>

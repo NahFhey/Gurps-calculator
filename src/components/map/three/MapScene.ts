@@ -33,6 +33,12 @@ export interface MapSceneCallbacks {
   onTokenDragStart?(tileId: TileId, row: number, col: number): boolean;
   /** A token drag ended over a different tile. */
   onTokenDrop?(from: TokenDragTile, to: TokenDragTile): void;
+  /**
+   * Wheel with Ctrl/Cmd ('brush') or Shift ('elevation') held.
+   * direction is +1 scrolling up, -1 scrolling down. Return true when
+   * handled; false falls through to camera zoom.
+   */
+  onModifierWheel?(kind: 'brush' | 'elevation', direction: 1 | -1): boolean;
   onContextLost?(): void;
   onContextRestored?(): void;
 }
@@ -267,6 +273,14 @@ export class MapScene {
   private readonly onWheel = (event: WheelEvent) => {
     event.preventDefault();
     if (!this.data) return;
+    const direction: 1 | -1 = event.deltaY < 0 ? 1 : -1;
+    if ((event.ctrlKey || event.metaKey) && this.callbacks.onModifierWheel?.('brush', direction)) {
+      return;
+    }
+    if (event.shiftKey && !event.ctrlKey && !event.metaKey
+      && this.callbacks.onModifierWheel?.('elevation', direction)) {
+      return;
+    }
     this.cameraState = zoom(
       this.cameraState,
       event.deltaY > 0 ? 1.1 : 1 / 1.1,

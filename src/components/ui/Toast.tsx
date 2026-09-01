@@ -198,8 +198,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts([]);
   }, []);
 
+  const value = { toasts, addToast, dismissToast, clearToasts };
+
+  // Keep standaloneToast (used outside React, e.g. SyncProvider errors) wired
+  // to the live provider instead of its console fallback.
+  useEffect(() => {
+    setToastRef(value);
+    return () => setToastRef(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toasts, addToast, dismissToast, clearToasts]);
+
   return (
-    <ToastContext.Provider value={{ toasts, addToast, dismissToast, clearToasts }}>
+    <ToastContext.Provider value={value}>
       {children}
     </ToastContext.Provider>
   );
@@ -220,6 +230,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
  * toast({ type: 'warning', message: 'This action cannot be undone' });
  * ```
  */
+/**
+ * Like useToast, but returns null when no ToastProvider is mounted
+ * (e.g. component tests that don't render the app chrome).
+ */
+export function useToastOptional(): ToastContextValue | null {
+  return useContext(ToastContext) ?? null;
+}
+
 export function useToast() {
   const context = useContext(ToastContext);
 

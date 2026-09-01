@@ -54,7 +54,10 @@ export function dragPan(
   const localZ = dyPx * worldPerPx;
   const cos = Math.cos(s.azimuth);
   const sin = Math.sin(s.azimuth);
-  return pan(s, localX * cos - localZ * sin, localX * sin + localZ * cos, cols, rows);
+  // Grab-pan: the world point under the cursor follows the cursor, so the
+  // camera target moves opposite the drag (screen-right = camera right
+  // (cos, -sin), screen-down = toward the camera (sin, cos)).
+  return pan(s, -localX * cos - localZ * sin, localX * sin - localZ * cos, cols, rows);
 }
 
 export function cameraPosition(s: CameraState): [number, number, number] {

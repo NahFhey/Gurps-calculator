@@ -110,7 +110,7 @@ export type SetTileTerrainAction = {
 
 export type StampTerrainAction = {
   type: typeof MAP_STAMP_TERRAIN;
-  payload: { mapId: MapId; tileIds: TileId[]; terrainId: TerrainId };
+  payload: { mapId: MapId; tileIds: TileId[]; terrainId: TerrainId; elevationOverride?: number };
 };
 
 export type SetTileElevationAction = {

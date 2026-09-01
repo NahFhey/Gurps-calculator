@@ -16,6 +16,7 @@ import {
   expandMapIfNeededForPaint,
   createNewMap,
   resolveLocationTerrain,
+  getBrushTiles,
 } from '../mapUtils';
 import {
   INITIAL_GRID_SIZE,
@@ -362,5 +363,38 @@ describe('resolveLocationTerrain', () => {
         dr === 0 && dc === 1 ? 'terrain-water' : 'terrain-road';
     }
     expect(resolveLocationTerrain(map, map.grid[c][c])).toBe('plains');
+  });
+});
+
+describe('getBrushTiles', () => {
+  const center = (map: MapModel) => map.grid[INITIAL_CENTER][INITIAL_CENTER];
+
+  it('size 1 is just the center tile for both shapes', () => {
+    const map = buildMap();
+    expect(getBrushTiles(map, center(map), 1, 'square')).toEqual([center(map)]);
+    expect(getBrushTiles(map, center(map), 1, 'circle')).toEqual([center(map)]);
+  });
+
+  it('size 2 covers the full 3x3 block for both shapes', () => {
+    const map = buildMap();
+    expect(getBrushTiles(map, center(map), 2, 'square')).toHaveLength(9);
+    expect(getBrushTiles(map, center(map), 2, 'circle')).toHaveLength(9);
+  });
+
+  it('size 3 circle drops the 5x5 corners, square keeps them', () => {
+    const map = buildMap();
+    expect(getBrushTiles(map, center(map), 3, 'square')).toHaveLength(25);
+    expect(getBrushTiles(map, center(map), 3, 'circle')).toHaveLength(21);
+  });
+
+  it('clips the footprint at the map edge', () => {
+    const map = buildMap();
+    const corner = map.grid[0][0];
+    expect(getBrushTiles(map, corner, 2, 'square')).toHaveLength(4);
+  });
+
+  it('returns empty for an unknown center tile', () => {
+    const map = buildMap();
+    expect(getBrushTiles(map, 'no-such-tile', 3, 'circle')).toEqual([]);
   });
 });
