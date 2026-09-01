@@ -3,8 +3,8 @@
  * Changes apply live to the map (no confirm step).
  */
 
-import { useCallback, useRef, useState } from 'react';
-import { X, Upload, Trash2, Eye, EyeOff } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { X, Upload, Trash2, Eye, EyeOff, Grid3x3, Magnet, Maximize2 } from 'lucide-react';
 import type { ImageLayerId, MapImageLayer, MapModel } from '../../../types/map';
 import { DEFAULT_TERRAIN_ELEVATION, MAX_ELEVATION } from '../../../constants/map';
 
@@ -72,6 +72,190 @@ function numberField(value: number, onChange: (value: number) => void, opts: {
   );
 }
 
+interface LayerCardProps {
+  layer: MapImageLayer;
+  map: MapModel;
+  onUpdateLayer: (layerId: ImageLayerId, changes: Partial<Omit<MapImageLayer, 'id'>>) => void;
+  onRemoveLayer: (layerId: ImageLayerId) => void;
+}
+
+function LayerCard({ layer, map, onUpdateLayer, onRemoveLayer }: LayerCardProps) {
+  // "Size to grid": how many grid cells the imported image's own printed grid
+  // has — applying makes each image cell exactly one map tile.
+  const [gridCols, setGridCols] = useState(() => Math.max(1, Math.round(layer.width)));
+  const [gridRows, setGridRows] = useState(() => Math.max(1, Math.round(layer.height)));
+  const [rowsTouched, setRowsTouched] = useState(false);
+  /** Natural height/width ratio of the image, for deriving rows from cols. */
+  const [aspect, setAspect] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (!cancelled && img.naturalWidth > 0) {
+        setAspect(img.naturalHeight / img.naturalWidth);
+      }
+    };
+    img.src = layer.src;
+    return () => {
+      cancelled = true;
+    };
+  }, [layer.src]);
+
+  const handleColsChange = (cols: number) => {
+    const next = Math.max(1, Math.round(cols));
+    setGridCols(next);
+    // Until the user types their own row count, follow the image's aspect so
+    // square-cell battlemaps only need one number.
+    if (!rowsTouched && aspect !== null) {
+      setGridRows(Math.max(1, Math.round(next * aspect)));
+    }
+  };
+
+  const applyGridSize = () => {
+    onUpdateLayer(layer.id, {
+      width: gridCols,
+      height: gridRows,
+      x: Math.round(layer.x),
+      y: Math.round(layer.y),
+    });
+  };
+
+  const snapToTiles = () => {
+    onUpdateLayer(layer.id, {
+      x: Math.round(layer.x),
+      y: Math.round(layer.y),
+      width: Math.max(1, Math.round(layer.width)),
+      height: Math.max(1, Math.round(layer.height)),
+    });
+  };
+
+  const fitToMap = () => {
+    setGridCols(map.cols);
+    setGridRows(map.rows);
+    onUpdateLayer(layer.id, { x: 0, y: 0, width: map.cols, height: map.rows });
+  };
+
+  return (
+    <div className="rounded border border-gray-700 bg-gray-900/50 p-3 space-y-2">
+      <div className="flex items-center gap-2">
+        <img
+          src={layer.src}
+          alt=""
+          className="h-10 w-10 rounded object-cover border border-gray-700 flex-shrink-0"
+        />
+        <input
+          type="text"
+          value={layer.name}
+          onChange={(event) => onUpdateLayer(layer.id, { name: event.target.value })}
+          className="flex-1 min-w-0 rounded border border-gray-600 bg-gray-900 px-2 py-1 text-sm text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        />
+        <button
+          type="button"
+          aria-label={layer.visible ? 'Hide image' : 'Show image'}
+          title={layer.visible ? 'Hide image' : 'Show image'}
+          onClick={() => onUpdateLayer(layer.id, { visible: !layer.visible })}
+          className="rounded p-1.5 text-gray-300 hover:bg-gray-700"
+        >
+          {layer.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+        </button>
+        <button
+          type="button"
+          aria-label="Delete image"
+          title="Delete image"
+          onClick={() => onRemoveLayer(layer.id)}
+          className="rounded p-1.5 text-red-400 hover:bg-gray-700"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="flex flex-col gap-0.5 text-[10px] uppercase tracking-wider text-gray-500">
+          Placement
+          <select
+            value={layer.placement}
+            onChange={(event) => onUpdateLayer(layer.id, {
+              placement: event.target.value === 'overlay' ? 'overlay' : 'underlay',
+            })}
+            className="rounded border border-gray-600 bg-gray-900 px-1.5 py-1 text-xs normal-case tracking-normal text-gray-200"
+          >
+            <option value="underlay">Underlay</option>
+            <option value="overlay">Overlay</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-0.5 text-[10px] uppercase tracking-wider text-gray-500">
+          Opacity {Math.round(layer.opacity * 100)}%
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={layer.opacity}
+            onChange={(event) => onUpdateLayer(layer.id, { opacity: event.target.valueAsNumber })}
+            className="w-24"
+          />
+        </label>
+        <label
+          className="flex items-center gap-1.5 pb-1 text-xs text-gray-300"
+          title="Only the GM ever sees this image (tracing reference)"
+        >
+          <input
+            type="checkbox"
+            checked={layer.gmOnly}
+            onChange={(event) => onUpdateLayer(layer.id, { gmOnly: event.target.checked })}
+          />
+          GM only
+        </label>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-2">
+        {numberField(layer.x, (x) => onUpdateLayer(layer.id, { x }), { label: 'X (col)', step: 0.5 })}
+        {numberField(layer.y, (y) => onUpdateLayer(layer.id, { y }), { label: 'Y (row)', step: 0.5 })}
+        {numberField(layer.width, (width) => onUpdateLayer(layer.id, { width }), { label: 'Width', min: 0.1, step: 0.5 })}
+        {numberField(layer.height, (height) => onUpdateLayer(layer.id, { height }), { label: 'Height', min: 0.1, step: 0.5 })}
+        {numberField(layer.elevation, (elevation) => onUpdateLayer(layer.id, { elevation }), { label: 'Elev', min: 0, max: MAX_ELEVATION })}
+      </div>
+
+      {/* Size to grid: match the image's printed grid to the tile grid */}
+      <div className="flex flex-wrap items-end gap-2 rounded border border-gray-700/60 bg-gray-800/40 px-2 py-1.5">
+        {numberField(gridCols, handleColsChange, { label: 'Grid cols', min: 1 })}
+        {numberField(gridRows, (rows) => {
+          setRowsTouched(true);
+          setGridRows(Math.max(1, Math.round(rows)));
+        }, { label: 'Grid rows', min: 1 })}
+        <button
+          type="button"
+          onClick={applyGridSize}
+          className="flex items-center gap-1 rounded bg-blue-600 px-2 py-1.5 text-xs font-medium text-white hover:bg-blue-500"
+          title="Scale the image so each of its grid cells is exactly one map tile, and snap its corner to a tile"
+        >
+          <Grid3x3 className="h-3 w-3" />
+          Size to grid
+        </button>
+        <button
+          type="button"
+          onClick={snapToTiles}
+          className="flex items-center gap-1 rounded bg-gray-700 px-2 py-1.5 text-xs text-gray-200 hover:bg-gray-600"
+          title="Round position and size to whole tiles"
+        >
+          <Magnet className="h-3 w-3" />
+          Snap
+        </button>
+        <button
+          type="button"
+          onClick={fitToMap}
+          className="flex items-center gap-1 rounded bg-gray-700 px-2 py-1.5 text-xs text-gray-200 hover:bg-gray-600"
+          title="Stretch the image across the entire map grid"
+        >
+          <Maximize2 className="h-3 w-3" />
+          Fit map
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function ImageLayersDialog({ map, onAddLayer, onUpdateLayer, onRemoveLayer, onClose }: ImageLayersDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importError, setImportError] = useState<string | null>(null);
@@ -126,92 +310,21 @@ export function ImageLayersDialog({ map, onAddLayer, onUpdateLayer, onRemoveLaye
           )}
 
           {layers.map((layer) => (
-            <div key={layer.id} className="rounded border border-gray-700 bg-gray-900/50 p-3 space-y-2">
-              <div className="flex items-center gap-2">
-                <img
-                  src={layer.src}
-                  alt=""
-                  className="h-10 w-10 rounded object-cover border border-gray-700 flex-shrink-0"
-                />
-                <input
-                  type="text"
-                  value={layer.name}
-                  onChange={(event) => onUpdateLayer(layer.id, { name: event.target.value })}
-                  className="flex-1 min-w-0 rounded border border-gray-600 bg-gray-900 px-2 py-1 text-sm text-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-                <button
-                  type="button"
-                  aria-label={layer.visible ? 'Hide image' : 'Show image'}
-                  title={layer.visible ? 'Hide image' : 'Show image'}
-                  onClick={() => onUpdateLayer(layer.id, { visible: !layer.visible })}
-                  className="rounded p-1.5 text-gray-300 hover:bg-gray-700"
-                >
-                  {layer.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                </button>
-                <button
-                  type="button"
-                  aria-label="Delete image"
-                  title="Delete image"
-                  onClick={() => onRemoveLayer(layer.id)}
-                  className="rounded p-1.5 text-red-400 hover:bg-gray-700"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="flex flex-wrap items-end gap-2">
-                <label className="flex flex-col gap-0.5 text-[10px] uppercase tracking-wider text-gray-500">
-                  Placement
-                  <select
-                    value={layer.placement}
-                    onChange={(event) => onUpdateLayer(layer.id, {
-                      placement: event.target.value === 'overlay' ? 'overlay' : 'underlay',
-                    })}
-                    className="rounded border border-gray-600 bg-gray-900 px-1.5 py-1 text-xs normal-case tracking-normal text-gray-200"
-                  >
-                    <option value="underlay">Underlay</option>
-                    <option value="overlay">Overlay</option>
-                  </select>
-                </label>
-                <label className="flex flex-col gap-0.5 text-[10px] uppercase tracking-wider text-gray-500">
-                  Opacity {Math.round(layer.opacity * 100)}%
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={layer.opacity}
-                    onChange={(event) => onUpdateLayer(layer.id, { opacity: event.target.valueAsNumber })}
-                    className="w-24"
-                  />
-                </label>
-                <label
-                  className="flex items-center gap-1.5 pb-1 text-xs text-gray-300"
-                  title="Only the GM ever sees this image (tracing reference)"
-                >
-                  <input
-                    type="checkbox"
-                    checked={layer.gmOnly}
-                    onChange={(event) => onUpdateLayer(layer.id, { gmOnly: event.target.checked })}
-                  />
-                  GM only
-                </label>
-              </div>
-
-              <div className="flex flex-wrap items-end gap-2">
-                {numberField(layer.x, (x) => onUpdateLayer(layer.id, { x }), { label: 'X (col)', step: 0.5 })}
-                {numberField(layer.y, (y) => onUpdateLayer(layer.id, { y }), { label: 'Y (row)', step: 0.5 })}
-                {numberField(layer.width, (width) => onUpdateLayer(layer.id, { width }), { label: 'Width', min: 0.1, step: 0.5 })}
-                {numberField(layer.height, (height) => onUpdateLayer(layer.id, { height }), { label: 'Height', min: 0.1, step: 0.5 })}
-                {numberField(layer.elevation, (elevation) => onUpdateLayer(layer.id, { elevation }), { label: 'Elev', min: 0, max: MAX_ELEVATION })}
-              </div>
-            </div>
+            <LayerCard
+              key={layer.id}
+              layer={layer}
+              map={map}
+              onUpdateLayer={onUpdateLayer}
+              onRemoveLayer={onRemoveLayer}
+            />
           ))}
 
           {importError && <p className="text-xs text-red-400">{importError}</p>}
           <p className="text-xs text-gray-500">
-            Position and size are in tiles. Underlays are hidden from players while a map
-            uses line-of-sight vision (they can’t be clipped to explored tiles).
+            Position and size are in tiles. If your image has its own printed grid, enter its
+            column/row count and use “Size to grid” — each image cell becomes one map tile.
+            Underlays are hidden from players while a map uses line-of-sight vision (they
+            can’t be clipped to explored tiles).
           </p>
         </div>
 
