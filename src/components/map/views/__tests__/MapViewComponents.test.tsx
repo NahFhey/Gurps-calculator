@@ -10,6 +10,7 @@ import { TerrainPalette } from '../TerrainPalette';
 import { MarkerEditor } from '../MarkerEditor';
 import { MarkerIcon } from '../MarkerIcon';
 import { TravelStep3Confirm } from '../TravelStep3Confirm';
+import { JourneyStatusPanel } from '../JourneyStatusPanel';
 import { LinkEditor } from '../LinkEditor';
 import { LinksMenu } from '../LinksMenu';
 import { createNewMap } from '../../../../utils/mapUtils';
@@ -271,7 +272,7 @@ describe('MapHeader', () => {
     expect(onSelectMap).toHaveBeenCalledWith(mockMapId2);
   });
 
-  it('updates vision, sight range, climate, and weather table from the GM settings popover', () => {
+  it('updates vision, sight range, climate, weather, and travel-event tables from GM settings', () => {
     const onUpdateMapSettings = vi.fn();
     render(
       <MapHeader
@@ -283,6 +284,7 @@ describe('MapHeader', () => {
         onUpdateMapSettings={onUpdateMapSettings}
         climateLabels={{ temperate: 'Temperate', arid: 'Arid' }}
         weatherTables={[{ id: 'weather-1', name: 'Regional Weather', entries: [] }]}
+        travelEventTableSets={[{ id: 'events-1', name: 'Regional Events', byTerrain: {} }]}
       />
     );
     fireEvent.click(screen.getByRole('button', { name: 'Map settings' }));
@@ -290,10 +292,12 @@ describe('MapHeader', () => {
     fireEvent.change(screen.getByLabelText('Sight range'), { target: { value: '12' } });
     fireEvent.change(screen.getByLabelText('Climate'), { target: { value: 'arid' } });
     fireEvent.change(screen.getByLabelText('Weather table'), { target: { value: 'weather-1' } });
+    fireEvent.change(screen.getByLabelText('Travel events'), { target: { value: 'events-1' } });
     expect(onUpdateMapSettings).toHaveBeenCalledWith({ visionMode: 'open' });
     expect(onUpdateMapSettings).toHaveBeenCalledWith({ sightRangeTiles: 12 });
     expect(onUpdateMapSettings).toHaveBeenCalledWith({ climate: 'arid' });
     expect(onUpdateMapSettings).toHaveBeenCalledWith({ weatherTableId: 'weather-1' });
+    expect(onUpdateMapSettings).toHaveBeenCalledWith({ travelEventTableSetId: 'events-1' });
   });
 });
 
@@ -735,6 +739,7 @@ describe('MarkerIcon', () => {
 
 const confirmMap = createNewMap({ name: 'Confirm', scaleMilesPerTile: 12, startTerrainId: 'terrain-plains' });
 const confirmDefaults: Omit<React.ComponentProps<typeof TravelStep3Confirm>, 'blockers' | 'onConfirm'> = {
+  provisioning: { foodUnits: 0, days: 0, bestCookName: null },
   isGmMode: false,
   hasNullTerrain: false,
   map: confirmMap,
@@ -815,6 +820,38 @@ describe('TravelStep3Confirm', () => {
     fireEvent.click(confirmButton);
 
     expect(onConfirm).toHaveBeenCalled();
+  });
+
+  it('shows provisioning capacity and warns when it is short', () => {
+    render(<TravelStep3Confirm {...confirmDefaults} provisioning={{ foodUnits: 1, days: 0, bestCookName: 'Ada' }} blockers={[]} onConfirm={vi.fn()} />);
+    expect(screen.getByText(/≈0 days of ingredients.*Best cook: Ada/)).toBeInTheDocument();
+    expect(screen.getByText('Not enough provisions for the estimated journey')).toBeInTheDocument();
+  });
+});
+
+describe('JourneyStatusPanel', () => {
+  it('shows encounter interruption, provisioning state, and setup action', () => {
+    const onSetupEncounter = vi.fn();
+    const start = confirmMap.grid[4][4];
+    const end = confirmMap.grid[4][5];
+    render(<JourneyStatusPanel
+      map={confirmMap}
+      group={{ id: 'g', name: 'Group', memberIds: [], vehicleId: null, position: { mapId: confirmMap.id, tileId: start }, journey: {
+        id: 'j', mapId: confirmMap.id, routeTileIds: [start, end], destinationTileId: end, mode: 'foot', navigatorId: null,
+        gmNavigationSkill: 10, forcedMarch: false, legProgressMiles: 0, milesTraveled: 2, status: 'paused', pauseReason: 'encounter', gmOverride: false, startedAt: { day: 1, slot: 0 },
+      } }}
+      fedToday={true}
+      onPause={vi.fn()}
+      onResume={vi.fn()}
+      onAbort={vi.fn()}
+      onAdvanceSlot={vi.fn()}
+      onCook={vi.fn()}
+      onSetupEncounter={onSetupEncounter}
+    />);
+    expect(screen.getByText('Fed today ✓')).toBeInTheDocument();
+    expect(screen.getByText(/Encounter interrupted/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Set up encounter' }));
+    expect(onSetupEncounter).toHaveBeenCalledOnce();
   });
 });
 

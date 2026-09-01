@@ -84,3 +84,11 @@ export function isAbleBodied(character: Character): boolean {
   const status = calculateHPStatus(hp.current, hp.max);
   return status !== 'critical' && status !== 'dead';
 }
+
+export function findGroupOfCharacter(
+  state: Pick<CampaignState, 'entities'>,
+  characterId: Id
+): TravelGroup | null {
+  return Object.values(state.entities.travelGroups ?? {})
+    .find((group) => group.memberIds.includes(characterId)) ?? null;
+}

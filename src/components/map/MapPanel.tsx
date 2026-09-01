@@ -49,6 +49,7 @@ import { getTerrainModifiers } from '../../utils/weatherSystem';
 import { resolveLocationTerrain } from '../../utils/mapUtils';
 import { getNavigationSkill } from '../../utils/navigation';
 import { JourneyStatusPanel } from './views/JourneyStatusPanel';
+import { estimateProvisionDays } from '../../utils/provisioning';
 
 /** Interaction mode for the map */
 export type MapInteractionMode = 'view' | 'paint' | 'select';
@@ -113,6 +114,10 @@ export function MapPanel() {
   const [navigatorId, setNavigatorId] = useState<Id | null>(null);
   const [gmNavigationSkill, setGmNavigationSkill] = useState(10);
   const [forcedMarch, setForcedMarch] = useState(false);
+  const provisioning = useMemo(
+    () => estimateProvisionDays(state, stagedTravelingMemberIds),
+    [state, stagedTravelingMemberIds]
+  );
 
   const compositionGroups = useMemo(
     () => activeGroup ? getCompositionGroups(state, activeGroup) : [],
@@ -620,6 +625,7 @@ export function MapPanel() {
           onSelectGroup={handleSelectGroup}
           climateLabels={climateLabels}
           weatherTables={Object.values(state.locations.weatherTables)}
+          travelEventTableSets={Object.values(state.entities.travelEventTableSets ?? {})}
         />
         <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-4">
           <MapIcon className="w-12 h-12 opacity-30" />
@@ -666,6 +672,7 @@ export function MapPanel() {
         onUpdateMapSettings={(changes) => actions.mapUpdateMap(activeMap.id, changes)}
         climateLabels={climateLabels}
         weatherTables={Object.values(state.locations.weatherTables)}
+        travelEventTableSets={Object.values(state.entities.travelEventTableSets ?? {})}
         onOpenImages={() => setShowImageLayers(true)}
       />
 
@@ -741,6 +748,7 @@ export function MapPanel() {
             navigatorId={navigatorId}
             gmNavigationSkill={gmNavigationSkill}
             forcedMarch={forcedMarch}
+            provisioning={provisioning}
             onSetStep={setTravelStep}
             onMoveChip={handleMoveTravelChip}
             onSelectVehicle={handleSelectTravelVehicle}
@@ -762,6 +770,22 @@ export function MapPanel() {
           onResume={() => actions.partyResumeJourney(activeGroup.id)}
           onAbort={() => actions.partyAbortJourney(activeGroup.id)}
           onAdvanceSlot={actions.advanceTime}
+          fedToday={state.entities.groupMeals?.[activeGroup.id] === state.time.day}
+          onCook={() => {
+            if (!activeGroup.vehicleId && activeGroup.journey?.status === 'active') {
+              actions.partyPauseJourney(activeGroup.id);
+            }
+            actions.setPendingIntent({ kind: 'cook', foodIds: [] });
+            actions.setActiveModule('downtime');
+          }}
+          onSetupEncounter={() => {
+            actions.setPendingIntent({
+              kind: 'encounter',
+              templateId: activeGroup.journey?.pendingEncounterTemplateId ?? null,
+              groupId: activeGroup.id,
+            });
+            actions.setActiveModule('combat');
+          }}
         />
       )}
 

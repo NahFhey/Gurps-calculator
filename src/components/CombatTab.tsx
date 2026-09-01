@@ -38,7 +38,9 @@ export function CombatTab() {
   }, [actions]);
 
   // If there's an active combat, automatically show tracker
-  const currentView = combatActive ? 'tracker' : view;
+  const currentView = combatActive
+    ? 'tracker'
+    : state.ui.pendingIntent?.kind === 'encounter' ? 'setup' : view;
 
   return (
     <div className="space-y-4 h-full flex flex-col">

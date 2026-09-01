@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Character } from '../../../types/campaign';
+import { createDefaultGCSData } from '../../../types/characterSheet';
 import type { Journey, TravelGroup } from '../../../types/party';
 import { createNewMap } from '../../../utils/mapUtils';
 import { campaignReducer, createCampaignState, type CampaignState } from '../../campaignReducer';
@@ -87,5 +88,56 @@ describe('journey end-to-end: multi-day arc', () => {
       status: 'active', routeTileIds: route, milesTraveled: 0,
     });
     expect(Object.keys(restored.downtime.tasksById)).toHaveLength(0);
+  });
+});
+
+describe('journey end-to-end: events and provisioning (C2)', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('forced encounter pauses the journey, arms the intent, and gates resume on combat', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const { state, map } = build();
+    state.entities.encounterTemplates = {
+      amb: { id: 'amb', name: 'Ambush', participants: [], createdAt: 0, updatedAt: 0 },
+    };
+    state.entities.travelEventTables = {
+      t1: {
+        id: 't1', name: 'Only Trouble',
+        entries: [{ id: 'e1', kind: 'encounter', weight: 1, name: 'Ambush!', description: 'x', encounterTemplateId: 'amb' }],
+      },
+    };
+    state.entities.travelEventTableSets = {
+      s1: { id: 's1', name: 'Trouble Set', byTerrain: {}, fallbackTableId: 't1' },
+    };
+    map.travelEventTableSetId = 's1';
+    const s = tick(state);
+    expect(s.entities.travelGroups?.g.journey).toMatchObject({
+      status: 'paused', pauseReason: 'encounter', pendingEncounterTemplateId: 'amb',
+    });
+    expect(s.ui.pendingIntent).toEqual({ kind: 'encounter', templateId: 'amb', groupId: 'g' });
+    const withCombat: CampaignState = {
+      ...s,
+      combat: { ...s.combat, activeSession: { id: 'combat' } as CampaignState['combat']['activeSession'] },
+    };
+    const blocked = campaignReducer(withCombat, { type: 'party/resumeJourney', payload: { groupId: 'g' } });
+    expect(blocked.entities.travelGroups?.g.journey?.status).toBe('paused');
+    const resumed = campaignReducer(s, { type: 'party/resumeJourney', payload: { groupId: 'g' } });
+    expect(resumed.entities.travelGroups?.g.journey).toMatchObject({ status: 'active' });
+    expect(resumed.entities.travelGroups?.g.journey?.pendingEncounterTemplateId).toBeUndefined();
+  });
+
+  it('an unfed travel day costs 1 FP + debt; a recorded meal clears the debt', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const { state } = build();
+    state.entities.characters.a.gcsData = createDefaultGCSData();
+    const startFP = state.entities.characters.a.gcsData.pools.FP.current;
+    let s = state;
+    for (let i = 0; i < 3; i += 1) s = tick(s);
+    expect(s.time.day).toBe(2);
+    expect(s.entities.characters.a.gcsData?.pools.FP.current).toBe(startFP - 1);
+    expect(s.entities.starvationFpDebt?.a).toBe(1);
+    const fed = campaignReducer(s, { type: 'party/recordMeal', payload: { groupId: 'g', day: 2 } });
+    expect(fed.entities.starvationFpDebt?.a).toBe(0);
+    expect(fed.entities.groupMeals?.g).toBe(2);
   });
 });

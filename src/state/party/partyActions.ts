@@ -1,6 +1,7 @@
 import type { Id } from '../../types/campaign';
 import type { MapId, TileId } from '../../types/map';
 import type { Journey, Vehicle, VehicleTypeDef } from '../../types/party';
+import type { TravelEventTable, TravelEventTableSet } from '../../types/travelEvents';
 
 export const PARTY_CREATE_GROUP = 'party/createGroup' as const;
 export const PARTY_MOVE_MEMBERS = 'party/moveMembers' as const;
@@ -21,6 +22,11 @@ export const PARTY_PAUSE_JOURNEY = 'party/pauseJourney' as const;
 export const PARTY_RESUME_JOURNEY = 'party/resumeJourney' as const;
 export const PARTY_ABORT_JOURNEY = 'party/abortJourney' as const;
 export const PARTY_REROUTE_JOURNEY = 'party/rerouteJourney' as const;
+export const PARTY_UPSERT_TRAVEL_EVENT_TABLE = 'party/upsertTravelEventTable' as const;
+export const PARTY_REMOVE_TRAVEL_EVENT_TABLE = 'party/removeTravelEventTable' as const;
+export const PARTY_UPSERT_TRAVEL_EVENT_TABLE_SET = 'party/upsertTravelEventTableSet' as const;
+export const PARTY_REMOVE_TRAVEL_EVENT_TABLE_SET = 'party/removeTravelEventTableSet' as const;
+export const PARTY_RECORD_MEAL = 'party/recordMeal' as const;
 
 export type ArmJourneyInput = Omit<
   Journey,
@@ -46,7 +52,12 @@ export type PartyAction =
   | { type: typeof PARTY_PAUSE_JOURNEY; payload: { groupId: Id } }
   | { type: typeof PARTY_RESUME_JOURNEY; payload: { groupId: Id } }
   | { type: typeof PARTY_ABORT_JOURNEY; payload: { groupId: Id } }
-  | { type: typeof PARTY_REROUTE_JOURNEY; payload: { groupId: Id; routeTileIds: TileId[] } };
+  | { type: typeof PARTY_REROUTE_JOURNEY; payload: { groupId: Id; routeTileIds: TileId[] } }
+  | { type: typeof PARTY_UPSERT_TRAVEL_EVENT_TABLE; payload: { table: TravelEventTable } }
+  | { type: typeof PARTY_REMOVE_TRAVEL_EVENT_TABLE; payload: { tableId: Id } }
+  | { type: typeof PARTY_UPSERT_TRAVEL_EVENT_TABLE_SET; payload: { set: TravelEventTableSet } }
+  | { type: typeof PARTY_REMOVE_TRAVEL_EVENT_TABLE_SET; payload: { setId: Id } }
+  | { type: typeof PARTY_RECORD_MEAL; payload: { groupId: Id; day: number } };
 
 export const PARTY_ACTION_TYPES = new Set<string>([
   PARTY_CREATE_GROUP,
@@ -68,6 +79,11 @@ export const PARTY_ACTION_TYPES = new Set<string>([
   PARTY_RESUME_JOURNEY,
   PARTY_ABORT_JOURNEY,
   PARTY_REROUTE_JOURNEY,
+  PARTY_UPSERT_TRAVEL_EVENT_TABLE,
+  PARTY_REMOVE_TRAVEL_EVENT_TABLE,
+  PARTY_UPSERT_TRAVEL_EVENT_TABLE_SET,
+  PARTY_REMOVE_TRAVEL_EVENT_TABLE_SET,
+  PARTY_RECORD_MEAL,
 ]);
 
 export function isPartyAction(action: { type: string }): action is PartyAction {

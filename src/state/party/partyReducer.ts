@@ -30,6 +30,11 @@ import {
   PARTY_RESUME_JOURNEY,
   PARTY_ABORT_JOURNEY,
   PARTY_REROUTE_JOURNEY,
+  PARTY_UPSERT_TRAVEL_EVENT_TABLE,
+  PARTY_REMOVE_TRAVEL_EVENT_TABLE,
+  PARTY_UPSERT_TRAVEL_EVENT_TABLE_SET,
+  PARTY_REMOVE_TRAVEL_EVENT_TABLE_SET,
+  PARTY_RECORD_MEAL,
 } from './partyActions';
 
 const hasJourney = (group: Draft<TravelGroup> | undefined): boolean => Boolean(group?.journey);
@@ -298,11 +303,65 @@ export function handlePartyAction(
 
     case PARTY_RESUME_JOURNEY: {
       const group = groups[action.payload.groupId];
-      if (group?.journey?.status === 'paused') {
+      if (group?.journey?.status === 'paused'
+        && (group.journey.pauseReason !== 'encounter' || !draft.combat.activeSession)) {
         group.journey.status = 'active';
         delete group.journey.pauseReason;
+        delete group.journey.pendingEncounterTemplateId;
         appendTravelLog(draft, travelLog.resumed(`${group.name}'s journey resumed`));
       }
+      return true;
+    }
+
+    case PARTY_UPSERT_TRAVEL_EVENT_TABLE: {
+      const tables = draft.entities.travelEventTables ?? (draft.entities.travelEventTables = {});
+      tables[action.payload.table.id] = action.payload.table;
+      draft.entities.deletedBuiltinTravelEventIds = (
+        draft.entities.deletedBuiltinTravelEventIds ?? []
+      ).filter((id) => id !== action.payload.table.id);
+      return true;
+    }
+
+    case PARTY_REMOVE_TRAVEL_EVENT_TABLE: {
+      const tables = draft.entities.travelEventTables ?? (draft.entities.travelEventTables = {});
+      const table = tables[action.payload.tableId];
+      if (table?.builtin) {
+        const deleted = draft.entities.deletedBuiltinTravelEventIds ?? [];
+        if (!deleted.includes(table.id)) deleted.push(table.id);
+        draft.entities.deletedBuiltinTravelEventIds = deleted;
+      }
+      delete tables[action.payload.tableId];
+      return true;
+    }
+
+    case PARTY_UPSERT_TRAVEL_EVENT_TABLE_SET: {
+      const sets = draft.entities.travelEventTableSets ?? (draft.entities.travelEventTableSets = {});
+      sets[action.payload.set.id] = action.payload.set;
+      draft.entities.deletedBuiltinTravelEventIds = (
+        draft.entities.deletedBuiltinTravelEventIds ?? []
+      ).filter((id) => id !== action.payload.set.id);
+      return true;
+    }
+
+    case PARTY_REMOVE_TRAVEL_EVENT_TABLE_SET: {
+      const sets = draft.entities.travelEventTableSets ?? (draft.entities.travelEventTableSets = {});
+      const set = sets[action.payload.setId];
+      if (set?.builtin) {
+        const deleted = draft.entities.deletedBuiltinTravelEventIds ?? [];
+        if (!deleted.includes(set.id)) deleted.push(set.id);
+        draft.entities.deletedBuiltinTravelEventIds = deleted;
+      }
+      delete sets[action.payload.setId];
+      return true;
+    }
+
+    case PARTY_RECORD_MEAL: {
+      const group = groups[action.payload.groupId];
+      if (!group || !Number.isFinite(action.payload.day)) return true;
+      const meals = draft.entities.groupMeals ?? (draft.entities.groupMeals = {});
+      const debt = draft.entities.starvationFpDebt ?? (draft.entities.starvationFpDebt = {});
+      meals[group.id] = action.payload.day;
+      for (const memberId of group.memberIds) debt[memberId] = 0;
       return true;
     }
 
@@ -322,6 +381,7 @@ export function handlePartyAction(
       group.journey.legProgressMiles = 0;
       group.journey.status = 'active';
       delete group.journey.pauseReason;
+      delete group.journey.pendingEncounterTemplateId;
       return true;
     }
 

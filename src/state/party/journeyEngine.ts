@@ -11,6 +11,7 @@ import {
 } from '../downtime/downtimeSelectors';
 import { getWeatherModifierForActivity, getTerrainModifiers } from '../../utils/weatherSystem';
 import { isCriticalFailure, roll3d6 } from '../../utils/gathering';
+import { evaluateDiceFormula } from '../../utils/gathering';
 import { getNavigationSkill } from '../../utils/navigation';
 import { isAbleBodied } from '../../utils/partyPosition';
 import { computeRouteMiles, findRoute } from '../../utils/mapRouter';
@@ -20,6 +21,9 @@ import { computeSlotBudgetMiles } from '../../utils/mapTravelValidation';
 import { getWorstGroupEncumbranceLevel } from '../../utils/encumbrance';
 import { isNightSlot } from '../../utils/timeSystem';
 import { travelLog } from '../../utils/activityLogger';
+import { resolveTravelEventTable, rollTravelEvent } from '../../utils/travelEvents';
+import type { TravelEventEntry } from '../../types/travelEvents';
+import { isTravelTask } from '../../types/downtime';
 
 const DIRECTIONS: ReadonlyArray<readonly [number, number]> = [
   [-1, 0], [1, 0], [0, -1], [0, 1],
@@ -198,6 +202,91 @@ function pauseForCrew(draft: Draft<CampaignState>, group: Draft<TravelGroup>, me
   appendLog(draft, travelLog.paused(message));
 }
 
+function rollHazardLoss(formula: string | undefined): number {
+  if (!formula) return 0;
+  try {
+    return Math.max(0, evaluateDiceFormula(formula).total);
+  } catch {
+    // Authored formulas may become malformed; reducer-side event processing stays a silent no-op.
+    return 0;
+  }
+}
+
+function applyTravelEvent(
+  draft: Draft<CampaignState>,
+  group: Draft<TravelGroup>,
+  event: TravelEventEntry,
+  night: boolean
+): void {
+  const journey = group.journey;
+  if (!journey) return;
+  if (event.kind === 'flavor') {
+    appendLog(draft, travelLog.progress(`${event.name} — ${event.description}`));
+    return;
+  }
+  if (event.kind === 'encounter') {
+    journey.status = 'paused';
+    journey.pauseReason = 'encounter';
+    journey.pendingEncounterTemplateId = event.encounterTemplateId ?? null;
+    draft.ui.pendingIntent = {
+      kind: 'encounter',
+      templateId: event.encounterTemplateId ?? null,
+      groupId: group.id,
+    };
+    // Later groups may overwrite the intent; paused journeys remain visible and are resolved sequentially.
+    appendLog(draft, travelLog.progress(`Encounter: ${event.name} — journey halted`));
+    return;
+  }
+  if (event.kind !== 'hazard') return;
+  const effects = event.hazard;
+  const summaries: string[] = [];
+  if (effects?.lostMiles && effects.lostMiles > 0) {
+    journey.legProgressMiles = Math.max(0, journey.legProgressMiles - effects.lostMiles);
+    summaries.push(`${effects.lostMiles} mi progress lost`);
+  }
+  for (const memberId of group.memberIds) {
+    const character = draft.entities.characters[memberId];
+    if (!character?.gcsData) continue;
+    const fpLoss = rollHazardLoss(effects?.fpLossFormula);
+    const hpLoss = rollHazardLoss(effects?.hpLossFormula);
+    if (fpLoss > 0) {
+      character.gcsData.pools.FP.current = Math.max(
+        0,
+        character.gcsData.pools.FP.current - fpLoss
+      );
+      summaries.push(`${character.name} takes ${fpLoss} FP`);
+    }
+    if (hpLoss > 0) {
+      character.gcsData.pools.HP.current -= hpLoss;
+      summaries.push(`${character.name} takes ${hpLoss} HP`);
+    }
+  }
+  appendLog(
+    draft,
+    travelLog.progress(`${event.name} — ${summaries.join(', ') || event.description}${night ? ' (night)' : ''}`)
+  );
+}
+
+function processTravelEvent(
+  draft: Draft<CampaignState>,
+  group: Draft<TravelGroup>,
+  night: boolean
+): void {
+  const journey = group.journey;
+  if (!journey || journey.routeTileIds.length <= 1) return;
+  const map = draft.maps.mapsById[journey.mapId];
+  const endingTile = map?.tilesById[journey.routeTileIds[0]];
+  if (!map || !endingTile) return;
+  const table = resolveTravelEventTable(draft, journey.mapId, endingTile.terrainId);
+  if (!table) return;
+  const event = rollTravelEvent(table, {
+    weatherType: map.currentWeather?.weather.type ?? null,
+    isNightSlot: night,
+    forcedMarch: journey.forcedMarch,
+  });
+  if (event) applyTravelEvent(draft, group, event, night);
+}
+
 function progressGroup(draft: Draft<CampaignState>, group: Draft<TravelGroup>): void {
   const journey = group.journey;
   if (!journey || journey.status !== 'active') return;
@@ -342,6 +431,9 @@ function progressGroup(draft: Draft<CampaignState>, group: Draft<TravelGroup>): 
   finalizeEnteredTiles(draft, journey.mapId, enteredTileIds, journey.gmOverride);
   materializeTravelTask(draft, group, crew, journey.id, milesMoved, failed);
 
+  // Arrival ambushes are a possible followup; completed journeys do not roll here.
+  processTravelEvent(draft, group, night);
+
   if (journey.routeTileIds.length === 1) {
     const mapId = journey.mapId;
     const destinationTileId = journey.destinationTileId;
@@ -365,6 +457,28 @@ export function progressJourneys(draft: Draft<CampaignState>): void {
   }
 }
 
-export function handleJourneyDayBoundary(_draft: Draft<CampaignState>): void {
-  // Lane C2 adds provisioning and missed-meal checks at this already-wired seam.
+export function handleJourneyDayBoundary(draft: Draft<CampaignState>): void {
+  const completedDay = draft.time.day - 1;
+  const meals = draft.entities.groupMeals ?? {};
+  const debt = draft.entities.starvationFpDebt ?? (draft.entities.starvationFpDebt = {});
+  for (const group of Object.values(draft.entities.travelGroups ?? {})) {
+    const traveled = Object.values(draft.downtime.tasksById).some((task) =>
+      task.dayKey === completedDay
+      && isTravelTask(task)
+      && task.activityData.groupId === group.id
+    );
+    if (!traveled || meals[group.id] === completedDay) continue;
+    for (const memberId of group.memberIds) {
+      const fp = draft.entities.characters[memberId]?.gcsData?.pools.FP;
+      if (!fp) continue;
+      fp.current = Math.max(0, fp.current - 1);
+      debt[memberId] = (debt[memberId] ?? 0) + 1;
+    }
+    appendLog(
+      draft,
+      travelLog.progress(
+        `${group.name} went without a cooked meal — 1 FP lost (won't recover until fed)`
+      )
+    );
+  }
 }

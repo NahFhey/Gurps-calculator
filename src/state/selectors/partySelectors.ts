@@ -2,6 +2,7 @@ import type { Id } from '../../types/campaign';
 import type { MapId } from '../../types/map';
 import type { CampaignState } from '../campaignReducer';
 import { groupsOnMap, resolveGroupPosition, vehiclesOnMap } from '../../utils/partyPosition';
+export { resolveTravelEventTable } from '../../utils/travelEvents';
 
 export const selectTravelGroups = (state: CampaignState) => state.entities.travelGroups ?? {};
 
@@ -20,6 +21,10 @@ export const selectGroupPosition = (state: CampaignState, groupId: Id) => {
 export const selectVehicles = (state: CampaignState) => state.entities.vehicles ?? {};
 
 export const selectVehicleTypes = (state: CampaignState) => state.entities.vehicleTypes ?? {};
+
+export const selectTravelEventTables = (state: CampaignState) => state.entities.travelEventTables ?? {};
+
+export const selectTravelEventTableSets = (state: CampaignState) => state.entities.travelEventTableSets ?? {};
 
 export const selectGroupsAboardVehicle = (state: CampaignState, vehicleId: Id) =>
   Object.values(selectTravelGroups(state)).filter((group) => group.vehicleId === vehicleId);

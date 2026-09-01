@@ -109,6 +109,9 @@ export function handleMapAction(
         if (changes.visionMode !== undefined) map.visionMode = changes.visionMode;
         if (changes.climate !== undefined) map.climate = changes.climate;
         if (changes.weatherTableId !== undefined) map.weatherTableId = changes.weatherTableId;
+        if (changes.travelEventTableSetId !== undefined) {
+          map.travelEventTableSetId = changes.travelEventTableSetId;
+        }
         if (changes.sightRangeTiles !== undefined) {
           const range = Number.isFinite(changes.sightRangeTiles) ? changes.sightRangeTiles : 1;
           map.sightRangeTiles = Math.max(1, Math.min(30, Math.round(range)));

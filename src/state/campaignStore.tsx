@@ -88,6 +88,7 @@ import type {
   StructureLayer,
 } from '../types/map';
 import type { Vehicle, VehicleTypeDef } from '../types/party';
+import type { TravelEventTable, TravelEventTableSet } from '../types/travelEvents';
 import type { ArmJourneyInput } from './party/partyActions';
 
 type CampaignStoreValue = {
@@ -313,7 +314,7 @@ type CampaignStoreValue = {
     setMaps: (maps: MapState) => void;
     mapCreateMap: (params: { name: string; description?: string; scaleMilesPerTile: MapScale; startTerrainId: TerrainId; climate: ClimateType }) => void;
     mapDeleteMap: (mapId: MapId) => void;
-    mapUpdateMap: (mapId: MapId, changes: Partial<Pick<MapModel, 'name' | 'description' | 'visionMode' | 'sightRangeTiles' | 'climate' | 'weatherTableId'>>) => void;
+    mapUpdateMap: (mapId: MapId, changes: Partial<Pick<MapModel, 'name' | 'description' | 'visionMode' | 'sightRangeTiles' | 'climate' | 'weatherTableId' | 'travelEventTableSetId'>>) => void;
     mapSetActiveMap: (mapId: MapId | null) => void;
     mapSetTileTerrain: (mapId: MapId, tileId: TileId, terrainId: TerrainId, elevationOverride?: number) => void;
     mapStampTerrain: (mapId: MapId, tileIds: TileId[], terrainId: TerrainId) => void;
@@ -357,6 +358,11 @@ type CampaignStoreValue = {
     partyResumeJourney: (groupId: Id) => void;
     partyAbortJourney: (groupId: Id) => void;
     partyRerouteJourney: (groupId: Id, routeTileIds: TileId[]) => void;
+    partyUpsertTravelEventTable: (table: TravelEventTable) => void;
+    partyRemoveTravelEventTable: (tableId: Id) => void;
+    partyUpsertTravelEventTableSet: (set: TravelEventTableSet) => void;
+    partyRemoveTravelEventTableSet: (setId: Id) => void;
+    partyRecordMeal: (params: { groupId: Id; day: number }) => void;
   };
 };
 
@@ -681,7 +687,7 @@ export function CampaignStoreProvider({
       mapCreateMap: (params: { name: string; description?: string; scaleMilesPerTile: MapScale; startTerrainId: TerrainId; climate: ClimateType }) =>
         dispatch({ type: 'map/createMap', payload: params }),
       mapDeleteMap: (mapId: MapId) => dispatch({ type: 'map/deleteMap', payload: mapId }),
-      mapUpdateMap: (mapId: MapId, changes: Partial<Pick<MapModel, 'name' | 'description' | 'visionMode' | 'sightRangeTiles' | 'climate' | 'weatherTableId'>>) =>
+      mapUpdateMap: (mapId: MapId, changes: Partial<Pick<MapModel, 'name' | 'description' | 'visionMode' | 'sightRangeTiles' | 'climate' | 'weatherTableId' | 'travelEventTableSetId'>>) =>
         dispatch({ type: 'map/updateMap', payload: { mapId, changes } }),
       mapSetActiveMap: (mapId: MapId | null) => dispatch({ type: 'map/setActiveMap', payload: mapId }),
       mapSetTileTerrain: (mapId: MapId, tileId: TileId, terrainId: TerrainId, elevationOverride?: number) =>
@@ -763,6 +769,16 @@ export function CampaignStoreProvider({
         dispatch({ type: 'party/abortJourney', payload: { groupId } }),
       partyRerouteJourney: (groupId: Id, routeTileIds: TileId[]) =>
         dispatch({ type: 'party/rerouteJourney', payload: { groupId, routeTileIds } }),
+      partyUpsertTravelEventTable: (table: TravelEventTable) =>
+        dispatch({ type: 'party/upsertTravelEventTable', payload: { table } }),
+      partyRemoveTravelEventTable: (tableId: Id) =>
+        dispatch({ type: 'party/removeTravelEventTable', payload: { tableId } }),
+      partyUpsertTravelEventTableSet: (set: TravelEventTableSet) =>
+        dispatch({ type: 'party/upsertTravelEventTableSet', payload: { set } }),
+      partyRemoveTravelEventTableSet: (setId: Id) =>
+        dispatch({ type: 'party/removeTravelEventTableSet', payload: { setId } }),
+      partyRecordMeal: (params: { groupId: Id; day: number }) =>
+        dispatch({ type: 'party/recordMeal', payload: params }),
 
       // Storage cleanup
       clearCheckpoints: () => dispatch({ type: 'clearCheckpoints' }),

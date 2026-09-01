@@ -71,6 +71,8 @@ export interface Journey {
   milesTraveled: number;
   status: 'active' | 'paused';
   pauseReason?: JourneyPauseReason;
+  /** Persists the encounter hand-off after the same-session intent is consumed. */
+  pendingEncounterTemplateId?: Id | null;
   gmOverride: boolean;
   startedAt: { day: number; slot: number };
 }

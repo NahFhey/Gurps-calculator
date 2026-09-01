@@ -9,6 +9,7 @@ import { CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { getNavigationSkill } from '../../../utils/navigation';
 import { getRouteStats } from '../../../utils/mapTravelValidation';
 import { getWorstGroupEncumbranceLevel } from '../../../utils/encumbrance';
+import type { ProvisionEstimate } from '../../../utils/provisioning';
 
 interface TravelStep3ConfirmProps {
   blockers: TravelBlocker[];
@@ -26,6 +27,7 @@ interface TravelStep3ConfirmProps {
   navigatorId: Id | null;
   gmNavigationSkill: number;
   forcedMarch: boolean;
+  provisioning: ProvisionEstimate;
   onNavigatorChange: (id: Id | null) => void;
   onGmNavigationSkillChange: (skill: number) => void;
   onForcedMarchChange: (forced: boolean) => void;
@@ -48,6 +50,7 @@ export function TravelStep3Confirm({
   navigatorId,
   gmNavigationSkill,
   forcedMarch,
+  provisioning,
   onNavigatorChange,
   onGmNavigationSkillChange,
   onForcedMarchChange,
@@ -142,6 +145,15 @@ export function TravelStep3Confirm({
         <div className="text-[10px] text-gray-400">
           {stats.totalMiles.toFixed(0)} mi — ~{stats.estimatedMovingSlots} slots (~{stats.estimatedDays} days)
         </div>
+        <div className="text-[10px] text-gray-300" data-testid="provisioning-preview">
+          ≈{provisioning.days} days of ingredients for {characters.length} travelers — Best cook: {provisioning.bestCookName ?? 'None'}
+        </div>
+        {provisioning.days < stats.estimatedDays && (
+          <div className="flex items-center gap-1 text-[10px] text-amber-300">
+            <AlertTriangle className="h-3 w-3" />
+            Not enough provisions for the estimated journey
+          </div>
+        )}
       </div>
 
       {/* GM override warning */}

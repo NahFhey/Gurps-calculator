@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
 // ---------------------------------------------------------------------------
@@ -131,7 +131,7 @@ function setupCombatStore(overrides: Record<string, unknown> = {}) {
 function setupCampaignStore(overrides: Record<string, unknown> = {}) {
   mockedUseCampaignStore.mockReturnValue({
     state: {
-      ui: { gmModeEnabled: false },
+      ui: { gmModeEnabled: false, pendingIntent: null },
       maps: { mapsById: {} },
       entities: { combatCharacters: {}, combatItems: {}, characters: {} },
       combat: { activeSession: null },
@@ -139,6 +139,7 @@ function setupCampaignStore(overrides: Record<string, unknown> = {}) {
     },
     actions: {
       updateState: vi.fn(),
+      clearPendingIntent: vi.fn(),
       ...((overrides.actions as object) ?? {}),
     },
   } as unknown as ReturnType<typeof useCampaignStore>);
@@ -453,5 +454,32 @@ describe('EncounterSetup', () => {
     for (const name of names) {
       expect(screen.getAllByText(name)).toHaveLength(2);
     }
+  });
+
+  it('consumes a travel intent, loads its template, and uses the event name', async () => {
+    const clearPendingIntent = vi.fn();
+    const template = { id: 'wolves', name: 'Wolf Pack', description: 'Template description', participants: [], createdAt: 1, updatedAt: 1 };
+    setupCombatStore({ encounterTemplates: { wolves: template } });
+    setupCampaignStore({
+      state: {
+        ui: { gmModeEnabled: true, pendingIntent: { kind: 'encounter', templateId: 'wolves', groupId: 'g' } },
+        maps: { mapsById: {} }, combat: { activeSession: null },
+        entities: { combatCharacters: {}, combatItems: {}, characters: {}, travelEventTables: { road: { id: 'road', name: 'Road', entries: [{ id: 'e', kind: 'encounter', weight: 1, name: 'Howls on the road', description: '', encounterTemplateId: 'wolves' }] } } },
+      },
+      actions: { clearPendingIntent },
+    });
+    render(<EncounterSetup />);
+    await waitFor(() => expect(screen.getByPlaceholderText('e.g., Goblin Ambush')).toHaveValue('Howls on the road'));
+    expect(clearPendingIntent).toHaveBeenCalledOnce();
+  });
+
+  it('clears a dangling travel template intent without crashing', async () => {
+    const clearPendingIntent = vi.fn();
+    setupCampaignStore({
+      state: { ui: { gmModeEnabled: true, pendingIntent: { kind: 'encounter', templateId: 'missing', groupId: 'g' } }, maps: { mapsById: {} }, combat: { activeSession: null }, entities: { combatCharacters: {}, combatItems: {}, characters: {}, travelEventTables: {} } },
+      actions: { clearPendingIntent },
+    });
+    render(<EncounterSetup />);
+    await waitFor(() => expect(clearPendingIntent).toHaveBeenCalledOnce());
   });
 });

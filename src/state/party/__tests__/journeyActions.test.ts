@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createCampaignState, campaignReducer, type CampaignState } from '../../campaignReducer';
 import { createNewMap } from '../../../utils/mapUtils';
 import type { Journey } from '../../../types/party';
+import { createDefaultGCSData } from '../../../types/characterSheet';
 
 function fixture() {
   const state = createCampaignState();
@@ -135,5 +136,59 @@ describe('journey party actions', () => {
     };
     const next = campaignReducer(base.state, { type: 'party/placeVehicle', payload: { vehicleId: 'v', mapId: base.map.id, tileId: base.end } });
     expect(next.entities.travelGroups?.g.journey).toBeNull();
+  });
+
+  it('blocks encounter resume while combat is active', () => {
+    const { state } = withJourney();
+    const group = state.entities.travelGroups!.g;
+    const encounterState = {
+      ...state,
+      entities: { ...state.entities, travelGroups: { ...state.entities.travelGroups, g: { ...group, journey: { ...group.journey!, status: 'paused' as const, pauseReason: 'encounter' as const } } } },
+      combat: { ...state.combat, activeSession: { id: 'combat' } as CampaignState['combat']['activeSession'] },
+    };
+    const next = campaignReducer(encounterState, { type: 'party/resumeJourney', payload: { groupId: 'g' } });
+    expect(next.entities.travelGroups?.g.journey?.status).toBe('paused');
+  });
+
+  it('allows encounter resume after combat ends', () => {
+    const { state } = withJourney();
+    const group = state.entities.travelGroups!.g;
+    const encounterState = {
+      ...state,
+      entities: { ...state.entities, travelGroups: { ...state.entities.travelGroups, g: { ...group, journey: { ...group.journey!, status: 'paused' as const, pauseReason: 'encounter' as const } } } },
+    };
+    const next = campaignReducer(encounterState, { type: 'party/resumeJourney', payload: { groupId: 'g' } });
+    expect(next.entities.travelGroups?.g.journey?.status).toBe('active');
+  });
+
+  it('records a group meal and clears every current member debt', () => {
+    const { state } = fixture();
+    state.entities.starvationFpDebt = { a: 2, b: 1, outsider: 3 };
+    const next = campaignReducer(state, { type: 'party/recordMeal', payload: { groupId: 'g', day: 4 } });
+    expect(next.entities.groupMeals?.g).toBe(4);
+    expect(next.entities.starvationFpDebt).toEqual({ a: 0, b: 0, outsider: 3 });
+  });
+
+  it('silently ignores meal records for missing groups', () => {
+    const { state } = fixture();
+    const next = campaignReducer(state, { type: 'party/recordMeal', payload: { groupId: 'missing', day: 4 } });
+    expect(next).toBe(state);
+  });
+
+  it('increments builtin table tombstones on delete and clears them on upsert', () => {
+    const { state } = fixture();
+    const table = { id: 'builtin-table', name: 'Builtin', entries: [], builtin: true };
+    state.entities.travelEventTables = { [table.id]: table };
+    const removed = campaignReducer(state, { type: 'party/removeTravelEventTable', payload: { tableId: table.id } });
+    expect(removed.entities.deletedBuiltinTravelEventIds).toContain(table.id);
+    const restored = campaignReducer(removed, { type: 'party/upsertTravelEventTable', payload: { table } });
+    expect(restored.entities.deletedBuiltinTravelEventIds).not.toContain(table.id);
+  });
+
+  it('recorded meals do not require character sheet data', () => {
+    const { state } = fixture();
+    state.entities.characters.a.gcsData = createDefaultGCSData();
+    const next = campaignReducer(state, { type: 'party/recordMeal', payload: { groupId: 'g', day: 2 } });
+    expect(next.entities.groupMeals?.g).toBe(2);
   });
 });

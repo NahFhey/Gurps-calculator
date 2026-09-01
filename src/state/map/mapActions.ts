@@ -93,7 +93,7 @@ export type UpdateMapAction = {
   type: typeof MAP_UPDATE;
   payload: {
     mapId: MapId;
-    changes: Partial<Pick<MapModel, 'name' | 'description' | 'visionMode' | 'sightRangeTiles' | 'climate' | 'weatherTableId'>>;
+    changes: Partial<Pick<MapModel, 'name' | 'description' | 'visionMode' | 'sightRangeTiles' | 'climate' | 'weatherTableId' | 'travelEventTableSetId'>>;
   };
 };
 

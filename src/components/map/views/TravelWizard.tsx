@@ -20,6 +20,7 @@ import { TravelStep3Confirm } from './TravelStep3Confirm';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { buildStagedGroup } from '../../../utils/travelComposition';
 import { SCALE_TO_MODES } from '../../../constants/map';
+import type { ProvisionEstimate } from '../../../utils/provisioning';
 
 interface TravelWizardProps {
   map: MapModel;
@@ -44,6 +45,7 @@ interface TravelWizardProps {
   navigatorId: Id | null;
   gmNavigationSkill: number;
   forcedMarch: boolean;
+  provisioning: ProvisionEstimate;
   onSetStep: (step: 1 | 2 | 3) => void;
   onMoveChip: (memberId: Id, to: PartyColumn) => void;
   onSelectVehicle: (vehicleId: Id | null) => void;
@@ -80,6 +82,7 @@ export function TravelWizard({
   navigatorId,
   gmNavigationSkill,
   forcedMarch,
+  provisioning,
   onSetStep,
   onMoveChip,
   onSelectVehicle,
@@ -231,6 +234,7 @@ export function TravelWizard({
             navigatorId={navigatorId}
             gmNavigationSkill={gmNavigationSkill}
             forcedMarch={forcedMarch}
+            provisioning={provisioning}
             onNavigatorChange={onNavigatorChange}
             onGmNavigationSkillChange={onGmNavigationSkillChange}
             onForcedMarchChange={onForcedMarchChange}

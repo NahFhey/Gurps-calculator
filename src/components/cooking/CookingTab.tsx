@@ -24,6 +24,7 @@ import { CreateMealView } from './views/CreateMealView';
 import { RecipeLibraryView } from './views/RecipeLibraryView';
 import { RemakeView } from './views/RemakeView';
 import { isAttachmentReachable } from '../../utils/facilityAccess';
+import { findGroupOfCharacter } from '../../utils/partyPosition';
 
 export function CookingTab() {
   const { state, actions } = useCampaignStore();
@@ -150,6 +151,8 @@ export function CookingTab() {
           mealFoodTypes,
         ),
       });
+      const group = findGroupOfCharacter(state, selectedWorkerId);
+      if (group) actions.partyRecordMeal({ groupId: group.id, day: state.time.day });
     }
     saveRecipes([...recipes, recipe]);
     const workerId = workers?.find(worker => worker.name === selectedWorker)?.id;
@@ -275,6 +278,8 @@ export function CookingTab() {
           mealFoodTypes,
         ),
       });
+      const group = findGroupOfCharacter(state, remakeWorkerId);
+      if (group) actions.partyRecordMeal({ groupId: group.id, day: state.time.day });
     }
     const substitutes: Array<{ original: string; replacement: string; amount: number }> = [];
     remakeIngredients.forEach(ingredient => {

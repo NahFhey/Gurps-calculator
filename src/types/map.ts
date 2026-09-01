@@ -262,6 +262,8 @@ export interface MapModel {
   currentWeather?: ActiveWeather | null;
   /** Optional custom weather table stored in the location-authoring slice. */
   weatherTableId?: Id | null;
+  /** Optional terrain-keyed travel event table set override. */
+  travelEventTableSetId?: Id | null;
 
   /** Vision regime for players. */
   visionMode: VisionMode;

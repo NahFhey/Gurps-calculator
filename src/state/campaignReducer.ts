@@ -68,6 +68,7 @@ import type { DowntimeState } from '../types/downtime';
 import type { MapState, TileId } from '../types/map';
 import { initialMapState } from '../types/map';
 import type { TravelGroup, Vehicle, VehicleTypeDef } from '../types/party';
+import type { TravelEventTable, TravelEventTableSet } from '../types/travelEvents';
 import type { ForageZoneProfile, ForageItem, ForagingConfig } from '../types/foraging';
 import { DEFAULT_FORAGING_CONFIG } from '../constants/foraging';
 import {
@@ -105,7 +106,8 @@ export type CharacterPanelView = 'sheet' | 'skills' | 'equipment' | 'inventory';
 export type PendingIntent =
   | { kind: 'cook'; foodIds: string[] }
   | { kind: 'craft' }
-  | { kind: 'promote'; sourceNames: string[] };
+  | { kind: 'promote'; sourceNames: string[] }
+  | { kind: 'encounter'; templateId: Id | null; groupId: Id };
 
 export type CampaignState = {
   ui: {
@@ -139,6 +141,11 @@ export type CampaignState = {
     vehicles?: Record<Id, Vehicle>;
     vehicleTypes?: Record<string, VehicleTypeDef>;
     deletedBuiltinVehicleTypeIds?: string[];
+    travelEventTables?: Record<Id, TravelEventTable>;
+    travelEventTableSets?: Record<Id, TravelEventTableSet>;
+    deletedBuiltinTravelEventIds?: string[];
+    groupMeals?: Record<Id, number>;
+    starvationFpDebt?: Record<Id, number>;
 
     // Inventory system
     recipes: Record<Id, Recipe>;
@@ -492,6 +499,11 @@ export const createCampaignState = (legacyAppState: LegacyAppState = initialLega
     vehicles: {},
     vehicleTypes: {},
     deletedBuiltinVehicleTypeIds: [],
+    travelEventTables: {},
+    travelEventTableSets: {},
+    deletedBuiltinTravelEventIds: [],
+    groupMeals: {},
+    starvationFpDebt: {},
 
     // Inventory system (empty initially)
     recipes: {},

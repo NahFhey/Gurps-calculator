@@ -7,6 +7,7 @@ import { createCampaignState } from '../state/campaignReducer';
 import type { CampaignState } from '../state/campaignReducer';
 import { CHARACTER_TEMPLATE_SEEDS } from '../constants/characterTemplateSeeds';
 import { VEHICLE_TYPE_SEEDS } from '../constants/vehicleSeeds';
+import { TRAVEL_EVENT_SET_SEED, TRAVEL_EVENT_TABLE_SEEDS } from '../constants/travelEventSeeds';
 import { safeDeepClone } from '../utils/helpers';
 import {
   normalizeArray,
@@ -270,6 +271,41 @@ export function ensureJourneyIntegrity(state: CampaignState): CampaignState {
   }
   if (!changed) return state;
   return { ...state, entities: { ...state.entities, travelGroups: groups } };
+}
+
+/** Seed built-in travel-event catalogs and provision ledgers after hydration. */
+export function ensureTravelEventTables(state: CampaignState): CampaignState {
+  const originalTables = state.entities.travelEventTables;
+  const originalSets = state.entities.travelEventTableSets;
+  const tables = { ...(originalTables ?? {}) };
+  const sets = { ...(originalSets ?? {}) };
+  const deleted = new Set(state.entities.deletedBuiltinTravelEventIds ?? []);
+  let changed = originalTables === undefined
+    || originalSets === undefined
+    || state.entities.groupMeals === undefined
+    || state.entities.starvationFpDebt === undefined;
+  for (const seed of TRAVEL_EVENT_TABLE_SEEDS) {
+    if (!tables[seed.id] && !deleted.has(seed.id)) {
+      tables[seed.id] = safeDeepClone(seed);
+      changed = true;
+    }
+  }
+  if (!sets[TRAVEL_EVENT_SET_SEED.id] && !deleted.has(TRAVEL_EVENT_SET_SEED.id)) {
+    sets[TRAVEL_EVENT_SET_SEED.id] = safeDeepClone(TRAVEL_EVENT_SET_SEED);
+    changed = true;
+  }
+  if (!changed) return state;
+  return {
+    ...state,
+    entities: {
+      ...state.entities,
+      travelEventTables: tables,
+      travelEventTableSets: sets,
+      deletedBuiltinTravelEventIds: [...deleted],
+      groupMeals: state.entities.groupMeals ?? {},
+      starvationFpDebt: state.entities.starvationFpDebt ?? {},
+    },
+  };
 }
 
 // Legacy localStorage keys to migrate

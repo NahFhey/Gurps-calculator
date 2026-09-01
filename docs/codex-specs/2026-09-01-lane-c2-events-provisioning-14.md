@@ -120,7 +120,7 @@ export function rollTravelEvent(table: TravelEventTable, ctx: TravelEventContext
 
 ## Part 2 — Engine integration (`src/state/party/journeyEngine.ts`)
 
-One event roll per travel slot per journeying group (design D8) — moving slots AND drift slots, never camp slots. Runs **after** the slot's movement/drift and after travel-task materialization, on the tile where the group ended the slot:
+One event roll per travel slot per journeying group (design D8) — moving slots AND drift slots, never camp slots. Runs **after** the slot's movement/drift and after travel-task materialization, on the tile where the group ended the slot. **Roll only when the journey still has route remaining after movement** (`routeTileIds.length > 1` at the roll point, i.e. before the arrival block in `progressGroup`) — the arrival slot rolls no event, because a completed journey has nothing left to pause; add a code comment saying "arrival ambushes" are a possible followup. Details:
 
 - Resolve the table for the group's ending tile terrain; no table → done.
 - `rollTravelEvent` with `{ weatherType, isNightSlot: isNightSlot(...), forcedMarch: journey.forcedMarch }`. Null → done.

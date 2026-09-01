@@ -68,6 +68,7 @@ const migrationHandlers: Record<string, MigrationHandler> = {
   '1.5.6:1.5.7': migrateTo1_5_7,
   '1.5.7:1.5.8': migrateTo1_5_8,
   '1.5.8:1.5.9': migrateTo1_5_9,
+  '1.5.9:1.6.0': migrateTo1_6_0,
 };
 
 /**
@@ -648,6 +649,45 @@ export function migrateTo1_5_9(data: MigratableData): MigratableData {
   return {
     ...data,
     entities: { ...entities, travelGroups: nextGroups },
+  };
+}
+
+/** Migration: 1.5.9 → 1.6.0 (defensive travel-event references). */
+export function migrateTo1_6_0(data: MigratableData): MigratableData {
+  if (!isRecord(data)) return data;
+  const entities = isRecord(data.entities) ? data.entities : {};
+  const sets = isRecord(entities.travelEventTableSets) ? entities.travelEventTableSets : {};
+  const templates = isRecord(entities.encounterTemplates) ? entities.encounterTemplates : {};
+  const tables = isRecord(entities.travelEventTables) ? entities.travelEventTables : {};
+  const mapsState = isRecord(data.maps) ? data.maps : {};
+  const mapsById = isRecord(mapsState.mapsById) ? mapsState.mapsById : {};
+  let mapsChanged = false;
+  const nextMaps = Object.fromEntries(Object.entries(mapsById).map(([id, value]) => {
+    if (!isRecord(value) || typeof value.travelEventTableSetId !== 'string') return [id, value];
+    const setId = value.travelEventTableSetId;
+    if (setId === 'travel-event-set-default' || sets[setId] !== undefined) return [id, value];
+    mapsChanged = true;
+    return [id, omitKeys(value, ['travelEventTableSetId'])];
+  }));
+  let tablesChanged = false;
+  const nextTables = Object.fromEntries(Object.entries(tables).map(([id, value]) => {
+    if (!isRecord(value) || !Array.isArray(value.entries)) return [id, value];
+    let entriesChanged = false;
+    const entries = value.entries.map((entryValue) => {
+      if (!isRecord(entryValue) || typeof entryValue.encounterTemplateId !== 'string'
+        || templates[entryValue.encounterTemplateId] !== undefined) return entryValue;
+      entriesChanged = true;
+      return omitKeys(entryValue, ['encounterTemplateId']);
+    });
+    if (!entriesChanged) return [id, value];
+    tablesChanged = true;
+    return [id, { ...value, entries }];
+  }));
+  if (!mapsChanged && !tablesChanged) return data;
+  return {
+    ...data,
+    entities: tablesChanged ? { ...entities, travelEventTables: nextTables } : entities,
+    maps: mapsChanged ? { ...mapsState, mapsById: nextMaps } : mapsState,
   };
 }
 

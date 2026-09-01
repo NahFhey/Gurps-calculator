@@ -67,7 +67,7 @@ function assertArrayProperty<Key extends string>(
 describe('Schema Versioning System', () => {
   describe('Version Constants', () => {
     it('should have current schema version defined', () => {
-      expect(CURRENT_SCHEMA_VERSION).toBe('1.5.9');
+      expect(CURRENT_SCHEMA_VERSION).toBe('1.6.0');
     });
 
     it('should have metadata for all supported versions', () => {
@@ -78,6 +78,7 @@ describe('Schema Versioning System', () => {
       expect(SCHEMA_METADATA['1.4.0']).toBeDefined();
       expect(SCHEMA_METADATA['1.5.0']).toBeDefined();
       expect(SCHEMA_METADATA['1.5.1']).toBeDefined();
+      expect(SCHEMA_METADATA['1.6.0']).toBeDefined();
       expect(SCHEMA_METADATA['1.5.3']).toBeDefined();
       expect(SCHEMA_METADATA['1.5.5']).toBeDefined();
       expect(SCHEMA_METADATA['1.5.6']).toBeDefined();

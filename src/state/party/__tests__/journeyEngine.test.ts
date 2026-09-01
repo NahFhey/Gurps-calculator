@@ -5,6 +5,7 @@ import type { Journey, TravelGroup } from '../../../types/party';
 import { createNewMap } from '../../../utils/mapUtils';
 import { selectCharacterFatigueStatus } from '../../downtime/downtimeSelectors';
 import { campaignReducer, createCampaignState, type CampaignState } from '../../campaignReducer';
+import type { TravelEventEntry } from '../../../types/travelEvents';
 
 function makeJourney(mapId: string, routeTileIds: string[], overrides: Partial<Journey> = {}): Journey {
   return {
@@ -39,6 +40,17 @@ function fixture() {
 
 function tick(state: CampaignState): CampaignState {
   return campaignReducer(state, { type: 'advanceTime' });
+}
+
+function useSingleEvent(state: CampaignState, event: TravelEventEntry): void {
+  state.entities.travelEventTables = {
+    events: { id: 'events', name: 'Events', entries: [event] },
+  };
+  state.entities.travelEventTableSets = {
+    'travel-event-set-default': {
+      id: 'travel-event-set-default', name: 'Default', byTerrain: { 'terrain-plains': 'events' }, fallbackTableId: 'events',
+    },
+  };
 }
 
 describe('journey engine', () => {
@@ -181,5 +193,82 @@ describe('journey engine', () => {
     };
     const next = tick(state);
     expect(next.downtime.taskOrder).toEqual(['task-travel-ja-1-0']);
+  });
+
+  it('logs a flavor event after movement on a route with distance remaining', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const { state, map, start, east, farEast } = fixture();
+    state.entities.travelGroups!.g.journey = makeJourney(map.id, [start, east, farEast]);
+    useSingleEvent(state, { id: 'flavor', kind: 'flavor', weight: 1, name: 'Old stones', description: 'Runes line the road.' });
+    const next = tick(state);
+    expect(next.logs.entries.some((log) => log.payload.message === 'Old stones — Runes line the road.')).toBe(true);
+  });
+
+  it('floors hazard lost-mile progress at zero', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const { state, map, start, east, farEast } = fixture();
+    state.entities.travelGroups!.g.journey = makeJourney(map.id, [start, east, farEast], { legProgressMiles: 4 });
+    useSingleEvent(state, { id: 'hazard', kind: 'hazard', weight: 1, name: 'Detour', description: 'Lost ground.', hazard: { lostMiles: 20 } });
+    expect(tick(state).entities.travelGroups?.g.journey?.legProgressMiles).toBe(0);
+  });
+
+  it('applies FP and HP hazard dice per member, flooring FP but allowing negative HP', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const { state, map, start, east, farEast } = fixture();
+    state.entities.travelGroups!.g.journey = makeJourney(map.id, [start, east, farEast]);
+    for (const character of Object.values(state.entities.characters)) {
+      character.gcsData = createDefaultGCSData();
+      character.gcsData.pools.FP.current = 0;
+      character.gcsData.pools.HP.current = 1;
+    }
+    useSingleEvent(state, { id: 'hazard', kind: 'hazard', weight: 1, name: 'Stones', description: 'Falling stones.', hazard: { fpLossFormula: '1d6', hpLossFormula: '2d6' } });
+    const next = tick(state);
+    expect(next.entities.characters.a.gcsData?.pools.FP.current).toBe(0);
+    expect(next.entities.characters.a.gcsData?.pools.HP.current).toBe(-1);
+    expect(next.entities.characters.b.gcsData?.pools.HP.current).toBe(-1);
+  });
+
+  it('skips hazard pool effects for members without gcsData', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const { state, map, start, east, farEast } = fixture();
+    state.entities.travelGroups!.g.journey = makeJourney(map.id, [start, east, farEast]);
+    state.entities.characters.a.gcsData = createDefaultGCSData();
+    useSingleEvent(state, { id: 'hazard', kind: 'hazard', weight: 1, name: 'Heat', description: 'Hot.', hazard: { fpLossFormula: '1d6' } });
+    const next = tick(state);
+    expect(next.entities.characters.a.gcsData?.pools.FP.current).toBe(9);
+    expect(next.entities.characters.b.gcsData).toBeUndefined();
+  });
+
+  it('pauses for an encounter and sets the template/group intent', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const { state, map, start, east, farEast } = fixture();
+    state.entities.travelGroups!.g.journey = makeJourney(map.id, [start, east, farEast]);
+    useSingleEvent(state, { id: 'encounter', kind: 'encounter', weight: 1, name: 'Bandits', description: 'Ambush.', encounterTemplateId: 'bandits' });
+    const next = tick(state);
+    expect(next.entities.travelGroups?.g.journey).toMatchObject({ status: 'paused', pauseReason: 'encounter', pendingEncounterTemplateId: 'bandits' });
+    expect(next.ui.pendingIntent).toEqual({ kind: 'encounter', templateId: 'bandits', groupId: 'g' });
+  });
+
+  it('never rolls an event during a camp slot', () => {
+    const { state, map, start, east, farEast } = fixture();
+    state.time.slot = 2;
+    state.entities.travelGroups!.g.journey = makeJourney(map.id, [start, east, farEast]);
+    useSingleEvent(state, { id: 'encounter', kind: 'encounter', weight: 1, name: 'Bandits', description: 'Ambush.' });
+    expect(tick(state).ui.pendingIntent).toBeNull();
+  });
+
+  it('pauses two encounter groups and leaves the last group intent armed', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const { state, map, start, east, farEast } = fixture();
+    state.entities.characters.c = { id: 'c', name: 'Cira', work: { skills: {} } };
+    state.entities.travelGroups = {
+      a: { id: 'a', name: 'A', memberIds: ['a'], vehicleId: null, position: { mapId: map.id, tileId: start }, journey: makeJourney(map.id, [start, east, farEast], { id: 'ja' }) },
+      b: { id: 'b', name: 'B', memberIds: ['c'], vehicleId: null, position: { mapId: map.id, tileId: start }, journey: makeJourney(map.id, [start, east, farEast], { id: 'jb' }) },
+    };
+    useSingleEvent(state, { id: 'encounter', kind: 'encounter', weight: 1, name: 'Bandits', description: 'Ambush.' });
+    const next = tick(state);
+    expect(next.entities.travelGroups?.a.journey?.status).toBe('paused');
+    expect(next.entities.travelGroups?.b.journey?.status).toBe('paused');
+    expect(next.ui.pendingIntent).toMatchObject({ kind: 'encounter', groupId: 'b' });
   });
 });

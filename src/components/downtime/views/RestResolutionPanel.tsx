@@ -7,6 +7,7 @@ import type { RestRecoveryResult } from '../../../utils/recovery';
 import type { Character } from '../../../types/campaign';
 import type { TaskResults } from '../../../types/downtime';
 import type { RestTask } from './RestTaskCard';
+import { useCampaignStore } from '../../../state/campaignStore';
 
 interface RestResolutionPanelProps {
   task: RestTask;
@@ -61,6 +62,7 @@ export function RestResolutionPanel({
   onCancel,
 }: RestResolutionPanelProps) {
   const { state } = useDowntimeContext();
+  const { state: campaignState } = useCampaignStore();
   const [overrideFullDay, setOverrideFullDay] = useState(false);
   const [recovery, setRecovery] = useState<RestRecoveryResult | null>(null);
   const gcsData = leader.gcsData;
@@ -79,6 +81,7 @@ export function RestResolutionPanel({
       maxFP: gcsData.pools.FP.max,
       restedFullDay: !hasNonRestTasks || overrideFullDay,
       physicianLevel,
+      starvationFpDebt: campaignState.entities.starvationFpDebt?.[leader.id] ?? 0,
     }));
   };
 

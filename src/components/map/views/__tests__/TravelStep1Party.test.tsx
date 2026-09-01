@@ -92,6 +92,7 @@ describe('TravelStep1Party', () => {
     const map = createNewMap({ name: 'Test', scaleMilesPerTile: 12, startTerrainId: 'terrain-plains' });
     render(
       <TravelWizard
+        provisioning={{ foodUnits: 0, days: 0, bestCookName: null }}
         map={map}
         step={1}
         selectedMode="foot"

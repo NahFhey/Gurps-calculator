@@ -51,6 +51,9 @@ function makeState(withRecipe = false, existingBuff: MealBuff | null = null): Ca
   state.entities.characters = {
     alice: { id: 'alice', name: 'Alice', work: { skills: { cooking: 14 } } },
   };
+  state.entities.travelGroups = {
+    cooks: { id: 'cooks', name: 'Cooks', memberIds: ['alice'], vehicleId: null, position: null },
+  };
   return state;
 }
 
@@ -104,6 +107,7 @@ describe('CookingTab meal buff dispatches', () => {
       excludedCharacterIds: [],
     });
     expect(getState().mealBuff?.recipeId).toBe(Object.values(getState().entities.recipes)[0].id);
+    expect(getState().entities.groupMeals?.cooks).toBe(7);
   });
 
   it('stores a skill-list snapshot separate from the saved recipe array', () => {
@@ -177,6 +181,7 @@ describe('CookingTab meal buff dispatches', () => {
       excludedCharacterIds: [],
     });
     expect(getState().mealBuff?.skills).not.toBe(rootStew.skills);
+    expect(getState().entities.groupMeals?.cooks).toBe(7);
     const party = Object.values(getState().entities.inventories).find(inventory => inventory.ownerType === 'party');
     expect(party?.food.find(food => food.id === 'carrot')?.quantity).toBe(9);
   });

@@ -13,7 +13,7 @@ export interface SchemaMetadataEntry {
   migratesFrom?: string[];
 }
 
-export const CURRENT_SCHEMA_VERSION = '1.5.9';
+export const CURRENT_SCHEMA_VERSION = '1.6.0';
 
 export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
   '1.0.0': {
@@ -142,6 +142,14 @@ export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
     description: 'Progress travel journeys through ordinary time slots with engine-owned travel tasks',
     features: ['journeys', 'travel_tasks', 'night_slots'],
     migratesFrom: ['1.5.8'],
+  },
+  '1.6.0': {
+    name: 'Travel Events & Provisioning',
+    timestamp: '2026-09-01',
+    breaking: false,
+    description: 'Add terrain-keyed travel events, encounter hand-off, and travel meal ledgers',
+    features: ['travel_events', 'travel_encounters', 'journey_provisioning'],
+    migratesFrom: ['1.5.9'],
   },
 };
 
