@@ -342,7 +342,9 @@ export class MapScene {
     } else if (drag.dragged && this.data) {
       const dx = event.clientX - drag.lastX;
       const dy = event.clientY - drag.lastY;
-      if (drag.button === 0) {
+      // Right-drag grab-pans the map; middle (scroll-wheel click) drag orbits.
+      // Left-drag is reserved for clicking, painting, and token dragging.
+      if (drag.button === 1) {
         this.cameraState = orbit(
           this.cameraState,
           -dx * 0.008,
@@ -350,7 +352,7 @@ export class MapScene {
           this.data.map.cols,
           this.data.map.rows
         );
-      } else if (drag.button === 1 || drag.button === 2) {
+      } else if (drag.button === 2) {
         this.cameraState = dragPan(
           this.cameraState,
           dx,
