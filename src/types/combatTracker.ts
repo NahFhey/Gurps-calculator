@@ -235,6 +235,8 @@ export interface CombatState {
   turnDecisions: Record<string, TurnDecision>;
   log: LogEntry[];
   consumptions?: ConsumptionEntry[];
+  /** Travel group whose journey this encounter interrupted; resumed when the post-combat flow completes */
+  travelGroupId?: string;
 }
 
 export interface MovementRecord {

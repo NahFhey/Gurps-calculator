@@ -770,6 +770,7 @@ export function MapPanel() {
           onResume={() => actions.partyResumeJourney(activeGroup.id)}
           onAbort={() => actions.partyAbortJourney(activeGroup.id)}
           onAdvanceSlot={actions.advanceTime}
+          combatActive={Boolean(state.combat.activeSession)}
           fedToday={state.entities.groupMeals?.[activeGroup.id] === state.time.day}
           onCook={() => {
             if (!activeGroup.vehicleId && activeGroup.journey?.status === 'active') {

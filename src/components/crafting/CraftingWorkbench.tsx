@@ -12,6 +12,7 @@ import type {
   Craft,
   CraftDesign,
   CraftShift,
+  Facility,
   Material,
   MaterialType,
   CustomTemplates,
@@ -40,6 +41,8 @@ interface CraftingWorkbenchProps {
   saveCraftDesigns: (designs: CraftDesign[]) => void;
   addLogEntry: (entry: any) => void;
   weatherSkillBonus: number;
+  /** Reachable workshop facilities (position-filtered upstream); their bonus adds to effective skill */
+  workshops?: Facility[];
   onProjectCompleted: () => void;
   onProjectAbandoned: () => void;
   onDesignPhaseComplete: (craft: Craft) => void;
@@ -120,6 +123,7 @@ export function CraftingWorkbench({
   saveCraftDesigns: _saveCraftDesigns,
   addLogEntry,
   weatherSkillBonus: _weatherSkillBonus,
+  workshops,
   onProjectCompleted,
   onProjectAbandoned,
   onDesignPhaseComplete,
@@ -137,7 +141,15 @@ export function CraftingWorkbench({
   const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0]);
   const [currentDay, setCurrentDay] = useState(1);
   const [selectedWorker, setSelectedWorker] = useState('');
+  const [selectedWorkshopId, setSelectedWorkshopId] = useState('');
   const [abandonConfirm, setAbandonConfirm] = useState(false);
+
+  // Workshop facility bonus (Phase 15a): reachable workshops add their crafting
+  // skillBonus (or simple rating) to effective skill, mirroring the kitchen pattern
+  const selectedWorkshop = (workshops ?? []).find((w) => w.id === selectedWorkshopId) ?? null;
+  const workshopBonus = selectedWorkshop
+    ? selectedWorkshop.activityCategories?.crafting?.skillBonus ?? selectedWorkshop.rating ?? 0
+    : 0;
 
   /**
    * Try to reserve the current time slot for the selected worker.
@@ -337,7 +349,7 @@ export function CraftingWorkbench({
     const shiftMessage = `Craft shift: ${current.phase === 'design' ? 'Design' : 'Craft'} on ${current.template || 'Unknown'}`;
     if (!tryReserveSlot(shiftMessage, current.currentQuality)) return;
 
-    const eff = s + stats.totalDifficulty;
+    const eff = s + stats.totalDifficulty + workshopBonus;
     let hrs = 0, qc = 0, res = '';
 
     if (current.phase === 'design') {
@@ -372,7 +384,8 @@ export function CraftingWorkbench({
       result: res,
       hoursAdded: hrs,
       qualityChange: qc,
-      phase: current.phase
+      phase: current.phase,
+      ...(selectedWorkshop ? { workshop: selectedWorkshop.name } : {})
     };
     const newShifts = [...current.shifts, newShift];
     const newProg = newShifts.reduce((sum, x) => sum + x.hoursAdded, 0);
@@ -623,7 +636,7 @@ export function CraftingWorkbench({
             {current.shifts.map((s, i) => (
               <div key={s.id || i} className="bg-gray-700 p-3 rounded text-sm">
                 <div>Shift {i + 1}: {s.result} {s.date && <span className="text-blue-400">({s.date})</span>} {s.day && <span className="text-green-400">[Day {s.day}]</span>}</div>
-                <div className="text-gray-400">{s.worker && <span>Worker: {s.worker} | </span>}Skill {s.skill} &rarr; Eff {s.effectiveSkill} | Roll: {s.roll} | +{s.hoursAdded}h{(s.qualityChange ?? s.qualityShift ?? 0) !== 0 && ` | Qual ${(s.qualityChange ?? s.qualityShift ?? 0) > 0 ? '+' : ''}${s.qualityChange ?? s.qualityShift}`}</div>
+                <div className="text-gray-400">{s.worker && <span>Worker: {s.worker} | </span>}{s.workshop && <span>Workshop: {s.workshop} | </span>}Skill {s.skill} &rarr; Eff {s.effectiveSkill} | Roll: {s.roll} | +{s.hoursAdded}h{(s.qualityChange ?? s.qualityShift ?? 0) !== 0 && ` | Qual ${(s.qualityChange ?? s.qualityShift ?? 0) > 0 ? '+' : ''}${s.qualityChange ?? s.qualityShift}`}</div>
               </div>
             ))}
             <div className="bg-gray-700 p-4 rounded grid grid-cols-2 gap-4">
@@ -631,6 +644,18 @@ export function CraftingWorkbench({
               <div><label className="block mb-2 text-sm">Day (In-Universe)</label><input type="number" min="1" value={currentDay} onChange={(e) => setCurrentDay(Math.max(1, toNumberOr(e.target.value, 1)))} className="w-full bg-gray-600 px-3 py-2 rounded" /></div>
               <div><label className="block mb-2 text-sm">Worker</label><select value={selectedWorker} onChange={(e) => setSelectedWorker(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded"><option value="">Select worker...</option>{availableWorkers.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}</select></div>
               <div><label className="block mb-2 text-sm">Skill</label><input type="number" value={skill} onChange={(e) => setSkill(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded" /></div>
+              {(workshops?.length ?? 0) > 0 && (
+                <div className="col-span-2">
+                  <label className="block mb-2 text-sm">Workshop</label>
+                  <select value={selectedWorkshopId} onChange={(e) => setSelectedWorkshopId(e.target.value)} className="w-full bg-gray-600 px-3 py-2 rounded">
+                    <option value="">No workshop (+0)</option>
+                    {(workshops ?? []).map((w) => {
+                      const bonus = w.activityCategories?.crafting?.skillBonus ?? w.rating ?? 0;
+                      return <option key={w.id} value={w.id}>{w.name} ({bonus >= 0 ? '+' : ''}{bonus})</option>;
+                    })}
+                  </select>
+                </div>
+              )}
               <div className="col-span-2">
                 <label className="block mb-2 text-sm">Roll (3d6)</label>
                 <div className="flex gap-2">

@@ -48,7 +48,7 @@ const TABS: { key: CraftingSubView; label: string; getBadge?: (ctx: { projectCou
 
 export function CraftingActivity({ currentDayKey, currentSlot }: CraftingActivityProps) {
   // Downtime context for time slot tracking
-  const { state: downtimeState, dispatch: downtimeDispatch } = useDowntimeContext();
+  const { state: downtimeState, dispatch: downtimeDispatch, craftingWorkshops } = useDowntimeContext();
   const { state: campaignState, actions: campaignActions } = useCampaignStore();
 
   // Crafting data hook for sub-views (with save callbacks)
@@ -186,6 +186,7 @@ export function CraftingActivity({ currentDayKey, currentSlot }: CraftingActivit
           saveCraftDesigns={saveCraftDesigns}
           addLogEntry={addLogEntry}
           weatherSkillBonus={weather.skillBonus}
+          workshops={craftingWorkshops}
           onProjectCompleted={() => {
             setCurrentCraft(null);
             setActiveTab('projects');

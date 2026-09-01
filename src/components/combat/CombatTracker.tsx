@@ -80,7 +80,7 @@ export default function CombatTracker() {
     combatReveal,
     saveCombatReveal,
   } = useCombatStore();
-  const { state: campaignState } = useCampaignStore();
+  const { state: campaignState, actions: campaignActions } = useCampaignStore();
   const availableMaps = Object.values(campaignState.maps.mapsById);
 
   // Post-combat flow state (Phase 11c)
@@ -556,9 +556,13 @@ export default function CombatTracker() {
 
   /** Finalize post-combat flow and return to normal view */
   const handlePostCombatComplete = () => {
+    const travelGroupId = endedCombatSnapshot?.travelGroupId;
     setPostCombatPhase('active');
     setEndedCombatSnapshot(null);
     saveCombatActive(null);
+    // Phase 15a: an encounter that interrupted a journey resumes it once the
+    // post-combat flow completes (reducer no-ops unless the journey is still paused)
+    if (travelGroupId) campaignActions.partyResumeJourney(travelGroupId);
   };
 
   // --------------------------------------------------------------------------

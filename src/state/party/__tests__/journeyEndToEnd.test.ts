@@ -126,6 +126,34 @@ describe('journey end-to-end: events and provisioning (C2)', () => {
     expect(resumed.entities.travelGroups?.g.journey?.pendingEncounterTemplateId).toBeUndefined();
   });
 
+  it('post-combat completion sequence (clear session, then resume) restarts the journey (15a)', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+    const { state, map } = build();
+    state.entities.encounterTemplates = {
+      amb: { id: 'amb', name: 'Ambush', participants: [], createdAt: 0, updatedAt: 0 },
+    };
+    state.entities.travelEventTables = {
+      t1: {
+        id: 't1', name: 'Only Trouble',
+        entries: [{ id: 'e1', kind: 'encounter', weight: 1, name: 'Ambush!', description: 'x', encounterTemplateId: 'amb' }],
+      },
+    };
+    state.entities.travelEventTableSets = {
+      s1: { id: 's1', name: 'Trouble Set', byTerrain: {}, fallbackTableId: 't1' },
+    };
+    map.travelEventTableSetId = 's1';
+    const paused = tick(state);
+    // Combat started from the intent carries the interrupted group's id (EncounterSetup stamps it)
+    const inCombat = campaignReducer(paused, {
+      type: 'setCombatActive',
+      payload: { id: 'combat', travelGroupId: 'g' } as CampaignState['combat']['activeSession'],
+    });
+    // CombatTracker's post-combat completion dispatches these two actions in order
+    const sessionCleared = campaignReducer(inCombat, { type: 'setCombatActive', payload: null });
+    const resumed = campaignReducer(sessionCleared, { type: 'party/resumeJourney', payload: { groupId: 'g' } });
+    expect(resumed.entities.travelGroups?.g.journey).toMatchObject({ status: 'active' });
+  });
+
   it('an unfed travel day costs 1 FP + debt; a recorded meal clears the debt', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0);
     const { state } = build();

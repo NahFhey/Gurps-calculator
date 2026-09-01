@@ -99,7 +99,7 @@ vi.mock('../../../types/characterSheet', () => ({
 
 import { useCombatStore } from '../../../hooks/useCombatStore';
 import { useCampaignStore } from '../../../state/campaignStore';
-import { generateId } from '../../../utils/combatHelpers';
+import { generateId, generateTurnOrder } from '../../../utils/combatHelpers';
 import ViewModeToggle from '../ViewModeToggle';
 import ConditionBadge from '../ConditionBadge';
 import CombatHistory from '../CombatHistory';
@@ -471,6 +471,38 @@ describe('EncounterSetup', () => {
     render(<EncounterSetup />);
     await waitFor(() => expect(screen.getByPlaceholderText('e.g., Goblin Ambush')).toHaveValue('Howls on the road'));
     expect(clearPendingIntent).toHaveBeenCalledOnce();
+  });
+
+  it('stamps the travel group id onto combat started from a travel intent (Phase 15a)', async () => {
+    let idCounter = 0;
+    vi.mocked(generateId).mockImplementation(() => `id-${++idCounter}`);
+    vi.mocked(generateTurnOrder).mockImplementation(
+      (participants) => participants.map((p) => p.id ?? '')
+    );
+    const clearPendingIntent = vi.fn();
+    const saveCombatActive = vi.fn();
+    setupCombatStore({
+      saveCombatActive,
+      partyCharacters: [{ id: 'party-1', name: 'Aria' }],
+    });
+    setupCampaignStore({
+      state: {
+        ui: { gmModeEnabled: true, pendingIntent: { kind: 'encounter', templateId: null, groupId: 'grp-1' } },
+        maps: { mapsById: {} }, combat: { activeSession: null },
+        entities: { combatCharacters: {}, combatItems: {}, characters: {} },
+      },
+      actions: { clearPendingIntent },
+    });
+    render(<EncounterSetup />);
+    await waitFor(() => expect(clearPendingIntent).toHaveBeenCalledOnce());
+
+    fireEvent.click(screen.getByTitle('Add all party characters to encounter'));
+    fireEvent.click(screen.getByText('Generate Turn Order'));
+    fireEvent.click(screen.getByText('Start Combat'));
+
+    expect(saveCombatActive).toHaveBeenCalledWith(
+      expect.objectContaining({ travelGroupId: 'grp-1' })
+    );
   });
 
   it('clears a dangling travel template intent without crashing', async () => {

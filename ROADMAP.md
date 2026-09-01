@@ -178,7 +178,7 @@
 - **New types:** EncounterTemplate, EncounterTemplateParticipant, ParticipantSummary, HealingEstimate, CombatSummaryData, LootItem, LootDistributionEntry
 - **New components:** PostCombatSummary.tsx, LootDistribution.tsx
 - **Modified:** CombatTracker.tsx (post-combat flow), EncounterSetup.tsx (Add All Party + templates), useCombatStore.ts (templates + party sync), combatTracker.ts (types), combatActions.ts + combatReducer.ts (template CRUD)
-- **Deferred:** Full inventory integration for loot (Phase 15 — currently logs distribution, doesn't modify inventory entities)
+- ~~**Deferred:** Full inventory integration for loot (Phase 15 — currently logs distribution, doesn't modify inventory entities)~~ superseded by 12a.5: `LootDistribution.tsx` dispatches `inventory/itemAcquired` per item (verified 2026-09-01)
 
 ---
 
@@ -357,10 +357,16 @@ Three fixes out of the "Map tab wiped / maps missing after reload" investigation
 **Goal:** Everything works together smoothly. Accessibility and type safety for all remaining code.
 
 ### 15a: Cross-System Integration
-- Map travel -> triggers encounters -> opens combat tracker
-- Combat resolution -> feeds into downtime (injuries, loot)
-- Downtime crafting -> updates inventory -> equips characters
-- Location arrival -> updates available facilities and NPCs
+**Audited 2026-09-01** (full code audit of the four bullets against phases 11c–14 as-builts). Two bullets were already wired end-to-end by earlier phases; two direct fixes landed the same day:
+- ✅ Map travel -> triggers encounters -> opens combat tracker (Phase 14 lane C2) — **return leg closed 2026-09-01**: combat started from a travel intent now stamps `travelGroupId` onto `CombatState` (EncounterSetup), and completing the post-combat flow auto-resumes the interrupted journey (CombatTracker dispatches `party/resumeJourney`; reducer gate makes it a no-op if the journey was aborted). JourneyStatusPanel's Resume button now disables during active combat instead of silently no-oping.
+- ✅ Combat resolution -> feeds into downtime — verified wired: HP/FP sync-back (11c `PostCombatSummary` → `gcsData.pools`), loot → inventory bus (12a.5 `LootDistribution` → `inventory/itemAcquired`), rest recovery reads the same pools (13c, shared `estimateHealing`).
+- ✅ Location arrival -> updates available facilities and NPCs (Phase 14 lane D) — kitchens, alchemy labs, fishing spots, forage zones, and gathering envs all position-filtered. **Workshop gap closed 2026-09-01**: `DowntimeContext.craftingWorkshops` (computed but previously unconsumed — dead code) now feeds a Workshop selector in CraftingWorkbench; bonus (`activityCategories.crafting.skillBonus` ?? `rating`) adds to effective skill and is stamped on the shift, mirroring the kitchen pattern.
+
+**Remaining 15a gaps (each needs a design pass before implementation — grill-me candidates):**
+- **Inventory -> character-sheet equipment bridge** (largest gap): `ItemInstance` carries no weight/category/stats, so crafted/looted gear tagged to a character can never reach `gcsData.equipment`, encumbrance, DR, or combat stats. Needs type unification or a converter plus an "equip from inventory" / "add to sheet" affordance in both directions.
+- **Combat injuries beyond HP/FP**: `PostCombatSummary` captures crippled limbs, conditions, and death but syncs only pools; `Character` has no fields for them, so they vanish at combat end (rest can heal an amputee to full, silently).
+- **Multi-group `currentLocationId` scoping** (self-flagged at `campaignReducer.ts:889`): a non-active group's arrival triggers discovery but never switches the location-scoped downtime resources.
+- Cosmetic/UX: no auto-navigation to the Combat tab when a travel event fires (map panel button only); single `pendingIntent` slot can be overwritten by a second group's encounter; contacts are not announced on arrival (lane D scoped them as soft hints).
 
 ### 15b: Performance & Bundle
 - ✅ Code splitting by tab/feature (2026-08-26, codex-shepherd): React.lazy + Suspense for all heavy tabs in UnifiedShell; entry chunk 2,061KB → 450KB (+142KB react-vendor); Map3DView (543KB) and @dnd-kit (48KB) load on demand. Browser-verified chunk-on-demand behavior, zero console errors.

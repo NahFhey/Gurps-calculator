@@ -9,6 +9,8 @@ interface JourneyStatusPanelProps {
   onResume: () => void;
   onAbort: () => void;
   onAdvanceSlot: () => void;
+  /** An active combat session blocks resuming an encounter-paused journey */
+  combatActive: boolean;
   fedToday: boolean;
   onCook: () => void;
   onSetupEncounter: () => void;
@@ -28,6 +30,7 @@ export function JourneyStatusPanel({
   onResume,
   onAbort,
   onAdvanceSlot,
+  combatActive,
   fedToday,
   onCook,
   onSetupEncounter,
@@ -73,6 +76,15 @@ export function JourneyStatusPanel({
       )}
       {journey.status === 'active' ? (
         <button type="button" onClick={onPause} className="rounded bg-gray-700 px-2 py-1 hover:bg-gray-600">Pause</button>
+      ) : journey.pauseReason === 'encounter' && combatActive ? (
+        <button
+          type="button"
+          disabled
+          title="Finish the combat first — the journey resumes when the post-combat flow completes"
+          className="cursor-not-allowed rounded bg-gray-700 px-2 py-1 text-gray-400"
+        >
+          Resume
+        </button>
       ) : (
         <>
           <button type="button" onClick={onResume} className="rounded bg-blue-700 px-2 py-1 hover:bg-blue-600">Resume</button>

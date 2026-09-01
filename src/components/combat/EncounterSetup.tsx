@@ -163,6 +163,8 @@ export default function EncounterSetup() {
   const [encounterName, setEncounterName] = useState('');
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [turnOrder, setTurnOrder] = useState<string[]>([]);
+  // Travel group whose journey this encounter interrupted (Phase 15a) — stamped onto the combat state
+  const [travelGroupId, setTravelGroupId] = useState<string | null>(null);
   const [showTurnOrderPreview, setShowTurnOrderPreview] = useState(false);
 
   const [showTemplatePanel, setShowTemplatePanel] = useState(false);
@@ -324,6 +326,7 @@ export default function EncounterSetup() {
     const intent = state.ui.pendingIntent;
     if (intent?.kind !== 'encounter' || consumedIntentRef.current === intent) return;
     consumedIntentRef.current = intent;
+    setTravelGroupId(intent.groupId);
     const template = intent.templateId ? (encounterTemplates ?? {})[intent.templateId] : undefined;
     if (template) {
       handleLoadTemplate(template);
@@ -397,6 +400,7 @@ export default function EncounterSetup() {
       currentTurnIndex: 0,
       currentRound: 1,
       turnDecisions: {},
+      ...(travelGroupId ? { travelGroupId } : {}),
       log: [
         createLogEntry({
           entryType: 'note',
@@ -424,6 +428,7 @@ export default function EncounterSetup() {
       setParticipants([]);
       setTurnOrder([]);
       setShowTurnOrderPreview(false);
+      setTravelGroupId(null);
     }
   };
 

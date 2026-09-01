@@ -214,6 +214,7 @@ export interface CraftShift {
   qualityShift?: number;
   qualityChange?: number; // Alias for qualityShift
   phase?: string;        // Which phase this shift was in
+  workshop?: string;     // Facility name whose bonus was applied to this shift
 }
 
 export interface CraftConsumedMaterial {

@@ -5,7 +5,7 @@ import { createCampaignState } from '../../../state/campaignReducer';
 import type { CampaignState } from '../../../state/campaignReducer';
 import { CampaignStoreProvider, useCampaignStore } from '../../../state/campaignStore';
 import type { CraftingWorker } from '../../../hooks/useCraftingData';
-import type { Craft, CustomTemplates, Material, MaterialType } from '../../../types/campaign';
+import type { Craft, CustomTemplates, Facility, Material, MaterialType } from '../../../types/campaign';
 import { CraftingWorkbench } from '../CraftingWorkbench';
 
 vi.mock('../../DiceRoller', () => ({
@@ -178,5 +178,77 @@ describe('CraftingWorkbench completion attribution', () => {
     expect(alertSpy).toHaveBeenCalledWith('Craft complete!');
     expect(getCraftedItem(getState())).not.toHaveProperty('crafterId');
     alertSpy.mockRestore();
+  });
+});
+
+describe('CraftingWorkbench workshop bonus (Phase 15a)', () => {
+  const forge: Facility = {
+    id: 'ws-forge',
+    name: 'Dwarven Forge',
+    facilityType: 'workshop',
+    rating: 2,
+  };
+
+  /** Render an in-progress craft (no prior shifts, so one shift cannot complete it) and add one shift. */
+  function addShift(
+    workshops: Facility[] | undefined,
+    selectWorkshop: boolean
+  ): { craft: Craft; hadWorkshopSelector: boolean } {
+    const updates: (Craft | null)[] = [];
+    const { unmount } = render(
+      <CampaignStoreProvider initialCampaignState={makeState()}>
+        <CraftingWorkbench
+          craft={{ ...makeCraft('Smith'), shifts: [] }}
+          materials={materials}
+          materialTypes={materialTypes}
+          customTemplates={customTemplates}
+          workers={[smith]}
+          crafts={[]}
+          craftDesigns={[]}
+          saveMaterials={() => undefined}
+          saveCrafts={() => undefined}
+          saveCraftDesigns={() => undefined}
+          addLogEntry={() => undefined}
+          weatherSkillBonus={0}
+          workshops={workshops}
+          onProjectCompleted={() => undefined}
+          onProjectAbandoned={() => undefined}
+          onDesignPhaseComplete={() => undefined}
+          onCraftUpdated={(craft) => updates.push(craft)}
+        />
+      </CampaignStoreProvider>
+    );
+    const workerSelect = screen.getByText('Worker').parentElement?.querySelector('select');
+    if (!workerSelect) throw new Error('expected worker select');
+    fireEvent.change(workerSelect, { target: { value: 'Smith' } });
+    const hadWorkshopSelector = screen.queryByText('Workshop') !== null;
+    if (selectWorkshop) {
+      const select = screen.getByText('Workshop').parentElement?.querySelector('select');
+      if (!select) throw new Error('expected workshop select');
+      fireEvent.change(select, { target: { value: forge.id } });
+    }
+    setSkill('14');
+    completeShift();
+    unmount();
+    const updated = updates[updates.length - 1];
+    if (!updated) throw new Error('expected craft update from added shift');
+    return { craft: updated, hadWorkshopSelector };
+  }
+
+  it('adds the selected workshop rating to effective skill and stamps the shift', () => {
+    const baseline = addShift(undefined, false).craft;
+    const withWorkshop = addShift([forge], true).craft;
+    const baseEff = baseline.shifts[0].effectiveSkill;
+    const workshopEff = withWorkshop.shifts[0].effectiveSkill;
+    expect(workshopEff - baseEff).toBe(forge.rating);
+    expect(withWorkshop.shifts[0].workshop).toBe('Dwarven Forge');
+    expect(baseline.shifts[0].workshop).toBeUndefined();
+  });
+
+  it('hides the workshop selector and applies no bonus when no workshop is reachable', () => {
+    const noWorkshops = addShift([], false);
+    expect(noWorkshops.hadWorkshopSelector).toBe(false);
+    const baseline = addShift(undefined, false);
+    expect(noWorkshops.craft.shifts[0].effectiveSkill).toBe(baseline.craft.shifts[0].effectiveSkill);
   });
 });

@@ -830,8 +830,7 @@ describe('TravelStep3Confirm', () => {
 });
 
 describe('JourneyStatusPanel', () => {
-  it('shows encounter interruption, provisioning state, and setup action', () => {
-    const onSetupEncounter = vi.fn();
+  function renderEncounterPaused(overrides: { combatActive?: boolean; onSetupEncounter?: () => void; onResume?: () => void } = {}) {
     const start = confirmMap.grid[4][4];
     const end = confirmMap.grid[4][5];
     render(<JourneyStatusPanel
@@ -840,18 +839,40 @@ describe('JourneyStatusPanel', () => {
         id: 'j', mapId: confirmMap.id, routeTileIds: [start, end], destinationTileId: end, mode: 'foot', navigatorId: null,
         gmNavigationSkill: 10, forcedMarch: false, legProgressMiles: 0, milesTraveled: 2, status: 'paused', pauseReason: 'encounter', gmOverride: false, startedAt: { day: 1, slot: 0 },
       } }}
+      combatActive={overrides.combatActive ?? false}
       fedToday={true}
       onPause={vi.fn()}
-      onResume={vi.fn()}
+      onResume={overrides.onResume ?? vi.fn()}
       onAbort={vi.fn()}
       onAdvanceSlot={vi.fn()}
       onCook={vi.fn()}
-      onSetupEncounter={onSetupEncounter}
+      onSetupEncounter={overrides.onSetupEncounter ?? vi.fn()}
     />);
+  }
+
+  it('shows encounter interruption, provisioning state, and setup action', () => {
+    const onSetupEncounter = vi.fn();
+    renderEncounterPaused({ onSetupEncounter });
     expect(screen.getByText('Fed today ✓')).toBeInTheDocument();
     expect(screen.getByText(/Encounter interrupted/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Set up encounter' }));
     expect(onSetupEncounter).toHaveBeenCalledOnce();
+  });
+
+  it('disables Resume while combat is active for an encounter pause', () => {
+    const onResume = vi.fn();
+    renderEncounterPaused({ combatActive: true, onResume });
+    const resumeButton = screen.getByRole('button', { name: 'Resume' });
+    expect(resumeButton).toBeDisabled();
+    fireEvent.click(resumeButton);
+    expect(onResume).not.toHaveBeenCalled();
+  });
+
+  it('enables Resume for an encounter pause once combat has ended', () => {
+    const onResume = vi.fn();
+    renderEncounterPaused({ combatActive: false, onResume });
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+    expect(onResume).toHaveBeenCalledOnce();
   });
 });
 
