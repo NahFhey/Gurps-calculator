@@ -1,5 +1,6 @@
 import { useState, KeyboardEvent } from 'react';
-import { Lock, Unlock, X, AlertTriangle } from 'lucide-react';
+import { Lock, Unlock, AlertTriangle } from 'lucide-react';
+import { Modal } from './ui/Modal';
 
 interface GMLockModalProps {
   isOpen: boolean;
@@ -17,7 +18,6 @@ export function GMLockModal({ isOpen, onClose, onUnlock, error }: GMLockModalPro
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const titleId = 'gm-lock-modal-title';
   const descId = 'gm-lock-modal-desc';
   const passwordId = 'gm-lock-modal-password';
   const errorId = 'gm-lock-modal-error';
@@ -43,37 +43,43 @@ export function GMLockModal({ isOpen, onClose, onUnlock, error }: GMLockModalPro
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && password) {
       handleUnlock();
-    } else if (e.key === 'Escape') {
-      onClose();
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descId}
-        className="bg-surface-1 rounded-lg shadow-xl max-w-md w-full mx-4 border border-edge"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-edge">
-          <div className="flex items-center gap-2">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={(
+        <span className="flex items-center gap-2">
             <Lock className="text-yellow-400" size={20} aria-hidden="true" />
-            <h2 id={titleId} className="text-xl font-bold text-fg-bright">Enter GM Password</h2>
-          </div>
+            Enter GM Password
+        </span>
+      )}
+      ariaDescribedby={descId}
+      size="md"
+      closeOnBackdrop={false}
+      bodyClassName="p-4 space-y-4"
+      footer={(
+        <>
           <button
             onClick={onClose}
-            aria-label="Close"
-            className="text-fg-muted hover:text-fg-primary transition"
+            className="px-4 py-2 bg-surface-2 hover:bg-surface-3 text-fg-bright rounded transition"
+            disabled={isUnlocking}
           >
-            <X size={20} aria-hidden="true" />
+            Cancel
           </button>
-        </div>
-
-        {/* Body */}
-        <div className="p-4 space-y-4">
+          <button
+            onClick={handleUnlock}
+            className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!password || isUnlocking}
+          >
+            <Unlock size={16} aria-hidden="true" />
+            {isUnlocking ? 'Unlocking...' : 'Unlock GM Mode'}
+          </button>
+        </>
+      )}
+    >
           {/* Info message */}
           <div id={descId} className="bg-accent-900 bg-opacity-30 border border-accent-700 rounded p-3 flex gap-2">
             <AlertTriangle className="text-accent-400 flex-shrink-0 mt-0.5" size={18} aria-hidden="true" />
@@ -141,27 +147,6 @@ export function GMLockModal({ isOpen, onClose, onUnlock, error }: GMLockModalPro
               for protecting sensitive real-world information.
             </p>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex gap-2 justify-end p-4 border-t border-edge">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-surface-2 hover:bg-surface-3 text-fg-bright rounded transition"
-            disabled={isUnlocking}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleUnlock}
-            className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={!password || isUnlocking}
-          >
-            <Unlock size={16} aria-hidden="true" />
-            {isUnlocking ? 'Unlocking...' : 'Unlock GM Mode'}
-          </button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

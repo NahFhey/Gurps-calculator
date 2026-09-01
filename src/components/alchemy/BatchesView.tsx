@@ -13,6 +13,7 @@ import { selectCharacterAssignmentForSlot } from '../../state/downtime/downtimeS
 import { useCampaignStore } from '../../state/campaignStore';
 import { isAttachmentReachable } from '../../utils/facilityAccess';
 import type { CampaignState } from '../../state/campaignReducer';
+import { Modal } from '../ui/Modal';
 
 // ============================================================================
 // TYPES
@@ -463,9 +464,37 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
     <div className="bg-surface-1 rounded-lg p-6">
       {/* Save Recipe Prompt */}
       {showSavePrompt && completedBatch && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-surface-1 p-6 rounded-lg max-w-md border-2 border-success-600">
-            <h3 className="text-xl font-bold mb-2 text-success-400">Batch Complete!</h3>
+        <Modal
+          isOpen
+          onClose={() => {
+            setShowSavePrompt(false);
+            setCompletedBatch(null);
+            setSaveAsName('');
+          }}
+          title={<span className="text-success-400">Batch Complete!</span>}
+          size="md"
+          className="border-2 border-success-600"
+          footer={(
+            <>
+              <button
+                onClick={() => {
+                  setShowSavePrompt(false);
+                  setCompletedBatch(null);
+                  setSaveAsName('');
+                }}
+                className="flex-1 px-4 py-2 bg-surface-3 rounded"
+              >
+                Skip
+              </button>
+              <button
+                onClick={saveRecipeFromBatch}
+                className="flex-1 px-4 py-2 bg-success-600 rounded"
+              >
+                Save Recipe
+              </button>
+            </>
+          )}
+        >
             <p className="mb-4">
               Quality: <span className={`font-bold ${completedBatch.quality === 'Clean' ? 'text-success-400' : 'text-yellow-400'}`}>
                 {completedBatch.quality}
@@ -485,26 +514,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
               />
             </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowSavePrompt(false);
-                  setCompletedBatch(null);
-                  setSaveAsName('');
-                }}
-                className="flex-1 px-4 py-2 bg-surface-3 rounded"
-              >
-                Skip
-              </button>
-              <button
-                onClick={saveRecipeFromBatch}
-                className="flex-1 px-4 py-2 bg-success-600 rounded"
-              >
-                Save Recipe
-              </button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {selectedBatch ? (

@@ -2,12 +2,12 @@
  * MapCreateDialog — modal for creating a new map.
  */
 
-import React, { useEffect, useId, useState } from 'react';
+import React, { useId, useState } from 'react';
 import type { MapScale, TerrainId } from '../../../types/map';
 import type { ClimateType } from '../../../types/location';
 import { CLIMATE_LABELS } from '../../../types/location';
 import { MAP_SCALES, createPresetTerrains } from '../../../constants/map';
-import { X } from 'lucide-react';
+import { Modal } from '../../ui/Modal';
 
 interface MapCreateDialogProps {
   onConfirm: (params: {
@@ -30,21 +30,12 @@ export function MapCreateDialog({ onConfirm, onCancel, climateLabels = CLIMATE_L
   const [startTerrainId, setStartTerrainId] = useState<TerrainId>(presetTerrains[0].id);
   const [climate, setClimate] = useState<ClimateType>('temperate');
 
-  const titleId = useId();
   const nameInputId = useId();
   const descriptionInputId = useId();
   const scaleGroupId = useId();
   const terrainGroupId = useId();
 
   const canConfirm = name.trim().length > 0;
-
-  useEffect(() => {
-    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onCancel]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,26 +50,7 @@ export function MapCreateDialog({ onConfirm, onCancel, climateLabels = CLIMATE_L
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="w-full max-w-md bg-surface-1 border border-edge-strong rounded-lg shadow-2xl"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-edge">
-          <h2 id={titleId} className="text-lg font-semibold text-fg-bright">Create New Map</h2>
-          <button
-            type="button"
-            onClick={onCancel}
-            aria-label="Close dialog"
-            className="p-1 rounded hover:bg-surface-2 transition-colors"
-          >
-            <X className="w-4 h-4 text-fg-muted" aria-hidden="true" />
-          </button>
-        </div>
-
+    <Modal isOpen onClose={onCancel} title="Create New Map" size="md" closeOnBackdrop={false} bodyClassName="p-0">
         {/* Form */}
         <form onSubmit={handleSubmit} className="px-4 py-4 space-y-4">
           {/* Name */}
@@ -215,7 +187,6 @@ export function MapCreateDialog({ onConfirm, onCancel, climateLabels = CLIMATE_L
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }

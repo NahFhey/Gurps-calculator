@@ -12,6 +12,7 @@ import type {
   GatheringItemExtended
 } from '../types/gathering';
 import type { ForageZoneProfile } from '../types/foraging';
+import { ConfirmDialog } from './ui/ConfirmDialog';
 
 import {
   CampaignDayView,
@@ -178,18 +179,15 @@ function GatheringManagerBase() {
   return (
     <div className="space-y-4">
       {/* Delete Confirmation Modal */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-surface-1 p-6 rounded-lg max-w-md">
-            <h3 className="text-xl font-bold mb-4">Confirm Delete</h3>
-            <p className="mb-6">Delete "{deleteConfirm.name}"?</p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 bg-surface-3 rounded">Cancel</button>
-              <button onClick={executeDelete} className="px-4 py-2 bg-danger-600 rounded">Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={deleteConfirm !== null}
+        title="Confirm Delete"
+        message={deleteConfirm ? `Delete "${deleteConfirm.name}"?` : ''}
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={executeDelete}
+        onCancel={() => setDeleteConfirm(null)}
+      />
 
       {/* Sub-navigation */}
       <div className="flex gap-2 border-b border-edge pb-2 flex-wrap">

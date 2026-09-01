@@ -1,8 +1,9 @@
 import { useState, useEffect, ChangeEvent, FormEvent } from 'react';
-import { X, Plus, Trash2, Copy } from 'lucide-react';
+import { Plus, Trash2, Copy } from 'lucide-react';
 import { COMBAT_CATEGORIES } from '../../constants';
 import { HUMANOID_DR_FIELDS, HIT_LOCATION_PROFILES } from '../../constants/hitLocationConstants';
 import { useToast } from '../ui';
+import { Modal } from '../ui/Modal';
 
 interface Attack {
   name: string;
@@ -196,17 +197,12 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-      <div className="bg-surface-1 p-6 rounded-lg max-w-4xl w-full m-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">
-            {isEditing ? 'Edit Character' : 'Create Character'}
-          </h2>
-          <button onClick={onCancel} className="text-fg-muted hover:text-white">
-            <X size={24} />
-          </button>
-        </div>
-
+    <Modal
+      isOpen
+      onClose={onCancel}
+      title={isEditing ? 'Edit Character' : 'Create Character'}
+      size="xl"
+    >
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -578,7 +574,6 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }

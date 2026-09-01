@@ -1,6 +1,7 @@
 import { useState, memo } from 'react';
 import { Edit2, Trash2, Copy, ChevronDown, ChevronUp } from 'lucide-react';
 import { calculateHPStatus } from '../../utils/combatHelpers';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 type CharacterCategory = 'player' | 'ally' | 'enemy' | 'object';
 
@@ -162,38 +163,25 @@ function CharacterSheet({ character, onEdit, onDelete, onDuplicate }: CharacterS
       )}
 
       {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-surface-1 p-6 rounded-lg max-w-md">
-            <h3 className="text-xl font-bold mb-4">Confirm Delete</h3>
-            <p className="mb-6">
-              Are you sure you want to delete <strong>{character.name}</strong>?
-              {character.category === 'player' && (
-                <span className="block mt-2 text-yellow-400">
-                  Warning: This is a player character!
-                </span>
-              )}
-            </p>
-            <div className="flex gap-4 justify-end">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 bg-surface-2 hover:bg-surface-3 rounded"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  onDelete();
-                  setShowDeleteConfirm(false);
-                }}
-                className="px-4 py-2 bg-danger-600 hover:bg-danger-700 rounded"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Confirm Delete"
+        message={(
+          <>
+            Are you sure you want to delete <strong>{character.name}</strong>?
+            {character.category === 'player' && (
+              <span className="mt-2 block text-yellow-400">Warning: This is a player character!</span>
+            )}
+          </>
+        )}
+        confirmLabel="Delete"
+        variant="danger"
+        onCancel={() => setShowDeleteConfirm(false)}
+        onConfirm={() => {
+          onDelete();
+          setShowDeleteConfirm(false);
+        }}
+      />
     </div>
   );
 }

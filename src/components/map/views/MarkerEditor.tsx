@@ -5,8 +5,8 @@
 import { useState } from 'react';
 import type { MarkerModel, MarkerType, MarkerVisibility, TileId } from '../../../types/map';
 import type { Location } from '../../../types/location';
-import { X } from 'lucide-react';
 import { MarkerIcon } from './MarkerIcon';
+import { Modal } from '../../ui/Modal';
 
 const MARKER_TYPES: { value: MarkerType; label: string }[] = [
   { value: 'note', label: 'Note' },
@@ -59,17 +59,13 @@ export function MarkerEditor({ tileId, existing, locations = [], onConfirm, onDe
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-full max-w-sm bg-surface-1 border border-edge-strong rounded-lg shadow-2xl">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-edge">
-          <h2 className="text-sm font-semibold text-fg-bright">
-            {existing ? 'Edit Marker' : 'Add Marker'}
-          </h2>
-          <button onClick={onCancel} className="p-1 rounded hover:bg-surface-2">
-            <X className="w-4 h-4 text-fg-muted" />
-          </button>
-        </div>
-
+    <Modal
+      isOpen
+      onClose={onCancel}
+      title={existing ? 'Edit Marker' : 'Add Marker'}
+      size="sm"
+      bodyClassName="p-0"
+    >
         <form onSubmit={handleSubmit} className="px-4 py-3 space-y-3">
           {/* Type */}
           <div>
@@ -211,7 +207,6 @@ export function MarkerEditor({ tileId, existing, locations = [], onConfirm, onDe
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }

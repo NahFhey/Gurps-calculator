@@ -1,6 +1,7 @@
-import { useState, useEffect, ChangeEvent, ReactNode } from 'react';
-import { X, AlertTriangle, CheckCircle, FileText } from 'lucide-react';
+import { useState, ChangeEvent, ReactNode } from 'react';
+import { AlertTriangle, CheckCircle, FileText } from 'lucide-react';
 import { parseGCSText, validateCharacter } from '../../utils/gcsParser';
+import { Modal } from '../ui/Modal';
 
 type Confidence = 'high' | 'medium' | 'low';
 
@@ -44,16 +45,6 @@ export default function GCSImportModal({ onImport, onCancel }: GCSImportModalPro
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [showPreview, setShowPreview] = useState(false);
 
-  const titleId = 'gcs-import-modal-title';
-
-  useEffect(() => {
-    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onCancel]);
-
   const handleParse = () => {
     if (!gcsText.trim()) {
       alert('Please paste GCS text first');
@@ -96,25 +87,13 @@ export default function GCSImportModal({ onImport, onCancel }: GCSImportModalPro
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="bg-surface-1 p-6 rounded-lg max-w-4xl w-full m-4 max-h-[90vh] overflow-y-auto"
-      >
-        <div className="flex justify-between items-center mb-6">
-          <h2 id={titleId} className="text-2xl font-bold">Import from GCS</h2>
-          <button
-            type="button"
-            onClick={onCancel}
-            aria-label="Close"
-            className="text-fg-muted hover:text-white"
-          >
-            <X size={24} aria-hidden="true" />
-          </button>
-        </div>
-
+    <Modal
+      isOpen
+      onClose={onCancel}
+      title="Import from GCS"
+      size="xl"
+      closeOnBackdrop={false}
+    >
         {!showPreview ? (
           // Step 1: Paste GCS Text
           <div className="space-y-4">
@@ -281,7 +260,6 @@ export default function GCSImportModal({ onImport, onCancel }: GCSImportModalPro
             </div>
           </div>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }

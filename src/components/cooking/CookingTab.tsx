@@ -23,6 +23,7 @@ import type {
 import { CreateMealView } from './views/CreateMealView';
 import { RecipeLibraryView } from './views/RecipeLibraryView';
 import { RemakeView } from './views/RemakeView';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { isAttachmentReachable } from '../../utils/facilityAccess';
 import { findGroupOfCharacter } from '../../utils/partyPosition';
 
@@ -350,18 +351,19 @@ export function CookingTab() {
   const remakeDifficulty = calculateRemakeDifficulty();
   return (
     <div>
-      {deleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-surface-1 p-6 rounded-lg max-w-md">
-            <h3 className="text-xl font-bold mb-4">Confirm Delete</h3>
-            <p className="mb-6">Delete recipe "{deleteConfirm.name}"?</p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 bg-surface-3 rounded">Cancel</button>
-              <button onClick={() => { saveRecipes(recipes.filter(recipe => recipe.id !== deleteConfirm.id)); setDeleteConfirm(null); }} className="px-4 py-2 bg-danger-600 rounded">Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={deleteConfirm !== null}
+        title="Confirm Delete"
+        message={deleteConfirm ? `Delete recipe "${deleteConfirm.name}"?` : ''}
+        confirmLabel="Delete"
+        variant="danger"
+        onCancel={() => setDeleteConfirm(null)}
+        onConfirm={() => {
+          if (!deleteConfirm) return;
+          saveRecipes(recipes.filter(recipe => recipe.id !== deleteConfirm.id));
+          setDeleteConfirm(null);
+        }}
+      />
       {hasEffect && (
         <div className="mb-4 px-3 py-2 rounded bg-accent-900/30 border border-accent-700/50">
           <div className="flex items-center gap-2 text-sm">

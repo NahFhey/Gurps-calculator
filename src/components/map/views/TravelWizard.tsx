@@ -6,7 +6,7 @@
  * Step 3: Validate and confirm
  */
 
-import { useEffect, useId, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import type { TileId, TravelMode, MapModel } from '../../../types/map';
 import type { TravelBlocker } from '../../../types/map';
 import type { DowntimeState } from '../../../types/downtime';
@@ -94,7 +94,6 @@ export function TravelWizard({
   onClose,
 }: TravelWizardProps) {
   const { skillBonus: weatherTravelMod } = useWeatherModifiers('travel');
-  const titleId = useId();
   const travelingGroup = useMemo(
     () => buildStagedGroup(group, { travelingMemberIds, vehicleId: selectedVehicleId }),
     [group, selectedVehicleId, travelingMemberIds]
@@ -143,14 +142,13 @@ export function TravelWizard({
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={titleId}
+      role="region"
+      aria-label="Travel"
       className="w-56 bg-surface-1/95 border-l border-edge/50 flex flex-col h-full"
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-edge/50">
-        <span id={titleId} className="text-xs font-semibold text-fg-primary">Travel</span>
+        <span className="text-xs font-semibold text-fg-primary">Travel</span>
         <button
           type="button"
           onClick={onClose}

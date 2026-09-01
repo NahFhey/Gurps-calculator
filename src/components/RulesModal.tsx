@@ -1,6 +1,6 @@
 /// <reference types="react" />
-import { useCallback, useEffect } from 'react';
-import { X, BookOpen } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
+import { Modal } from './ui/Modal';
 
 // ============================================================================
 // Types
@@ -157,52 +157,27 @@ const rulesContent: Record<RulesSection, RulesContent> = {
  * parts of the application.
  */
 export function RulesModal({ section, onClose }: RulesModalProps) {
-  const handleKeyDown = useCallback(
-    (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    },
-    [onClose]
-  );
-
-  useEffect(() => {
-    if (section) {
-      document.addEventListener('keydown', handleKeyDown);
-    }
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [section, handleKeyDown]);
-
   if (!section) return null;
 
   const content = rulesContent[section];
   if (!content) return null;
 
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="rules-modal-title"
-      aria-describedby="rules-modal-content"
+    <Modal
+      isOpen
+      onClose={onClose}
+      title={(
+        <span className="flex items-center gap-3">
+          <span className="text-2xl" aria-hidden="true">{content.icon}</span>
+          {content.title}
+        </span>
+      )}
+      ariaDescribedby="rules-modal-content"
+      size="lg"
+      closeOnBackdrop={false}
+      bodyClassName="p-6"
+      className="max-h-[80vh]"
     >
-      <div className="bg-surface-1 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-        <div className="sticky top-0 bg-surface-1 border-b border-edge p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl" aria-hidden="true">{content.icon}</span>
-            <h2 id="rules-modal-title" className="text-xl font-bold">{content.title}</h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-fg-muted hover:text-white"
-            aria-label="Close rules dialog"
-          >
-            <X size={24} />
-          </button>
-        </div>
-        <div className="p-6">
           <div id="rules-modal-content" className="text-fg-secondary space-y-3 whitespace-pre-line">
             {content.content}
           </div>
@@ -212,8 +187,6 @@ export function RulesModal({ section, onClose }: RulesModalProps) {
               For complete rules and detailed mechanics, visit the <button onClick={onClose} className="text-accent-400 hover:text-accent-300 underline">Rules tab</button>.
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

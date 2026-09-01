@@ -8,6 +8,7 @@ import type {
   Material,
   MaterialType,
 } from '../types';
+import { ConfirmDialog } from '../../ui/ConfirmDialog';
 
 export interface InventoryOverviewViewProps {
   view: 'materials' | 'foods';
@@ -107,22 +108,20 @@ export function InventoryOverviewView({
 
   return (
     <>
-      {deleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-surface-1 p-6 rounded-lg max-w-md">
-            <h3 className="text-xl font-bold mb-4">Confirm Delete</h3>
-            <p className="mb-6">Delete "{deleteConfirm.name}"?</p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 bg-surface-3 rounded">Cancel</button>
-              <button onClick={() => {
-                if (deleteConfirm.type === 'mat') onSaveMaterials(materials.filter(m => m.id !== deleteConfirm.id));
-                else onSaveFoods(foods.filter(f => f.id !== deleteConfirm.id));
-                setDeleteConfirm(null);
-              }} className="px-4 py-2 bg-danger-600 rounded">Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={deleteConfirm !== null}
+        title="Confirm Delete"
+        message={deleteConfirm ? `Delete "${deleteConfirm.name}"?` : ''}
+        confirmLabel="Delete"
+        variant="danger"
+        onCancel={() => setDeleteConfirm(null)}
+        onConfirm={() => {
+          if (!deleteConfirm) return;
+          if (deleteConfirm.type === 'mat') onSaveMaterials(materials.filter(m => m.id !== deleteConfirm.id));
+          else onSaveFoods(foods.filter(f => f.id !== deleteConfirm.id));
+          setDeleteConfirm(null);
+        }}
+      />
 
       {view === 'materials' && (
         <div className="bg-surface-1 rounded-lg p-6">

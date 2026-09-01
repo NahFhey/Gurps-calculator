@@ -23,6 +23,8 @@ import { CombatTile } from '../components/combat/CombatTile';
 import { CombatContextProvider } from '../components/combat/CombatContext';
 import { TabErrorBoundary } from '../components/ui/TabErrorBoundary';
 import { ThemeDevToggle } from '../components/ui/ThemeDevToggle';
+import { Modal } from '../components/ui/Modal';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { PanelLayoutProvider, usePanelLayout } from '../contexts/PanelLayoutContext';
 import {
   useCampaignActions,
@@ -881,31 +883,18 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
 
       {/* Modal Overlay */}
       {layoutState.modalContent && (
-        <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
-          onClick={layoutActions.closeModal}
+        <Modal
+          isOpen
+          onClose={layoutActions.closeModal}
+          title={layoutState.modalTitle ?? undefined}
+          ariaLabel={layoutState.modalTitle ?? 'Application dialog'}
+          hideCloseButton={!layoutState.modalTitle}
+          size="xl"
+          bodyClassName="p-6"
+          className="border-edge-strong"
         >
-          <div
-            className="bg-surface-1 rounded-lg border border-edge-strong max-w-4xl max-h-[90vh] overflow-auto m-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {layoutState.modalTitle && (
-              <div className="flex items-center justify-between px-6 py-4 border-b border-edge">
-                <h2 className="text-lg font-semibold">{layoutState.modalTitle}</h2>
-                <button
-                  type="button"
-                  onClick={layoutActions.closeModal}
-                  className="text-fg-muted hover:text-fg-primary"
-                >
-                  ×
-                </button>
-              </div>
-            )}
-            <div className="p-6">
-              {layoutState.modalContent}
-            </div>
-          </div>
-        </div>
+          {layoutState.modalContent}
+        </Modal>
       )}
 
       {/* Character Creation Modal */}
@@ -958,33 +947,19 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div
-            className="bg-surface-1 rounded-lg border border-edge-strong w-full max-w-md m-4 p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-lg font-semibold text-fg-bright mb-4">Delete Character</h2>
-            <p className="text-fg-secondary mb-6">
+        <ConfirmDialog
+          isOpen
+          title="Delete Character"
+          message={(
+            <>
               Are you sure you want to delete <strong>{deleteConfirm.characterName}</strong>? This action cannot be undone.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirm(null)}
-                className="px-4 py-2 rounded border border-edge-strong text-fg-secondary hover:border-edge-bright hover:bg-surface-2"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteConfirm}
-                className="px-4 py-2 rounded bg-danger-600 text-white hover:bg-danger-500 font-semibold"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
+            </>
+          )}
+          confirmLabel="Delete"
+          variant="danger"
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeleteConfirm(null)}
+        />
       )}
     </div>
   );

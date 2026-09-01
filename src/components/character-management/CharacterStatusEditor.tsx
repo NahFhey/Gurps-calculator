@@ -3,6 +3,7 @@ import { getConditionIcon } from '../../constants/conditions';
 import { compactCharacterStatus } from '../../utils/injuryPersistence';
 import { getLocationByKey } from '../../utils/hitLocations';
 import type { Character, CharacterStatus } from '../../types/campaign';
+import { Modal } from '../ui/Modal';
 
 interface CharacterStatusEditorProps {
   character: Character;
@@ -24,29 +25,14 @@ export function CharacterStatusEditor({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="character-status-title"
-      data-testid="character-status-editor"
-      onClick={onClose}
+    <Modal
+      isOpen
+      onClose={onClose}
+      title={<span className="block">Status <span className="block text-sm font-normal text-fg-muted">{character.name}</span></span>}
+      size="md"
+      bodyClassName="p-5"
     >
-      <div
-        className="m-4 w-full max-w-md rounded-lg border border-edge-strong bg-surface-1 p-5 shadow-xl"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 id="character-status-title" className="text-lg font-semibold text-fg-bright">Status</h2>
-            <p className="text-sm text-fg-muted">{character.name}</p>
-          </div>
-          <button type="button" onClick={onClose} className="text-fg-muted hover:text-fg-primary" aria-label="Close status editor">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="space-y-4">
+        <div className="space-y-4" data-testid="character-status-editor">
           <section>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-fg-muted">Conditions</h3>
             {conditions.length === 0 ? (
@@ -121,7 +107,6 @@ export function CharacterStatusEditor({
             {status?.dead ? 'Mark alive' : 'Mark dead'}
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

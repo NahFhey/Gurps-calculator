@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ItemInstance } from '../../types/campaign';
 import type { Equipment, EquipmentCategory } from '../../types/characterSheet';
+import { Modal } from '../ui/Modal';
 
 export interface EquipItemModalProps {
   item: ItemInstance;
@@ -61,15 +62,10 @@ export function EquipItemModal({ item, currencyUnit, onConfirm, onCancel }: Equi
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="equip-item-title"
-      data-testid="equip-item-modal"
-    >
+    <Modal isOpen onClose={onCancel} title="Equip item" size="lg" bodyClassName="p-0">
       <form
-        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-edge bg-surface-1 p-5 shadow-xl"
+        className="p-5"
+        data-testid="equip-item-modal"
         onSubmit={(event) => {
           event.preventDefault();
           onConfirm({
@@ -78,10 +74,6 @@ export function EquipItemModal({ item, currencyUnit, onConfirm, onCancel }: Equi
           });
         }}
       >
-        <h2 id="equip-item-title" className="mb-4 text-lg font-semibold text-fg-bright">
-          Equip item
-        </h2>
-
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm text-fg-secondary">
             Name
@@ -239,6 +231,6 @@ export function EquipItemModal({ item, currencyUnit, onConfirm, onCancel }: Equi
           </button>
         </div>
       </form>
-    </div>
+    </Modal>
   );
 }

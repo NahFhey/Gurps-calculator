@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Minus, Plus, ShoppingCart, Trash2, X } from 'lucide-react';
+import { Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react';
 import { useCampaignStore } from '../../state/campaignStore';
 import { calculateRelativeLevel, calculateSkillLevel, createDefaultGCSData, syncWorkSkillsFromGCS } from '../../types/characterSheet';
 import { characterLog } from '../../utils/activityLogger';
@@ -12,6 +12,7 @@ import {
 import type { Character } from '../../types/campaign';
 import type { PrimaryAttributes, SecondaryAttributes, SkillAttribute, SkillDifficulty } from '../../types/characterSheet';
 import type { PointSpendLine, TraitSpendType } from '../../utils/pointSpend';
+import { Modal } from '../ui/Modal';
 
 interface PointSpendModalProps {
   character: Character;
@@ -155,12 +156,26 @@ export function PointSpendModal({ character, campaignDay, onClose }: PointSpendM
     primaryIncrementsInCart(lines, attribute);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div role="dialog" aria-modal="true" aria-labelledby="spend-points-title" className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-lg border border-edge-strong bg-surface-1">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-edge px-5 py-4">
-          <div><h2 id="spend-points-title" className="text-lg font-semibold text-fg-bright">Spend Points — {character.name}</h2><p className="text-sm text-fg-muted">Pool {balance} · Cart {total} · Remaining <span className={remaining < 0 ? 'text-danger-400' : 'text-emerald-400'}>{remaining}</span></p></div>
-          <button type="button" onClick={onClose} aria-label="Close spend points" className="text-fg-muted hover:text-fg-primary"><X className="h-5 w-5" /></button>
-        </header>
+    <Modal
+      isOpen
+      onClose={onClose}
+      title={(
+        <span>
+          <span className="block text-lg">Spend Points — {character.name}</span>
+          <span className="block text-sm font-normal text-fg-muted">Pool {balance} · Cart {total} · Remaining <span className={remaining < 0 ? 'text-danger-400' : 'text-emerald-400'}>{remaining}</span></span>
+        </span>
+      )}
+      size="full"
+      bodyClassName="p-0"
+      className="border-edge-strong"
+      footer={(
+        <>
+          <span className="mr-auto text-sm text-fg-muted">Cart total: {total}</span>
+          <button type="button" onClick={onClose} className="rounded border border-edge-strong px-4 py-2 text-fg-secondary">Cancel</button>
+          <button data-testid="confirm-spend-button" type="button" onClick={handleConfirm} disabled={lines.length === 0 || insufficient} className="rounded bg-emerald-600 px-4 py-2 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">Confirm spend</button>
+        </>
+      )}
+    >
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
           <main className="min-h-0 flex-1 overflow-y-auto p-5">
             <nav className="mb-5 flex gap-2 border-b border-edge pb-3">
@@ -198,8 +213,6 @@ export function PointSpendModal({ character, campaignDay, onClose }: PointSpendM
 
           <aside className="w-full border-t border-edge bg-surface-0/50 p-4 lg:w-80 lg:border-l lg:border-t-0"><h3 className="mb-3 flex items-center gap-2 font-medium text-fg-bright"><ShoppingCart className="h-4 w-4" /> Cart</h3>{lines.length === 0 ? <p className="text-sm italic text-fg-faint">No changes yet.</p> : <div className="space-y-2">{lines.map((line) => <div key={line.id} data-testid="spend-cart-line" className="rounded bg-surface-1 p-2 text-sm"><div className="flex items-start justify-between gap-2"><span className="text-fg-primary">{lineLabel(line, character)}</span><strong className={pointSpendLineCost(line) < 0 ? 'text-emerald-400' : 'text-fg-bright'}>{pointSpendLineCost(line)}</strong></div><div className="mt-2 flex justify-end gap-1">{line.kind !== 'trait' && <><button type="button" aria-label={`Decrease ${lineLabel(line, character)}`} onClick={() => decrementLine(line.id)} className="rounded bg-surface-2 p-1"><Minus className="h-3 w-3" /></button><button type="button" aria-label={`Increase ${lineLabel(line, character)}`} onClick={() => addIncrement(line)} className="rounded bg-surface-2 p-1"><Plus className="h-3 w-3" /></button></>}<button type="button" aria-label={`Remove ${lineLabel(line, character)}`} onClick={() => setLines((current) => current.filter((candidate) => candidate.id !== line.id))} className="rounded bg-danger-950 p-1 text-danger-300"><Trash2 className="h-3 w-3" /></button></div></div>)}</div>}{insufficient && <p data-testid="insufficient-points-notice" className="mt-4 rounded border border-danger-800 bg-danger-950/40 p-2 text-sm text-danger-300">Insufficient points: remove {total - balance} points from the cart.</p>}</aside>
         </div>
-        <footer className="flex items-center justify-between border-t border-edge px-5 py-4"><span className="text-sm text-fg-muted">Cart total: {total}</span><div className="flex gap-2"><button type="button" onClick={onClose} className="rounded border border-edge-strong px-4 py-2 text-fg-secondary">Cancel</button><button data-testid="confirm-spend-button" type="button" onClick={handleConfirm} disabled={lines.length === 0 || insufficient} className="rounded bg-emerald-600 px-4 py-2 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">Confirm spend</button></div></footer>
-      </div>
-    </div>
+    </Modal>
   );
 }
