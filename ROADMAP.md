@@ -332,12 +332,13 @@ Three fixes out of the "Map tab wiped / maps missing after reload" investigation
 - Minimal season layer (configurable names/lengths, derived from day counter, temp-shift + precipitation multiplier on weather generation)
 - Migration off `Location.currentWeather`
 
-### Lane C: The Journey Loop
-- Journey-as-state progressed only by the time tick; day rhythm with auto-camp nights + forced-march override
-- Navigation rolls with overt drift (navigator, weather/terrain modifiers, lateral deviation, auto-reroute)
-- Terrain-keyed travel event tables (flavor/hazard/encounter; encounter pauses → EncounterSetup hand-off — the 15a hook)
-- Daily cooking as provisioning (real cooking tasks; missed-meal B426 accumulation); worst-member encumbrance gates foot speed
-- `'travel'` downtime tasks materialized in the task bar (crew slots blocked, worked-slot fatigue)
+### Lane C: The Journey Loop ✅ COMPLETE (2026-09-01, codex-shepherd ×2, specs `2026-09-01-lane-c1-journey-engine-14.md` + `2026-09-01-lane-c2-events-provisioning-14.md`, merge `codex/lane-c-journey-loop`; schemas 1.5.9 + 1.6.0; suite 4,133; browser-verified headless incl. one shepherd fix)
+- ✅ Journey-as-state on `TravelGroup.journey`, armed by the wizard, progressed only by the time tick (`map/executeTravel` + `EXCEEDS_TIME_BUDGET` deleted); auto-camp nights + GM forced-march override (−5 nav, moves on night slots); pause/resume/abort/reroute actions; GM teleports abort
+- ✅ Navigation rolls with overt drift: `getNavigationSkill` (Navigation Land/Sea/Air by mode, IQ−6 default, GM-set fallback), weather + navigator-fatigue modifiers, lateral deviation ~1 tile/2 MoF (crit +1), auto-reroute via findRoute, `noRoute` pause
+- ✅ Terrain-keyed weighted travel event tables (seeded for all 9 preset terrains, weather/night/forced-march condition gates, Manager "Travel Events" editor, per-map table-set override): flavor logs, hazards auto-apply (lost miles, FP/HP dice), encounter pauses → `pendingIntent` hand-off into EncounterSetup (the 15a hook; journey persists its template id; resume gated on no active combat; shepherd fix ddfe563 pins CombatTab to setup after intent consumption)
+- ✅ Provisioning (D9/B426 simplified): CookingTab success stamps the cook's group meal (`entities.groupMeals`); unfed travel days cost 1 FP + starvation debt at the day boundary; rest FP recovery caps at max−debt until fed; confirm-screen provisions preview + shortage warning; Halt & cook affordance
+- ✅ `'travel'` downtime tasks materialized already-resolved each moving slot (crew slot-blocked, worked-slot fatigue live; DowntimeProvider two-way sync fix also repairs checkpoint-restore staleness); worst-member encumbrance gates foot speed (`computeSlotBudgetMiles`)
+- **Phase 14 COMPLETE** — all lanes shipped.
 
 ### Lane D: Locations on the Map ✅ COMPLETE (2026-08-31, codex-shepherd, spec `2026-08-31-lane-d-locations-on-map-14.md`; schema 1.5.8; 56 tests; browser-verified hidden-pin discovery → location switch → detail panel; first dispatch stalled 2h and was killed — clean re-dispatch succeeded)
 - Marker↔Location link (`MarkerModel.locationId`); location detail panel on the Map tab
