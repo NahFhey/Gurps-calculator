@@ -34,6 +34,8 @@ export {
   INVENTORY_SET,
   ITEM_ACQUIRED,
   ITEM_RETAGGED,
+  ITEM_PROMOTED,
+  ITEM_DEMOTED,
   ITEM_ATTUNEMENT_SET,
   ITEM_MAGICAL_SET,
   ITEM_CONSUMED,
@@ -41,6 +43,8 @@ export {
   CURRENCY_SPENT,
   // Type guard
   isInventoryAction,
+  promoteItem,
+  demoteItem,
   // Types
   type InventoryAction,
   type AddMaterialAction,
@@ -66,6 +70,8 @@ export {
   type SetInventoriesAction,
   type ItemAcquiredAction,
   type ItemRetaggedAction,
+  type ItemPromotedAction,
+  type ItemDemotedAction,
   type ItemAttunementSetAction,
   type ItemMagicalSetAction,
   type ItemConsumedAction,

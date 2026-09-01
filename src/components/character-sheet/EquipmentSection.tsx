@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Trash2, ChevronDown, ChevronUp, Package, Check } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronUp, Package, PackageMinus, Check } from 'lucide-react';
 import type { Equipment, EquipmentCategory } from '../../types/characterSheet';
 
 interface EquipmentSectionProps {
@@ -8,6 +8,8 @@ interface EquipmentSectionProps {
   editMode: boolean;
   onEquipmentChange: (equipment: Equipment[]) => void;
   onOtherEquipmentChange: (other: string) => void;
+  onDemote?: (equipmentId: string) => void;
+  currencyUnit?: string;
 }
 
 type SortField = 'name' | 'quantity' | 'weight' | 'cost' | 'equipped';
@@ -34,6 +36,8 @@ export function EquipmentSection({
   editMode,
   onEquipmentChange,
   onOtherEquipmentChange,
+  onDemote,
+  currencyUnit = 'cp',
 }: EquipmentSectionProps) {
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -186,7 +190,7 @@ export function EquipmentSection({
                   onClick={() => handleSort('cost')}
                 >
                   <div className="flex items-center justify-end gap-1">
-                    Cost <SortIcon field="cost" />
+                    Cost ({currencyUnit}) <SortIcon field="cost" />
                   </div>
                 </th>
                 <th
@@ -197,7 +201,7 @@ export function EquipmentSection({
                     Weight <SortIcon field="weight" />
                   </div>
                 </th>
-                {editMode && <th className="pb-2 w-10"></th>}
+                {(editMode || onDemote) && <th className="pb-2 w-20"></th>}
               </tr>
             </thead>
             <tbody>
@@ -283,7 +287,7 @@ export function EquipmentSection({
                           min={0}
                         />
                       ) : (
-                        <span className="text-green-400">${item.cost * item.quantity}</span>
+                        <span className="text-green-400">{currencyUnit} {item.cost * item.quantity}</span>
                       )}
                     </td>
                     <td className="py-1.5 text-right">
@@ -300,14 +304,29 @@ export function EquipmentSection({
                         <span className="text-gray-400">{(item.weight * item.quantity).toFixed(1)} lb</span>
                       )}
                     </td>
-                    {editMode && (
+                    {(editMode || onDemote) && (
                       <td className="py-1.5">
-                        <button
-                          onClick={() => handleRemove(item.id)}
-                          className="p-1 hover:bg-gray-600 rounded text-red-400"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <div className="flex justify-end gap-1">
+                          {onDemote && (
+                            <button
+                              onClick={() => onDemote(item.id)}
+                              className="p-1 hover:bg-gray-600 rounded text-amber-300"
+                              title="Send to pack"
+                              aria-label={`Send ${item.name} to pack`}
+                            >
+                              <PackageMinus size={14} />
+                            </button>
+                          )}
+                          {editMode && (
+                            <button
+                              onClick={() => handleRemove(item.id)}
+                              className="p-1 hover:bg-gray-600 rounded text-red-400"
+                              title="Remove"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -453,9 +472,9 @@ export function EquipmentSection({
                     </span>
                   )}
                 </td>
-                <td className="pt-2 text-right text-green-400">${totals.cost.toFixed(0)}</td>
+                <td className="pt-2 text-right text-green-400">{currencyUnit} {totals.cost.toFixed(0)}</td>
                 <td className="pt-2 text-right text-gray-300">{totals.weight.toFixed(1)} lb</td>
-                {editMode && <td></td>}
+                {(editMode || onDemote) && <td></td>}
               </tr>
             </tfoot>
           </table>

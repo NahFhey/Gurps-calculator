@@ -418,6 +418,12 @@ export function CraftingWorkbench({
       newCur.completedDay = currentDay;
       saveCrafts(upsertCraft(crafts, newCur) as Craft[]);
       const completingWorkerId = workers.find(worker => worker.name === newShift.worker)?.id;
+      const completedTemplate = customTemplates[newCur.templateType]?.[newCur.template];
+      const completedCategory = newCur.templateType === 'weapons' || newCur.templateType === 'ranged'
+        ? 'weapon'
+        : newCur.templateType === 'armor'
+          ? 'armor'
+          : 'general';
       // Inventory bus (Phase 12a.5): completed craft lands in the party pool
       campaignActions.acquireItem(
         {
@@ -426,7 +432,18 @@ export function CraftingWorkbench({
           name: newCur.name || newCur.template || 'Crafted Item',
           quantity: 1,
           ...(completingWorkerId ? { crafterId: completingWorkerId } : {}),
-          notes: `${(newCur.currentQuality as string) || 'standard'} quality ${newCur.templateType}`
+          notes: `${(newCur.currentQuality as string) || 'standard'} quality ${newCur.templateType}`,
+          equipmentData: {
+            weight: stats.finalWeight,
+            cost: 0,
+            category: completedCategory,
+            ...(completedTemplate?.damage !== undefined && completedTemplate.damage !== null
+              ? { damage: String(completedTemplate.damage) }
+              : {}),
+            ...(completedTemplate?.reach !== undefined && completedTemplate.reach !== null
+              ? { reach: String(completedTemplate.reach) }
+              : {}),
+          },
         },
         'party',
         'crafting'

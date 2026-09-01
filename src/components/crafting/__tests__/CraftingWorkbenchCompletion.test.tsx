@@ -164,7 +164,14 @@ describe('CraftingWorkbench completion attribution', () => {
       id: 'crafted-craft-1',
       source: 'crafting',
       crafterId: 'char-smith',
+      equipmentData: {
+        weight: 4,
+        category: 'weapon',
+        damage: 'sw+1 cut',
+        reach: '1',
+      },
     });
+    expect(Object.values(getCraftedItem(getState()).equipmentData ?? {})).not.toContain(undefined);
     alertSpy.mockRestore();
   });
 

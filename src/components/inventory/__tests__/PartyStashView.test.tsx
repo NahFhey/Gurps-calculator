@@ -56,6 +56,7 @@ function renderPartyStash(overrides: Partial<ComponentProps<typeof PartyStashVie
     onTransferStateChange: vi.fn(),
     onConfirmTransfer: vi.fn(),
     onGiveItem: vi.fn(),
+    onEquipItem: vi.fn(),
     ...overrides,
   };
   render(<PartyStashView {...props} />);
@@ -151,9 +152,11 @@ describe('PartyStashView', () => {
   it('renders quick-assign selects only for party item rows', () => {
     renderPartyStash();
 
-    expect(screen.getAllByRole('combobox')).toHaveLength(2);
+    expect(screen.getAllByRole('combobox')).toHaveLength(4);
     expect(screen.getByLabelText('Give Magic Sword to character')).toBeInTheDocument();
     expect(screen.getByLabelText('Give Rope to character')).toBeInTheDocument();
+    expect(screen.getByLabelText('Equip Magic Sword on character')).toBeInTheDocument();
+    expect(screen.getByLabelText('Equip Rope on character')).toBeInTheDocument();
     expect(screen.queryByLabelText(/Unknown Tool/)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/cp/)).not.toBeInTheDocument();
   });

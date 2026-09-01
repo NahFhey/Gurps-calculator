@@ -69,6 +69,7 @@ const migrationHandlers: Record<string, MigrationHandler> = {
   '1.5.7:1.5.8': migrateTo1_5_8,
   '1.5.8:1.5.9': migrateTo1_5_9,
   '1.5.9:1.6.0': migrateTo1_6_0,
+  '1.6.0:1.6.1': migrateTo1_6_1,
 };
 
 /**
@@ -689,6 +690,11 @@ export function migrateTo1_6_0(data: MigratableData): MigratableData {
     entities: tablesChanged ? { ...entities, travelEventTables: nextTables } : entities,
     maps: mapsChanged ? { ...mapsState, mapsById: nextMaps } : mapsState,
   };
+}
+
+/** Migration: 1.6.0 → 1.6.1 (new equipment bridge fields are optional). */
+export function migrateTo1_6_1(data: MigratableData): MigratableData {
+  return data;
 }
 
 /**
