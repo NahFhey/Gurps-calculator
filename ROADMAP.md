@@ -440,6 +440,9 @@ Three fixes out of the "Map tab wiped / maps missing after reload" investigation
 - **Walls, doors, and objects/obstacles as first-class map entities**: nothing in the model represents them today (only terrain columns, structure slabs, markers, image layers). Design questions: sub-tile walls (edges) vs tile-filling obstacles; doors as state-carrying (open/closed/locked); furniture/cover objects; who authors them (GM paint mode?) and player visibility.
 - **StructureLayer v2 — tactical semantics**: v1 slabs are explicitly visual-only (`src/types/map.ts` note) — no travel routing, no line-of-sight. Caves/interiors only become *play* spaces once slabs and walls block LOS and pathing.
 - **Interior rendering questions**: token behavior under a slab (camera occlusion, selection), auto-hide roof when the active group is inside, fog/vision inside enclosed spaces.
+- **Ship/building interiors via linked maps** (Devin, 2026-09-01): the multi-map + link system already works as portals — `LinkModel` is cross-map tile-to-tile, and activating one transports the group/vehicle (`MapPanel.tsx:533`). Two gaps make interiors real: (1) a **tactical scale tier** — `MapScale` is hard-coded `12 | 50 | 457` mi/tile, interiors need yards/tile (interacts with travel modes); (2) **vehicle-anchored links** — a ship moves, so its boarding link must follow the vehicle instead of a fixed `fromTileId`. Multi-deck ships = chains of small linked maps (works today at wrong scale).
+- **Stairs/ladders**: cross-map ones are just labeled links (work today). Intra-map vertical connectors (floor → ledge → structure slab) need movement-graph semantics that don't exist — same bucket as StructureLayer v2 LOS/routing.
+- **Map hierarchy semantics** (open question): links are flat; no parent/child containment, no time/weather propagation between linked maps (climate is per-map). Decide whether nesting stays purely conventional or gains real semantics.
 
 ## Summary Timeline
 
