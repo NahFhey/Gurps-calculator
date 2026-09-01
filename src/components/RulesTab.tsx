@@ -35,10 +35,10 @@ function RulesTabBase({ initialSection = null }: RulesTabProps) {
   }
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
+    <div className="bg-surface-1 rounded-lg p-6">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <BookOpen size={32} className="text-blue-400" />
+        <BookOpen size={32} className="text-accent-400" />
         <h1 className="text-2xl font-bold">Game Rules & Systems</h1>
       </div>
 

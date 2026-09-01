@@ -266,14 +266,14 @@ export function LocationManager({ onClose }: LocationManagerProps) {
   };
 
   return (
-    <div className="p-4 bg-gray-800 rounded-lg border border-gray-600 max-w-2xl">
+    <div className="p-4 bg-surface-1 rounded-lg border border-edge-strong max-w-2xl">
       <ManagerNavigation view={view} onChangeView={setView} />
       {renderView()}
 
       {onClose && view !== 'editWeatherTable' && (
         <button
           onClick={onClose}
-          className="mt-4 w-full py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded"
+          className="mt-4 w-full py-2 bg-surface-2 hover:bg-surface-3 text-fg-primary rounded"
         >
           Close
         </button>

@@ -49,7 +49,7 @@ function ReagentEnrichmentFields({
             aria-label="Primary Aspect (3pts)"
             value={formState.newPrimary}
             onChange={(e) => setFormState({...formState, newPrimary: e.target.value})}
-            className="w-full bg-gray-600 px-3 py-2 rounded"
+            className="w-full bg-surface-3 px-3 py-2 rounded"
           >
             {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
@@ -60,7 +60,7 @@ function ReagentEnrichmentFields({
             aria-label="Secondary Aspect (2pts)"
             value={formState.newSecondary}
             onChange={(e) => setFormState({...formState, newSecondary: e.target.value})}
-            className="w-full bg-gray-600 px-3 py-2 rounded"
+            className="w-full bg-surface-3 px-3 py-2 rounded"
           >
             {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
@@ -71,7 +71,7 @@ function ReagentEnrichmentFields({
             aria-label="Tertiary Aspect (1pt)"
             value={formState.newTertiary}
             onChange={(e) => setFormState({...formState, newTertiary: e.target.value})}
-            className="w-full bg-gray-600 px-3 py-2 rounded"
+            className="w-full bg-surface-3 px-3 py-2 rounded"
           >
             {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
@@ -85,7 +85,7 @@ function ReagentEnrichmentFields({
             aria-label="Base Potency"
             value={formState.newPotency}
             onChange={(e) => setFormState({...formState, newPotency: e.target.value})}
-            className="w-full bg-gray-600 px-3 py-2 rounded"
+            className="w-full bg-surface-3 px-3 py-2 rounded"
           >
             {POTENCY_LEVELS.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
@@ -96,7 +96,7 @@ function ReagentEnrichmentFields({
             aria-label="Refinement"
             value={formState.newRefinement}
             onChange={(e) => setFormState({...formState, newRefinement: e.target.value})}
-            className="w-full bg-gray-600 px-3 py-2 rounded"
+            className="w-full bg-surface-3 px-3 py-2 rounded"
           >
             <option value="crude">Crude</option>
             <option value="prepared">Prepared</option>
@@ -111,7 +111,7 @@ function ReagentEnrichmentFields({
               type="number"
               value={formState.newQuantity}
               onChange={(e) => setFormState({...formState, newQuantity: e.target.value})}
-              className="w-full bg-gray-600 px-3 py-2 rounded"
+              className="w-full bg-surface-3 px-3 py-2 rounded"
               min="0"
             />
           </div>
@@ -298,10 +298,10 @@ function InventoryReagentPicker({
   }
 
   return (
-    <div className="bg-slate-800 p-4 rounded mb-4 space-y-3 border border-slate-600">
+    <div className="bg-surface-1 p-4 rounded mb-4 space-y-3 border border-edge-strong">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold">Import from party inventory</h3>
-        <button onClick={onClose} className="text-gray-300" aria-label="Close inventory import">
+        <button onClick={onClose} className="text-fg-secondary" aria-label="Close inventory import">
           <X size={20} />
         </button>
       </div>
@@ -312,20 +312,20 @@ function InventoryReagentPicker({
             key={`${source.kind}-${source.name}-${source.type ?? ''}-${index}`}
             onClick={() => selectSource(source)}
             aria-label={`${source.kind} ${source.name} ${source.quantity} on hand`}
-            className={`text-left rounded p-3 border ${selectedSource === source ? 'border-blue-400 bg-slate-700' : 'border-slate-600 bg-slate-900'}`}
+            className={`text-left rounded p-3 border ${selectedSource === source ? 'border-accent-400 bg-surface-2' : 'border-edge-strong bg-surface-0'}`}
           >
-            <span className="text-xs uppercase text-blue-300">{source.kind}</span>
+            <span className="text-xs uppercase text-accent-300">{source.kind}</span>
             <span className="block font-medium">{source.name}</span>
-            <span className="text-sm text-gray-400">{source.quantity} on hand</span>
+            <span className="text-sm text-fg-muted">{source.quantity} on hand</span>
           </button>
         ))}
       </div>
       {sources.length === 0 && (
-        <p className="text-sm text-gray-400">No party materials or food are available to import.</p>
+        <p className="text-sm text-fg-muted">No party materials or food are available to import.</p>
       )}
 
       {selectedSource && (
-        <div className="space-y-3 border-t border-slate-600 pt-3">
+        <div className="space-y-3 border-t border-edge-strong pt-3">
           <div>
             <label className="block text-sm mb-1" htmlFor="promotion-quantity">Quantity</label>
             <input
@@ -338,7 +338,7 @@ function InventoryReagentPicker({
                 1,
                 Math.min(selectedSource.quantity, toNumberOr(event.target.value, 1))
               ))}
-              className="w-full bg-gray-600 px-3 py-2 rounded"
+              className="w-full bg-surface-3 px-3 py-2 rounded"
             />
           </div>
           <div>
@@ -347,7 +347,7 @@ function InventoryReagentPicker({
               id="promotion-target-mode"
               value={targetMode}
               onChange={(event) => setTargetMode(event.target.value as 'existing' | 'new')}
-              className="w-full bg-gray-600 px-3 py-2 rounded"
+              className="w-full bg-surface-3 px-3 py-2 rounded"
             >
               <option value="existing" disabled={alchemyReagents.length === 0}>Add to existing reagent</option>
               <option value="new">Create new reagent</option>
@@ -361,7 +361,7 @@ function InventoryReagentPicker({
                 id="promotion-existing-reagent"
                 value={targetReagentId}
                 onChange={(event) => setTargetReagentId(event.target.value)}
-                className="w-full bg-gray-600 px-3 py-2 rounded"
+                className="w-full bg-surface-3 px-3 py-2 rounded"
               >
                 {alchemyReagents.map(reagent => (
                   <option key={reagent.id} value={reagent.id}>{reagent.name}</option>
@@ -376,7 +376,7 @@ function InventoryReagentPicker({
                   id="promoted-reagent-name"
                   value={newName}
                   onChange={(event) => setNewName(event.target.value)}
-                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                  className="w-full bg-surface-3 px-3 py-2 rounded"
                 />
               </div>
               <ReagentEnrichmentFields
@@ -387,7 +387,7 @@ function InventoryReagentPicker({
             </>
           )}
 
-          <button onClick={handleConfirm} className="w-full bg-blue-600 px-4 py-2 rounded">
+          <button onClick={handleConfirm} className="w-full bg-accent-600 px-4 py-2 rounded">
             <PackagePlus size={20} className="inline" /> Confirm Import
           </button>
         </div>
@@ -465,20 +465,20 @@ export function ReagentsView({
       <div className="flex justify-between mb-4">
         <div>
           <h2 className="text-xl font-bold">Reagent Management</h2>
-          <p className="text-sm text-gray-400 mt-1">
+          <p className="text-sm text-fg-muted mt-1">
             Full reagent properties including identification data. Players see limited info based on identification level.
           </p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setShowImport(!showImport)}
-            className="bg-blue-600 px-4 py-2 rounded h-fit"
+            className="bg-accent-600 px-4 py-2 rounded h-fit"
           >
             <PackagePlus size={20} className="inline" /> Import from inventory
           </button>
           <button
             onClick={() => setShowAdd(!showAdd)}
-            className="bg-green-600 px-4 py-2 rounded h-fit"
+            className="bg-success-600 px-4 py-2 rounded h-fit"
           >
             <Plus size={20} className="inline" /> Add Reagent
           </button>
@@ -495,13 +495,13 @@ export function ReagentsView({
       )}
 
       {showAdd && (
-        <div className="bg-gray-700 p-4 rounded mb-4 space-y-3">
+        <div className="bg-surface-2 p-4 rounded mb-4 space-y-3">
           <div>
             <label className="block text-sm mb-1">Reagent Name</label>
             <input
               value={newType}
               onChange={(e) => setNewType(e.target.value)}
-              className="w-full bg-gray-600 px-3 py-2 rounded"
+              className="w-full bg-surface-3 px-3 py-2 rounded"
               placeholder="e.g., Lunar Moss"
             />
           </div>
@@ -511,7 +511,7 @@ export function ReagentsView({
           <div className="flex gap-2">
             <button
               onClick={handleSaveReagent}
-              className="flex-1 bg-green-600 px-4 py-2 rounded"
+              className="flex-1 bg-success-600 px-4 py-2 rounded"
             >
               <Save size={20} className="inline" /> Save Reagent
             </button>
@@ -521,7 +521,7 @@ export function ReagentsView({
                 setNewType('');
                 setFormState(defaultFormState);
               }}
-              className="bg-red-600 px-4 py-2 rounded"
+              className="bg-danger-600 px-4 py-2 rounded"
             >
               <X size={20} />
             </button>
@@ -531,16 +531,16 @@ export function ReagentsView({
 
       <div className="space-y-2">
         {(alchemyReagents || []).map(r => (
-          <div key={r.id} className="bg-gray-700 rounded">
+          <div key={r.id} className="bg-surface-2 rounded">
             <div
-              className="flex items-center gap-4 p-3 cursor-pointer hover:bg-gray-600"
+              className="flex items-center gap-4 p-3 cursor-pointer hover:bg-surface-3"
               onClick={() => setExpanded(p => ({...p, [r.id]: !p[r.id]}))}
             >
               <span className="flex-1 font-medium">{r.name}</span>
-              <span className="text-sm text-blue-400">
+              <span className="text-sm text-accent-400">
                 {r.aspects?.primary}/{r.aspects?.secondary}/{r.aspects?.tertiary}
               </span>
-              <span className="text-sm text-gray-400">{r.quantity}U</span>
+              <span className="text-sm text-fg-muted">{r.quantity}U</span>
               <span className="text-sm text-purple-400">{r.basePotency || 'P1'}</span>
               {(r.identificationLevel ?? 4) < 4 && (
                 <span className="text-xs px-2 py-1 bg-yellow-600 rounded">
@@ -548,30 +548,30 @@ export function ReagentsView({
                 </span>
               )}
               {r.falseProfile && (
-                <span className="text-xs text-red-400">⚠️ False</span>
+                <span className="text-xs text-danger-400">⚠️ False</span>
               )}
-              <span className="text-gray-400">{expanded[r.id] ? '▼' : '▶'}</span>
+              <span className="text-fg-muted">{expanded[r.id] ? '▼' : '▶'}</span>
             </div>
 
             {expanded[r.id] && (
-              <div className="px-3 pb-3 space-y-3 border-t border-gray-600 pt-3">
+              <div className="px-3 pb-3 space-y-3 border-t border-edge-strong pt-3">
                 {/* Basic Info */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">Name</label>
+                    <label className="block text-xs text-fg-muted mb-1">Name</label>
                     <input
                       value={r.name}
                       onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, name: e.target.value} : x))}
-                      className="w-full bg-gray-600 px-3 py-1 rounded"
+                      className="w-full bg-surface-3 px-3 py-1 rounded"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">Quantity (Units)</label>
+                    <label className="block text-xs text-fg-muted mb-1">Quantity (Units)</label>
                     <input
                       type="number"
                       value={r.quantity}
                       onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, quantity: toNumberOr(e.target.value, 0)} : x))}
-                      className="w-full bg-gray-600 px-3 py-1 rounded"
+                      className="w-full bg-surface-3 px-3 py-1 rounded"
                     />
                   </div>
                 </div>
@@ -579,31 +579,31 @@ export function ReagentsView({
                 {/* Aspects */}
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">Primary (3pts)</label>
+                    <label className="block text-xs text-fg-muted mb-1">Primary (3pts)</label>
                     <select
                       value={r.aspects?.primary || 'Water'}
                       onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, aspects: {...x.aspects, primary: e.target.value}} : x))}
-                      className="w-full bg-gray-600 px-3 py-1 rounded"
+                      className="w-full bg-surface-3 px-3 py-1 rounded"
                     >
                       {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">Secondary (2pts)</label>
+                    <label className="block text-xs text-fg-muted mb-1">Secondary (2pts)</label>
                     <select
                       value={r.aspects?.secondary || 'Air'}
                       onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, aspects: {...x.aspects, secondary: e.target.value}} : x))}
-                      className="w-full bg-gray-600 px-3 py-1 rounded"
+                      className="w-full bg-surface-3 px-3 py-1 rounded"
                     >
                       {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">Tertiary (1pt)</label>
+                    <label className="block text-xs text-fg-muted mb-1">Tertiary (1pt)</label>
                     <select
                       value={r.aspects?.tertiary || 'Fire'}
                       onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, aspects: {...x.aspects, tertiary: e.target.value}} : x))}
-                      className="w-full bg-gray-600 px-3 py-1 rounded"
+                      className="w-full bg-surface-3 px-3 py-1 rounded"
                     >
                       {ASPECTS.map(a => <option key={a} value={a}>{a}</option>)}
                     </select>
@@ -613,21 +613,21 @@ export function ReagentsView({
                 {/* Potency & Refinement */}
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">Base Potency</label>
+                    <label className="block text-xs text-fg-muted mb-1">Base Potency</label>
                     <select
                       value={r.basePotency || 'P1'}
                       onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, basePotency: e.target.value} : x))}
-                      className="w-full bg-gray-600 px-3 py-1 rounded"
+                      className="w-full bg-surface-3 px-3 py-1 rounded"
                     >
                       {POTENCY_LEVELS.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">Refinement</label>
+                    <label className="block text-xs text-fg-muted mb-1">Refinement</label>
                     <select
                       value={r.refinement || 'crude'}
                       onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, refinement: e.target.value as 'crude' | 'prepared' | 'refined'} : x))}
-                      className="w-full bg-gray-600 px-3 py-1 rounded"
+                      className="w-full bg-surface-3 px-3 py-1 rounded"
                     >
                       <option value="crude">Crude</option>
                       <option value="prepared">Prepared</option>
@@ -635,12 +635,12 @@ export function ReagentsView({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">Concentration Steps</label>
+                    <label className="block text-xs text-fg-muted mb-1">Concentration Steps</label>
                     <input
                       type="number"
                       value={r.concentrationSteps || 0}
                       onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, concentrationSteps: toNumberOr(e.target.value, 0)} : x))}
-                      className="w-full bg-gray-600 px-3 py-1 rounded"
+                      className="w-full bg-surface-3 px-3 py-1 rounded"
                       min="0"
                     />
                   </div>
@@ -648,7 +648,7 @@ export function ReagentsView({
 
                 {/* Roles */}
                 <div>
-                  <label className="block text-xs text-gray-400 mb-2">Roles</label>
+                  <label className="block text-xs text-fg-muted mb-2">Roles</label>
                   <div className="grid grid-cols-4 gap-2">
                     {INGREDIENT_ROLES.map(role => (
                       <label key={role} className="flex items-center gap-2 text-xs">
@@ -672,7 +672,7 @@ export function ReagentsView({
 
                 {/* Hazards */}
                 <div>
-                  <label className="block text-xs text-gray-400 mb-2">Hazards</label>
+                  <label className="block text-xs text-fg-muted mb-2">Hazards</label>
                   <div className="grid grid-cols-3 gap-2">
                     {HAZARD_TAGS.map(hazard => (
                       <label key={hazard} className="flex items-center gap-2 text-xs">
@@ -696,19 +696,19 @@ export function ReagentsView({
 
                 {/* Processing Notes */}
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Processing Notes</label>
+                  <label className="block text-xs text-fg-muted mb-1">Processing Notes</label>
                   <textarea
                     value={r.processingNotes || ''}
                     onChange={(e) => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, processingNotes: e.target.value} : x))}
-                    className="w-full bg-gray-600 px-3 py-2 rounded text-sm"
+                    className="w-full bg-surface-3 px-3 py-2 rounded text-sm"
                     rows={2}
                     placeholder="e.g., must be ground, requires heating"
                   />
                 </div>
 
                 {/* Identification Level */}
-                <div className="bg-gray-800 p-3 rounded">
-                  <label className="block text-xs text-gray-400 mb-2">
+                <div className="bg-surface-1 p-3 rounded">
+                  <label className="block text-xs text-fg-muted mb-2">
                     Identification Level (affects player view)
                   </label>
                   <div className="flex items-center gap-3">
@@ -722,7 +722,7 @@ export function ReagentsView({
                     />
                     <span className="text-sm font-semibold">{r.identificationLevel || 0}/4</span>
                   </div>
-                  <div className="text-xs text-gray-400 mt-1">
+                  <div className="text-xs text-fg-muted mt-1">
                     {r.identificationLevel === 0 && 'Unidentified'}
                     {r.identificationLevel === 1 && 'Partial (Primary Aspect)'}
                     {r.identificationLevel === 2 && 'Basic (Primary + Secondary)'}
@@ -733,19 +733,19 @@ export function ReagentsView({
 
                 {/* False Profile Warning/Editor */}
                 {r.falseProfile && (
-                  <div className="bg-red-900 bg-opacity-30 border border-red-500 p-3 rounded">
+                  <div className="bg-danger-900 bg-opacity-30 border border-danger-500 p-3 rounded">
                     <div className="flex justify-between items-center mb-2">
-                      <label className="text-sm font-semibold text-red-400">
+                      <label className="text-sm font-semibold text-danger-400">
                         ⚠️ False Profile (from critical failure)
                       </label>
                       <button
                         onClick={() => saveAlchemyReagents(alchemyReagents.map(x => x.id === r.id ? {...x, falseProfile: null} : x))}
-                        className="text-xs px-2 py-1 bg-red-600 rounded"
+                        className="text-xs px-2 py-1 bg-danger-600 rounded"
                       >
                         Clear False Profile
                       </button>
                     </div>
-                    <div className="text-xs text-gray-300">
+                    <div className="text-xs text-fg-secondary">
                       Players see: {r.falseProfile.aspects?.primary}/{r.falseProfile.aspects?.secondary}/{r.falseProfile.aspects?.tertiary} | {r.falseProfile.basePotency}
                     </div>
                   </div>
@@ -754,7 +754,7 @@ export function ReagentsView({
                 {/* Delete Button */}
                 <button
                   onClick={() => onDelete('reagent', r.name, { id: r.id })}
-                  className="w-full bg-red-600 py-2 rounded text-sm"
+                  className="w-full bg-danger-600 py-2 rounded text-sm"
                 >
                   <Trash2 size={16} className="inline" /> Delete Reagent
                 </button>
@@ -764,7 +764,7 @@ export function ReagentsView({
         ))}
 
         {(!alchemyReagents || alchemyReagents.length === 0) && (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-fg-faint">
             No reagents. Add your first reagent above.
           </div>
         )}

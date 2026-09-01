@@ -132,7 +132,7 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
       <select
         value={templateType}
         onChange={(e) => setTemplateType(e.target.value as TemplateType)}
-        className="w-full bg-gray-700 px-3 py-2 rounded mb-4"
+        className="w-full bg-surface-2 px-3 py-2 rounded mb-4"
       >
         <option value="weapons">Weapons</option>
         <option value="armor">Armor</option>
@@ -140,14 +140,14 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
         <option value="explosives">Explosives</option>
       </select>
 
-      <div className="space-y-3 mb-6 bg-gray-700 p-4 rounded">
+      <div className="space-y-3 mb-6 bg-surface-2 p-4 rounded">
         <h3 className="font-semibold mb-3">Add New {templateType.charAt(0).toUpperCase() + templateType.slice(1)} Template</h3>
 
         <input
           value={newTName}
           onChange={(e) => setNewTName(e.target.value)}
           placeholder="Name"
-          className="w-full bg-gray-600 px-3 py-2 rounded"
+          className="w-full bg-surface-3 px-3 py-2 rounded"
         />
 
         <div className="grid grid-cols-2 gap-3">
@@ -156,14 +156,14 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
             value={newTWeight}
             onChange={(e) => setNewTWeight(e.target.value)}
             placeholder="Weight (lbs)"
-            className="bg-gray-600 px-3 py-2 rounded"
+            className="bg-surface-3 px-3 py-2 rounded"
           />
           <input
             type="number"
             value={newTHP}
             onChange={(e) => setNewTHP(e.target.value)}
             placeholder="HP"
-            className="bg-gray-600 px-3 py-2 rounded"
+            className="bg-surface-3 px-3 py-2 rounded"
           />
         </div>
 
@@ -174,13 +174,13 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
                 value={newTDamage}
                 onChange={(e) => setNewTDamage(e.target.value)}
                 placeholder="Damage (e.g., sw+1 cut)"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
               <input
                 value={newTReach}
                 onChange={(e) => setNewTReach(e.target.value)}
                 placeholder="Reach (e.g., 1 or C,1)"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
             </div>
             <div className="grid grid-cols-3 gap-3">
@@ -188,28 +188,28 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
                 value={newTParry}
                 onChange={(e) => setNewTParry(e.target.value)}
                 placeholder="Parry (e.g., 0 or -1)"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
               <input
                 type="number"
                 value={newTCost}
                 onChange={(e) => setNewTCost(e.target.value)}
                 placeholder="Cost ($)"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
               <input
                 type="number"
                 value={newTST}
                 onChange={(e) => setNewTST(e.target.value)}
                 placeholder="ST"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
             </div>
             <textarea
               value={newTNotes}
               onChange={(e) => setNewTNotes(e.target.value)}
               placeholder="Notes"
-              className="w-full bg-gray-600 px-3 py-2 rounded"
+              className="w-full bg-surface-3 px-3 py-2 rounded"
               rows={2}
             />
           </>
@@ -222,14 +222,14 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
                 value={newTDamage}
                 onChange={(e) => setNewTDamage(e.target.value)}
                 placeholder="Damage (e.g., thr+1 imp)"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
               <input
                 type="number"
                 value={newTAcc}
                 onChange={(e) => setNewTAcc(e.target.value)}
                 placeholder="Acc"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
             </div>
             <div className="grid grid-cols-3 gap-3">
@@ -237,20 +237,20 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
                 value={newTRange}
                 onChange={(e) => setNewTRange(e.target.value)}
                 placeholder="Range (e.g., 150/200)"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
               <input
                 type="number"
                 value={newTRoF}
                 onChange={(e) => setNewTRoF(e.target.value)}
                 placeholder="RoF"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
               <input
                 value={newTShots}
                 onChange={(e) => setNewTShots(e.target.value)}
                 placeholder="Shots (e.g., 1(2))"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
             </div>
             <div className="grid grid-cols-4 gap-3">
@@ -259,28 +259,28 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
                 value={newTCost}
                 onChange={(e) => setNewTCost(e.target.value)}
                 placeholder="Cost"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
               <input
                 type="number"
                 value={newTST}
                 onChange={(e) => setNewTST(e.target.value)}
                 placeholder="ST"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
               <input
                 type="number"
                 value={newTBulk}
                 onChange={(e) => setNewTBulk(e.target.value)}
                 placeholder="Bulk"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
               <input
                 type="number"
                 value={newTRCl}
                 onChange={(e) => setNewTRCl(e.target.value)}
                 placeholder="RCl"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -289,13 +289,13 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
                 value={newTLC}
                 onChange={(e) => setNewTLC(e.target.value)}
                 placeholder="LC (0-4)"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
               <textarea
                 value={newTNotes}
                 onChange={(e) => setNewTNotes(e.target.value)}
                 placeholder="Notes"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
                 rows={1}
               />
             </div>
@@ -309,14 +309,14 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
                 value={newTLocation}
                 onChange={(e) => setNewTLocation(e.target.value)}
                 placeholder="Location (e.g., torso)"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
               <input
                 type="number"
                 value={newTDR}
                 onChange={(e) => setNewTDR(e.target.value)}
                 placeholder="DR"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -325,21 +325,21 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
                 value={newTCost}
                 onChange={(e) => setNewTCost(e.target.value)}
                 placeholder="Cost"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
               <input
                 type="number"
                 value={newTLC}
                 onChange={(e) => setNewTLC(e.target.value)}
                 placeholder="LC (0-4)"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
             </div>
             <textarea
               value={newTNotes}
               onChange={(e) => setNewTNotes(e.target.value)}
               placeholder="Notes"
-              className="w-full bg-gray-600 px-3 py-2 rounded"
+              className="w-full bg-surface-3 px-3 py-2 rounded"
               rows={2}
             />
           </>
@@ -352,13 +352,13 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
                 value={newTDamage}
                 onChange={(e) => setNewTDamage(e.target.value)}
                 placeholder="Damage (e.g., 2d cr)"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
               <input
                 value={newTFuse}
                 onChange={(e) => setNewTFuse(e.target.value)}
                 placeholder="Fuse (e.g., 4 sec)"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -367,27 +367,27 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
                 value={newTCost}
                 onChange={(e) => setNewTCost(e.target.value)}
                 placeholder="Cost"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
               <input
                 type="number"
                 value={newTLC}
                 onChange={(e) => setNewTLC(e.target.value)}
                 placeholder="LC (0-4)"
-                className="bg-gray-600 px-3 py-2 rounded"
+                className="bg-surface-3 px-3 py-2 rounded"
               />
             </div>
             <textarea
               value={newTNotes}
               onChange={(e) => setNewTNotes(e.target.value)}
               placeholder="Notes"
-              className="w-full bg-gray-600 px-3 py-2 rounded"
+              className="w-full bg-surface-3 px-3 py-2 rounded"
               rows={2}
             />
           </>
         )}
 
-        <button onClick={addTemplate} className="w-full bg-green-600 py-2 rounded">
+        <button onClick={addTemplate} className="w-full bg-success-600 py-2 rounded">
           Add Template
         </button>
       </div>
@@ -398,22 +398,22 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
           const materials = (template.materials as MaterialRequirement[]) || [];
 
           return (
-            <div key={n} className="bg-gray-700 rounded">
+            <div key={n} className="bg-surface-2 rounded">
               <div
-                className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-600"
+                className="flex items-center gap-3 p-3 cursor-pointer hover:bg-surface-3"
                 onClick={() => setExpanded(p => ({...p, [n]: !p[n]}))}
               >
                 <span className="flex-1 capitalize">{n}</span>
-                <span className="text-gray-400 text-sm">W: {template.weight as number}</span>
-                <span className="text-gray-400 text-sm">HP: {template.hp as number}</span>
-                <span className="text-gray-400 text-sm">
+                <span className="text-fg-muted text-sm">W: {template.weight as number}</span>
+                <span className="text-fg-muted text-sm">HP: {template.hp as number}</span>
+                <span className="text-fg-muted text-sm">
                   {materials.length} materials
                 </span>
-                <span className="text-gray-400">{expanded[n] ? '▼' : '▶'}</span>
+                <span className="text-fg-muted">{expanded[n] ? '▼' : '▶'}</span>
               </div>
 
               {expanded[n] && (
-                <div className="px-3 pb-3 space-y-3 border-t border-gray-600 pt-3">
+                <div className="px-3 pb-3 space-y-3 border-t border-edge-strong pt-3">
                   <div>
                     <div className="flex justify-between items-center mb-2">
                       <label className="text-sm font-semibold">Required Materials</label>
@@ -430,13 +430,13 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
                             }
                           } as typeof customTemplates);
                         }}
-                        className="bg-blue-600 px-3 py-1 rounded text-sm"
+                        className="bg-accent-600 px-3 py-1 rounded text-sm"
                       >
                         <Plus size={14} className="inline" /> Add Material
                       </button>
                     </div>
                     {materials.length === 0 && (
-                      <div className="text-gray-500 text-sm italic">No materials required</div>
+                      <div className="text-fg-faint text-sm italic">No materials required</div>
                     )}
                     {materials.map((mat, idx) => (
                       <div key={idx} className="flex gap-2 mb-2">
@@ -454,7 +454,7 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
                               }
                             } as typeof customTemplates);
                           }}
-                          className="flex-1 bg-gray-600 px-3 py-1 rounded"
+                          className="flex-1 bg-surface-3 px-3 py-1 rounded"
                         >
                           <option value="">Select Type</option>
                           {materialTypes.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
@@ -475,7 +475,7 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
                             } as typeof customTemplates);
                           }}
                           placeholder="Amount (lbs)"
-                          className="w-32 bg-gray-600 px-3 py-1 rounded"
+                          className="w-32 bg-surface-3 px-3 py-1 rounded"
                         />
                         <button
                           onClick={() => {
@@ -489,7 +489,7 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
                               }
                             } as typeof customTemplates);
                           }}
-                          className="text-red-400"
+                          className="text-danger-400"
                         >
                           <X size={18} />
                         </button>
@@ -499,7 +499,7 @@ export function TemplatesView({ customTemplates, materialTypes, saveCustomTempla
 
                   <button
                     onClick={() => onDelete('template', n, { templateType })}
-                    className="w-full bg-red-600 py-2 rounded text-sm"
+                    className="w-full bg-danger-600 py-2 rounded text-sm"
                   >
                     <Trash2 size={16} className="inline" /> Delete Template
                   </button>

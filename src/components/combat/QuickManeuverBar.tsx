@@ -101,29 +101,29 @@ const COLOR_CLASSES: Record<
   { base: string; selected: string; disabled: string }
 > = {
   red: {
-    base: 'bg-red-900/40 hover:bg-red-800/60 text-red-300 border-red-700/50',
-    selected: 'bg-red-700 text-white border-red-500 ring-2 ring-red-400',
-    disabled: 'bg-gray-800/40 text-gray-600 border-gray-700/30 cursor-not-allowed',
+    base: 'bg-danger-900/40 hover:bg-danger-800/60 text-danger-300 border-danger-700/50',
+    selected: 'bg-danger-700 text-white border-danger-500 ring-2 ring-danger-400',
+    disabled: 'bg-surface-1/40 text-fg-disabled border-edge/30 cursor-not-allowed',
   },
   blue: {
-    base: 'bg-blue-900/40 hover:bg-blue-800/60 text-blue-300 border-blue-700/50',
-    selected: 'bg-blue-700 text-white border-blue-500 ring-2 ring-blue-400',
-    disabled: 'bg-gray-800/40 text-gray-600 border-gray-700/30 cursor-not-allowed',
+    base: 'bg-accent-900/40 hover:bg-accent-800/60 text-accent-300 border-accent-700/50',
+    selected: 'bg-accent-700 text-white border-accent-500 ring-2 ring-accent-400',
+    disabled: 'bg-surface-1/40 text-fg-disabled border-edge/30 cursor-not-allowed',
   },
   green: {
-    base: 'bg-green-900/40 hover:bg-green-800/60 text-green-300 border-green-700/50',
-    selected: 'bg-green-700 text-white border-green-500 ring-2 ring-green-400',
-    disabled: 'bg-gray-800/40 text-gray-600 border-gray-700/30 cursor-not-allowed',
+    base: 'bg-success-900/40 hover:bg-success-800/60 text-success-300 border-success-700/50',
+    selected: 'bg-success-700 text-white border-success-500 ring-2 ring-success-400',
+    disabled: 'bg-surface-1/40 text-fg-disabled border-edge/30 cursor-not-allowed',
   },
   amber: {
-    base: 'bg-amber-900/40 hover:bg-amber-800/60 text-amber-300 border-amber-700/50',
-    selected: 'bg-amber-700 text-white border-amber-500 ring-2 ring-amber-400',
-    disabled: 'bg-gray-800/40 text-gray-600 border-gray-700/30 cursor-not-allowed',
+    base: 'bg-warning-900/40 hover:bg-warning-800/60 text-warning-300 border-warning-700/50',
+    selected: 'bg-warning-700 text-white border-warning-500 ring-2 ring-warning-400',
+    disabled: 'bg-surface-1/40 text-fg-disabled border-edge/30 cursor-not-allowed',
   },
   gray: {
-    base: 'bg-gray-700/40 hover:bg-gray-600/60 text-gray-300 border-gray-600/50',
-    selected: 'bg-gray-600 text-white border-gray-400 ring-2 ring-gray-400',
-    disabled: 'bg-gray-800/40 text-gray-600 border-gray-700/30 cursor-not-allowed',
+    base: 'bg-surface-2/40 hover:bg-surface-3/60 text-fg-secondary border-edge-strong/50',
+    selected: 'bg-surface-3 text-fg-bright border-edge-bright ring-2 ring-edge-bright',
+    disabled: 'bg-surface-1/40 text-fg-disabled border-edge/30 cursor-not-allowed',
   },
 };
 

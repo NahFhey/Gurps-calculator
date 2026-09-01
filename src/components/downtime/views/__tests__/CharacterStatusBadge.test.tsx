@@ -44,7 +44,7 @@ describe('CharacterStatusBadge', () => {
 
     const badge = screen.getByTitle('Assigned to: Fishing');
     expect(badge).toBeInTheDocument();
-    expect(badge).toHaveClass('bg-green-500');
+    expect(badge).toHaveClass('bg-success-500');
   });
 
   it('shows tired badge when tired', () => {
@@ -68,7 +68,7 @@ describe('CharacterStatusBadge', () => {
 
     const badge = screen.getByTitle('Exhausted - worked without rest');
     expect(badge).toBeInTheDocument();
-    expect(badge).toHaveClass('bg-red-500');
+    expect(badge).toHaveClass('bg-danger-500');
   });
 
   it('shows both assignment and tired badges', () => {

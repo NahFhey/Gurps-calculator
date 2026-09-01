@@ -76,48 +76,48 @@ export function TBBuilderPanel({ traitBudget, initialTraits = [], onUpdate }: TB
   }
 
   return (
-    <div className="bg-gray-800 border border-gray-600 rounded-lg p-4">
+    <div className="bg-surface-1 border border-edge-strong rounded-lg p-4">
       <div className="flex justify-between items-center mb-3">
         <h4 className="font-semibold">Trait Budget (TB) Builder</h4>
         <button
           onClick={() => setShowAdd(!showAdd)}
-          className="bg-green-600 px-3 py-1 rounded text-sm"
+          className="bg-success-600 px-3 py-1 rounded text-sm"
         >
           {showAdd ? 'Cancel' : <><Plus size={14} className="inline" /> Add Trait</>}
         </button>
       </div>
 
       {/* Budget Summary */}
-      <div className="bg-gray-700 p-3 rounded mb-3">
+      <div className="bg-surface-2 p-3 rounded mb-3">
         <div className="flex justify-between items-center mb-2">
           <div>
-            <span className="text-sm text-gray-400">Budget:</span>
+            <span className="text-sm text-fg-muted">Budget:</span>
             <span className="ml-2 font-bold text-purple-400">{traitBudget} pts</span>
           </div>
           <div>
-            <span className="text-sm text-gray-400">Used:</span>
-            <span className={`ml-2 font-bold ${isOverBudget ? 'text-red-400' : 'text-blue-400'}`}>
+            <span className="text-sm text-fg-muted">Used:</span>
+            <span className={`ml-2 font-bold ${isOverBudget ? 'text-danger-400' : 'text-accent-400'}`}>
               {totalUsed} pts
             </span>
           </div>
           <div>
-            <span className="text-sm text-gray-400">Remaining:</span>
-            <span className={`ml-2 font-bold ${isOverBudget ? 'text-red-400' : 'text-green-400'}`}>
+            <span className="text-sm text-fg-muted">Remaining:</span>
+            <span className={`ml-2 font-bold ${isOverBudget ? 'text-danger-400' : 'text-success-400'}`}>
               {remaining} pts
             </span>
           </div>
         </div>
 
         {/* Progress bar */}
-        <div className="w-full bg-gray-600 rounded-full h-3">
+        <div className="w-full bg-surface-3 rounded-full h-3">
           <div
-            className={`h-3 rounded-full ${isOverBudget ? 'bg-red-500' : 'bg-purple-500'}`}
+            className={`h-3 rounded-full ${isOverBudget ? 'bg-danger-500' : 'bg-purple-500'}`}
             style={{ width: `${Math.min(100, (totalUsed / traitBudget) * 100)}%` }}
           />
         </div>
 
         {isOverBudget && (
-          <div className="mt-2 text-xs text-red-400">
+          <div className="mt-2 text-xs text-danger-400">
             Over budget by {Math.abs(remaining)} points!
           </div>
         )}
@@ -125,40 +125,40 @@ export function TBBuilderPanel({ traitBudget, initialTraits = [], onUpdate }: TB
 
       {/* Add Trait Form */}
       {showAdd && (
-        <div className="bg-gray-700 p-3 rounded mb-3 space-y-2">
+        <div className="bg-surface-2 p-3 rounded mb-3 space-y-2">
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Trait Name</label>
+            <label className="block text-xs text-fg-muted mb-1">Trait Name</label>
             <input
               value={newTraitName}
               onChange={(e) => setNewTraitName(e.target.value)}
               placeholder="e.g., Accelerated Healing"
-              className="w-full bg-gray-600 px-3 py-2 rounded text-sm"
+              className="w-full bg-surface-3 px-3 py-2 rounded text-sm"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Point Cost</label>
+              <label className="block text-xs text-fg-muted mb-1">Point Cost</label>
               <input
                 type="number"
                 value={newTraitCost}
                 onChange={(e) => setNewTraitCost(e.target.value)}
                 placeholder="10"
-                className="w-full bg-gray-600 px-3 py-2 rounded text-sm"
+                className="w-full bg-surface-3 px-3 py-2 rounded text-sm"
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Notes (optional)</label>
+              <label className="block text-xs text-fg-muted mb-1">Notes (optional)</label>
               <input
                 value={newTraitNotes}
                 onChange={(e) => setNewTraitNotes(e.target.value)}
                 placeholder="Level, modifiers, etc."
-                className="w-full bg-gray-600 px-3 py-2 rounded text-sm"
+                className="w-full bg-surface-3 px-3 py-2 rounded text-sm"
               />
             </div>
           </div>
 
-          <button onClick={addTrait} className="w-full bg-green-600 px-3 py-2 rounded text-sm">
+          <button onClick={addTrait} className="w-full bg-success-600 px-3 py-2 rounded text-sm">
             Add Trait
           </button>
         </div>
@@ -167,38 +167,38 @@ export function TBBuilderPanel({ traitBudget, initialTraits = [], onUpdate }: TB
       {/* Trait List */}
       <div className="space-y-2">
         {traits.length === 0 && (
-          <div className="text-gray-500 text-center text-sm py-3">
+          <div className="text-fg-faint text-center text-sm py-3">
             No traits added yet. Click "Add Trait" to start building your potion effect.
           </div>
         )}
 
         {traits.map(trait => (
-          <div key={trait.id} className="bg-gray-700 p-3 rounded">
+          <div key={trait.id} className="bg-surface-2 p-3 rounded">
             <div className="flex items-start gap-2">
               <div className="flex-1 space-y-2">
                 <input
                   value={trait.name}
                   onChange={(e) => updateTrait(trait.id, 'name', e.target.value)}
-                  className="w-full bg-gray-600 px-2 py-1 rounded text-sm font-semibold"
+                  className="w-full bg-surface-3 px-2 py-1 rounded text-sm font-semibold"
                   placeholder="Trait name"
                 />
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">Cost</label>
+                    <label className="block text-xs text-fg-muted mb-1">Cost</label>
                     <input
                       type="number"
                       value={trait.cost}
                       onChange={(e) => updateTrait(trait.id, 'cost', e.target.value)}
-                      className="w-full bg-gray-600 px-2 py-1 rounded text-sm"
+                      className="w-full bg-surface-3 px-2 py-1 rounded text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1">Notes</label>
+                    <label className="block text-xs text-fg-muted mb-1">Notes</label>
                     <input
                       value={trait.notes || ''}
                       onChange={(e) => updateTrait(trait.id, 'notes', e.target.value)}
-                      className="w-full bg-gray-600 px-2 py-1 rounded text-sm"
+                      className="w-full bg-surface-3 px-2 py-1 rounded text-sm"
                       placeholder="Level, modifiers..."
                     />
                   </div>
@@ -207,7 +207,7 @@ export function TBBuilderPanel({ traitBudget, initialTraits = [], onUpdate }: TB
 
               <button
                 onClick={() => removeTrait(trait.id)}
-                className="text-red-400 px-2 py-1"
+                className="text-danger-400 px-2 py-1"
               >
                 <Trash2 size={16} />
               </button>
@@ -218,7 +218,7 @@ export function TBBuilderPanel({ traitBudget, initialTraits = [], onUpdate }: TB
 
       {/* Summary */}
       {traits.length > 0 && (
-        <div className="mt-3 bg-gray-700 p-2 rounded text-xs text-gray-400">
+        <div className="mt-3 bg-surface-2 p-2 rounded text-xs text-fg-muted">
           Total Traits: {traits.length} | Total Cost: {totalUsed} points
           {traits.map(t => ` • ${t.name} (${t.cost})`).join('')}
         </div>

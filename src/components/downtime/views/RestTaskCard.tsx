@@ -35,23 +35,23 @@ export function RestTaskCard({
 
   return (
     <div
-      className={`rounded-lg border-2 bg-gray-800/60 p-3 ${getStatusBorderColor(task.status)}`}
+      className={`rounded-lg border-2 bg-surface-1/60 p-3 ${getStatusBorderColor(task.status)}`}
       data-testid="rest-task-card"
       data-task-id={task.id}
     >
       <div className="mb-2 flex items-start justify-between">
         <div className="flex items-center gap-2">
           <Bed className="h-4 w-4 text-indigo-400" />
-          <span className="font-medium text-gray-100">{REST_LABELS[data.restType]}</span>
+          <span className="font-medium text-fg-bright">{REST_LABELS[data.restType]}</span>
         </div>
         <StatusBadge status={task.status} />
       </div>
 
-      <div className="mb-3 space-y-1 text-sm text-gray-300">
-        <p><span className="font-medium text-gray-200">Character:</span> {leader?.name ?? task.leaderId}</p>
+      <div className="mb-3 space-y-1 text-sm text-fg-secondary">
+        <p><span className="font-medium text-fg-primary">Character:</span> {leader?.name ?? task.leaderId}</p>
         {healer && (
           <p className="flex flex-wrap items-center gap-1">
-            <span className="font-medium text-gray-200">Healer:</span> {healer.name}
+            <span className="font-medium text-fg-primary">Healer:</span> {healer.name}
             {physicianLevel > 0 && (
               <span className="inline-flex items-center gap-1 rounded bg-teal-900/50 px-1.5 py-0.5 text-xs text-teal-300">
                 <Stethoscope className="h-3 w-3" /> Physician-{physicianLevel}
@@ -60,7 +60,7 @@ export function RestTaskCard({
           </p>
         )}
         {data.recoveryBonus !== 0 && (
-          <p><span className="font-medium text-gray-200">Recovery bonus:</span> {data.recoveryBonus > 0 ? '+' : ''}{data.recoveryBonus}</p>
+          <p><span className="font-medium text-fg-primary">Recovery bonus:</span> {data.recoveryBonus > 0 ? '+' : ''}{data.recoveryBonus}</p>
         )}
       </div>
 
@@ -81,7 +81,7 @@ export function RestTaskCard({
             Resolve
           </button>
           {onCancel && (
-            <button type="button" onClick={onCancel} className="rounded border border-red-500/50 px-3 py-1.5 text-sm text-red-400 hover:bg-red-900/30">
+            <button type="button" onClick={onCancel} className="rounded border border-danger-500/50 px-3 py-1.5 text-sm text-danger-400 hover:bg-danger-900/30">
               Cancel
             </button>
           )}

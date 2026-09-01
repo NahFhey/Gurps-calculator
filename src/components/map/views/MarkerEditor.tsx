@@ -60,20 +60,20 @@ export function MarkerEditor({ tileId, existing, locations = [], onConfirm, onDe
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-full max-w-sm bg-gray-800 border border-gray-600 rounded-lg shadow-2xl">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-          <h2 className="text-sm font-semibold text-gray-100">
+      <div className="w-full max-w-sm bg-surface-1 border border-edge-strong rounded-lg shadow-2xl">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-edge">
+          <h2 className="text-sm font-semibold text-fg-bright">
             {existing ? 'Edit Marker' : 'Add Marker'}
           </h2>
-          <button onClick={onCancel} className="p-1 rounded hover:bg-gray-700">
-            <X className="w-4 h-4 text-gray-400" />
+          <button onClick={onCancel} className="p-1 rounded hover:bg-surface-2">
+            <X className="w-4 h-4 text-fg-muted" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="px-4 py-3 space-y-3">
           {/* Type */}
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1">Type</label>
+            <label className="block text-xs font-medium text-fg-muted mb-1">Type</label>
             <div className="grid grid-cols-4 gap-1.5">
               {MARKER_TYPES.map((mt) => (
                 <button
@@ -82,8 +82,8 @@ export function MarkerEditor({ tileId, existing, locations = [], onConfirm, onDe
                   className={[
                     'flex flex-col items-center gap-1 px-2 py-1.5 rounded text-[10px] border transition-colors',
                     type === mt.value
-                      ? 'bg-gray-600 border-white/30 text-white'
-                      : 'bg-gray-700/30 border-gray-600 text-gray-400 hover:bg-gray-600/30',
+                      ? 'bg-surface-3 border-white/30 text-white'
+                      : 'bg-surface-2/30 border-edge-strong text-fg-muted hover:bg-surface-3/30',
                   ].join(' ')}
                   onClick={() => setType(mt.value)}
                 >
@@ -96,12 +96,12 @@ export function MarkerEditor({ tileId, existing, locations = [], onConfirm, onDe
 
           {type === 'location' && (
             <div className="space-y-2">
-              <label className="block text-xs font-medium text-gray-400">Location</label>
+              <label className="block text-xs font-medium text-fg-muted">Location</label>
               <select
                 aria-label="Location"
                 value={locationChoice}
                 onChange={(e) => setLocationChoice(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-600 rounded text-sm text-gray-200"
+                className="w-full px-2.5 py-1.5 bg-surface-0 border border-edge-strong rounded text-sm text-fg-primary"
               >
                 <option value="">Select a location…</option>
                 {locations.map((location) => (
@@ -115,7 +115,7 @@ export function MarkerEditor({ tileId, existing, locations = [], onConfirm, onDe
                   value={newLocationName}
                   onChange={(e) => setNewLocationName(e.target.value)}
                   placeholder="New location name"
-                  className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-600 rounded text-sm text-gray-200"
+                  className="w-full px-2.5 py-1.5 bg-surface-0 border border-edge-strong rounded text-sm text-fg-primary"
                 />
               )}
             </div>
@@ -123,42 +123,42 @@ export function MarkerEditor({ tileId, existing, locations = [], onConfirm, onDe
 
           {/* Label */}
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1">
-              Label <span className="text-red-400">*</span>
+            <label className="block text-xs font-medium text-fg-muted mb-1">
+              Label <span className="text-danger-400">*</span>
             </label>
             <input
               type="text"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="e.g., Iron Deposit"
-              className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-600 rounded text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2.5 py-1.5 bg-surface-0 border border-edge-strong rounded text-sm text-fg-primary placeholder-fg-faint focus:outline-none focus:ring-2 focus:ring-accent-500"
               autoFocus
             />
           </div>
 
           {/* Notes */}
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1">Notes</label>
+            <label className="block text-xs font-medium text-fg-muted mb-1">Notes</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Optional notes"
               rows={2}
-              className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-600 rounded text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-2.5 py-1.5 bg-surface-0 border border-edge-strong rounded text-sm text-fg-primary placeholder-fg-faint focus:outline-none focus:ring-2 focus:ring-accent-500 resize-none"
             />
           </div>
 
           {/* Visibility */}
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1">Visibility</label>
+            <label className="block text-xs font-medium text-fg-muted mb-1">Visibility</label>
             <div className="flex gap-2">
               <button
                 type="button"
                 className={[
                   'flex-1 px-3 py-1.5 rounded text-xs border transition-colors',
                   visibility === 'player'
-                    ? 'bg-green-900/40 border-green-600 text-green-300'
-                    : 'bg-gray-700/30 border-gray-600 text-gray-400 hover:bg-gray-600/30',
+                    ? 'bg-success-900/40 border-success-600 text-success-300'
+                    : 'bg-surface-2/30 border-edge-strong text-fg-muted hover:bg-surface-3/30',
                 ].join(' ')}
                 onClick={() => setVisibility('player')}
               >
@@ -170,7 +170,7 @@ export function MarkerEditor({ tileId, existing, locations = [], onConfirm, onDe
                   'flex-1 px-3 py-1.5 rounded text-xs border transition-colors',
                   visibility === 'gm'
                     ? 'bg-purple-900/40 border-purple-600 text-purple-300'
-                    : 'bg-gray-700/30 border-gray-600 text-gray-400 hover:bg-gray-600/30',
+                    : 'bg-surface-2/30 border-edge-strong text-fg-muted hover:bg-surface-3/30',
                 ].join(' ')}
                 onClick={() => setVisibility('gm')}
               >
@@ -185,7 +185,7 @@ export function MarkerEditor({ tileId, existing, locations = [], onConfirm, onDe
               <button
                 type="button"
                 onClick={() => onDelete(existing)}
-                className="mr-auto px-3 py-1.5 text-xs text-red-300 hover:text-red-200"
+                className="mr-auto px-3 py-1.5 text-xs text-danger-300 hover:text-danger-200"
               >
                 Delete
               </button>
@@ -193,7 +193,7 @@ export function MarkerEditor({ tileId, existing, locations = [], onConfirm, onDe
             <button
               type="button"
               onClick={onCancel}
-              className="px-3 py-1.5 text-xs text-gray-300 hover:text-gray-100"
+              className="px-3 py-1.5 text-xs text-fg-secondary hover:text-fg-bright"
             >
               Cancel
             </button>
@@ -203,8 +203,8 @@ export function MarkerEditor({ tileId, existing, locations = [], onConfirm, onDe
               className={[
                 'px-3 py-1.5 text-xs font-medium rounded transition-colors',
                 canConfirm
-                  ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                  : 'bg-gray-700 text-gray-500 cursor-not-allowed',
+                  ? 'bg-accent-600 hover:bg-accent-500 text-white'
+                  : 'bg-surface-2 text-fg-faint cursor-not-allowed',
               ].join(' ')}
             >
               {existing ? 'Save' : 'Add Marker'}

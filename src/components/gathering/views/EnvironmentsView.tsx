@@ -127,22 +127,22 @@ function ZoneProfileEditor({ environmentId, locationId, profile, items, onSave, 
   }
 
   return (
-    <div className="bg-gray-600/50 p-3 rounded mt-2 space-y-3">
-      <div className="text-sm font-medium text-green-400 mb-2">Foraging Zone Profile</div>
+    <div className="bg-surface-3/50 p-3 rounded mt-2 space-y-3">
+      <div className="text-sm font-medium text-success-400 mb-2">Foraging Zone Profile</div>
 
       {/* Profile Name & Tags */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs text-gray-400 mb-1">Profile Name *</label>
+          <label className="block text-xs text-fg-muted mb-1">Profile Name *</label>
           <input
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             placeholder="e.g., Forest Zone"
-            className="w-full bg-gray-700 border border-gray-600 px-2 py-1 rounded text-sm"
+            className="w-full bg-surface-2 border border-edge-strong px-2 py-1 rounded text-sm"
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-400 mb-1">Tags (comma-separated)</label>
+          <label className="block text-xs text-fg-muted mb-1">Tags (comma-separated)</label>
           <input
             value={draft.tags.join(', ')}
             onChange={(e) =>
@@ -155,17 +155,17 @@ function ZoneProfileEditor({ environmentId, locationId, profile, items, onSave, 
               })
             }
             placeholder="e.g., OldGrowth, Coastal"
-            className="w-full bg-gray-700 border border-gray-600 px-2 py-1 rounded text-sm"
+            className="w-full bg-surface-2 border border-edge-strong px-2 py-1 rounded text-sm"
           />
         </div>
       </div>
 
       <div className="w-1/3">
-        <label className="block text-xs text-gray-400 mb-1">Season</label>
+        <label className="block text-xs text-fg-muted mb-1">Season</label>
         <select
           value={draft.currentSeason ?? ''}
           onChange={(e) => setDraft({ ...draft, currentSeason: e.target.value || undefined })}
-          className="w-full bg-gray-700 border border-gray-600 px-2 py-1 rounded text-sm"
+          className="w-full bg-surface-2 border border-edge-strong px-2 py-1 rounded text-sm"
         >
           <option value="">-- Any --</option>
           <option value="spring">Spring</option>
@@ -181,11 +181,11 @@ function ZoneProfileEditor({ environmentId, locationId, profile, items, onSave, 
         const isExpanded = expandedTier === key;
 
         return (
-          <div key={key} className="border border-gray-600 rounded overflow-hidden">
+          <div key={key} className="border border-edge-strong rounded overflow-hidden">
             <button
               type="button"
               onClick={() => setExpandedTier(isExpanded ? null : key)}
-              className="w-full flex items-center justify-between px-3 py-2 bg-gray-700 hover:bg-gray-650 text-sm font-medium"
+              className="w-full flex items-center justify-between px-3 py-2 bg-surface-2 hover:bg-surface-3 text-sm font-medium"
             >
               <span>
                 {label} Tier ({cats.length} {cats.length === 1 ? 'category' : 'categories'})
@@ -196,14 +196,14 @@ function ZoneProfileEditor({ environmentId, locationId, profile, items, onSave, 
             {isExpanded && (
               <div className="p-2 space-y-2">
                 {cats.map((cat, catIdx) => (
-                  <div key={catIdx} className="bg-gray-700/50 p-2 rounded space-y-1">
+                  <div key={catIdx} className="bg-surface-2/50 p-2 rounded space-y-1">
                     <div className="flex items-center gap-2">
                       <select
                         value={cat.categoryId}
                         onChange={(e) =>
                           updateCategory(key, catIdx, { categoryId: e.target.value as ForageCategoryId })
                         }
-                        className="flex-1 bg-gray-700 border border-gray-600 px-2 py-1 rounded text-xs"
+                        className="flex-1 bg-surface-2 border border-edge-strong px-2 py-1 rounded text-xs"
                       >
                         {FORAGE_CATEGORY_IDS.map((id) => (
                           <option key={id} value={id}>
@@ -212,20 +212,20 @@ function ZoneProfileEditor({ environmentId, locationId, profile, items, onSave, 
                         ))}
                       </select>
                       <div className="flex items-center gap-1">
-                        <label className="text-xs text-gray-400">Wt:</label>
+                        <label className="text-xs text-fg-muted">Wt:</label>
                         <input
                           type="number"
                           value={cat.weight}
                           onChange={(e) =>
                             updateCategory(key, catIdx, { weight: Math.max(0, Number(e.target.value)) })
                           }
-                          className="w-14 bg-gray-700 border border-gray-600 px-1 py-1 rounded text-xs text-center"
+                          className="w-14 bg-surface-2 border border-edge-strong px-1 py-1 rounded text-xs text-center"
                           min={0}
                         />
                       </div>
                       <button
                         onClick={() => removeCategory(key, catIdx)}
-                        className="text-red-400 hover:text-red-300"
+                        className="text-danger-400 hover:text-danger-300"
                         title="Remove category"
                       >
                         <X size={14} />
@@ -241,7 +241,7 @@ function ZoneProfileEditor({ environmentId, locationId, profile, items, onSave, 
                             onChange={(e) =>
                               updateItemInCategory(key, catIdx, itemIdx, { itemId: e.target.value })
                             }
-                            className="flex-1 bg-gray-700 border border-gray-600 px-2 py-1 rounded text-xs"
+                            className="flex-1 bg-surface-2 border border-edge-strong px-2 py-1 rounded text-xs"
                           >
                             {items.map((item) => (
                               <option key={item.id} value={item.id}>
@@ -250,7 +250,7 @@ function ZoneProfileEditor({ environmentId, locationId, profile, items, onSave, 
                             ))}
                           </select>
                           <div className="flex items-center gap-1">
-                            <label className="text-xs text-gray-400">Wt:</label>
+                            <label className="text-xs text-fg-muted">Wt:</label>
                             <input
                               type="number"
                               value={wi.weight}
@@ -259,13 +259,13 @@ function ZoneProfileEditor({ environmentId, locationId, profile, items, onSave, 
                                   weight: Math.max(0, Number(e.target.value)),
                                 })
                               }
-                              className="w-14 bg-gray-700 border border-gray-600 px-1 py-1 rounded text-xs text-center"
+                              className="w-14 bg-surface-2 border border-edge-strong px-1 py-1 rounded text-xs text-center"
                               min={0}
                             />
                           </div>
                           <button
                             onClick={() => removeItemFromCategory(key, catIdx, itemIdx)}
-                            className="text-red-400 hover:text-red-300"
+                            className="text-danger-400 hover:text-danger-300"
                             title="Remove item"
                           >
                             <X size={12} />
@@ -275,7 +275,7 @@ function ZoneProfileEditor({ environmentId, locationId, profile, items, onSave, 
 
                       <button
                         onClick={() => addItemToCategory(key, catIdx)}
-                        className="text-xs text-blue-400 hover:text-blue-300"
+                        className="text-xs text-accent-400 hover:text-accent-300"
                         disabled={items.length === 0}
                       >
                         + Add Item
@@ -286,7 +286,7 @@ function ZoneProfileEditor({ environmentId, locationId, profile, items, onSave, 
 
                 <button
                   onClick={() => addCategory(key)}
-                  className="text-xs text-green-400 hover:text-green-300"
+                  className="text-xs text-success-400 hover:text-success-300"
                 >
                   + Add Category
                 </button>
@@ -298,11 +298,11 @@ function ZoneProfileEditor({ environmentId, locationId, profile, items, onSave, 
 
       {/* Actions */}
       <div className="flex gap-2 pt-1">
-        <button onClick={handleSave} className="flex-1 bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded text-sm">
+        <button onClick={handleSave} className="flex-1 bg-success-600 hover:bg-success-700 px-3 py-1.5 rounded text-sm">
           <Save size={14} className="inline mr-1" /> {profile ? 'Update Zone Profile' : 'Create Zone Profile'}
         </button>
         {profile && (
-          <button onClick={handleDelete} className="bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded text-sm">
+          <button onClick={handleDelete} className="bg-danger-600 hover:bg-danger-700 px-3 py-1.5 rounded text-sm">
             <Trash2 size={14} className="inline mr-1" /> Delete
           </button>
         )}
@@ -446,29 +446,29 @@ export function EnvironmentsView({
     <div>
       <div className="flex justify-between mb-4">
         <h3 className="text-lg font-bold">Environments ({environments.length})</h3>
-        <button onClick={() => setShowAdd(!showAdd)} className="bg-green-600 px-3 py-1 rounded text-sm">
+        <button onClick={() => setShowAdd(!showAdd)} className="bg-success-600 px-3 py-1 rounded text-sm">
           <Plus size={16} className="inline" /> Add Environment
         </button>
       </div>
 
       {showAdd && (
-        <div className="bg-gray-700 p-4 rounded mb-4 space-y-3">
+        <div className="bg-surface-2 p-4 rounded mb-4 space-y-3">
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Name *</label>
+            <label className="block text-xs text-fg-muted mb-1">Name *</label>
             <input
               value={newEnvName}
               onChange={(e) => setNewEnvName(e.target.value)}
               placeholder="e.g., Tuto Coastal Waters"
-              className="w-full bg-gray-600 px-3 py-2 rounded"
+              className="w-full bg-surface-3 px-3 py-2 rounded"
             />
           </div>
 
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Location</label>
+            <label className="block text-xs text-fg-muted mb-1">Location</label>
             <select
               value={newEnvLocationId}
               onChange={(e) => setNewEnvLocationId(e.target.value)}
-              className="w-full bg-gray-600 px-3 py-2 rounded"
+              className="w-full bg-surface-3 px-3 py-2 rounded"
             >
               <option value="">-- No Location (hidden from activities) --</option>
               {locations.map((loc) => (
@@ -477,13 +477,13 @@ export function EnvironmentsView({
                 </option>
               ))}
             </select>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-fg-faint mt-1">
               Environments must be linked to a location to appear in downtime activities.
             </p>
           </div>
 
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Supported Modes</label>
+            <label className="block text-xs text-fg-muted mb-1">Supported Modes</label>
             <div className="flex flex-wrap gap-2">
               {GATHERING_MODES.map((mode) => (
                 <label key={mode} className="flex items-center gap-1 text-sm">
@@ -507,14 +507,14 @@ export function EnvironmentsView({
 
           {newEnvModes.includes('Fishing') && (
             <>
-              <div className="text-sm font-medium text-gray-300 mt-4 mb-2">Fishing Tables</div>
+              <div className="text-sm font-medium text-fg-secondary mt-4 mb-2">Fishing Tables</div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Catch Table</label>
+                  <label className="block text-xs text-fg-muted mb-1">Catch Table</label>
                   <select
                     value={newEnvCatchTableId}
                     onChange={(e) => setNewEnvCatchTableId(e.target.value)}
-                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                    className="w-full bg-surface-3 px-3 py-2 rounded"
                   >
                     <option value="">-- None --</option>
                     {tables
@@ -527,11 +527,11 @@ export function EnvironmentsView({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Mild Event Table</label>
+                  <label className="block text-xs text-fg-muted mb-1">Mild Event Table</label>
                   <select
                     value={newEnvMildTableId}
                     onChange={(e) => setNewEnvMildTableId(e.target.value)}
-                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                    className="w-full bg-surface-3 px-3 py-2 rounded"
                   >
                     <option value="">-- None --</option>
                     {tables
@@ -544,11 +544,11 @@ export function EnvironmentsView({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Rare Event Table</label>
+                  <label className="block text-xs text-fg-muted mb-1">Rare Event Table</label>
                   <select
                     value={newEnvRareTableId}
                     onChange={(e) => setNewEnvRareTableId(e.target.value)}
-                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                    className="w-full bg-surface-3 px-3 py-2 rounded"
                   >
                     <option value="">-- None --</option>
                     {tables
@@ -566,14 +566,14 @@ export function EnvironmentsView({
 
           {newEnvModes.includes('Foraging') && (
             <>
-              <div className="text-sm font-medium text-gray-300 mt-4 mb-2">Foraging Tables</div>
+              <div className="text-sm font-medium text-fg-secondary mt-4 mb-2">Foraging Tables</div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Find Table</label>
+                  <label className="block text-xs text-fg-muted mb-1">Find Table</label>
                   <select
                     value={newEnvForagingFindTableId}
                     onChange={(e) => setNewEnvForagingFindTableId(e.target.value)}
-                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                    className="w-full bg-surface-3 px-3 py-2 rounded"
                   >
                     <option value="">-- None --</option>
                     {tables
@@ -586,11 +586,11 @@ export function EnvironmentsView({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Mild Event Table</label>
+                  <label className="block text-xs text-fg-muted mb-1">Mild Event Table</label>
                   <select
                     value={newEnvForagingMildTableId}
                     onChange={(e) => setNewEnvForagingMildTableId(e.target.value)}
-                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                    className="w-full bg-surface-3 px-3 py-2 rounded"
                   >
                     <option value="">-- None --</option>
                     {tables
@@ -603,11 +603,11 @@ export function EnvironmentsView({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Rare Event Table</label>
+                  <label className="block text-xs text-fg-muted mb-1">Rare Event Table</label>
                   <select
                     value={newEnvForagingRareTableId}
                     onChange={(e) => setNewEnvForagingRareTableId(e.target.value)}
-                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                    className="w-full bg-surface-3 px-3 py-2 rounded"
                   >
                     <option value="">-- None --</option>
                     {tables
@@ -624,21 +624,21 @@ export function EnvironmentsView({
           )}
 
           <div className="w-1/3">
-            <label className="block text-xs text-gray-400 mb-1">Skill Modifier</label>
+            <label className="block text-xs text-fg-muted mb-1">Skill Modifier</label>
             <input
               type="number"
               value={newEnvSkillMod}
               onChange={(e) => setNewEnvSkillMod(e.target.value)}
               placeholder="e.g., -1"
-              className="w-full bg-gray-600 px-3 py-2 rounded"
+              className="w-full bg-surface-3 px-3 py-2 rounded"
             />
           </div>
 
           <div className="flex gap-2 pt-2">
-            <button onClick={addEnvironment} className="flex-1 bg-green-600 px-4 py-2 rounded">
+            <button onClick={addEnvironment} className="flex-1 bg-success-600 px-4 py-2 rounded">
               <Save size={16} className="inline mr-1" /> {editingId ? 'Update' : 'Save'}
             </button>
-            <button onClick={resetForm} className="bg-red-600 px-4 py-2 rounded">
+            <button onClick={resetForm} className="bg-danger-600 px-4 py-2 rounded">
               <X size={16} />
             </button>
           </div>
@@ -647,7 +647,7 @@ export function EnvironmentsView({
 
       <div className="space-y-2">
         {environments.length === 0 ? (
-          <p className="text-gray-500 italic">No environments defined. Create gathering locations.</p>
+          <p className="text-fg-faint italic">No environments defined. Create gathering locations.</p>
         ) : (
           environments.map((e) => {
             const isExpanded = expandedEnvId === e.id;
@@ -655,13 +655,13 @@ export function EnvironmentsView({
             const zoneProfile = profileByEnvId[e.id] ?? null;
 
             return (
-              <div key={e.id} className="bg-gray-700 p-3 rounded">
+              <div key={e.id} className="bg-surface-2 p-3 rounded">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     {hasForaging && (
                       <button
                         onClick={() => setExpandedEnvId(isExpanded ? null : e.id)}
-                        className="text-gray-400 hover:text-gray-200"
+                        className="text-fg-muted hover:text-fg-primary"
                         title={isExpanded ? 'Collapse' : 'Expand zone profile'}
                       >
                         {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -669,21 +669,21 @@ export function EnvironmentsView({
                     )}
                     <span className="font-medium">{e.name}</span>
                     {hasForaging && zoneProfile && (
-                      <span className="text-xs text-green-400 bg-green-900/30 px-1.5 py-0.5 rounded">
+                      <span className="text-xs text-success-400 bg-success-900/30 px-1.5 py-0.5 rounded">
                         Zone Profile
                       </span>
                     )}
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => editEnvironment(e)} className="text-blue-400">
+                    <button onClick={() => editEnvironment(e)} className="text-accent-400">
                       <Edit2 size={16} />
                     </button>
-                    <button onClick={() => onDelete('environment', e.id, e.name)} className="text-red-400">
+                    <button onClick={() => onDelete('environment', e.id, e.name)} className="text-danger-400">
                       <Trash2 size={16} />
                     </button>
                   </div>
                 </div>
-                <div className="text-sm text-gray-400 mt-1">
+                <div className="text-sm text-fg-muted mt-1">
                   Modes: {e.supportedModes?.join(', ') || 'All'}
                   {e.skillMod !== 0 && (
                     <span className="ml-2">
@@ -692,7 +692,7 @@ export function EnvironmentsView({
                     </span>
                   )}
                   {e.locationId ? (
-                    <span className="ml-2 text-blue-400">
+                    <span className="ml-2 text-accent-400">
                       @ {getLocationName(e.locationId) ?? 'Unknown location'}
                     </span>
                   ) : (

@@ -171,33 +171,33 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
       <div className="flex justify-between items-center mb-4">
         <div>
           <h2 className="text-xl font-bold">Formula Design</h2>
-          <p className="text-sm text-gray-400 mt-1">
+          <p className="text-sm text-fg-muted mt-1">
             Design and manage alchemy formulas. Players can view and start batches from formulas in the Formulas tab.
           </p>
         </div>
         <button
           onClick={() => setShowAdd(!showAdd)}
-          className="flex items-center gap-2 bg-green-600 px-4 py-2 rounded h-fit"
+          className="flex items-center gap-2 bg-success-600 px-4 py-2 rounded h-fit"
         >
           <Plus size={20} /> {showAdd ? 'Cancel' : 'Design Formula'}
         </button>
       </div>
 
       {showAdd && (
-        <div className="bg-gray-700 p-4 rounded mb-4 space-y-4">
+        <div className="bg-surface-2 p-4 rounded mb-4 space-y-4">
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-3 sm:col-span-1">
               <label className="block text-sm mb-1">Formula Name</label>
               <input
                 value={formulaName}
                 onChange={(e) => setFormulaName(e.target.value)}
-                className="w-full bg-gray-600 px-3 py-2 rounded"
+                className="w-full bg-surface-3 px-3 py-2 rounded"
                 placeholder="e.g., Healing Draught"
               />
             </div>
-            <div className="bg-gray-700 p-3 rounded">
-              <div className="text-xs text-gray-400 mb-1">Tier (Auto-calculated from potency)</div>
-              <div className="text-sm text-gray-300">
+            <div className="bg-surface-2 p-3 rounded">
+              <div className="text-xs text-fg-muted mb-1">Tier (Auto-calculated from potency)</div>
+              <div className="text-sm text-fg-secondary">
                 Tier is now automatically determined by the potency load of active ingredients.
                 The tier calculation happens when you add ingredients below.
               </div>
@@ -207,7 +207,7 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
               <select
                 value={selectedVector}
                 onChange={(e) => setSelectedVector(e.target.value)}
-                className="w-full bg-gray-600 px-3 py-2 rounded"
+                className="w-full bg-surface-3 px-3 py-2 rounded"
               >
                 {VECTORS.map(v => (
                   <option key={v.name} value={v.name}>
@@ -221,19 +221,19 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
           <div>
             <div className="flex justify-between items-center mb-2">
               <label className="block text-sm font-semibold">Ingredients</label>
-              <button onClick={addIngredient} className="bg-blue-600 px-3 py-1 rounded text-sm">
+              <button onClick={addIngredient} className="bg-accent-600 px-3 py-1 rounded text-sm">
                 <Plus size={14} className="inline" /> Add Ingredient
               </button>
             </div>
 
             {ingredients.map(ing => {
               return (
-                <div key={ing.id} className="bg-gray-600 p-3 rounded mb-2 space-y-2">
+                <div key={ing.id} className="bg-surface-3 p-3 rounded mb-2 space-y-2">
                   <div className="grid grid-cols-4 gap-2">
                     <select
                       value={ing.reagentId}
                       onChange={(e) => updateIngredient(ing.id, 'reagentId', e.target.value)}
-                      className="bg-gray-700 px-2 py-1 rounded text-sm"
+                      className="bg-surface-2 px-2 py-1 rounded text-sm"
                     >
                       {alchemyReagents.map(r => (
                         <option key={r.id} value={r.id}>{r.name} ({r.quantity}U)</option>
@@ -242,7 +242,7 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
                     <select
                       value={ing.role}
                       onChange={(e) => updateIngredient(ing.id, 'role', e.target.value)}
-                      className="bg-gray-700 px-2 py-1 rounded text-sm"
+                      className="bg-surface-2 px-2 py-1 rounded text-sm"
                     >
                       {INGREDIENT_ROLES.map(role => (
                         <option key={role} value={role}>{role}</option>
@@ -251,7 +251,7 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
                     <select
                       value={ing.refinement}
                       onChange={(e) => updateIngredient(ing.id, 'refinement', e.target.value)}
-                      className="bg-gray-700 px-2 py-1 rounded text-sm"
+                      className="bg-surface-2 px-2 py-1 rounded text-sm"
                     >
                       <option value="crude">Crude</option>
                       <option value="prepared">Prepared</option>
@@ -262,12 +262,12 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
                         type="number"
                         value={ing.unitsUsed}
                         onChange={(e) => updateIngredient(ing.id, 'unitsUsed', Math.max(1, toNumberOr(e.target.value, 1)))}
-                        className="w-full bg-gray-700 px-2 py-1 rounded text-sm"
+                        className="w-full bg-surface-2 px-2 py-1 rounded text-sm"
                         min="1"
                       />
                       <button
                         onClick={() => removeIngredient(ing.id)}
-                        className="bg-red-600 px-2 rounded"
+                        className="bg-danger-600 px-2 rounded"
                       >
                         ×
                       </button>
@@ -301,9 +301,9 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
               <div className="space-y-3">
                 {/* Validation warnings */}
                 {!stats.roleCoverage.valid && (
-                  <div className="bg-red-900 bg-opacity-30 border border-red-500 p-3 rounded">
-                    <div className="text-sm font-semibold text-red-300 mb-1">⚠️ Missing Required Roles</div>
-                    <div className="text-xs text-red-200 space-y-1">
+                  <div className="bg-danger-900 bg-opacity-30 border border-danger-500 p-3 rounded">
+                    <div className="text-sm font-semibold text-danger-300 mb-1">⚠️ Missing Required Roles</div>
+                    <div className="text-xs text-danger-200 space-y-1">
                       {stats.roleCoverage.messages.map((msg, idx) => (
                         <div key={idx}>• {msg}</div>
                       ))}
@@ -312,9 +312,9 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
                 )}
 
                 {!stats.batchValidation.valid && (
-                  <div className="bg-red-900 bg-opacity-30 border border-red-500 p-3 rounded">
-                    <div className="text-sm font-semibold text-red-300 mb-1">⚠️ Constraint Violations</div>
-                    <div className="text-xs text-red-200 space-y-1">
+                  <div className="bg-danger-900 bg-opacity-30 border border-danger-500 p-3 rounded">
+                    <div className="text-sm font-semibold text-danger-300 mb-1">⚠️ Constraint Violations</div>
+                    <div className="text-xs text-danger-200 space-y-1">
                       {stats.batchValidation.errors.map((err, idx) => (
                         <div key={idx}>• {err}</div>
                       ))}
@@ -348,23 +348,23 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
                   </div>
                 )}
 
-                <div className="bg-gray-600 p-3 rounded">
+                <div className="bg-surface-3 p-3 rounded">
                   <div className="text-sm font-semibold mb-2">Formula Preview</div>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="space-y-1">
                       <div>
                         Tier: <span className="text-yellow-400 font-bold">{stats.tier}</span>
-                        <span className="text-xs text-gray-400 ml-2">(Potency Load: {stats.potencyLoad})</span>
+                        <span className="text-xs text-fg-muted ml-2">(Potency Load: {stats.potencyLoad})</span>
                       </div>
-                      <div>Dominant: <span className="text-blue-400">{stats.dominantAspect || 'None'}</span></div>
-                      <div>Secondary: <span className="text-blue-400">{stats.secondaryAspect || 'None'}</span></div>
-                      <div>Potency: <span className="text-green-400">{stats.basePotency} {stats.concentrationSteps > 0 ? `+${stats.concentrationSteps} → ${stats.finalPotency}` : ''}</span></div>
+                      <div>Dominant: <span className="text-accent-400">{stats.dominantAspect || 'None'}</span></div>
+                      <div>Secondary: <span className="text-accent-400">{stats.secondaryAspect || 'None'}</span></div>
+                      <div>Potency: <span className="text-success-400">{stats.basePotency} {stats.concentrationSteps > 0 ? `+${stats.concentrationSteps} → ${stats.finalPotency}` : ''}</span></div>
                     </div>
                     <div className="space-y-1">
                       <div>WR: <span className="text-orange-400">{stats.baseWR}</span></div>
                       <div>DM: <span className="text-orange-400">{stats.baseDM >= 0 ? '+' : ''}{stats.baseDM}</span></div>
                       <div>TB: <span className="text-purple-400">{stats.traitBudget} points</span></div>
-                      <div>Vector: <span className="text-gray-300">{stats.vector}</span></div>
+                      <div>Vector: <span className="text-fg-secondary">{stats.vector}</span></div>
                     </div>
                   </div>
                 </div>
@@ -378,7 +378,7 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
             );
           })()}
 
-          <button onClick={createFormula} className="w-full bg-green-600 px-4 py-2 rounded">
+          <button onClick={createFormula} className="w-full bg-success-600 px-4 py-2 rounded">
             Save Formula
           </button>
         </div>
@@ -386,13 +386,13 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
 
       <div className="space-y-3">
         {alchemyFormulas.map(f => (
-          <div key={f.id} className="bg-gray-700 p-4 rounded">
+          <div key={f.id} className="bg-surface-2 p-4 rounded">
             <div className="flex justify-between mb-2">
               <h3 className="font-semibold text-lg">{f.name}</h3>
               <div className="flex gap-2">
                 <button
                   onClick={() => onDelete('formula', f.name, { id: f.id })}
-                  className="bg-red-600 px-3 py-1 rounded text-sm"
+                  className="bg-danger-600 px-3 py-1 rounded text-sm"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -401,22 +401,22 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
             <div className="text-sm space-y-1">
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <span className="text-gray-400">Tier:</span> <span className="text-yellow-400 font-bold">{f.tier || 1}</span> |
-                  <span className="text-gray-400 ml-2">TB:</span> <span className="text-purple-400">{f.traitBudget || 10}</span>
+                  <span className="text-fg-muted">Tier:</span> <span className="text-yellow-400 font-bold">{f.tier || 1}</span> |
+                  <span className="text-fg-muted ml-2">TB:</span> <span className="text-purple-400">{f.traitBudget || 10}</span>
                 </div>
                 <div>
-                  <span className="text-gray-400">Vector:</span> <span className="text-gray-300">{f.vector || 'Potion'}</span>
+                  <span className="text-fg-muted">Vector:</span> <span className="text-fg-secondary">{f.vector || 'Potion'}</span>
                 </div>
               </div>
               <div>
-                <span className="text-gray-400">Aspects:</span> <span className="text-blue-400">{f.dominantAspect}</span> / <span className="text-blue-400">{f.secondaryAspect}</span>
+                <span className="text-fg-muted">Aspects:</span> <span className="text-accent-400">{f.dominantAspect}</span> / <span className="text-accent-400">{f.secondaryAspect}</span>
               </div>
               <div>
-                <span className="text-gray-400">Potency:</span> <span className="text-green-400">{f.finalPotency || f.potency || 'P1'}</span> |
-                <span className="text-gray-400 ml-2">WR:</span> <span className="text-orange-400">{f.baseWR}</span> |
-                <span className="text-gray-400 ml-2">DM:</span> <span className="text-orange-400">{(f.baseDM ?? 0) >= 0 ? '+' : ''}{f.baseDM}</span>
+                <span className="text-fg-muted">Potency:</span> <span className="text-success-400">{f.finalPotency || f.potency || 'P1'}</span> |
+                <span className="text-fg-muted ml-2">WR:</span> <span className="text-orange-400">{f.baseWR}</span> |
+                <span className="text-fg-muted ml-2">DM:</span> <span className="text-orange-400">{(f.baseDM ?? 0) >= 0 ? '+' : ''}{f.baseDM}</span>
               </div>
-              <div className="text-xs text-gray-400 mt-2">
+              <div className="text-xs text-fg-muted mt-2">
                 {(f.ingredients || []).map(i => `${i.reagentName} (${i.role}, ${i.unitsUsed}U)`).join(', ')}
               </div>
 
@@ -454,7 +454,7 @@ export function FormulasView({ alchemyReagents, alchemyFormulas, saveAlchemyForm
         ))}
 
         {alchemyFormulas.length === 0 && (
-          <div className="text-gray-500 text-center py-8">No formulas yet. Design one to get started!</div>
+          <div className="text-fg-faint text-center py-8">No formulas yet. Design one to get started!</div>
         )}
       </div>
     </div>

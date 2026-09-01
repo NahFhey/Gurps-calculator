@@ -27,7 +27,7 @@ export function CharacterStatusBadge({ summary, status }: CharacterStatusBadgePr
     <div className="flex gap-1" data-testid="character-status-badges">
       {isAssigned && (
         <span
-          className="bg-green-500 text-white px-1 rounded text-xs"
+          className="bg-success-500 text-white px-1 rounded text-xs"
           title={`Assigned to: ${activityDisplayName}`}
         >
           <Briefcase className="w-3 h-3 inline" />
@@ -43,7 +43,7 @@ export function CharacterStatusBadge({ summary, status }: CharacterStatusBadgePr
       )}
       {fatigueStatus === 'exhausted' && (
         <span
-          className="bg-red-500 text-white px-1 rounded text-xs"
+          className="bg-danger-500 text-white px-1 rounded text-xs"
           title="Exhausted - worked without rest"
         >
           <AlertOctagon className="w-3 h-3 inline" />
@@ -51,7 +51,7 @@ export function CharacterStatusBadge({ summary, status }: CharacterStatusBadgePr
       )}
       {status?.dead ? (
         <span
-          className="rounded bg-red-700 px-1 text-xs text-white"
+          className="rounded bg-danger-700 px-1 text-xs text-white"
           title="Dead"
           data-testid="dead-status-badge"
         >
@@ -61,7 +61,7 @@ export function CharacterStatusBadge({ summary, status }: CharacterStatusBadgePr
         <>
           {unconscious && (
             <span
-              className="rounded bg-amber-600 px-1 text-xs text-black"
+              className="rounded bg-warning-600 px-1 text-xs text-black"
               title="Unconscious"
               data-testid="unconscious-status-badge"
             >

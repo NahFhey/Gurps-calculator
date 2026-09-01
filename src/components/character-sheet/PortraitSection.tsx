@@ -100,18 +100,18 @@ export function PortraitSection({ images, editMode, onImagesChange }: PortraitSe
             <img
               src={portrait}
               alt="Character portrait"
-              className="w-20 h-20 rounded-lg object-cover border-2 border-gray-600"
+              className="w-20 h-20 rounded-lg object-cover border-2 border-edge-strong"
             />
           ) : (
-            <div className="w-20 h-20 rounded-lg bg-gray-700 border-2 border-gray-600 flex items-center justify-center">
-              <User size={32} className="text-gray-500" />
+            <div className="w-20 h-20 rounded-lg bg-surface-2 border-2 border-edge-strong flex items-center justify-center">
+              <User size={32} className="text-fg-faint" />
             </div>
           )}
           {editMode && (
             <div className="absolute inset-0 rounded-lg bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
               <button
                 onClick={() => portraitInputRef.current?.click()}
-                className="p-1 bg-gray-700 rounded hover:bg-gray-600"
+                className="p-1 bg-surface-2 rounded hover:bg-surface-3"
                 title="Upload portrait"
               >
                 <Camera size={14} />
@@ -119,7 +119,7 @@ export function PortraitSection({ images, editMode, onImagesChange }: PortraitSe
               {portrait && (
                 <button
                   onClick={() => handleClear('portrait')}
-                  className="p-1 bg-gray-700 rounded hover:bg-red-600"
+                  className="p-1 bg-surface-2 rounded hover:bg-danger-600"
                   title="Remove portrait"
                 >
                   <Trash2 size={14} />
@@ -128,7 +128,7 @@ export function PortraitSection({ images, editMode, onImagesChange }: PortraitSe
             </div>
           )}
         </div>
-        <span className="text-[0.6rem] text-gray-500">Portrait</span>
+        <span className="text-[0.6rem] text-fg-faint">Portrait</span>
         <input
           ref={portraitInputRef}
           type="file"
@@ -149,18 +149,18 @@ export function PortraitSection({ images, editMode, onImagesChange }: PortraitSe
             <img
               src={token}
               alt="Combat token"
-              className="w-12 h-12 rounded-full object-cover border-2 border-gray-600"
+              className="w-12 h-12 rounded-full object-cover border-2 border-edge-strong"
             />
           ) : (
-            <div className="w-12 h-12 rounded-full bg-gray-700 border-2 border-gray-600 flex items-center justify-center">
-              <User size={20} className="text-gray-500" />
+            <div className="w-12 h-12 rounded-full bg-surface-2 border-2 border-edge-strong flex items-center justify-center">
+              <User size={20} className="text-fg-faint" />
             </div>
           )}
           {editMode && (
             <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
               <button
                 onClick={() => tokenInputRef.current?.click()}
-                className="p-1 bg-gray-700 rounded hover:bg-gray-600"
+                className="p-1 bg-surface-2 rounded hover:bg-surface-3"
                 title="Upload token"
               >
                 <Camera size={12} />
@@ -168,7 +168,7 @@ export function PortraitSection({ images, editMode, onImagesChange }: PortraitSe
               {token && (
                 <button
                   onClick={() => handleClear('token')}
-                  className="p-1 bg-gray-700 rounded hover:bg-red-600"
+                  className="p-1 bg-surface-2 rounded hover:bg-danger-600"
                   title="Remove token"
                 >
                   <Trash2 size={12} />
@@ -177,7 +177,7 @@ export function PortraitSection({ images, editMode, onImagesChange }: PortraitSe
             </div>
           )}
         </div>
-        <span className="text-[0.6rem] text-gray-500">Token</span>
+        <span className="text-[0.6rem] text-fg-faint">Token</span>
         <input
           ref={tokenInputRef}
           type="file"

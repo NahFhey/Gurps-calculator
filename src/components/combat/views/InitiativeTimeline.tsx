@@ -63,22 +63,22 @@ function hpRingColor(participant: Participant): string {
   const maxHP = (typeof participant.hp === 'number' ? participant.hp : participant.maxHP) ?? 1;
   const status = calculateHPStatus(hp, maxHP) as string;
   switch (status) {
-    case 'healthy':  return 'ring-green-500';
+    case 'healthy':  return 'ring-success-500';
     case 'injured':  return 'ring-yellow-500';
     case 'critical': return 'ring-orange-500';
-    case 'dead':     return 'ring-red-600';
-    default:         return 'ring-gray-500';
+    case 'dead':     return 'ring-danger-600';
+    default:         return 'ring-edge-bright';
   }
 }
 
 /** Background color by category. */
 function categoryBg(category: string): string {
   switch (category) {
-    case 'player':  return 'bg-blue-800';
+    case 'player':  return 'bg-accent-800';
     case 'ally':    return 'bg-teal-800';
-    case 'enemy':   return 'bg-red-900';
-    case 'neutral': return 'bg-gray-700';
-    default:        return 'bg-gray-700';
+    case 'enemy':   return 'bg-danger-900';
+    case 'neutral': return 'bg-surface-2';
+    default:        return 'bg-surface-2';
   }
 }
 
@@ -113,7 +113,7 @@ function TokenBase({ participant, isCurrent, isPast, currentRound = 0, onClick, 
   const isDead = participant.isDead;
   const isUnconscious = hasCondition(participant, ConditionId.UNCONSCIOUS);
 
-  const ringColor = isDead ? 'ring-red-600' : hpRingColor(participant);
+  const ringColor = isDead ? 'ring-danger-600' : hpRingColor(participant);
   const bg = categoryBg(participant.category);
 
   return (
@@ -122,10 +122,10 @@ function TokenBase({ participant, isCurrent, isPast, currentRound = 0, onClick, 
         relative flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg
         transition-all duration-200 min-w-[4.5rem] max-w-[5.5rem]
         ${isCurrent
-          ? `${bg} ring-2 ${ringColor} shadow-lg shadow-blue-500/30 scale-110 z-10`
+          ? `${bg} ring-2 ${ringColor} shadow-lg shadow-accent-500/30 scale-110 z-10`
           : isPast
-            ? `${bg}/50 ring-1 ring-gray-600 opacity-60`
-            : `${bg}/70 ring-1 ring-gray-600 hover:ring-gray-400`
+            ? `${bg}/50 ring-1 ring-edge-strong opacity-60`
+            : `${bg}/70 ring-1 ring-edge-strong hover:ring-edge-bright`
         }
         ${isDead ? 'opacity-40 line-through' : ''}
         ${isDragging ? 'opacity-40' : ''}
@@ -141,12 +141,12 @@ function TokenBase({ participant, isCurrent, isPast, currentRound = 0, onClick, 
         <div
           {...dragHandleProps}
           className="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center
-            bg-gray-600 rounded-full opacity-50 hover:opacity-100
+            bg-surface-3 rounded-full opacity-50 hover:opacity-100
             cursor-grab active:cursor-grabbing transition-opacity z-20"
           title="Drag to reorder"
           onClick={(e) => e.stopPropagation()}
         >
-          <GripVertical className="w-3 h-3 text-gray-300" />
+          <GripVertical className="w-3 h-3 text-fg-secondary" />
         </div>
       )}
 
@@ -164,8 +164,8 @@ function TokenBase({ participant, isCurrent, isPast, currentRound = 0, onClick, 
         <div
           className={`
             w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold
-            ${isCurrent ? 'bg-blue-600 text-white' : 'bg-gray-600 text-gray-200'}
-            ${isDead ? 'bg-red-900 text-red-400' : ''}
+            ${isCurrent ? 'bg-accent-600 text-white' : 'bg-surface-3 text-fg-primary'}
+            ${isDead ? 'bg-danger-900 text-danger-400' : ''}
             ${isUnconscious && !isDead ? 'bg-yellow-900 text-yellow-400' : ''}
           `}
         >
@@ -183,7 +183,7 @@ function TokenBase({ participant, isCurrent, isPast, currentRound = 0, onClick, 
       </span>
 
       {/* Category icon + speed */}
-      <div className="flex items-center gap-0.5 text-[0.6rem] text-gray-400">
+      <div className="flex items-center gap-0.5 text-[0.6rem] text-fg-muted">
         <CategoryIcon category={participant.category} />
         <span>{participant.basicSpeed}</span>
       </div>
@@ -232,7 +232,7 @@ function TokenBase({ participant, isCurrent, isPast, currentRound = 0, onClick, 
         <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-0 h-0
           border-l-[5px] border-l-transparent
           border-r-[5px] border-r-transparent
-          border-t-[5px] border-t-blue-500"
+          border-t-[5px] border-t-accent-500"
         />
       )}
     </div>
@@ -375,15 +375,15 @@ function InitiativeTimelineBase({
   }, [currentTurnIndex]);
 
   return (
-    <div className="bg-gradient-to-r from-blue-900/80 to-gray-800/80 rounded-lg border border-blue-500/50 overflow-hidden">
+    <div className="bg-gradient-to-r from-accent-900/80 to-surface-1/80 rounded-lg border border-accent-500/50 overflow-hidden">
       {/* Top bar: round counter */}
-      <div className="flex items-center justify-between px-4 py-1.5 bg-black/20 border-b border-gray-700/50">
-        <span className="text-xs font-semibold text-blue-300">
+      <div className="flex items-center justify-between px-4 py-1.5 bg-black/20 border-b border-edge/50">
+        <span className="text-xs font-semibold text-accent-300">
           Round {currentRound}
         </span>
-        <span className="text-xs text-gray-400">
+        <span className="text-xs text-fg-muted">
           Turn {currentTurnIndex + 1} of {turnOrder.length}
-          {canDrag && <span className="ml-2 text-gray-500">(drag to reorder)</span>}
+          {canDrag && <span className="ml-2 text-fg-faint">(drag to reorder)</span>}
         </span>
       </div>
 
@@ -392,7 +392,7 @@ function InitiativeTimelineBase({
         {/* Prev button */}
         <button
           onClick={onPrevTurn}
-          className="flex-none p-1.5 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+          className="flex-none p-1.5 bg-surface-2 hover:bg-surface-3 rounded transition-colors"
           title="Previous turn"
           aria-label="Previous turn"
         >
@@ -411,7 +411,7 @@ function InitiativeTimelineBase({
             <div
               ref={scrollRef}
               className="flex-1 flex items-center gap-1.5 overflow-x-auto py-1 px-1
-                scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent"
+            scrollbar-thin scrollbar-thumb-surface-3 scrollbar-track-transparent"
             >
               {turnOrder.map((instanceId, index) => {
                 const participant = participantMap.get(instanceId);
@@ -458,7 +458,7 @@ function InitiativeTimelineBase({
         {/* Next button */}
         <button
           onClick={onNextTurn}
-          className="flex-none p-2 bg-green-600 hover:bg-green-700 rounded transition-colors"
+          className="flex-none p-2 bg-success-600 hover:bg-success-700 rounded transition-colors"
           title="Next turn"
           aria-label="Next turn"
         >

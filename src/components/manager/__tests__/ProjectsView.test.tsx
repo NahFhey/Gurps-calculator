@@ -97,7 +97,7 @@ describe('ProjectsView', () => {
 
     render(<ProjectsView {...defaultProps} crafts={asCrafts(crafts)} />);
 
-    const deleteButtons = document.querySelectorAll('button.text-red-400');
+    const deleteButtons = document.querySelectorAll('button.text-danger-400');
     expect(deleteButtons.length).toBe(1);
 
     fireEvent.click(deleteButtons[0]);
@@ -112,7 +112,7 @@ describe('ProjectsView', () => {
 
     render(<ProjectsView {...defaultProps} crafts={asCrafts(crafts)} />);
 
-    const deleteButtons = document.querySelectorAll('button.text-red-400');
+    const deleteButtons = document.querySelectorAll('button.text-danger-400');
     fireEvent.click(deleteButtons[0]);
 
     expect(mockOnDelete).toHaveBeenCalledWith('project', 'My Sword', { id: 'proj-456' });
@@ -125,7 +125,7 @@ describe('ProjectsView', () => {
 
     render(<ProjectsView {...defaultProps} crafts={asCrafts(crafts)} />);
 
-    const deleteButtons = document.querySelectorAll('button.text-red-400');
+    const deleteButtons = document.querySelectorAll('button.text-danger-400');
     expect(deleteButtons.length).toBe(1);
 
     fireEvent.click(deleteButtons[0]);
@@ -154,7 +154,7 @@ describe('ProjectsView', () => {
     render(<ProjectsView {...defaultProps} crafts={asCrafts(crafts)} />);
 
     // Should have 3 delete buttons total
-    const deleteButtons = document.querySelectorAll('button.text-red-400');
+    const deleteButtons = document.querySelectorAll('button.text-danger-400');
     expect(deleteButtons.length).toBe(3);
 
     // Check counts

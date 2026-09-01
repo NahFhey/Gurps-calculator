@@ -23,7 +23,7 @@ export function CharacterBatchPreview({ rows, onToggle, onImport, onCancel }: Ch
         {rows.map((row) => (
           <label
             key={row.key}
-            className="flex cursor-pointer items-center gap-3 rounded border border-slate-600 bg-slate-800/60 p-3"
+            className="flex cursor-pointer items-center gap-3 rounded border border-edge-strong bg-surface-1/60 p-3"
           >
             <input
               type="checkbox"
@@ -33,13 +33,13 @@ export function CharacterBatchPreview({ rows, onToggle, onImport, onCancel }: Ch
               className="h-4 w-4 accent-indigo-500"
             />
             <span className="min-w-0 flex-1">
-              <span className="block truncate font-medium text-slate-100">{row.character.name}</span>
-              <span className="text-xs text-slate-400">{row.character.gcsData?.totalPoints ?? 0} points</span>
+              <span className="block truncate font-medium text-fg-bright">{row.character.name}</span>
+              <span className="text-xs text-fg-muted">{row.character.gcsData?.totalPoints ?? 0} points</span>
             </span>
             <span
               className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                 row.existing
-                  ? 'bg-amber-500/15 text-amber-300'
+                  ? 'bg-warning-500/15 text-warning-300'
                   : 'bg-emerald-500/15 text-emerald-300'
               }`}
             >
@@ -52,7 +52,7 @@ export function CharacterBatchPreview({ rows, onToggle, onImport, onCancel }: Ch
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 rounded border border-slate-600 px-4 py-2 text-slate-300 hover:bg-slate-700"
+          className="flex-1 rounded border border-edge-strong px-4 py-2 text-fg-secondary hover:bg-surface-2"
         >
           Cancel
         </button>

@@ -22,7 +22,7 @@ function CombatLogViewBase({
   return (
     <div className="space-y-2">
       <h3 className="text-lg font-semibold">Combat Log</h3>
-      <div className="bg-gray-800 rounded p-4 h-96 overflow-y-auto font-mono text-sm">
+      <div className="bg-surface-1 rounded p-4 h-96 overflow-y-auto font-mono text-sm">
         {displayLog.map((entry, index) => {
           const formatted = formatLogEntry(entry);
           return (
@@ -42,12 +42,12 @@ function CombatLogViewBase({
           onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && onAddNote()}
           placeholder="Add a note..."
           aria-label="Add a note to the combat log"
-          className="flex-1 px-3 py-2 bg-gray-700 rounded"
+          className="flex-1 px-3 py-2 bg-surface-2 rounded"
         />
         <button
           onClick={onAddNote}
           aria-label="Add note to combat log"
-          className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded"
+          className="px-4 py-2 bg-success-600 hover:bg-success-700 rounded"
         >
           <Plus size={16} />
         </button>
@@ -105,9 +105,9 @@ function RollLogEntryBase({ timestamp, entry }: RollLogEntryProps): ReactNode {
 
   // Colors for dice (cycling through a palette)
   const diceColors = [
-    'text-red-400',
-    'text-blue-400',
-    'text-green-400',
+    'text-danger-400',
+    'text-accent-400',
+    'text-success-400',
     'text-yellow-400',
     'text-purple-400',
     'text-pink-400',
@@ -135,11 +135,11 @@ function RollLogEntryBase({ timestamp, entry }: RollLogEntryProps): ReactNode {
           {' vs '}
           <span className="font-semibold">{roll.target}</span>
           {' ['}
-          <span className={roll.margin >= 0 ? 'text-green-400 font-bold' : 'text-red-400 font-bold'}>
+          <span className={roll.margin >= 0 ? 'text-success-400 font-bold' : 'text-danger-400 font-bold'}>
             {roll.margin >= 0 ? `+${roll.margin}` : roll.margin}
           </span>
           {'] '}
-          <span className={roll.success ? 'text-green-400 font-bold' : 'text-red-400 font-bold'}>
+          <span className={roll.success ? 'text-success-400 font-bold' : 'text-danger-400 font-bold'}>
             {roll.success ? 'SUCCESS' : 'FAILURE'}
           </span>
         </span>
@@ -164,25 +164,25 @@ function ActionLogEntryBase({ timestamp, entry }: ActionLogEntryProps): ReactNod
   if (!action) return null;
 
   return (
-    <div className="bg-gray-900 rounded p-2 my-1">
-      <div className="text-xs text-gray-500">[{timestamp}]</div>
+    <div className="bg-surface-0 rounded p-2 my-1">
+      <div className="text-xs text-fg-faint">[{timestamp}]</div>
       <div className="font-semibold">{entry.text}</div>
 
       {/* Show modifier details if available */}
       {action.attack && action.attack.modifiers && action.attack.modifiers.length > 0 && (
-        <div className="text-xs text-gray-400 mt-1">
+        <div className="text-xs text-fg-muted mt-1">
           Modifiers: {action.attack.modifiers.map(m => `${m.label} ${m.value >= 0 ? '+' : ''}${m.value}`).join(', ')}
         </div>
       )}
 
       {action.defense && action.defense.modifiers && action.defense.modifiers.length > 0 && (
-        <div className="text-xs text-gray-400 mt-1">
+        <div className="text-xs text-fg-muted mt-1">
           Modifiers: {action.defense.modifiers.map(m => `${m.label} ${m.value >= 0 ? '+' : ''}${m.value}`).join(', ')}
         </div>
       )}
 
       {action.damage && (
-        <div className="text-xs text-gray-400 mt-1">
+        <div className="text-xs text-fg-muted mt-1">
           {action.damage.expression && action.damage.expression !== 'manual' && (
             <span>Damage: {action.damage.expression} → {action.damage.rolledDamage}</span>
           )}

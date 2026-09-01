@@ -180,26 +180,26 @@ function GatheringManagerBase() {
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg max-w-md">
+          <div className="bg-surface-1 p-6 rounded-lg max-w-md">
             <h3 className="text-xl font-bold mb-4">Confirm Delete</h3>
             <p className="mb-6">Delete "{deleteConfirm.name}"?</p>
             <div className="flex gap-3 justify-end">
-              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 bg-gray-600 rounded">Cancel</button>
-              <button onClick={executeDelete} className="px-4 py-2 bg-red-600 rounded">Delete</button>
+              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 bg-surface-3 rounded">Cancel</button>
+              <button onClick={executeDelete} className="px-4 py-2 bg-danger-600 rounded">Delete</button>
             </div>
           </div>
         </div>
       )}
 
       {/* Sub-navigation */}
-      <div className="flex gap-2 border-b border-gray-700 pb-2 flex-wrap">
-        <button onClick={() => setView('species')} className={`px-3 py-1 rounded ${view === 'species' ? 'bg-blue-600' : 'bg-gray-700'}`}>Species</button>
-        <button onClick={() => setView('items')} className={`px-3 py-1 rounded ${view === 'items' ? 'bg-blue-600' : 'bg-gray-700'}`}>Items</button>
-        <button onClick={() => setView('tools')} className={`px-3 py-1 rounded ${view === 'tools' ? 'bg-blue-600' : 'bg-gray-700'}`}>Tools</button>
-        <button onClick={() => setView('tables')} className={`px-3 py-1 rounded ${view === 'tables' ? 'bg-blue-600' : 'bg-gray-700'}`}>Tables</button>
-        <button onClick={() => setView('environments')} className={`px-3 py-1 rounded ${view === 'environments' ? 'bg-blue-600' : 'bg-gray-700'}`}>Environments</button>
-        <button onClick={() => setView('bait')} className={`px-3 py-1 rounded ${view === 'bait' ? 'bg-blue-600' : 'bg-gray-700'}`}>Bait</button>
-        <button onClick={() => setView('campaign')} className={`px-3 py-1 rounded ${view === 'campaign' ? 'bg-blue-600' : 'bg-gray-700'}`}>Campaign Day</button>
+      <div className="flex gap-2 border-b border-edge pb-2 flex-wrap">
+        <button onClick={() => setView('species')} className={`px-3 py-1 rounded ${view === 'species' ? 'bg-accent-600' : 'bg-surface-2'}`}>Species</button>
+        <button onClick={() => setView('items')} className={`px-3 py-1 rounded ${view === 'items' ? 'bg-accent-600' : 'bg-surface-2'}`}>Items</button>
+        <button onClick={() => setView('tools')} className={`px-3 py-1 rounded ${view === 'tools' ? 'bg-accent-600' : 'bg-surface-2'}`}>Tools</button>
+        <button onClick={() => setView('tables')} className={`px-3 py-1 rounded ${view === 'tables' ? 'bg-accent-600' : 'bg-surface-2'}`}>Tables</button>
+        <button onClick={() => setView('environments')} className={`px-3 py-1 rounded ${view === 'environments' ? 'bg-accent-600' : 'bg-surface-2'}`}>Environments</button>
+        <button onClick={() => setView('bait')} className={`px-3 py-1 rounded ${view === 'bait' ? 'bg-accent-600' : 'bg-surface-2'}`}>Bait</button>
+        <button onClick={() => setView('campaign')} className={`px-3 py-1 rounded ${view === 'campaign' ? 'bg-accent-600' : 'bg-surface-2'}`}>Campaign Day</button>
       </div>
 
       {/* View Router */}

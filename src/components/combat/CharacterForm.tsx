@@ -197,12 +197,12 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-      <div className="bg-gray-800 p-6 rounded-lg max-w-4xl w-full m-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-surface-1 p-6 rounded-lg max-w-4xl w-full m-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">
             {isEditing ? 'Edit Character' : 'Create Character'}
           </h2>
-          <button onClick={onCancel} className="text-gray-400 hover:text-white">
+          <button onClick={onCancel} className="text-fg-muted hover:text-white">
             <X size={24} />
           </button>
         </div>
@@ -216,7 +216,7 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
                 type="text"
                 value={formData.name}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('name', e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 rounded"
+                className="w-full px-3 py-2 bg-surface-2 rounded"
                 required
               />
             </div>
@@ -225,7 +225,7 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
               <select
                 value={formData.category}
                 onChange={(e: ChangeEvent<HTMLSelectElement>) => handleChange('category', e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 rounded"
+                className="w-full px-3 py-2 bg-surface-2 rounded"
               >
                 {COMBAT_CATEGORIES.map(cat => (
                   <option key={cat} value={cat}>
@@ -246,7 +246,7 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
                   type="number"
                   value={formData.st}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('st', parseInt(e.target.value) || 10)}
-                  className="w-full px-3 py-2 bg-gray-700 rounded"
+                  className="w-full px-3 py-2 bg-surface-2 rounded"
                   min="1"
                   max="50"
                 />
@@ -257,7 +257,7 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
                   type="number"
                   value={formData.dx}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('dx', parseInt(e.target.value) || 10)}
-                  className="w-full px-3 py-2 bg-gray-700 rounded"
+                  className="w-full px-3 py-2 bg-surface-2 rounded"
                   min="1"
                   max="50"
                 />
@@ -268,7 +268,7 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
                   type="number"
                   value={formData.iq}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('iq', parseInt(e.target.value) || 10)}
-                  className="w-full px-3 py-2 bg-gray-700 rounded"
+                  className="w-full px-3 py-2 bg-surface-2 rounded"
                   min="1"
                   max="50"
                 />
@@ -279,7 +279,7 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
                   type="number"
                   value={formData.ht}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('ht', parseInt(e.target.value) || 10)}
-                  className="w-full px-3 py-2 bg-gray-700 rounded"
+                  className="w-full px-3 py-2 bg-surface-2 rounded"
                   min="1"
                   max="50"
                 />
@@ -297,7 +297,7 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
                   type="number"
                   value={formData.hp}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('hp', parseInt(e.target.value) || 10)}
-                  className="w-full px-3 py-2 bg-gray-700 rounded"
+                  className="w-full px-3 py-2 bg-surface-2 rounded"
                   min="1"
                 />
               </div>
@@ -307,7 +307,7 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
                   type="number"
                   value={formData.fp}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('fp', parseInt(e.target.value) || 10)}
-                  className="w-full px-3 py-2 bg-gray-700 rounded"
+                  className="w-full px-3 py-2 bg-surface-2 rounded"
                   min="0"
                 />
               </div>
@@ -317,7 +317,7 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
                   type="number"
                   value={formData.mp}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('mp', parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2 bg-gray-700 rounded"
+                  className="w-full px-3 py-2 bg-surface-2 rounded"
                   min="0"
                 />
               </div>
@@ -335,7 +335,7 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
                   step="0.25"
                   value={formData.basicSpeed}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('basicSpeed', parseFloat(e.target.value) || 5.0)}
-                  className="w-full px-3 py-2 bg-gray-700 rounded"
+                  className="w-full px-3 py-2 bg-surface-2 rounded"
                 />
               </div>
               <div>
@@ -344,7 +344,7 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
                   type="number"
                   value={formData.basicMove}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('basicMove', parseInt(e.target.value) || 5)}
-                  className="w-full px-3 py-2 bg-gray-700 rounded"
+                  className="w-full px-3 py-2 bg-surface-2 rounded"
                   min="0"
                 />
               </div>
@@ -354,7 +354,7 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
                   type="number"
                   value={formData.dodge}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('dodge', parseInt(e.target.value) || 8)}
-                  className="w-full px-3 py-2 bg-gray-700 rounded"
+                  className="w-full px-3 py-2 bg-surface-2 rounded"
                   min="0"
                 />
               </div>
@@ -371,7 +371,7 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
                   type="number"
                   value={formData.parry}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('parry', parseInt(e.target.value) || 8)}
-                  className="w-full px-3 py-2 bg-gray-700 rounded"
+                  className="w-full px-3 py-2 bg-surface-2 rounded"
                   min="0"
                 />
               </div>
@@ -381,7 +381,7 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
                   type="number"
                   value={formData.block}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('block', parseInt(e.target.value) || 8)}
-                  className="w-full px-3 py-2 bg-gray-700 rounded"
+                  className="w-full px-3 py-2 bg-surface-2 rounded"
                   min="0"
                 />
               </div>
@@ -391,10 +391,10 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
                   type="number"
                   value={formData.dr}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => handleChange('dr', parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2 bg-gray-700 rounded"
+                  className="w-full px-3 py-2 bg-surface-2 rounded"
                   min="0"
                 />
-                <div className="text-xs text-gray-400 mt-1">Fallback for all locations</div>
+                <div className="text-xs text-fg-muted mt-1">Fallback for all locations</div>
               </div>
             </div>
           </div>
@@ -407,7 +407,7 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
               <select
                 value={formData.hitLocationProfileId}
                 onChange={(e: ChangeEvent<HTMLSelectElement>) => handleChange('hitLocationProfileId', e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 rounded"
+                className="w-full px-3 py-2 bg-surface-2 rounded"
               >
                 <option value={HIT_LOCATION_PROFILES.HUMANOID}>Humanoid</option>
               </select>
@@ -415,14 +415,14 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
 
             {/* DR by Location Editor */}
             {formData.hitLocationProfileId === HIT_LOCATION_PROFILES.HUMANOID && (
-              <div className="bg-gray-900 rounded p-4">
+              <div className="bg-surface-0 rounded p-4">
                 <div className="flex justify-between items-center mb-3">
                   <h4 className="font-semibold">DR by Location</h4>
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={copyGeneralDRToAll}
-                      className="flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm"
+                      className="flex items-center gap-1 px-3 py-1 bg-accent-600 hover:bg-accent-700 rounded text-sm"
                       title="Copy General DR to all locations"
                     >
                       <Copy size={14} />
@@ -431,7 +431,7 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
                     <button
                       type="button"
                       onClick={clearLocationDR}
-                      className="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm"
+                      className="px-3 py-1 bg-surface-3 hover:bg-surface-4 rounded text-sm"
                       title="Clear all location DR"
                     >
                       Clear All
@@ -444,20 +444,20 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
                     const value = formData.drByLocation[field.key];
                     return (
                       <div key={field.key}>
-                        <label className="block text-xs text-gray-400 mb-1">{field.label}</label>
+                        <label className="block text-xs text-fg-muted mb-1">{field.label}</label>
                         <input
                           type="number"
                           value={value !== undefined ? value : ''}
                           onChange={(e: ChangeEvent<HTMLInputElement>) => setLocationDR(field.key, e.target.value)}
                           placeholder={`(General DR: ${formData.dr})`}
-                          className="w-full px-2 py-1 bg-gray-700 rounded text-sm"
+                          className="w-full px-2 py-1 bg-surface-2 rounded text-sm"
                           min="0"
                         />
                       </div>
                     );
                   })}
                 </div>
-                <div className="text-xs text-gray-400 mt-3">
+                <div className="text-xs text-fg-muted mt-3">
                   Empty fields will use General DR ({formData.dr})
                 </div>
               </div>
@@ -471,7 +471,7 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
               <button
                 type="button"
                 onClick={addAttack}
-                className="flex items-center gap-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm"
+                className="flex items-center gap-2 px-3 py-1 bg-accent-600 hover:bg-accent-700 rounded text-sm"
               >
                 <Plus size={16} />
                 Add Attack
@@ -479,19 +479,19 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
             </div>
 
             {formData.attacks.length === 0 ? (
-              <div className="text-sm text-gray-400 text-center py-4 bg-gray-900 rounded">
+              <div className="text-sm text-fg-muted text-center py-4 bg-surface-0 rounded">
                 No attacks configured. Click "Add Attack" to add one.
               </div>
             ) : (
               <div className="space-y-3">
                 {formData.attacks.map((attack, index) => (
-                  <div key={index} className="bg-gray-900 rounded p-3 space-y-2">
+                  <div key={index} className="bg-surface-0 rounded p-3 space-y-2">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-semibold text-gray-400">Attack #{index + 1}</span>
+                      <span className="text-sm font-semibold text-fg-muted">Attack #{index + 1}</span>
                       <button
                         type="button"
                         onClick={() => removeAttack(index)}
-                        className="p-1 text-red-400 hover:text-red-300"
+                        className="p-1 text-danger-400 hover:text-danger-300"
                         title="Remove attack"
                       >
                         <Trash2 size={16} />
@@ -500,22 +500,22 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
 
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-xs text-gray-400 mb-1">Name</label>
+                        <label className="block text-xs text-fg-muted mb-1">Name</label>
                         <input
                           type="text"
                           value={attack.name}
                           onChange={(e: ChangeEvent<HTMLInputElement>) => updateAttack(index, 'name', e.target.value)}
                           placeholder="e.g., Broadsword, Punch"
-                          className="w-full px-2 py-1 bg-gray-700 rounded text-sm"
+                          className="w-full px-2 py-1 bg-surface-2 rounded text-sm"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-400 mb-1">Skill</label>
+                        <label className="block text-xs text-fg-muted mb-1">Skill</label>
                         <input
                           type="number"
                           value={attack.skill}
                           onChange={(e: ChangeEvent<HTMLInputElement>) => updateAttack(index, 'skill', parseInt(e.target.value) || 10)}
-                          className="w-full px-2 py-1 bg-gray-700 rounded text-sm"
+                          className="w-full px-2 py-1 bg-surface-2 rounded text-sm"
                           min="0"
                         />
                       </div>
@@ -523,23 +523,23 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
 
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-xs text-gray-400 mb-1">Damage</label>
+                        <label className="block text-xs text-fg-muted mb-1">Damage</label>
                         <input
                           type="text"
                           value={attack.damage}
                           onChange={(e: ChangeEvent<HTMLInputElement>) => updateAttack(index, 'damage', e.target.value)}
                           placeholder="e.g., 2d+1, sw+2"
-                          className="w-full px-2 py-1 bg-gray-700 rounded text-sm"
+                          className="w-full px-2 py-1 bg-surface-2 rounded text-sm"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-400 mb-1">Notes</label>
+                        <label className="block text-xs text-fg-muted mb-1">Notes</label>
                         <input
                           type="text"
                           value={attack.notes}
                           onChange={(e: ChangeEvent<HTMLInputElement>) => updateAttack(index, 'notes', e.target.value)}
                           placeholder="Optional"
-                          className="w-full px-2 py-1 bg-gray-700 rounded text-sm"
+                          className="w-full px-2 py-1 bg-surface-2 rounded text-sm"
                         />
                       </div>
                     </div>
@@ -555,7 +555,7 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
             <textarea
               value={formData.notes}
               onChange={(e: ChangeEvent<HTMLTextAreaElement>) => handleChange('notes', e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 rounded"
+              className="w-full px-3 py-2 bg-surface-2 rounded"
               rows={4}
               placeholder="Additional notes about this character..."
             />
@@ -566,13 +566,13 @@ export default function CharacterForm({ character, onSave, onCancel }: Character
             <button
               type="button"
               onClick={onCancel}
-              className="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded"
+              className="px-6 py-2 bg-surface-2 hover:bg-surface-3 rounded"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-6 py-2 bg-green-600 hover:bg-green-700 rounded"
+              className="px-6 py-2 bg-success-600 hover:bg-success-700 rounded"
             >
               {isEditing ? 'Save Changes' : 'Create Character'}
             </button>

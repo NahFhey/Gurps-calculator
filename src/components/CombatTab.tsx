@@ -50,16 +50,16 @@ export function CombatTab() {
 
   return (
     <div className="space-y-4 h-full flex flex-col">
-      <div className="flex gap-2 border-b border-gray-700 pb-2">
+      <div className="flex gap-2 border-b border-edge pb-2">
         <button
           onClick={() => setView('library')}
           disabled={!!combatActive}
           className={`flex items-center gap-2 px-4 py-2 rounded ${
             currentView === 'library'
-              ? 'bg-blue-600 text-white'
+              ? 'bg-accent-600 text-white'
               : combatActive
-              ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              ? 'bg-surface-2 text-fg-faint cursor-not-allowed'
+              : 'bg-surface-2 text-fg-secondary hover:bg-surface-3'
           }`}
         >
           <Users size={20} />
@@ -71,10 +71,10 @@ export function CombatTab() {
           disabled={!!combatActive}
           className={`flex items-center gap-2 px-4 py-2 rounded ${
             currentView === 'setup'
-              ? 'bg-blue-600 text-white'
+              ? 'bg-accent-600 text-white'
               : combatActive
-              ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              ? 'bg-surface-2 text-fg-faint cursor-not-allowed'
+              : 'bg-surface-2 text-fg-secondary hover:bg-surface-3'
           }`}
         >
           <Swords size={20} />
@@ -86,10 +86,10 @@ export function CombatTab() {
           disabled={!!combatActive}
           className={`flex items-center gap-2 px-4 py-2 rounded ${
             currentView === 'history'
-              ? 'bg-blue-600 text-white'
+              ? 'bg-accent-600 text-white'
               : combatActive
-              ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              ? 'bg-surface-2 text-fg-faint cursor-not-allowed'
+              : 'bg-surface-2 text-fg-secondary hover:bg-surface-3'
           }`}
         >
           <ScrollText size={20} />
@@ -100,8 +100,8 @@ export function CombatTab() {
           onClick={() => setView('settings')}
           className={`flex items-center gap-2 px-4 py-2 rounded ${
             currentView === 'settings'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              ? 'bg-accent-600 text-white'
+              : 'bg-surface-2 text-fg-secondary hover:bg-surface-3'
           }`}
         >
           <Settings size={20} />
@@ -111,7 +111,7 @@ export function CombatTab() {
         {combatActive && (
           <button
             onClick={() => setView('tracker')}
-            className="flex items-center gap-2 px-4 py-2 rounded bg-green-600 text-white"
+            className="flex items-center gap-2 px-4 py-2 rounded bg-success-600 text-white"
           >
             <History size={20} />
             Active Combat
@@ -131,10 +131,10 @@ export function CombatTab() {
         )}
         {currentView === 'tracker' && combatActive && (
           combatHasMap ? (
-            <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-400">
-              <Map className="h-10 w-10 text-blue-400/60" />
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-fg-muted">
+              <Map className="h-10 w-10 text-accent-400/60" />
               <p className="text-sm font-medium">Combat is displayed in the main view</p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-fg-faint">
                 Participants, map, and maneuvers are shown in the shell layout.
               </p>
             </div>

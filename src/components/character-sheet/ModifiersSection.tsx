@@ -53,30 +53,30 @@ export function ModifiersSection({
   }
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4">
+    <div className="bg-surface-1 rounded-lg p-4">
       <div className="flex items-center gap-2 mb-3">
         <AlertCircle size={20} className="text-yellow-400" />
-        <h3 className="text-lg font-semibold text-gray-100">Reactions & Conditional Modifiers</h3>
+        <h3 className="text-lg font-semibold text-fg-bright">Reactions & Conditional Modifiers</h3>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Reactions */}
-        <div className="bg-gray-700 rounded p-3">
+        <div className="bg-surface-2 rounded p-3">
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-medium text-gray-300">Reactions</h4>
+            <h4 className="text-sm font-medium text-fg-secondary">Reactions</h4>
             {editMode && (
               <button
                 onClick={handleAddReaction}
-                className="p-1 hover:bg-gray-600 rounded"
+                className="p-1 hover:bg-surface-3 rounded"
                 title="Add Reaction"
               >
-                <Plus size={14} className="text-gray-400" />
+                <Plus size={14} className="text-fg-muted" />
               </button>
             )}
           </div>
 
           {reactions.length === 0 ? (
-            <div className="text-sm text-gray-500 italic">No reaction modifiers</div>
+            <div className="text-sm text-fg-faint italic">No reaction modifiers</div>
           ) : (
             <div className="space-y-2">
               {reactions.map((reaction, index) => (
@@ -87,25 +87,25 @@ export function ModifiersSection({
                         type="number"
                         value={reaction.modifier}
                         onChange={(e) => handleReactionChange(index, 'modifier', parseInt(e.target.value) || 0)}
-                        className="w-14 bg-gray-600 border border-gray-500 rounded px-1 py-0.5 text-sm text-gray-100 text-center"
+                        className="w-14 bg-surface-3 border border-edge-bright rounded px-1 py-0.5 text-sm text-fg-bright text-center"
                       />
                       <input
                         type="text"
                         value={reaction.condition}
                         onChange={(e) => handleReactionChange(index, 'condition', e.target.value)}
                         placeholder="Condition"
-                        className="flex-1 bg-gray-600 border border-gray-500 rounded px-2 py-0.5 text-sm text-gray-100"
+                        className="flex-1 bg-surface-3 border border-edge-bright rounded px-2 py-0.5 text-sm text-fg-bright"
                       />
                       <button
                         onClick={() => handleRemoveReaction(index)}
-                        className="p-0.5 hover:bg-gray-500 rounded text-red-400"
+                        className="p-0.5 hover:bg-surface-4 rounded text-danger-400"
                       >
                         <Trash2 size={14} />
                       </button>
                     </>
                   ) : (
-                    <span className="text-sm text-gray-300">
-                      <span className={reaction.modifier >= 0 ? 'text-green-400' : 'text-red-400'}>
+                    <span className="text-sm text-fg-secondary">
+                      <span className={reaction.modifier >= 0 ? 'text-success-400' : 'text-danger-400'}>
                         {formatModifier(reaction.modifier)}
                       </span>
                       {' '}{reaction.condition}
@@ -118,22 +118,22 @@ export function ModifiersSection({
         </div>
 
         {/* Conditional Modifiers */}
-        <div className="bg-gray-700 rounded p-3">
+        <div className="bg-surface-2 rounded p-3">
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-medium text-gray-300">Conditional Modifiers</h4>
+            <h4 className="text-sm font-medium text-fg-secondary">Conditional Modifiers</h4>
             {editMode && (
               <button
                 onClick={handleAddModifier}
-                className="p-1 hover:bg-gray-600 rounded"
+                className="p-1 hover:bg-surface-3 rounded"
                 title="Add Modifier"
               >
-                <Plus size={14} className="text-gray-400" />
+                <Plus size={14} className="text-fg-muted" />
               </button>
             )}
           </div>
 
           {conditionalModifiers.length === 0 ? (
-            <div className="text-sm text-gray-500 italic">No conditional modifiers</div>
+            <div className="text-sm text-fg-faint italic">No conditional modifiers</div>
           ) : (
             <div className="space-y-2">
               {conditionalModifiers.map((modifier, index) => (
@@ -144,25 +144,25 @@ export function ModifiersSection({
                         type="number"
                         value={modifier.modifier}
                         onChange={(e) => handleModifierChange(index, 'modifier', parseInt(e.target.value) || 0)}
-                        className="w-14 bg-gray-600 border border-gray-500 rounded px-1 py-0.5 text-sm text-gray-100 text-center"
+                        className="w-14 bg-surface-3 border border-edge-bright rounded px-1 py-0.5 text-sm text-fg-bright text-center"
                       />
                       <input
                         type="text"
                         value={modifier.condition}
                         onChange={(e) => handleModifierChange(index, 'condition', e.target.value)}
                         placeholder="Condition"
-                        className="flex-1 bg-gray-600 border border-gray-500 rounded px-2 py-0.5 text-sm text-gray-100"
+                        className="flex-1 bg-surface-3 border border-edge-bright rounded px-2 py-0.5 text-sm text-fg-bright"
                       />
                       <button
                         onClick={() => handleRemoveModifier(index)}
-                        className="p-0.5 hover:bg-gray-500 rounded text-red-400"
+                        className="p-0.5 hover:bg-surface-4 rounded text-danger-400"
                       >
                         <Trash2 size={14} />
                       </button>
                     </>
                   ) : (
-                    <span className="text-sm text-gray-300">
-                      <span className={modifier.modifier >= 0 ? 'text-green-400' : 'text-red-400'}>
+                    <span className="text-sm text-fg-secondary">
+                      <span className={modifier.modifier >= 0 ? 'text-success-400' : 'text-danger-400'}>
                         {formatModifier(modifier.modifier)}
                       </span>
                       {' '}{modifier.condition}

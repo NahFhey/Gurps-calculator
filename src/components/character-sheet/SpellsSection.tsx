@@ -107,18 +107,18 @@ export function SpellsSection({
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4">
+    <div className="bg-surface-1 rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Sparkles size={20} className="text-purple-400" />
-          <h3 className="text-lg font-semibold text-gray-100">
-            Spells <span className="text-sm text-gray-400">({spells.length}) [{totalPoints}]</span>
+          <h3 className="text-lg font-semibold text-fg-bright">
+            Spells <span className="text-sm text-fg-muted">({spells.length}) [{totalPoints}]</span>
           </h3>
         </div>
         {editMode && (
           <button
             onClick={handleAdd}
-            className="flex items-center gap-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+            className="flex items-center gap-1 px-2 py-1 bg-surface-2 hover:bg-surface-3 rounded text-sm"
           >
             <Plus size={14} />
             Add Spell
@@ -127,14 +127,14 @@ export function SpellsSection({
       </div>
 
       {spells.length === 0 ? (
-        <div className="text-gray-500 italic">No spells</div>
+        <div className="text-fg-faint italic">No spells</div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-gray-400 border-b border-gray-700">
+              <tr className="text-left text-fg-muted border-b border-edge">
                 <th
-                  className="pb-2 cursor-pointer hover:text-gray-200"
+                  className="pb-2 cursor-pointer hover:text-fg-primary"
                   onClick={() => handleSort('name')}
                 >
                   <div className="flex items-center gap-1">
@@ -142,7 +142,7 @@ export function SpellsSection({
                   </div>
                 </th>
                 <th
-                  className="pb-2 cursor-pointer hover:text-gray-200 w-16 text-center"
+                  className="pb-2 cursor-pointer hover:text-fg-primary w-16 text-center"
                   onClick={() => handleSort('level')}
                 >
                   <div className="flex items-center justify-center gap-1">
@@ -151,7 +151,7 @@ export function SpellsSection({
                 </th>
                 <th className="pb-2 w-20">Rel. Lvl</th>
                 <th
-                  className="pb-2 cursor-pointer hover:text-gray-200 w-24"
+                  className="pb-2 cursor-pointer hover:text-fg-primary w-24"
                   onClick={() => handleSort('class')}
                 >
                   <div className="flex items-center gap-1">
@@ -163,7 +163,7 @@ export function SpellsSection({
                 <th className="pb-2 w-20">Time</th>
                 <th className="pb-2 w-24">Duration</th>
                 <th
-                  className="pb-2 cursor-pointer hover:text-gray-200 w-14 text-center"
+                  className="pb-2 cursor-pointer hover:text-fg-primary w-14 text-center"
                   onClick={() => handleSort('points')}
                 >
                   <div className="flex items-center justify-center gap-1">
@@ -177,7 +177,7 @@ export function SpellsSection({
               {sortedSpells.map((spell) => (
                 <React.Fragment key={spell.id}>
                   <tr
-                    className="border-b border-gray-700/50 hover:bg-gray-700/30 cursor-pointer"
+                    className="border-b border-edge/50 hover:bg-surface-2/30 cursor-pointer"
                     onClick={() => setExpandedSpell(expandedSpell === spell.id ? null : spell.id)}
                   >
                     <td className="py-1.5">
@@ -188,14 +188,14 @@ export function SpellsSection({
                           onChange={(e) => handleChange(spell.id, { name: e.target.value })}
                           onClick={(e) => e.stopPropagation()}
                           placeholder="Spell name"
-                          className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-0.5 text-gray-100"
+                          className="w-full bg-surface-2 border border-edge-strong rounded px-2 py-0.5 text-fg-bright"
                         />
                       ) : (
                         <span className="text-purple-300">{spell.name}</span>
                       )}
                     </td>
                     <td className="py-1.5 text-center">
-                      <span className="font-bold text-gray-100">{spell.level}</span>
+                      <span className="font-bold text-fg-bright">{spell.level}</span>
                     </td>
                     <td className="py-1.5">
                       {editMode ? (
@@ -204,10 +204,10 @@ export function SpellsSection({
                           value={spell.relativeLevel}
                           onChange={(e) => handleChange(spell.id, { relativeLevel: parseInt(e.target.value) || 0 })}
                           onClick={(e) => e.stopPropagation()}
-                          className="w-14 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-gray-100 text-center"
+                          className="w-14 bg-surface-2 border border-edge-strong rounded px-1 py-0.5 text-fg-bright text-center"
                         />
                       ) : (
-                        <span className="text-gray-400">
+                        <span className="text-fg-muted">
                           IQ{spell.relativeLevel >= 0 ? '+' : ''}{spell.relativeLevel}
                         </span>
                       )}
@@ -218,7 +218,7 @@ export function SpellsSection({
                           value={spell.spellClass}
                           onChange={(e) => handleChange(spell.id, { spellClass: e.target.value as SpellClass })}
                           onClick={(e) => e.stopPropagation()}
-                          className="bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-gray-100 text-xs"
+                          className="bg-surface-2 border border-edge-strong rounded px-1 py-0.5 text-fg-bright text-xs"
                         >
                           {SPELL_CLASSES.map((cls) => (
                             <option key={cls} value={cls}>
@@ -227,7 +227,7 @@ export function SpellsSection({
                           ))}
                         </select>
                       ) : (
-                        <span className="text-gray-400 text-xs">{spell.spellClass}</span>
+                        <span className="text-fg-muted text-xs">{spell.spellClass}</span>
                       )}
                     </td>
                     <td className="py-1.5">
@@ -237,10 +237,10 @@ export function SpellsSection({
                           value={spell.castingCost}
                           onChange={(e) => handleChange(spell.id, { castingCost: e.target.value })}
                           onClick={(e) => e.stopPropagation()}
-                          className="w-14 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-gray-100 text-xs"
+                          className="w-14 bg-surface-2 border border-edge-strong rounded px-1 py-0.5 text-fg-bright text-xs"
                         />
                       ) : (
-                        <span className="text-gray-400 text-xs">{spell.castingCost}</span>
+                        <span className="text-fg-muted text-xs">{spell.castingCost}</span>
                       )}
                     </td>
                     <td className="py-1.5">
@@ -250,10 +250,10 @@ export function SpellsSection({
                           value={spell.maintenanceCost}
                           onChange={(e) => handleChange(spell.id, { maintenanceCost: e.target.value })}
                           onClick={(e) => e.stopPropagation()}
-                          className="w-14 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-gray-100 text-xs"
+                          className="w-14 bg-surface-2 border border-edge-strong rounded px-1 py-0.5 text-fg-bright text-xs"
                         />
                       ) : (
-                        <span className="text-gray-400 text-xs">{spell.maintenanceCost}</span>
+                        <span className="text-fg-muted text-xs">{spell.maintenanceCost}</span>
                       )}
                     </td>
                     <td className="py-1.5">
@@ -263,10 +263,10 @@ export function SpellsSection({
                           value={spell.castingTime}
                           onChange={(e) => handleChange(spell.id, { castingTime: e.target.value })}
                           onClick={(e) => e.stopPropagation()}
-                          className="w-16 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-gray-100 text-xs"
+                          className="w-16 bg-surface-2 border border-edge-strong rounded px-1 py-0.5 text-fg-bright text-xs"
                         />
                       ) : (
-                        <span className="text-gray-400 text-xs">{spell.castingTime}</span>
+                        <span className="text-fg-muted text-xs">{spell.castingTime}</span>
                       )}
                     </td>
                     <td className="py-1.5">
@@ -276,10 +276,10 @@ export function SpellsSection({
                           value={spell.duration}
                           onChange={(e) => handleChange(spell.id, { duration: e.target.value })}
                           onClick={(e) => e.stopPropagation()}
-                          className="w-20 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-gray-100 text-xs"
+                          className="w-20 bg-surface-2 border border-edge-strong rounded px-1 py-0.5 text-fg-bright text-xs"
                         />
                       ) : (
-                        <span className="text-gray-400 text-xs">{spell.duration}</span>
+                        <span className="text-fg-muted text-xs">{spell.duration}</span>
                       )}
                     </td>
                     <td className="py-1.5 text-center">
@@ -289,11 +289,11 @@ export function SpellsSection({
                           value={spell.points}
                           onChange={(e) => handleChange(spell.id, { points: parseInt(e.target.value) || 0 })}
                           onClick={(e) => e.stopPropagation()}
-                          className="w-12 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-gray-100 text-center"
+                          className="w-12 bg-surface-2 border border-edge-strong rounded px-1 py-0.5 text-fg-bright text-center"
                           min={0}
                         />
                       ) : (
-                        <span className="text-gray-400">[{spell.points}]</span>
+                        <span className="text-fg-muted">[{spell.points}]</span>
                       )}
                     </td>
                     {editMode && (
@@ -303,7 +303,7 @@ export function SpellsSection({
                             e.stopPropagation();
                             handleRemove(spell.id);
                           }}
-                          className="p-1 hover:bg-gray-600 rounded text-red-400"
+                          className="p-1 hover:bg-surface-3 rounded text-danger-400"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -311,12 +311,12 @@ export function SpellsSection({
                     )}
                   </tr>
                   {expandedSpell === spell.id && (
-                    <tr className="bg-gray-700/30">
+                    <tr className="bg-surface-2/30">
                       <td colSpan={editMode ? 10 : 9} className="px-4 py-2">
-                        <div className="text-xs text-gray-400">
+                        <div className="text-xs text-fg-muted">
                           {spell.college && <div>College: {spell.college}</div>}
                           {spell.notes && <div className="mt-1">{spell.notes}</div>}
-                          {spell.reference && <div className="mt-1 text-gray-500">Ref: {spell.reference}</div>}
+                          {spell.reference && <div className="mt-1 text-fg-faint">Ref: {spell.reference}</div>}
                         </div>
                       </td>
                     </tr>

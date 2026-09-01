@@ -310,18 +310,18 @@ export function MiningTaskForm({
   }, []);
 
   return (
-    <div className="mining-task-form bg-gray-800/60 border border-gray-700 rounded-lg p-4 mb-4" data-testid="mining-task-form">
+    <div className="mining-task-form bg-surface-1/60 border border-edge rounded-lg p-4 mb-4" data-testid="mining-task-form">
       <div className="flex justify-between items-center mb-3">
-        <h4 className="font-medium text-gray-100 flex items-center gap-2">
-          <HardHat className="w-4 h-4 text-amber-400" />
+        <h4 className="font-medium text-fg-bright flex items-center gap-2">
+          <HardHat className="w-4 h-4 text-warning-400" />
           New Mining Task
         </h4>
-        <button type="button" onClick={onCancel} className="text-gray-400 hover:text-gray-200">
+        <button type="button" onClick={onCancel} className="text-fg-muted hover:text-fg-primary">
           <X className="w-5 h-5" />
         </button>
       </div>
 
-      <label className="mb-4 flex items-center gap-2 text-sm text-gray-300">
+      <label className="mb-4 flex items-center gap-2 text-sm text-fg-secondary">
         <input
           type="checkbox"
           checked={isBatchMode}
@@ -330,22 +330,22 @@ export function MiningTaskForm({
             setBatchErrors({});
           }}
           data-testid="batch-assign-toggle"
-          className="rounded border-gray-600 bg-gray-900 text-amber-600 focus:ring-amber-500"
+          className="rounded border-edge-strong bg-surface-0 text-warning-600 focus:ring-warning-500"
         />
         Batch assign
       </label>
 
       {/* Method Selector */}
       <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-300 mb-1">Method</label>
+        <label className="block text-sm font-medium text-fg-secondary mb-1">Method</label>
         <div className="flex gap-1" data-testid="method-selector">
           <button
             type="button"
             onClick={() => { setMethod('Surface Prospecting'); setSiteId(''); }}
             className={`flex items-center gap-1 px-3 py-1.5 text-sm rounded-l-lg border transition-colors ${
               method === 'Surface Prospecting'
-                ? 'bg-amber-600 text-white border-amber-600'
-                : 'bg-gray-800 text-gray-300 border-gray-600 hover:bg-gray-700'
+                ? 'bg-warning-600 text-white border-warning-600'
+                : 'bg-surface-1 text-fg-secondary border-edge-strong hover:bg-surface-2'
             }`}
           >
             <Shovel className="w-3.5 h-3.5" />
@@ -356,15 +356,15 @@ export function MiningTaskForm({
             onClick={() => setMethod('Deep Mining')}
             className={`flex items-center gap-1 px-3 py-1.5 text-sm rounded-r-lg border transition-colors ${
               method === 'Deep Mining'
-                ? 'bg-amber-600 text-white border-amber-600'
-                : 'bg-gray-800 text-gray-300 border-gray-600 hover:bg-gray-700'
+                ? 'bg-warning-600 text-white border-warning-600'
+                : 'bg-surface-1 text-fg-secondary border-edge-strong hover:bg-surface-2'
             }`}
           >
             <Mountain className="w-3.5 h-3.5" />
             Deep Mining
           </button>
         </div>
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-xs text-fg-muted mt-1">
           {method === 'Surface Prospecting'
             ? 'Locate + harvest in 1 slot. Low yield, low danger.'
             : 'Extract from a mapped site. 1 slot per extraction. Higher yield, higher danger.'}
@@ -373,14 +373,14 @@ export function MiningTaskForm({
 
       {/* Leader Selection */}
       {!isBatchMode ? <div className="mb-3">
-        <label htmlFor="mining-leader-select" className="block text-sm font-medium text-gray-300 mb-1">
+        <label htmlFor="mining-leader-select" className="block text-sm font-medium text-fg-secondary mb-1">
           Leader
         </label>
         <select
           id="mining-leader-select"
           value={leaderId}
           onChange={(e) => { setLeaderId(e.target.value); setHelperIds([]); }}
-          className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+          className="w-full px-3 py-2 bg-surface-0 border border-edge-strong rounded text-fg-bright text-sm focus:outline-none focus:ring-2 focus:ring-warning-500 focus:border-warning-500"
         >
           <option value="">Select a leader...</option>
           {availableCharacters.map((c) => (
@@ -389,7 +389,7 @@ export function MiningTaskForm({
         </select>
       </div> : (
         <div className="mb-3">
-          <label htmlFor="mining-batch-leaders" className="block text-sm font-medium text-gray-300 mb-1">Leaders</label>
+          <label htmlFor="mining-batch-leaders" className="block text-sm font-medium text-fg-secondary mb-1">Leaders</label>
           <select
             id="mining-batch-leaders"
             multiple
@@ -403,7 +403,7 @@ export function MiningTaskForm({
               setBatchErrors({});
             }}
             data-testid="batch-leader-select"
-            className="w-full min-h-24 px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 text-sm"
+            className="w-full min-h-24 px-3 py-2 bg-surface-0 border border-edge-strong rounded text-fg-bright text-sm"
           >
             {availableCharacters.map((character) => (
               <option key={character.id} value={character.id}>{character.name}</option>
@@ -415,14 +415,14 @@ export function MiningTaskForm({
       {/* Locate Skill Selection */}
       {(leaderId || isBatchMode) && (
         <div className="mb-3">
-          <label htmlFor="locate-skill-select" className="block text-sm font-medium text-gray-300 mb-1">
+          <label htmlFor="locate-skill-select" className="block text-sm font-medium text-fg-secondary mb-1">
             Locate Skill
           </label>
           <select
             id="locate-skill-select"
             value={locateSkill}
             onChange={(e) => setLocateSkill(e.target.value as MiningSkill)}
-            className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+            className="w-full px-3 py-2 bg-surface-0 border border-edge-strong rounded text-fg-bright text-sm focus:outline-none focus:ring-2 focus:ring-warning-500 focus:border-warning-500"
           >
             {isBatchMode ? LOCATE_SKILLS.map((skill) => (
               <option key={skill} value={skill}>{MINING_SKILL_LABELS[skill]}</option>
@@ -447,14 +447,14 @@ export function MiningTaskForm({
       {/* Extraction Skill Selection */}
       {(leaderId || isBatchMode) && (
         <div className="mb-3">
-          <label htmlFor="extraction-skill-select" className="block text-sm font-medium text-gray-300 mb-1">
+          <label htmlFor="extraction-skill-select" className="block text-sm font-medium text-fg-secondary mb-1">
             Extraction Skill
           </label>
           <select
             id="extraction-skill-select"
             value={extractionSkill}
             onChange={(e) => setExtractionSkill(e.target.value as MiningSkill)}
-            className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+            className="w-full px-3 py-2 bg-surface-0 border border-edge-strong rounded text-fg-bright text-sm focus:outline-none focus:ring-2 focus:ring-warning-500 focus:border-warning-500"
           >
             {isBatchMode ? EXTRACTION_SKILLS.map((skill) => (
               <option key={skill} value={skill}>{MINING_SKILL_LABELS[skill]}</option>
@@ -480,7 +480,7 @@ export function MiningTaskForm({
       {/* Mapped Site Selection (Deep Mining only) */}
       {method === 'Deep Mining' && (
         <div className="mb-3">
-          <label htmlFor="site-select" className="block text-sm font-medium text-gray-300 mb-1">
+          <label htmlFor="site-select" className="block text-sm font-medium text-fg-secondary mb-1">
             Mapped Site
           </label>
           {availableSites.length > 0 ? (
@@ -488,7 +488,7 @@ export function MiningTaskForm({
               id="site-select"
               value={siteId}
               onChange={(e) => setSiteId(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+              className="w-full px-3 py-2 bg-surface-0 border border-edge-strong rounded text-fg-bright text-sm focus:outline-none focus:ring-2 focus:ring-warning-500 focus:border-warning-500"
             >
               <option value="">Select a site...</option>
               {availableSites.map((site) => (
@@ -508,14 +508,14 @@ export function MiningTaskForm({
       {/* Target Resource (optional) */}
       {method === 'Surface Prospecting' && (
         <div className="mb-3">
-          <label htmlFor="target-resource-select" className="block text-sm font-medium text-gray-300 mb-1">
+          <label htmlFor="target-resource-select" className="block text-sm font-medium text-fg-secondary mb-1">
             Target Resource (optional)
           </label>
           <select
             id="target-resource-select"
             value={targetResourceId}
             onChange={(e) => setTargetResourceId(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+            className="w-full px-3 py-2 bg-surface-0 border border-edge-strong rounded text-fg-bright text-sm focus:outline-none focus:ring-2 focus:ring-warning-500 focus:border-warning-500"
           >
             <option value="">Any resource (no penalty)</option>
             {MINERALS.map((m) => (
@@ -525,7 +525,7 @@ export function MiningTaskForm({
             ))}
           </select>
           {targetMineral && (
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-fg-muted mt-1">
               Targeting penalty: {SPECIFIC_RESOURCE_PENALTIES[targetMineral.rarity]} (rarity: {targetMineral.rarity})
             </p>
           )}
@@ -535,8 +535,8 @@ export function MiningTaskForm({
       {/* Helpers */}
       {!isBatchMode && leaderId && availableHelpers.length > 0 && (
         <div className="mb-3">
-          <label className="block text-sm font-medium text-gray-300 mb-1">
-            Helpers ({helperIds.length}) {teamBonus > 0 && <span className="text-green-400 text-xs">+{teamBonus} team bonus</span>}
+          <label className="block text-sm font-medium text-fg-secondary mb-1">
+            Helpers ({helperIds.length}) {teamBonus > 0 && <span className="text-success-400 text-xs">+{teamBonus} team bonus</span>}
           </label>
           <div className="flex flex-wrap gap-1">
             {availableHelpers.map((c) => (
@@ -546,8 +546,8 @@ export function MiningTaskForm({
                 onClick={() => toggleHelper(c.id)}
                 className={`px-2 py-1 text-xs rounded border transition-colors ${
                   helperIds.includes(c.id)
-                    ? 'bg-amber-900/50 border-amber-500 text-amber-200'
-                    : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
+                    ? 'bg-warning-900/50 border-warning-500 text-warning-200'
+                    : 'bg-surface-1 border-edge-strong text-fg-secondary hover:bg-surface-2'
                 }`}
               >
                 {c.name}
@@ -578,8 +578,8 @@ export function MiningTaskForm({
             );
             const error = batchErrors[characterId];
             return (
-              <div key={characterId} className="rounded border border-gray-700 bg-gray-900/40 p-3" data-testid={`batch-row-${characterId}`}>
-                <p className="mb-2 text-sm font-medium text-gray-200">{character?.name ?? characterId}</p>
+              <div key={characterId} className="rounded border border-edge bg-surface-0/40 p-3" data-testid={`batch-row-${characterId}`}>
+                <p className="mb-2 text-sm font-medium text-fg-primary">{character?.name ?? characterId}</p>
                 <ToolSelector
                   label={`${character?.name ?? characterId} tools`}
                   value={batchToolIds[characterId] ?? []}
@@ -610,25 +610,25 @@ export function MiningTaskForm({
 
       {/* Context Modifiers */}
       <div className="mb-3">
-        <label className="block text-sm font-medium text-gray-300 mb-1">Context Modifiers</label>
+        <label className="block text-sm font-medium text-fg-secondary mb-1">Context Modifiers</label>
         <div className="grid grid-cols-2 gap-2">
-          <label className="flex items-center gap-1.5 text-xs text-gray-300">
+          <label className="flex items-center gap-1.5 text-xs text-fg-secondary">
             <input type="checkbox" checked={hasDetailedMaps} onChange={(e) => setHasDetailedMaps(e.target.checked)} className="rounded" />
             Detailed Maps/Notes (+1)
           </label>
-          <label className="flex items-center gap-1.5 text-xs text-gray-300">
+          <label className="flex items-center gap-1.5 text-xs text-fg-secondary">
             <input type="checkbox" checked={knownRichDeposit} onChange={(e) => setKnownRichDeposit(e.target.checked)} className="rounded" />
             Known Rich Deposit (+2)
           </label>
-          <label className="flex items-center gap-1.5 text-xs text-gray-300">
+          <label className="flex items-center gap-1.5 text-xs text-fg-secondary">
             <input type="checkbox" checked={randomUnexplored} onChange={(e) => setRandomUnexplored(e.target.checked)} className="rounded" />
             Random Unexplored (-2)
           </label>
-          <label className="flex items-center gap-1.5 text-xs text-gray-300">
+          <label className="flex items-center gap-1.5 text-xs text-fg-secondary">
             <input type="checkbox" checked={hasSupervisor} onChange={(e) => setHasSupervisor(e.target.checked)} className="rounded" />
             Supervisor 15+ (+5)
           </label>
-          <label className="flex items-center gap-1.5 text-xs text-gray-300">
+          <label className="flex items-center gap-1.5 text-xs text-fg-secondary">
             <input
               type="checkbox"
               checked={hasProperTools}
@@ -637,7 +637,7 @@ export function MiningTaskForm({
             />
             Proper Tools (+2)
           </label>
-          <label className="flex items-center gap-1.5 text-xs text-gray-300">
+          <label className="flex items-center gap-1.5 text-xs text-fg-secondary">
             <input
               type="checkbox"
               checked={isImprovisedTools}
@@ -652,9 +652,9 @@ export function MiningTaskForm({
       {/* Danger Mode (Deep Mining only) */}
       {method === 'Deep Mining' && (
         <div className="mb-3">
-          <label className="block text-sm font-medium text-gray-300 mb-1">Danger Mode</label>
+          <label className="block text-sm font-medium text-fg-secondary mb-1">Danger Mode</label>
           <div className="flex gap-2">
-            <label className="flex items-center gap-1.5 text-xs text-gray-300">
+            <label className="flex items-center gap-1.5 text-xs text-fg-secondary">
               <input
                 type="radio"
                 name="dangerMode"
@@ -663,7 +663,7 @@ export function MiningTaskForm({
               />
               Lite (events on failures + crits)
             </label>
-            <label className="flex items-center gap-1.5 text-xs text-gray-300">
+            <label className="flex items-center gap-1.5 text-xs text-fg-secondary">
               <input
                 type="radio"
                 name="dangerMode"
@@ -678,26 +678,26 @@ export function MiningTaskForm({
 
       {/* Skill Summary */}
       {!isBatchMode && leaderId && (
-        <div className="mb-4 bg-gray-900/50 border border-gray-700 rounded p-3 text-sm">
-          <p className="text-gray-200">
+        <div className="mb-4 bg-surface-0/50 border border-edge rounded p-3 text-sm">
+          <p className="text-fg-primary">
             <span className="font-medium">Locate Skill:</span> {locateSkillLevel}
             <span className="ml-2 font-medium">Extraction Skill:</span> {extractionSkillLevel}
           </p>
-          <p className="text-gray-200">
+          <p className="text-fg-primary">
             {toolBonus !== 0 && (
-              <span className={toolBonus >= 0 ? 'text-green-400' : 'text-red-400'}>
+              <span className={toolBonus >= 0 ? 'text-success-400' : 'text-danger-400'}>
                 Tools: {toolBonus >= 0 ? '+' : ''}{toolBonus}
               </span>
             )}
             {teamBonus > 0 && (
-              <span className="text-green-400 ml-2">Team: +{teamBonus}</span>
+              <span className="text-success-400 ml-2">Team: +{teamBonus}</span>
             )}
             {fatiguePenalty !== 0 && (
-              <span className="text-red-400 ml-2">Fatigue: {fatiguePenalty}</span>
+              <span className="text-danger-400 ml-2">Fatigue: {fatiguePenalty}</span>
             )}
           </p>
-          <p className="text-gray-400">
-            Total Modifier: <span className={totalSkillModifier >= 0 ? 'text-green-400' : 'text-red-400'}>
+          <p className="text-fg-muted">
+            Total Modifier: <span className={totalSkillModifier >= 0 ? 'text-success-400' : 'text-danger-400'}>
               {totalSkillModifier >= 0 ? '+' : ''}{totalSkillModifier}
             </span>
           </p>
@@ -712,8 +712,8 @@ export function MiningTaskForm({
           disabled={!isFormValid}
           className={`px-4 py-2 text-sm rounded font-medium transition-colors ${
             isFormValid
-              ? 'bg-amber-600 text-white hover:bg-amber-700'
-              : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+              ? 'bg-warning-600 text-white hover:bg-warning-700'
+              : 'bg-surface-2 text-fg-faint cursor-not-allowed'
           }`}
         >
           Create Task
@@ -721,7 +721,7 @@ export function MiningTaskForm({
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 text-sm rounded border border-gray-600 text-gray-300 hover:bg-gray-700 transition-colors"
+          className="px-4 py-2 text-sm rounded border border-edge-strong text-fg-secondary hover:bg-surface-2 transition-colors"
         >
           Cancel
         </button>

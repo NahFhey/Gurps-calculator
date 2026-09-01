@@ -39,10 +39,10 @@ type ColorConfig = {
 };
 
 const RESOLVE_COLORS: Record<string, ColorConfig> = {
-  green: { bg: 'bg-green-600', hover: 'hover:bg-green-700' },
-  blue: { bg: 'bg-blue-600', hover: 'hover:bg-blue-700' },
+  green: { bg: 'bg-success-600', hover: 'hover:bg-success-700' },
+  blue: { bg: 'bg-accent-600', hover: 'hover:bg-accent-700' },
   purple: { bg: 'bg-purple-600', hover: 'hover:bg-purple-700' },
-  amber: { bg: 'bg-amber-600', hover: 'hover:bg-amber-700' },
+  amber: { bg: 'bg-warning-600', hover: 'hover:bg-warning-700' },
 };
 
 // ============================================================================
@@ -79,7 +79,7 @@ export function TaskActions({
       <button
         type="button"
         onClick={onCancel}
-        className="flex items-center gap-1 px-3 py-1.5 border border-red-500/50 text-red-400 text-sm rounded hover:bg-red-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex items-center gap-1 px-3 py-1.5 border border-danger-500/50 text-danger-400 text-sm rounded hover:bg-danger-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         disabled={isInProgress}
         data-testid="cancel-button"
       >
@@ -118,7 +118,7 @@ export function ResolveButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      className={`flex items-center gap-1 px-3 py-1.5 bg-success-600 text-white text-sm rounded hover:bg-success-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
       disabled={disabled}
       data-testid="resolve-button"
     >
@@ -141,7 +141,7 @@ export function CancelButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-1 px-3 py-1.5 border border-red-300 text-red-600 text-sm rounded hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      className={`flex items-center gap-1 px-3 py-1.5 border border-danger-300 text-danger-600 text-sm rounded hover:bg-danger-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
       disabled={disabled}
       data-testid="cancel-button"
     >

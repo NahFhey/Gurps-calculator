@@ -18,7 +18,7 @@ function DicePanelViewBase({
   onRoll
 }: DicePanelViewProps) {
   return (
-    <div className="bg-gray-800 rounded-lg p-4">
+    <div className="bg-surface-1 rounded-lg p-4">
       <button
         onClick={onToggleDicePanel}
         aria-label={showDicePanel ? 'Collapse dice tools panel' : 'Expand dice tools panel'}
@@ -29,30 +29,30 @@ function DicePanelViewBase({
           <Dices size={20} />
           <span className="font-semibold">Dice Tools</span>
         </div>
-        <span className="text-gray-400">{showDicePanel ? '▲' : '▼'}</span>
+        <span className="text-fg-muted">{showDicePanel ? '▲' : '▼'}</span>
       </button>
 
       {showDicePanel && (
         <div className="mt-4 space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Expression</label>
+              <label className="block text-sm text-fg-muted mb-1">Expression</label>
               <input
                 type="text"
                 value={diceExpression}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => onSetDiceExpression(e.target.value)}
                 placeholder="e.g. 3d6, 2d+1"
-                className="w-full px-3 py-2 bg-gray-700 rounded"
+                className="w-full px-3 py-2 bg-surface-2 rounded"
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Target (optional)</label>
+              <label className="block text-sm text-fg-muted mb-1">Target (optional)</label>
               <input
                 type="number"
                 value={rollTarget}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => onSetRollTarget(e.target.value)}
                 placeholder="e.g. 12"
-                className="w-full px-3 py-2 bg-gray-700 rounded"
+                className="w-full px-3 py-2 bg-surface-2 rounded"
               />
             </div>
           </div>
@@ -60,21 +60,21 @@ function DicePanelViewBase({
             <button
               onClick={onRoll}
               aria-label="Roll dice expression"
-              className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
+              className="flex-1 px-4 py-2 bg-accent-600 hover:bg-accent-700 rounded"
             >
               Roll
             </button>
             <button
               onClick={() => onSetDiceExpression('3d6')}
               aria-label="Set dice expression to 3d6"
-              className="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded"
+              className="px-4 py-2 bg-surface-3 hover:bg-surface-4 rounded"
             >
               3d6
             </button>
             <button
               onClick={() => onSetDiceExpression('1d')}
               aria-label="Set dice expression to 1d"
-              className="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded"
+              className="px-4 py-2 bg-surface-3 hover:bg-surface-4 rounded"
             >
               1d
             </button>

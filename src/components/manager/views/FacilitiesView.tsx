@@ -189,17 +189,17 @@ export function FacilitiesView() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-lg font-semibold text-slate-200">
+        <div className="flex items-center gap-2 text-lg font-semibold text-fg-primary">
           <Building2 className="h-5 w-5" /> Facilities
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-400">{facilities.length} facilities</span>
+          <span className="text-sm text-fg-muted">{facilities.length} facilities</span>
           <button
             onClick={() => {
               resetForm();
               setShowAdd(true);
             }}
-            className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded flex items-center gap-2"
+            className="bg-success-600 hover:bg-success-500 px-4 py-2 rounded flex items-center gap-2"
           >
             <Plus size={20} /> Add Facility
           </button>
@@ -220,14 +220,14 @@ export function FacilitiesView() {
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg max-w-md border-2 border-gray-600">
+          <div className="bg-surface-1 p-6 rounded-lg max-w-md border-2 border-edge-strong">
             <h3 className="text-xl font-bold mb-4">Confirm Delete</h3>
             <p className="mb-6">Delete facility "{deleteConfirm.name}"?</p>
             <div className="flex gap-3 justify-end">
-              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 bg-gray-600 rounded">
+              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 bg-surface-3 rounded">
                 Cancel
               </button>
-              <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 rounded">
+              <button onClick={confirmDelete} className="px-4 py-2 bg-danger-600 rounded">
                 Delete
               </button>
             </div>
@@ -237,7 +237,7 @@ export function FacilitiesView() {
 
       {/* Add/Edit Form */}
       {showAdd && (
-        <div className="bg-gray-700 p-4 rounded-lg space-y-4 border border-gray-600">
+        <div className="bg-surface-2 p-4 rounded-lg space-y-4 border border-edge-strong">
           <h3 className="text-lg font-semibold">
             {editingId ? 'Edit Facility' : 'Add New Facility'}
           </h3>
@@ -245,20 +245,20 @@ export function FacilitiesView() {
           {/* Basic Info */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Facility Name *</label>
+              <label className="block text-xs text-fg-muted mb-1">Facility Name *</label>
               <input
                 value={formState.name}
                 onChange={(e) => setFormState(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="e.g., Camp Kitchen, Alchemist's Lab"
-                className="w-full bg-gray-600 px-3 py-2 rounded"
+                className="w-full bg-surface-3 px-3 py-2 rounded"
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Facility Type</label>
+              <label className="block text-xs text-fg-muted mb-1">Facility Type</label>
               <select
                 value={formState.facilityType}
                 onChange={(e) => setFormState(prev => ({ ...prev, facilityType: e.target.value as FacilityType }))}
-                className="w-full bg-gray-600 px-3 py-2 rounded"
+                className="w-full bg-surface-3 px-3 py-2 rounded"
               >
                 {FACILITY_TYPES.map(type => (
                   <option key={type.value} value={type.value}>{type.label}</option>
@@ -269,25 +269,25 @@ export function FacilitiesView() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Rating (0-4)</label>
+              <label className="block text-xs text-fg-muted mb-1">Rating (0-4)</label>
               <input
                 type="number"
                 min="0"
                 max="4"
                 value={formState.rating}
                 onChange={(e) => setFormState(prev => ({ ...prev, rating: parseInt(e.target.value) || 0 }))}
-                className="w-full bg-gray-600 px-3 py-2 rounded"
+                className="w-full bg-surface-3 px-3 py-2 rounded"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-fg-faint mt-1">
                 Provides +{formState.rating} skill bonus to {getDefaultActivityForType(formState.facilityType)}
               </p>
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Condition</label>
+              <label className="block text-xs text-fg-muted mb-1">Condition</label>
               <select
                 value={formState.conditionId}
                 onChange={(e) => setFormState(prev => ({ ...prev, conditionId: e.target.value }))}
-                className="w-full bg-gray-600 px-3 py-2 rounded"
+                className="w-full bg-surface-3 px-3 py-2 rounded"
               >
                 {CONDITION_OPTIONS.map(condition => (
                   <option key={condition} value={condition}>{condition}</option>
@@ -297,12 +297,12 @@ export function FacilitiesView() {
           </div>
 
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Description (optional)</label>
+            <label className="block text-xs text-fg-muted mb-1">Description (optional)</label>
             <textarea
               value={formState.description}
               onChange={(e) => setFormState(prev => ({ ...prev, description: e.target.value }))}
               placeholder="Notes about this facility..."
-              className="w-full bg-gray-600 px-3 py-2 rounded"
+              className="w-full bg-surface-3 px-3 py-2 rounded"
               rows={2}
             />
           </div>
@@ -315,7 +315,7 @@ export function FacilitiesView() {
           />
 
           {/* Advanced Modifiers Toggle */}
-          <div className="border-t border-gray-600 pt-4">
+          <div className="border-t border-edge-strong pt-4">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -325,22 +325,22 @@ export function FacilitiesView() {
               />
               <span className="text-sm">Use advanced activity modifiers</span>
             </label>
-            <p className="text-xs text-gray-500 mt-1 ml-6">
+            <p className="text-xs text-fg-faint mt-1 ml-6">
               Configure specific bonuses for different activity types
             </p>
           </div>
 
           {/* Advanced Activity Modifiers */}
           {formState.useAdvancedModifiers && (
-            <div className="bg-gray-800 p-4 rounded space-y-4">
-              <h4 className="text-sm font-medium text-gray-300">Activity Modifiers</h4>
+            <div className="bg-surface-1 p-4 rounded space-y-4">
+              <h4 className="text-sm font-medium text-fg-secondary">Activity Modifiers</h4>
 
               {ACTIVITY_TYPES.map(activity => {
                 const isEnabled = activity in formState.activityCategories;
                 const modifiers = formState.activityCategories[activity] || {};
 
                 return (
-                  <div key={activity} className="border border-gray-700 rounded p-3">
+                  <div key={activity} className="border border-edge rounded p-3">
                     <label className="flex items-center gap-2 cursor-pointer mb-2">
                       <input
                         type="checkbox"
@@ -354,30 +354,30 @@ export function FacilitiesView() {
                     {isEnabled && (
                       <div className="grid grid-cols-3 gap-2 mt-2 ml-6">
                         <div>
-                          <label className="block text-xs text-gray-500">Skill Bonus</label>
+                          <label className="block text-xs text-fg-faint">Skill Bonus</label>
                           <input
                             type="number"
                             value={modifiers.skillBonus || 0}
                             onChange={(e) => updateActivityModifier(activity, 'skillBonus', parseInt(e.target.value) || 0)}
-                            className="w-full bg-gray-700 px-2 py-1 rounded text-sm"
+                            className="w-full bg-surface-2 px-2 py-1 rounded text-sm"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs text-gray-500">Quality Mod</label>
+                          <label className="block text-xs text-fg-faint">Quality Mod</label>
                           <input
                             type="number"
                             value={modifiers.qualityModifier || 0}
                             onChange={(e) => updateActivityModifier(activity, 'qualityModifier', parseInt(e.target.value) || 0)}
-                            className="w-full bg-gray-700 px-2 py-1 rounded text-sm"
+                            className="w-full bg-surface-2 px-2 py-1 rounded text-sm"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs text-gray-500">Time Bonus</label>
+                          <label className="block text-xs text-fg-faint">Time Bonus</label>
                           <input
                             type="number"
                             value={modifiers.timeBonus || 0}
                             onChange={(e) => updateActivityModifier(activity, 'timeBonus', parseInt(e.target.value) || 0)}
-                            className="w-full bg-gray-700 px-2 py-1 rounded text-sm"
+                            className="w-full bg-surface-2 px-2 py-1 rounded text-sm"
                           />
                         </div>
                       </div>
@@ -392,13 +392,13 @@ export function FacilitiesView() {
           <div className="flex gap-2 pt-2">
             <button
               onClick={handleAddFacility}
-              className="flex-1 bg-green-600 hover:bg-green-500 px-4 py-2 rounded flex items-center justify-center gap-2"
+              className="flex-1 bg-success-600 hover:bg-success-500 px-4 py-2 rounded flex items-center justify-center gap-2"
             >
               <Save size={20} /> {editingId ? 'Update' : 'Save'} Facility
             </button>
             <button
               onClick={resetForm}
-              className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded"
+              className="bg-danger-600 hover:bg-danger-500 px-4 py-2 rounded"
             >
               <X size={20} />
             </button>
@@ -411,18 +411,18 @@ export function FacilitiesView() {
         {facilities.map((facility) => (
           <div
             key={facility.id}
-            className={`rounded-lg border bg-slate-800/60 p-4 ${
+            className={`rounded-lg border bg-surface-1/60 p-4 ${
               facility.conditionId === 'Broken'
                 ? 'border-rose-500/60'
                 : facility.conditionId === 'Damaged'
                 ? 'border-yellow-500/60'
-                : 'border-slate-700'
+                : 'border-edge'
             }`}
           >
             <div className="flex items-center justify-between">
               <div>
                 <div className="font-semibold text-white">{facility.name}</div>
-                <div className="text-xs text-gray-400 capitalize">
+                <div className="text-xs text-fg-muted capitalize">
                   {facility.facilityType || 'general'} - Rating {facility.rating || 0}
                 </div>
               </div>
@@ -432,7 +432,7 @@ export function FacilitiesView() {
                     facility.conditionId === 'Broken'
                       ? 'bg-rose-500/20 text-rose-300'
                       : facility.conditionId === 'Good'
-                      ? 'bg-green-500/20 text-green-300'
+                      ? 'bg-success-500/20 text-success-300'
                       : 'bg-yellow-500/20 text-yellow-300'
                   }`}
                 >
@@ -440,50 +440,50 @@ export function FacilitiesView() {
                 </span>
                 <button
                   onClick={() => startEdit(facility)}
-                  className="p-1 hover:bg-gray-600 rounded"
+                  className="p-1 hover:bg-surface-3 rounded"
                   title="Edit"
                 >
-                  <Edit2 size={16} className="text-gray-400" />
+                  <Edit2 size={16} className="text-fg-muted" />
                 </button>
                 <button
                   onClick={() => handleDelete(facility.id, facility.name)}
-                  className="p-1 hover:bg-red-600/50 rounded"
+                  className="p-1 hover:bg-danger-600/50 rounded"
                   title="Delete"
                 >
-                  <Trash2 size={16} className="text-red-400" />
+                  <Trash2 size={16} className="text-danger-400" />
                 </button>
               </div>
             </div>
 
             {facility.description && (
-              <div className="text-xs text-gray-400 mt-2">{facility.description}</div>
+              <div className="text-xs text-fg-muted mt-2">{facility.description}</div>
             )}
 
             <div className="mt-3 space-y-2 text-sm">
               {Object.entries(facility.activityCategories || {}).map(([category, modifiers]) => (
                 <div
                   key={category}
-                  className="flex items-center justify-between rounded bg-slate-900/50 px-3 py-2"
+                  className="flex items-center justify-between rounded bg-surface-0/50 px-3 py-2"
                 >
-                  <span className="capitalize text-slate-300">{category}</span>
+                  <span className="capitalize text-fg-secondary">{category}</span>
                   <div className="flex gap-3 text-xs">
                     {modifiers.skillBonus !== undefined && modifiers.skillBonus !== 0 && (
-                      <span className={modifiers.skillBonus > 0 ? 'text-green-400' : 'text-red-400'}>
+                      <span className={modifiers.skillBonus > 0 ? 'text-success-400' : 'text-danger-400'}>
                         Skill {formatNumber(modifiers.skillBonus)}
                       </span>
                     )}
                     {modifiers.qualityModifier !== undefined && modifiers.qualityModifier !== 0 && (
-                      <span className={modifiers.qualityModifier > 0 ? 'text-green-400' : 'text-red-400'}>
+                      <span className={modifiers.qualityModifier > 0 ? 'text-success-400' : 'text-danger-400'}>
                         Quality {formatNumber(modifiers.qualityModifier)}
                       </span>
                     )}
                     {modifiers.riskModifier !== undefined && modifiers.riskModifier !== 0 && (
-                      <span className={modifiers.riskModifier < 0 ? 'text-green-400' : 'text-red-400'}>
+                      <span className={modifiers.riskModifier < 0 ? 'text-success-400' : 'text-danger-400'}>
                         Risk {formatNumber(modifiers.riskModifier)}
                       </span>
                     )}
                     {modifiers.timeBonus !== undefined && modifiers.timeBonus !== 0 && (
-                      <span className={modifiers.timeBonus > 0 ? 'text-green-400' : 'text-red-400'}>
+                      <span className={modifiers.timeBonus > 0 ? 'text-success-400' : 'text-danger-400'}>
                         Time {formatNumber(modifiers.timeBonus)}
                       </span>
                     )}
@@ -491,7 +491,7 @@ export function FacilitiesView() {
                 </div>
               ))}
               {Object.keys(facility.activityCategories || {}).length === 0 && (
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-fg-faint">
                   +{facility.rating || 0} to {getDefaultActivityForType(facility.facilityType || 'general')}
                 </div>
               )}
@@ -501,7 +501,7 @@ export function FacilitiesView() {
       </div>
 
       {facilities.length === 0 && !showAdd && (
-        <div className="text-center text-slate-400 py-8">
+        <div className="text-center text-fg-muted py-8">
           <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
           <p>No facilities defined.</p>
           <p className="text-sm mt-2">Click "Add Facility" to create your first facility.</p>

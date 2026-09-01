@@ -801,7 +801,7 @@ function GatheringTabBase({
 
   return (
     <div className="space-y-6">
-      <div className="bg-gray-800 p-4 rounded-lg">
+      <div className="bg-surface-1 p-4 rounded-lg">
         <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
           <Fish size={28} /> General Gathering
         </h2>
@@ -812,14 +812,14 @@ function GatheringTabBase({
             {/* Mode Selection */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Gathering Mode</label>
+                <label className="block text-sm text-fg-muted mb-2">Gathering Mode</label>
                 <select
                   value={selectedMode}
                   onChange={(e) => {
                     setSelectedMode(e.target.value);
                     setSelectedEnvironmentId('');
                   }}
-                  className="w-full bg-gray-700 px-3 py-2 rounded"
+                  className="w-full bg-surface-2 px-3 py-2 rounded"
                 >
                   {GATHERING_MODES.map(mode => (
                     <option key={mode} value={mode}>{mode}</option>
@@ -828,11 +828,11 @@ function GatheringTabBase({
               </div>
 
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Environment</label>
+                <label className="block text-sm text-fg-muted mb-2">Environment</label>
                 <select
                   value={selectedEnvironmentId}
                   onChange={(e) => setSelectedEnvironmentId(e.target.value)}
-                  className="w-full bg-gray-700 px-3 py-2 rounded"
+                  className="w-full bg-surface-2 px-3 py-2 rounded"
                 >
                   <option value="">-- Select Environment --</option>
                   {availableEnvironments.map(env => (
@@ -845,7 +845,7 @@ function GatheringTabBase({
             {/* Method Selection (Fishing) */}
             {selectedMode === 'Fishing' && (
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Fishing Method</label>
+                <label className="block text-sm text-fg-muted mb-2">Fishing Method</label>
                 <div className="flex gap-4">
                   {Object.entries(FISHING_METHODS).map(([key, method]) => (
                     <label key={key} className="flex items-center gap-2 cursor-pointer">
@@ -868,7 +868,7 @@ function GatheringTabBase({
                     </label>
                   ))}
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-fg-faint mt-1">
                   {(FISHING_METHODS[selectedMethod as keyof typeof FISHING_METHODS] as { description?: string })?.description}
                 </p>
               </div>
@@ -877,7 +877,7 @@ function GatheringTabBase({
             {/* Skill Selection (Foraging) */}
             {selectedMode === 'Foraging' && (
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Foraging Skill</label>
+                <label className="block text-sm text-fg-muted mb-2">Foraging Skill</label>
                 <div className="flex gap-4">
                   {Object.entries(FORAGING_SKILLS).map(([key, skill]) => (
                     <label key={key} className="flex items-center gap-2 cursor-pointer">
@@ -893,7 +893,7 @@ function GatheringTabBase({
                     </label>
                   ))}
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-fg-faint mt-1">
                   Choose the skill to use for foraging
                 </p>
               </div>
@@ -902,13 +902,13 @@ function GatheringTabBase({
             {/* Party Selection */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-2">
+                <label className="block text-sm text-fg-muted mb-2">
                   <Users size={16} className="inline mr-1" /> Leader
                 </label>
                 <select
                   value={leaderId}
                   onChange={(e) => setLeaderId(e.target.value)}
-                  className="w-full bg-gray-700 px-3 py-2 rounded"
+                  className="w-full bg-surface-2 px-3 py-2 rounded"
                 >
                   {workers.map(w => (
                     <option key={w.id} value={w.id}>
@@ -919,12 +919,12 @@ function GatheringTabBase({
               </div>
 
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Helpers</label>
+                <label className="block text-sm text-fg-muted mb-2">Helpers</label>
                 <select
                   multiple
                   value={helperIds}
                   onChange={(e) => setHelperIds(Array.from(e.target.selectedOptions, opt => opt.value))}
-                  className="w-full bg-gray-700 px-3 py-2 rounded h-20"
+                  className="w-full bg-surface-2 px-3 py-2 rounded h-20"
                 >
                   {workers.filter(w => w.id !== leaderId).map(w => (
                     <option key={w.id} value={w.id}>{w.name}</option>
@@ -935,8 +935,8 @@ function GatheringTabBase({
 
             {/* Intent (Fishing) */}
             {selectedMode === 'Fishing' && (FISHING_METHODS[selectedMethod as keyof typeof FISHING_METHODS] as { canTarget?: boolean })?.canTarget && (
-              <div className="bg-gray-700 p-3 rounded">
-                <label className="block text-sm text-gray-400 mb-2">
+              <div className="bg-surface-2 p-3 rounded">
+                <label className="block text-sm text-fg-muted mb-2">
                   <Target size={16} className="inline mr-1" /> Fishing Intent
                 </label>
                 <div className="flex gap-4 mb-2">
@@ -967,7 +967,7 @@ function GatheringTabBase({
                   <select
                     value={targetedSpeciesId}
                     onChange={(e) => setTargetedSpeciesId(e.target.value)}
-                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                    className="w-full bg-surface-3 px-3 py-2 rounded"
                   >
                     <option value="">-- Select Target --</option>
                     {species.filter(s => s.type === 'fish').map(s => (
@@ -982,8 +982,8 @@ function GatheringTabBase({
 
             {/* Intent (Foraging) */}
             {selectedMode === 'Foraging' && (
-              <div className="bg-gray-700 p-3 rounded">
-                <label className="block text-sm text-gray-400 mb-2">
+              <div className="bg-surface-2 p-3 rounded">
+                <label className="block text-sm text-fg-muted mb-2">
                   <Target size={16} className="inline mr-1" /> Foraging Intent
                 </label>
                 <div className="flex gap-4 mb-2">
@@ -1019,7 +1019,7 @@ function GatheringTabBase({
                         setTargetCategoryId(e.target.value);
                         setTargetItemId('');
                       }}
-                      className="w-full bg-gray-600 px-3 py-2 rounded"
+                      className="w-full bg-surface-3 px-3 py-2 rounded"
                     >
                       <option value="">-- Select Category --</option>
                       {categories?.map(c => (
@@ -1031,7 +1031,7 @@ function GatheringTabBase({
                       <select
                         value={targetItemId}
                         onChange={(e) => setTargetItemId(e.target.value)}
-                        className="w-full bg-gray-600 px-3 py-2 rounded"
+                        className="w-full bg-surface-3 px-3 py-2 rounded"
                       >
                         <option value="">-- Or Select Specific Item --</option>
                         {items?.filter(i => i.categoryId === targetCategoryId).map(i => (
@@ -1046,7 +1046,7 @@ function GatheringTabBase({
                       <select
                         value={targetRarity}
                         onChange={(e) => setTargetRarity(e.target.value)}
-                        className="w-full bg-gray-600 px-3 py-2 rounded"
+                        className="w-full bg-surface-3 px-3 py-2 rounded"
                       >
                         {Object.entries(FORAGING_RARITIES).map(([key, rarity]) => (
                           <option key={key} value={key}>
@@ -1062,8 +1062,8 @@ function GatheringTabBase({
 
             {/* Context Modifiers (Foraging) */}
             {selectedMode === 'Foraging' && (
-              <div className="bg-gray-700 p-3 rounded">
-                <label className="block text-sm text-gray-400 mb-2">Context Modifiers</label>
+              <div className="bg-surface-2 p-3 rounded">
+                <label className="block text-sm text-fg-muted mb-2">Context Modifiers</label>
                 <div className="grid grid-cols-2 gap-2">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -1117,12 +1117,12 @@ function GatheringTabBase({
             {/* Equipment Selection */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Tools</label>
+                <label className="block text-sm text-fg-muted mb-2">Tools</label>
                 <select
                   multiple
                   value={selectedToolIds}
                   onChange={(e) => setSelectedToolIds(Array.from(e.target.selectedOptions, opt => opt.value))}
-                  className="w-full bg-gray-700 px-3 py-2 rounded h-24"
+                  className="w-full bg-surface-2 px-3 py-2 rounded h-24"
                 >
                   {availableTools.map(tool => (
                     <option key={tool.id} value={tool.id}>
@@ -1137,11 +1137,11 @@ function GatheringTabBase({
 
               {selectedMode === 'Fishing' && (
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Bait</label>
+                  <label className="block text-sm text-fg-muted mb-2">Bait</label>
                   <select
                     value={selectedBaitId}
                     onChange={(e) => setSelectedBaitId(e.target.value)}
-                    className="w-full bg-gray-700 px-3 py-2 rounded"
+                    className="w-full bg-surface-2 px-3 py-2 rounded"
                   >
                     <option value="">-- No Bait --</option>
                     {bait.filter(b => (b.quantity || 0) > 0).map(b => (
@@ -1151,21 +1151,21 @@ function GatheringTabBase({
                     ))}
                   </select>
                   {baitStatus.correct && (
-                    <p className="text-xs text-green-400 mt-1">✓ Correct bait for target (+1)</p>
+                    <p className="text-xs text-success-400 mt-1">✓ Correct bait for target (+1)</p>
                   )}
                   {baitStatus.inappropriate && (
-                    <p className="text-xs text-red-400 mt-1">✗ Wrong bait for target (-2)</p>
+                    <p className="text-xs text-danger-400 mt-1">✗ Wrong bait for target (-2)</p>
                   )}
                 </div>
               )}
             </div>
 
             {/* Skill Summary */}
-            <div className="bg-gray-700 p-3 rounded">
+            <div className="bg-surface-2 p-3 rounded">
               {selectedMode === 'Fishing' && (
                 <>
                   <h4 className="font-semibold mb-2">Effective Skill: {effectiveSkill.effectiveSkill}</h4>
-                  <div className="text-sm text-gray-400 grid grid-cols-3 gap-2">
+                  <div className="text-sm text-fg-muted grid grid-cols-3 gap-2">
                     <span>Base: {effectiveSkill.breakdown.base}</span>
                     <span>Tool: {(effectiveSkill.breakdown.tool || 0) >= 0 ? '+' : ''}{effectiveSkill.breakdown.tool}</span>
                     <span>Bait: {(effectiveSkill.breakdown.bait || 0) >= 0 ? '+' : ''}{effectiveSkill.breakdown.bait}</span>
@@ -1181,7 +1181,7 @@ function GatheringTabBase({
               {selectedMode === 'Foraging' && (
                 <>
                   <h4 className="font-semibold mb-2">Effective Skill: {effectiveForagingSkill.effectiveSkill} ({selectedSkill})</h4>
-                  <div className="text-sm text-gray-400 grid grid-cols-3 gap-2">
+                  <div className="text-sm text-fg-muted grid grid-cols-3 gap-2">
                     <span>Base: {effectiveForagingSkill.breakdown.base}</span>
                     <span>Tool: {(effectiveForagingSkill.breakdown.tool || 0) >= 0 ? '+' : ''}{effectiveForagingSkill.breakdown.tool}</span>
                     <span>Context: {(effectiveForagingSkill.breakdown.context || 0) >= 0 ? '+' : ''}{effectiveForagingSkill.breakdown.context}</span>
@@ -1198,9 +1198,9 @@ function GatheringTabBase({
 
             {/* Tables Info */}
             {selectedEnvironment && (
-              <div className="bg-gray-700 p-3 rounded text-sm">
+              <div className="bg-surface-2 p-3 rounded text-sm">
                 <h4 className="font-semibold mb-2">Resolved Tables</h4>
-                <div className="grid grid-cols-3 gap-2 text-gray-400">
+                <div className="grid grid-cols-3 gap-2 text-fg-muted">
                   <span>Catch: {resolvedTables.randomCatch?.name || 'Not set'}</span>
                   <span>Mild: {resolvedTables.mildEvent?.name || 'Not set'}</span>
                   <span>Rare: {resolvedTables.rareEvent?.name || 'Not set'}</span>
@@ -1212,7 +1212,7 @@ function GatheringTabBase({
             <button
               onClick={startSession}
               disabled={!selectedEnvironmentId || !leaderId}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed py-3 rounded font-semibold"
+              className="w-full bg-accent-600 hover:bg-accent-700 disabled:bg-surface-3 disabled:cursor-not-allowed py-3 rounded font-semibold"
             >
               Start Gathering Session
             </button>
@@ -1224,10 +1224,10 @@ function GatheringTabBase({
           <div className="space-y-4">
             <div className="bg-yellow-900 p-4 rounded">
               <h3 className="text-lg font-semibold mb-2">Daily Dynamic Event Check</h3>
-              <p className="text-sm text-gray-300 mb-4">
+              <p className="text-sm text-fg-secondary mb-4">
                 Roll 3d6 to check for daily events. This only happens once per day per group.
               </p>
-              <div className="text-xs text-gray-400 mb-2">
+              <div className="text-xs text-fg-muted mb-2">
                 3-6: Rare Event | 7-10: Mild Event | 11-18: No Event
               </div>
 
@@ -1239,7 +1239,7 @@ function GatheringTabBase({
                   placeholder="3-18"
                   min="3"
                   max="18"
-                  className="flex-1 bg-gray-700 px-3 py-2 rounded"
+                  className="flex-1 bg-surface-2 px-3 py-2 rounded"
                 />
                 <DiceRoller
                   dice={eventRoll.dice}
@@ -1252,7 +1252,7 @@ function GatheringTabBase({
               <button
                 onClick={rollDailyEvent}
                 disabled={!eventRoll.total}
-                className="w-full bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 py-2 rounded font-semibold"
+                className="w-full bg-yellow-600 hover:bg-yellow-700 disabled:bg-surface-3 py-2 rounded font-semibold"
               >
                 Resolve Daily Event
               </button>
@@ -1260,8 +1260,8 @@ function GatheringTabBase({
 
             {eventResult && (
               <div className={`p-4 rounded ${
-                eventResult.resultType === 'rare' ? 'bg-red-900' :
-                eventResult.resultType === 'mild' ? 'bg-orange-900' : 'bg-green-900'
+                eventResult.resultType === 'rare' ? 'bg-danger-900' :
+                eventResult.resultType === 'mild' ? 'bg-orange-900' : 'bg-success-900'
               }`}>
                 <h4 className="font-semibold">
                   {eventResult.resultType === 'rare' ? '⚠ Rare Event!' :
@@ -1278,9 +1278,9 @@ function GatheringTabBase({
         {/* Fishing Phase */}
         {sessionPhase === 'fishing' && selectedMode === 'Fishing' && (
           <div className="space-y-4">
-            <div className="bg-blue-900 p-4 rounded">
+            <div className="bg-accent-900 p-4 rounded">
               <h3 className="text-lg font-semibold mb-2">Fishing Roll</h3>
-              <p className="text-sm text-gray-300 mb-2">
+              <p className="text-sm text-fg-secondary mb-2">
                 Target: {effectiveSkill.effectiveSkill}
                 {retryCount > 0 && ` (Retry ${retryCount}/3, penalty applied)`}
               </p>
@@ -1293,7 +1293,7 @@ function GatheringTabBase({
                   placeholder="3-18"
                   min="3"
                   max="18"
-                  className="flex-1 bg-gray-700 px-3 py-2 rounded"
+                  className="flex-1 bg-surface-2 px-3 py-2 rounded"
                 />
                 <DiceRoller
                   dice={fishingRoll.dice}
@@ -1306,14 +1306,14 @@ function GatheringTabBase({
               <button
                 onClick={rollFishing}
                 disabled={!fishingRoll.total}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 py-2 rounded font-semibold"
+                className="w-full bg-accent-600 hover:bg-accent-700 disabled:bg-surface-3 py-2 rounded font-semibold"
               >
                 Roll Fishing
               </button>
             </div>
 
             {fishingResult && (
-              <div className={`p-4 rounded ${fishingResult.success ? 'bg-green-900' : 'bg-red-900'}`}>
+              <div className={`p-4 rounded ${fishingResult.success ? 'bg-success-900' : 'bg-danger-900'}`}>
                 <h4 className="font-semibold flex items-center gap-2">
                   {fishingResult.success ? <CheckCircle size={20} /> : <XCircle size={20} />}
                   {fishingResult.description}
@@ -1334,9 +1334,9 @@ function GatheringTabBase({
         {/* Foraging Roll Phase */}
         {sessionPhase === 'fishing' && selectedMode === 'Foraging' && (
           <div className="space-y-4">
-            <div className="bg-green-900 p-4 rounded">
+            <div className="bg-success-900 p-4 rounded">
               <h3 className="text-lg font-semibold mb-2">Foraging Roll</h3>
-              <p className="text-sm text-gray-300 mb-2">
+              <p className="text-sm text-fg-secondary mb-2">
                 Target: {effectiveForagingSkill.effectiveSkill} ({selectedSkill})
               </p>
 
@@ -1348,7 +1348,7 @@ function GatheringTabBase({
                   placeholder="3-18"
                   min="3"
                   max="18"
-                  className="flex-1 bg-gray-700 px-3 py-2 rounded"
+                  className="flex-1 bg-surface-2 px-3 py-2 rounded"
                 />
                 <DiceRoller
                   dice={forageRoll.dice}
@@ -1361,14 +1361,14 @@ function GatheringTabBase({
               <button
                 onClick={rollForaging}
                 disabled={!forageRoll.total}
-                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 py-2 rounded font-semibold"
+                className="w-full bg-success-600 hover:bg-success-700 disabled:bg-surface-3 py-2 rounded font-semibold"
               >
                 Roll Foraging
               </button>
             </div>
 
             {forageResult && (
-              <div className={`p-4 rounded ${forageResult.success ? 'bg-green-900' : 'bg-red-900'}`}>
+              <div className={`p-4 rounded ${forageResult.success ? 'bg-success-900' : 'bg-danger-900'}`}>
                 <h4 className="font-semibold flex items-center gap-2">
                   {forageResult.success ? <CheckCircle size={20} /> : <XCircle size={20} />}
                   {forageResult.description}
@@ -1392,7 +1392,7 @@ function GatheringTabBase({
         {/* Catch Phase */}
         {sessionPhase === 'catch' && (
           <div className="space-y-4">
-            <div className="bg-green-900 p-4 rounded">
+            <div className="bg-success-900 p-4 rounded">
               <h3 className="text-lg font-semibold mb-2">
                 Determine Catch ({fishingResult?.fish || 0} fish)
               </h3>
@@ -1400,17 +1400,17 @@ function GatheringTabBase({
               {Array.from({ length: fishingResult?.fish || 0 }, (_, i) => {
                 const caught = caughtFish.find(f => f.index === i);
                 return (
-                  <div key={i} className="bg-gray-800 p-3 rounded mb-2">
+                  <div key={i} className="bg-surface-1 p-3 rounded mb-2">
                     <div className="flex justify-between items-center">
                       <span>Fish #{i + 1}</span>
                       {caught ? (
-                        <span className="text-green-400">
+                        <span className="text-success-400">
                           {caught.species?.name || 'Nothing'} {caught.isLarge && '(Large!)'}
                         </span>
                       ) : (
                         <button
                           onClick={() => rollCatch(i)}
-                          className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm"
+                          className="bg-success-600 hover:bg-success-700 px-3 py-1 rounded text-sm"
                         >
                           Roll Catch
                         </button>
@@ -1427,7 +1427,7 @@ function GatheringTabBase({
                             value={struggleRoll}
                             onChange={(e) => setStruggleRoll(e.target.value)}
                             placeholder="Your roll"
-                            className="flex-1 bg-gray-700 px-2 py-1 rounded"
+                            className="flex-1 bg-surface-2 px-2 py-1 rounded"
                           />
                           <button
                             onClick={() => rollStruggle(caughtFish.indexOf(caught))}
@@ -1440,7 +1440,7 @@ function GatheringTabBase({
                     )}
 
                     {caught?.struggled && (
-                      <div className={`mt-2 text-sm ${caught.struggleSuccess ? 'text-green-400' : 'text-red-400'}`}>
+                      <div className={`mt-2 text-sm ${caught.struggleSuccess ? 'text-success-400' : 'text-danger-400'}`}>
                         {caught.struggleSuccess ? '✓ You landed the fish!' : '✗ The fish escaped!'}
                       </div>
                     )}
@@ -1451,7 +1451,7 @@ function GatheringTabBase({
               {caughtFish.length === (fishingResult?.fish || 0) && (
                 <button
                   onClick={proceedToYields}
-                  className="w-full bg-green-600 hover:bg-green-700 py-2 rounded font-semibold mt-4"
+                  className="w-full bg-success-600 hover:bg-success-700 py-2 rounded font-semibold mt-4"
                 >
                   Calculate Yields
                 </button>
@@ -1479,11 +1479,11 @@ function GatheringTabBase({
                 }
 
                 return (
-                  <div key={fish.index} className="bg-gray-800 p-3 rounded mb-3 space-y-3">
-                    <div className="font-medium text-blue-200">{fish.species.name}</div>
+                  <div key={fish.index} className="bg-surface-1 p-3 rounded mb-3 space-y-3">
+                    <div className="font-medium text-accent-200">{fish.species.name}</div>
 
                     <div>
-                      <div className="text-xs text-gray-400 mb-2">
+                      <div className="text-xs text-fg-muted mb-2">
                         Meat Yield: {meatFormula}
                       </div>
                       <DiceRoller
@@ -1522,7 +1522,7 @@ function GatheringTabBase({
 
                     {hasSecondary && secondaryParsed && (
                       <div>
-                        <div className="text-xs text-gray-400 mb-2">
+                        <div className="text-xs text-fg-muted mb-2">
                           {fish.species.secondaryMaterialType}: {fish.species.yieldSecondaryFormula}
                         </div>
                         <DiceRoller
@@ -1595,30 +1595,30 @@ function GatheringTabBase({
             <div className="bg-purple-900 p-4 rounded">
               <h3 className="text-lg font-semibold mb-2">Foraging Results</h3>
 
-              <div className="bg-gray-800 p-3 rounded mb-3">
+              <div className="bg-surface-1 p-3 rounded mb-3">
                 <h4 className="font-semibold mb-2">What You Found:</h4>
                 {forageFind?.type === 'category' && (
                   <div>
-                    <span className="text-green-400">
+                    <span className="text-success-400">
                       {categories.find(c => c.id === forageFind.categoryId)?.name || 'Unknown Category'}
                     </span>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-fg-muted mt-1">
                       {categories.find(c => c.id === forageFind.categoryId)?.description}
                     </p>
                   </div>
                 )}
                 {forageFind?.type === 'item' && (
                   <div>
-                    <span className="text-green-400">
+                    <span className="text-success-400">
                       {items.find(i => i.id === forageFind.itemId)?.name || 'Unknown Item'}
                     </span>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-fg-muted mt-1">
                       {items.find(i => i.id === forageFind.itemId)?.description}
                     </p>
                   </div>
                 )}
                 {forageFind?.type === 'nothing' && (
-                  <span className="text-gray-400">Nothing found</span>
+                  <span className="text-fg-muted">Nothing found</span>
                 )}
                 {forageFind?.type === 'special' && (
                   <span className="text-yellow-400">{forageFind.text}</span>
@@ -1638,9 +1638,9 @@ function GatheringTabBase({
                 const currentDice = (yieldResults[0]?.yields as ForageYields)?.dice || [];
 
                 return (
-                  <div className="bg-gray-800 p-3 rounded mb-3">
+                  <div className="bg-surface-1 p-3 rounded mb-3">
                     <h4 className="font-semibold mb-2">Calculate Yield:</h4>
-                    <div className="text-xs text-gray-400 mb-2">
+                    <div className="text-xs text-fg-muted mb-2">
                       Formula: {yieldFormula} × {Math.floor((forageResult?.yieldMultiplier || 1) * 100)}%
                     </div>
                     <DiceRoller
@@ -1706,9 +1706,9 @@ function GatheringTabBase({
         {/* Complete Phase */}
         {sessionPhase === 'complete' && (
           <div className="space-y-4">
-            <div className="bg-gray-700 p-4 rounded">
+            <div className="bg-surface-2 p-4 rounded">
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <CheckCircle size={24} className="text-green-400" />
+                <CheckCircle size={24} className="text-success-400" />
                 Session Complete
               </h3>
 
@@ -1743,16 +1743,16 @@ function GatheringTabBase({
               )}
 
               {fishingResult && !fishingResult.success && selectedMode === 'Fishing' && (
-                <p className="text-gray-400">No fish caught this session.</p>
+                <p className="text-fg-muted">No fish caught this session.</p>
               )}
 
               {forageResult && !forageResult.success && selectedMode === 'Foraging' && (
-                <p className="text-gray-400">Nothing foraged this session.</p>
+                <p className="text-fg-muted">Nothing foraged this session.</p>
               )}
 
               <button
                 onClick={resetSession}
-                className="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded font-semibold mt-4"
+                className="w-full bg-accent-600 hover:bg-accent-700 py-2 rounded font-semibold mt-4"
               >
                 Start New Session
               </button>
@@ -1762,17 +1762,17 @@ function GatheringTabBase({
       </div>
 
       {/* Session History (compact) */}
-      <div className="bg-gray-800 p-4 rounded-lg">
+      <div className="bg-surface-1 p-4 rounded-lg">
         <h3 className="text-lg font-semibold mb-2">Recent Sessions</h3>
         {sessions.length === 0 ? (
-          <p className="text-gray-400 text-sm">No sessions recorded yet.</p>
+          <p className="text-fg-muted text-sm">No sessions recorded yet.</p>
         ) : (
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {sessions.slice(-5).reverse().map(session => (
-              <div key={session.id} className="bg-gray-700 p-2 rounded text-sm">
+              <div key={session.id} className="bg-surface-2 p-2 rounded text-sm">
                 <div className="flex justify-between">
                   <span>Day {session.dateKey} - {session.mode}</span>
-                  <span className="text-gray-400">
+                  <span className="text-fg-muted">
                     {session.resolution?.fishCaught?.length || 0} fish
                   </span>
                 </div>

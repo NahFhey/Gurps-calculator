@@ -69,7 +69,7 @@ export function EquipItemModal({ item, currencyUnit, onConfirm, onCancel }: Equi
       data-testid="equip-item-modal"
     >
       <form
-        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-gray-700 bg-gray-800 p-5 shadow-xl"
+        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-edge bg-surface-1 p-5 shadow-xl"
         onSubmit={(event) => {
           event.preventDefault();
           onConfirm({
@@ -78,21 +78,21 @@ export function EquipItemModal({ item, currencyUnit, onConfirm, onCancel }: Equi
           });
         }}
       >
-        <h2 id="equip-item-title" className="mb-4 text-lg font-semibold text-gray-100">
+        <h2 id="equip-item-title" className="mb-4 text-lg font-semibold text-fg-bright">
           Equip item
         </h2>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="text-sm text-gray-300">
+          <label className="text-sm text-fg-secondary">
             Name
             <input
               aria-label="Name"
               value={equipment.name}
               onChange={event => update({ name: event.target.value })}
-              className="mt-1 w-full rounded border border-gray-600 bg-gray-700 px-3 py-2 text-gray-100"
+              className="mt-1 w-full rounded border border-edge-strong bg-surface-2 px-3 py-2 text-fg-bright"
             />
           </label>
-          <label className="text-sm text-gray-300">
+          <label className="text-sm text-fg-secondary">
             Quantity
             <input
               aria-label="Quantity"
@@ -103,10 +103,10 @@ export function EquipItemModal({ item, currencyUnit, onConfirm, onCancel }: Equi
               onChange={event => update({
                 quantity: clampQuantity(Number(event.target.value), stackQuantity),
               })}
-              className="mt-1 w-full rounded border border-gray-600 bg-gray-700 px-3 py-2 text-gray-100"
+              className="mt-1 w-full rounded border border-edge-strong bg-surface-2 px-3 py-2 text-fg-bright"
             />
           </label>
-          <label className="text-sm text-gray-300">
+          <label className="text-sm text-fg-secondary">
             Weight (lb each)
             <input
               aria-label="Weight"
@@ -115,10 +115,10 @@ export function EquipItemModal({ item, currencyUnit, onConfirm, onCancel }: Equi
               step="0.1"
               value={equipment.weight}
               onChange={event => update({ weight: Math.max(0, Number(event.target.value) || 0) })}
-              className="mt-1 w-full rounded border border-gray-600 bg-gray-700 px-3 py-2 text-gray-100"
+              className="mt-1 w-full rounded border border-edge-strong bg-surface-2 px-3 py-2 text-fg-bright"
             />
           </label>
-          <label className="text-sm text-gray-300">
+          <label className="text-sm text-fg-secondary">
             Cost ({currencyUnit})
             <input
               aria-label={`Cost (${currencyUnit})`}
@@ -127,16 +127,16 @@ export function EquipItemModal({ item, currencyUnit, onConfirm, onCancel }: Equi
               step="0.01"
               value={equipment.cost}
               onChange={event => update({ cost: Math.max(0, Number(event.target.value) || 0) })}
-              className="mt-1 w-full rounded border border-gray-600 bg-gray-700 px-3 py-2 text-gray-100"
+              className="mt-1 w-full rounded border border-edge-strong bg-surface-2 px-3 py-2 text-fg-bright"
             />
           </label>
-          <label className="text-sm text-gray-300 sm:col-span-2">
+          <label className="text-sm text-fg-secondary sm:col-span-2">
             Category
             <select
               aria-label="Category"
               value={equipment.category ?? 'general'}
               onChange={event => update({ category: event.target.value as EquipmentCategory })}
-              className="mt-1 w-full rounded border border-gray-600 bg-gray-700 px-3 py-2 text-gray-100"
+              className="mt-1 w-full rounded border border-edge-strong bg-surface-2 px-3 py-2 text-fg-bright"
             >
               {EQUIPMENT_CATEGORIES.map(category => (
                 <option key={category.value} value={category.value}>{category.label}</option>
@@ -146,22 +146,22 @@ export function EquipItemModal({ item, currencyUnit, onConfirm, onCancel }: Equi
 
           {equipment.category === 'weapon' && (
             <>
-              <label className="text-sm text-gray-300">
+              <label className="text-sm text-fg-secondary">
                 Damage
                 <input
                   aria-label="Damage"
                   value={equipment.damage ?? ''}
                   onChange={event => update({ damage: event.target.value })}
-                  className="mt-1 w-full rounded border border-gray-600 bg-gray-700 px-3 py-2 text-gray-100"
+                  className="mt-1 w-full rounded border border-edge-strong bg-surface-2 px-3 py-2 text-fg-bright"
                 />
               </label>
-              <label className="text-sm text-gray-300">
+              <label className="text-sm text-fg-secondary">
                 Reach
                 <input
                   aria-label="Reach"
                   value={equipment.reach ?? ''}
                   onChange={event => update({ reach: event.target.value })}
-                  className="mt-1 w-full rounded border border-gray-600 bg-gray-700 px-3 py-2 text-gray-100"
+                  className="mt-1 w-full rounded border border-edge-strong bg-surface-2 px-3 py-2 text-fg-bright"
                 />
               </label>
             </>
@@ -169,7 +169,7 @@ export function EquipItemModal({ item, currencyUnit, onConfirm, onCancel }: Equi
 
           {equipment.category === 'armor' && (
             <>
-              <label className="text-sm text-gray-300 sm:col-span-2">
+              <label className="text-sm text-fg-secondary sm:col-span-2">
                 DR
                 <input
                   aria-label="DR"
@@ -177,14 +177,14 @@ export function EquipItemModal({ item, currencyUnit, onConfirm, onCancel }: Equi
                   min={0}
                   value={equipment.dr ?? 0}
                   onChange={event => update({ dr: Math.max(0, Number(event.target.value) || 0) })}
-                  className="mt-1 w-full rounded border border-gray-600 bg-gray-700 px-3 py-2 text-gray-100"
+                  className="mt-1 w-full rounded border border-edge-strong bg-surface-2 px-3 py-2 text-fg-bright"
                 />
               </label>
               <fieldset className="sm:col-span-2">
-                <legend className="mb-2 text-sm text-gray-300">DR locations</legend>
+                <legend className="mb-2 text-sm text-fg-secondary">DR locations</legend>
                 <div className="flex flex-wrap gap-2">
                   {HIT_LOCATIONS.map(location => (
-                    <label key={location} className="flex items-center gap-1 text-xs text-gray-300">
+                    <label key={location} className="flex items-center gap-1 text-xs text-fg-secondary">
                       <input
                         type="checkbox"
                         checked={(equipment.drLocations ?? []).includes(location)}
@@ -199,7 +199,7 @@ export function EquipItemModal({ item, currencyUnit, onConfirm, onCancel }: Equi
           )}
 
           {equipment.category === 'shield' && (
-            <label className="text-sm text-gray-300 sm:col-span-2">
+            <label className="text-sm text-fg-secondary sm:col-span-2">
               DB
               <input
                 aria-label="DB"
@@ -207,18 +207,18 @@ export function EquipItemModal({ item, currencyUnit, onConfirm, onCancel }: Equi
                 min={0}
                 value={equipment.db ?? 0}
                 onChange={event => update({ db: Math.max(0, Number(event.target.value) || 0) })}
-                className="mt-1 w-full rounded border border-gray-600 bg-gray-700 px-3 py-2 text-gray-100"
+                className="mt-1 w-full rounded border border-edge-strong bg-surface-2 px-3 py-2 text-fg-bright"
               />
             </label>
           )}
 
-          <label className="text-sm text-gray-300 sm:col-span-2">
+          <label className="text-sm text-fg-secondary sm:col-span-2">
             Notes
             <textarea
               aria-label="Notes"
               value={equipment.notes ?? ''}
               onChange={event => update({ notes: event.target.value })}
-              className="mt-1 min-h-20 w-full rounded border border-gray-600 bg-gray-700 px-3 py-2 text-gray-100"
+              className="mt-1 min-h-20 w-full rounded border border-edge-strong bg-surface-2 px-3 py-2 text-fg-bright"
             />
           </label>
         </div>
@@ -227,13 +227,13 @@ export function EquipItemModal({ item, currencyUnit, onConfirm, onCancel }: Equi
           <button
             type="button"
             onClick={onCancel}
-            className="rounded bg-gray-700 px-4 py-2 text-sm text-gray-100 hover:bg-gray-600"
+            className="rounded bg-surface-2 px-4 py-2 text-sm text-fg-bright hover:bg-surface-3"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-500"
+            className="rounded bg-accent-600 px-4 py-2 text-sm text-white hover:bg-accent-500"
           >
             Equip
           </button>

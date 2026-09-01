@@ -39,9 +39,9 @@ describe('QuickNavigationView', () => {
     expect(screen.getByText(/subsections covering specific mechanics/i)).toBeInTheDocument();
   });
 
-  it('has styled container with blue theme', () => {
+  it('has styled container with accent theme', () => {
     const { container } = render(<QuickNavigationView />);
-    const wrapper = container.querySelector('[class*="bg-blue"]');
+    const wrapper = container.querySelector('[class*="bg-accent"]');
     expect(wrapper).toBeInTheDocument();
   });
 });

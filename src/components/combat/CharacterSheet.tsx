@@ -47,23 +47,23 @@ function CharacterSheet({ character, onEdit, onDelete, onDuplicate }: CharacterS
   // Category color coding
   const getCategoryColor = (category: CharacterCategory): string => {
     switch (category) {
-      case 'player': return 'text-blue-400';
-      case 'ally': return 'text-green-400';
-      case 'enemy': return 'text-red-400';
-      case 'object': return 'text-gray-400';
-      default: return 'text-gray-300';
+      case 'player': return 'text-accent-400';
+      case 'ally': return 'text-success-400';
+      case 'enemy': return 'text-danger-400';
+      case 'object': return 'text-fg-muted';
+      default: return 'text-fg-secondary';
     }
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg overflow-hidden">
+    <div className="bg-surface-1 rounded-lg overflow-hidden">
       {/* Header - Always visible */}
       <div
-        className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-700"
+        className="flex items-center justify-between p-4 cursor-pointer hover:bg-surface-2"
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-4 flex-1">
-          <button className="text-gray-400">
+          <button className="text-fg-muted">
             {expanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
           </button>
           <div className="flex-1">
@@ -73,7 +73,7 @@ function CharacterSheet({ character, onEdit, onDelete, onDuplicate }: CharacterS
                 {character.category}
               </span>
             </div>
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-fg-muted">
               Speed: {character.basicSpeed} | HP: {character.hp} | DX: {character.dx}
             </div>
           </div>
@@ -83,7 +83,7 @@ function CharacterSheet({ character, onEdit, onDelete, onDuplicate }: CharacterS
         <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={onDuplicate}
-            className="p-2 bg-blue-600 hover:bg-blue-700 rounded"
+            className="p-2 bg-accent-600 hover:bg-accent-700 rounded"
             title="Duplicate"
           >
             <Copy size={16} />
@@ -97,7 +97,7 @@ function CharacterSheet({ character, onEdit, onDelete, onDuplicate }: CharacterS
           </button>
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="p-2 bg-red-600 hover:bg-red-700 rounded"
+            className="p-2 bg-danger-600 hover:bg-danger-700 rounded"
             title="Delete"
           >
             <Trash2 size={16} />
@@ -107,11 +107,11 @@ function CharacterSheet({ character, onEdit, onDelete, onDuplicate }: CharacterS
 
       {/* Expanded Details */}
       {expanded && (
-        <div className="p-4 pt-0 border-t border-gray-700">
+        <div className="p-4 pt-0 border-t border-edge">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
             {/* Attributes */}
             <div>
-              <h4 className="text-xs text-gray-400 uppercase mb-2">Attributes</h4>
+              <h4 className="text-xs text-fg-muted uppercase mb-2">Attributes</h4>
               <div className="space-y-1 text-sm">
                 <div>ST: {character.st}</div>
                 <div>DX: {character.dx}</div>
@@ -122,7 +122,7 @@ function CharacterSheet({ character, onEdit, onDelete, onDuplicate }: CharacterS
 
             {/* Secondary Characteristics */}
             <div>
-              <h4 className="text-xs text-gray-400 uppercase mb-2">Secondary</h4>
+              <h4 className="text-xs text-fg-muted uppercase mb-2">Secondary</h4>
               <div className="space-y-1 text-sm">
                 <div>HP: {character.hp}</div>
                 <div>FP: {character.fp || 0}</div>
@@ -132,7 +132,7 @@ function CharacterSheet({ character, onEdit, onDelete, onDuplicate }: CharacterS
 
             {/* Combat Stats */}
             <div>
-              <h4 className="text-xs text-gray-400 uppercase mb-2">Combat</h4>
+              <h4 className="text-xs text-fg-muted uppercase mb-2">Combat</h4>
               <div className="space-y-1 text-sm">
                 <div>Speed: {character.basicSpeed}</div>
                 <div>Move: {character.basicMove}</div>
@@ -142,7 +142,7 @@ function CharacterSheet({ character, onEdit, onDelete, onDuplicate }: CharacterS
 
             {/* Defenses */}
             <div>
-              <h4 className="text-xs text-gray-400 uppercase mb-2">Defenses</h4>
+              <h4 className="text-xs text-fg-muted uppercase mb-2">Defenses</h4>
               <div className="space-y-1 text-sm">
                 <div>Parry: {character.parry}</div>
                 <div>Block: {character.block}</div>
@@ -154,7 +154,7 @@ function CharacterSheet({ character, onEdit, onDelete, onDuplicate }: CharacterS
           {/* Notes */}
           {character.notes && (
             <div className="mt-4">
-              <h4 className="text-xs text-gray-400 uppercase mb-2">Notes</h4>
+              <h4 className="text-xs text-fg-muted uppercase mb-2">Notes</h4>
               <p className="text-sm whitespace-pre-wrap">{character.notes}</p>
             </div>
           )}
@@ -164,7 +164,7 @@ function CharacterSheet({ character, onEdit, onDelete, onDuplicate }: CharacterS
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg max-w-md">
+          <div className="bg-surface-1 p-6 rounded-lg max-w-md">
             <h3 className="text-xl font-bold mb-4">Confirm Delete</h3>
             <p className="mb-6">
               Are you sure you want to delete <strong>{character.name}</strong>?
@@ -177,7 +177,7 @@ function CharacterSheet({ character, onEdit, onDelete, onDuplicate }: CharacterS
             <div className="flex gap-4 justify-end">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded"
+                className="px-4 py-2 bg-surface-2 hover:bg-surface-3 rounded"
               >
                 Cancel
               </button>
@@ -186,7 +186,7 @@ function CharacterSheet({ character, onEdit, onDelete, onDuplicate }: CharacterS
                   onDelete();
                   setShowDeleteConfirm(false);
                 }}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded"
+                className="px-4 py-2 bg-danger-600 hover:bg-danger-700 rounded"
               >
                 Delete
               </button>

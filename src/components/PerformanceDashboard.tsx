@@ -69,19 +69,19 @@ interface PerformanceDashboardProps {
  */
 function MetricCard({ title, value, unit, icon: Icon, trend, warning }: MetricCardProps): React.ReactElement {
   return (
-    <div className={`bg-white rounded-lg p-4 shadow ${warning ? 'border-l-4 border-red-500' : 'border-l-4 border-blue-500'}`}>
+    <div className={`bg-surface-1 rounded-lg p-4 shadow ${warning ? 'border-l-4 border-danger-500' : 'border-l-4 border-accent-500'}`}>
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold text-gray-700">{title}</h3>
-        <Icon className={`w-5 h-5 ${warning ? 'text-red-500' : 'text-blue-500'}`} />
+        <h3 className="text-sm font-semibold text-fg-primary">{title}</h3>
+        <Icon className={`w-5 h-5 ${warning ? 'text-danger-500' : 'text-accent-500'}`} />
       </div>
       <div className="flex items-baseline gap-2">
-        <span className="text-2xl font-bold text-gray-900">
+        <span className="text-2xl font-bold text-fg-bright">
           {typeof value === 'number' ? value.toFixed(2) : value}
         </span>
-        <span className="text-sm text-gray-600">{unit}</span>
+        <span className="text-sm text-fg-muted">{unit}</span>
       </div>
       {trend !== undefined && (
-        <div className={`mt-2 text-sm ${trend > 0 ? 'text-red-600' : 'text-green-600'}`}>
+        <div className={`mt-2 text-sm ${trend > 0 ? 'text-danger-600' : 'text-success-600'}`}>
           {trend > 0 ? '▲' : '▼'} {Math.abs(trend).toFixed(1)}%
         </div>
       )}
@@ -95,38 +95,38 @@ function MetricCard({ title, value, unit, icon: Icon, trend, warning }: MetricCa
 function StatsTable({ stats, title }: StatsTableProps): React.ReactElement {
   if (!stats || stats.count === 0) {
     return (
-      <div className="bg-white rounded-lg p-4 shadow">
-        <h3 className="font-semibold text-gray-700 mb-4">{title}</h3>
-        <p className="text-gray-500">No data available</p>
+      <div className="bg-surface-1 rounded-lg p-4 shadow">
+        <h3 className="font-semibold text-fg-primary mb-4">{title}</h3>
+        <p className="text-fg-faint">No data available</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg p-4 shadow">
-      <h3 className="font-semibold text-gray-700 mb-4">{title}</h3>
+    <div className="bg-surface-1 rounded-lg p-4 shadow">
+      <h3 className="font-semibold text-fg-primary mb-4">{title}</h3>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200">
+            <tr className="border-b border-edge">
               <th className="text-left py-2 px-2">Metric</th>
               <th className="text-right py-2 px-2">Value</th>
             </tr>
           </thead>
           <tbody>
-            <tr className="border-b border-gray-100">
+            <tr className="border-b border-edge-subtle">
               <td className="py-2 px-2">Count</td>
               <td className="text-right py-2 px-2">{stats.count}</td>
             </tr>
-            <tr className="border-b border-gray-100">
+            <tr className="border-b border-edge-subtle">
               <td className="py-2 px-2">Average (ms)</td>
               <td className="text-right py-2 px-2">{stats.avg}</td>
             </tr>
-            <tr className="border-b border-gray-100">
+            <tr className="border-b border-edge-subtle">
               <td className="py-2 px-2">Min (ms)</td>
               <td className="text-right py-2 px-2">{stats.min}</td>
             </tr>
-            <tr className="border-b border-gray-100">
+            <tr className="border-b border-edge-subtle">
               <td className="py-2 px-2">Max (ms)</td>
               <td className="text-right py-2 px-2">{stats.max}</td>
             </tr>
@@ -135,9 +135,9 @@ function StatsTable({ stats, title }: StatsTableProps): React.ReactElement {
               <td className="text-right py-2 px-2">{stats.total}</td>
             </tr>
             {stats.exceeded !== undefined && (
-              <tr className="bg-red-50">
+              <tr className="bg-danger-900/30">
                 <td className="py-2 px-2 font-semibold">Exceeded Threshold</td>
-                <td className="text-right py-2 px-2 font-semibold text-red-600">{stats.exceeded}</td>
+                <td className="text-right py-2 px-2 font-semibold text-danger-600">{stats.exceeded}</td>
               </tr>
             )}
           </tbody>
@@ -163,26 +163,26 @@ function SlowOperationsList(): React.ReactElement {
 
   if (slowOps.length === 0) {
     return (
-      <div className="bg-white rounded-lg p-4 shadow">
-        <h3 className="font-semibold text-gray-700 mb-4">Top Slow Operations</h3>
-        <p className="text-gray-500">No slow operations detected</p>
+      <div className="bg-surface-1 rounded-lg p-4 shadow">
+        <h3 className="font-semibold text-fg-primary mb-4">Top Slow Operations</h3>
+        <p className="text-fg-faint">No slow operations detected</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg p-4 shadow">
-      <h3 className="font-semibold text-gray-700 mb-4">Top Slow Operations</h3>
+    <div className="bg-surface-1 rounded-lg p-4 shadow">
+      <h3 className="font-semibold text-fg-primary mb-4">Top Slow Operations</h3>
       <div className="space-y-2">
         {slowOps.map((op, idx) => (
-          <div key={idx} className="flex items-center justify-between p-2 bg-red-50 rounded">
+          <div key={idx} className="flex items-center justify-between p-2 bg-danger-900/30 rounded">
             <div>
-              <p className="font-semibold text-sm text-gray-700">{op.type}</p>
-              <p className="text-xs text-gray-600">{op.component || op.label || '-'}</p>
+              <p className="font-semibold text-sm text-fg-primary">{op.type}</p>
+              <p className="text-xs text-fg-muted">{op.component || op.label || '-'}</p>
             </div>
             <div className="text-right">
-              <p className="font-bold text-red-600">{op.duration.toFixed(2)}ms</p>
-              <p className="text-xs text-gray-600">
+              <p className="font-bold text-danger-600">{op.duration.toFixed(2)}ms</p>
+              <p className="text-xs text-fg-muted">
                 {new Date(op.timestamp).toLocaleTimeString()}
               </p>
             </div>
@@ -219,7 +219,7 @@ export default function PerformanceDashboard({ defaultOpen = false }: Performanc
       <div className="fixed bottom-4 right-4 z-50">
         <button
           onClick={() => setIsOpen(true)}
-          className="bg-blue-500 hover:bg-blue-600 text-white rounded-full p-3 shadow-lg transition"
+          className="bg-accent-500 hover:bg-accent-600 text-white rounded-full p-3 shadow-lg transition"
           title="Open Performance Dashboard"
         >
           <Activity className="w-6 h-6" />
@@ -240,9 +240,9 @@ export default function PerformanceDashboard({ defaultOpen = false }: Performanc
   } : null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 bg-gray-100 rounded-lg shadow-2xl w-96 max-h-screen overflow-y-auto">
+    <div className="fixed bottom-4 right-4 z-50 bg-surface-0 text-fg-primary rounded-lg shadow-2xl w-96 max-h-screen overflow-y-auto">
       {/* Header */}
-      <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-t-lg">
+      <div className="sticky top-0 bg-gradient-to-r from-accent-600 to-accent-700 text-white p-4 rounded-t-lg">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BarChart3 className="w-5 h-5" />
@@ -250,7 +250,7 @@ export default function PerformanceDashboard({ defaultOpen = false }: Performanc
           </div>
           <button
             onClick={() => setIsOpen(false)}
-            className="hover:bg-blue-500 p-1 rounded transition"
+            className="hover:bg-accent-500 p-1 rounded transition"
           >
             ✕
           </button>
@@ -327,8 +327,8 @@ export default function PerformanceDashboard({ defaultOpen = false }: Performanc
 
         {/* Memory Info */}
         {memoryDisplay && (
-          <div className="bg-white rounded-lg p-4 shadow">
-            <h3 className="font-semibold text-gray-700 mb-3">Memory Details</h3>
+          <div className="bg-surface-1 rounded-lg p-4 shadow">
+            <h3 className="font-semibold text-fg-primary mb-3">Memory Details</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span>Used:</span>
@@ -338,14 +338,14 @@ export default function PerformanceDashboard({ defaultOpen = false }: Performanc
                 <span>Limit:</span>
                 <span className="font-semibold">{memoryDisplay.limitMB} MB</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-surface-2 rounded-full h-2">
                 <div
                   className={`h-2 rounded-full transition ${
                     parseFloat(memoryDisplay.percent) > 80
-                      ? 'bg-red-500'
+                      ? 'bg-danger-500'
                       : parseFloat(memoryDisplay.percent) > 60
                       ? 'bg-yellow-500'
-                      : 'bg-green-500'
+                      : 'bg-success-500'
                   }`}
                   style={{ width: `${memoryDisplay.percent}%` }}
                 />
@@ -358,7 +358,7 @@ export default function PerformanceDashboard({ defaultOpen = false }: Performanc
         <div className="flex gap-2">
           <button
             onClick={() => performanceMonitor.reset()}
-            className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 px-3 rounded text-sm transition"
+            className="flex-1 bg-danger-500 hover:bg-danger-600 text-white py-2 px-3 rounded text-sm transition"
           >
             Reset Metrics
           </button>
@@ -372,14 +372,14 @@ export default function PerformanceDashboard({ defaultOpen = false }: Performanc
               a.download = `performance-${new Date().toISOString().slice(0, 10)}.csv`;
               a.click();
             }}
-            className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded text-sm transition"
+            className="flex-1 bg-success-500 hover:bg-success-600 text-white py-2 px-3 rounded text-sm transition"
           >
             Export CSV
           </button>
         </div>
 
         {/* Footer */}
-        <div className="text-xs text-gray-600 text-center pt-2 border-t">
+        <div className="text-xs text-fg-muted text-center pt-2 border-t border-edge">
           Last updated: {new Date().toLocaleTimeString()}
         </div>
       </div>

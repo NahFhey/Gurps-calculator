@@ -316,17 +316,17 @@ export function ForagingResolutionPanel({
   const catMeta = selectedCategory ? FORAGE_CATEGORY_META[selectedCategory] : null;
 
   return (
-    <div className="bg-gray-800 border border-green-600 rounded-lg p-4 space-y-4">
+    <div className="bg-surface-1 border border-success-600 rounded-lg p-4 space-y-4">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <Leaf className="w-5 h-5 text-green-400" />
-          <h4 className="font-semibold text-gray-100">Manual Foraging Resolution</h4>
+          <Leaf className="w-5 h-5 text-success-400" />
+          <h4 className="font-semibold text-fg-bright">Manual Foraging Resolution</h4>
         </div>
         <button
           type="button"
           onClick={onCancel}
-          className="text-gray-400 hover:text-gray-200"
+          className="text-fg-muted hover:text-fg-primary"
           title="Cancel resolution"
         >
           <X className="w-5 h-5" />
@@ -334,36 +334,36 @@ export function ForagingResolutionPanel({
       </div>
 
       {/* Skill Info */}
-      <div className="bg-gray-900/50 p-3 rounded text-sm space-y-1">
-        <p className="text-gray-300">
-          <span className="font-medium text-gray-200">Leader:</span> {leaderName}
+      <div className="bg-surface-0/50 p-3 rounded text-sm space-y-1">
+        <p className="text-fg-secondary">
+          <span className="font-medium text-fg-primary">Leader:</span> {leaderName}
         </p>
-        <p className="text-gray-300">
-          <span className="font-medium text-gray-200">Skill:</span> {skillLabel}
+        <p className="text-fg-secondary">
+          <span className="font-medium text-fg-primary">Skill:</span> {skillLabel}
         </p>
-        <p className="text-gray-300">
-          <span className="font-medium text-gray-200">Effective Skill:</span>{' '}
-          <span className="text-green-400 font-bold">{effectiveSkill}</span>
+        <p className="text-fg-secondary">
+          <span className="font-medium text-fg-primary">Effective Skill:</span>{' '}
+          <span className="text-success-400 font-bold">{effectiveSkill}</span>
         </p>
         {modifiers.length > 0 && (
-          <div className="text-xs text-gray-400">
+          <div className="text-xs text-fg-muted">
             Modifiers: {modifiers.map((m) => `${m.label} ${m.value >= 0 ? '+' : ''}${m.value}`).join(', ')}
           </div>
         )}
-        <p className="text-gray-300">
-          <span className="font-medium text-gray-200">Zone:</span> {zone?.name ?? 'Unknown'}
+        <p className="text-fg-secondary">
+          <span className="font-medium text-fg-primary">Zone:</span> {zone?.name ?? 'Unknown'}
         </p>
       </div>
 
       {/* Step 1: Skill Roll */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <h5 className="text-sm font-medium text-gray-200">Step 1: Skill Roll (3d6)</h5>
+          <h5 className="text-sm font-medium text-fg-primary">Step 1: Skill Roll (3d6)</h5>
           {!skillRoll.rolled ? (
             <button
               type="button"
               onClick={() => setSkillRoll(roll3d6())}
-              className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+              className="flex items-center gap-1 px-3 py-1.5 bg-success-600 text-white rounded hover:bg-success-700 text-sm"
             >
               <Dices className="w-3.5 h-3.5" />
               Roll 3d6
@@ -386,19 +386,19 @@ export function ForagingResolutionPanel({
         </div>
 
         {skillRoll.rolled && (
-          <div className="bg-gray-900/50 p-3 rounded">
+          <div className="bg-surface-0/50 p-3 rounded">
             <div className="flex items-center gap-3 mb-2">
               <div className="flex gap-1">
                 {skillRoll.dice.map((d, i) => (
-                  <span key={i} className="w-8 h-8 bg-gray-700 border border-gray-600 rounded flex items-center justify-center font-bold text-lg">
+                  <span key={i} className="w-8 h-8 bg-surface-2 border border-edge-strong rounded flex items-center justify-center font-bold text-lg">
                     {d}
                   </span>
                 ))}
               </div>
-              <span className="text-gray-400">=</span>
+              <span className="text-fg-muted">=</span>
               <span className="font-bold text-xl">{skillRoll.total}</span>
-              <span className="text-gray-400">vs</span>
-              <span className="font-bold text-xl text-green-400">{effectiveSkill}</span>
+              <span className="text-fg-muted">vs</span>
+              <span className="font-bold text-xl text-success-400">{effectiveSkill}</span>
             </div>
 
             <div className="text-sm space-y-1">
@@ -406,36 +406,36 @@ export function ForagingResolutionPanel({
                 {critSuccess ? (
                   <span className="text-yellow-400 font-bold">Critical Success!</span>
                 ) : critFailure ? (
-                  <span className="text-red-400 font-bold">Critical Failure!</span>
+                  <span className="text-danger-400 font-bold">Critical Failure!</span>
                 ) : success ? (
-                  <span className="text-green-400">Success by {margin}</span>
+                  <span className="text-success-400">Success by {margin}</span>
                 ) : (
-                  <span className="text-red-400">Failure by {Math.abs(margin)}</span>
+                  <span className="text-danger-400">Failure by {Math.abs(margin)}</span>
                 )}
               </p>
               <p>
-                <span className="font-medium text-gray-200">Tier:</span>{' '}
+                <span className="font-medium text-fg-primary">Tier:</span>{' '}
                 <span className={
                   tierOutcome === 'rare' ? 'text-purple-400 font-bold' :
-                  tierOutcome === 'uncommon' ? 'text-blue-400 font-bold' :
-                  tierOutcome === 'common' ? 'text-green-400' :
+                  tierOutcome === 'uncommon' ? 'text-accent-400 font-bold' :
+                  tierOutcome === 'common' ? 'text-success-400' :
                   tierOutcome === 'scraps' ? 'text-yellow-400' :
-                  'text-red-400'
+                  'text-danger-400'
                 }>
                   {tierOutcome.charAt(0).toUpperCase() + tierOutcome.slice(1)}
                 </span>
               </p>
               {selectedCategory && catMeta && (
                 <p>
-                  <span className="font-medium text-gray-200">Category:</span>{' '}
-                  <span className="text-gray-100">{catMeta.label}</span>
+                  <span className="font-medium text-fg-primary">Category:</span>{' '}
+                  <span className="text-fg-bright">{catMeta.label}</span>
                 </p>
               )}
               {selectedItem && (
                 <p>
-                  <span className="font-medium text-gray-200">Item:</span>{' '}
-                  <span className="text-gray-100">{selectedItem.name}</span>
-                  <span className="text-xs text-gray-500 ml-1">
+                  <span className="font-medium text-fg-primary">Item:</span>{' '}
+                  <span className="text-fg-bright">{selectedItem.name}</span>
+                  <span className="text-xs text-fg-faint ml-1">
                     ({selectedItem.inventoryKind}: {selectedItem.typeId})
                   </span>
                 </p>
@@ -449,14 +449,14 @@ export function ForagingResolutionPanel({
       {skillRoll.rolled && tierOutcome !== 'nothing' && selectedItem && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h5 className="text-sm font-medium text-gray-200">
+            <h5 className="text-sm font-medium text-fg-primary">
               Step 2: Yield Roll ({yieldFormula})
             </h5>
             {!yieldRoll.rolled ? (
               <button
                 type="button"
                 onClick={() => setYieldRoll(rollFormula(yieldFormula))}
-                className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+                className="flex items-center gap-1 px-3 py-1.5 bg-success-600 text-white rounded hover:bg-success-700 text-sm"
               >
                 <Dices className="w-3.5 h-3.5" />
                 Roll Yield
@@ -478,17 +478,17 @@ export function ForagingResolutionPanel({
           </div>
 
           {yieldRoll.rolled && (
-            <div className="bg-gray-900/50 p-3 rounded text-sm">
+            <div className="bg-surface-0/50 p-3 rounded text-sm">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-gray-300">Base yield:</span>
+                <span className="text-fg-secondary">Base yield:</span>
                 <div className="flex gap-1">
                   {yieldRoll.dice.map((d, i) => (
-                    <span key={i} className="w-6 h-6 bg-gray-700 border border-gray-600 rounded flex items-center justify-center font-medium text-sm">
+                    <span key={i} className="w-6 h-6 bg-surface-2 border border-edge-strong rounded flex items-center justify-center font-medium text-sm">
                       {d}
                     </span>
                   ))}
                 </div>
-                <span className="text-gray-400">= {yieldRoll.total}</span>
+                <span className="text-fg-muted">= {yieldRoll.total}</span>
               </div>
             </div>
           )}
@@ -499,14 +499,14 @@ export function ForagingResolutionPanel({
       {yieldRoll.rolled && needsSkill15Bonus && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h5 className="text-sm font-medium text-gray-200">
+            <h5 className="text-sm font-medium text-fg-primary">
               Bonus: Skill 15+ (1d6)
             </h5>
             {!bonusYieldRoll.rolled ? (
               <button
                 type="button"
                 onClick={() => setBonusYieldRoll(rollFormula('1d'))}
-                className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                className="flex items-center gap-1 px-3 py-1.5 bg-accent-600 text-white rounded hover:bg-accent-700 text-sm"
               >
                 <Dices className="w-3.5 h-3.5" />
                 Roll Bonus
@@ -525,8 +525,8 @@ export function ForagingResolutionPanel({
           </div>
 
           {bonusYieldRoll.rolled && (
-            <div className="bg-gray-900/50 p-3 rounded text-sm">
-              <span className="text-gray-300">Bonus yield: +{bonusYieldRoll.total}</span>
+            <div className="bg-surface-0/50 p-3 rounded text-sm">
+              <span className="text-fg-secondary">Bonus yield: +{bonusYieldRoll.total}</span>
             </div>
           )}
         </div>
@@ -534,8 +534,8 @@ export function ForagingResolutionPanel({
 
       {/* Yield Summary */}
       {yieldRoll.rolled && (!needsSkill15Bonus || bonusYieldRoll.rolled) && selectedItem && (
-        <div className="bg-green-900/20 border border-green-700 p-3 rounded text-sm">
-          <p className="font-medium text-green-300 mb-1">Result Summary</p>
+        <div className="bg-success-900/20 border border-success-700 p-3 rounded text-sm">
+          <p className="font-medium text-success-300 mb-1">Result Summary</p>
           {(() => {
             let baseYield = yieldRoll.total;
             if (needsSkill15Bonus && bonusYieldRoll.rolled) baseYield += bonusYieldRoll.total;
@@ -543,13 +543,13 @@ export function ForagingResolutionPanel({
             const multiplier = FORAGE_TIER_MULTIPLIERS[tierOutcome] ?? 1.0;
             const finalQty = Math.max(1, Math.floor(baseYield * multiplier));
             return (
-              <div className="space-y-1 text-gray-300">
+              <div className="space-y-1 text-fg-secondary">
                 <p>Base: {yieldRoll.total}
                   {needsSkill15Bonus && bonusYieldRoll.rolled ? ` + ${bonusYieldRoll.total} (skill 15+)` : ''}
                   {actionInput.toolYieldBonus > 0 ? ` + ${actionInput.toolYieldBonus} (tools)` : ''}
                   {multiplier !== 1.0 ? ` × ${multiplier} (${tierOutcome})` : ''}
                 </p>
-                <p className="text-green-400 font-bold">
+                <p className="text-success-400 font-bold">
                   {selectedItem.name}: {finalQty} units ({selectedItem.inventoryKind})
                 </p>
               </div>
@@ -560,21 +560,21 @@ export function ForagingResolutionPanel({
 
       {/* Nothing found message */}
       {skillRoll.rolled && tierOutcome === 'nothing' && (
-        <div className="bg-gray-900/50 p-3 rounded text-sm text-gray-400 italic">
+        <div className="bg-surface-0/50 p-3 rounded text-sm text-fg-muted italic">
           Nothing harvestable found this time.
         </div>
       )}
 
       {/* Finalize / Cancel */}
-      <div className="flex gap-2 pt-2 border-t border-gray-700">
+      <div className="flex gap-2 pt-2 border-t border-edge">
         <button
           type="button"
           onClick={handleFinalize}
           disabled={!allRollsComplete}
           className={`flex-1 px-4 py-2 rounded font-medium text-sm ${
             allRollsComplete
-              ? 'bg-green-600 text-white hover:bg-green-700'
-              : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+              ? 'bg-success-600 text-white hover:bg-success-700'
+              : 'bg-surface-2 text-fg-faint cursor-not-allowed'
           }`}
         >
           Finalize Task
@@ -582,7 +582,7 @@ export function ForagingResolutionPanel({
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 border border-red-500/50 text-red-400 rounded hover:bg-red-900/30 text-sm"
+          className="px-4 py-2 border border-danger-500/50 text-danger-400 rounded hover:bg-danger-900/30 text-sm"
         >
           Cancel
         </button>

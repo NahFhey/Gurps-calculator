@@ -157,13 +157,13 @@ export function TradingActivity({ currentDayKey, currentSlot }: TradingActivityP
   return (
     <div data-testid="trading-activity">
       <header className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2"><Coins className="h-5 w-5 text-amber-400" /><h3 className="text-lg font-semibold text-gray-100">Trading</h3></div>
+        <div className="flex items-center gap-2"><Coins className="h-5 w-5 text-warning-400" /><h3 className="text-lg font-semibold text-fg-bright">Trading</h3></div>
         {!isCreating && !resolvingTask && (
-          <button type="button" onClick={() => setIsCreating(true)} data-testid="new-trading-task-button" className="flex items-center gap-1 rounded bg-amber-600 px-3 py-1.5 text-sm text-white hover:bg-amber-700"><Plus className="h-4 w-4" /> New Trip</button>
+          <button type="button" onClick={() => setIsCreating(true)} data-testid="new-trading-task-button" className="flex items-center gap-1 rounded bg-warning-600 px-3 py-1.5 text-sm text-white hover:bg-warning-700"><Plus className="h-4 w-4" /> New Trip</button>
         )}
       </header>
 
-      {validationError && <div role="alert" data-testid="validation-error" className="mb-4 flex items-center gap-2 rounded border border-red-500 bg-red-900/30 px-3 py-2 text-sm text-red-300"><AlertCircle className="h-4 w-4" /> {validationError}</div>}
+      {validationError && <div role="alert" data-testid="validation-error" className="mb-4 flex items-center gap-2 rounded border border-danger-500 bg-danger-900/30 px-3 py-2 text-sm text-danger-300"><AlertCircle className="h-4 w-4" /> {validationError}</div>}
 
       {resolvingTask && resolvingLeader && (
         <div className="mb-4"><TradingResolutionPanel task={resolvingTask} leader={resolvingLeader} onFinalize={handleFinalize} onCancel={() => setResolvingTask(null)} /></div>
@@ -175,12 +175,12 @@ export function TradingActivity({ currentDayKey, currentSlot }: TradingActivityP
       {!resolvingTask && (
         <>
           <section className="mb-6" data-testid="pending-tasks-section">
-            <h4 className="mb-2 font-medium text-gray-200">Pending ({pendingTasks.length})</h4>
-            {pendingTasks.length === 0 ? <p className="text-sm italic text-gray-400">No pending trading trips</p> : <div className="space-y-2">{pendingTasks.map((task) => <TradingTaskCard key={task.id} task={task} leader={characters.find((character) => character.id === task.leaderId)} onResolve={() => setResolvingTask(task)} onCancel={() => cancel(task.id)} />)}</div>}
+            <h4 className="mb-2 font-medium text-fg-primary">Pending ({pendingTasks.length})</h4>
+            {pendingTasks.length === 0 ? <p className="text-sm italic text-fg-muted">No pending trading trips</p> : <div className="space-y-2">{pendingTasks.map((task) => <TradingTaskCard key={task.id} task={task} leader={characters.find((character) => character.id === task.leaderId)} onResolve={() => setResolvingTask(task)} onCancel={() => cancel(task.id)} />)}</div>}
           </section>
           <section data-testid="completed-tasks-section">
-            <h4 className="mb-2 font-medium text-gray-200">Completed ({completedTasks.length})</h4>
-            {completedTasks.length === 0 ? <p className="text-sm italic text-gray-400">No completed trading trips</p> : <div className="space-y-2">{completedTasks.map((task) => <TradingTaskCard key={task.id} task={task} leader={characters.find((character) => character.id === task.leaderId)} readonly />)}</div>}
+            <h4 className="mb-2 font-medium text-fg-primary">Completed ({completedTasks.length})</h4>
+            {completedTasks.length === 0 ? <p className="text-sm italic text-fg-muted">No completed trading trips</p> : <div className="space-y-2">{completedTasks.map((task) => <TradingTaskCard key={task.id} task={task} leader={characters.find((character) => character.id === task.leaderId)} readonly />)}</div>}
           </section>
         </>
       )}

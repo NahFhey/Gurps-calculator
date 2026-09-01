@@ -82,16 +82,16 @@ export function SkillHistorySection({
     : 0;
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4">
+    <div className="bg-surface-1 rounded-lg p-4">
       <div className="flex items-center justify-between mb-2">
         <button
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-2 text-gray-300 hover:text-gray-100"
+          className="flex items-center gap-2 text-fg-secondary hover:text-fg-bright"
         >
           <History size={18} className="text-purple-400" />
           <h3 className="text-lg font-semibold">
             Skill History
-            <span className="text-sm text-gray-400 ml-2">({skillHistory.length} entries)</span>
+            <span className="text-sm text-fg-muted ml-2">({skillHistory.length} entries)</span>
           </h3>
           {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
@@ -110,14 +110,14 @@ export function SkillHistorySection({
         <div className="mt-2">
           {/* Add advancement form */}
           {editMode && showAddForm && (
-            <div className="bg-gray-700 rounded p-3 mb-3 space-y-2">
+            <div className="bg-surface-2 rounded p-3 mb-3 space-y-2">
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs text-gray-400 block mb-1">Skill</label>
+                  <label className="text-xs text-fg-muted block mb-1">Skill</label>
                   <select
                     value={selectedSkillId}
                     onChange={(e) => setSelectedSkillId(e.target.value)}
-                    className="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm text-gray-100"
+                    className="w-full bg-surface-3 border border-edge-bright rounded px-2 py-1 text-sm text-fg-bright"
                   >
                     <option value="">Select skill...</option>
                     {skills.map((s) => (
@@ -128,46 +128,46 @@ export function SkillHistorySection({
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-gray-400 block mb-1">Points to Add</label>
+                  <label className="text-xs text-fg-muted block mb-1">Points to Add</label>
                   <input
                     type="number"
                     value={pointsToAdd}
                     onChange={(e) => setPointsToAdd(Math.max(1, parseInt(e.target.value) || 1))}
                     min={1}
-                    className="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm text-gray-100"
+                    className="w-full bg-surface-3 border border-edge-bright rounded px-2 py-1 text-sm text-fg-bright"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-400 block mb-1">Session Label</label>
+                  <label className="text-xs text-fg-muted block mb-1">Session Label</label>
                   <input
                     type="text"
                     value={sessionLabel}
                     onChange={(e) => setSessionLabel(e.target.value)}
                     placeholder="Session 12"
-                    className="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm text-gray-100"
+                    className="w-full bg-surface-3 border border-edge-bright rounded px-2 py-1 text-sm text-fg-bright"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-400 block mb-1">Notes</label>
+                  <label className="text-xs text-fg-muted block mb-1">Notes</label>
                   <input
                     type="text"
                     value={advanceNotes}
                     onChange={(e) => setAdvanceNotes(e.target.value)}
                     placeholder="Optional notes..."
-                    className="w-full bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm text-gray-100"
+                    className="w-full bg-surface-3 border border-edge-bright rounded px-2 py-1 text-sm text-fg-bright"
                   />
                 </div>
               </div>
 
               {/* Preview */}
               {selectedSkill && (
-                <div className="flex items-center gap-2 text-sm bg-gray-800 rounded px-3 py-2">
-                  <TrendingUp size={14} className="text-green-400" />
-                  <span className="text-gray-300">
+                <div className="flex items-center gap-2 text-sm bg-surface-1 rounded px-3 py-2">
+                  <TrendingUp size={14} className="text-success-400" />
+                  <span className="text-fg-secondary">
                     {selectedSkill.name}: {selectedSkill.points} → {previewNewPoints} pts,
                     Level {selectedSkill.level} → {previewNewLevel}
                     {previewNewLevel > selectedSkill.level && (
-                      <span className="text-green-400 ml-1">(+{previewNewLevel - selectedSkill.level})</span>
+                      <span className="text-success-400 ml-1">(+{previewNewLevel - selectedSkill.level})</span>
                     )}
                   </span>
                 </div>
@@ -176,7 +176,7 @@ export function SkillHistorySection({
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => setShowAddForm(false)}
-                  className="px-3 py-1 text-sm bg-gray-600 hover:bg-gray-500 rounded"
+                  className="px-3 py-1 text-sm bg-surface-3 hover:bg-surface-4 rounded"
                 >
                   Cancel
                 </button>
@@ -193,26 +193,26 @@ export function SkillHistorySection({
 
           {/* History entries */}
           {sortedHistory.length === 0 ? (
-            <div className="text-gray-500 italic text-sm">No skill advancements recorded yet.</div>
+            <div className="text-fg-faint italic text-sm">No skill advancements recorded yet.</div>
           ) : (
             <div className="space-y-1 max-h-60 overflow-y-auto">
               {sortedHistory.map((entry) => (
-                <div key={entry.id} className="flex items-center justify-between text-sm bg-gray-700/50 rounded px-3 py-1.5">
+                <div key={entry.id} className="flex items-center justify-between text-sm bg-surface-2/50 rounded px-3 py-1.5">
                   <div className="flex items-center gap-2">
-                    <TrendingUp size={12} className="text-green-400 flex-shrink-0" />
-                    <span className="text-gray-200 font-medium">{entry.skillName}</span>
+                    <TrendingUp size={12} className="text-success-400 flex-shrink-0" />
+                    <span className="text-fg-primary font-medium">{entry.skillName}</span>
                     {entry.sessionLabel && (
-                      <span className="text-xs px-1.5 py-0.5 bg-gray-600 rounded text-gray-400">
+                      <span className="text-xs px-1.5 py-0.5 bg-surface-3 rounded text-fg-muted">
                         {entry.sessionLabel}
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-gray-400">
+                  <div className="flex items-center gap-3 text-xs text-fg-muted">
                     <span>+{entry.pointsAdded} pts</span>
                     <span>
                       Lvl {entry.previousLevel} → {entry.newLevel}
                       {entry.newLevel > entry.previousLevel && (
-                        <span className="text-green-400"> (+{entry.newLevel - entry.previousLevel})</span>
+                        <span className="text-success-400"> (+{entry.newLevel - entry.previousLevel})</span>
                       )}
                     </span>
                     <span>{new Date(entry.date).toLocaleDateString()}</span>

@@ -85,29 +85,29 @@ export function SocialTaskForm({
   };
 
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800/60 p-4" data-testid="social-task-form">
+    <div className="rounded-lg border border-edge bg-surface-1/60 p-4" data-testid="social-task-form">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="flex items-center gap-2 font-medium text-gray-100"><Users className="h-4 w-4 text-rose-400" /> New Social Task</h3>
-        <button type="button" onClick={onCancel} aria-label="Close form" className="text-gray-400 hover:text-gray-200"><X className="h-5 w-5" /></button>
+        <h3 className="flex items-center gap-2 font-medium text-fg-bright"><Users className="h-4 w-4 text-rose-400" /> New Social Task</h3>
+        <button type="button" onClick={onCancel} aria-label="Close form" className="text-fg-muted hover:text-fg-primary"><X className="h-5 w-5" /></button>
       </div>
 
-      <label className="mb-3 block text-sm text-gray-300">
+      <label className="mb-3 block text-sm text-fg-secondary">
         <span className="mb-1 block font-medium">Leader</span>
-        <select value={leaderId} onChange={(event) => setLeaderId(event.target.value)} data-testid="leader-select" className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-gray-100">
+        <select value={leaderId} onChange={(event) => setLeaderId(event.target.value)} data-testid="leader-select" className="w-full rounded border border-edge-strong bg-surface-0 px-3 py-2 text-fg-bright">
           <option value="">Select a leader...</option>
           {availableCharacters.map((character) => <option key={character.id} value={character.id}>{character.name}</option>)}
         </select>
       </label>
 
       {contactLocation && (
-        <p className="-mt-2 mb-3 text-xs text-gray-500" data-testid="contact-presence-hint">
+        <p className="-mt-2 mb-3 text-xs text-fg-faint" data-testid="contact-presence-hint">
           at {contactLocation.name}{contactLocation.id !== currentLocationId ? ' — party elsewhere' : ''}
         </p>
       )}
 
-      <label className="mb-3 block text-sm text-gray-300">
+      <label className="mb-3 block text-sm text-fg-secondary">
         <span className="mb-1 block font-medium">Contact</span>
-        <select value={contactId} onChange={(event) => setContactId(event.target.value)} data-testid="contact-select" className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-gray-100">
+        <select value={contactId} onChange={(event) => setContactId(event.target.value)} data-testid="contact-select" className="w-full rounded border border-edge-strong bg-surface-0 px-3 py-2 text-fg-bright">
           <option value="">Select a contact...</option>
           {contacts.map((entry) => <option key={entry.id} value={entry.id}>{entry.name} ({formatSigned(entry.modifier)})</option>)}
           <option value={NEW_CONTACT}>New contact…</option>
@@ -116,14 +116,14 @@ export function SocialTaskForm({
 
       {isNewContact && (
         <div className="mb-3 grid grid-cols-2 gap-3">
-          <label className="block text-sm text-gray-300"><span className="mb-1 block font-medium">Name</span><input value={newContactName} onChange={(event) => setNewContactName(event.target.value)} data-testid="new-contact-name-input" className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-gray-100" /></label>
-          <label className="block text-sm text-gray-300"><span className="mb-1 block font-medium">Kind</span><select value={newContactKind} onChange={(event) => setNewContactKind(event.target.value as ContactKind)} data-testid="new-contact-kind-select" className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-gray-100"><option value="person">Person</option><option value="faction">Faction</option><option value="settlement">Settlement</option></select></label>
+          <label className="block text-sm text-fg-secondary"><span className="mb-1 block font-medium">Name</span><input value={newContactName} onChange={(event) => setNewContactName(event.target.value)} data-testid="new-contact-name-input" className="w-full rounded border border-edge-strong bg-surface-0 px-3 py-2 text-fg-bright" /></label>
+          <label className="block text-sm text-fg-secondary"><span className="mb-1 block font-medium">Kind</span><select value={newContactKind} onChange={(event) => setNewContactKind(event.target.value as ContactKind)} data-testid="new-contact-kind-select" className="w-full rounded border border-edge-strong bg-surface-0 px-3 py-2 text-fg-bright"><option value="person">Person</option><option value="faction">Faction</option><option value="settlement">Settlement</option></select></label>
         </div>
       )}
 
-      <label className="mb-3 block text-sm text-gray-300">
+      <label className="mb-3 block text-sm text-fg-secondary">
         <span className="mb-1 block font-medium">Approach</span>
-        <select value={skillKey} onChange={(event) => setSkillKey(event.target.value)} data-testid="approach-select" className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-gray-100">
+        <select value={skillKey} onChange={(event) => setSkillKey(event.target.value)} data-testid="approach-select" className="w-full rounded border border-edge-strong bg-surface-0 px-3 py-2 text-fg-bright">
           {INFLUENCE_SKILLS.map((def) => {
             const value = leader ? getInfluenceSkill(leader, def) : null;
             const label = value
@@ -139,8 +139,8 @@ export function SocialTaskForm({
       {skill && <p className="mb-4 text-sm text-rose-300" data-testid="social-roll-preview">Roll vs {skill.level} + current standing ({formatSigned(currentModifier)}) = {skill.level + currentModifier}</p>}
 
       <div className="flex gap-2">
-        <button type="button" onClick={handleSubmit} disabled={!canSubmit} data-testid="submit-button" className="rounded bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-gray-700 disabled:text-gray-500">Create Social Task</button>
-        <button type="button" onClick={onCancel} className="rounded border border-gray-600 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Cancel</button>
+        <button type="button" onClick={handleSubmit} disabled={!canSubmit} data-testid="submit-button" className="rounded bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-fg-faint">Create Social Task</button>
+        <button type="button" onClick={onCancel} className="rounded border border-edge-strong px-4 py-2 text-sm text-fg-secondary hover:bg-surface-2">Cancel</button>
       </div>
     </div>
   );

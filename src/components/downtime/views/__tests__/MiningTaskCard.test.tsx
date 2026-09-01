@@ -105,18 +105,18 @@ describe('MiningTaskCard', () => {
     expect(screen.getByText(/12/)).toBeInTheDocument();
   });
 
-  it('renders positive modifier in green', () => {
+  it('renders positive modifier with success styling', () => {
     render(<MiningTaskCard {...defaultProps} />);
     const modText = screen.getByText('+2');
-    expect(modText.className).toContain('green');
+    expect(modText.className).toContain('success');
   });
 
-  it('renders negative modifier in red', () => {
+  it('renders negative modifier with danger styling', () => {
     const negData = { ...mockMiningData, skillModifier: -3 };
     const negTask = { ...mockTask, activityData: negData };
     render(<MiningTaskCard {...defaultProps} task={negTask} />);
     const modText = screen.getByText('-3');
-    expect(modText.className).toContain('red');
+    expect(modText.className).toContain('danger');
   });
 
   it('shows context flag badges', () => {

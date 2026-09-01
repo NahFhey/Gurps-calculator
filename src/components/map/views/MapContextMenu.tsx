@@ -72,16 +72,16 @@ export function MapContextMenu({
   return (
     <div
       ref={ref}
-      className="fixed z-50 bg-gray-800 border border-gray-600 rounded-lg shadow-xl py-1 min-w-48"
+      className="fixed z-50 bg-surface-1 border border-edge-strong rounded-lg shadow-xl py-1 min-w-48"
       style={{ top: menuState.y, left: menuState.x }}
     >
-      <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-gray-500">
+      <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-fg-faint">
         Tile ({menuState.row}, {menuState.col})
       </div>
 
       {hasVisibleLocation && onViewLocation && (
         <button
-          className="w-full px-3 py-1.5 text-sm text-left text-gray-200 hover:bg-gray-700/50 flex items-center gap-2"
+          className="w-full px-3 py-1.5 text-sm text-left text-fg-primary hover:bg-surface-2/50 flex items-center gap-2"
           onClick={() => { onViewLocation(menuState.tileId); onClose(); }}
         >
           <Eye className="w-3.5 h-3.5 text-emerald-400" />
@@ -92,19 +92,19 @@ export function MapContextMenu({
       {/* Stamp terrain to selection */}
       {isGmMode && hasSelection && selectedTerrainId && (
         <button
-          className="w-full px-3 py-1.5 text-sm text-left text-gray-200 hover:bg-gray-700/50 flex items-center gap-2"
+          className="w-full px-3 py-1.5 text-sm text-left text-fg-primary hover:bg-surface-2/50 flex items-center gap-2"
           onClick={onStampSelection}
         >
-          <Paintbrush className="w-3.5 h-3.5 text-gray-400" />
+          <Paintbrush className="w-3.5 h-3.5 text-fg-muted" />
           Apply {terrainName} to {selectedTileIds.size} tile(s)
         </button>
       )}
 
-      {isGmMode && <div className="border-t border-gray-700 my-1" />}
+      {isGmMode && <div className="border-t border-edge my-1" />}
 
       {/* Set elevation */}
       {isGmMode && <button
-        className="w-full px-3 py-1.5 text-sm text-left text-gray-200 hover:bg-gray-700/50 flex items-center gap-2"
+        className="w-full px-3 py-1.5 text-sm text-left text-fg-primary hover:bg-surface-2/50 flex items-center gap-2"
         onClick={() => {
           const targets = selectedTileIds.size > 0 && selectedTileIds.has(menuState.tileId)
             ? Array.from(selectedTileIds)
@@ -113,41 +113,41 @@ export function MapContextMenu({
           onClose();
         }}
       >
-        <Mountain className="w-3.5 h-3.5 text-gray-400" />
+        <Mountain className="w-3.5 h-3.5 text-fg-muted" />
         Set Elevation…
       </button>}
 
       {/* Add marker */}
       {isGmMode && <button
-        className="w-full px-3 py-1.5 text-sm text-left text-gray-200 hover:bg-gray-700/50 flex items-center gap-2"
+        className="w-full px-3 py-1.5 text-sm text-left text-fg-primary hover:bg-surface-2/50 flex items-center gap-2"
         onClick={() => {
           onAddMarker(menuState.tileId);
           onClose();
         }}
       >
-        <MapPin className="w-3.5 h-3.5 text-gray-400" />
+        <MapPin className="w-3.5 h-3.5 text-fg-muted" />
         Add Marker
       </button>}
 
       {isGmMode && marker && onEditMarker && (
         <button
-          className="w-full px-3 py-1.5 text-sm text-left text-gray-200 hover:bg-gray-700/50 flex items-center gap-2"
+          className="w-full px-3 py-1.5 text-sm text-left text-fg-primary hover:bg-surface-2/50 flex items-center gap-2"
           onClick={() => { onEditMarker(marker); onClose(); }}
         >
-          <Pencil className="w-3.5 h-3.5 text-gray-400" />
+          <Pencil className="w-3.5 h-3.5 text-fg-muted" />
           Edit marker
         </button>
       )}
 
       {/* Add link */}
       {isGmMode && <button
-        className="w-full px-3 py-1.5 text-sm text-left text-gray-200 hover:bg-gray-700/50 flex items-center gap-2"
+        className="w-full px-3 py-1.5 text-sm text-left text-fg-primary hover:bg-surface-2/50 flex items-center gap-2"
         onClick={() => {
           onAddLink(menuState.tileId);
           onClose();
         }}
       >
-        <LinkIcon className="w-3.5 h-3.5 text-gray-400" />
+        <LinkIcon className="w-3.5 h-3.5 text-fg-muted" />
         Add Link
       </button>}
     </div>

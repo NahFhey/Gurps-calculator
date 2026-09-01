@@ -37,22 +37,22 @@ export function SocialResolutionPanel({ task, leader, contact, onFinalize, onCan
   };
 
   return (
-    <div className="rounded-lg border border-rose-500/50 bg-gray-800 p-4" data-testid="social-resolution-panel">
-      <h3 className="mb-3 flex items-center gap-2 font-medium text-gray-100"><Users className="h-4 w-4 text-rose-400" /> Resolve influence attempt</h3>
-      <div className="mb-4 space-y-1 text-sm text-gray-300">
-        <p><span className="font-medium text-gray-200">Contact:</span> {contact.name} ({formatSigned(contact.modifier)})</p>
-        <p><span className="font-medium text-gray-200">Leader:</span> {leader.name}</p>
-        <p><span className="font-medium text-gray-200">Skill:</span> {def.gcsName}-{skill.level}{skill.isDefault ? ` (default ${def.defaultAttribute}${formatSigned(def.defaultPenalty)})` : ''}</p>
-        <p data-testid="effective-target"><span className="font-medium text-gray-200">Effective target:</span> {skill.level} + {formatSigned(contact.modifier)} = {effectiveTarget}</p>
+    <div className="rounded-lg border border-rose-500/50 bg-surface-1 p-4" data-testid="social-resolution-panel">
+      <h3 className="mb-3 flex items-center gap-2 font-medium text-fg-bright"><Users className="h-4 w-4 text-rose-400" /> Resolve influence attempt</h3>
+      <div className="mb-4 space-y-1 text-sm text-fg-secondary">
+        <p><span className="font-medium text-fg-primary">Contact:</span> {contact.name} ({formatSigned(contact.modifier)})</p>
+        <p><span className="font-medium text-fg-primary">Leader:</span> {leader.name}</p>
+        <p><span className="font-medium text-fg-primary">Skill:</span> {def.gcsName}-{skill.level}{skill.isDefault ? ` (default ${def.defaultAttribute}${formatSigned(def.defaultPenalty)})` : ''}</p>
+        <p data-testid="effective-target"><span className="font-medium text-fg-primary">Effective target:</span> {skill.level} + {formatSigned(contact.modifier)} = {effectiveTarget}</p>
       </div>
       {!attempt ? <button type="button" onClick={() => setAttempt(resolveSocialAttempt(skill.level, contact.modifier))} data-testid="roll-social-button" className="rounded bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700">Roll</button> : (
-        <div className="mb-4 rounded bg-gray-900/70 p-3 text-sm text-gray-200" data-testid="social-roll-result">
+        <div className="mb-4 rounded bg-surface-0/70 p-3 text-sm text-fg-primary" data-testid="social-roll-result">
           <p>Rolled {attempt.roll.total} ({attempt.roll.dice.join(' + ')}) vs {attempt.effectiveTarget}: <span className="font-medium">{outcome}</span></p>
           <p>Standing change: {formatSigned(attempt.delta)}; new standing {formatSigned(wouldBeModifier)}</p>
-          {clampBites && <p className="mt-1 text-amber-300" data-testid="social-cap-note">Already at the cap; only {formatSigned(wouldBeModifier - contact.modifier)} can be applied.</p>}
+          {clampBites && <p className="mt-1 text-warning-300" data-testid="social-cap-note">Already at the cap; only {formatSigned(wouldBeModifier - contact.modifier)} can be applied.</p>}
         </div>
       )}
-      <div className="mt-3 flex gap-2"><button type="button" onClick={apply} disabled={!attempt} data-testid="apply-social-button" className="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 disabled:bg-gray-700 disabled:text-gray-500">Apply</button><button type="button" onClick={onCancel} className="rounded border border-gray-600 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Cancel</button></div>
+      <div className="mt-3 flex gap-2"><button type="button" onClick={apply} disabled={!attempt} data-testid="apply-social-button" className="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 disabled:bg-surface-2 disabled:text-fg-faint">Apply</button><button type="button" onClick={onCancel} className="rounded border border-edge-strong px-4 py-2 text-sm text-fg-secondary hover:bg-surface-2">Cancel</button></div>
     </div>
   );
 }

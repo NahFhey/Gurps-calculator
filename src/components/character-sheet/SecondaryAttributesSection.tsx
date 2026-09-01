@@ -62,16 +62,16 @@ export function SecondaryAttributesSection({
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4">
-      <h3 className="text-lg font-semibold text-gray-100 mb-3">Secondary Characteristics</h3>
+    <div className="bg-surface-1 rounded-lg p-4">
+      <h3 className="text-lg font-semibold text-fg-bright mb-3">Secondary Characteristics</h3>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {SECONDARY_ATTRS.map((config) => {
           const attr = secondaryAttributes[config.key];
 
           return (
-            <div key={config.key} className="bg-gray-700 rounded p-2">
-              <div className="text-xs text-gray-400 mb-1 truncate" title={config.label}>
+            <div key={config.key} className="bg-surface-2 rounded p-2">
+              <div className="text-xs text-fg-muted mb-1 truncate" title={config.label}>
                 {config.label}
               </div>
               <div className="flex items-center gap-1">
@@ -80,16 +80,16 @@ export function SecondaryAttributesSection({
                     type="number"
                     value={attr.value}
                     onChange={(e) => handleChange(config.key, parseFloat(e.target.value) || 0, config)}
-                    className="w-14 text-lg font-bold bg-gray-600 border border-gray-500 rounded px-1 py-0.5 text-gray-100 text-center"
+                    className="w-14 text-lg font-bold bg-surface-3 border border-edge-bright rounded px-1 py-0.5 text-fg-bright text-center"
                     step={config.key === 'basicSpeed' ? 0.25 : 1}
                   />
                 ) : (
-                  <span className="text-lg font-bold text-gray-100">
+                  <span className="text-lg font-bold text-fg-bright">
                     {config.key === 'basicSpeed' ? attr.value.toFixed(2) : attr.value}
                   </span>
                 )}
               </div>
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-fg-faint mt-1">
                 [{attr.points >= 0 ? '+' : ''}{attr.points}]
               </div>
             </div>
@@ -97,24 +97,24 @@ export function SecondaryAttributesSection({
         })}
 
         {/* Derived: Dodge */}
-        <div className="bg-gray-700 rounded p-2">
-          <div className="text-xs text-gray-400 mb-1">Dodge</div>
-          <div className="text-lg font-bold text-gray-100">{derived.dodge}</div>
-          <div className="text-xs text-gray-500 mt-1">(auto)</div>
+        <div className="bg-surface-2 rounded p-2">
+          <div className="text-xs text-fg-muted mb-1">Dodge</div>
+          <div className="text-lg font-bold text-fg-bright">{derived.dodge}</div>
+          <div className="text-xs text-fg-faint mt-1">(auto)</div>
         </div>
       </div>
 
       {/* Derived Stats Row */}
-      <div className="mt-3 pt-3 border-t border-gray-700">
+      <div className="mt-3 pt-3 border-t border-edge">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-          <div className="text-gray-400">
-            Basic Lift: <span className="text-gray-200 font-medium">{derived.basicLift.toFixed(1)} lb</span>
+          <div className="text-fg-muted">
+            Basic Lift: <span className="text-fg-primary font-medium">{derived.basicLift.toFixed(1)} lb</span>
           </div>
-          <div className="text-gray-400">
-            Thrust: <span className="text-gray-200 font-medium">{derived.thrustDamage}</span>
+          <div className="text-fg-muted">
+            Thrust: <span className="text-fg-primary font-medium">{derived.thrustDamage}</span>
           </div>
-          <div className="text-gray-400">
-            Swing: <span className="text-gray-200 font-medium">{derived.swingDamage}</span>
+          <div className="text-fg-muted">
+            Swing: <span className="text-fg-primary font-medium">{derived.swingDamage}</span>
           </div>
         </div>
       </div>

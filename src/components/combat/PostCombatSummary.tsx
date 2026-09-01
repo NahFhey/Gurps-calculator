@@ -105,12 +105,12 @@ interface PostCombatSummaryProps {
 
 function HPBar({ current, max, label }: { current: number; max: number; label: string }) {
   const pct = max > 0 ? Math.max(0, Math.min(100, (current / max) * 100)) : 0;
-  const color = pct > 66 ? 'bg-green-500' : pct > 33 ? 'bg-yellow-500' : 'bg-red-500';
+  const color = pct > 66 ? 'bg-success-500' : pct > 33 ? 'bg-yellow-500' : 'bg-danger-500';
 
   return (
     <div className="flex items-center gap-2 text-sm">
-      <span className="w-6 text-gray-400">{label}</span>
-      <div className="flex-1 bg-gray-700 rounded-full h-2.5 overflow-hidden">
+      <span className="w-6 text-fg-muted">{label}</span>
+      <div className="flex-1 bg-surface-2 rounded-full h-2.5 overflow-hidden">
         <div
           className={`h-full rounded-full transition-all ${color}`}
           style={{ width: `${pct}%` }}
@@ -125,9 +125,9 @@ function HPBar({ current, max, label }: { current: number; max: number; label: s
 
 function StatusBadge({ label, variant }: { label: string; variant: 'danger' | 'warning' | 'info' }) {
   const colors = {
-    danger: 'bg-red-900/50 text-red-300 border-red-700/50',
+    danger: 'bg-danger-900/50 text-danger-300 border-danger-700/50',
     warning: 'bg-yellow-900/50 text-yellow-300 border-yellow-700/50',
-    info: 'bg-blue-900/50 text-blue-300 border-blue-700/50'
+    info: 'bg-accent-900/50 text-accent-300 border-accent-700/50'
   };
 
   return (
@@ -149,27 +149,27 @@ function ParticipantSummaryCard({ summary, healingEstimate }: {
 
   const categoryColors: Record<string, string> = {
     player: 'border-purple-600/50',
-    ally: 'border-green-600/50',
-    enemy: 'border-red-600/50',
-    object: 'border-gray-600/50'
+    ally: 'border-success-600/50',
+    enemy: 'border-danger-600/50',
+    object: 'border-edge-strong/50'
   };
 
   return (
-    <div className={`bg-gray-800 rounded-lg border ${categoryColors[summary.category] || 'border-gray-700'} overflow-hidden`}>
+    <div className={`bg-surface-1 rounded-lg border ${categoryColors[summary.category] || 'border-edge'} overflow-hidden`}>
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-3 p-3 hover:bg-gray-750 transition-colors text-left"
+        className="w-full flex items-center gap-3 p-3 hover:bg-surface-2 transition-colors text-left"
       >
         {/* Status icon */}
         <div className="flex-shrink-0">
           {summary.isDead ? (
-            <Skull size={20} className="text-red-500" />
+            <Skull size={20} className="text-danger-500" />
           ) : summary.isUnconscious ? (
             <AlertTriangle size={20} className="text-yellow-500" />
           ) : hasDamage ? (
             <Heart size={20} className="text-orange-400" />
           ) : (
-            <Shield size={20} className="text-green-400" />
+            <Shield size={20} className="text-success-400" />
           )}
         </div>
 
@@ -194,22 +194,22 @@ function ParticipantSummaryCard({ summary, healingEstimate }: {
 
         {/* HP summary */}
         <div className="flex-shrink-0 text-right">
-          <div className={`text-sm font-mono ${hpLost > 0 ? 'text-red-400' : 'text-green-400'}`}>
+          <div className={`text-sm font-mono ${hpLost > 0 ? 'text-danger-400' : 'text-success-400'}`}>
             {summary.endHP}/{summary.maxHP} HP
           </div>
           {hpLost > 0 && (
-            <div className="text-xs text-red-400">-{hpLost}</div>
+            <div className="text-xs text-danger-400">-{hpLost}</div>
           )}
         </div>
 
         {/* Expand toggle */}
-        <div className="flex-shrink-0 text-gray-500">
+        <div className="flex-shrink-0 text-fg-faint">
           {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </div>
       </button>
 
       {expanded && (
-        <div className="px-3 pb-3 space-y-3 border-t border-gray-700/50">
+        <div className="px-3 pb-3 space-y-3 border-t border-edge/50">
           <div className="pt-2 space-y-2">
             <HPBar current={summary.endHP} max={summary.maxHP} label="HP" />
             <HPBar current={summary.endFP} max={summary.maxFP} label="FP" />
@@ -218,7 +218,7 @@ function ParticipantSummaryCard({ summary, healingEstimate }: {
           {/* Conditions */}
           {hasConditions && (
             <div>
-              <div className="text-xs text-gray-400 mb-1">Conditions</div>
+              <div className="text-xs text-fg-muted mb-1">Conditions</div>
               <div className="flex flex-wrap gap-1">
                 {summary.conditions.map(c => (
                   <StatusBadge key={c.instanceId} label={c.label} variant="info" />
@@ -229,22 +229,22 @@ function ParticipantSummaryCard({ summary, healingEstimate }: {
 
           {/* Healing estimate for party characters */}
           {healingEstimate && summary.isFromParty && hpLost > 0 && (
-            <div className="bg-gray-900/50 rounded p-2 space-y-1">
-              <div className="text-xs text-gray-400 flex items-center gap-1">
+            <div className="bg-surface-0/50 rounded p-2 space-y-1">
+              <div className="text-xs text-fg-muted flex items-center gap-1">
                 <Clock size={12} /> Healing Estimate
               </div>
               <div className="text-sm space-y-0.5">
                 <div>
-                  Natural recovery: <span className="text-blue-300">{healingEstimate.daysToFullHP} day{healingEstimate.daysToFullHP !== 1 ? 's' : ''}</span> of rest
+                  Natural recovery: <span className="text-accent-300">{healingEstimate.daysToFullHP} day{healingEstimate.daysToFullHP !== 1 ? 's' : ''}</span> of rest
                 </div>
                 {healingEstimate.firstAidEstimate.max > 0 && (
                   <div>
-                    First Aid: <span className="text-green-300">{healingEstimate.firstAidEstimate.min}–{healingEstimate.firstAidEstimate.max} HP</span> immediate
+                    First Aid: <span className="text-success-300">{healingEstimate.firstAidEstimate.min}–{healingEstimate.firstAidEstimate.max} HP</span> immediate
                   </div>
                 )}
                 {fpLost > 0 && (
                   <div>
-                    FP recovery: <span className="text-blue-300">{fpLost * 10} min</span> rest
+                    FP recovery: <span className="text-accent-300">{fpLost * 10} min</span> rest
                   </div>
                 )}
               </div>
@@ -329,8 +329,8 @@ export default function PostCombatSummary({ combat, onComplete, onProceedToLoot 
       {/* Header */}
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold">Combat Complete</h2>
-        <div className="text-gray-400">{summary.combatName}</div>
-        <div className="flex justify-center gap-6 text-sm text-gray-400">
+        <div className="text-fg-muted">{summary.combatName}</div>
+        <div className="flex justify-center gap-6 text-sm text-fg-muted">
           <span>{summary.rounds} round{summary.rounds !== 1 ? 's' : ''}</span>
           <span>{durationMin > 0 ? `${durationMin} min` : '< 1 min'}</span>
           <span>{enemiesDefeated}/{totalEnemies} enemies down</span>
@@ -339,7 +339,7 @@ export default function PostCombatSummary({ combat, onComplete, onProceedToLoot 
 
       {/* Sync confirmation */}
       {syncComplete && partyParticipants.length > 0 && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-green-900/30 border border-green-700/50 rounded text-sm text-green-300">
+        <div className="flex items-center gap-2 px-3 py-2 bg-success-900/30 border border-success-700/50 rounded text-sm text-success-300">
           <Check size={16} />
           Party character HP/FP synced back to campaign
         </div>
@@ -348,19 +348,19 @@ export default function PostCombatSummary({ combat, onComplete, onProceedToLoot 
       {/* Quick stats for party */}
       {partyParticipants.length > 0 && (
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-gray-800 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold text-red-400">{totalPartyDamage}</div>
-            <div className="text-xs text-gray-400">Total HP Lost</div>
+          <div className="bg-surface-1 rounded-lg p-3 text-center">
+            <div className="text-2xl font-bold text-danger-400">{totalPartyDamage}</div>
+            <div className="text-xs text-fg-muted">Total HP Lost</div>
           </div>
-          <div className="bg-gray-800 rounded-lg p-3 text-center">
+          <div className="bg-surface-1 rounded-lg p-3 text-center">
             <div className="text-2xl font-bold text-yellow-400">{partyDeaths}</div>
-            <div className="text-xs text-gray-400">Deaths</div>
+            <div className="text-xs text-fg-muted">Deaths</div>
           </div>
-          <div className="bg-gray-800 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold text-green-400">
+          <div className="bg-surface-1 rounded-lg p-3 text-center">
+            <div className="text-2xl font-bold text-success-400">
               {partyParticipants.filter(p => !p.isDead && !p.isUnconscious).length}
             </div>
-            <div className="text-xs text-gray-400">Standing</div>
+            <div className="text-xs text-fg-muted">Standing</div>
           </div>
         </div>
       )}
@@ -402,7 +402,7 @@ export default function PostCombatSummary({ combat, onComplete, onProceedToLoot 
       )}
 
       {/* Actions */}
-      <div className="flex gap-3 justify-center pt-4 border-t border-gray-700">
+      <div className="flex gap-3 justify-center pt-4 border-t border-edge">
         <button
           onClick={onProceedToLoot}
           className="flex items-center gap-2 px-6 py-3 bg-yellow-600 hover:bg-yellow-700 rounded-lg font-semibold transition-colors"
@@ -412,7 +412,7 @@ export default function PostCombatSummary({ combat, onComplete, onProceedToLoot 
         </button>
         <button
           onClick={onComplete}
-          className="px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg transition-colors"
+          className="px-6 py-3 bg-surface-3 hover:bg-surface-2 rounded-lg transition-colors"
         >
           Skip & Finish
         </button>

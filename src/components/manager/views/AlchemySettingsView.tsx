@@ -14,14 +14,14 @@ export function AlchemySettingsView({ alchemySettings, saveAlchemySettings }: Al
   return (
     <div>
       <h2 className="text-xl font-bold mb-4">Alchemy Settings</h2>
-      <p className="text-sm text-gray-400 mb-6">
+      <p className="text-sm text-fg-muted mb-6">
         Configure default settings for alchemy batches. These can be overridden per batch.
       </p>
 
-      <div className="bg-gray-700 p-6 rounded-lg space-y-6 max-w-2xl">
+      <div className="bg-surface-2 p-6 rounded-lg space-y-6 max-w-2xl">
         <div>
           <label className="block text-sm font-semibold mb-2">Default Lab Rating (LR)</label>
-          <p className="text-xs text-gray-400 mb-3">
+          <p className="text-xs text-fg-muted mb-3">
             Lab equipment quality reduces Work Requirement (WR). Recommended range: 0 to 4
           </p>
           <input
@@ -36,17 +36,17 @@ export function AlchemySettingsView({ alchemySettings, saveAlchemySettings }: Al
                 defaultLabRating: clamped
               });
             }}
-            className="w-full bg-gray-600 px-4 py-2 rounded text-lg"
+            className="w-full bg-surface-3 px-4 py-2 rounded text-lg"
             placeholder="0"
           />
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-fg-faint mt-2">
             Current: LR {alchemySettings.defaultLabRating} (reduces WR by {alchemySettings.defaultLabRating})
           </p>
         </div>
 
-        <div className="border-t border-gray-600 pt-6">
+        <div className="border-t border-edge-strong pt-6">
           <label className="block text-sm font-semibold mb-2">Work Block Duration (minutes)</label>
-          <p className="text-xs text-gray-400 mb-3">
+          <p className="text-xs text-fg-muted mb-3">
             Standard time unit for alchemy work. Progress is tracked in work blocks.
           </p>
           <input
@@ -59,15 +59,15 @@ export function AlchemySettingsView({ alchemySettings, saveAlchemySettings }: Al
                 workBlockMinutes: Math.max(1, toNumberOr(e.target.value, 120))
               });
             }}
-            className="w-full bg-gray-600 px-4 py-2 rounded text-lg"
+            className="w-full bg-surface-3 px-4 py-2 rounded text-lg"
             placeholder="120"
           />
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-fg-faint mt-2">
             Current: {alchemySettings.workBlockMinutes} minutes ({(alchemySettings.workBlockMinutes / 60).toFixed(1)} hours)
           </p>
         </div>
 
-        <div className="border-t border-gray-600 pt-6">
+        <div className="border-t border-edge-strong pt-6">
           <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
@@ -82,14 +82,14 @@ export function AlchemySettingsView({ alchemySettings, saveAlchemySettings }: Al
             />
             <div>
               <div className="text-sm font-semibold">Auto-Save Recipes on Batch Completion</div>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-fg-muted">
                 Automatically save successful batches as new recipes without prompting
               </p>
             </div>
           </label>
         </div>
 
-        <div className="border-t border-gray-600 pt-6">
+        <div className="border-t border-edge-strong pt-6">
           <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
@@ -104,16 +104,16 @@ export function AlchemySettingsView({ alchemySettings, saveAlchemySettings }: Al
             />
             <div>
               <div className="text-sm font-semibold">Show Obvious Physical Roles</div>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-fg-muted">
                 Allow physical roles (Solvent, Binder, Tool) to be known from mundane inspection even when reagent is unidentified
               </p>
             </div>
           </label>
         </div>
 
-        <div className="bg-gray-800 p-4 rounded text-sm">
+        <div className="bg-surface-1 p-4 rounded text-sm">
           <div className="font-semibold mb-2">Notes:</div>
-          <ul className="list-disc list-inside space-y-1 text-gray-300">
+          <ul className="list-disc list-inside space-y-1 text-fg-secondary">
             <li>Lab Rating (LR) reduces WR directly: LR 4 reduces WR by 4</li>
             <li>Higher lab rating = easier brewing, fewer work blocks needed</li>
             <li>Work blocks can be customized for different campaign pacing</li>

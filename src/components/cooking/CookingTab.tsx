@@ -352,29 +352,29 @@ export function CookingTab() {
     <div>
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg max-w-md">
+          <div className="bg-surface-1 p-6 rounded-lg max-w-md">
             <h3 className="text-xl font-bold mb-4">Confirm Delete</h3>
             <p className="mb-6">Delete recipe "{deleteConfirm.name}"?</p>
             <div className="flex gap-3 justify-end">
-              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 bg-gray-600 rounded">Cancel</button>
-              <button onClick={() => { saveRecipes(recipes.filter(recipe => recipe.id !== deleteConfirm.id)); setDeleteConfirm(null); }} className="px-4 py-2 bg-red-600 rounded">Delete</button>
+              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 bg-surface-3 rounded">Cancel</button>
+              <button onClick={() => { saveRecipes(recipes.filter(recipe => recipe.id !== deleteConfirm.id)); setDeleteConfirm(null); }} className="px-4 py-2 bg-danger-600 rounded">Delete</button>
             </div>
           </div>
         </div>
       )}
       {hasEffect && (
-        <div className="mb-4 px-3 py-2 rounded bg-blue-900/30 border border-blue-700/50">
+        <div className="mb-4 px-3 py-2 rounded bg-accent-900/30 border border-accent-700/50">
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-blue-400">Weather Effect:</span>
-            <span className="text-gray-300">{effectDescription}</span>
-            {locationName && <span className="text-gray-500 text-xs">at {locationName}</span>}
+            <span className="text-accent-400">Weather Effect:</span>
+            <span className="text-fg-secondary">{effectDescription}</span>
+            {locationName && <span className="text-fg-faint text-xs">at {locationName}</span>}
           </div>
         </div>
       )}
       <div className="flex gap-2 mb-4">
-        <button onClick={() => setView('create')} className={`px-4 py-2 rounded ${view === 'create' ? 'bg-blue-600' : 'bg-gray-700'}`}>Create Recipe</button>
-        <button onClick={() => setView('library')} className={`px-4 py-2 rounded ${view === 'library' ? 'bg-blue-600' : 'bg-gray-700'}`}>Library ({recipes.length})</button>
-        {view === 'remake' && <button onClick={() => { setView('library'); setSelectedRecipe(null); setRemakeIngredients([]); }} className="px-4 py-2 rounded bg-gray-700">← Back to Library</button>}
+        <button onClick={() => setView('create')} className={`px-4 py-2 rounded ${view === 'create' ? 'bg-accent-600' : 'bg-surface-2'}`}>Create Recipe</button>
+        <button onClick={() => setView('library')} className={`px-4 py-2 rounded ${view === 'library' ? 'bg-accent-600' : 'bg-surface-2'}`}>Library ({recipes.length})</button>
+        {view === 'remake' && <button onClick={() => { setView('library'); setSelectedRecipe(null); setRemakeIngredients([]); }} className="px-4 py-2 rounded bg-surface-2">← Back to Library</button>}
       </div>
       {view === 'create' && <CreateMealView
         foods={foods} selected={selected} numPeople={numPeople} name={name} crit={crit}

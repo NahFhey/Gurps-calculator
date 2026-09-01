@@ -9,9 +9,9 @@ import { useCombatContext } from './CombatContext';
 import { XCircle } from 'lucide-react';
 
 const GROUP_COLORS: Record<string, string> = {
-  Core: 'border-blue-500/40',
-  'All-Out Attack': 'border-red-500/40',
-  'All-Out Defense': 'border-green-500/40',
+  Core: 'border-accent-500/40',
+  'All-Out Attack': 'border-danger-500/40',
+  'All-Out Defense': 'border-success-500/40',
 };
 
 export function CombatManeuverRail() {
@@ -31,11 +31,11 @@ export function CombatManeuverRail() {
     <div className="flex flex-col h-full">
       {/* Current actor header */}
       <div className="mb-2">
-        <h2 className="text-[10px] uppercase tracking-wider text-gray-500">
+        <h2 className="text-[10px] uppercase tracking-wider text-fg-faint">
           Maneuver
         </h2>
         {currentActor && (
-          <div className="text-xs font-medium text-blue-300 truncate mt-0.5">
+          <div className="text-xs font-medium text-accent-300 truncate mt-0.5">
             {currentActor.name}
           </div>
         )}
@@ -46,7 +46,7 @@ export function CombatManeuverRail() {
         {availableManeuvers.map((m) => {
           const isSelected = m.id === selectedManeuverId;
           const isDisabled = !!m.disabled;
-          const groupColor = m.group && GROUP_COLORS[m.group] ? GROUP_COLORS[m.group] : 'border-gray-600/40';
+          const groupColor = m.group && GROUP_COLORS[m.group] ? GROUP_COLORS[m.group] : 'border-edge-strong/40';
 
           return (
             <button
@@ -63,10 +63,10 @@ export function CombatManeuverRail() {
                 ${groupColor}
                 ${
                   isSelected
-                    ? 'bg-blue-600/30 text-blue-100 border-l-blue-400 font-medium'
+                    ? 'bg-accent-600/30 text-accent-100 border-l-accent-400 font-medium'
                     : isDisabled
-                      ? 'bg-gray-800/30 text-gray-600 cursor-not-allowed opacity-50'
-                      : 'bg-gray-800/50 text-gray-300 hover:bg-gray-700/50 hover:text-gray-100'
+                      ? 'bg-surface-1/30 text-fg-disabled cursor-not-allowed opacity-50'
+                      : 'bg-surface-1/50 text-fg-secondary hover:bg-surface-2/50 hover:text-fg-bright'
                 }
               `}
             >
@@ -78,16 +78,16 @@ export function CombatManeuverRail() {
 
       {/* Selected maneuver notes */}
       {selectedManeuver && selectedManeuver.notes && (
-        <div className="mt-2 px-1 py-1.5 text-[10px] text-gray-400 bg-gray-800/50 rounded">
+        <div className="mt-2 px-1 py-1.5 text-[10px] text-fg-muted bg-surface-1/50 rounded">
           {selectedManeuver.notes}
         </div>
       )}
 
       {/* End combat */}
-      <div className="mt-3 pt-2 border-t border-gray-700">
+      <div className="mt-3 pt-2 border-t border-edge">
         <button
           onClick={handleEndCombat}
-          className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs rounded bg-red-900/50 hover:bg-red-800/50 text-red-300 border border-red-700/40 transition-colors"
+          className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs rounded bg-danger-900/50 hover:bg-danger-800/50 text-danger-300 border border-danger-700/40 transition-colors"
         >
           <XCircle className="h-3 w-3" />
           End Combat

@@ -177,7 +177,7 @@ export default function ReinforcementsModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="bg-gray-800 p-6 rounded-lg max-w-3xl w-full m-4 max-h-[90vh] overflow-y-auto"
+        className="bg-surface-1 p-6 rounded-lg max-w-3xl w-full m-4 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex justify-between items-center mb-6">
           <h2 id={titleId} className="text-2xl font-bold">Add Reinforcements</h2>
@@ -185,7 +185,7 @@ export default function ReinforcementsModal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="text-gray-400 hover:text-white"
+            className="text-fg-muted hover:text-white"
           >
             <X size={24} aria-hidden="true" />
           </button>
@@ -200,7 +200,7 @@ export default function ReinforcementsModal({
                   key={option.value}
                   type="button"
                   onClick={() => setCategory(option.value)}
-                  className={`px-4 py-2 rounded ${category === option.value ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+                  className={`px-4 py-2 rounded ${category === option.value ? 'bg-accent-600' : 'bg-surface-2 hover:bg-surface-3'}`}
                 >
                   {option.label}
                 </button>
@@ -211,14 +211,14 @@ export default function ReinforcementsModal({
           <div>
             <label className="block text-sm font-semibold mb-2">Character</label>
             {filteredCharacters.length === 0 ? (
-              <div className="text-sm text-gray-400">
+              <div className="text-sm text-fg-muted">
                 No characters in this category. Add some in the Character Library first.
               </div>
             ) : (
               <select
                 value={characterId}
                 onChange={(e: ChangeEvent<HTMLSelectElement>) => setCharacterId(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 rounded"
+                className="w-full px-3 py-2 bg-surface-2 rounded"
               >
                 {filteredCharacters.map(character => (
                   <option key={character.id} value={character.id}>
@@ -237,7 +237,7 @@ export default function ReinforcementsModal({
                 min={1}
                 value={resolvedQuantity}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setQuantity(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 rounded"
+                className="w-full px-3 py-2 bg-surface-2 rounded"
               />
             </div>
             <div className="md:col-span-2">
@@ -247,7 +247,7 @@ export default function ReinforcementsModal({
                 value={prefix}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setPrefix(e.target.value)}
                 placeholder="e.g. Goblin Archer"
-                className="w-full px-3 py-2 bg-gray-700 rounded"
+                className="w-full px-3 py-2 bg-surface-2 rounded"
               />
             </div>
           </div>
@@ -255,9 +255,9 @@ export default function ReinforcementsModal({
           <div>
             <label className="block text-sm font-semibold mb-2">Preview</label>
             {previewNames.length === 0 ? (
-              <div className="text-sm text-gray-400">Select a character to preview names.</div>
+              <div className="text-sm text-fg-muted">Select a character to preview names.</div>
             ) : (
-              <div className="bg-gray-900 rounded p-3 text-sm text-gray-300">
+              <div className="bg-surface-0 rounded p-3 text-sm text-fg-secondary">
                 {previewNames.join(', ')}
               </div>
             )}
@@ -266,7 +266,7 @@ export default function ReinforcementsModal({
           <div>
             <label className="block text-sm font-semibold mb-2">Insertion Mode</label>
             {!canInsertTurns && (
-              <div className="text-xs text-gray-400 mb-2">Objects do not take turns; insertion mode is ignored.</div>
+              <div className="text-xs text-fg-muted mb-2">Objects do not take turns; insertion mode is ignored.</div>
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {INSERTION_MODES.map(option => (
@@ -275,7 +275,7 @@ export default function ReinforcementsModal({
                   type="button"
                   disabled={!canInsertTurns}
                   onClick={() => setInsertionMode(option.value)}
-                  className={`px-4 py-2 rounded text-left ${insertionMode === option.value ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'} ${!canInsertTurns ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`px-4 py-2 rounded text-left ${insertionMode === option.value ? 'bg-accent-600' : 'bg-surface-2 hover:bg-surface-3'} ${!canInsertTurns ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {option.label}
                 </button>
@@ -286,7 +286,7 @@ export default function ReinforcementsModal({
           {canInsertTurns && insertionMode === 'manual' && (
             <div>
               <label className="block text-sm font-semibold mb-2">Manual Turn Order</label>
-              <div className="bg-gray-900 rounded p-3 space-y-2 text-sm">
+              <div className="bg-surface-0 rounded p-3 space-y-2 text-sm">
                 {manualOrder.map((entryId, index) => {
                   const isNew = entryId.startsWith('new-');
                   const nameIndex = isNew ? Number(entryId.replace('new-', '')) : null;
@@ -296,7 +296,7 @@ export default function ReinforcementsModal({
                   const isCurrent = entryId === currentActorInstanceId;
 
                   return (
-                    <div key={entryId} className={`flex items-center justify-between ${isCurrent ? 'text-blue-300' : ''}`}>
+                    <div key={entryId} className={`flex items-center justify-between ${isCurrent ? 'text-accent-300' : ''}`}>
                       <div>{displayName}{isCurrent ? ' (Current)' : ''}</div>
                       {isNew && (
                         <div className="flex gap-1">
@@ -304,7 +304,7 @@ export default function ReinforcementsModal({
                             type="button"
                             onClick={() => handleMove(index, -1)}
                             aria-label={`Move ${displayName} earlier in turn order`}
-                            className="p-1 bg-gray-700 rounded hover:bg-gray-600"
+                            className="p-1 bg-surface-2 rounded hover:bg-surface-3"
                           >
                             <ChevronUp size={16} aria-hidden="true" />
                           </button>
@@ -312,7 +312,7 @@ export default function ReinforcementsModal({
                             type="button"
                             onClick={() => handleMove(index, 1)}
                             aria-label={`Move ${displayName} later in turn order`}
-                            className="p-1 bg-gray-700 rounded hover:bg-gray-600"
+                            className="p-1 bg-surface-2 rounded hover:bg-surface-3"
                           >
                             <ChevronDown size={16} aria-hidden="true" />
                           </button>
@@ -328,14 +328,14 @@ export default function ReinforcementsModal({
           <div className="flex gap-4 justify-end">
             <button
               onClick={onClose}
-              className="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded"
+              className="px-6 py-2 bg-surface-2 hover:bg-surface-3 rounded"
             >
               Cancel
             </button>
             <button
               onClick={handleConfirm}
               disabled={!selectedCharacter}
-              className="px-6 py-2 bg-green-600 hover:bg-green-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-success-600 hover:bg-success-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Add Reinforcements
             </button>

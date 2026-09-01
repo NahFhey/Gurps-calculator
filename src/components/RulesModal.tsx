@@ -188,28 +188,28 @@ export function RulesModal({ section, onClose }: RulesModalProps) {
       aria-labelledby="rules-modal-title"
       aria-describedby="rules-modal-content"
     >
-      <div className="bg-gray-800 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-        <div className="sticky top-0 bg-gray-800 border-b border-gray-700 p-4 flex items-center justify-between">
+      <div className="bg-surface-1 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+        <div className="sticky top-0 bg-surface-1 border-b border-edge p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="text-2xl" aria-hidden="true">{content.icon}</span>
             <h2 id="rules-modal-title" className="text-xl font-bold">{content.title}</h2>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white"
+            className="text-fg-muted hover:text-white"
             aria-label="Close rules dialog"
           >
             <X size={24} />
           </button>
         </div>
         <div className="p-6">
-          <div id="rules-modal-content" className="text-gray-300 space-y-3 whitespace-pre-line">
+          <div id="rules-modal-content" className="text-fg-secondary space-y-3 whitespace-pre-line">
             {content.content}
           </div>
-          <div className="mt-6 p-4 bg-blue-900 bg-opacity-30 border border-blue-600 rounded flex items-start gap-3">
-            <BookOpen size={20} className="text-blue-400 flex-shrink-0 mt-1" />
-            <div className="text-sm text-gray-300">
-              For complete rules and detailed mechanics, visit the <button onClick={onClose} className="text-blue-400 hover:text-blue-300 underline">Rules tab</button>.
+          <div className="mt-6 p-4 bg-accent-900 bg-opacity-30 border border-accent-600 rounded flex items-start gap-3">
+            <BookOpen size={20} className="text-accent-400 flex-shrink-0 mt-1" />
+            <div className="text-sm text-fg-secondary">
+              For complete rules and detailed mechanics, visit the <button onClick={onClose} className="text-accent-400 hover:text-accent-300 underline">Rules tab</button>.
             </div>
           </div>
         </div>

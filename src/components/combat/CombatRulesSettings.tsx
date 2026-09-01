@@ -41,7 +41,7 @@ export default function CombatRulesSettings({
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4">
+    <div className="bg-surface-1 rounded-lg p-4">
       <div className="flex items-center gap-2 mb-4">
         <Settings size={20} />
         <h3 className="text-lg font-semibold">Combat Rules Preset</h3>
@@ -58,24 +58,24 @@ export default function CombatRulesSettings({
               onClick={() => onPresetChange(presetValue)}
               className={`w-full text-left p-4 rounded border-2 transition-colors ${
                 isSelected
-                  ? 'bg-blue-900/50 border-blue-500'
-                  : 'bg-gray-900 border-gray-700 hover:border-gray-600'
+                  ? 'bg-accent-900/50 border-accent-500'
+                  : 'bg-surface-0 border-edge hover:border-edge-strong'
               }`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="font-semibold text-lg">{presetInfo.label}</div>
-                  <div className="text-sm text-gray-400 mt-1">{presetInfo.description}</div>
+                  <div className="text-sm text-fg-muted mt-1">{presetInfo.description}</div>
                   <div className="mt-2 space-y-1">
                     {presetInfo.features.map((feature, index) => (
-                      <div key={index} className="text-xs text-gray-500">
+                      <div key={index} className="text-xs text-fg-faint">
                         • {feature}
                       </div>
                     ))}
                   </div>
                 </div>
                 {isSelected && (
-                  <div className="ml-4 text-blue-400 font-bold">✓</div>
+                  <div className="ml-4 text-accent-400 font-bold">✓</div>
                 )}
               </div>
             </button>
@@ -83,7 +83,7 @@ export default function CombatRulesSettings({
         })}
       </div>
 
-      <div className="mt-4 p-3 bg-gray-900 rounded text-sm text-gray-400">
+      <div className="mt-4 p-3 bg-surface-0 rounded text-sm text-fg-muted">
         <strong>Note:</strong> This preset affects injury resolution and effects tracking. You can change it at any time.
       </div>
     </div>

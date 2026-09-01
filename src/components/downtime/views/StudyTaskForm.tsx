@@ -98,19 +98,19 @@ export function StudyTaskForm({
   };
 
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800/60 p-4" data-testid="study-task-form">
+    <div className="rounded-lg border border-edge bg-surface-1/60 p-4" data-testid="study-task-form">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="flex items-center gap-2 font-medium text-gray-100">
+        <h3 className="flex items-center gap-2 font-medium text-fg-bright">
           <GraduationCap className="h-4 w-4 text-cyan-400" /> New Study Task
         </h3>
-        <button type="button" onClick={onCancel} aria-label="Close form" className="text-gray-400 hover:text-gray-200">
+        <button type="button" onClick={onCancel} aria-label="Close form" className="text-fg-muted hover:text-fg-primary">
           <X className="h-5 w-5" />
         </button>
       </div>
 
-      <label className="mb-3 block text-sm text-gray-300">
+      <label className="mb-3 block text-sm text-fg-secondary">
         <span className="mb-1 block font-medium">Student</span>
-        <select value={leaderId} onChange={(event) => setLeaderId(event.target.value)} data-testid="leader-select" className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-gray-100">
+        <select value={leaderId} onChange={(event) => setLeaderId(event.target.value)} data-testid="leader-select" className="w-full rounded border border-edge-strong bg-surface-0 px-3 py-2 text-fg-bright">
           <option value="">Select a student...</option>
           {availableCharacters.map((character) => <option key={character.id} value={character.id}>{character.name}</option>)}
         </select>
@@ -118,9 +118,9 @@ export function StudyTaskForm({
 
       {leader && (
         <>
-          <label className="mb-3 block text-sm text-gray-300">
+          <label className="mb-3 block text-sm text-fg-secondary">
             <span className="mb-1 block font-medium">Skill</span>
-            <select value={skillId} onChange={(event) => setSkillId(event.target.value)} data-testid="skill-select" className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-gray-100">
+            <select value={skillId} onChange={(event) => setSkillId(event.target.value)} data-testid="skill-select" className="w-full rounded border border-edge-strong bg-surface-0 px-3 py-2 text-fg-bright">
               <option value="">Select a skill...</option>
               {existingSkills.map((skill) => (
                 <option key={skill.id} value={skill.id}>
@@ -132,23 +132,23 @@ export function StudyTaskForm({
           </label>
 
           {isNewSkill && (
-            <label className="mb-3 block text-sm text-gray-300">
+            <label className="mb-3 block text-sm text-fg-secondary">
               <span className="mb-1 block font-medium">New skill name</span>
-              <input value={newSkillName} onChange={(event) => setNewSkillName(event.target.value)} data-testid="new-skill-name-input" className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-gray-100" />
+              <input value={newSkillName} onChange={(event) => setNewSkillName(event.target.value)} data-testid="new-skill-name-input" className="w-full rounded border border-edge-strong bg-surface-0 px-3 py-2 text-fg-bright" />
             </label>
           )}
 
           {(selectedSkill || isNewSkill) && (
             <div className="mb-3 grid grid-cols-2 gap-3">
-              <label className="block text-sm text-gray-300">
+              <label className="block text-sm text-fg-secondary">
                 <span className="mb-1 block font-medium">Difficulty</span>
-                <select value={difficulty} onChange={(event) => setDifficulty(event.target.value as SkillDifficulty)} disabled={Boolean(selectedSkill)} data-testid="difficulty-select" className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-gray-100 disabled:text-gray-400">
+                <select value={difficulty} onChange={(event) => setDifficulty(event.target.value as SkillDifficulty)} disabled={Boolean(selectedSkill)} data-testid="difficulty-select" className="w-full rounded border border-edge-strong bg-surface-0 px-3 py-2 text-fg-bright disabled:text-fg-muted">
                   {DIFFICULTIES.map((value) => <option key={value} value={value}>{value}</option>)}
                 </select>
               </label>
-              <label className="block text-sm text-gray-300">
+              <label className="block text-sm text-fg-secondary">
                 <span className="mb-1 block font-medium">Attribute</span>
-                <select value={attribute} onChange={(event) => setAttribute(event.target.value as SkillAttribute)} disabled={Boolean(selectedSkill)} data-testid="attribute-select" className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-gray-100 disabled:text-gray-400">
+                <select value={attribute} onChange={(event) => setAttribute(event.target.value as SkillAttribute)} disabled={Boolean(selectedSkill)} data-testid="attribute-select" className="w-full rounded border border-edge-strong bg-surface-0 px-3 py-2 text-fg-bright disabled:text-fg-muted">
                   {ATTRIBUTES.map((value) => <option key={value} value={value}>{value}</option>)}
                 </select>
               </label>
@@ -156,9 +156,9 @@ export function StudyTaskForm({
           )}
 
           {(selectedSkill || (isNewSkill && newSkillName.trim())) && (
-            <label className="mb-3 block text-sm text-gray-300">
+            <label className="mb-3 block text-sm text-fg-secondary">
               <span className="mb-1 block font-medium">Teacher (optional)</span>
-              <select value={teacherId} onChange={(event) => setTeacherId(event.target.value)} data-testid="teacher-select" className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-gray-100">
+              <select value={teacherId} onChange={(event) => setTeacherId(event.target.value)} data-testid="teacher-select" className="w-full rounded border border-edge-strong bg-surface-0 px-3 py-2 text-fg-bright">
                 <option value="">No teacher</option>
                 {teacherCandidates.map((character) => {
                   const eligible = isEligibleTeacher(character, leader, skillName, specialization);
@@ -170,15 +170,15 @@ export function StudyTaskForm({
         </>
       )}
 
-      <label className="mb-2 flex items-center gap-2 text-sm text-gray-300">
+      <label className="mb-2 flex items-center gap-2 text-sm text-fg-secondary">
         <input type="checkbox" checked={goodMaterials} onChange={(event) => setGoodMaterials(event.target.checked)} data-testid="good-materials-checkbox" />
         Good study materials
       </label>
       <p className="mb-4 text-xs text-cyan-300" data-testid="rate-preview">{rate}h/slot ({rateReason})</p>
 
       <div className="flex gap-2">
-        <button type="button" onClick={handleSubmit} disabled={!canSubmit} data-testid="submit-button" className="rounded bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-700 disabled:cursor-not-allowed disabled:bg-gray-700 disabled:text-gray-500">Create Study Task</button>
-        <button type="button" onClick={onCancel} className="rounded border border-gray-600 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Cancel</button>
+        <button type="button" onClick={handleSubmit} disabled={!canSubmit} data-testid="submit-button" className="rounded bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-700 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-fg-faint">Create Study Task</button>
+        <button type="button" onClick={onCancel} className="rounded border border-edge-strong px-4 py-2 text-sm text-fg-secondary hover:bg-surface-2">Cancel</button>
       </div>
     </div>
   );

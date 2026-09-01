@@ -25,10 +25,10 @@ const DIFFICULTY_LABELS: Record<SkillDifficulty, string> = {
 };
 
 const DIFFICULTY_COLORS: Record<SkillDifficulty, string> = {
-  'E': 'text-green-400',
+  'E': 'text-success-400',
   'A': 'text-yellow-400',
   'H': 'text-orange-400',
-  'VH': 'text-red-400',
+  'VH': 'text-danger-400',
 };
 
 export function SkillsSection({
@@ -135,15 +135,15 @@ export function SkillsSection({
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4">
+    <div className="bg-surface-1 rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-semibold text-gray-100">
-          Skills <span className="text-sm text-gray-400">({skills.length}) [{totalPoints}]</span>
+        <h3 className="text-lg font-semibold text-fg-bright">
+          Skills <span className="text-sm text-fg-muted">({skills.length}) [{totalPoints}]</span>
         </h3>
         {editMode && (
           <button
             onClick={handleAdd}
-            className="flex items-center gap-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm"
+            className="flex items-center gap-1 px-2 py-1 bg-surface-2 hover:bg-surface-3 rounded text-sm"
           >
             <Plus size={14} />
             Add Skill
@@ -152,14 +152,14 @@ export function SkillsSection({
       </div>
 
       {skills.length === 0 ? (
-        <div className="text-gray-500 italic">No skills</div>
+        <div className="text-fg-faint italic">No skills</div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-gray-400 border-b border-gray-700">
+              <tr className="text-left text-fg-muted border-b border-edge">
                 <th
-                  className="pb-2 cursor-pointer hover:text-gray-200"
+                  className="pb-2 cursor-pointer hover:text-fg-primary"
                   onClick={() => handleSort('name')}
                 >
                   <div className="flex items-center gap-1">
@@ -167,7 +167,7 @@ export function SkillsSection({
                   </div>
                 </th>
                 <th
-                  className="pb-2 cursor-pointer hover:text-gray-200 w-20"
+                  className="pb-2 cursor-pointer hover:text-fg-primary w-20"
                   onClick={() => handleSort('attribute')}
                 >
                   <div className="flex items-center gap-1">
@@ -175,7 +175,7 @@ export function SkillsSection({
                   </div>
                 </th>
                 <th
-                  className="pb-2 cursor-pointer hover:text-gray-200 w-16"
+                  className="pb-2 cursor-pointer hover:text-fg-primary w-16"
                   onClick={() => handleSort('difficulty')}
                 >
                   <div className="flex items-center gap-1">
@@ -184,7 +184,7 @@ export function SkillsSection({
                 </th>
                 <th className="pb-2 w-24">Rel. Lvl</th>
                 <th
-                  className="pb-2 cursor-pointer hover:text-gray-200 w-16 text-center"
+                  className="pb-2 cursor-pointer hover:text-fg-primary w-16 text-center"
                   onClick={() => handleSort('level')}
                 >
                   <div className="flex items-center justify-center gap-1">
@@ -192,7 +192,7 @@ export function SkillsSection({
                   </div>
                 </th>
                 <th
-                  className="pb-2 cursor-pointer hover:text-gray-200 w-16 text-center"
+                  className="pb-2 cursor-pointer hover:text-fg-primary w-16 text-center"
                   onClick={() => handleSort('points')}
                 >
                   <div className="flex items-center justify-center gap-1">
@@ -204,7 +204,7 @@ export function SkillsSection({
             </thead>
             <tbody>
               {sortedSkills.map((skill) => (
-                <tr key={skill.id} className="border-b border-gray-700/50 hover:bg-gray-700/30">
+                <tr key={skill.id} className="border-b border-edge/50 hover:bg-surface-2/30">
                   <td className="py-1.5">
                     {editMode ? (
                       <div className="flex gap-1">
@@ -213,20 +213,20 @@ export function SkillsSection({
                           value={skill.name}
                           onChange={(e) => handleChange(skill.id, { name: e.target.value })}
                           placeholder="Skill name"
-                          className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-0.5 text-gray-100"
+                          className="flex-1 bg-surface-2 border border-edge-strong rounded px-2 py-0.5 text-fg-bright"
                         />
                         {skill.techLevel !== undefined && (
-                          <span className="text-gray-400">/TL{skill.techLevel}</span>
+                          <span className="text-fg-muted">/TL{skill.techLevel}</span>
                         )}
                       </div>
                     ) : (
-                      <span className="text-gray-200">
+                      <span className="text-fg-primary">
                         {skill.name}
                         {skill.techLevel !== undefined && (
-                          <span className="text-gray-500">/TL{skill.techLevel}</span>
+                          <span className="text-fg-faint">/TL{skill.techLevel}</span>
                         )}
                         {skill.specialization && (
-                          <span className="text-gray-400"> ({skill.specialization})</span>
+                          <span className="text-fg-muted"> ({skill.specialization})</span>
                         )}
                       </span>
                     )}
@@ -236,7 +236,7 @@ export function SkillsSection({
                       <select
                         value={skill.attribute}
                         onChange={(e) => handleChange(skill.id, { attribute: e.target.value as SkillAttribute })}
-                        className="bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-gray-100"
+                        className="bg-surface-2 border border-edge-strong rounded px-1 py-0.5 text-fg-bright"
                       >
                         {SKILL_ATTRIBUTES.map((attr) => (
                           <option key={attr} value={attr}>
@@ -245,7 +245,7 @@ export function SkillsSection({
                         ))}
                       </select>
                     ) : (
-                      <span className="text-gray-400">{skill.attribute}</span>
+                      <span className="text-fg-muted">{skill.attribute}</span>
                     )}
                   </td>
                   <td className="py-1.5">
@@ -253,7 +253,7 @@ export function SkillsSection({
                       <select
                         value={skill.difficulty || 'A'}
                         onChange={(e) => handleChange(skill.id, { difficulty: e.target.value as SkillDifficulty })}
-                        className="bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-gray-100"
+                        className="bg-surface-2 border border-edge-strong rounded px-1 py-0.5 text-fg-bright"
                       >
                         {SKILL_DIFFICULTIES.map((d) => (
                           <option key={d} value={d}>{d}</option>
@@ -271,16 +271,16 @@ export function SkillsSection({
                         type="number"
                         value={skill.relativeLevel}
                         onChange={(e) => handleChange(skill.id, { relativeLevel: parseInt(e.target.value) || 0 })}
-                        className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-0.5 text-gray-100 text-center"
+                        className="w-16 bg-surface-2 border border-edge-strong rounded px-2 py-0.5 text-fg-bright text-center"
                       />
                     ) : (
-                      <span className="text-gray-400">
+                      <span className="text-fg-muted">
                         {skill.attribute}{skill.relativeLevel >= 0 ? '+' : ''}{skill.relativeLevel}
                       </span>
                     )}
                   </td>
                   <td className="py-1.5 text-center">
-                    <span className="font-bold text-gray-100">{skill.level}</span>
+                    <span className="font-bold text-fg-bright">{skill.level}</span>
                   </td>
                   <td className="py-1.5 text-center">
                     {editMode ? (
@@ -288,18 +288,18 @@ export function SkillsSection({
                         type="number"
                         value={skill.points}
                         onChange={(e) => handleChange(skill.id, { points: parseInt(e.target.value) || 0 })}
-                        className="w-14 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-gray-100 text-center"
+                        className="w-14 bg-surface-2 border border-edge-strong rounded px-1 py-0.5 text-fg-bright text-center"
                         min={0}
                       />
                     ) : (
-                      <span className="text-gray-400">[{skill.points}]</span>
+                      <span className="text-fg-muted">[{skill.points}]</span>
                     )}
                   </td>
                   {editMode && (
                     <td className="py-1.5">
                       <button
                         onClick={() => handleRemove(skill.id)}
-                        className="p-1 hover:bg-gray-600 rounded text-red-400"
+                        className="p-1 hover:bg-surface-3 rounded text-danger-400"
                       >
                         <Trash2 size={14} />
                       </button>

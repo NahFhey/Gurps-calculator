@@ -54,7 +54,7 @@ export function EffectFamilyMapView({ effectFamilyMap, saveEffectFamilyMap }: Ef
   return (
     <div>
       <h2 className="text-xl font-bold mb-4">Effect Family Map (Aspect Pairings)</h2>
-      <p className="text-sm text-gray-400 mb-6">
+      <p className="text-sm text-fg-muted mb-6">
         Define possible effects for each aspect pairing. Click a pairing to expand and add effects.
       </p>
 
@@ -66,26 +66,26 @@ export function EffectFamilyMapView({ effectFamilyMap, saveEffectFamilyMap }: Ef
             const isExpanded = expanded[pairKey];
 
             return (
-              <div key={pairKey} className="bg-gray-700 rounded">
+              <div key={pairKey} className="bg-surface-2 rounded">
                 <div
-                  className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-600"
+                  className="flex items-center gap-3 p-3 cursor-pointer hover:bg-surface-3"
                   onClick={() => setExpanded(p => ({...p, [pairKey]: !p[pairKey]}))}
                 >
                   <span className="font-semibold w-32">{dominant}/{secondary}</span>
-                  <span className="flex-1 text-sm text-gray-400 italic">
+                  <span className="flex-1 text-sm text-fg-muted italic">
                     {pairData.summary || 'No summary'}
                   </span>
-                  <span className="text-xs text-blue-400">
+                  <span className="text-xs text-accent-400">
                     {pairData.effects?.length || 0} effect{pairData.effects?.length !== 1 ? 's' : ''}
                   </span>
-                  <span className="text-gray-400">{isExpanded ? '▼' : '▶'}</span>
+                  <span className="text-fg-muted">{isExpanded ? '▼' : '▶'}</span>
                 </div>
 
                 {isExpanded && (
-                  <div className="px-3 pb-3 space-y-4 border-t border-gray-600 pt-3">
+                  <div className="px-3 pb-3 space-y-4 border-t border-edge-strong pt-3">
                     {/* Summary field */}
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Summary (quick reference)</label>
+                      <label className="block text-xs text-fg-muted mb-1">Summary (quick reference)</label>
                       <textarea
                         value={pairData.summary || ''}
                         onChange={(e) => {
@@ -98,7 +98,7 @@ export function EffectFamilyMapView({ effectFamilyMap, saveEffectFamilyMap }: Ef
                           });
                         }}
                         placeholder="Brief summary of possible effects for this pairing..."
-                        className="w-full bg-gray-600 px-3 py-2 rounded text-sm"
+                        className="w-full bg-surface-3 px-3 py-2 rounded text-sm"
                         rows={2}
                       />
                     </div>
@@ -112,66 +112,66 @@ export function EffectFamilyMapView({ effectFamilyMap, saveEffectFamilyMap }: Ef
                             e.stopPropagation();
                             addEffect(pairKey, pairData);
                           }}
-                          className="bg-blue-600 px-3 py-1 rounded text-sm"
+                          className="bg-accent-600 px-3 py-1 rounded text-sm"
                         >
                           <Plus size={14} className="inline" /> Add Effect
                         </button>
                       </div>
 
                       {(!pairData.effects || pairData.effects.length === 0) && (
-                        <div className="text-gray-500 text-sm italic mb-2">No effects defined</div>
+                        <div className="text-fg-faint text-sm italic mb-2">No effects defined</div>
                       )}
 
                       {pairData.effects?.map((effect, idx) => (
-                        <div key={effect.id} className="bg-gray-800 p-3 rounded mb-2 space-y-2">
+                        <div key={effect.id} className="bg-surface-1 p-3 rounded mb-2 space-y-2">
                           <div className="flex gap-2">
                             <input
                               value={effect.name}
                               onChange={(e) => updateEffect(pairKey, pairData, idx, { name: e.target.value })}
                               placeholder="Effect name (e.g., 'Quicksilver Reflex')"
-                              className="flex-1 bg-gray-600 px-3 py-1 rounded text-sm font-semibold"
+                              className="flex-1 bg-surface-3 px-3 py-1 rounded text-sm font-semibold"
                             />
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 deleteEffect(pairKey, pairData, idx);
                               }}
-                              className="text-red-400 px-2"
+                              className="text-danger-400 px-2"
                             >
                               <Trash2 size={16} />
                             </button>
                           </div>
 
                           <div>
-                            <label className="block text-xs text-gray-500 mb-1">Keywords/Tags</label>
+                            <label className="block text-xs text-fg-faint mb-1">Keywords/Tags</label>
                             <input
                               value={effect.keywords}
                               onChange={(e) => updateEffect(pairKey, pairData, idx, { keywords: e.target.value })}
                               placeholder="speed, reflex, stamina"
-                              className="w-full bg-gray-600 px-3 py-1 rounded text-sm"
+                              className="w-full bg-surface-3 px-3 py-1 rounded text-sm"
                             />
                           </div>
 
                           <div>
-                            <label className="block text-xs text-gray-500 mb-1">Notes / Trait Packages</label>
+                            <label className="block text-xs text-fg-faint mb-1">Notes / Trait Packages</label>
                             <textarea
                               value={effect.notes}
                               onChange={(e) => updateEffect(pairKey, pairData, idx, { notes: e.target.value })}
                               placeholder="Player-facing notes, trait packages, etc."
-                              className="w-full bg-gray-600 px-3 py-1 rounded text-sm"
+                              className="w-full bg-surface-3 px-3 py-1 rounded text-sm"
                               rows={2}
                             />
                           </div>
 
                           <div>
                             <div className="flex items-center justify-between mb-1">
-                              <label className="text-xs text-gray-500">GM Notes</label>
+                              <label className="text-xs text-fg-faint">GM Notes</label>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   updateEffect(pairKey, pairData, idx, { gmNotesVisible: !effect.gmNotesVisible });
                                 }}
-                                className="text-xs px-2 py-1 bg-gray-700 rounded flex items-center gap-1"
+                                className="text-xs px-2 py-1 bg-surface-2 rounded flex items-center gap-1"
                               >
                                 {effect.gmNotesVisible ? <Eye size={12} /> : <EyeOff size={12} />}
                                 {effect.gmNotesVisible ? 'Visible' : 'Hidden'}
@@ -181,7 +181,7 @@ export function EffectFamilyMapView({ effectFamilyMap, saveEffectFamilyMap }: Ef
                               value={effect.gmNotes}
                               onChange={(e) => updateEffect(pairKey, pairData, idx, { gmNotes: e.target.value })}
                               placeholder="Hidden GM notes..."
-                              className="w-full bg-gray-600 px-3 py-1 rounded text-sm"
+                              className="w-full bg-surface-3 px-3 py-1 rounded text-sm"
                               rows={2}
                             />
                           </div>

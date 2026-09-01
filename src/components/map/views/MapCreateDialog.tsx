@@ -64,18 +64,18 @@ export function MapCreateDialog({ onConfirm, onCancel, climateLabels = CLIMATE_L
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="w-full max-w-md bg-gray-800 border border-gray-600 rounded-lg shadow-2xl"
+        className="w-full max-w-md bg-surface-1 border border-edge-strong rounded-lg shadow-2xl"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-          <h2 id={titleId} className="text-lg font-semibold text-gray-100">Create New Map</h2>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-edge">
+          <h2 id={titleId} className="text-lg font-semibold text-fg-bright">Create New Map</h2>
           <button
             type="button"
             onClick={onCancel}
             aria-label="Close dialog"
-            className="p-1 rounded hover:bg-gray-700 transition-colors"
+            className="p-1 rounded hover:bg-surface-2 transition-colors"
           >
-            <X className="w-4 h-4 text-gray-400" aria-hidden="true" />
+            <X className="w-4 h-4 text-fg-muted" aria-hidden="true" />
           </button>
         </div>
 
@@ -83,8 +83,8 @@ export function MapCreateDialog({ onConfirm, onCancel, climateLabels = CLIMATE_L
         <form onSubmit={handleSubmit} className="px-4 py-4 space-y-4">
           {/* Name */}
           <div>
-            <label htmlFor={nameInputId} className="block text-sm font-medium text-gray-300 mb-1">
-              Map Name <span className="text-red-400" aria-hidden="true">*</span>
+            <label htmlFor={nameInputId} className="block text-sm font-medium text-fg-secondary mb-1">
+              Map Name <span className="text-danger-400" aria-hidden="true">*</span>
             </label>
             <input
               id={nameInputId}
@@ -94,14 +94,14 @@ export function MapCreateDialog({ onConfirm, onCancel, climateLabels = CLIMATE_L
               placeholder="e.g., Thornwood Region"
               required
               aria-required="true"
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-surface-0 border border-edge-strong rounded text-sm text-fg-primary placeholder-fg-faint focus:outline-none focus:ring-2 focus:ring-accent-500"
               autoFocus
             />
           </div>
 
           {/* Description */}
           <div>
-            <label htmlFor={descriptionInputId} className="block text-sm font-medium text-gray-300 mb-1">
+            <label htmlFor={descriptionInputId} className="block text-sm font-medium text-fg-secondary mb-1">
               Description
             </label>
             <input
@@ -110,19 +110,19 @@ export function MapCreateDialog({ onConfirm, onCancel, climateLabels = CLIMATE_L
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional description"
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-surface-0 border border-edge-strong rounded text-sm text-fg-primary placeholder-fg-faint focus:outline-none focus:ring-2 focus:ring-accent-500"
             />
           </div>
 
           <div>
-            <label htmlFor="map-climate" className="block text-sm font-medium text-gray-300 mb-1">
+            <label htmlFor="map-climate" className="block text-sm font-medium text-fg-secondary mb-1">
               Climate
             </label>
             <select
               id="map-climate"
               value={climate}
               onChange={(event) => setClimate(event.target.value as ClimateType)}
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded text-sm text-gray-200"
+              className="w-full px-3 py-2 bg-surface-0 border border-edge-strong rounded text-sm text-fg-primary"
             >
               {Object.entries(climateLabels).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
@@ -132,7 +132,7 @@ export function MapCreateDialog({ onConfirm, onCancel, climateLabels = CLIMATE_L
 
           {/* Scale */}
           <div role="radiogroup" aria-labelledby={scaleGroupId}>
-            <label id={scaleGroupId} className="block text-sm font-medium text-gray-300 mb-2">
+            <label id={scaleGroupId} className="block text-sm font-medium text-fg-secondary mb-2">
               Scale
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -146,13 +146,13 @@ export function MapCreateDialog({ onConfirm, onCancel, climateLabels = CLIMATE_L
                   className={[
                     'px-3 py-2 rounded text-xs font-medium border transition-colors',
                     scale === s.value
-                      ? 'bg-blue-600 border-blue-500 text-white'
-                      : 'bg-gray-700/50 border-gray-600 text-gray-300 hover:bg-gray-600/50',
+                      ? 'bg-accent-600 border-accent-500 text-white'
+                      : 'bg-surface-2/50 border-edge-strong text-fg-secondary hover:bg-surface-3/50',
                   ].join(' ')}
                   onClick={() => setScale(s.value)}
                 >
                   <div>{s.value} mi/tile</div>
-                  <div className="text-gray-400 mt-0.5">{s.description}</div>
+                  <div className="text-fg-muted mt-0.5">{s.description}</div>
                 </button>
               ))}
             </div>
@@ -160,7 +160,7 @@ export function MapCreateDialog({ onConfirm, onCancel, climateLabels = CLIMATE_L
 
           {/* Starting Terrain */}
           <div role="radiogroup" aria-labelledby={terrainGroupId}>
-            <label id={terrainGroupId} className="block text-sm font-medium text-gray-300 mb-2">
+            <label id={terrainGroupId} className="block text-sm font-medium text-fg-secondary mb-2">
               Starting Terrain
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -174,8 +174,8 @@ export function MapCreateDialog({ onConfirm, onCancel, climateLabels = CLIMATE_L
                   className={[
                     'flex items-center gap-2 px-2 py-1.5 rounded text-xs border transition-colors',
                     startTerrainId === t.id
-                      ? 'bg-gray-600 border-white/50 text-white'
-                      : 'bg-gray-700/30 border-gray-600 text-gray-300 hover:bg-gray-600/30',
+                      ? 'bg-surface-3 border-white/50 text-white'
+                      : 'bg-surface-2/30 border-edge-strong text-fg-secondary hover:bg-surface-3/30',
                   ].join(' ')}
                   onClick={() => setStartTerrainId(t.id)}
                 >
@@ -196,7 +196,7 @@ export function MapCreateDialog({ onConfirm, onCancel, climateLabels = CLIMATE_L
               type="button"
               onClick={onCancel}
               aria-label="Cancel and close dialog"
-              className="px-4 py-2 text-sm text-gray-300 hover:text-gray-100 transition-colors"
+              className="px-4 py-2 text-sm text-fg-secondary hover:text-fg-bright transition-colors"
             >
               Cancel
             </button>
@@ -207,8 +207,8 @@ export function MapCreateDialog({ onConfirm, onCancel, climateLabels = CLIMATE_L
               className={[
                 'px-4 py-2 text-sm font-medium rounded transition-colors',
                 canConfirm
-                  ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                  : 'bg-gray-700 text-gray-500 cursor-not-allowed',
+                  ? 'bg-accent-600 hover:bg-accent-500 text-white'
+                  : 'bg-surface-2 text-fg-faint cursor-not-allowed',
               ].join(' ')}
             >
               Create Map

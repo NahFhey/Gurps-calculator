@@ -561,13 +561,13 @@ describe('BatchesView', () => {
     fireEvent.click(screen.getByRole('button', { name: /Add Ingredient/i }));
 
     const sufficientLine = screen.getByText(/Mandrake: 1U required.*5U available/);
-    expect(sufficientLine).toHaveClass('text-green-400');
+    expect(sufficientLine).toHaveClass('text-success-400');
     expect(screen.getByRole('button', { name: 'Start Batch' })).not.toBeDisabled();
 
     fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '6' } });
 
     const insufficientLine = screen.getByText(/Mandrake: 6U required.*5U available/);
-    expect(insufficientLine).toHaveClass('text-red-400');
+    expect(insufficientLine).toHaveClass('text-danger-400');
     expect(screen.getByRole('button', { name: 'Need Reagents' })).toBeDisabled();
   });
 });

@@ -143,7 +143,7 @@ describe('EnvironmentsView', () => {
 
     render(<EnvironmentsView {...defaultProps} environments={environments} />);
 
-    const deleteButton = document.querySelector('button.text-red-400');
+    const deleteButton = document.querySelector('button.text-danger-400');
     expect(deleteButton).not.toBeNull();
     if (deleteButton) fireEvent.click(deleteButton);
 
@@ -157,7 +157,7 @@ describe('EnvironmentsView', () => {
 
     render(<EnvironmentsView {...defaultProps} environments={environments} />);
 
-    const editButton = document.querySelector('button.text-blue-400');
+    const editButton = document.querySelector('button.text-accent-400');
     expect(editButton).not.toBeNull();
     if (editButton) fireEvent.click(editButton);
 

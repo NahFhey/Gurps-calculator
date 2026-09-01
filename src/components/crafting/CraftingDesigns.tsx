@@ -45,9 +45,9 @@ export function CraftingDesigns({
   void _workers; void saveMaterials; // reserved/refund-compatible props
   const { actions } = useCampaignStore();
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
+    <div className="bg-surface-1 rounded-lg p-6">
       <h2 className="text-xl font-bold mb-4 text-purple-400">Saved Craft Designs</h2>
-      <p className="text-sm text-gray-400 mb-4">
+      <p className="text-sm text-fg-muted mb-4">
         Start crafting immediately from a completed design, skipping the design phase.
       </p>
       <div className="space-y-4">
@@ -83,10 +83,10 @@ export function CraftingDesigns({
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <h3 className="font-semibold text-lg capitalize">{design.name}</h3>
-                  <div className="text-sm text-gray-400">
+                  <div className="text-sm text-fg-muted">
                     {design.templateType} - {design.template} | Quality: {design.quality}
                   </div>
-                  <div className="text-sm text-gray-400">
+                  <div className="text-sm text-fg-muted">
                     W: {finalWeight} lbs | HP: {finalHP} | HT: {avgHT + (q as any).htBonus}
                   </div>
                 </div>
@@ -143,7 +143,7 @@ export function CraftingDesigns({
                       onStartFromDesign(newCraft);
                     }}
                     disabled={!canStart}
-                    className={`px-4 py-2 rounded ${canStart ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 cursor-not-allowed'}`}
+                    className={`px-4 py-2 rounded ${canStart ? 'bg-success-600 hover:bg-success-700' : 'bg-surface-3 cursor-not-allowed'}`}
                   >
                     {canStart ? 'Start Craft' : 'Need Materials'}
                   </button>
@@ -153,21 +153,21 @@ export function CraftingDesigns({
                         saveCraftDesigns((craftDesigns || []).filter(d => d.id !== design.id));
                       }
                     }}
-                    className="px-4 py-2 bg-red-600 rounded hover:bg-red-700"
+                    className="px-4 py-2 bg-danger-600 rounded hover:bg-danger-700"
                   >
                     Delete
                   </button>
                 </div>
               </div>
               {requiredMaterials.length > 0 && (
-                <div className="text-sm text-gray-400 mt-2">
+                <div className="text-sm text-fg-muted mt-2">
                   <div className="font-semibold mb-1">Required Materials:</div>
                   <div className="space-y-1">
                     {requiredMaterials.map((req, idx) => {
                       const mat = materials.find(m => m.id === req.selectedMaterialId || String(m.id) === req.selectedMaterialId);
                       const hasEnough = mat && mat.quantity >= req.requiredAmount;
                       return (
-                        <div key={idx} className={hasEnough ? 'text-green-400' : 'text-red-400'}>
+                        <div key={idx} className={hasEnough ? 'text-success-400' : 'text-danger-400'}>
                           {req.requiredType}: {req.requiredAmount} lbs {mat ? `(${mat.quantity} available)` : '(not found)'}
                         </div>
                       );
@@ -179,7 +179,7 @@ export function CraftingDesigns({
           );
         })}
         {(craftDesigns || []).length === 0 && (
-          <div className="text-gray-500 italic">No saved designs. Complete a design phase to save one!</div>
+          <div className="text-fg-faint italic">No saved designs. Complete a design phase to save one!</div>
         )}
       </div>
     </div>

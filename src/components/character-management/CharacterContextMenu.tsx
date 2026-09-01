@@ -103,13 +103,13 @@ export function CharacterContextMenu({
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 bg-gray-800 border border-gray-600 rounded-lg shadow-xl py-1 min-w-[160px]"
+      className="fixed z-50 bg-surface-1 border border-edge-strong rounded-lg shadow-xl py-1 min-w-[160px]"
       style={{ left: position.x, top: position.y }}
     >
       {/* Character name header */}
-      <div className="px-3 py-2 border-b border-gray-700">
-        <div className="text-xs text-gray-400">Character</div>
-        <div className="text-sm font-medium text-gray-200 truncate max-w-[200px]">
+      <div className="px-3 py-2 border-b border-edge">
+        <div className="text-xs text-fg-muted">Character</div>
+        <div className="text-sm font-medium text-fg-primary truncate max-w-[200px]">
           {characterName}
         </div>
       </div>
@@ -119,15 +119,15 @@ export function CharacterContextMenu({
         {menuItems.map((item, index) => (
           <div key={item.type}>
             {item.danger && index > 0 && (
-              <div className="border-t border-gray-700 my-1" />
+              <div className="border-t border-edge my-1" />
             )}
             <button
               type="button"
               onClick={() => handleAction(item.type)}
               className={`w-full flex items-center gap-3 px-3 py-2 text-sm transition-colors ${
                 item.danger
-                  ? 'text-red-400 hover:bg-red-500/10'
-                  : 'text-gray-200 hover:bg-gray-700'
+                  ? 'text-danger-400 hover:bg-danger-500/10'
+                  : 'text-fg-primary hover:bg-surface-2'
               }`}
             >
               <item.icon className="h-4 w-4" />

@@ -127,7 +127,7 @@ describe('ConditionBadge', () => {
         />
       );
 
-      expect(getBadge().className).toContain('border-red-500');
+      expect(getBadge().className).toContain('border-danger-500');
       expect(getBadge().className).toContain('animate-pulse');
     });
 
@@ -151,7 +151,7 @@ describe('ConditionBadge', () => {
 
       expect(screen.getByText('❓')).toBeInTheDocument();
       expect(screen.getByText('Afflicted')).toBeInTheDocument();
-      expect(getBadge('Afflicted').className).toContain('border-gray-600');
+      expect(getBadge('Afflicted').className).toContain('border-edge-strong');
     });
 
     it('is auto-detected from the player-view placeholder flag', () => {
@@ -164,7 +164,7 @@ describe('ConditionBadge', () => {
       // Placeholder forces the anonymous icon even if a real conditionId leaked
       expect(screen.getByText('❓')).toBeInTheDocument();
       expect(screen.queryByText('💫')).not.toBeInTheDocument();
-      expect(getBadge('Afflicted').className).toContain('border-gray-600');
+      expect(getBadge('Afflicted').className).toContain('border-edge-strong');
     });
 
     it('never renders severity, duration, or quick-remove', () => {
@@ -264,7 +264,7 @@ describe('ConditionBadge', () => {
       render(<ConditionBadge condition={condition} currentRound={5} mode="full" />);
 
       const badge = getBadge();
-      expect(badge.className).toContain('border-red-500');
+      expect(badge.className).toContain('border-danger-500');
       expect(badge.className).toContain('animate-pulse');
     });
 

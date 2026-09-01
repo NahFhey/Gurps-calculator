@@ -79,8 +79,8 @@ export function CombatMainArea() {
           onClick={() => setShowDice((v) => !v)}
           className={`p-2 rounded-lg shadow-lg transition-colors ${
             showDice
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-800/90 text-gray-300 hover:bg-gray-700'
+              ? 'bg-accent-600 text-white'
+              : 'bg-surface-1/90 text-fg-secondary hover:bg-surface-2'
           }`}
           title="Dice Tools"
         >
@@ -90,8 +90,8 @@ export function CombatMainArea() {
           onClick={() => setShowLog((v) => !v)}
           className={`p-2 rounded-lg shadow-lg transition-colors ${
             showLog
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-800/90 text-gray-300 hover:bg-gray-700'
+              ? 'bg-accent-600 text-white'
+              : 'bg-surface-1/90 text-fg-secondary hover:bg-surface-2'
           }`}
           title="Combat Log"
         >
@@ -101,12 +101,12 @@ export function CombatMainArea() {
 
       {/* Floating dice panel */}
       {showDice && (
-        <div className="absolute bottom-14 left-3 z-30 w-56 bg-gray-900/95 border border-gray-700 rounded-lg shadow-2xl p-3 backdrop-blur-sm">
+        <div className="absolute bottom-14 left-3 z-30 w-56 bg-surface-0/95 border border-edge rounded-lg shadow-2xl p-3 backdrop-blur-sm">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-gray-300">Dice</span>
+            <span className="text-xs font-medium text-fg-secondary">Dice</span>
             <button
               onClick={() => setShowDice(false)}
-              className="p-0.5 rounded hover:bg-gray-700 text-gray-500"
+              className="p-0.5 rounded hover:bg-surface-2 text-fg-faint"
             >
               <X className="h-3 w-3" />
             </button>
@@ -116,21 +116,21 @@ export function CombatMainArea() {
               type="text"
               value={ctx.diceExpression}
               onChange={(e) => ctx.setDiceExpression(e.target.value)}
-              className="flex-1 px-2 py-1 text-xs bg-gray-800 border border-gray-700 rounded"
+              className="flex-1 px-2 py-1 text-xs bg-surface-1 border border-edge rounded"
               placeholder="3d6"
             />
             <input
               type="text"
               value={ctx.rollTarget}
               onChange={(e) => ctx.setRollTarget(e.target.value)}
-              className="w-12 px-2 py-1 text-xs bg-gray-800 border border-gray-700 rounded"
+              className="w-12 px-2 py-1 text-xs bg-surface-1 border border-edge rounded"
               placeholder="vs"
             />
           </div>
           <div className="flex gap-1.5 mt-1.5">
             <button
               onClick={ctx.handleRoll}
-              className="flex-1 px-2 py-1 text-xs rounded bg-blue-600 hover:bg-blue-500 text-white font-medium"
+              className="flex-1 px-2 py-1 text-xs rounded bg-accent-600 hover:bg-accent-500 text-white font-medium"
             >
               Roll
             </button>
@@ -139,7 +139,7 @@ export function CombatMainArea() {
                 ctx.setDiceExpression('3d6');
                 ctx.handleRoll();
               }}
-              className="px-2 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600 text-gray-300"
+              className="px-2 py-1 text-xs rounded bg-surface-2 hover:bg-surface-3 text-fg-secondary"
             >
               3d6
             </button>
@@ -148,7 +148,7 @@ export function CombatMainArea() {
                 ctx.setDiceExpression('1d6');
                 ctx.handleRoll();
               }}
-              className="px-2 py-1 text-xs rounded bg-gray-700 hover:bg-gray-600 text-gray-300"
+              className="px-2 py-1 text-xs rounded bg-surface-2 hover:bg-surface-3 text-fg-secondary"
             >
               1d6
             </button>
@@ -158,26 +158,26 @@ export function CombatMainArea() {
 
       {/* Floating combat log */}
       {showLog && (
-        <div className="absolute bottom-14 right-3 z-30 w-72 max-h-64 bg-gray-900/95 border border-gray-700 rounded-lg shadow-2xl backdrop-blur-sm flex flex-col">
-          <div className="flex items-center justify-between p-2 border-b border-gray-700">
-            <span className="text-xs font-medium text-gray-300">Combat Log</span>
+        <div className="absolute bottom-14 right-3 z-30 w-72 max-h-64 bg-surface-0/95 border border-edge rounded-lg shadow-2xl backdrop-blur-sm flex flex-col">
+          <div className="flex items-center justify-between p-2 border-b border-edge">
+            <span className="text-xs font-medium text-fg-secondary">Combat Log</span>
             <button
               onClick={() => setShowLog(false)}
-              className="p-0.5 rounded hover:bg-gray-700 text-gray-500"
+              className="p-0.5 rounded hover:bg-surface-2 text-fg-faint"
             >
               <X className="h-3 w-3" />
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
             {ctx.displayLog.length === 0 && (
-              <div className="text-[10px] text-gray-600">No entries yet</div>
+              <div className="text-[10px] text-fg-disabled">No entries yet</div>
             )}
             {[...ctx.displayLog]
               .reverse()
               .slice(0, 50)
               .map((entry: any, i: number) => (
-                <div key={entry.id || i} className="text-[10px] text-gray-400">
-                  <span className="text-gray-600 tabular-nums">
+                <div key={entry.id || i} className="text-[10px] text-fg-muted">
+                  <span className="text-fg-disabled tabular-nums">
                     [{new Date(entry.timestamp).toLocaleTimeString()}]
                   </span>{' '}
                   {entry.text}

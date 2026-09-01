@@ -402,9 +402,9 @@ export function InventoryTab() {
   return (
     <div>
       <div className="flex gap-2 mb-4">
-        <button onClick={() => setView('materials')} className={`px-4 py-2 rounded ${view === 'materials' ? 'bg-blue-600' : 'bg-gray-700'}`}>Raw Materials</button>
-        <button onClick={() => setView('foods')} className={`px-4 py-2 rounded ${view === 'foods' ? 'bg-blue-600' : 'bg-gray-700'}`}>Food Supplies</button>
-        <button onClick={() => setView('stash')} className={`px-4 py-2 rounded ${view === 'stash' ? 'bg-blue-600' : 'bg-gray-700'}`}>Party Stash</button>
+        <button onClick={() => setView('materials')} className={`px-4 py-2 rounded ${view === 'materials' ? 'bg-accent-600' : 'bg-surface-2'}`}>Raw Materials</button>
+        <button onClick={() => setView('foods')} className={`px-4 py-2 rounded ${view === 'foods' ? 'bg-accent-600' : 'bg-surface-2'}`}>Food Supplies</button>
+        <button onClick={() => setView('stash')} className={`px-4 py-2 rounded ${view === 'stash' ? 'bg-accent-600' : 'bg-surface-2'}`}>Party Stash</button>
       </div>
 
       {view !== 'stash' && (

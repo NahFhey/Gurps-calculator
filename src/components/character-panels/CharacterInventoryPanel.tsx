@@ -128,23 +128,23 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-700">
+      <div className="flex items-center justify-between p-4 border-b border-edge">
         <div className="flex items-center gap-3">
           <button
             onClick={handleBack}
-            className="p-1.5 rounded hover:bg-gray-700 text-gray-400 hover:text-gray-200"
+            className="p-1.5 rounded hover:bg-surface-2 text-fg-muted hover:text-fg-primary"
             title="Back to character sheet"
           >
             <ArrowLeft size={20} />
           </button>
           <div className="flex items-center gap-2">
-            <Package size={20} className="text-amber-400" />
+            <Package size={20} className="text-warning-400" />
             <div>
-              <h2 className="text-lg font-semibold text-gray-100">
+              <h2 className="text-lg font-semibold text-fg-bright">
                 {character.name}'s Inventory
               </h2>
               {(attunementCapacity > 0 || characterInventory?.items.some((item) => item.magical)) && (
-                <div className="text-xs text-gray-400">
+                <div className="text-xs text-fg-muted">
                   Attuned {attunedItems.length}/{attunementCapacity}
                 </div>
               )}
@@ -157,12 +157,12 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
       <div className="flex-1 overflow-auto p-4">
         {!characterInventory ? (
           <div className="text-center py-8">
-            <p className="text-gray-400 mb-4">
+            <p className="text-fg-muted mb-4">
               {character.name} doesn't have a personal inventory yet.
             </p>
             <button
               onClick={handleCreateInventory}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-sm font-medium"
+              className="px-4 py-2 bg-accent-600 hover:bg-accent-500 rounded text-sm font-medium"
             >
               Create Inventory
             </button>
@@ -170,8 +170,8 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
         ) : (
           <div className="space-y-6">
             {/* Items Section */}
-            <div className="bg-gray-800 rounded-lg p-4">
-              <h3 className="text-sm font-semibold text-gray-300 mb-3">Items</h3>
+            <div className="bg-surface-1 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-fg-secondary mb-3">Items</h3>
 
               {/* Add Item Form */}
               <div className="flex gap-2 mb-3">
@@ -180,7 +180,7 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
                   value={newItemName}
                   onChange={(e) => setNewItemName(e.target.value)}
                   placeholder="Item name"
-                  className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-sm text-gray-100"
+                  className="flex-1 bg-surface-2 border border-edge-strong rounded px-3 py-1.5 text-sm text-fg-bright"
                   onKeyDown={(e) => e.key === 'Enter' && handleAddItem()}
                 />
                 <input
@@ -188,12 +188,12 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
                   value={newItemQuantity}
                   onChange={(e) => setNewItemQuantity(parseInt(e.target.value) || 1)}
                   min={1}
-                  className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-gray-100 text-center"
+                  className="w-16 bg-surface-2 border border-edge-strong rounded px-2 py-1.5 text-sm text-fg-bright text-center"
                 />
                 <button
                   onClick={handleAddItem}
                   disabled={!newItemName.trim()}
-                  className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 rounded text-sm"
+                  className="px-3 py-1.5 bg-surface-2 hover:bg-surface-3 disabled:opacity-50 rounded text-sm"
                 >
                   <Plus size={16} />
                 </button>
@@ -201,29 +201,29 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
 
               {/* Items List */}
               {characterInventory.items.length === 0 ? (
-                <p className="text-gray-500 text-sm italic">No items</p>
+                <p className="text-fg-faint text-sm italic">No items</p>
               ) : (
                 <ul className="space-y-1">
                   {characterInventory.items.map((item) => (
                     <li
                       key={item.id}
-                      className="flex items-center justify-between gap-2 px-3 py-2 rounded bg-gray-700/50"
+                      className="flex items-center justify-between gap-2 px-3 py-2 rounded bg-surface-2/50"
                     >
-                      <span className="text-gray-200">
+                      <span className="text-fg-primary">
                         {item.name}
-                        <span className="text-gray-400 ml-2">x{item.quantity}</span>
+                        <span className="text-fg-muted ml-2">x{item.quantity}</span>
                       </span>
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => setEquipItem(item)}
-                          className="rounded bg-blue-600/20 px-2 py-1 text-xs text-blue-200 hover:bg-blue-600/30"
+                          className="rounded bg-accent-600/20 px-2 py-1 text-xs text-accent-200 hover:bg-accent-600/30"
                         >
                           Equip…
                         </button>
                         <button
                           onClick={() => handleMagicalSet(item.id, !item.magical)}
-                          className={`p-1 rounded hover:bg-gray-600 ${
-                            item.magical ? 'text-violet-300' : 'text-gray-500 hover:text-gray-300'
+                          className={`p-1 rounded hover:bg-surface-3 ${
+                            item.magical ? 'text-violet-300' : 'text-fg-faint hover:text-fg-secondary'
                           }`}
                           title={item.magical ? 'Mark as mundane' : 'Mark as magical'}
                           aria-label={`${item.magical ? 'Mark as mundane' : 'Mark as magical'}: ${item.name ?? 'item'}`}
@@ -244,12 +244,12 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
                             <button
                               onClick={() => handleAttunementSet(item.id, !item.attuned)}
                               disabled={disabled}
-                              className={`p-1 rounded hover:bg-gray-600 disabled:cursor-not-allowed ${
+                              className={`p-1 rounded hover:bg-surface-3 disabled:cursor-not-allowed ${
                                 item.attuned
-                                  ? 'text-amber-300'
+                                  ? 'text-warning-300'
                                   : disabled
-                                    ? 'text-gray-600'
-                                    : 'text-gray-400 hover:text-amber-200'
+                                    ? 'text-fg-disabled'
+                                    : 'text-fg-muted hover:text-warning-200'
                               }`}
                               title={title}
                               aria-label={`${item.attuned ? 'Unattune' : 'Attune'}: ${item.name ?? 'item'}`}
@@ -260,7 +260,7 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
                         })()}
                         <button
                           onClick={() => handleRemoveItem(item.id)}
-                          className="p-1 hover:bg-gray-600 rounded text-red-400"
+                          className="p-1 hover:bg-surface-3 rounded text-danger-400"
                           title="Remove"
                         >
                           <Trash2 size={14} />
@@ -274,31 +274,31 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
 
             {/* Authoritative stackable holdings (read-only here). */}
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="bg-gray-800 rounded-lg p-4">
-                <h3 className="text-sm font-semibold text-gray-300 mb-3">Materials</h3>
+              <div className="bg-surface-1 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-fg-secondary mb-3">Materials</h3>
                 {characterInventory.materials.length === 0 ? (
-                  <p className="text-gray-500 text-sm italic">No materials</p>
+                  <p className="text-fg-faint text-sm italic">No materials</p>
                 ) : (
                   <ul className="space-y-1">
                     {characterInventory.materials.map(material => (
-                      <li key={material.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded bg-gray-700/50">
-                        <span className="text-gray-200">{material.name}</span>
-                        <span className="text-gray-400">x{material.quantity}</span>
+                      <li key={material.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded bg-surface-2/50">
+                        <span className="text-fg-primary">{material.name}</span>
+                        <span className="text-fg-muted">x{material.quantity}</span>
                       </li>
                     ))}
                   </ul>
                 )}
               </div>
-              <div className="bg-gray-800 rounded-lg p-4">
-                <h3 className="text-sm font-semibold text-gray-300 mb-3">Food</h3>
+              <div className="bg-surface-1 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-fg-secondary mb-3">Food</h3>
                 {characterInventory.food.length === 0 ? (
-                  <p className="text-gray-500 text-sm italic">No food</p>
+                  <p className="text-fg-faint text-sm italic">No food</p>
                 ) : (
                   <ul className="space-y-1">
                     {characterInventory.food.map(food => (
-                      <li key={food.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded bg-gray-700/50">
-                        <span className="text-gray-200">{food.name}</span>
-                        <span className="text-gray-400">x{food.quantity}</span>
+                      <li key={food.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded bg-surface-2/50">
+                        <span className="text-fg-primary">{food.name}</span>
+                        <span className="text-fg-muted">x{food.quantity}</span>
                       </li>
                     ))}
                   </ul>
@@ -307,10 +307,10 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
             </div>
 
             {/* Tools Section */}
-            <div className="bg-gray-800 rounded-lg p-4">
-              <h3 className="text-sm font-semibold text-gray-300 mb-3">Tools</h3>
+            <div className="bg-surface-1 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-fg-secondary mb-3">Tools</h3>
               {characterInventory.tools.length === 0 ? (
-                <p className="text-gray-500 text-sm italic">No tools</p>
+                <p className="text-fg-faint text-sm italic">No tools</p>
               ) : (
                 <ul className="space-y-1">
                   {characterInventory.tools.map((tool) => {
@@ -318,11 +318,11 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
                     return (
                       <li
                         key={tool.toolId}
-                        className="flex items-center justify-between gap-2 px-3 py-2 rounded bg-gray-700/50"
+                        className="flex items-center justify-between gap-2 px-3 py-2 rounded bg-surface-2/50"
                       >
-                        <span className="text-gray-200">
+                        <span className="text-fg-primary">
                           {template?.name ?? 'Unknown Tool'}
-                          <span className="text-gray-400 ml-2">({tool.conditionId})</span>
+                          <span className="text-fg-muted ml-2">({tool.conditionId})</span>
                         </span>
                       </li>
                     );
@@ -332,8 +332,8 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
             </div>
 
             {/* Currency Section */}
-            <div className="bg-gray-800 rounded-lg p-4">
-              <h3 className="text-sm font-semibold text-gray-300 mb-3">Currency</h3>
+            <div className="bg-surface-1 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-fg-secondary mb-3">Currency</h3>
 
               {/* Add Currency Form */}
               <div className="flex gap-2 mb-3">
@@ -342,19 +342,19 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
                   value={newCurrencyKey}
                   onChange={(e) => setNewCurrencyKey(e.target.value)}
                   placeholder="Currency type (e.g., Gold)"
-                  className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-sm text-gray-100"
+                  className="flex-1 bg-surface-2 border border-edge-strong rounded px-3 py-1.5 text-sm text-fg-bright"
                 />
                 <input
                   type="number"
                   value={newCurrencyAmount}
                   onChange={(e) => setNewCurrencyAmount(parseInt(e.target.value) || 0)}
                   min={0}
-                  className="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm text-gray-100 text-center"
+                  className="w-20 bg-surface-2 border border-edge-strong rounded px-2 py-1.5 text-sm text-fg-bright text-center"
                 />
                 <button
                   onClick={handleAddCurrency}
                   disabled={!newCurrencyKey.trim() || newCurrencyAmount <= 0}
-                  className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 rounded text-sm"
+                  className="px-3 py-1.5 bg-surface-2 hover:bg-surface-3 disabled:opacity-50 rounded text-sm"
                 >
                   <Plus size={16} />
                 </button>
@@ -362,26 +362,26 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
 
               {/* Currency List */}
               {Object.keys(characterInventory.currency).length === 0 ? (
-                <p className="text-gray-500 text-sm italic">No currency</p>
+                <p className="text-fg-faint text-sm italic">No currency</p>
               ) : (
                 <ul className="space-y-1">
                   {Object.entries(characterInventory.currency).map(([key, amount]) => (
                     <li
                       key={key}
-                      className="flex items-center justify-between gap-2 px-3 py-2 rounded bg-gray-700/50"
+                      className="flex items-center justify-between gap-2 px-3 py-2 rounded bg-surface-2/50"
                     >
-                      <span className="text-gray-200">{key}</span>
+                      <span className="text-fg-primary">{key}</span>
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
                           value={amount}
                           onChange={(e) => handleUpdateCurrency(key, parseInt(e.target.value) || 0)}
                           min={0}
-                          className="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-gray-100 text-right"
+                          className="w-20 bg-surface-2 border border-edge-strong rounded px-2 py-1 text-sm text-fg-bright text-right"
                         />
                         <button
                           onClick={() => handleUpdateCurrency(key, 0)}
-                          className="p-1 hover:bg-gray-600 rounded text-red-400"
+                          className="p-1 hover:bg-surface-3 rounded text-danger-400"
                           title="Remove"
                         >
                           <Trash2 size={14} />

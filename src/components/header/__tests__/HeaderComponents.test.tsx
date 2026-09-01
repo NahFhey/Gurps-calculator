@@ -169,7 +169,7 @@ describe('ConnectionStatus', () => {
   it('shows disconnected styling when status is disconnected', () => {
     render(<ConnectionStatus />);
     const btn = screen.getByRole('button');
-    expect(btn.className).toContain('border-gray-600');
+    expect(btn.className).toContain('border-edge-strong');
   });
 
   it('shows connected styling and player count when connected', () => {
@@ -185,7 +185,7 @@ describe('ConnectionStatus', () => {
 
     render(<ConnectionStatus />);
     const btn = screen.getByRole('button');
-    expect(btn.className).toContain('border-green-500');
+    expect(btn.className).toContain('border-success-500');
     expect(btn.title).toContain('4 players');
     expect(screen.getByText('4')).toBeInTheDocument();
   });

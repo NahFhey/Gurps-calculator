@@ -12,24 +12,24 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Participant } from '../../types/combatTracker';
 
 const HP_COLORS: Record<string, string> = {
-  healthy: 'border-green-500',
+  healthy: 'border-success-500',
   injured: 'border-yellow-500',
-  critical: 'border-red-500',
-  dead: 'border-gray-500',
+  critical: 'border-danger-500',
+  dead: 'border-edge-bright',
 };
 
 const HP_BG: Record<string, string> = {
-  healthy: 'bg-green-500/20',
+  healthy: 'bg-success-500/20',
   injured: 'bg-yellow-500/20',
-  critical: 'bg-red-500/20',
-  dead: 'bg-gray-500/20',
+  critical: 'bg-danger-500/20',
+  dead: 'bg-surface-4/20',
 };
 
 const CATEGORY_BADGE: Record<string, { label: string; className: string }> = {
-  ally: { label: 'Ally', className: 'bg-blue-600 text-blue-100' },
-  enemy: { label: 'Enemy', className: 'bg-red-600 text-red-100' },
+  ally: { label: 'Ally', className: 'bg-accent-600 text-accent-100' },
+  enemy: { label: 'Enemy', className: 'bg-danger-600 text-danger-100' },
   npc: { label: 'NPC', className: 'bg-purple-600 text-purple-100' },
-  object: { label: 'Obj', className: 'bg-gray-600 text-gray-100' },
+  object: { label: 'Obj', className: 'bg-surface-3 text-fg-bright' },
 };
 
 export function CombatParticipantsSidebar() {
@@ -59,8 +59,8 @@ export function CombatParticipantsSidebar() {
       {/* Header */}
       <div className="flex items-center justify-between mb-3 px-1">
         <div>
-          <h2 className="text-sm uppercase tracking-wide text-gray-400">Combat</h2>
-          <div className="text-xs text-gray-500">
+          <h2 className="text-sm uppercase tracking-wide text-fg-muted">Combat</h2>
+          <div className="text-xs text-fg-faint">
             Round {combat.currentRound} · Turn{' '}
             {combat.currentTurnIndex + 1}/{turnOrder.length}
           </div>
@@ -84,7 +84,7 @@ export function CombatParticipantsSidebar() {
         ))}
         {nonTurnParticipants.length > 0 && (
           <>
-            <div className="text-[10px] text-gray-600 uppercase tracking-wider mt-2 mb-1">
+            <div className="text-[10px] text-fg-disabled uppercase tracking-wider mt-2 mb-1">
               Objects
             </div>
             {nonTurnParticipants.map((p) => (
@@ -105,16 +105,16 @@ export function CombatParticipantsSidebar() {
       </div>
 
       {/* Turn nav */}
-      <div className="flex items-center gap-2 mt-3 pt-2 border-t border-gray-700">
+      <div className="flex items-center gap-2 mt-3 pt-2 border-t border-edge">
         <button
           onClick={handlePrevTurn}
-          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs rounded bg-gray-700 hover:bg-gray-600 transition-colors"
+          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs rounded bg-surface-2 hover:bg-surface-3 transition-colors"
         >
           <ChevronLeft className="h-3 w-3" /> Prev
         </button>
         <button
           onClick={handleNextTurn}
-          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs rounded bg-green-700 hover:bg-green-600 text-white font-medium transition-colors"
+          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs rounded bg-success-700 hover:bg-success-600 text-white font-medium transition-colors"
         >
           Next <ChevronRight className="h-3 w-3" />
         </button>
@@ -142,10 +142,10 @@ function ParticipantCard({
   const currentHP = typeof p.currentHP === 'number' ? p.currentHP : (typeof p.hp === 'number' ? p.hp : (p.hp as any)?.current ?? 0);
   const maxHP = typeof p.hp === 'number' ? p.hp : (p.hp as any)?.max ?? 0;
   const hpStatus = calculateHPStatus(currentHP, maxHP);
-  const borderColor = HP_COLORS[hpStatus] ?? 'border-gray-600';
+  const borderColor = HP_COLORS[hpStatus] ?? 'border-edge-strong';
   const bgColor = isCurrent
-    ? 'bg-blue-900/40'
-    : HP_BG[hpStatus] ?? 'bg-gray-800/50';
+    ? 'bg-accent-900/40'
+    : HP_BG[hpStatus] ?? 'bg-surface-1/50';
   const badge = CATEGORY_BADGE[p.category] ?? CATEGORY_BADGE.npc;
 
   const conditions = getActiveConditions?.(p) ?? [];
@@ -158,16 +158,16 @@ function ParticipantCard({
         w-full text-left rounded-lg border-l-4 px-2 py-1.5 transition-all text-xs
         ${borderColor} ${bgColor}
         ${isSelected ? 'ring-1 ring-white/60' : ''}
-        ${isCurrent ? 'shadow-lg shadow-blue-500/20' : ''}
+        ${isCurrent ? 'shadow-lg shadow-accent-500/20' : ''}
         hover:brightness-110 cursor-pointer
       `}
     >
       {/* Name + badge row */}
       <div className="flex items-center gap-1.5">
         {isCurrent && (
-          <span className="text-blue-400 font-bold text-[10px]">▶</span>
+          <span className="text-accent-400 font-bold text-[10px]">▶</span>
         )}
-        <span className="font-medium truncate flex-1 text-gray-100">{p.name}</span>
+        <span className="font-medium truncate flex-1 text-fg-bright">{p.name}</span>
         <span
           className={`text-[9px] px-1 py-0.5 rounded ${badge.className} leading-none`}
         >
@@ -177,23 +177,23 @@ function ParticipantCard({
 
       {/* HP bar */}
       <div className="mt-1 flex items-center gap-1.5">
-        <div className="flex-1 h-1 bg-gray-700 rounded-full overflow-hidden">
+        <div className="flex-1 h-1 bg-surface-2 rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all ${
               hpStatus === 'healthy'
-                ? 'bg-green-500'
+                ? 'bg-success-500'
                 : hpStatus === 'injured'
                   ? 'bg-yellow-500'
                   : hpStatus === 'critical'
-                    ? 'bg-red-500'
-                    : 'bg-gray-500'
+                    ? 'bg-danger-500'
+                    : 'bg-surface-4'
             }`}
             style={{
               width: `${Math.max(0, Math.min(100, (currentHP / maxHP) * 100))}%`,
             }}
           />
         </div>
-        <span className="text-[10px] text-gray-400 tabular-nums w-12 text-right">
+        <span className="text-[10px] text-fg-muted tabular-nums w-12 text-right">
           {currentHP}/{maxHP}
         </span>
       </div>
@@ -204,13 +204,13 @@ function ParticipantCard({
           {conditions.slice(0, 3).map((c: any, i: number) => (
             <span
               key={c.instanceId || i}
-              className="text-[9px] px-1 py-0.5 rounded bg-gray-700 text-gray-300 leading-none"
+              className="text-[9px] px-1 py-0.5 rounded bg-surface-2 text-fg-secondary leading-none"
             >
               {c.label || c.conditionId}
             </span>
           ))}
           {conditions.length > 3 && (
-            <span className="text-[9px] text-gray-500">+{conditions.length - 3}</span>
+            <span className="text-[9px] text-fg-faint">+{conditions.length - 3}</span>
           )}
         </div>
       )}

@@ -141,17 +141,17 @@ export function Map3DView(props: Map3DViewProps) {
     <div ref={containerRef} className="relative flex-1 min-w-0 min-h-0 overflow-hidden bg-[#0a0a0f]">
       <canvas ref={canvasRef} className="block w-full h-full touch-none" />
       {unavailable && (
-        <div role="alert" className="absolute inset-x-4 top-4 z-20 rounded border border-red-500/60 bg-red-950/90 px-4 py-3 text-sm text-red-200">
+        <div role="alert" className="absolute inset-x-4 top-4 z-20 rounded border border-danger-500/60 bg-danger-950/90 px-4 py-3 text-sm text-danger-200">
           3D map unavailable — WebGL could not start.
         </div>
       )}
       {props.paintModeActive && props.paintHud && (
         <div
-          className="pointer-events-none absolute left-3 top-3 z-10 rounded-md border border-gray-600 bg-gray-900/80 px-3 py-1.5 text-xs text-gray-200 shadow"
+          className="pointer-events-none absolute left-3 top-3 z-10 rounded-md border border-edge-strong bg-surface-0/80 px-3 py-1.5 text-xs text-fg-primary shadow"
           data-testid="paint-hud"
         >
           Brush {props.paintHud.brushSize} · {props.paintHud.brushShape} · Elev {props.paintHud.elevationLabel}
-          <span className="ml-2 text-gray-500">Ctrl+scroll size · Shift+scroll elev</span>
+          <span className="ml-2 text-fg-faint">Ctrl+scroll size · Shift+scroll elev</span>
         </div>
       )}
       <button
@@ -159,17 +159,17 @@ export function Map3DView(props: Map3DViewProps) {
         aria-label="Frame active group"
         title="Frame active group"
         onClick={() => sceneRef.current?.frameActive(props.focusTileId ?? null)}
-        className="absolute right-3 top-3 z-10 rounded-md border border-gray-600 bg-gray-900/80 p-2 text-gray-200 shadow hover:bg-gray-700"
+        className="absolute right-3 top-3 z-10 rounded-md border border-edge-strong bg-surface-0/80 p-2 text-fg-primary shadow hover:bg-surface-2"
       >
         <Crosshair className="h-4 w-4" />
       </button>
       {hover && hoverTile && (
         <div
-          className="pointer-events-none fixed z-40 max-w-56 rounded border border-gray-600 bg-gray-950/95 px-2 py-1.5 text-xs text-gray-200 shadow-xl"
+          className="pointer-events-none fixed z-40 max-w-56 rounded border border-edge-strong bg-surface-sunken/95 px-2 py-1.5 text-xs text-fg-primary shadow-xl"
           style={{ left: hover.clientX + 12, top: hover.clientY + 12 }}
         >
           <div className="font-medium">{terrain?.name ?? 'Unassigned'} ({hover.row}, {hover.col})</div>
-          <div className="text-gray-400">Elev {getEffectiveElevation(props.map, hover.tileId)}</div>
+          <div className="text-fg-muted">Elev {getEffectiveElevation(props.map, hover.tileId)}</div>
           {props.occupantsByTile?.get(hover.tileId)?.map((name, index) => (
             <div key={`${name}-${index}`}>{name}</div>
           ))}

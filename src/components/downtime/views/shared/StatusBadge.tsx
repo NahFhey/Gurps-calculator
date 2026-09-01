@@ -40,20 +40,20 @@ const STATUS_CONFIG: Record<TaskStatus, StatusConfig> = {
     label: 'Pending',
   },
   in_progress: {
-    bg: 'bg-blue-900/50',
-    text: 'text-blue-300',
+    bg: 'bg-accent-900/50',
+    text: 'text-accent-300',
     icon: Loader,
     label: 'In Progress',
   },
   resolved: {
-    bg: 'bg-green-900/50',
-    text: 'text-green-300',
+    bg: 'bg-success-900/50',
+    text: 'text-success-300',
     icon: Check,
     label: 'Resolved',
   },
   cancelled: {
-    bg: 'bg-gray-800',
-    text: 'text-gray-400',
+    bg: 'bg-surface-1',
+    text: 'text-fg-muted',
     icon: Ban,
     label: 'Cancelled',
   },
@@ -91,9 +91,9 @@ export function StatusBadge({ status, label, className = '' }: StatusBadgeProps)
 export function getStatusBorderColor(status: TaskStatus): string {
   const borders: Record<TaskStatus, string> = {
     pending: 'border-yellow-700/50',
-    in_progress: 'border-blue-700/50',
-    resolved: 'border-green-700/50',
-    cancelled: 'border-gray-700',
+    in_progress: 'border-accent-700/50',
+    resolved: 'border-success-700/50',
+    cancelled: 'border-edge',
   };
   return borders[status];
 }

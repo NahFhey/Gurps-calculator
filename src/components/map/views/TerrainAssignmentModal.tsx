@@ -53,25 +53,25 @@ export function TerrainAssignmentModal({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        className="w-full max-w-sm bg-gray-800 border border-gray-600 rounded-lg shadow-2xl"
+        className="w-full max-w-sm bg-surface-1 border border-edge-strong rounded-lg shadow-2xl"
       >
         {/* Header */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-700">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-edge">
           <AlertTriangle className="w-4 h-4 text-yellow-400" aria-hidden="true" />
-          <h2 id={titleId} className="text-sm font-semibold text-gray-100">
+          <h2 id={titleId} className="text-sm font-semibold text-fg-bright">
             Assign Terrain
           </h2>
         </div>
 
         <div className="px-4 py-3 space-y-3">
           {allResolved ? (
-            <div id={descriptionId} className="flex items-center gap-2 text-green-300 text-sm">
+            <div id={descriptionId} className="flex items-center gap-2 text-success-300 text-sm">
               <CheckCircle className="w-4 h-4" aria-hidden="true" />
               All tiles have been assigned terrain.
             </div>
           ) : (
             <>
-              <p id={descriptionId} className="text-xs text-gray-400">
+              <p id={descriptionId} className="text-xs text-fg-muted">
                 {remainingNull.length} tile(s) traversed during travel have no terrain
                 assigned. Assign terrain before continuing.
               </p>
@@ -83,7 +83,7 @@ export function TerrainAssignmentModal({
                   return (
                     <div
                       key={tileId}
-                      className="text-[10px] text-gray-400 px-2 py-0.5 bg-gray-900/50 rounded"
+                      className="text-[10px] text-fg-muted px-2 py-0.5 bg-surface-0/50 rounded"
                     >
                       Tile ({pos?.row}, {pos?.col})
                     </div>
@@ -93,7 +93,7 @@ export function TerrainAssignmentModal({
 
               {/* Terrain selector */}
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">
+                <label className="block text-xs font-medium text-fg-muted mb-1">
                   Fill all with:
                 </label>
                 <div className="grid grid-cols-3 gap-1">
@@ -106,8 +106,8 @@ export function TerrainAssignmentModal({
                       className={[
                         'flex items-center gap-1.5 px-2 py-1 rounded text-[10px] border transition-colors',
                         selectedTerrainId === t.id
-                          ? 'bg-gray-600 border-white/30 text-white'
-                          : 'bg-gray-700/30 border-gray-600 text-gray-300 hover:bg-gray-600/30',
+                          ? 'bg-surface-3 border-white/30 text-white'
+                          : 'bg-surface-2/30 border-edge-strong text-fg-secondary hover:bg-surface-3/30',
                       ].join(' ')}
                       onClick={() => setSelectedTerrainId(t.id)}
                     >
@@ -131,7 +131,7 @@ export function TerrainAssignmentModal({
                 type="button"
                 onClick={onDismiss}
                 aria-label="Done"
-                className="px-3 py-1.5 text-xs font-medium rounded bg-green-700 hover:bg-green-600 text-white transition-colors"
+                className="px-3 py-1.5 text-xs font-medium rounded bg-success-700 hover:bg-success-600 text-white transition-colors"
               >
                 Done
               </button>
@@ -140,7 +140,7 @@ export function TerrainAssignmentModal({
                 type="button"
                 onClick={() => onFillAll(selectedTerrainId)}
                 aria-label={`Fill all ${remainingNull.length} tiles with selected terrain`}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded bg-blue-600 hover:bg-blue-500 text-white transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded bg-accent-600 hover:bg-accent-500 text-white transition-colors"
               >
                 <Paintbrush className="w-3 h-3" aria-hidden="true" />
                 Fill All ({remainingNull.length} tiles)

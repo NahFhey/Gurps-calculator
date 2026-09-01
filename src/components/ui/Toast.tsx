@@ -35,17 +35,17 @@ const iconMap = {
 };
 
 const styleMap = {
-  success: 'bg-green-900/90 border-green-500 text-green-100',
-  error: 'bg-red-900/90 border-red-500 text-red-100',
+  success: 'bg-success-900/90 border-success-500 text-success-100',
+  error: 'bg-danger-900/90 border-danger-500 text-danger-100',
   warning: 'bg-yellow-900/90 border-yellow-500 text-yellow-100',
-  info: 'bg-blue-900/90 border-blue-500 text-blue-100',
+  info: 'bg-accent-900/90 border-accent-500 text-accent-100',
 };
 
 const iconColorMap = {
-  success: 'text-green-400',
-  error: 'text-red-400',
+  success: 'text-success-400',
+  error: 'text-danger-400',
   warning: 'text-yellow-400',
-  info: 'text-blue-400',
+  info: 'text-accent-400',
 };
 
 /**

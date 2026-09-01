@@ -294,18 +294,18 @@ describe('StatusBadge', () => {
 describe('getStatusBorderColor', () => {
   it('returns correct border color for each status', () => {
     expect(getStatusBorderColor('pending')).toContain('yellow');
-    expect(getStatusBorderColor('in_progress')).toContain('blue');
-    expect(getStatusBorderColor('resolved')).toContain('green');
-    expect(getStatusBorderColor('cancelled')).toContain('gray');
+    expect(getStatusBorderColor('in_progress')).toContain('accent');
+    expect(getStatusBorderColor('resolved')).toContain('success');
+    expect(getStatusBorderColor('cancelled')).toContain('edge');
   });
 });
 
 describe('getStatusBackgroundColor', () => {
   it('returns correct background color for each status', () => {
     expect(getStatusBackgroundColor('pending')).toContain('yellow');
-    expect(getStatusBackgroundColor('in_progress')).toContain('blue');
-    expect(getStatusBackgroundColor('resolved')).toContain('green');
-    expect(getStatusBackgroundColor('cancelled')).toContain('gray');
+    expect(getStatusBackgroundColor('in_progress')).toContain('accent');
+    expect(getStatusBackgroundColor('resolved')).toContain('success');
+    expect(getStatusBackgroundColor('cancelled')).toContain('surface');
   });
 });
 
@@ -482,7 +482,7 @@ describe('CancelButton', () => {
 // ============================================================================
 
 describe('TaskResultsDisplay', () => {
-  it('renders success result with green styling', () => {
+  it('renders success result with success styling', () => {
     const results: TaskResults = {
       success: true,
       message: 'Caught 3 fish!',
@@ -493,19 +493,19 @@ describe('TaskResultsDisplay', () => {
     render(<TaskResultsDisplay results={results} />);
     const container = screen.getByTestId('task-results');
     expect(container).toHaveTextContent('Caught 3 fish!');
-    expect(container.className).toContain('green');
+    expect(container.className).toContain('success');
     expect(screen.getByText('+3')).toBeInTheDocument();
     expect(screen.getByText('Trout')).toBeInTheDocument();
   });
 
-  it('renders failure result with gray styling', () => {
+  it('renders failure result with surface styling', () => {
     const results: TaskResults = {
       success: false,
       message: 'The fish got away!',
     };
     render(<TaskResultsDisplay results={results} />);
     const container = screen.getByTestId('task-results');
-    expect(container.className).toContain('gray');
+    expect(container.className).toContain('surface');
   });
 
   it('shows experience gained', () => {

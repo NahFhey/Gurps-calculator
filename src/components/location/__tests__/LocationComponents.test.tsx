@@ -466,7 +466,7 @@ describe('WeatherTableEditor', () => {
     expect(screen.getByText(/2 entries/i)).toBeInTheDocument();
 
     const deleteButtons = screen.getAllByRole('button').filter((btn) =>
-      btn.innerHTML.includes('Trash') || (btn.className.includes('red') && !(btn as HTMLButtonElement).disabled)
+      btn.innerHTML.includes('Trash') || (btn.className.includes('danger') && !(btn as HTMLButtonElement).disabled)
     );
 
     expect(deleteButtons.length).toBeGreaterThan(0);

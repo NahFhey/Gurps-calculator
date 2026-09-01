@@ -22,6 +22,7 @@ import { WeatherWidget, MealBuffWidget, TimeDisplay, TimeControls } from '../com
 import { CombatTile } from '../components/combat/CombatTile';
 import { CombatContextProvider } from '../components/combat/CombatContext';
 import { TabErrorBoundary } from '../components/ui/TabErrorBoundary';
+import { ThemeDevToggle } from '../components/ui/ThemeDevToggle';
 import { PanelLayoutProvider, usePanelLayout } from '../contexts/PanelLayoutContext';
 import {
   useCampaignActions,
@@ -78,7 +79,7 @@ const CombatMainArea = lazy(() =>
 
 function LazyLoadFallback() {
   return (
-    <div className="flex h-full min-h-32 items-center justify-center rounded bg-slate-900/60 text-sm text-slate-400">
+    <div className="flex h-full min-h-32 items-center justify-center rounded bg-surface-0/60 text-sm text-fg-muted">
       Loading…
     </div>
   );
@@ -398,9 +399,9 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
   }, [isRailCollapsed, activeModuleId, actions]);
 
   const shellContent = (
-    <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
+    <div className="min-h-screen bg-surface-0 text-fg-bright flex flex-col">
       {/* Header - Redesigned with Weather, Time Display, and Time Controls */}
-      <header className="bg-gray-800 border-b border-gray-700 px-6 py-3">
+      <header className="bg-surface-1 border-b border-edge px-6 py-3">
         <div className="flex flex-wrap items-center justify-between gap-4">
           {/* Left: Weather Widget */}
           <div className="flex items-center gap-4">
@@ -417,7 +418,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                 type="button"
                 onClick={undo}
                 disabled={!canUndo}
-                className="rounded border border-gray-600 bg-gray-700/50 p-1.5 text-gray-300 hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded border border-edge-strong bg-surface-2/50 p-1.5 text-fg-secondary hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40"
                 title="Undo (Ctrl+Z)"
                 aria-label="Undo"
                 data-testid="undo-button"
@@ -428,7 +429,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                 type="button"
                 onClick={redo}
                 disabled={!canRedo}
-                className="rounded border border-gray-600 bg-gray-700/50 p-1.5 text-gray-300 hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded border border-edge-strong bg-surface-2/50 p-1.5 text-fg-secondary hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40"
                 title="Redo (Ctrl+Shift+Z)"
                 aria-label="Redo"
                 data-testid="redo-button"
@@ -439,9 +440,10 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           </div>
 
           {/* Right: Debug controls and blocking errors */}
-          <div className="flex flex-wrap items-center gap-3 text-sm text-gray-300">
+          <div className="flex flex-wrap items-center gap-3 text-sm text-fg-secondary">
+            {import.meta.env.DEV && <ThemeDevToggle />}
             {debugMode && (
-              <div className="rounded border border-amber-500/50 bg-amber-500/10 px-2 py-1 text-xs text-amber-100">
+              <div className="rounded border border-warning-500/50 bg-warning-500/10 px-2 py-1 text-xs text-warning-100">
                 Debug mode
               </div>
             )}
@@ -449,14 +451,14 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
               <button
                 type="button"
                 onClick={actions.toggleDebug}
-                className="rounded border border-amber-500/60 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-100 hover:border-amber-300"
+                className="rounded border border-warning-500/60 bg-warning-500/10 px-3 py-1 text-xs font-semibold text-warning-100 hover:border-warning-300"
               >
                 {debugMode ? 'Disable Debug' : 'Enable Debug'}
               </button>
             )}
             {blockingError && (
               <div
-                className="rounded border border-amber-500/60 bg-amber-500/10 px-3 py-2 text-xs text-amber-100"
+                className="rounded border border-warning-500/60 bg-warning-500/10 px-3 py-2 text-xs text-warning-100"
                 data-testid="blocking-error"
               >
                 <div className="font-semibold">{blockingError.reason}</div>
@@ -478,7 +480,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
       >
         {/* Party Column - Collapsible (swapped to Participants during combat) */}
         <section
-          className={`rounded border border-gray-700 bg-gray-800/60 overflow-hidden transition-all duration-300 ${
+          className={`rounded border border-edge bg-surface-1/60 overflow-hidden transition-all duration-300 ${
             combatLayoutActive ? 'p-3' : isPartyCollapsed ? 'p-2 min-w-[56px]' : 'p-4'
           }`}
         >
@@ -491,12 +493,12 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
 
           <div className={`flex items-center mb-2 ${isPartyCollapsed ? 'justify-center' : 'justify-between'}`}>
             {!isPartyCollapsed && (
-              <h2 className="text-sm uppercase tracking-wide text-gray-400">Party</h2>
+              <h2 className="text-sm uppercase tracking-wide text-fg-muted">Party</h2>
             )}
             <button
               type="button"
               onClick={layoutActions.togglePartyColumn}
-              className="p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-gray-200"
+              className="p-1 rounded hover:bg-surface-2 text-fg-muted hover:text-fg-primary"
               title={isPartyCollapsed ? 'Expand party column' : 'Collapse party column'}
             >
               {isPartyCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
@@ -520,12 +522,12 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                 // Green = available; Red = assigned in this slot or incapacitated.
                 const isUnavailable = !!downtimeSummary?.isAssigned || isCharacterIncapacitated(character);
                 const downtimeHighlightClass = isUnavailable
-                  ? 'border-2 border-red-500'
-                  : 'border-2 border-green-500';
+                  ? 'border-2 border-danger-500'
+                  : 'border-2 border-success-500';
 
                 // Fatigue background tint (layered alongside availability border)
                 const fatigueBgClass =
-                  downtimeSummary?.fatigueStatus === 'exhausted' ? 'bg-red-900/20' :
+                  downtimeSummary?.fatigueStatus === 'exhausted' ? 'bg-danger-900/20' :
                   downtimeSummary?.fatigueStatus === 'tired' ? 'bg-yellow-900/20' :
                   '';
 
@@ -555,17 +557,17 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                         : 'cursor-pointer'
                     } ${
                       isSelected && !isUnavailable
-                        ? 'bg-blue-500/10'
-                        : (fatigueBgClass || 'bg-gray-900')
+                        ? 'bg-accent-500/10'
+                        : (fatigueBgClass || 'bg-surface-0')
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className={`text-sm font-semibold truncate ${isUnavailable ? 'text-gray-400' : 'text-gray-100'}`}>{character.name}</span>
+                          <span className={`text-sm font-semibold truncate ${isUnavailable ? 'text-fg-muted' : 'text-fg-bright'}`}>{character.name}</span>
                           {downtimeSummary && <CharacterStatusBadge summary={downtimeSummary} status={character.status} />}
                         </div>
-                        <div className="text-xs text-gray-400">
+                        <div className="text-xs text-fg-muted">
                           {hpDisplay} / {fpDisplay}
                         </div>
                       </div>
@@ -575,7 +577,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                           e.stopPropagation();
                           handleContextMenu(e, character);
                         }}
-                        className="p-1 rounded flex-shrink-0 hover:bg-gray-700 text-gray-400 hover:text-gray-200"
+                        className="p-1 rounded flex-shrink-0 hover:bg-surface-2 text-fg-muted hover:text-fg-primary"
                         title="Character options"
                         data-testid={`character-menu-${character.id}`}
                       >
@@ -586,7 +588,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                       <button
                         type="button"
                         disabled={isUnavailable}
-                        className={`rounded border px-2 py-1 text-xs ${isUnavailable ? 'border-gray-700 text-gray-500 cursor-not-allowed' : 'border-gray-600 text-gray-200 hover:border-gray-300'}`}
+                        className={`rounded border px-2 py-1 text-xs ${isUnavailable ? 'border-edge text-fg-faint cursor-not-allowed' : 'border-edge-strong text-fg-primary hover:border-edge-bright'}`}
                         onClick={(event: MouseEvent<HTMLButtonElement>) => {
                           event.stopPropagation();
                           if (isUnavailable) return;
@@ -599,7 +601,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                       <button
                         type="button"
                         disabled={isUnavailable}
-                        className={`rounded border px-2 py-1 text-xs ${isUnavailable ? 'border-gray-700 text-gray-500 cursor-not-allowed' : 'border-gray-600 text-gray-200 hover:border-gray-300'}`}
+                        className={`rounded border px-2 py-1 text-xs ${isUnavailable ? 'border-edge text-fg-faint cursor-not-allowed' : 'border-edge-strong text-fg-primary hover:border-edge-bright'}`}
                         onClick={(event: MouseEvent<HTMLButtonElement>) => {
                           event.stopPropagation();
                           if (isUnavailable) return;
@@ -612,7 +614,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                       <button
                         type="button"
                         disabled={isUnavailable}
-                        className={`rounded border px-2 py-1 text-xs ${isUnavailable ? 'border-gray-700 text-gray-500 cursor-not-allowed' : 'border-gray-600 text-gray-200 hover:border-gray-300'}`}
+                        className={`rounded border px-2 py-1 text-xs ${isUnavailable ? 'border-edge text-fg-faint cursor-not-allowed' : 'border-edge-strong text-fg-primary hover:border-edge-bright'}`}
                         onClick={(event: MouseEvent<HTMLButtonElement>) => {
                           event.stopPropagation();
                           if (isUnavailable) return;
@@ -628,12 +630,12 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
               })}
 
               {/* Add Character and Import Buttons */}
-              <div className="mt-4 border-t border-gray-700 pt-4 space-y-2">
+              <div className="mt-4 border-t border-edge pt-4 space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setShowCreationModal(true)}
-                  className="flex items-center justify-center gap-1 rounded border border-blue-500 bg-blue-500/10 px-2 py-2 text-xs font-semibold text-blue-200 hover:bg-blue-500/20"
+                  className="flex items-center justify-center gap-1 rounded border border-accent-500 bg-accent-500/10 px-2 py-2 text-xs font-semibold text-accent-200 hover:bg-accent-500/20"
                   data-testid="add-character-button"
                 >
                   <Plus className="h-4 w-4" />
@@ -660,7 +662,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                 <button
                   type="button"
                   onClick={handleImportClick}
-                  className="w-full rounded border border-gray-500 bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-100 hover:border-gray-300"
+                  className="w-full rounded border border-edge-bright bg-surface-1 px-4 py-2 text-sm font-semibold text-fg-bright hover:border-edge-bright"
                   data-testid="character-import-button"
                 >
                   Quick Import
@@ -688,10 +690,10 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                     }}
                     className={`w-8 h-8 rounded text-xs font-bold flex items-center justify-center ${
                       collapsedUnavailable
-                        ? 'border-2 border-red-500 bg-gray-900 text-gray-500 opacity-50 cursor-not-allowed'
+                        ? 'border-2 border-danger-500 bg-surface-0 text-fg-faint opacity-50 cursor-not-allowed'
                         : isSelected
-                          ? 'border-2 border-blue-500 bg-blue-500/20 text-blue-200'
-                          : 'border-2 border-green-500 bg-gray-900 text-gray-300 hover:border-green-400'
+                          ? 'border-2 border-accent-500 bg-accent-500/20 text-accent-200'
+                          : 'border-2 border-success-500 bg-surface-0 text-fg-secondary hover:border-success-400'
                     }`}
                     title={collapsedUnavailable ? `${character.name} (unavailable)` : character.name}
                   >
@@ -707,7 +709,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
 
         {/* Left Scroll Edge 1 - decorative line (inner, next to party) */}
         <div className="flex items-center justify-center py-3">
-          <div className="w-full h-[calc(100%-1.5rem)] rounded bg-gray-700/40" />
+          <div className="w-full h-[calc(100%-1.5rem)] rounded bg-surface-2/40" />
         </div>
 
         {/* Left Scroll Gap - dark space between lines */}
@@ -715,7 +717,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
 
         {/* Left Scroll Edge 2 - decorative line (outer, next to content) */}
         <div className="flex items-center justify-center py-3">
-          <div className="w-full h-[calc(100%-1.5rem)] rounded bg-gray-700/40" />
+          <div className="w-full h-[calc(100%-1.5rem)] rounded bg-surface-2/40" />
         </div>
 
         {/* Center Panel - Character Sheet/Skills/Equipment/Inventory (always in DOM to maintain grid structure) */}
@@ -723,7 +725,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           className={`overflow-hidden transition-all duration-300 ${
             shouldHideCharacterPanel || isRightExpanded
               ? 'invisible'
-              : 'rounded border border-gray-700 bg-gray-800/60'
+              : 'rounded border border-edge bg-surface-1/60'
           }`}
         >
           <div className="h-full" data-testid="character-pane">
@@ -752,10 +754,10 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
         <section
           className={`overflow-hidden flex flex-col transition-all duration-300 ${
             combatLayoutActive
-              ? 'rounded border border-gray-700 bg-gray-800/60'
+              ? 'rounded border border-edge bg-surface-1/60'
               : isCenterExpanded || shouldHideModulePane
                 ? 'invisible'
-                : 'rounded border border-gray-700 bg-gray-800/60 p-4'
+                : 'rounded border border-edge bg-surface-1/60 p-4'
           }`}
         >
           {combatLayoutActive ? (
@@ -766,7 +768,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
             activeModule && (
               <>
                 <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-sm uppercase tracking-wide text-gray-400">
+                  <h2 className="text-sm uppercase tracking-wide text-fg-muted">
                     {activeModule.label}
                   </h2>
                 </div>
@@ -778,7 +780,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
 
         {/* Right Scroll Edge 1 - decorative line (outer, next to content) */}
         <div className="flex items-center justify-center py-3">
-          <div className="w-full h-[calc(100%-1.5rem)] rounded bg-gray-700/40" />
+          <div className="w-full h-[calc(100%-1.5rem)] rounded bg-surface-2/40" />
         </div>
 
         {/* Right Scroll Gap - dark space between lines */}
@@ -786,12 +788,12 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
 
         {/* Right Scroll Edge 2 - decorative line (inner, next to rail) */}
         <div className="flex items-center justify-center py-3">
-          <div className="w-full h-[calc(100%-1.5rem)] rounded bg-gray-700/40" />
+          <div className="w-full h-[calc(100%-1.5rem)] rounded bg-surface-2/40" />
         </div>
 
         {/* Rail - Module Navigation (or Maneuvers during combat) */}
         <aside
-          className={`rounded border border-gray-700 bg-gray-800/60 overflow-hidden transition-all duration-300 ${
+          className={`rounded border border-edge bg-surface-1/60 overflow-hidden transition-all duration-300 ${
             combatLayoutActive ? 'p-3' : isRailCollapsed ? 'p-2 min-w-[56px]' : 'p-4'
           }`}
         >
@@ -804,12 +806,12 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           {/* Header with toggle button - matching Party collapsed structure */}
           <div className={`flex items-center mb-2 ${isRailCollapsed ? 'justify-center' : 'justify-between'}`}>
             {!isRailCollapsed && (
-              <h2 className="text-sm uppercase tracking-wide text-gray-400">Rail</h2>
+              <h2 className="text-sm uppercase tracking-wide text-fg-muted">Rail</h2>
             )}
             <button
               type="button"
               onClick={layoutActions.toggleRailColumn}
-              className="p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-gray-200"
+              className="p-1 rounded hover:bg-surface-2 text-fg-muted hover:text-fg-primary"
               title={isRailCollapsed ? 'Expand rail' : 'Collapse rail'}
             >
               {isRailCollapsed ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -831,8 +833,8 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                     title={moduleItem.label}
                     className={`rounded border transition-colors px-3 py-2 w-full text-sm ${
                       isSelected
-                        ? 'border-blue-500 bg-blue-500/20 text-blue-200'
-                        : 'border-gray-700 bg-gray-900 text-gray-200 hover:border-gray-500'
+                        ? 'border-accent-500 bg-accent-500/20 text-accent-200'
+                        : 'border-edge bg-surface-0 text-fg-primary hover:border-edge-bright'
                     }`}
                   >
                     {moduleItem.label}
@@ -857,8 +859,8 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                     title={moduleItem.label}
                     className={`w-8 h-8 rounded text-xs font-bold flex items-center justify-center ${
                       isSelected
-                        ? 'border border-blue-500 bg-blue-500/20 text-blue-200'
-                        : 'border border-gray-700 bg-gray-900 text-gray-300 hover:border-gray-500'
+                        ? 'border border-accent-500 bg-accent-500/20 text-accent-200'
+                        : 'border border-edge bg-surface-0 text-fg-secondary hover:border-edge-bright'
                     }`}
                   >
                     {moduleItem.label.charAt(0)}
@@ -884,16 +886,16 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           onClick={layoutActions.closeModal}
         >
           <div
-            className="bg-gray-800 rounded-lg border border-gray-600 max-w-4xl max-h-[90vh] overflow-auto m-4"
+            className="bg-surface-1 rounded-lg border border-edge-strong max-w-4xl max-h-[90vh] overflow-auto m-4"
             onClick={(e) => e.stopPropagation()}
           >
             {layoutState.modalTitle && (
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-edge">
                 <h2 className="text-lg font-semibold">{layoutState.modalTitle}</h2>
                 <button
                   type="button"
                   onClick={layoutActions.closeModal}
-                  className="text-gray-400 hover:text-gray-200"
+                  className="text-fg-muted hover:text-fg-primary"
                 >
                   ×
                 </button>
@@ -958,25 +960,25 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
           <div
-            className="bg-gray-800 rounded-lg border border-gray-600 w-full max-w-md m-4 p-6"
+            className="bg-surface-1 rounded-lg border border-edge-strong w-full max-w-md m-4 p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-semibold text-gray-100 mb-4">Delete Character</h2>
-            <p className="text-gray-300 mb-6">
+            <h2 className="text-lg font-semibold text-fg-bright mb-4">Delete Character</h2>
+            <p className="text-fg-secondary mb-6">
               Are you sure you want to delete <strong>{deleteConfirm.characterName}</strong>? This action cannot be undone.
             </p>
             <div className="flex gap-3 justify-end">
               <button
                 type="button"
                 onClick={() => setDeleteConfirm(null)}
-                className="px-4 py-2 rounded border border-gray-600 text-gray-300 hover:border-gray-500 hover:bg-gray-700"
+                className="px-4 py-2 rounded border border-edge-strong text-fg-secondary hover:border-edge-bright hover:bg-surface-2"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleDeleteConfirm}
-                className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-500 font-semibold"
+                className="px-4 py-2 rounded bg-danger-600 text-white hover:bg-danger-500 font-semibold"
               >
                 Delete
               </button>

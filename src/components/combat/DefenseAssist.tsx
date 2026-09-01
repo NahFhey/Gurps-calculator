@@ -203,12 +203,12 @@ export default function DefenseAssist({
             onClick={() => setDefenseType('dodge')}
             className={`p-3 rounded border-2 ${
               defenseType === 'dodge'
-                ? 'border-blue-500 bg-blue-900/30'
-                : 'border-gray-600 bg-gray-800 hover:bg-gray-700'
+                ? 'border-accent-500 bg-accent-900/30'
+                : 'border-edge-strong bg-surface-1 hover:bg-surface-2'
             }`}
           >
             <div className="font-semibold">Dodge</div>
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-fg-muted">
               {dodgeLabel}
             </div>
           </button>
@@ -217,12 +217,12 @@ export default function DefenseAssist({
             onClick={() => setDefenseType('parry')}
             className={`p-3 rounded border-2 ${
               defenseType === 'parry'
-                ? 'border-blue-500 bg-blue-900/30'
-                : 'border-gray-600 bg-gray-800 hover:bg-gray-700'
+                ? 'border-accent-500 bg-accent-900/30'
+                : 'border-edge-strong bg-surface-1 hover:bg-surface-2'
             }`}
           >
             <div className="font-semibold">Parry</div>
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-fg-muted">
               {parryLabel}
             </div>
           </button>
@@ -231,12 +231,12 @@ export default function DefenseAssist({
             onClick={() => setDefenseType('block')}
             className={`p-3 rounded border-2 ${
               defenseType === 'block'
-                ? 'border-blue-500 bg-blue-900/30'
-                : 'border-gray-600 bg-gray-800 hover:bg-gray-700'
+                ? 'border-accent-500 bg-accent-900/30'
+                : 'border-edge-strong bg-surface-1 hover:bg-surface-2'
             }`}
           >
             <div className="font-semibold">Block</div>
-            <div className="text-sm text-gray-400">
+            <div className="text-sm text-fg-muted">
               {blockLabel}
             </div>
           </button>
@@ -245,12 +245,12 @@ export default function DefenseAssist({
             onClick={() => setDefenseType('custom')}
             className={`p-3 rounded border-2 ${
               defenseType === 'custom'
-                ? 'border-blue-500 bg-blue-900/30'
-                : 'border-gray-600 bg-gray-800 hover:bg-gray-700'
+                ? 'border-accent-500 bg-accent-900/30'
+                : 'border-edge-strong bg-surface-1 hover:bg-surface-2'
             }`}
           >
             <div className="font-semibold">Custom</div>
-            <div className="text-sm text-gray-400">Enter value</div>
+            <div className="text-sm text-fg-muted">Enter value</div>
           </button>
         </div>
 
@@ -262,7 +262,7 @@ export default function DefenseAssist({
               value={customBaseDefense}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomBaseDefense(e.target.value)}
               placeholder="Enter base defense value"
-              className="w-full px-3 py-2 bg-gray-700 rounded"
+              className="w-full px-3 py-2 bg-surface-2 rounded"
             />
           </div>
         )}
@@ -296,13 +296,13 @@ export default function DefenseAssist({
 
       {/* Roll Result */}
       {rollResult && (
-        <div className={`p-4 rounded ${rollResult.success ? 'bg-green-900/30 border border-green-600' : 'bg-red-900/30 border border-red-600'}`}>
+        <div className={`p-4 rounded ${rollResult.success ? 'bg-success-900/30 border border-success-600' : 'bg-danger-900/30 border border-danger-600'}`}>
           <div className="text-center">
             <div className="text-2xl font-bold">
               {rollResult.total} vs {rollResult.target}
             </div>
             <div className="text-lg mt-1">
-              Margin: <span className={rollResult.margin >= 0 ? 'text-green-400' : 'text-red-400'}>
+              Margin: <span className={rollResult.margin >= 0 ? 'text-success-400' : 'text-danger-400'}>
                 {rollResult.margin >= 0 ? '+' : ''}{rollResult.margin}
               </span>
             </div>
@@ -317,14 +317,14 @@ export default function DefenseAssist({
       <div className="flex gap-2 pt-2">
         <button
           onClick={onCancel}
-          className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded"
+          className="flex-1 px-4 py-2 bg-surface-3 hover:bg-surface-4 rounded"
         >
           Cancel
         </button>
         <button
           onClick={handleComplete}
           disabled={!isValid()}
-          className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 px-4 py-2 bg-success-600 hover:bg-success-700 rounded disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {rollResult ? 'Confirm & Log' : 'Log (No Roll)'}
         </button>

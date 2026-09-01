@@ -65,34 +65,34 @@ export function AwardPointsModal({ characters, onClose }: AwardPointsModalProps)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div role="dialog" aria-modal="true" aria-labelledby="award-points-title" className="w-full max-w-lg rounded-lg border border-gray-600 bg-gray-800">
-        <header className="flex items-center justify-between border-b border-gray-700 px-5 py-4">
-          <h2 id="award-points-title" className="text-lg font-semibold text-gray-100">Award Points</h2>
-          <button type="button" onClick={onClose} aria-label="Close award points" className="text-gray-400 hover:text-gray-200"><X className="h-5 w-5" /></button>
+      <div role="dialog" aria-modal="true" aria-labelledby="award-points-title" className="w-full max-w-lg rounded-lg border border-edge-strong bg-surface-1">
+        <header className="flex items-center justify-between border-b border-edge px-5 py-4">
+          <h2 id="award-points-title" className="text-lg font-semibold text-fg-bright">Award Points</h2>
+          <button type="button" onClick={onClose} aria-label="Close award points" className="text-fg-muted hover:text-fg-primary"><X className="h-5 w-5" /></button>
         </header>
         <div className="space-y-4 p-5">
-          <label className="block text-sm text-gray-300">
+          <label className="block text-sm text-fg-secondary">
             <span className="mb-1 block">Amount</span>
-            <input data-testid="award-amount-input" type="number" min={1} value={amount} onChange={(event) => setAmount(Math.max(1, Number(event.target.value) || 1))} className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-gray-100" />
+            <input data-testid="award-amount-input" type="number" min={1} value={amount} onChange={(event) => setAmount(Math.max(1, Number(event.target.value) || 1))} className="w-full rounded border border-edge-strong bg-surface-0 px-3 py-2 text-fg-bright" />
           </label>
-          <label className="block text-sm text-gray-300">
+          <label className="block text-sm text-fg-secondary">
             <span className="mb-1 block">Note</span>
-            <input data-testid="award-note-input" type="text" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Session 12: rescued the caravan" className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-gray-100" />
+            <input data-testid="award-note-input" type="text" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Session 12: rescued the caravan" className="w-full rounded border border-edge-strong bg-surface-0 px-3 py-2 text-fg-bright" />
           </label>
           <fieldset>
-            <legend className="mb-2 text-sm font-medium text-gray-300">Characters</legend>
-            <div className="max-h-64 space-y-2 overflow-y-auto rounded border border-gray-700 bg-gray-900/50 p-3">
+            <legend className="mb-2 text-sm font-medium text-fg-secondary">Characters</legend>
+            <div className="max-h-64 space-y-2 overflow-y-auto rounded border border-edge bg-surface-0/50 p-3">
               {characters.map((character) => (
-                <label key={character.id} className="flex items-center justify-between gap-3 text-sm text-gray-200">
+                <label key={character.id} className="flex items-center justify-between gap-3 text-sm text-fg-primary">
                   <span><input data-testid={`award-character-${character.id}`} type="checkbox" checked={selectedIds.has(character.id)} onChange={() => toggleCharacter(character.id)} className="mr-2" />{character.name}</span>
-                  <span className="text-xs text-gray-500">{character.isPlayer === false ? 'NPC' : 'Player'}</span>
+                  <span className="text-xs text-fg-faint">{character.isPlayer === false ? 'NPC' : 'Player'}</span>
                 </label>
               ))}
             </div>
           </fieldset>
         </div>
-        <footer className="flex justify-end gap-2 border-t border-gray-700 px-5 py-4">
-          <button type="button" onClick={onClose} className="rounded border border-gray-600 px-4 py-2 text-gray-300 hover:bg-gray-700">Cancel</button>
+        <footer className="flex justify-end gap-2 border-t border-edge px-5 py-4">
+          <button type="button" onClick={onClose} className="rounded border border-edge-strong px-4 py-2 text-fg-secondary hover:bg-surface-2">Cancel</button>
           <button type="button" onClick={handleConfirm} disabled={selectedIds.size === 0 || amount < 1} data-testid="confirm-award-points-button" className="rounded bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50">Award</button>
         </footer>
       </div>

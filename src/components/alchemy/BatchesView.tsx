@@ -460,27 +460,27 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
   }
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
+    <div className="bg-surface-1 rounded-lg p-6">
       {/* Save Recipe Prompt */}
       {showSavePrompt && completedBatch && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg max-w-md border-2 border-green-600">
-            <h3 className="text-xl font-bold mb-2 text-green-400">Batch Complete!</h3>
+          <div className="bg-surface-1 p-6 rounded-lg max-w-md border-2 border-success-600">
+            <h3 className="text-xl font-bold mb-2 text-success-400">Batch Complete!</h3>
             <p className="mb-4">
-              Quality: <span className={`font-bold ${completedBatch.quality === 'Clean' ? 'text-green-400' : 'text-yellow-400'}`}>
+              Quality: <span className={`font-bold ${completedBatch.quality === 'Clean' ? 'text-success-400' : 'text-yellow-400'}`}>
                 {completedBatch.quality}
               </span>
             </p>
-            <p className="text-sm text-gray-400 mb-4">
+            <p className="text-sm text-fg-muted mb-4">
               Would you like to save this as a reusable formula?
             </p>
 
             <div className="mb-4">
-              <label className="block text-sm text-gray-400 mb-1">Recipe Name</label>
+              <label className="block text-sm text-fg-muted mb-1">Recipe Name</label>
               <input
                 value={saveAsName}
                 onChange={(e) => setSaveAsName(e.target.value)}
-                className="w-full bg-gray-600 px-3 py-2 rounded"
+                className="w-full bg-surface-3 px-3 py-2 rounded"
                 placeholder="Enter recipe name..."
               />
             </div>
@@ -492,13 +492,13 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                   setCompletedBatch(null);
                   setSaveAsName('');
                 }}
-                className="flex-1 px-4 py-2 bg-gray-600 rounded"
+                className="flex-1 px-4 py-2 bg-surface-3 rounded"
               >
                 Skip
               </button>
               <button
                 onClick={saveRecipeFromBatch}
-                className="flex-1 px-4 py-2 bg-green-600 rounded"
+                className="flex-1 px-4 py-2 bg-success-600 rounded"
               >
                 Save Recipe
               </button>
@@ -511,32 +511,32 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">{selectedBatch.formulaName}</h3>
-            <button onClick={() => setSelectedBatch(null)} className="bg-gray-600 px-4 py-2 rounded">
+            <button onClick={() => setSelectedBatch(null)} className="bg-surface-3 px-4 py-2 rounded">
               ← Back to List
             </button>
           </div>
 
-          <div className="bg-gray-700 p-4 rounded">
+          <div className="bg-surface-2 p-4 rounded">
             <div className="flex justify-between text-sm mb-2">
               <span>Progress: {selectedBatch.PP} / {selectedBatch.WR}</span>
               <span>Contamination: {selectedBatch.CP}</span>
             </div>
-            <div className="w-full bg-gray-600 rounded-full h-4 mb-2">
+            <div className="w-full bg-surface-3 rounded-full h-4 mb-2">
               <div
-                className="bg-blue-600 h-4 rounded-full"
+                className="bg-accent-600 h-4 rounded-full"
                 style={{width: `${Math.min(100, ((selectedBatch.PP || 0) / (selectedBatch.WR || 1)) * 100)}%`}}
               />
             </div>
-            <div className="text-xs text-gray-400 grid grid-cols-2 gap-2">
+            <div className="text-xs text-fg-muted grid grid-cols-2 gap-2">
               <div>
                 Tier: <span className="text-yellow-400 font-bold">{selectedBatch.tier || 1}</span> |
                 DM: {selectedBatch.DM}
-                {selectedBatch.forecast && <span className="text-green-400 ml-1">(Forecast +1)</span>}
+                {selectedBatch.forecast && <span className="text-success-400 ml-1">(Forecast +1)</span>}
               </div>
               <div>Vector: {selectedBatch.vector || 'Potion'}</div>
               <div>
                 Lab: <span className="text-cyan-400">{selectedBatch.labName || 'Basic Lab'}</span>
-                <span className="text-gray-500 ml-1">(+{selectedBatch.labRating || 0})</span>
+                <span className="text-fg-faint ml-1">(+{selectedBatch.labRating || 0})</span>
               </div>
               <div>Dominant: {selectedBatch.dominantAspect}</div>
               <div>Potency: {selectedBatch.finalPotency || selectedBatch.potency || 'P1'}</div>
@@ -570,9 +570,9 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
             </div>
 
             {showForecast && (
-              <div className="mt-3 bg-gray-800 p-3 rounded border border-purple-500">
+              <div className="mt-3 bg-surface-1 p-3 rounded border border-purple-500">
                 <div className="text-sm font-semibold mb-2">Forecast Quality</div>
-                <div className="text-xs text-gray-400 mb-3">
+                <div className="text-xs text-fg-muted mb-3">
                   Predict the final quality based on current contamination. Provides +1 DM bonus for remaining work.
                 </div>
                 <button
@@ -585,9 +585,9 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
             )}
 
             {showMicroAssay && (
-              <div className="mt-3 bg-gray-800 p-3 rounded border border-cyan-500">
+              <div className="mt-3 bg-surface-1 p-3 rounded border border-cyan-500">
                 <div className="text-sm font-semibold mb-2">Micro-Assay</div>
-                <div className="text-xs text-gray-400 mb-3">
+                <div className="text-xs text-fg-muted mb-3">
                   Analyze the batch composition to reveal dominant and secondary aspects.
                 </div>
                 <button
@@ -602,26 +602,26 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
             {selectedBatch.forecast && (
               <div className="mt-3 bg-purple-900 bg-opacity-30 p-3 rounded border border-purple-500">
                 <div className="text-sm font-semibold text-purple-400">Forecast Complete</div>
-                <div className="text-xs text-gray-300 mt-1">
+                <div className="text-xs text-fg-secondary mt-1">
                   Predicted Quality: <span className="font-semibold">{selectedBatch.forecast.predictedQuality}</span>
-                  <span className="text-gray-400 ml-2">(based on CP: {selectedBatch.forecast.currentCP})</span>
+                  <span className="text-fg-muted ml-2">(based on CP: {selectedBatch.forecast.currentCP})</span>
                 </div>
-                <div className="text-xs text-green-400 mt-1">DM Bonus: +1 applied</div>
+                <div className="text-xs text-success-400 mt-1">DM Bonus: +1 applied</div>
               </div>
             )}
 
             {selectedBatch.microAssay && (
               <div className="mt-3 bg-cyan-900 bg-opacity-30 p-3 rounded border border-cyan-500">
                 <div className="text-sm font-semibold text-cyan-400">Micro-Assay Complete</div>
-                <div className="text-xs text-gray-300 mt-1">
-                  Aspects: <span className="text-blue-400">{selectedBatch.microAssay.dominantAspect}</span> /
-                  <span className="text-blue-400 ml-1">{selectedBatch.microAssay.secondaryAspect}</span>
+                <div className="text-xs text-fg-secondary mt-1">
+                  Aspects: <span className="text-accent-400">{selectedBatch.microAssay.dominantAspect}</span> /
+                  <span className="text-accent-400 ml-1">{selectedBatch.microAssay.secondaryAspect}</span>
                 </div>
               </div>
             )}
           </div>
 
-          <div className="bg-gray-700 p-4 rounded space-y-3">
+          <div className="bg-surface-2 p-4 rounded space-y-3">
             <h4 className="font-semibold">Add Work Block</h4>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -635,7 +635,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                       setSkill(String(selectedWorker.skills.alchemy || 10));
                     }
                   }}
-                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                  className="w-full bg-surface-3 px-3 py-2 rounded"
                 >
                   <option value="">Select worker...</option>
                   {availableWorkers.map(w => <option key={w.id} value={w.name}>{w.name}</option>)}
@@ -647,7 +647,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                   type="date"
                   value={currentDate}
                   onChange={(e) => setCurrentDate(e.target.value)}
-                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                  className="w-full bg-surface-3 px-3 py-2 rounded"
                 />
               </div>
               <div>
@@ -656,10 +656,10 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                   type="number"
                   value={skill}
                   onChange={(e) => setSkill(e.target.value)}
-                  className="w-full bg-gray-600 px-3 py-2 rounded"
+                  className="w-full bg-surface-3 px-3 py-2 rounded"
                   placeholder="e.g., 14"
                 />
-                <div className="text-xs text-gray-400 mt-1">
+                <div className="text-xs text-fg-muted mt-1">
                   {(() => {
                     if (!skill) return 'Effective: ?';
                     const baseSkill = parseInt(skill);
@@ -678,7 +678,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                     type="number"
                     value={roll.total || ''}
                     onChange={(e) => setRoll({ dice: [], total: parseInt(e.target.value) || 0 })}
-                    className="flex-1 bg-gray-600 px-3 py-2 rounded"
+                    className="flex-1 bg-surface-3 px-3 py-2 rounded"
                     placeholder="3-18"
                     min="3"
                     max="18"
@@ -692,7 +692,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                 </div>
               </div>
             </div>
-            <button onClick={addWorkBlock} className="w-full bg-green-600 px-4 py-2 rounded">
+            <button onClick={addWorkBlock} className="w-full bg-success-600 px-4 py-2 rounded">
               Add Work Block
             </button>
           </div>
@@ -700,12 +700,12 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
           <div className="space-y-2">
             <h4 className="font-semibold">Work History</h4>
             {(selectedBatch.shifts || []).map((s, i) => (
-              <div key={s.id} className="bg-gray-700 p-3 rounded text-sm">
+              <div key={s.id} className="bg-surface-2 p-3 rounded text-sm">
                 <div className="flex justify-between">
                   <span>Block {i+1}: {s.result}</span>
-                  <span className="text-gray-400">{s.date}</span>
+                  <span className="text-fg-muted">{s.date}</span>
                 </div>
-                <div className="text-xs text-gray-400 mt-1">
+                <div className="text-xs text-fg-muted mt-1">
                   {s.worker} | Lab: {s.labName || selectedBatch.labName || 'Basic Lab'} |
                   Skill {s.skill} + {s.labRating !== undefined ? s.labRating : (selectedBatch.labRating || 0)} (lab) = {s.effectiveSkill} |
                   Roll: {s.roll} | PP +{s.ppAdded} |
@@ -714,7 +714,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
               </div>
             ))}
             {(!selectedBatch.shifts || selectedBatch.shifts.length === 0) && (
-              <div className="text-gray-500 text-center py-4">No work blocks yet</div>
+              <div className="text-fg-faint text-center py-4">No work blocks yet</div>
             )}
           </div>
         </div>
@@ -724,21 +724,21 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
             <h2 className="text-xl font-bold">Alchemy Batches</h2>
             <button
               onClick={() => setShowNewBatch(!showNewBatch)}
-              className="flex items-center gap-2 bg-green-600 px-4 py-2 rounded"
+              className="flex items-center gap-2 bg-success-600 px-4 py-2 rounded"
             >
               <Plus size={20} /> {showNewBatch ? 'Cancel' : 'Start New Batch'}
             </button>
           </div>
 
           {showNewBatch && (
-            <div className="bg-gray-700 p-4 rounded mb-4 space-y-4">
+            <div className="bg-surface-2 p-4 rounded mb-4 space-y-4">
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-3 sm:col-span-1">
                   <label className="block text-sm mb-1">Batch Name</label>
                   <input
                     value={batchName}
                     onChange={(e) => setBatchName(e.target.value)}
-                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                    className="w-full bg-surface-3 px-3 py-2 rounded"
                     placeholder="e.g., Experimental Potion"
                   />
                 </div>
@@ -747,7 +747,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                   <select
                     value={selectedLabId}
                     onChange={(e) => setSelectedLabId(e.target.value)}
-                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                    className="w-full bg-surface-3 px-3 py-2 rounded"
                   >
                     {(accessibleLabs.length > 0 ? accessibleLabs : [{id: 'default', name: 'Basic Lab', rating: 0}]).map(lab => (
                       <option key={lab.id} value={lab.id}>
@@ -761,7 +761,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                   <select
                     value={selectedVector}
                     onChange={(e) => setSelectedVector(e.target.value)}
-                    className="w-full bg-gray-600 px-3 py-2 rounded"
+                    className="w-full bg-surface-3 px-3 py-2 rounded"
                   >
                     {VECTORS.map((v: { name: string; wrMod: number; dmMod: number }) => (
                       <option key={v.name} value={v.name}>
@@ -771,9 +771,9 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                   </select>
                 </div>
               </div>
-              <div className="bg-gray-600 p-2 rounded">
-                <div className="text-xs text-gray-400 mb-1">Tier (Auto-calculated)</div>
-                <div className="text-sm text-gray-300">
+              <div className="bg-surface-3 p-2 rounded">
+                <div className="text-xs text-fg-muted mb-1">Tier (Auto-calculated)</div>
+                <div className="text-sm text-fg-secondary">
                   Tier is automatically determined by the potency load of active ingredients.
                 </div>
               </div>
@@ -781,7 +781,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <label className="block text-sm font-semibold">Ingredients</label>
-                  <button onClick={addIngredient} className="bg-blue-600 px-3 py-1 rounded text-sm">
+                  <button onClick={addIngredient} className="bg-accent-600 px-3 py-1 rounded text-sm">
                     <Plus size={14} className="inline" /> Add Ingredient
                   </button>
                 </div>
@@ -791,12 +791,12 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                   const availableRoles = selectedReagent?.roles || ['Active'];
                   const reagentRefinement = selectedReagent?.refinement || 'crude';
                   return (
-                    <div key={ing.id} className="bg-gray-600 p-3 rounded mb-2">
+                    <div key={ing.id} className="bg-surface-3 p-3 rounded mb-2">
                       <div className="grid grid-cols-4 gap-2">
                         <select
                           value={ing.reagentId}
                           onChange={(e) => updateIngredient(ing.id, 'reagentId', e.target.value)}
-                          className="bg-gray-700 px-2 py-1 rounded text-sm"
+                          className="bg-surface-2 px-2 py-1 rounded text-sm"
                         >
                           {reagents.map(r => (
                             <option key={r.id} value={r.id}>
@@ -807,13 +807,13 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                         <select
                           value={ing.role}
                           onChange={(e) => updateIngredient(ing.id, 'role', e.target.value)}
-                          className="bg-gray-700 px-2 py-1 rounded text-sm"
+                          className="bg-surface-2 px-2 py-1 rounded text-sm"
                         >
                           {availableRoles.map(role => (
                             <option key={role} value={role}>{role}</option>
                           ))}
                         </select>
-                        <div className="bg-gray-700 px-2 py-1 rounded text-sm flex items-center capitalize">
+                        <div className="bg-surface-2 px-2 py-1 rounded text-sm flex items-center capitalize">
                           {reagentRefinement}
                         </div>
                         <div className="flex gap-1">
@@ -821,12 +821,12 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                             type="number"
                             value={ing.unitsUsed}
                             onChange={(e) => updateIngredient(ing.id, 'unitsUsed', Math.max(1, toNumberOr(e.target.value, 1)))}
-                            className="w-full bg-gray-700 px-2 py-1 rounded text-sm"
+                            className="w-full bg-surface-2 px-2 py-1 rounded text-sm"
                             min="1"
                           />
                           <button
                             onClick={() => removeIngredient(ing.id)}
-                            className="bg-red-600 px-2 rounded"
+                            className="bg-danger-600 px-2 rounded"
                           >
                             ×
                           </button>
@@ -838,11 +838,11 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
               </div>
 
               {ingredientAvailability.length > 0 && (
-                <div className="text-sm text-gray-400">
+                <div className="text-sm text-fg-muted">
                   <div className="font-semibold mb-1">Required Reagents:</div>
                   <div className="space-y-1">
                     {ingredientAvailability.map(({ ingredient, reagent, hasEnough }) => (
-                      <div key={ingredient.id} className={hasEnough ? 'text-green-400' : 'text-red-400'}>
+                      <div key={ingredient.id} className={hasEnough ? 'text-success-400' : 'text-danger-400'}>
                         {reagent?.name || 'Unknown Reagent'}: {ingredient.unitsUsed}U required{' '}
                         {reagent ? `(${reagent.quantity}U available)` : '(not found)'}
                       </div>
@@ -873,19 +873,19 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                 return (
                   <div className="space-y-3">
                     {!stats.roleCoverage.valid && (
-                      <div className="bg-red-900 bg-opacity-30 border border-red-500 p-2 rounded text-xs">
-                        <div className="font-semibold text-red-300 mb-1">⚠️ Missing Required Roles</div>
+                      <div className="bg-danger-900 bg-opacity-30 border border-danger-500 p-2 rounded text-xs">
+                        <div className="font-semibold text-danger-300 mb-1">⚠️ Missing Required Roles</div>
                         {stats.roleCoverage.messages.map((msg: string, idx: number) => (
-                          <div key={idx} className="text-red-200">• {msg}</div>
+                          <div key={idx} className="text-danger-200">• {msg}</div>
                         ))}
                       </div>
                     )}
 
                     {!stats.batchValidation.valid && (
-                      <div className="bg-red-900 bg-opacity-30 border border-red-500 p-2 rounded text-xs">
-                        <div className="font-semibold text-red-300 mb-1">⚠️ Constraint Violations</div>
+                      <div className="bg-danger-900 bg-opacity-30 border border-danger-500 p-2 rounded text-xs">
+                        <div className="font-semibold text-danger-300 mb-1">⚠️ Constraint Violations</div>
                         {stats.batchValidation.errors.map((err: string, idx: number) => (
-                          <div key={idx} className="text-red-200">• {err}</div>
+                          <div key={idx} className="text-danger-200">• {err}</div>
                         ))}
                       </div>
                     )}
@@ -912,23 +912,23 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
                       </div>
                     )}
 
-                    <div className="bg-gray-600 p-3 rounded">
+                    <div className="bg-surface-3 p-3 rounded">
                       <div className="text-sm font-semibold mb-2">Batch Preview</div>
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div className="space-y-1">
                           <div>
                             Tier: <span className="text-yellow-400 font-bold">{stats.tier}</span>
-                            <span className="text-xs text-gray-400 ml-2">(Potency Load: {stats.potencyLoad})</span>
+                            <span className="text-xs text-fg-muted ml-2">(Potency Load: {stats.potencyLoad})</span>
                           </div>
-                          <div>Dominant: <span className="text-blue-400">{stats.dominantAspect || 'None'}</span></div>
-                          <div>Secondary: <span className="text-blue-400">{stats.secondaryAspect || 'None'}</span></div>
-                          <div>Potency: <span className="text-green-400">{stats.basePotency} {stats.concentrationSteps > 0 ? `+${stats.concentrationSteps} → ${stats.finalPotency}` : ''}</span></div>
+                          <div>Dominant: <span className="text-accent-400">{stats.dominantAspect || 'None'}</span></div>
+                          <div>Secondary: <span className="text-accent-400">{stats.secondaryAspect || 'None'}</span></div>
+                          <div>Potency: <span className="text-success-400">{stats.basePotency} {stats.concentrationSteps > 0 ? `+${stats.concentrationSteps} → ${stats.finalPotency}` : ''}</span></div>
                         </div>
                         <div className="space-y-1">
                           <div>WR: <span className="text-orange-400">{stats.baseWR}</span></div>
                           <div>DM: <span className="text-orange-400">{stats.baseDM >= 0 ? '+' : ''}{stats.baseDM}</span></div>
                           <div>TB: <span className="text-purple-400">{stats.traitBudget} points</span></div>
-                          <div>Vector: <span className="text-gray-300">{stats.vector}</span></div>
+                          <div>Vector: <span className="text-fg-secondary">{stats.vector}</span></div>
                         </div>
                       </div>
                     </div>
@@ -939,7 +939,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
               <button
                 onClick={createNewBatch}
                 disabled={!hasEnoughReagents}
-                className={`w-full px-4 py-2 rounded ${hasEnoughReagents ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 cursor-not-allowed'}`}
+                className={`w-full px-4 py-2 rounded ${hasEnoughReagents ? 'bg-success-600 hover:bg-success-700' : 'bg-surface-3 cursor-not-allowed'}`}
               >
                 {hasEnoughReagents ? 'Start Batch' : 'Need Reagents'}
               </button>
@@ -951,17 +951,17 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
             {activeBatches.map(b => {
               const progressPercent = Math.min(100, ((b.PP || 0) / (b.WR || 1)) * 100);
               return (
-                <div key={b.id} className="bg-gray-700 p-3 rounded mb-2 cursor-pointer hover:bg-gray-600" onClick={() => setSelectedBatch(b)}>
+                <div key={b.id} className="bg-surface-2 p-3 rounded mb-2 cursor-pointer hover:bg-surface-3" onClick={() => setSelectedBatch(b)}>
                   <div className="flex justify-between items-center">
                     <span className="font-medium">{b.formulaName}</span>
-                    <span className="text-sm text-gray-400">{b.PP}/{b.WR} PP | CP: {b.CP}</span>
+                    <span className="text-sm text-fg-muted">{b.PP}/{b.WR} PP | CP: {b.CP}</span>
                   </div>
-                  <div className="text-xs text-gray-400 mt-1 mb-2">
+                  <div className="text-xs text-fg-muted mt-1 mb-2">
                     Tier {b.tier || 1} | {b.vector || 'Potion'} | {b.dominantAspect} | Potency {b.finalPotency || b.potency || 'P1'} | {(b.shifts || []).length} work blocks
                   </div>
-                  <div className="w-full bg-gray-600 rounded-full h-2">
+                  <div className="w-full bg-surface-3 rounded-full h-2">
                     <div
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      className="bg-accent-600 h-2 rounded-full transition-all duration-300"
                       style={{width: `${progressPercent}%`}}
                     />
                   </div>
@@ -969,7 +969,7 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
               );
             })}
             {activeBatches.length === 0 && (
-              <div className="text-gray-500 text-center py-4">No active batches</div>
+              <div className="text-fg-faint text-center py-4">No active batches</div>
             )}
           </div>
 
@@ -978,26 +978,26 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
             {completedBatches.slice(0, 10).map(b => {
               const batchAmount = b.amount !== undefined ? b.amount : 1;
 
-              return (<div key={b.id} className="bg-gray-700 p-3 rounded mb-2">
+              return (<div key={b.id} className="bg-surface-2 p-3 rounded mb-2">
                 <div className="flex justify-between items-center mb-2">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{b.formulaName}</span>
-                      <span className={`text-sm px-2 py-0.5 rounded ${b.quality === 'Clean' ? 'bg-green-600' : b.quality?.includes('Mishap') ? 'bg-red-600' : 'bg-yellow-600'}`}>
+                      <span className={`text-sm px-2 py-0.5 rounded ${b.quality === 'Clean' ? 'bg-success-600' : b.quality?.includes('Mishap') ? 'bg-danger-600' : 'bg-yellow-600'}`}>
                         {b.quality}
                       </span>
                     </div>
-                    <div className="text-xs text-gray-400 mt-1">
+                    <div className="text-xs text-fg-muted mt-1">
                       Completed: {b.completedDate ? new Date(b.completedDate).toLocaleDateString() : 'N/A'} | {(b.shifts || []).length} work blocks
                     </div>
-                    <div className="text-xs text-gray-400">
+                    <div className="text-xs text-fg-muted">
                       Tier {b.tier} | {b.vector} | Potency: {b.finalPotency}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="text-right">
-                      <div className="text-sm text-gray-300">Amount:</div>
-                      <div className="text-lg font-bold text-blue-400">{batchAmount}×</div>
+                      <div className="text-sm text-fg-secondary">Amount:</div>
+                      <div className="text-lg font-bold text-accent-400">{batchAmount}×</div>
                     </div>
                     {batchAmount > 0 && (
                       <button
@@ -1022,10 +1022,10 @@ function BatchesViewBase({ batches, workers, formulas, reagents, labs, saveBatch
               </div>);
             })}
             {completedBatches.length === 0 && (
-              <div className="text-gray-500 text-center py-4">No completed batches yet</div>
+              <div className="text-fg-faint text-center py-4">No completed batches yet</div>
             )}
             {completedBatches.length > 10 && (
-              <div className="text-xs text-gray-500 text-center mt-2">
+              <div className="text-xs text-fg-faint text-center mt-2">
                 Showing 10 of {completedBatches.length} completed batches
               </div>
             )}

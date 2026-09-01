@@ -290,7 +290,7 @@ describe('CookingTab router', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
     fireEvent.change(screen.getAllByRole('spinbutton')[1], { target: { value: '2' } });
 
-    expect(screen.getByText(/Carrot: 2 lbs required.*1 lbs available/)).toHaveClass('text-red-400');
+    expect(screen.getByText(/Carrot: 2 lbs required.*1 lbs available/)).toHaveClass('text-danger-400');
     expect(screen.getByRole('button', { name: 'Need Ingredients' })).toBeDisabled();
   });
 });
@@ -332,8 +332,8 @@ describe('CreateMealView', () => {
       />
     );
 
-    expect(screen.getByText(/Carrot: 2 lbs required.*10 lbs available/)).toHaveClass('text-green-400');
-    expect(screen.getByText(/Apple: 7 lbs required.*6 lbs available/)).toHaveClass('text-red-400');
+    expect(screen.getByText(/Carrot: 2 lbs required.*10 lbs available/)).toHaveClass('text-success-400');
+    expect(screen.getByText(/Apple: 7 lbs required.*6 lbs available/)).toHaveClass('text-danger-400');
     expect(screen.getByRole('button', { name: 'Need Ingredients' })).toBeDisabled();
   });
 });

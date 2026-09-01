@@ -175,7 +175,7 @@ export function RestActivity({ currentDayKey, currentSlot }: RestActivityProps) 
       <header className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Bed className="h-5 w-5 text-indigo-400" />
-          <h3 className="text-lg font-semibold text-gray-100">Rest &amp; Recovery</h3>
+          <h3 className="text-lg font-semibold text-fg-bright">Rest &amp; Recovery</h3>
         </div>
         {!isCreating && !resolvingTask && (
           <button
@@ -189,10 +189,10 @@ export function RestActivity({ currentDayKey, currentSlot }: RestActivityProps) 
         )}
       </header>
 
-      <div className="mb-4 rounded-lg border border-gray-700 bg-gray-800/50 p-3" data-testid="party-recovery-status">
-        <h4 className="mb-2 text-sm font-medium text-gray-200">Party recovery status</h4>
+      <div className="mb-4 rounded-lg border border-edge bg-surface-1/50 p-3" data-testid="party-recovery-status">
+        <h4 className="mb-2 text-sm font-medium text-fg-primary">Party recovery status</h4>
         {recoveryCharacters.length === 0 ? (
-          <p className="text-xs text-gray-500">Everyone with a character sheet is at full HP and FP.</p>
+          <p className="text-xs text-fg-faint">Everyone with a character sheet is at full HP and FP.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {recoveryCharacters.map(({ character, estimate }) => {
@@ -202,16 +202,16 @@ export function RestActivity({ currentDayKey, currentSlot }: RestActivityProps) 
                 getLocationByKey(character.hitLocationProfileId ?? 'humanoid', locationKey)?.label ?? locationKey
               )) ?? [];
               return (
-                <div key={character.id} className="rounded bg-gray-900/60 px-3 py-2 text-xs text-gray-300">
-                  <span className="mr-2 font-medium text-gray-100">{character.name}</span>
+                <div key={character.id} className="rounded bg-surface-0/60 px-3 py-2 text-xs text-fg-secondary">
+                  <span className="mr-2 font-medium text-fg-bright">{character.name}</span>
                   {pools && estimate && (
                     <>
-                      <span className="mr-2 text-red-300">HP {pools.HP.current}/{pools.HP.max}</span>
-                      <span className="mr-2 text-blue-300">FP {pools.FP.current}/{pools.FP.max}</span>
-                      <span className="mr-2 text-gray-400">Full: HP {estimate.daysToFullHP}d, FP {estimate.daysToFullFP}d</span>
+                      <span className="mr-2 text-danger-300">HP {pools.HP.current}/{pools.HP.max}</span>
+                      <span className="mr-2 text-accent-300">FP {pools.FP.current}/{pools.FP.max}</span>
+                      <span className="mr-2 text-fg-muted">Full: HP {estimate.daysToFullHP}d, FP {estimate.daysToFullFP}d</span>
                     </>
                   )}
-                  {character.status?.dead && <span className="mr-2 text-red-400">Dead</span>}
+                  {character.status?.dead && <span className="mr-2 text-danger-400">Dead</span>}
                   {conditionLabels.length > 0 && (
                     <span className="mr-2 text-purple-300">{conditionLabels.join(', ')}</span>
                   )}
@@ -226,7 +226,7 @@ export function RestActivity({ currentDayKey, currentSlot }: RestActivityProps) 
       </div>
 
       {validationError && (
-        <div role="alert" data-testid="validation-error" className="mb-4 flex items-center gap-2 rounded border border-red-500 bg-red-900/30 px-3 py-2 text-sm text-red-300">
+        <div role="alert" data-testid="validation-error" className="mb-4 flex items-center gap-2 rounded border border-danger-500 bg-danger-900/30 px-3 py-2 text-sm text-danger-300">
           <AlertCircle className="h-4 w-4" /> {validationError}
         </div>
       )}
@@ -261,9 +261,9 @@ export function RestActivity({ currentDayKey, currentSlot }: RestActivityProps) 
       {!resolvingTask && (
         <>
           <section className="mb-6" data-testid="pending-tasks-section">
-            <h4 className="mb-2 font-medium text-gray-200">Pending ({pendingTasks.length})</h4>
+            <h4 className="mb-2 font-medium text-fg-primary">Pending ({pendingTasks.length})</h4>
             {pendingTasks.length === 0 ? (
-              <p className="text-sm italic text-gray-400">No pending rest tasks</p>
+              <p className="text-sm italic text-fg-muted">No pending rest tasks</p>
             ) : (
               <div className="space-y-2">
                 {pendingTasks.map((task) => (
@@ -281,9 +281,9 @@ export function RestActivity({ currentDayKey, currentSlot }: RestActivityProps) 
           </section>
 
           <section data-testid="completed-tasks-section">
-            <h4 className="mb-2 font-medium text-gray-200">Completed ({completedTasks.length})</h4>
+            <h4 className="mb-2 font-medium text-fg-primary">Completed ({completedTasks.length})</h4>
             {completedTasks.length === 0 ? (
-              <p className="text-sm italic text-gray-400">No completed rest tasks</p>
+              <p className="text-sm italic text-fg-muted">No completed rest tasks</p>
             ) : (
               <div className="space-y-2">
                 {completedTasks.map((task) => (

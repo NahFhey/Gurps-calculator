@@ -542,14 +542,14 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
       {/* Header */}
       <header className="activity-header flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">
-          <Fish className="w-5 h-5 text-blue-600" />
+          <Fish className="w-5 h-5 text-accent-600" />
           <h3 className="text-lg font-semibold">Fishing</h3>
         </div>
         {!isCreating && !resolvingTask && (
           <button
             type="button"
             onClick={() => setIsCreating(true)}
-            className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+            className="flex items-center gap-1 px-3 py-1.5 bg-accent-600 text-white rounded hover:bg-accent-700 transition-colors text-sm"
             data-testid="new-fishing-task-button"
           >
             <Plus className="w-4 h-4" />
@@ -561,7 +561,7 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
       {/* Validation Error */}
       {validationError && (
         <div
-          className="flex items-center gap-2 bg-red-100 border border-red-300 text-red-700 px-3 py-2 rounded mb-4"
+          className="flex items-center gap-2 bg-danger-100 border border-danger-300 text-danger-700 px-3 py-2 rounded mb-4"
           role="alert"
           data-testid="validation-error"
         >
@@ -570,7 +570,7 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
           <button
             type="button"
             onClick={() => setValidationError(null)}
-            className="ml-auto text-red-700 hover:text-red-900"
+            className="ml-auto text-danger-700 hover:text-danger-900"
             aria-label="Dismiss error"
           >
             &times;
@@ -614,11 +614,11 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
       {/* Pending Tasks */}
       {!resolvingTask && (
         <section className="pending-tasks mb-6" data-testid="pending-tasks-section">
-          <h4 className="font-medium mb-2 text-gray-200">
+          <h4 className="font-medium mb-2 text-fg-primary">
             Pending ({pendingTasks.length})
           </h4>
           {pendingTasks.length === 0 ? (
-            <p className="text-gray-500 text-sm italic">No pending fishing tasks</p>
+            <p className="text-fg-faint text-sm italic">No pending fishing tasks</p>
           ) : (
             <div className="space-y-2">
               {pendingTasks.map((task) => (
@@ -641,11 +641,11 @@ export function FishingActivity({ currentDayKey, currentSlot }: FishingActivityP
       {/* Completed Tasks */}
       {!resolvingTask && (
         <section className="completed-tasks" data-testid="completed-tasks-section">
-          <h4 className="font-medium mb-2 text-gray-200">
+          <h4 className="font-medium mb-2 text-fg-primary">
             Completed ({completedTasks.length})
           </h4>
           {completedTasks.length === 0 ? (
-            <p className="text-gray-500 text-sm italic">No completed fishing tasks</p>
+            <p className="text-fg-faint text-sm italic">No completed fishing tasks</p>
           ) : (
             <div className="space-y-2">
               {completedTasks.map((task) => (

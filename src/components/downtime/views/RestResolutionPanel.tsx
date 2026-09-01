@@ -27,10 +27,10 @@ function PoolBar({ label, current, max, color }: { label: string; current: numbe
   const percent = max > 0 ? Math.max(0, Math.min(100, current / max * 100)) : 0;
   return (
     <div>
-      <div className="mb-1 flex justify-between text-xs text-gray-300">
+      <div className="mb-1 flex justify-between text-xs text-fg-secondary">
         <span>{label}</span><span>{current}/{max}</span>
       </div>
-      <div className="h-2 overflow-hidden rounded bg-gray-900">
+      <div className="h-2 overflow-hidden rounded bg-surface-0">
         <div className={`h-full ${color}`} style={{ width: `${percent}%` }} />
       </div>
     </div>
@@ -95,33 +95,33 @@ export function RestResolutionPanel({
   };
 
   return (
-    <div className="rounded-lg border border-indigo-500/50 bg-gray-800 p-4" data-testid="rest-resolution-panel">
+    <div className="rounded-lg border border-indigo-500/50 bg-surface-1 p-4" data-testid="rest-resolution-panel">
       <div className="mb-4 flex items-center gap-2">
         <Bed className="h-5 w-5 text-indigo-400" />
-        <h4 className="font-semibold text-gray-100">Resolve recovery for {leader.name}</h4>
+        <h4 className="font-semibold text-fg-bright">Resolve recovery for {leader.name}</h4>
       </div>
 
       {!gcsData ? (
-        <p className="mb-4 rounded bg-amber-900/30 p-3 text-sm text-amber-300">
+        <p className="mb-4 rounded bg-warning-900/30 p-3 text-sm text-warning-300">
           No character sheet — recovery will not be tracked.
         </p>
       ) : (
         <>
           <div className="mb-4 grid gap-3 sm:grid-cols-2">
-            <PoolBar label="HP" current={gcsData.pools.HP.current} max={gcsData.pools.HP.max} color="bg-red-500" />
-            <PoolBar label="FP" current={gcsData.pools.FP.current} max={gcsData.pools.FP.max} color="bg-blue-500" />
+            <PoolBar label="HP" current={gcsData.pools.HP.current} max={gcsData.pools.HP.max} color="bg-danger-500" />
+            <PoolBar label="FP" current={gcsData.pools.FP.current} max={gcsData.pools.FP.max} color="bg-accent-500" />
           </div>
 
-          <div className="mb-4 rounded bg-gray-900/50 p-3 text-sm text-gray-300">
-            <p><span className="font-medium text-gray-100">Rest:</span> {task.activityData.restType.replace('_', ' ')}</p>
-            <p><span className="font-medium text-gray-100">Recovery modifier:</span> {task.activityData.recoveryBonus >= 0 ? '+' : ''}{task.activityData.recoveryBonus}</p>
+          <div className="mb-4 rounded bg-surface-0/50 p-3 text-sm text-fg-secondary">
+            <p><span className="font-medium text-fg-bright">Rest:</span> {task.activityData.restType.replace('_', ' ')}</p>
+            <p><span className="font-medium text-fg-bright">Recovery modifier:</span> {task.activityData.recoveryBonus >= 0 ? '+' : ''}{task.activityData.recoveryBonus}</p>
             {physicianLevel > 0 && (
-              <p><span className="font-medium text-gray-100">Physician-{physicianLevel}:</span> successful care adds +1 and doubles successful HP recovery.</p>
+              <p><span className="font-medium text-fg-bright">Physician-{physicianLevel}:</span> successful care adds +1 and doubles successful HP recovery.</p>
             )}
           </div>
 
           {hasNonRestTasks && (
-            <div className="mb-4 rounded border border-amber-600/50 bg-amber-900/30 p-3 text-sm text-amber-200">
+            <div className="mb-4 rounded border border-warning-600/50 bg-warning-900/30 p-3 text-sm text-warning-200">
               <p className="mb-2 flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4" />
                 {leader.name} worked other tasks today — no natural HP recovery
@@ -133,7 +133,7 @@ export function RestResolutionPanel({
                   onChange={(event) => setOverrideFullDay(event.target.checked)}
                   disabled={Boolean(recovery)}
                   data-testid="full-day-override"
-                  className="rounded border-gray-600 bg-gray-900 text-indigo-600"
+                  className="rounded border-edge-strong bg-surface-0 text-indigo-600"
                 />
                 GM override: count as a full day of rest
               </label>
@@ -159,7 +159,7 @@ export function RestResolutionPanel({
             onClick={handleRoll}
             disabled={Boolean(recovery)}
             data-testid="roll-recovery-button"
-            className="mb-3 w-full rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-700 disabled:text-gray-500"
+            className="mb-3 w-full rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-fg-faint"
           >
             Roll Recovery
           </button>
@@ -172,11 +172,11 @@ export function RestResolutionPanel({
           onClick={handleApply}
           disabled={Boolean(gcsData) && !recovery}
           data-testid="apply-recovery-button"
-          className="rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-700 disabled:text-gray-500"
+          className="rounded bg-success-600 px-4 py-2 text-sm font-medium text-white hover:bg-success-700 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-fg-faint"
         >
           Apply
         </button>
-        <button type="button" onClick={onCancel} className="rounded border border-gray-600 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
+        <button type="button" onClick={onCancel} className="rounded border border-edge-strong px-4 py-2 text-sm text-fg-secondary hover:bg-surface-2">
           Cancel
         </button>
       </div>
