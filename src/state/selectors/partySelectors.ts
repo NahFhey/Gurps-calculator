@@ -27,3 +27,11 @@ export const selectGroupsAboardVehicle = (state: CampaignState, vehicleId: Id) =
 export const selectGroupsOnMap = (state: CampaignState, mapId: MapId) => groupsOnMap(state, mapId);
 
 export const selectVehiclesOnMap = (state: CampaignState, mapId: MapId) => vehiclesOnMap(state, mapId);
+
+export const selectActiveJourneys = (state: CampaignState) =>
+  Object.values(selectTravelGroups(state)).flatMap((group) =>
+    group.journey?.status === 'active' ? [{ group, journey: group.journey }] : []
+  );
+
+export const selectGroupJourney = (state: CampaignState, groupId: Id) =>
+  selectTravelGroups(state)[groupId]?.journey ?? null;

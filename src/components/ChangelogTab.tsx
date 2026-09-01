@@ -14,6 +14,7 @@ const ACTIVITY_FAMILIES = [
   'trading',
   'study',
   'social',
+  'travel',
   'character',
 ] as const;
 

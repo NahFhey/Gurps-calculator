@@ -56,6 +56,29 @@ function makeMap(overrides: Partial<MapModel> = {}): MapModel {
 // Direct serialize → hydrate round-trip
 // ---------------------------------------------------------------------------
 describe('serializeCampaignState / hydrateCampaignState round-trip', () => {
+  it('round-trips an active journey and its resolved travel task as plain JSON', () => {
+    const state = createCampaignState();
+    const map = makeMap();
+    state.maps = { ...state.maps, activeMapId: map.id, mapsById: { [map.id]: map } };
+    state.entities = {
+      ...state.entities,
+      characters: { a: { id: 'a', name: 'A', work: { skills: {} } } },
+      travelGroups: { g: {
+        id: 'g', name: 'G', memberIds: ['a'], vehicleId: null, position: { mapId: map.id, tileId: 'tile-1' },
+        journey: { id: 'j', mapId: map.id, routeTileIds: ['tile-1', 'tile-1'], destinationTileId: 'tile-1', mode: 'foot', navigatorId: 'a', gmNavigationSkill: 10, forcedMarch: false, legProgressMiles: 2, milesTraveled: 4, status: 'active', gmOverride: false, startedAt: { day: 1, slot: 0 } },
+      } },
+    };
+    state.downtime = {
+      tasksById: { travel: {
+        id: 'travel', activityType: 'travel', dayKey: 1, slot: 0, leaderId: 'a', helperIds: [], status: 'resolved',
+        activityData: { type: 'travel', journeyId: 'j', groupId: 'g', vehicleId: null, milesMoved: 4, drifted: false },
+        results: { success: true, message: '4 mi' }, createdAt: 1, updatedAt: 1,
+      } }, taskOrder: ['travel'], pendingDayLedger: null,
+    };
+    const hydrated = hydrateCampaignState(JSON.parse(JSON.stringify(serializeCampaignState(state))));
+    expect(hydrated.entities.travelGroups?.g.journey).toEqual(state.entities.travelGroups!.g.journey);
+    expect(hydrated.downtime.tasksById.travel).toEqual(state.downtime.tasksById.travel);
+  });
   it('round-trips empty Sets', () => {
     const state = createCampaignState();
     // Ensure Sets are empty

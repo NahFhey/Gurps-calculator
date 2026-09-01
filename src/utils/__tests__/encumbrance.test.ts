@@ -7,7 +7,9 @@ import {
   calculateEncumbrance,
   calculateLocationDR,
   calculateCharacterEncumbrance,
+  getWorstGroupEncumbranceLevel,
 } from '../encumbrance';
+import { createDefaultGCSData } from '../../types/characterSheet';
 import type { Equipment, PrimaryAttributes, SecondaryAttributes } from '../../types/characterSheet';
 
 // ============================================================================
@@ -294,5 +296,29 @@ describe('calculateCharacterEncumbrance', () => {
     expect(result.adjustedMove).toBe(5);
     // Dodge = floor(5) + 3 = 8
     expect(result.adjustedDodge).toBe(8);
+  });
+});
+
+describe('getWorstGroupEncumbranceLevel', () => {
+  it('returns the worst level and bottleneck name', () => {
+    const light = createDefaultGCSData();
+    const heavy = createDefaultGCSData();
+    heavy.equipment = [{ id: 'load', name: 'Load', quantity: 1, weight: 100, cost: 0 }];
+    expect(getWorstGroupEncumbranceLevel([
+      { id: 'a', name: 'Light', work: { skills: {} }, gcsData: light },
+      { id: 'b', name: 'Heavy', work: { skills: {} }, gcsData: heavy },
+    ])).toEqual({ level: 3, bottleneckName: 'Heavy' });
+  });
+
+  it('counts a member without gcsData as level zero', () => {
+    expect(getWorstGroupEncumbranceLevel([{ id: 'a', name: 'Legacy', work: { skills: {} } }]))
+      .toEqual({ level: 0, bottleneckName: null });
+  });
+
+  it('clamps loads beyond ten times Basic Lift to level four', () => {
+    const data = createDefaultGCSData();
+    data.equipment = [{ id: 'load', name: 'Impossible load', quantity: 1, weight: 10_000, cost: 0 }];
+    expect(getWorstGroupEncumbranceLevel([{ id: 'a', name: 'Porter', work: { skills: {} }, gcsData: data }]))
+      .toEqual({ level: 4, bottleneckName: 'Porter' });
   });
 });

@@ -21,6 +21,7 @@ import type {
   PrimaryAttributes,
   SecondaryAttributes,
 } from '../types/characterSheet';
+import type { Character } from '../types/campaign';
 
 // ============================================================================
 // CONSTANTS
@@ -33,7 +34,7 @@ const BL_MULTIPLIERS: readonly number[] = [1, 2, 3, 6, 10];
 const LEVEL_LABELS: readonly string[] = ['None', 'Light', 'Medium', 'Heavy', 'X-Heavy'];
 
 /** Move multipliers for each encumbrance level */
-const MOVE_MULTIPLIERS: readonly number[] = [1.0, 0.8, 0.6, 0.4, 0.2];
+export const MOVE_MULTIPLIERS: readonly number[] = [1.0, 0.8, 0.6, 0.4, 0.2];
 
 /** Dodge penalties for each encumbrance level */
 const DODGE_PENALTIES: readonly number[] = [0, 1, 2, 3, 4];
@@ -182,4 +183,26 @@ export function calculateCharacterEncumbrance(
   const dodge = Math.floor(secondaryAttributes.basicSpeed.value) + 3;
 
   return calculateEncumbrance(attributes.ST, basicMove, dodge, equipment);
+}
+
+export function getWorstGroupEncumbranceLevel(
+  characters: Character[]
+): { level: EncumbranceLevel; bottleneckName: string | null } {
+  let level: EncumbranceLevel = 0;
+  let bottleneckName: string | null = null;
+  for (const character of characters) {
+    if (!character.gcsData) continue;
+    const encumbrance = calculateCharacterEncumbrance(
+      character.gcsData.attributes,
+      character.gcsData.secondaryAttributes,
+      character.gcsData.equipment
+    );
+    // Loads above 10x BL deliberately clamp to level 4; immobility is left to GM judgment.
+    const memberLevel = Math.min(4, encumbrance.level) as EncumbranceLevel;
+    if (memberLevel > level) {
+      level = memberLevel;
+      bottleneckName = character.name;
+    }
+  }
+  return { level, bottleneckName };
 }

@@ -86,9 +86,9 @@ import type {
   LinkModel,
   MapImageLayer,
   StructureLayer,
-  TravelMode,
 } from '../types/map';
 import type { Vehicle, VehicleTypeDef } from '../types/party';
+import type { ArmJourneyInput } from './party/partyActions';
 
 type CampaignStoreValue = {
   state: CampaignState;
@@ -334,7 +334,6 @@ type CampaignStoreValue = {
     mapRemoveStructureLayer: (mapId: MapId, layerId: StructureLayerId) => void;
     mapSetStructureCells: (mapId: MapId, layerId: StructureLayerId, tileIds: TileId[], terrainId: TerrainId | null) => void;
     mapRevealTiles: (mapId: MapId, tileIds: TileId[]) => void;
-    mapExecuteTravel: (params: { mapId: MapId; routeTileIds: TileId[]; destinationTileId: TileId; mode: TravelMode; gmOverride: boolean; groupId: Id }) => void;
     mapSetPendingTerrain: (tileIds: TileId[]) => void;
     mapClearPendingTerrain: () => void;
 
@@ -353,6 +352,11 @@ type CampaignStoreValue = {
     partyUndockVehicle: (vehicleId: Id) => void;
     partyUpsertVehicleType: (def: VehicleTypeDef) => void;
     partyRemoveVehicleType: (typeId: string) => void;
+    partyArmJourney: (groupId: Id, journey: ArmJourneyInput) => void;
+    partyPauseJourney: (groupId: Id) => void;
+    partyResumeJourney: (groupId: Id) => void;
+    partyAbortJourney: (groupId: Id) => void;
+    partyRerouteJourney: (groupId: Id, routeTileIds: TileId[]) => void;
   };
 };
 
@@ -717,8 +721,6 @@ export function CampaignStoreProvider({
         dispatch({ type: 'map/setStructureCells', payload: { mapId, layerId, tileIds, terrainId } }),
       mapRevealTiles: (mapId: MapId, tileIds: TileId[]) =>
         dispatch({ type: 'map/revealTiles', payload: { mapId, tileIds } }),
-      mapExecuteTravel: (params: { mapId: MapId; routeTileIds: TileId[]; destinationTileId: TileId; mode: TravelMode; gmOverride: boolean; groupId: Id }) =>
-        dispatch({ type: 'map/executeTravel', payload: params }),
       mapSetPendingTerrain: (tileIds: TileId[]) =>
         dispatch({ type: 'map/setPendingTerrain', payload: tileIds }),
       mapClearPendingTerrain: () => dispatch({ type: 'map/clearPendingTerrain' }),
@@ -751,6 +753,16 @@ export function CampaignStoreProvider({
         dispatch({ type: 'party/upsertVehicleType', payload: { def } }),
       partyRemoveVehicleType: (typeId: string) =>
         dispatch({ type: 'party/removeVehicleType', payload: { typeId } }),
+      partyArmJourney: (groupId: Id, journey: ArmJourneyInput) =>
+        dispatch({ type: 'party/armJourney', payload: { groupId, journey } }),
+      partyPauseJourney: (groupId: Id) =>
+        dispatch({ type: 'party/pauseJourney', payload: { groupId } }),
+      partyResumeJourney: (groupId: Id) =>
+        dispatch({ type: 'party/resumeJourney', payload: { groupId } }),
+      partyAbortJourney: (groupId: Id) =>
+        dispatch({ type: 'party/abortJourney', payload: { groupId } }),
+      partyRerouteJourney: (groupId: Id, routeTileIds: TileId[]) =>
+        dispatch({ type: 'party/rerouteJourney', payload: { groupId, routeTileIds } }),
 
       // Storage cleanup
       clearCheckpoints: () => dispatch({ type: 'clearCheckpoints' }),

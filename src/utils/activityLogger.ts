@@ -23,7 +23,7 @@ const mergeMetaNames = (names?: string[], name?: string): string[] | undefined =
  * Part of Phase 4: Populate Changelog
  */
 export function createActivityLogEntry(
-  activityType: 'alchemy' | 'cooking' | 'crafting' | 'gathering' | 'inventory' | 'combat' | 'rest' | 'trading' | 'study' | 'social' | 'character',
+  activityType: 'alchemy' | 'cooking' | 'crafting' | 'gathering' | 'inventory' | 'combat' | 'rest' | 'trading' | 'study' | 'social' | 'character' | 'travel',
   action: string,
   details: ActivityLogDetails,
   visibility: LogVisibility = 'player'
@@ -53,6 +53,23 @@ export function createActivityLogEntry(
     ...(hasMeta ? { meta } : {}),
   };
 }
+
+const travelEntry = (action: string, message: string, mixed = false) =>
+  createActivityLogEntry('travel', action, {
+    message,
+    ...(mixed ? { maskedMessage: message } : {}),
+  }, mixed ? 'mixed' : 'player');
+
+export const travelLog = {
+  departed: (message: string) => travelEntry('departed', message),
+  camp: (message: string) => travelEntry('camp', message),
+  progress: (message: string) => travelEntry('progress', message),
+  drifted: (message: string) => travelEntry('drifted', message),
+  paused: (message: string) => travelEntry('paused', message, true),
+  resumed: (message: string) => travelEntry('resumed', message, true),
+  aborted: (message: string) => travelEntry('aborted', message, true),
+  arrived: (message: string) => travelEntry('arrived', message),
+};
 
 /** Rest and recovery-specific log entry creators. */
 export const restLog = {

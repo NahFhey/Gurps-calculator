@@ -19,6 +19,7 @@ export {
   DOWNTIME_TASK_RESOLVE,
   DOWNTIME_TASK_CANCEL,
   DOWNTIME_TASK_REORDER,
+  DOWNTIME_STATE_REPLACE,
   // Action creators
   createTask,
   updateTask,

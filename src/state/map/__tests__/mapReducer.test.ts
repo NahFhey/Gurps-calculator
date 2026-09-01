@@ -18,7 +18,6 @@ import {
   MAP_ADD_LINK,
   MAP_REMOVE_LINK,
   MAP_REVEAL_TILES,
-  MAP_EXECUTE_TRAVEL,
   MAP_SET_PENDING_TERRAIN,
   MAP_CLEAR_PENDING_TERRAIN,
   type MapAction,
@@ -445,81 +444,6 @@ describe('mapReducer', () => {
       expect(next.maps.mapsById['ghost']).toBeUndefined();
     });
 
-  });
-
-  describe('MAP_EXECUTE_TRAVEL', () => {
-    beforeEach(() => {
-      state.maps.mapsById = { m1: makeMinimalMap('m1'), m2: makeMinimalMap('m2') };
-      state.maps.activeMapId = 'm1';
-      state.entities.travelGroups = {
-        g1: { id: 'g1', name: 'Party', memberIds: [], vehicleId: null, position: { mapId: 'm1', tileId: 'm1-a' } },
-      };
-    });
-
-    it('moves the group and reveals route tiles', () => {
-      const next = applyAction(state, {
-        type: MAP_EXECUTE_TRAVEL,
-        payload: {
-          mapId: 'm1',
-          routeTileIds: ['m1-a', 'm1-b', 'm1-c'],
-          destinationTileId: 'm1-c',
-          mode: 'foot',
-          gmOverride: false,
-          groupId: 'g1',
-        },
-      });
-      expect(next.entities.travelGroups?.g1.position).toEqual({ mapId: 'm1', tileId: 'm1-c' });
-      expect(next.maps.mapsById['m1'].revealedTileIds.has('m1-b')).toBe(true);
-      expect(next.maps.mapsById['m1'].revealedTileIds.has('m1-c')).toBe(true);
-      expect(next.maps.pendingTerrainAssignment).toBeNull();
-    });
-
-    it('records pending terrain assignment when gmOverride and null-terrain tiles are on the route', () => {
-      // m1-b has null terrain in makeMinimalMap
-      const next = applyAction(state, {
-        type: MAP_EXECUTE_TRAVEL,
-        payload: {
-          mapId: 'm1',
-          routeTileIds: ['m1-a', 'm1-b', 'm1-c'],
-          destinationTileId: 'm1-c',
-          mode: 'foot',
-          gmOverride: true,
-          groupId: 'g1',
-        },
-      });
-      expect(next.maps.pendingTerrainAssignment).toEqual(['m1-b']);
-    });
-
-    it('reveals tiles visible from the destination in line-of-sight mode', () => {
-      state.maps.mapsById.m1.revealedTileIds = new Set(['m1-a']);
-      const next = applyAction(state, {
-        type: MAP_EXECUTE_TRAVEL,
-        payload: {
-          mapId: 'm1',
-          routeTileIds: ['m1-a', 'm1-c'],
-          destinationTileId: 'm1-c',
-          mode: 'foot',
-          gmOverride: false,
-          groupId: 'g1',
-        },
-      });
-      expect(next.maps.mapsById.m1.revealedTileIds.has('m1-b')).toBe(true);
-    });
-
-    it('is a no-op when mapId does not exist', () => {
-      const next = applyAction(state, {
-        type: MAP_EXECUTE_TRAVEL,
-        payload: {
-          mapId: 'ghost',
-          routeTileIds: ['x'],
-          destinationTileId: 'x',
-          mode: 'foot',
-          gmOverride: false,
-          groupId: 'g1',
-        },
-      });
-      expect(next.maps.mapsById['ghost']).toBeUndefined();
-    });
   });
 
   describe('pending terrain assignment', () => {

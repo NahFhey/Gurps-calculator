@@ -47,6 +47,8 @@ import {
 import type { PartyColumn } from './views/TravelStep1Party';
 import { getTerrainModifiers } from '../../utils/weatherSystem';
 import { resolveLocationTerrain } from '../../utils/mapUtils';
+import { getNavigationSkill } from '../../utils/navigation';
+import { JourneyStatusPanel } from './views/JourneyStatusPanel';
 
 /** Interaction mode for the map */
 export type MapInteractionMode = 'view' | 'paint' | 'select';
@@ -108,6 +110,9 @@ export function MapPanel() {
   const [travelRoute, setTravelRoute] = useState<TileId[]>([]);
   const [stagedTravelingMemberIds, setStagedTravelingMemberIds] = useState<Id[]>([]);
   const [stagedVehicleId, setStagedVehicleId] = useState<Id | null>(null);
+  const [navigatorId, setNavigatorId] = useState<Id | null>(null);
+  const [gmNavigationSkill, setGmNavigationSkill] = useState(10);
+  const [forcedMarch, setForcedMarch] = useState(false);
 
   const compositionGroups = useMemo(
     () => activeGroup ? getCompositionGroups(state, activeGroup) : [],
@@ -524,8 +529,15 @@ export function MapPanel() {
     setStagedVehicleId(activeGroup.vehicleId);
     setTravelStep(1);
     setTravelRoute([]);
+    const bestNavigator = activeGroup.memberIds
+      .flatMap((id) => state.entities.characters[id] ? [state.entities.characters[id]] : [])
+      .map((character) => ({ id: character.id, level: getNavigationSkill(character, travelMode).level }))
+      .sort((a, b) => b.level - a.level || a.id.localeCompare(b.id))[0];
+    setNavigatorId(bestNavigator?.id ?? null);
+    setGmNavigationSkill(activeGroup.journey?.gmNavigationSkill ?? 10);
+    setForcedMarch(activeGroup.journey?.forcedMarch ?? false);
     setShowTravelWizard(true);
-  }, [activeMap, activeGroup]);
+  }, [activeMap, activeGroup, state.entities.characters, travelMode]);
 
   const handleCloseTravel = useCallback(() => {
     setShowTravelWizard(false);
@@ -533,6 +545,9 @@ export function MapPanel() {
     setTravelRoute([]);
     setStagedTravelingMemberIds([]);
     setStagedVehicleId(null);
+    setNavigatorId(null);
+    setGmNavigationSkill(10);
+    setForcedMarch(false);
   }, []);
 
   const handleMoveTravelChip = useCallback((memberId: Id, to: PartyColumn) => {
@@ -556,18 +571,22 @@ export function MapPanel() {
       { travelingMemberIds: stagedTravelingMemberIds, vehicleId: stagedVehicleId },
       sourceGroups
     );
+    // C2 may replace this abort-and-rearm flow with a true reroute that preserves mileage.
+    if (activeGroup.journey) actions.partyAbortJourney(activeGroup.id);
     applyCompositionActions(compositionActions, actions);
     const destTileId = travelRoute[travelRoute.length - 1];
-    actions.mapExecuteTravel({
+    actions.partyArmJourney(activeGroup.id, {
       mapId: maps.activeMapId,
       routeTileIds: travelRoute,
       destinationTileId: destTileId,
       mode: travelMode,
+      navigatorId: navigatorId && stagedTravelingMemberIds.includes(navigatorId) ? navigatorId : null,
+      gmNavigationSkill,
+      forcedMarch: isGmMode && forcedMarch,
       gmOverride: isGmMode,
-      groupId: activeGroup.id,
     });
     handleCloseTravel();
-  }, [maps.activeMapId, activeGroup, travelMode, travelRoute, stagedTravelingMemberIds, stagedVehicleId, compositionGroups, isGmMode, actions, handleCloseTravel]);
+  }, [maps.activeMapId, activeGroup, travelMode, travelRoute, stagedTravelingMemberIds, stagedVehicleId, compositionGroups, isGmMode, navigatorId, gmNavigationSkill, forcedMarch, actions, handleCloseTravel]);
 
   // Pending terrain assignment handlers
   const handleFillPendingTerrain = useCallback(
@@ -717,15 +736,34 @@ export function MapPanel() {
             day={state.time.day}
             slot={state.time.slot}
             downtimeState={state.downtime}
+            slotsPerDay={state.time.slotsPerDay}
+            nightSlotIndices={state.time.nightSlotIndices}
+            navigatorId={navigatorId}
+            gmNavigationSkill={gmNavigationSkill}
+            forcedMarch={forcedMarch}
             onSetStep={setTravelStep}
             onMoveChip={handleMoveTravelChip}
             onSelectVehicle={handleSelectTravelVehicle}
             onClearRoute={() => setTravelRoute([])}
+            onNavigatorChange={setNavigatorId}
+            onGmNavigationSkillChange={setGmNavigationSkill}
+            onForcedMarchChange={setForcedMarch}
             onConfirm={handleTravelConfirm}
             onClose={handleCloseTravel}
           />
         )}
       </div>
+
+      {activeGroup?.journey && activeMap.id === activeGroup.journey.mapId && (
+        <JourneyStatusPanel
+          map={activeMap}
+          group={activeGroup}
+          onPause={() => actions.partyPauseJourney(activeGroup.id)}
+          onResume={() => actions.partyResumeJourney(activeGroup.id)}
+          onAbort={() => actions.partyAbortJourney(activeGroup.id)}
+          onAdvanceSlot={actions.advanceTime}
+        />
+      )}
 
       {/* Links button (when party tile has links) */}
       {partyTileLinks.length > 0 && !showTravelWizard && (

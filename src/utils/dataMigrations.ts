@@ -67,6 +67,7 @@ const migrationHandlers: Record<string, MigrationHandler> = {
   '1.5.5:1.5.6': migrateTo1_5_6,
   '1.5.6:1.5.7': migrateTo1_5_7,
   '1.5.7:1.5.8': migrateTo1_5_8,
+  '1.5.8:1.5.9': migrateTo1_5_9,
 };
 
 /**
@@ -613,6 +614,41 @@ export function migrateTo1_5_8(data: MigratableData): MigratableData {
   entities.alchemyLabs = cleanRegistry(entities.alchemyLabs);
   next.entities = entities;
   return next;
+}
+
+/** Migration: 1.5.8 → 1.5.9 (defensive journey references). */
+export function migrateTo1_5_9(data: MigratableData): MigratableData {
+  if (!isRecord(data)) return data;
+  const mapsState = isRecord(data.maps) ? data.maps : {};
+  const mapsById = isRecord(mapsState.mapsById) ? mapsState.mapsById : {};
+  const entities = isRecord(data.entities) ? data.entities : {};
+  const travelGroups = isRecord(entities.travelGroups) ? entities.travelGroups : {};
+  let changed = false;
+  const nextGroups: Record<string, unknown> = {};
+  for (const [groupId, value] of Object.entries(travelGroups)) {
+    if (!isRecord(value) || !isRecord(value.journey)) {
+      nextGroups[groupId] = value;
+      continue;
+    }
+    const journey = value.journey;
+    const valid = typeof journey.mapId === 'string'
+      && mapsById[journey.mapId] !== undefined
+      && Array.isArray(journey.routeTileIds)
+      && journey.routeTileIds.length > 0;
+    if (valid) {
+      nextGroups[groupId] = value;
+    } else {
+      const cleaned = { ...value };
+      delete cleaned.journey;
+      nextGroups[groupId] = cleaned;
+      changed = true;
+    }
+  }
+  if (!changed) return data;
+  return {
+    ...data,
+    entities: { ...entities, travelGroups: nextGroups },
+  };
 }
 
 /**

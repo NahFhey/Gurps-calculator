@@ -15,6 +15,7 @@ import {
   beginResolveTask,
   resolveTask,
   cancelTask,
+  DOWNTIME_STATE_REPLACE,
 } from '../../state/downtime';
 import {
   validateBatchToolExclusivity,
@@ -155,6 +156,13 @@ export function DowntimeProvider({
   // so that the party panel (which reads from campaign store) sees task assignments.
   // Use a ref guard to skip no-op dispatches (e.g., during StrictMode double-renders).
   const prevDowntimeStateRef = useRef(state);
+  useEffect(() => {
+    if (campaignState.downtime !== prevDowntimeStateRef.current) {
+      prevDowntimeStateRef.current = campaignState.downtime;
+      dispatch({ type: DOWNTIME_STATE_REPLACE, payload: campaignState.downtime });
+    }
+  }, [campaignState.downtime]);
+
   useEffect(() => {
     if (prevDowntimeStateRef.current !== state) {
       prevDowntimeStateRef.current = state;

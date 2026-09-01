@@ -12,7 +12,7 @@ import type {
   ForageMode,
   ForageSkill,
 } from './foraging';
-import type { CraftQuality } from './campaign';
+import type { CraftQuality, Id } from './campaign';
 import type { SkillAttribute, SkillDifficulty } from './characterSheet';
 
 // ============================================================================
@@ -51,7 +51,8 @@ export type DowntimeActivityType =
   | 'rest'
   | 'trading'
   | 'study'
-  | 'social';
+  | 'social'
+  | 'travel';
 
 // ============================================================================
 // TASK STATUS
@@ -321,6 +322,15 @@ export interface SocialData {
   skillKey: string;
 }
 
+export interface TravelData {
+  type: 'travel';
+  journeyId: Id;
+  groupId: Id;
+  vehicleId: Id | null;
+  milesMoved: number;
+  drifted: boolean;
+}
+
 // ============================================================================
 // ACTIVITY DATA DISCRIMINATED UNION
 // ============================================================================
@@ -346,7 +356,8 @@ export type ActivityData =
   | RestData
   | TradingData
   | StudyData
-  | SocialData;
+  | SocialData
+  | TravelData;
 
 // ============================================================================
 // TASK LOCK KEY
@@ -517,6 +528,12 @@ export function isSocialTask(
   task: DowntimeTask
 ): task is DowntimeTask & { activityData: SocialData } {
   return task.activityData.type === 'social';
+}
+
+export function isTravelTask(
+  task: DowntimeTask
+): task is DowntimeTask & { activityData: TravelData } {
+  return task.activityData.type === 'travel';
 }
 
 // ============================================================================

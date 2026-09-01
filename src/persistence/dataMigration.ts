@@ -22,6 +22,7 @@ import type { Id, Material, Food, Recipe, Craft, CraftDesign, AlchemyReagent, Al
 import type { TravelGroup } from '../types/party';
 import type { ActiveWeather, Location } from '../types/location';
 import { DEFAULT_CALENDAR } from '../utils/timeSystem';
+import { resolveGroupPosition } from '../utils/partyPosition';
 
 /** Clean Phase 14 location links and attachment references after hydration. */
 export function ensureLocationIntegrity(state: CampaignState): CampaignState {
@@ -243,6 +244,32 @@ export function ensureTravelGroups(state: CampaignState): CampaignState {
       vehicleTypes,
     },
   };
+}
+
+/** Drop invalid journeys and detach navigators who no longer belong to the group. */
+export function ensureJourneyIntegrity(state: CampaignState): CampaignState {
+  const originalGroups = state.entities.travelGroups ?? {};
+  let groups = originalGroups;
+  let changed = false;
+  const replaceGroup = (id: Id, group: TravelGroup): void => {
+    if (!changed) groups = { ...originalGroups };
+    groups[id] = group;
+    changed = true;
+  };
+  for (const [id, group] of Object.entries(originalGroups)) {
+    const journey = group.journey;
+    if (!journey) continue;
+    const position = resolveGroupPosition(state, group);
+    if (!state.maps.mapsById[journey.mapId]
+      || position?.mapId !== journey.mapId
+      || journey.routeTileIds[0] !== position.tileId) {
+      replaceGroup(id, { ...group, journey: null });
+    } else if (journey.navigatorId !== null && !group.memberIds.includes(journey.navigatorId)) {
+      replaceGroup(id, { ...group, journey: { ...journey, navigatorId: null } });
+    }
+  }
+  if (!changed) return state;
+  return { ...state, entities: { ...state.entities, travelGroups: groups } };
 }
 
 // Legacy localStorage keys to migrate

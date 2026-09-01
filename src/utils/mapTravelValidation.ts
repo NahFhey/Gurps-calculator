@@ -1,5 +1,6 @@
 import type { Character, Id } from '../types/campaign';
 import type { DowntimeState } from '../types/downtime';
+import type { EncumbranceLevel } from '../types/characterSheet';
 import type { MapModel, TileId, TravelBlocker, TravelMode } from '../types/map';
 import { TRAVEL_BLOCKER_CODES } from '../types/map';
 import type { TravelGroup, Vehicle, VehicleTypeDef } from '../types/party';
@@ -8,6 +9,23 @@ import { selectAssignedCharacterIdsForSlot } from '../state/downtime/downtimeSel
 import { computeRouteMiles } from './mapRouter';
 import { findTileGridPos } from './mapUtils';
 import { isAbleBodied } from './partyPosition';
+import { MOVE_MULTIPLIERS } from './encumbrance';
+import { getNightSlotIndices } from './timeSystem';
+
+export function computeSlotBudgetMiles(input: {
+  mode: TravelMode;
+  vehicleType: VehicleTypeDef | null;
+  weatherTravelModifier: number;
+  worstEncumbranceLevel: EncumbranceLevel | null;
+}): number {
+  const base = input.vehicleType?.speedMilesPerSlot
+    ?? getTravelModeDefinition(input.mode).milesPerSlot;
+  const weatherAdjusted = base + base * (input.weatherTravelModifier / 10);
+  const encumbranceMultiplier = input.mode === 'foot' && input.worstEncumbranceLevel !== null
+    ? MOVE_MULTIPLIERS[input.worstEncumbranceLevel]
+    : 1;
+  return Math.max(1, weatherAdjusted * encumbranceMultiplier);
+}
 
 export interface TravelValidationInput {
   map: MapModel;
@@ -37,10 +55,8 @@ export function validateTravelRoute(input: TravelValidationInput): TravelBlocker
     slot,
     downtimeState,
     isGmMode,
-    weatherTravelModifier = 0,
   } = input;
   const blockers: TravelBlocker[] = [];
-  const modeDef = getTravelModeDefinition(mode);
   const allowedModes = SCALE_TO_MODES[map.scaleMilesPerTile];
 
   if (group.vehicleId) {
@@ -144,42 +160,37 @@ export function validateTravelRoute(input: TravelValidationInput): TravelBlocker
     }
   }
 
-  if (routeTileIds.length > 1) {
-    const totalMiles = computeRouteMiles(map, routeTileIds, mode);
-    const baseBudget = vehicleType?.speedMilesPerSlot ?? modeDef.milesPerSlot;
-    const budget = Math.max(1, baseBudget + baseBudget * (weatherTravelModifier / 10));
-    if (totalMiles > budget) {
-      const weatherNote = weatherTravelModifier !== 0
-        ? ` Weather modifier: ${weatherTravelModifier > 0 ? '+' : ''}${weatherTravelModifier} (${budget.toFixed(0)} mi effective range).`
-        : '';
-      blockers.push({
-        code: TRAVEL_BLOCKER_CODES.EXCEEDS_TIME_BUDGET,
-        message: `Route is ${totalMiles.toFixed(0)} mi, exceeding the ${budget.toFixed(0)} mi/${mode} range.`,
-        details: [`${vehicleType?.name ?? mode} base range: ${baseBudget} miles per slot.${weatherNote}`],
-      });
-    }
-  }
-
   return blockers;
+}
+
+export interface RouteStatsOptions {
+  weatherTravelModifier?: number;
+  vehicle?: Vehicle | null;
+  vehicleType?: VehicleTypeDef | null;
+  worstEncumbranceLevel?: EncumbranceLevel | null;
+  slotsPerDay?: number;
+  nightSlotIndices?: number[];
 }
 
 export function getRouteStats(
   map: MapModel,
   routeTileIds: TileId[],
   mode: TravelMode,
-  weatherTravelModifier: number = 0,
-  vehicle: Vehicle | null = null,
-  vehicleType: VehicleTypeDef | null = null
+  options: RouteStatsOptions = {}
 ): {
   tileCount: number;
   totalMiles: number;
-  budgetMiles: number;
-  withinBudget: boolean;
+  budgetMilesPerSlot: number;
+  estimatedMovingSlots: number;
+  estimatedDays: number;
   terrainBreakdown: { name: string; count: number }[];
 } {
-  const modeDef = getTravelModeDefinition(mode);
-  const baseBudget = vehicle ? vehicleType?.speedMilesPerSlot ?? modeDef.milesPerSlot : modeDef.milesPerSlot;
-  const budgetMiles = Math.max(1, baseBudget + baseBudget * (weatherTravelModifier / 10));
+  const budgetMilesPerSlot = computeSlotBudgetMiles({
+    mode,
+    vehicleType: options.vehicle ? options.vehicleType ?? null : null,
+    weatherTravelModifier: options.weatherTravelModifier ?? 0,
+    worstEncumbranceLevel: options.worstEncumbranceLevel ?? null,
+  });
   const rawMiles = routeTileIds.length > 1 ? computeRouteMiles(map, routeTileIds, mode) : 0;
   const totalMiles = Number.isFinite(rawMiles) ? rawMiles : 0;
   const terrainCounts = new Map<string, number>();
@@ -194,11 +205,18 @@ export function getRouteStats(
   const terrainBreakdown = Array.from(terrainCounts.entries())
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count);
+  const estimatedMovingSlots = Math.max(1, Math.ceil(totalMiles / budgetMilesPerSlot));
+  const slotsPerDay = Math.max(1, options.slotsPerDay ?? 3);
+  const movingSlotsPerDay = Math.max(
+    1,
+    slotsPerDay - getNightSlotIndices(slotsPerDay, options.nightSlotIndices).length
+  );
   return {
     tileCount: routeTileIds.length,
     totalMiles,
-    budgetMiles,
-    withinBudget: totalMiles <= budgetMiles,
+    budgetMilesPerSlot,
+    estimatedMovingSlots,
+    estimatedDays: Math.ceil(estimatedMovingSlots / movingSlotsPerDay),
     terrainBreakdown,
   };
 }

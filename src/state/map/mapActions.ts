@@ -18,10 +18,8 @@ import type {
   LinkModel,
   MapImageLayer,
   StructureLayer,
-  TravelMode,
   MapModel,
 } from '../../types/map';
-import type { Id } from '../../types/campaign';
 import type { ClimateType } from '../../types/location';
 
 // ============================================================================
@@ -66,9 +64,6 @@ export const MAP_SET_STRUCTURE_CELLS = 'map/setStructureCells' as const;
 
 // Reveal & position
 export const MAP_REVEAL_TILES = 'map/revealTiles' as const;
-
-// Travel execution
-export const MAP_EXECUTE_TRAVEL = 'map/executeTravel' as const;
 
 // Pending terrain assignment
 export const MAP_SET_PENDING_TERRAIN = 'map/setPendingTerrain' as const;
@@ -208,18 +203,6 @@ export type RevealTilesAction = {
   payload: { mapId: MapId; tileIds: TileId[] };
 };
 
-export type MapTravelExecutionAction = {
-  type: typeof MAP_EXECUTE_TRAVEL;
-  payload: {
-    mapId: MapId;
-    routeTileIds: TileId[];
-    destinationTileId: TileId;
-    mode: TravelMode;
-    gmOverride: boolean;
-    groupId: Id;
-  };
-};
-
 export type SetPendingTerrainAction = {
   type: typeof MAP_SET_PENDING_TERRAIN;
   payload: TileId[];
@@ -257,7 +240,6 @@ export type MapAction =
   | RemoveStructureLayerAction
   | SetStructureCellsAction
   | RevealTilesAction
-  | MapTravelExecutionAction
   | SetPendingTerrainAction
   | ClearPendingTerrainAction;
 
@@ -289,7 +271,6 @@ const MAP_ACTION_TYPES = new Set<string>([
   MAP_REMOVE_STRUCTURE_LAYER,
   MAP_SET_STRUCTURE_CELLS,
   MAP_REVEAL_TILES,
-  MAP_EXECUTE_TRAVEL,
   MAP_SET_PENDING_TERRAIN,
   MAP_CLEAR_PENDING_TERRAIN,
 ]);

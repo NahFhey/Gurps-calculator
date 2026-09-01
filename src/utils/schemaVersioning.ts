@@ -13,7 +13,7 @@ export interface SchemaMetadataEntry {
   migratesFrom?: string[];
 }
 
-export const CURRENT_SCHEMA_VERSION = '1.5.8';
+export const CURRENT_SCHEMA_VERSION = '1.5.9';
 
 export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
   '1.0.0': {
@@ -134,6 +134,14 @@ export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
     description: 'Pin locations to map markers and validate facility attachment references',
     features: ['location_pins', 'location_discovery', 'facility_attachments', 'contact_locations'],
     migratesFrom: ['1.5.7'],
+  },
+  '1.5.9': {
+    name: 'The Journey Loop',
+    timestamp: '2026-09-01',
+    breaking: false,
+    description: 'Progress travel journeys through ordinary time slots with engine-owned travel tasks',
+    features: ['journeys', 'travel_tasks', 'night_slots'],
+    migratesFrom: ['1.5.8'],
   },
 };
 

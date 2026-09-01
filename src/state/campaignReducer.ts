@@ -63,7 +63,6 @@ import type {
   WeatherTable,
   ActiveWeather
 } from '../types/location';
-import { TERRAIN_LABELS } from '../types/location';
 import type { LocationModifiers, WeatherEffects } from '../types/location';
 import type { DowntimeState } from '../types/downtime';
 import type { MapState, TileId } from '../types/map';
@@ -74,7 +73,6 @@ import { DEFAULT_FORAGING_CONFIG } from '../constants/foraging';
 import {
   createInitialLocationState,
   generateWeather,
-  getTerrainModifiers
 } from '../utils/weatherSystem';
 import { downtimeInitialState, DOWNTIME_SCHEMA_VERSION } from './downtime';
 import { isInventoryAction, handleInventoryAction } from './inventory';
@@ -85,9 +83,13 @@ import { isCharacterAction, handleCharacterAction } from './character';
 import { isCombatAction, handleCombatAction } from './combat';
 import { isMapAction, handleMapAction, type MapAction } from './map';
 import { isPartyAction, handlePartyAction, type PartyAction } from './party';
-import { resolveLocationTerrain } from '../utils/mapUtils';
 import { resolveGroupPosition } from '../utils/partyPosition';
 import { mapsWithPresence, regenerateMapWeatherIfNeeded, resolveWeatherContext } from '../utils/ambientWeather';
+import {
+  handleJourneyDayBoundary,
+  handleLocationArrival,
+  progressJourneys,
+} from './party/journeyEngine';
 
 export const CAMPAIGN_META = {
   rulesVersion: '1.0.0',
@@ -215,6 +217,7 @@ export type CampaignState = {
     slotLabels: string[];
     history: Array<TimeLogEntry & { day: number }>;
     calendar?: CalendarConfig;
+    nightSlotIndices?: number[];
   };
   inventory: {
     // UI state for inventory tab
@@ -304,7 +307,7 @@ export type LogEntry = {
 
 const MAX_LOG_ENTRIES = 2000;
 
-const appendLogEntry = (draft: Draft<CampaignState>, entry: LogEntry): void => {
+export const appendLogEntry = (draft: Draft<CampaignState>, entry: LogEntry): void => {
   draft.logs.entries.unshift({
     ...entry,
     day: entry.day ?? draft.time.day,
@@ -335,63 +338,6 @@ export const logEvent = (
   visibility,
   payload
 });
-
-const handleLocationArrival = (
-  draft: Draft<CampaignState>,
-  mapId: string,
-  tileId: string,
-  switchCurrentLocation: boolean
-): void => {
-  const map = draft.maps.mapsById[mapId];
-  if (!map) return;
-
-  const locationMarkers = Object.values(map.markersById).filter(
-    (marker) => marker.tileId === tileId
-      && marker.locationId
-      && draft.locations.locations[marker.locationId]
-  );
-
-  for (const marker of locationMarkers) {
-    if (marker.visibility !== 'gm' || !marker.locationId) continue;
-    marker.visibility = 'player';
-    marker.discoveredAt = { day: draft.time.day, slot: draft.time.slot };
-    const location = draft.locations.locations[marker.locationId];
-    appendLogEntry(draft, {
-      ...logEvent('location.discovered', 'player', {
-        message: `Discovered ${location.name}`,
-      }),
-      day: draft.time.day,
-    });
-  }
-
-  if (!switchCurrentLocation) return;
-  const pinnedLocationId = locationMarkers[0]?.locationId;
-  if (pinnedLocationId) {
-    const location = draft.locations.locations[pinnedLocationId];
-    draft.locations.currentLocationId = pinnedLocationId;
-    appendLogEntry(draft, logEvent('location.changed', 'player', {
-      message: `Party arrived at ${location.name}`,
-    }));
-    return;
-  }
-
-  const currentLocId = draft.locations.currentLocationId;
-  const location = currentLocId ? draft.locations.locations[currentLocId] : undefined;
-  if (!location) return;
-  const newTerrain = resolveLocationTerrain(map, tileId);
-  if (newTerrain === location.terrain) return;
-  const oldLabel = TERRAIN_LABELS[location.terrain] ?? location.terrain;
-  const newLabel = TERRAIN_LABELS[newTerrain] ?? newTerrain;
-  location.terrain = newTerrain;
-  location.modifiers = getTerrainModifiers(
-    newTerrain,
-    draft.locations.terrainModifierOverrides
-  );
-  location.modifiedAt = Date.now();
-  appendLogEntry(draft, logEvent('terrain.changed', 'player', {
-    message: `Terrain changed from ${oldLabel} to ${newLabel}`,
-  }));
-};
 
 const createCheckpointSnapshot = (state: CampaignState): CampaignSnapshot => {
   const { checkpoints, ...rest } = state;
@@ -960,49 +906,7 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
       return;
     }
     if (isMapAction(action)) {
-      if (action.type === 'map/executeTravel') {
-        const group = draft.entities.travelGroups?.[action.payload.groupId];
-        const map = draft.maps.mapsById[action.payload.mapId];
-        const position = group ? resolveGroupPosition(draft, group) : null;
-        if (!group || !map || position?.mapId !== action.payload.mapId
-          || !map.tilesById[position.tileId]) {
-          return;
-        }
-        if (!guardTimeAdvance(draft)) {
-          return;
-        }
-        pushTimeCheckpoint(draft, 'Before travel');
-      }
-
       handleMapAction(draft, action);
-
-      if (action.type === 'map/executeTravel') {
-        regenerateMapWeatherIfNeeded(
-          draft,
-          action.payload.mapId,
-          { day: draft.time.day, slot: draft.time.slot, slotsPerDay: draft.time.slotsPerDay },
-          getCurrentSeason(draft.time.day, draft.time.calendar ?? DEFAULT_CALENDAR)
-        );
-      }
-
-      // After travel execution, advance time by one slot (cross-slice operation)
-      if (action.type === 'map/executeTravel') {
-        // Interim quirk: moving two groups sequentially advances two slots.
-        // Lane C's journey model replaces this per-execution time advance.
-        advanceSlotAndRegenerateWeather(
-          draft,
-          (day, slot, label) =>
-            `Travel completed — advanced to Day ${day}, Slot ${slot + 1} (${label})`
-        );
-        // Campaign currentLocationId remains active-group-scoped until Phase 15a;
-        // discovery is objective and therefore applies to every arriving group.
-        handleLocationArrival(
-          draft,
-          action.payload.mapId,
-          action.payload.destinationTileId,
-          action.payload.groupId === draft.ui.activeTravelGroupId
-        );
-      }
       return;
     }
 
@@ -1222,11 +1126,14 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
           return;
         }
         pushTimeCheckpoint(draft, 'Before time advance');
+        const previousDay = draft.time.day;
+        progressJourneys(draft);
         advanceSlotAndRegenerateWeather(
           draft,
           (day, slot, label) =>
             `Advanced to Day ${day}, Slot ${slot + 1} (${label})`
         );
+        if (draft.time.day !== previousDay) handleJourneyDayBoundary(draft);
         return;
       }
 

@@ -1,6 +1,6 @@
 import type { Id } from '../../types/campaign';
 import type { MapId, TileId } from '../../types/map';
-import type { Vehicle, VehicleTypeDef } from '../../types/party';
+import type { Journey, Vehicle, VehicleTypeDef } from '../../types/party';
 
 export const PARTY_CREATE_GROUP = 'party/createGroup' as const;
 export const PARTY_MOVE_MEMBERS = 'party/moveMembers' as const;
@@ -16,6 +16,16 @@ export const PARTY_DOCK_VEHICLE = 'party/dockVehicle' as const;
 export const PARTY_UNDOCK_VEHICLE = 'party/undockVehicle' as const;
 export const PARTY_UPSERT_VEHICLE_TYPE = 'party/upsertVehicleType' as const;
 export const PARTY_REMOVE_VEHICLE_TYPE = 'party/removeVehicleType' as const;
+export const PARTY_ARM_JOURNEY = 'party/armJourney' as const;
+export const PARTY_PAUSE_JOURNEY = 'party/pauseJourney' as const;
+export const PARTY_RESUME_JOURNEY = 'party/resumeJourney' as const;
+export const PARTY_ABORT_JOURNEY = 'party/abortJourney' as const;
+export const PARTY_REROUTE_JOURNEY = 'party/rerouteJourney' as const;
+
+export type ArmJourneyInput = Omit<
+  Journey,
+  'id' | 'legProgressMiles' | 'milesTraveled' | 'status' | 'startedAt'
+>;
 
 export type PartyAction =
   | { type: typeof PARTY_CREATE_GROUP; payload: { name: string; memberIds: Id[]; fromGroupId: Id } }
@@ -31,7 +41,12 @@ export type PartyAction =
   | { type: typeof PARTY_DOCK_VEHICLE; payload: { vehicleId: Id; carrierId: Id } }
   | { type: typeof PARTY_UNDOCK_VEHICLE; payload: { vehicleId: Id } }
   | { type: typeof PARTY_UPSERT_VEHICLE_TYPE; payload: { def: VehicleTypeDef } }
-  | { type: typeof PARTY_REMOVE_VEHICLE_TYPE; payload: { typeId: string } };
+  | { type: typeof PARTY_REMOVE_VEHICLE_TYPE; payload: { typeId: string } }
+  | { type: typeof PARTY_ARM_JOURNEY; payload: { groupId: Id; journey: ArmJourneyInput } }
+  | { type: typeof PARTY_PAUSE_JOURNEY; payload: { groupId: Id } }
+  | { type: typeof PARTY_RESUME_JOURNEY; payload: { groupId: Id } }
+  | { type: typeof PARTY_ABORT_JOURNEY; payload: { groupId: Id } }
+  | { type: typeof PARTY_REROUTE_JOURNEY; payload: { groupId: Id; routeTileIds: TileId[] } };
 
 export const PARTY_ACTION_TYPES = new Set<string>([
   PARTY_CREATE_GROUP,
@@ -48,6 +63,11 @@ export const PARTY_ACTION_TYPES = new Set<string>([
   PARTY_UNDOCK_VEHICLE,
   PARTY_UPSERT_VEHICLE_TYPE,
   PARTY_REMOVE_VEHICLE_TYPE,
+  PARTY_ARM_JOURNEY,
+  PARTY_PAUSE_JOURNEY,
+  PARTY_RESUME_JOURNEY,
+  PARTY_ABORT_JOURNEY,
+  PARTY_REROUTE_JOURNEY,
 ]);
 
 export function isPartyAction(action: { type: string }): action is PartyAction {

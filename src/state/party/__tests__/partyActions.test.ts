@@ -15,6 +15,11 @@ import {
   PARTY_UNDOCK_VEHICLE,
   PARTY_UPSERT_VEHICLE,
   PARTY_UPSERT_VEHICLE_TYPE,
+  PARTY_ARM_JOURNEY,
+  PARTY_PAUSE_JOURNEY,
+  PARTY_RESUME_JOURNEY,
+  PARTY_ABORT_JOURNEY,
+  PARTY_REROUTE_JOURNEY,
   isPartyAction,
 } from '../partyActions';
 
@@ -23,6 +28,8 @@ const values = [
   PARTY_BOARD_VEHICLE, PARTY_DISEMBARK, PARTY_PLACE_GROUP, PARTY_UPSERT_VEHICLE,
   PARTY_REMOVE_VEHICLE, PARTY_PLACE_VEHICLE, PARTY_DOCK_VEHICLE, PARTY_UNDOCK_VEHICLE,
   PARTY_UPSERT_VEHICLE_TYPE, PARTY_REMOVE_VEHICLE_TYPE,
+  PARTY_ARM_JOURNEY, PARTY_PAUSE_JOURNEY, PARTY_RESUME_JOURNEY,
+  PARTY_ABORT_JOURNEY, PARTY_REROUTE_JOURNEY,
 ];
 
 describe('partyActions', () => {
@@ -42,7 +49,7 @@ describe('partyActions', () => {
   });
 
   it('rejects unrelated and empty action types', () => {
-    expect(isPartyAction({ type: 'map/executeTravel' })).toBe(false);
+    expect(isPartyAction({ type: 'map/unknownTravelAction' })).toBe(false);
     expect(isPartyAction({ type: '' })).toBe(false);
   });
 });

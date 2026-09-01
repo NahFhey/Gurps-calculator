@@ -14,6 +14,7 @@ import {
   DOWNTIME_TASK_RESOLVE,
   DOWNTIME_TASK_CANCEL,
   DOWNTIME_TASK_REORDER,
+  DOWNTIME_STATE_REPLACE,
 } from './downtimeActions';
 import { validateTaskCreation } from './downtimeValidation';
 import { DowntimeValidationError } from './downtimeErrors';
@@ -44,6 +45,8 @@ export function downtimeReducer(
 ): DowntimeState {
   return produce(state, (draft) => {
     switch (action.type) {
+      case DOWNTIME_STATE_REPLACE:
+        return action.payload;
       case DOWNTIME_TASK_CREATE: {
         // Validate assignment constraints before creating task
         const validation = validateTaskCreation(state, action.payload);

@@ -12,6 +12,7 @@ import { MarkerIcon } from '../MarkerIcon';
 import { TravelStep3Confirm } from '../TravelStep3Confirm';
 import { LinkEditor } from '../LinkEditor';
 import { LinksMenu } from '../LinksMenu';
+import { createNewMap } from '../../../../utils/mapUtils';
 
 import type {
   MapModel,
@@ -732,13 +733,32 @@ describe('MarkerIcon', () => {
 // TRAVELSTEP3CONFIRM
 // ============================================================================
 
+const confirmMap = createNewMap({ name: 'Confirm', scaleMilesPerTile: 12, startTerrainId: 'terrain-plains' });
+const confirmDefaults: Omit<React.ComponentProps<typeof TravelStep3Confirm>, 'blockers' | 'onConfirm'> = {
+  isGmMode: false,
+  hasNullTerrain: false,
+  map: confirmMap,
+  routeTileIds: [confirmMap.grid[4][4], confirmMap.grid[4][5]],
+  mode: 'foot',
+  characters: [],
+  vehicle: null,
+  vehicleType: null,
+  weatherTravelModifier: 0,
+  slotsPerDay: 3,
+  navigatorId: null,
+  gmNavigationSkill: 10,
+  forcedMarch: false,
+  onNavigatorChange: vi.fn(),
+  onGmNavigationSkillChange: vi.fn(),
+  onForcedMarchChange: vi.fn(),
+};
+
 describe('TravelStep3Confirm', () => {
   it('shows all-clear state when no blockers', () => {
     render(
       <TravelStep3Confirm
+        {...confirmDefaults}
         blockers={[]}
-        isGmMode={false}
-        hasNullTerrain={false}
         onConfirm={vi.fn()}
       />
     );
@@ -753,9 +773,8 @@ describe('TravelStep3Confirm', () => {
 
     render(
       <TravelStep3Confirm
+        {...confirmDefaults}
         blockers={blockers}
-        isGmMode={false}
-        hasNullTerrain={false}
         onConfirm={vi.fn()}
       />
     );
@@ -771,14 +790,13 @@ describe('TravelStep3Confirm', () => {
 
     render(
       <TravelStep3Confirm
+        {...confirmDefaults}
         blockers={blockers}
-        isGmMode={false}
-        hasNullTerrain={false}
         onConfirm={vi.fn()}
       />
     );
 
-    const confirmButton = screen.getByRole('button', { name: /Confirm Travel/ });
+    const confirmButton = screen.getByRole('button', { name: /Begin Journey/ });
     expect(confirmButton).toBeDisabled();
   });
 
@@ -787,14 +805,13 @@ describe('TravelStep3Confirm', () => {
 
     render(
       <TravelStep3Confirm
+        {...confirmDefaults}
         blockers={[]}
-        isGmMode={false}
-        hasNullTerrain={false}
         onConfirm={onConfirm}
       />
     );
 
-    const confirmButton = screen.getByRole('button', { name: /Confirm Travel/ });
+    const confirmButton = screen.getByRole('button', { name: /Begin Journey/ });
     fireEvent.click(confirmButton);
 
     expect(onConfirm).toHaveBeenCalled();
