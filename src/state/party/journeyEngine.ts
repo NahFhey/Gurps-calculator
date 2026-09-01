@@ -13,7 +13,7 @@ import { getWeatherModifierForActivity, getTerrainModifiers } from '../../utils/
 import { isCriticalFailure, roll3d6 } from '../../utils/gathering';
 import { evaluateDiceFormula } from '../../utils/gathering';
 import { getNavigationSkill } from '../../utils/navigation';
-import { isAbleBodied } from '../../utils/partyPosition';
+import { isAbleBodied, resolveGroupPosition } from '../../utils/partyPosition';
 import { computeRouteMiles, findRoute } from '../../utils/mapRouter';
 import { expandMapIfNeeded, findTileGridPos, getTileIdAt, resolveLocationTerrain } from '../../utils/mapUtils';
 import { computeVisibleTiles } from '../../utils/lineOfSight';
@@ -71,6 +71,15 @@ export function handleLocationArrival(
     appendLog(draft, { ...travelLog.progress(`Party arrived at ${location.name}`), type: 'location.changed' });
     return;
   }
+  followTerrainAtTile(draft, map, tileId);
+}
+
+/** Wilderness semantics: the current location record follows the party's tile terrain. */
+function followTerrainAtTile(
+  draft: Draft<CampaignState>,
+  map: MapModel,
+  tileId: string
+): void {
   const currentLocId = draft.locations.currentLocationId;
   const location = currentLocId ? draft.locations.locations[currentLocId] : undefined;
   if (!location) return;
@@ -85,6 +94,41 @@ export function handleLocationArrival(
     ...travelLog.progress(`Terrain changed from ${oldLabel} to ${newLabel}`),
     type: 'terrain.changed',
   });
+}
+
+/**
+ * Re-derive locations.currentLocationId from the active group's position (Phase 15a).
+ * Called when the active group CHANGES — explicit party/setActiveGroup or the implicit
+ * reassignment when a drained group dissolves. Arrivals keep their own switch via
+ * handleLocationArrival. Mirrors arrival semantics: a location pinned to the active
+ * group's tile becomes current; in wilderness the current location record follows
+ * the tile's terrain instead.
+ */
+export function syncCurrentLocationToActiveGroup(draft: Draft<CampaignState>): void {
+  const groupId = draft.ui.activeTravelGroupId;
+  const group = groupId ? draft.entities.travelGroups?.[groupId] : undefined;
+  if (!group) return;
+  const position = resolveGroupPosition(draft, group);
+  if (!position) return;
+  const map = draft.maps.mapsById[position.mapId];
+  if (!map) return;
+  const pinnedLocationId = Object.values(map.markersById).find(
+    (marker) => marker.tileId === position.tileId
+      && marker.locationId
+      && draft.locations.locations[marker.locationId]
+  )?.locationId;
+  if (pinnedLocationId) {
+    if (draft.locations.currentLocationId !== pinnedLocationId) {
+      const location = draft.locations.locations[pinnedLocationId];
+      draft.locations.currentLocationId = pinnedLocationId;
+      appendLog(draft, {
+        ...travelLog.progress(`Now tracking ${group.name} at ${location.name}`),
+        type: 'location.changed',
+      });
+    }
+    return;
+  }
+  followTerrainAtTile(draft, map, position.tileId);
 }
 
 function isPassable(map: MapModel, tileId: TileId, mode: TravelMode, gmOverride: boolean): boolean {
