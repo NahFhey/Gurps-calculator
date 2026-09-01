@@ -1,5 +1,8 @@
-import { useCampaignStore } from '../../state/campaignStore';
+import { useCampaignSelector } from '../../state/campaignStore';
+import type { CampaignState } from '../../state/campaignReducer';
 import { DEFAULT_CALENDAR, getCurrentSeason } from '../../utils/timeSystem';
+
+const selectTime = (state: CampaignState) => state.time;
 
 /**
  * TimeDisplay - Shows current game day and time slot
@@ -17,9 +20,9 @@ interface TimeDisplayProps {
 }
 
 export function TimeDisplay({ compact = false, showSlotNumber = false }: TimeDisplayProps) {
-  const { state } = useCampaignStore();
-  const { day, slot, slotLabels, slotsPerDay } = state.time;
-  const season = getCurrentSeason(day, state.time.calendar ?? DEFAULT_CALENDAR);
+  const time = useCampaignSelector(selectTime);
+  const { day, slot, slotLabels, slotsPerDay } = time;
+  const season = getCurrentSeason(day, time.calendar ?? DEFAULT_CALENDAR);
 
   const slotLabel = slotLabels[slot] || `Slot ${slot + 1}`;
 

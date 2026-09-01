@@ -1,19 +1,25 @@
-import { useCampaignStore } from '../../state/campaignStore';
+import { useCampaignSelector } from '../../state/campaignStore';
+import type { CampaignState } from '../../state/campaignReducer';
 import { isMealBuffActive } from '../../utils/mealBuff';
+
+const selectMealBuff = (state: CampaignState) => state.mealBuff;
+const selectTimeDay = (state: CampaignState) => state.time.day;
+const selectCharactersById = (state: CampaignState) => state.entities.characters;
 
 interface MealBuffWidgetProps {
   compact?: boolean;
 }
 
 export function MealBuffWidget({ compact = false }: MealBuffWidgetProps) {
-  const { state } = useCampaignStore();
-  const buff = state.mealBuff;
+  const buff = useCampaignSelector(selectMealBuff);
+  const day = useCampaignSelector(selectTimeDay);
+  const charactersById = useCampaignSelector(selectCharactersById);
 
-  if (!isMealBuffActive(buff, state.time.day) || !buff) return null;
+  if (!isMealBuffActive(buff, day) || !buff) return null;
 
   const skills = buff.skills.map(skill => `+1 ${skill}`).join(', ');
   const abstainerNames = (buff.excludedCharacterIds ?? [])
-    .map(characterId => state.entities.characters[characterId]?.name)
+    .map(characterId => charactersById[characterId]?.name)
     .filter((name): name is string => Boolean(name));
   const abstainerClause = abstainerNames.length > 0
     ? `(${abstainerNames.join(', ')} ${abstainerNames.length === 1 ? 'abstains' : 'abstain'})`

@@ -1,4 +1,10 @@
-import { useCampaignStore } from '../../state/campaignStore';
+import { useCampaignActions, useCampaignSelector } from '../../state/campaignStore';
+import type { CampaignState } from '../../state/campaignReducer';
+
+const selectHasBlockingError = (state: CampaignState) => state.ui.blockingError !== null;
+const selectPausedActivityCount = (state: CampaignState) => state.activities.pausedSessionIds.length;
+const selectTimeSlot = (state: CampaignState) => state.time.slot;
+const selectSlotsPerDay = (state: CampaignState) => state.time.slotsPerDay;
 
 /**
  * TimeControls - Buttons to advance game time
@@ -26,12 +32,14 @@ export function TimeControls({
   showAdvanceDay = true,
   disabled = false,
 }: TimeControlsProps) {
-  const { state, actions } = useCampaignStore();
+  const actions = useCampaignActions();
 
   // Check if there are any blocking conditions
-  const hasBlockingError = state.ui.blockingError !== null;
-  const hasPausedActivities = state.activities.pausedSessionIds.length > 0;
+  const hasBlockingError = useCampaignSelector(selectHasBlockingError);
+  const hasPausedActivities = useCampaignSelector(selectPausedActivityCount) > 0;
   const isBlocked = hasBlockingError || hasPausedActivities;
+  const slot = useCampaignSelector(selectTimeSlot);
+  const slotsPerDay = useCampaignSelector(selectSlotsPerDay);
 
   const handleAdvanceSlot = () => {
     if (disabled || isBlocked) return;
@@ -41,7 +49,6 @@ export function TimeControls({
   const handleAdvanceDay = () => {
     if (disabled || isBlocked) return;
     // Advance through remaining slots to get to next day
-    const { slot, slotsPerDay } = state.time;
     const slotsRemaining = slotsPerDay - slot;
     for (let i = 0; i < slotsRemaining; i++) {
       actions.advanceTime();

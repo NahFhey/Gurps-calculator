@@ -74,6 +74,8 @@ const mockCampaignStore = {
 
 vi.mock('../../../state/campaignStore', () => ({
   useCampaignStore: vi.fn(() => mockCampaignStore),
+  useCampaignActions: vi.fn(() => mockCampaignStore.actions),
+  useCampaignSelector: vi.fn((selector: (state: unknown) => unknown) => selector(mockCampaignStore.state)),
 }));
 
 vi.mock('../../../net/SyncProvider', () => ({

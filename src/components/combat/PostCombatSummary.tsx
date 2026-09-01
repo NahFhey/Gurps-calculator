@@ -8,7 +8,7 @@
  * - Transitions to LootDistribution on "Continue"
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Heart, Shield, Clock, AlertTriangle, Skull, Users,
   ChevronDown, ChevronUp, Check, ArrowRight
@@ -259,12 +259,17 @@ function ParticipantSummaryCard({ summary, healingEstimate }: {
 export default function PostCombatSummary({ combat, onComplete, onProceedToLoot }: PostCombatSummaryProps) {
   const { updatePartyCharacter, partyCharacters } = useCombatStore();
   const [syncComplete, setSyncComplete] = useState(false);
+  // Ref guard set before dispatching: the store notifies synchronously, so the
+  // effect can re-run (deps include store-derived values) before setSyncComplete
+  // commits — the ref keeps the dispatch loop one-shot.
+  const syncRanRef = useRef(false);
 
   const summary = useMemo(() => buildCombatSummary(combat), [combat]);
 
   // Auto-sync party character pools and persistent injury status back to campaign store
   useEffect(() => {
-    if (syncComplete) return;
+    if (syncComplete || syncRanRef.current) return;
+    syncRanRef.current = true;
 
     const partyParticipants = summary.participants.filter(
       p => p.isFromParty && p.partyCharacterId

@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import {
   campaignReducer,
   createCampaignState,
   CampaignState,
+  CampaignAction,
   LegacyAppState,
   LogEntry,
   CharacterPanelView,
@@ -92,8 +93,22 @@ import type { Vehicle, VehicleTypeDef } from '../types/party';
 import type { TravelEventTable, TravelEventTableSet } from '../types/travelEvents';
 import type { ArmJourneyInput } from './party/partyActions';
 
+/**
+ * Subscription-based store handle (Phase 15b). The context value is stable for
+ * the provider's lifetime, so dispatching no longer re-renders every consumer —
+ * components subscribe to exactly the state they read via useSyncExternalStore.
+ */
+type CampaignStoreHandle = {
+  /** Latest state as consumers see it (legacy.appState pinned when the provider received one). */
+  getState: () => CampaignState;
+  /** Reducer-owned state without the legacy pin — what persistence saves. */
+  getRawState: () => CampaignState;
+  dispatch: (action: CampaignAction) => void;
+  subscribe: (listener: () => void) => () => void;
+};
+
 type CampaignStoreValue = {
-  state: CampaignState;
+  store: CampaignStoreHandle;
   actions: {
     // UI Actions
     setActiveModule: (moduleId: string) => void;
@@ -377,23 +392,49 @@ type CampaignStoreProviderProps = {
   initialCampaignState?: CampaignState;
 };
 
+function createCampaignStoreHandle(
+  initialArg: CampaignState | LegacyAppState | undefined,
+  pinnedLegacyAppState: LegacyAppState | undefined
+): CampaignStoreHandle {
+  let rawState: CampaignState =
+    initialArg && typeof initialArg === 'object' && 'ui' in initialArg
+      ? (initialArg as CampaignState)
+      : createCampaignState(initialArg as LegacyAppState | undefined);
+
+  const pin = (state: CampaignState): CampaignState =>
+    pinnedLegacyAppState ? { ...state, legacy: { appState: pinnedLegacyAppState } } : state;
+
+  let snapshot = pin(rawState);
+  const listeners = new Set<() => void>();
+
+  return {
+    getState: () => snapshot,
+    getRawState: () => rawState,
+    dispatch: (action) => {
+      const next = campaignReducer(rawState, action);
+      if (next === rawState) return;
+      rawState = next;
+      snapshot = pin(rawState);
+      listeners.forEach((listener) => listener());
+    },
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+}
+
 export function CampaignStoreProvider({
   children,
   initialLegacyAppState,
   initialCampaignState
 }: CampaignStoreProviderProps) {
-  const [state, dispatch] = useReducer(
-    campaignReducer,
-    initialCampaignState ?? initialLegacyAppState,
-    (initialArg) => {
-      if (initialArg && typeof initialArg === 'object' && 'ui' in initialArg) {
-        return initialArg as CampaignState;
-      }
-      return createCampaignState(initialArg as LegacyAppState | undefined);
-    }
+  const [store] = useState(() =>
+    createCampaignStoreHandle(initialCampaignState ?? initialLegacyAppState, initialLegacyAppState)
   );
-  const saveTimeoutRef = useRef<number | null>(null);
-  const hydratedRef = useRef(false);
+  const dispatch = store.dispatch;
 
   const actions = useMemo(
     () => ({
@@ -792,54 +833,42 @@ export function CampaignStoreProvider({
       clearLogs: () => dispatch({ type: 'clearLogs' }),
       clearCombatHistory: () => dispatch({ type: 'clearCombatHistory' }),
     }),
-    []
+    [dispatch]
   );
 
-  const value = useMemo(
-    () => ({
-      state: {
-        ...state,
-        legacy: {
-          appState: initialLegacyAppState ?? state.legacy.appState
-        }
-      },
-      actions
-    }),
-    [actions, initialLegacyAppState, state]
-  );
+  const value = useMemo(() => ({ store, actions }), [store, actions]);
 
   useEffect(() => {
-    if (!hydratedRef.current) {
-      hydratedRef.current = true;
-      return;
-    }
-
-    if (saveTimeoutRef.current) {
-      window.clearTimeout(saveTimeoutRef.current);
-    }
-    saveTimeoutRef.current = window.setTimeout(() => {
-      saveCampaignState(state).catch((error) => {
-        if (error instanceof CampaignStateConflictError) {
-          // Another tab owns the saved state now; storage already announced
-          // the conflict via the 'campaign-state-conflict' event.
-          console.warn(error.message);
-        } else {
-          console.error('Failed to save campaign state', error);
-        }
-      });
-    }, 500);
+    let saveTimeout: number | null = null;
+    const unsubscribe = store.subscribe(() => {
+      if (saveTimeout) {
+        window.clearTimeout(saveTimeout);
+      }
+      saveTimeout = window.setTimeout(() => {
+        saveCampaignState(store.getRawState()).catch((error) => {
+          if (error instanceof CampaignStateConflictError) {
+            // Another tab owns the saved state now; storage already announced
+            // the conflict via the 'campaign-state-conflict' event.
+            console.warn(error.message);
+          } else {
+            console.error('Failed to save campaign state', error);
+          }
+        });
+      }, 500);
+    });
 
     return () => {
-      if (saveTimeoutRef.current) {
-        window.clearTimeout(saveTimeoutRef.current);
+      unsubscribe();
+      if (saveTimeout) {
+        window.clearTimeout(saveTimeout);
       }
     };
-  }, [state]);
+  }, [store]);
 
   return <CampaignStoreContext.Provider value={value}>{children}</CampaignStoreContext.Provider>;
 }
 
-export function useCampaignStore() {
+function useCampaignStoreValue(): CampaignStoreValue {
   const context = useContext(CampaignStoreContext);
   if (!context) {
     throw new Error('useCampaignStore must be used within CampaignStoreProvider');
@@ -847,21 +876,73 @@ export function useCampaignStore() {
   return context;
 }
 
+/**
+ * Back-compat whole-store hook: subscribes to the entire state, so the caller
+ * re-renders on every dispatch. Prefer useCampaignSelector/useCampaignActions
+ * in components that read a small slice or only dispatch.
+ */
+export function useCampaignStore() {
+  const { store, actions } = useCampaignStoreValue();
+  const state = useSyncExternalStore(store.subscribe, store.getState, store.getState);
+  return useMemo(() => ({ state, actions }), [state, actions]);
+}
+
+/** Stable action creators without a state subscription — never causes re-renders. */
+export function useCampaignActions() {
+  return useCampaignStoreValue().actions;
+}
+
+/**
+ * Subscribe to a slice of campaign state. Re-renders only when the selected
+ * value changes (Object.is by default; pass isEqual for derived objects/arrays).
+ * Pass a stable selector (module-level or useCallback) to get cross-render
+ * memoization; an inline selector is still correct, just recomputed per render.
+ */
+export function useCampaignSelector<T>(
+  selector: (state: CampaignState) => T,
+  isEqual: (a: T, b: T) => boolean = Object.is
+): T {
+  const { store } = useCampaignStoreValue();
+  const getSelection = useMemo(() => {
+    let cache: { snapshot: CampaignState; selection: T } | null = null;
+    return () => {
+      const snapshot = store.getState();
+      if (cache && cache.snapshot === snapshot) {
+        return cache.selection;
+      }
+      const nextSelection = selector(snapshot);
+      if (cache && isEqual(cache.selection, nextSelection)) {
+        cache = { snapshot, selection: cache.selection };
+        return cache.selection;
+      }
+      cache = { snapshot, selection: nextSelection };
+      return nextSelection;
+    };
+  }, [store, selector, isEqual]);
+  return useSyncExternalStore(store.subscribe, getSelection, getSelection);
+}
+
+const selectLegacyAppState = (state: CampaignState) => state.legacy.appState;
+const selectCharactersById = (state: CampaignState) => state.entities.characters;
+const selectSelectedCharacterId = (state: CampaignState) => state.ui.selectedCharacterId;
+const selectSelectedCharacter = (state: CampaignState) => {
+  const selectedId = state.ui.selectedCharacterId;
+  return selectedId ? state.entities.characters[selectedId] : null;
+};
+
 export function useLegacyAppState() {
-  return useCampaignStore().state.legacy.appState;
+  return useCampaignSelector(selectLegacyAppState);
 }
 
 export function useCampaignCharacters() {
-  const { state } = useCampaignStore();
-  return Object.values(state.entities.characters);
+  const charactersById = useCampaignSelector(selectCharactersById);
+  return useMemo(() => Object.values(charactersById), [charactersById]);
 }
 
 export function useSelectedCharacterId() {
-  return useCampaignStore().state.ui.selectedCharacterId;
+  return useCampaignSelector(selectSelectedCharacterId);
 }
 
 export function useSelectedCharacter() {
-  const { state } = useCampaignStore();
-  const selectedId = state.ui.selectedCharacterId;
-  return selectedId ? state.entities.characters[selectedId] : null;
+  return useCampaignSelector(selectSelectedCharacter);
 }

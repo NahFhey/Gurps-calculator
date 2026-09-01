@@ -55,7 +55,7 @@ export function mapsWithPresence(state: Pick<CampaignState, 'maps' | 'entities'>
 }
 
 export function getActiveAmbientWeather(
-  state: Pick<CampaignState, 'maps' | 'entities' | 'ui'>
+  state: Pick<CampaignState, 'maps' | 'entities'> & { ui: Pick<CampaignState['ui'], 'activeTravelGroupId'> }
 ): { weather: Weather | null; mapId: MapId | null; mapName: string | null } {
   const activeGroup = state.ui.activeTravelGroupId
     ? state.entities.travelGroups?.[state.ui.activeTravelGroupId]

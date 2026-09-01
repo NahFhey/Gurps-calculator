@@ -28,6 +28,8 @@ const useCampaignStoreMock = vi.hoisted(
 
 vi.mock('../../state/campaignStore', () => ({
   useCampaignStore: useCampaignStoreMock,
+  useCampaignSelector: (selector: (state: unknown) => unknown) =>
+    selector(useCampaignStoreMock().state),
 }));
 
 function makeStore(

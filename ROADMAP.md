@@ -370,7 +370,7 @@ Three fixes out of the "Map tab wiped / maps missing after reload" investigation
 
 ### 15b: Performance & Bundle
 - ✅ Code splitting by tab/feature (2026-08-26, codex-shepherd): React.lazy + Suspense for all heavy tabs in UnifiedShell; entry chunk 2,061KB → 450KB (+142KB react-vendor); Map3DView (543KB) and @dnd-kit (48KB) load on demand. Browser-verified chunk-on-demand behavior, zero console errors.
-- Profile and optimize re-renders in large state updates
+- ✅ Profile and optimize re-renders in large state updates (2026-09-01, direct): campaignStore rebuilt as a subscription store (`useSyncExternalStore`) with a stable context value — `useCampaignStore()` unchanged (back-compat whole-state), new `useCampaignSelector`/`useCampaignActions` opt-in slice subscriptions; always-mounted chrome migrated (UnifiedShell, header widgets, CombatTile, slot-summary hooks). Measured: 10 unrelated dispatches went from 10 UnifiedShell re-renders to 0; single-character update no longer re-renders other characters' readers. Harness + regression tests in `src/__tests__/renderProfiling.test.tsx`; design + follow-ups (CombatContext bridge, remaining whole-store call sites) in [`docs/RENDER_PROFILING_15B.md`](./docs/RENDER_PROFILING_15B.md). 4,185 tests green, entry bundle +0.9KB.
 - ~~Target: bundle < 500KB initial, lazy-load the rest~~ ✅ met (450KB entry)
 - ~~**Known regression:** `@dnd-kit` (Phase 11b) pushed bundle from ~624KB to ~1,378KB~~ ✅ resolved via deferred `combat-dnd` chunk
 

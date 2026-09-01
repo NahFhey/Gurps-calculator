@@ -24,11 +24,13 @@ import { CombatContextProvider } from '../components/combat/CombatContext';
 import { TabErrorBoundary } from '../components/ui/TabErrorBoundary';
 import { PanelLayoutProvider, usePanelLayout } from '../contexts/PanelLayoutContext';
 import {
+  useCampaignActions,
   useCampaignCharacters,
-  useCampaignStore,
+  useCampaignSelector,
   useSelectedCharacter,
   useSelectedCharacterId
 } from '../state/campaignStore';
+import type { CampaignState } from '../state/campaignReducer';
 import { useAllCharacterSlotSummaries } from '../hooks/useCharacterSlotSummary';
 import { isCharacterIncapacitated } from '../state/downtime/downtimeSelectors';
 import type { Character } from '../types/campaign';
@@ -97,6 +99,21 @@ interface UnifiedShellProps {
   modules?: ModuleDefinition[];
 }
 
+// Slice selectors (Phase 15b): the shell subscribes to exactly what it renders,
+// so unrelated dispatches (logs, combat rolls, inventory moves) no longer
+// re-render the whole chrome.
+const selectTimeDay = (state: CampaignState) => state.time?.day ?? 1;
+const selectTimeSlot = (state: CampaignState) => state.time?.slot ?? 0;
+const selectActiveModuleId = (state: CampaignState) => state.ui.activeModule;
+const selectCharacterPanelView = (state: CampaignState) => state.ui.characterPanelView;
+const selectGmModeEnabled = (state: CampaignState) => state.ui.gmModeEnabled;
+const selectDebugMode = (state: CampaignState) => state.ui.debugMode;
+const selectBlockingError = (state: CampaignState) => state.ui.blockingError;
+const selectIsCombatActive = (state: CampaignState) => !!state.combat.activeSession;
+const selectCombatMapId = (state: CampaignState) => state.combat.activeSession?.mapId ?? null;
+const selectCharactersById = (state: CampaignState) => state.entities.characters;
+const selectCharacterTemplates = (state: CampaignState) => state.entities.characterTemplates;
+
 /**
  * Inner component that uses PanelLayoutContext
  */
@@ -104,7 +121,18 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
   const characters = useCampaignCharacters();
   const { state: layoutState, actions: layoutActions } = usePanelLayout();
 
-  const { state, actions } = useCampaignStore();
+  const actions = useCampaignActions();
+  const timeDay = useCampaignSelector(selectTimeDay);
+  const timeSlot = useCampaignSelector(selectTimeSlot);
+  const activeModuleId = useCampaignSelector(selectActiveModuleId);
+  const characterPanelView = useCampaignSelector(selectCharacterPanelView);
+  const gmModeEnabled = useCampaignSelector(selectGmModeEnabled);
+  const debugMode = useCampaignSelector(selectDebugMode);
+  const blockingError = useCampaignSelector(selectBlockingError);
+  const isCombatActive = useCampaignSelector(selectIsCombatActive);
+  const combatMapId = useCampaignSelector(selectCombatMapId);
+  const charactersById = useCampaignSelector(selectCharactersById);
+  const characterTemplates = useCampaignSelector(selectCharacterTemplates);
 
   const availableModules = useMemo<ModuleDefinition[]>(() => {
     if (modules?.length) {
@@ -118,8 +146,8 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
         content: (
           <LazyContent tabName="Downtime">
             <DowntimePanel
-              currentDayKey={state.time?.day ?? 1}
-              currentSlot={state.time?.slot ?? 0}
+              currentDayKey={timeDay}
+              currentSlot={timeSlot}
             />
           </LazyContent>
         ),
@@ -134,12 +162,10 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
       { id: 'rules', label: 'Rules', content: <LazyContent tabName="Rules"><RulesTab /></LazyContent> },
       { id: 'changelog', label: 'Changelog', content: <LazyContent tabName="Changelog"><ChangelogTab /></LazyContent> },
     ];
-  }, [modules, state.time?.day, state.time?.slot]);
-  const activeModuleId = state.ui.activeModule;
+  }, [modules, timeDay, timeSlot]);
   const activeModule = activeModuleId ? availableModules.find((moduleItem) => moduleItem.id === activeModuleId) : null;
   const selectedCharacterId = useSelectedCharacterId();
   const selectedCharacter = useSelectedCharacter();
-  const characterPanelView = state.ui.characterPanelView;
   const sortedCharacters = useMemo(
     () => [...characters].sort((a, b) => a.name.localeCompare(b.name)),
     [characters]
@@ -317,8 +343,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
   const isRightExpanded = layoutState.rightPanel === 'expanded';
 
   // Combat layout: when combat is active WITH a linked map, take over the whole shell
-  const isCombatActive = !!state.combat.activeSession;
-  const combatHasMap = !!state.combat.activeSession?.mapId;
+  const combatHasMap = !!combatMapId;
   const combatLayoutActive = isCombatActive && combatHasMap;
 
   // Character panel should hide when no character is selected or party is collapsed
@@ -377,33 +402,33 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           {/* Center: Time Display and Controls */}
           <div className="flex items-center gap-3">
             <TimeDisplay />
-            {state.ui.gmModeEnabled && <TimeControls compact />}
+            {gmModeEnabled && <TimeControls compact />}
           </div>
 
           {/* Right: Debug controls and blocking errors */}
           <div className="flex flex-wrap items-center gap-3 text-sm text-gray-300">
-            {state.ui.debugMode && (
+            {debugMode && (
               <div className="rounded border border-amber-500/50 bg-amber-500/10 px-2 py-1 text-xs text-amber-100">
                 Debug mode
               </div>
             )}
-            {state.ui.gmModeEnabled && (
+            {gmModeEnabled && (
               <button
                 type="button"
                 onClick={actions.toggleDebug}
                 className="rounded border border-amber-500/60 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-100 hover:border-amber-300"
               >
-                {state.ui.debugMode ? 'Disable Debug' : 'Enable Debug'}
+                {debugMode ? 'Disable Debug' : 'Enable Debug'}
               </button>
             )}
-            {state.ui.blockingError && (
+            {blockingError && (
               <div
                 className="rounded border border-amber-500/60 bg-amber-500/10 px-3 py-2 text-xs text-amber-100"
                 data-testid="blocking-error"
               >
-                <div className="font-semibold">{state.ui.blockingError.reason}</div>
+                <div className="font-semibold">{blockingError.reason}</div>
                 <ul className="mt-1 list-disc pl-4">
-                  {state.ui.blockingError.suggestedFixes.map((fix) => (
+                  {blockingError.suggestedFixes.map((fix) => (
                     <li key={fix}>{fix}</li>
                   ))}
                 </ul>
@@ -853,7 +878,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
         <CharacterCreationModal
           onClose={() => setShowCreationModal(false)}
           onCharacterCreated={handleCharacterCreated}
-          templates={Object.values(state.entities.characterTemplates ?? {})}
+          templates={Object.values(characterTemplates ?? {})}
           onNpcsGenerated={(names, templateName) => actions.addLogEntry(characterLog.npcGenerated(names, templateName))}
         />
       )}
@@ -862,21 +887,21 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
         <AwardPointsModal characters={sortedCharacters} onClose={() => setShowAwardPointsModal(false)} />
       )}
 
-      {spendPointsCharacterId && state.entities.characters[spendPointsCharacterId] && (
+      {spendPointsCharacterId && charactersById[spendPointsCharacterId] && (
         <PointSpendModal
-          character={state.entities.characters[spendPointsCharacterId]}
-          campaignDay={state.time?.day ?? 1}
+          character={charactersById[spendPointsCharacterId]}
+          campaignDay={timeDay}
           onClose={() => setSpendPointsCharacterId(null)}
         />
       )}
 
-      {compareCharacterId && state.entities.characters[compareCharacterId] && (
-        <CharacterCompareModal character={state.entities.characters[compareCharacterId]} characters={sortedCharacters} onClose={() => setCompareCharacterId(null)} />
+      {compareCharacterId && charactersById[compareCharacterId] && (
+        <CharacterCompareModal character={charactersById[compareCharacterId]} characters={sortedCharacters} onClose={() => setCompareCharacterId(null)} />
       )}
 
-      {statusCharacterId && state.entities.characters[statusCharacterId] && (
+      {statusCharacterId && charactersById[statusCharacterId] && (
         <CharacterStatusEditor
-          character={state.entities.characters[statusCharacterId]}
+          character={charactersById[statusCharacterId]}
           onUpdate={(status) => actions.updateCharacter(statusCharacterId, { status })}
           onClose={() => setStatusCharacterId(null)}
         />

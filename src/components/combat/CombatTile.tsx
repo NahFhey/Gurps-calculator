@@ -1,9 +1,14 @@
 import { useMemo } from 'react';
 import { Swords, Play, Users, Heart } from 'lucide-react';
-import { useCampaignStore } from '../../state/campaignStore';
+import { useCampaignActions, useCampaignSelector } from '../../state/campaignStore';
+import type { CampaignState } from '../../state/campaignReducer';
 import { hasCondition } from '../../utils/conditionsEngine';
 import { ConditionId } from '../../constants/conditions';
 import type { Participant } from '../../types/combatTracker';
+
+const selectCombatActive = (state: CampaignState) => state.combat.active;
+const selectActiveSession = (state: CampaignState) => state.combat.activeSession;
+const selectActiveModuleId = (state: CampaignState) => state.ui.activeModule;
 
 const isAlly = (p: Participant) => p.category === 'player' || p.category === 'ally';
 
@@ -31,10 +36,11 @@ interface CombatTileProps {
 }
 
 export function CombatTile({ onExpand, compact = false }: CombatTileProps) {
-  const { state, actions } = useCampaignStore();
+  const actions = useCampaignActions();
 
-  const combatActive = state.combat.active;
-  const session = state.combat.activeSession;
+  const combatActive = useCampaignSelector(selectCombatActive);
+  const session = useCampaignSelector(selectActiveSession);
+  const activeModuleId = useCampaignSelector(selectActiveModuleId);
 
   // Compute participant stats
   const participantStats = useMemo(() => {
@@ -101,7 +107,7 @@ export function CombatTile({ onExpand, compact = false }: CombatTileProps) {
 
   const handleStartCombat = () => {
     // If combat module is already open, close it (toggle behavior)
-    if (state.ui.activeModule === 'combat') {
+    if (activeModuleId === 'combat') {
       actions.setActiveModule('');
     } else {
       actions.startCombat();
@@ -221,7 +227,7 @@ export function CombatTile({ onExpand, compact = false }: CombatTileProps) {
 
         {/* Right: Action hint */}
         <div className="text-xs text-gray-500">
-          Click to {state.ui.activeModule === 'combat' ? 'view' : 'return to'} combat
+          Click to {activeModuleId === 'combat' ? 'view' : 'return to'} combat
         </div>
       </div>
     </div>

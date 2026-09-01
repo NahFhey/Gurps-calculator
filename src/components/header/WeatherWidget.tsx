@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { useCampaignStore } from '../../state/campaignStore';
+import { useCampaignActions, useCampaignSelector } from '../../state/campaignStore';
+import type { CampaignState } from '../../state/campaignReducer';
 import { getWeatherIcon, getRemainingWeatherSlots, BASE_WEATHER_EFFECTS } from '../../utils/weatherSystem';
 import { LocationManager } from '../location/LocationManager';
 import type { Weather, WeatherEffects } from '../../types/location';
@@ -25,31 +26,47 @@ interface WeatherWidgetProps {
   showLocation?: boolean;
 }
 
+const selectMaps = (state: CampaignState) => state.maps;
+const selectEntities = (state: CampaignState) => state.entities;
+const selectLocations = (state: CampaignState) => state.locations;
+const selectTime = (state: CampaignState) => state.time;
+const selectGmModeEnabled = (state: CampaignState) => state.ui.gmModeEnabled;
+const selectActiveTravelGroupId = (state: CampaignState) => state.ui.activeTravelGroupId;
+
 export function WeatherWidget({
   compact = false,
   showEffects = true,
   showLocation = true,
 }: WeatherWidgetProps) {
-  const { state, actions } = useCampaignStore();
+  const actions = useCampaignActions();
+  const maps = useCampaignSelector(selectMaps);
+  const entities = useCampaignSelector(selectEntities);
+  const locations = useCampaignSelector(selectLocations);
+  const time = useCampaignSelector(selectTime);
+  const gmModeEnabled = useCampaignSelector(selectGmModeEnabled);
+  const activeTravelGroupId = useCampaignSelector(selectActiveTravelGroupId);
   const [showManager, setShowManager] = useState(false);
   const [editingEffects, setEditingEffects] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
-  const ambient = getActiveAmbientWeather(state);
-  const activeMap = ambient.mapId ? state.maps.mapsById[ambient.mapId] : null;
+  const ambient = useMemo(
+    () => getActiveAmbientWeather({ maps, entities, ui: { activeTravelGroupId } }),
+    [maps, entities, activeTravelGroupId]
+  );
+  const activeMap = ambient.mapId ? maps.mapsById[ambient.mapId] : null;
   const weather: Weather | null = ambient.weather;
   const activeWeather = activeMap?.currentWeather ?? null;
   const allClimateLabels = useMemo(() => {
     const labels: Record<string, string> = { ...CLIMATE_LABELS };
-    for (const custom of state.locations.customClimates ?? []) labels[custom.key] = custom.label;
+    for (const custom of locations.customClimates ?? []) labels[custom.key] = custom.label;
     return labels;
-  }, [state.locations.customClimates]);
+  }, [locations.customClimates]);
 
   // Calculate remaining weather duration
   const remainingSlots = useMemo(() => {
     if (!activeWeather) return null;
-    return getRemainingWeatherSlots(activeWeather, state.time, state.time.slotsPerDay);
-  }, [activeWeather, state.time]);
+    return getRemainingWeatherSlots(activeWeather, time, time.slotsPerDay);
+  }, [activeWeather, time]);
 
   // Format effects summary (compact one-line)
   const effectsSummary = useMemo(() => {
@@ -83,14 +100,14 @@ export function WeatherWidget({
     if (remainingSlots === null) return 'Indefinite';
     if (remainingSlots === 0) return 'Changing soon';
     if (remainingSlots === 1) return '1 slot left';
-    if (remainingSlots >= state.time.slotsPerDay) {
-      const days = Math.floor(remainingSlots / state.time.slotsPerDay);
-      const slots = remainingSlots % state.time.slotsPerDay;
+    if (remainingSlots >= time.slotsPerDay) {
+      const days = Math.floor(remainingSlots / time.slotsPerDay);
+      const slots = remainingSlots % time.slotsPerDay;
       if (slots === 0) return `${days} day${days > 1 ? 's' : ''} left`;
       return `${days}d ${slots}s left`;
     }
     return `${remainingSlots} slots left`;
-  }, [remainingSlots, state.time.slotsPerDay]);
+  }, [remainingSlots, time.slotsPerDay]);
 
   // Handle roll new weather
   const handleRollWeather = () => {
@@ -197,7 +214,7 @@ export function WeatherWidget({
         </div>
 
         {/* GM Controls — outside the clickable area */}
-        {state.ui.gmModeEnabled && (
+        {gmModeEnabled && (
           <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-600/50">
             <button
               onClick={handleRollWeather}
@@ -242,7 +259,7 @@ export function WeatherWidget({
             <WeatherEffectsDisplay
               weather={weather}
               editing={editingEffects}
-              currentOverrides={state.locations.weatherEffectOverrides ?? {}}
+              currentOverrides={locations.weatherEffectOverrides ?? {}}
               onSave={(overrides) => actions.setWeatherEffectOverrides(overrides)}
             />
           </div>
