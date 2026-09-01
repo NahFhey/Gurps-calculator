@@ -61,6 +61,9 @@ export function handleCharacterAction(
           ...draft.entities.characters[action.payload.id],
           ...action.payload.changes
         };
+        if ('status' in action.payload.changes && action.payload.changes.status === undefined) {
+          delete draft.entities.characters[action.payload.id].status;
+        }
       }
       return true;
 

@@ -6,6 +6,8 @@ import { generateTaskId, selectTasksForSlot, validateTaskCreation } from '../../
 import { DowntimeValidationError } from '../../../state/downtime/downtimeErrors';
 import { isRestTask } from '../../../types/downtime';
 import { estimateHealing } from '../../../utils/recovery';
+import { compactCharacterStatus } from '../../../utils/injuryPersistence';
+import { getLocationByKey } from '../../../utils/hitLocations';
 import { restLog } from '../../../utils/activityLogger';
 import { RestTaskForm } from './RestTaskForm';
 import { RestTaskCard } from './RestTaskCard';
@@ -45,10 +47,16 @@ export function RestActivity({ currentDayKey, currentSlot }: RestActivityProps) 
   const recoveryCharacters = useMemo(
     () => characters.flatMap((character) => {
       const pools = character.gcsData?.pools;
-      if (!pools || (pools.HP.current >= pools.HP.max && pools.FP.current >= pools.FP.max)) return [];
+      const hasPersistentStatus = character.status?.dead === true
+        || (character.status?.conditions?.length ?? 0) > 0
+        || (character.status?.crippled?.length ?? 0) > 0;
+      if ((!pools || (pools.HP.current >= pools.HP.max && pools.FP.current >= pools.FP.max))
+        && !hasPersistentStatus) return [];
       return [{
         character,
-        estimate: estimateHealing(pools.HP.max - pools.HP.current, pools.FP.max - pools.FP.current),
+        estimate: pools
+          ? estimateHealing(pools.HP.max - pools.HP.current, pools.FP.max - pools.FP.current)
+          : null,
       }];
     }),
     [characters]
@@ -106,11 +114,12 @@ export function RestActivity({ currentDayKey, currentSlot }: RestActivityProps) 
     const leader = characters.find((character) => character.id === resolvingTask.leaderId);
 
     if (leader?.gcsData && recovery) {
+      const resultingHP = leader.gcsData.pools.HP.current + recovery.hpRestored;
       const updatedPools = {
         ...leader.gcsData.pools,
         HP: {
           ...leader.gcsData.pools.HP,
-          current: leader.gcsData.pools.HP.current + recovery.hpRestored,
+          current: resultingHP,
         },
         FP: {
           ...leader.gcsData.pools.FP,
@@ -118,12 +127,25 @@ export function RestActivity({ currentDayKey, currentSlot }: RestActivityProps) 
         },
       };
 
-      campaignActions.updateCharacter(leader.id, {
+      const changes: Parameters<typeof campaignActions.updateCharacter>[1] = {
         gcsData: {
           ...leader.gcsData,
           pools: updatedPools,
         },
-      });
+      };
+
+      if (resultingHP > 0 && leader.status?.conditions?.some(
+        condition => condition.conditionId === 'unconscious'
+      )) {
+        changes.status = compactCharacterStatus({
+          ...leader.status,
+          conditions: leader.status.conditions.filter(
+            condition => condition.conditionId !== 'unconscious'
+          ),
+        });
+      }
+
+      campaignActions.updateCharacter(leader.id, changes);
     }
 
     beginResolve(resolvingTask.id);
@@ -175,13 +197,27 @@ export function RestActivity({ currentDayKey, currentSlot }: RestActivityProps) 
           <div className="flex flex-wrap gap-2">
             {recoveryCharacters.map(({ character, estimate }) => {
               const pools = character.gcsData?.pools;
-              if (!pools) return null;
+              const conditionLabels = character.status?.conditions?.map(condition => condition.label) ?? [];
+              const crippledLabels = character.status?.crippled?.map(locationKey => (
+                getLocationByKey(character.hitLocationProfileId ?? 'humanoid', locationKey)?.label ?? locationKey
+              )) ?? [];
               return (
                 <div key={character.id} className="rounded bg-gray-900/60 px-3 py-2 text-xs text-gray-300">
                   <span className="mr-2 font-medium text-gray-100">{character.name}</span>
-                  <span className="mr-2 text-red-300">HP {pools.HP.current}/{pools.HP.max}</span>
-                  <span className="mr-2 text-blue-300">FP {pools.FP.current}/{pools.FP.max}</span>
-                  <span className="text-gray-400">Full: HP {estimate.daysToFullHP}d, FP {estimate.daysToFullFP}d</span>
+                  {pools && estimate && (
+                    <>
+                      <span className="mr-2 text-red-300">HP {pools.HP.current}/{pools.HP.max}</span>
+                      <span className="mr-2 text-blue-300">FP {pools.FP.current}/{pools.FP.max}</span>
+                      <span className="mr-2 text-gray-400">Full: HP {estimate.daysToFullHP}d, FP {estimate.daysToFullFP}d</span>
+                    </>
+                  )}
+                  {character.status?.dead && <span className="mr-2 text-red-400">Dead</span>}
+                  {conditionLabels.length > 0 && (
+                    <span className="mr-2 text-purple-300">{conditionLabels.join(', ')}</span>
+                  )}
+                  {crippledLabels.length > 0 && (
+                    <span className="text-orange-300">Crippled: {crippledLabels.join(', ')}</span>
+                  )}
                 </div>
               );
             })}

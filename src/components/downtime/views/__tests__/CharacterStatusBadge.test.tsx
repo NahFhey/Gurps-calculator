@@ -115,4 +115,31 @@ describe('CharacterStatusBadge', () => {
       screen.queryByTitle('Exhausted - worked without rest')
     ).not.toBeInTheDocument();
   });
+
+  it('renders dead with visual precedence over other injury badges', () => {
+    render(<CharacterStatusBadge summary={createSummary()} status={{
+      dead: true,
+      conditions: [{ instanceId: 'ko', conditionId: 'unconscious', label: 'Unconscious' }],
+      crippled: ['armR'],
+    }} />);
+
+    expect(screen.getByTestId('dead-status-badge')).toHaveTextContent('Dead');
+    expect(screen.queryByTestId('unconscious-status-badge')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('crippled-status-indicator')).not.toBeInTheDocument();
+  });
+
+  it('renders KO, condition icons, and a crippled count from persistent status', () => {
+    render(<CharacterStatusBadge summary={createSummary()} status={{
+      conditions: [
+        { instanceId: 'ko', conditionId: 'unconscious', label: 'Unconscious' },
+        { instanceId: 'poison', conditionId: 'poisoned', label: 'Poisoned' },
+      ],
+      crippled: ['armR', 'legL'],
+    }} />);
+
+    expect(screen.getByTestId('unconscious-status-badge')).toHaveTextContent('KO');
+    expect(screen.getByTestId('condition-status-indicator')).toHaveTextContent('☠️');
+    expect(screen.getByTestId('condition-status-indicator')).toHaveAttribute('title', 'Poisoned');
+    expect(screen.getByTestId('crippled-status-indicator')).toHaveTextContent('2');
+  });
 });

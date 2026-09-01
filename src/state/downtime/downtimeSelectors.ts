@@ -13,6 +13,7 @@ import type {
   TaskLockKey,
   ForagingData,
 } from '../../types/downtime';
+import type { Character } from '../../types/campaign';
 
 type TargetKeyActivityData =
   | { type: 'fishing'; speciesId: string }
@@ -717,6 +718,16 @@ export function selectCharacterFatigueMap(
 // ============================================================================
 // CHARACTER SLOT SUMMARY SELECTORS
 // ============================================================================
+
+/** A dead or persistently unconscious character cannot work downtime tasks. */
+export function isCharacterIncapacitated(
+  character: Pick<Character, 'status'> | undefined
+): boolean {
+  return character?.status?.dead === true
+    || character?.status?.conditions?.some(
+      condition => condition.conditionId === 'unconscious'
+    ) === true;
+}
 
 /**
  * Unified summary of a character's status for a specific slot.

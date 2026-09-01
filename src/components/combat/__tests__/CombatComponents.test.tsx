@@ -25,6 +25,7 @@ vi.mock('../../../utils/conditionsEngine', () => ({
 
 // Mock conditions constants
 vi.mock('../../../constants/conditions', () => ({
+  conditionPersistsAfterCombat: vi.fn((id: string) => ['poisoned', 'unconscious', 'blinded'].includes(id)),
   getConditionIcon: vi.fn(() => '💫'),
   getAllConditions: vi.fn(() => [
     { id: 'stunned', label: 'Stunned', icon: '💫', description: 'Cannot act' },
@@ -454,6 +455,71 @@ describe('EncounterSetup', () => {
     for (const name of names) {
       expect(screen.getAllByText(name)).toHaveLength(2);
     }
+  });
+
+  it('skips dead and unconscious party characters in Add All while leaving individual add enabled', () => {
+    let idCounter = 0;
+    vi.mocked(generateId).mockImplementation(() => `participant-${++idCounter}`);
+    setupCombatStore({
+      partyCharacters: [
+        { id: 'healthy', name: 'Healthy' },
+        { id: 'dead', name: 'Dead One', status: { dead: true } },
+        {
+          id: 'ko', name: 'KO One',
+          status: { conditions: [{ instanceId: 'ko-1', conditionId: 'unconscious', label: 'Unconscious' }] },
+        },
+      ],
+    });
+
+    render(<EncounterSetup />);
+    expect(screen.getByText('dead')).toBeInTheDocument();
+    expect(screen.getByText('KO')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTitle('Add all party characters to encounter'));
+
+    expect(screen.getAllByText('Healthy')).toHaveLength(2);
+    expect(screen.getAllByText('Dead One')).toHaveLength(1);
+    expect(screen.getAllByText('KO One')).toHaveLength(1);
+    expect(screen.getAllByTitle('Add to encounter')).toHaveLength(2);
+  });
+
+  it('seeds persisted conditions and crippled limbs into an individually added participant', () => {
+    let idCounter = 0;
+    vi.mocked(generateId).mockImplementation(() => `participant-${++idCounter}`);
+    vi.mocked(generateTurnOrder).mockImplementation(
+      (participants) => participants.map((participant) => participant.id ?? '')
+    );
+    const saveCombatActive = vi.fn();
+    setupCombatStore({
+      saveCombatActive,
+      partyCharacters: [{
+        id: 'party-1',
+        name: 'Aria',
+        status: {
+          conditions: [{
+            instanceId: 'poison-1', conditionId: 'poisoned', label: 'Poisoned',
+            revealed: 'half', severity: 2, source: 'Spider', notes: 'Slow',
+          }],
+          crippled: ['armL'],
+        },
+      }],
+    });
+
+    render(<EncounterSetup />);
+    fireEvent.click(screen.getByTitle('Add to encounter'));
+    fireEvent.click(screen.getByText('Generate Turn Order'));
+    fireEvent.click(screen.getByText('Start Combat'));
+
+    const savedCombat = saveCombatActive.mock.calls[0][0];
+    expect(savedCombat.participants[0]).toMatchObject({
+      isDead: false,
+      crippled: ['armL'],
+      conditions: [{
+        instanceId: 'poison-1', conditionId: 'poisoned', label: 'Poisoned',
+        duration: { type: 'permanent' }, expiresAt: null, revealed: 'half',
+        severity: 2, source: 'Spider', notes: 'Slow',
+      }],
+    });
   });
 
   it('consumes a travel intent, loads its template, and uses the event name', async () => {

@@ -11,6 +11,7 @@ import {
   AwardPointsModal,
   PointSpendModal,
   CharacterCompareModal,
+  CharacterStatusEditor,
   type CharacterContextMenuAction,
 } from '../components/character-management';
 import { CharacterStatusBadge } from '../components/downtime/views/CharacterStatusBadge';
@@ -29,6 +30,7 @@ import {
   useSelectedCharacterId
 } from '../state/campaignStore';
 import { useAllCharacterSlotSummaries } from '../hooks/useCharacterSlotSummary';
+import { isCharacterIncapacitated } from '../state/downtime/downtimeSelectors';
 import type { Character } from '../types/campaign';
 
 const InventoryTab = lazy(() =>
@@ -158,6 +160,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
   const [spendPointsCharacterId, setSpendPointsCharacterId] = useState<string | null>(null);
   const [compareCharacterId, setCompareCharacterId] = useState<string | null>(null);
   const [editRequestToken, setEditRequestToken] = useState(0);
+  const [statusCharacterId, setStatusCharacterId] = useState<string | null>(null);
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -253,6 +256,9 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
           actions.selectCharacter(action.characterId);
           actions.setCharacterPanelView('sheet');
           setEditRequestToken((current) => current + 1);
+          break;
+        case 'status':
+          setStatusCharacterId(action.characterId);
           break;
         case 'spendPoints':
           actions.selectCharacter(action.characterId);
@@ -453,8 +459,8 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                 const downtimeSummary = characterSummaries.get(character.id);
 
                 // Determine highlight class based on downtime availability
-                // Green = available for the current time slot, Red = unavailable (has task)
-                const isUnavailable = !!downtimeSummary?.isAssigned;
+                // Green = available; Red = assigned in this slot or incapacitated.
+                const isUnavailable = !!downtimeSummary?.isAssigned || isCharacterIncapacitated(character);
                 const downtimeHighlightClass = isUnavailable
                   ? 'border-2 border-red-500'
                   : 'border-2 border-green-500';
@@ -499,7 +505,7 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className={`text-sm font-semibold truncate ${isUnavailable ? 'text-gray-400' : 'text-gray-100'}`}>{character.name}</span>
-                          {downtimeSummary && <CharacterStatusBadge summary={downtimeSummary} />}
+                          {downtimeSummary && <CharacterStatusBadge summary={downtimeSummary} status={character.status} />}
                         </div>
                         <div className="text-xs text-gray-400">
                           {hpDisplay} / {fpDisplay}
@@ -508,12 +514,11 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
                       <button
                         type="button"
                         onClick={(e) => {
-                          if (isUnavailable) { e.stopPropagation(); return; }
+                          e.stopPropagation();
                           handleContextMenu(e, character);
                         }}
-                        disabled={isUnavailable}
-                        className={`p-1 rounded flex-shrink-0 ${isUnavailable ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-gray-700 text-gray-400 hover:text-gray-200'}`}
-                        title={isUnavailable ? 'Character unavailable this time slot' : 'Character options'}
+                        className="p-1 rounded flex-shrink-0 hover:bg-gray-700 text-gray-400 hover:text-gray-200"
+                        title="Character options"
                         data-testid={`character-menu-${character.id}`}
                       >
                         <MoreVertical className="h-4 w-4" />
@@ -867,6 +872,14 @@ function UnifiedShellInner({ modules }: UnifiedShellProps) {
 
       {compareCharacterId && state.entities.characters[compareCharacterId] && (
         <CharacterCompareModal character={state.entities.characters[compareCharacterId]} characters={sortedCharacters} onClose={() => setCompareCharacterId(null)} />
+      )}
+
+      {statusCharacterId && state.entities.characters[statusCharacterId] && (
+        <CharacterStatusEditor
+          character={state.entities.characters[statusCharacterId]}
+          onUpdate={(status) => actions.updateCharacter(statusCharacterId, { status })}
+          onClose={() => setStatusCharacterId(null)}
+        />
       )}
 
       {/* Character Context Menu */}

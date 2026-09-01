@@ -5,10 +5,10 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { Eye, Edit2, Copy, Download, FileText, Trash2, Coins, Save, Columns } from 'lucide-react';
+import { Eye, Edit2, Copy, Download, FileText, Trash2, Coins, Save, Columns, HeartPulse } from 'lucide-react';
 
 export interface CharacterContextMenuAction {
-  type: 'view' | 'edit' | 'spendPoints' | 'saveTemplate' | 'compare' | 'duplicate' | 'export' | 'exportText' | 'delete';
+  type: 'view' | 'edit' | 'status' | 'spendPoints' | 'saveTemplate' | 'compare' | 'duplicate' | 'export' | 'exportText' | 'delete';
   characterId: string;
 }
 
@@ -90,6 +90,7 @@ export function CharacterContextMenu({
   const menuItems = [
     { type: 'view' as const, label: 'View Sheet', icon: Eye },
     { type: 'edit' as const, label: 'Edit', icon: Edit2 },
+    { type: 'status' as const, label: 'Status', icon: HeartPulse },
     { type: 'spendPoints' as const, label: 'Spend Points', icon: Coins },
     { type: 'saveTemplate' as const, label: 'Save as template', icon: Save },
     { type: 'compare' as const, label: 'Compare with…', icon: Columns },

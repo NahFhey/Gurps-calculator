@@ -7,11 +7,13 @@
 
 import type { DowntimeState, ActivityData } from '../../types/downtime';
 import type { CreateTaskPayload } from './downtimeActions';
+import type { Character } from '../../types/campaign';
 import {
   selectCharacterAssignmentForSlot,
   canCreateTaskForTarget,
   getTargetKeyFromActivityData,
   selectReservedToolIdsForSlot,
+  isCharacterIncapacitated,
 } from './downtimeSelectors';
 import { type ValidationResult, DOWNTIME_ERROR_CODES } from './downtimeErrors';
 
@@ -270,14 +272,45 @@ export function validateBatchToolExclusivity(
  * Validates that a task can be created with the given payload.
  *
  * Runs all validation checks in order:
- * 1. Assignment validation (single assignment per slot)
- * 2. Lock-on-create validation (no duplicate targets)
- * 3. Tool exclusivity validation (no shared tools)
+ * 1. Incapacitation validation (with the rest-patient exception)
+ * 2. Assignment validation (single assignment per slot)
+ * 3. Lock-on-create validation (no duplicate targets)
+ * 4. Tool exclusivity validation (no shared tools)
  */
 export function validateTaskCreation(
   state: DowntimeState,
-  payload: CreateTaskPayload
+  payload: CreateTaskPayload,
+  characters: readonly Character[] = []
 ): ValidationResult {
+  const characterById = new Map(characters.map(character => [character.id, character]));
+  const incapacitationMessage = (character: Character): string => (
+    character.status?.dead === true
+      ? `${character.name} is dead`
+      : `${character.name} is unconscious`
+  );
+
+  const leader = characterById.get(payload.leaderId);
+  if (payload.activityType !== 'rest' && leader && isCharacterIncapacitated(leader)) {
+    return {
+      valid: false,
+      code: DOWNTIME_ERROR_CODES.CHARACTER_INCAPACITATED,
+      message: incapacitationMessage(leader),
+      meta: { characterId: leader.id, role: 'leader' },
+    };
+  }
+
+  for (const helperId of payload.helperIds) {
+    const helper = characterById.get(helperId);
+    if (helper && isCharacterIncapacitated(helper)) {
+      return {
+        valid: false,
+        code: DOWNTIME_ERROR_CODES.CHARACTER_INCAPACITATED,
+        message: incapacitationMessage(helper),
+        meta: { characterId: helper.id, role: 'helper' },
+      };
+    }
+  }
+
   // Check assignment constraints first
   const assignmentResult = validateAssignment(state, payload);
   if (!assignmentResult.valid) {

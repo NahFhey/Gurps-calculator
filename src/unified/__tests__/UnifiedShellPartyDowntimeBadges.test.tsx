@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
 import '@testing-library/jest-dom';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { CampaignStoreProvider, useCampaignStore } from '../../state/campaignStore';
 import { UnifiedShell } from '../UnifiedShell';
+import { createCampaignState } from '../../state/campaignReducer';
 import type { DowntimeTask, FishingData, RestData } from '../../types/downtime';
 
 const modules = [
@@ -147,6 +148,31 @@ describe('UnifiedShell party sidebar downtime badges', () => {
     const rinaRow = screen.getByTestId('party-character-char-rina');
     // Check for HP/FP display pattern
     expect(within(rinaRow).getByText(/HP.*\/.*FP/)).toBeInTheDocument();
+  });
+
+  it('marks incapacitated characters unavailable while keeping Character options available', () => {
+    const campaign = createCampaignState();
+    campaign.entities.characters = {
+      fallen: {
+        id: 'fallen', name: 'Fallen', work: { skills: {} }, status: { dead: true },
+      },
+    };
+
+    render(
+      <CampaignStoreProvider initialCampaignState={campaign}>
+        <UnifiedShell modules={modules} />
+      </CampaignStoreProvider>
+    );
+
+    const row = screen.getByTestId('party-character-fallen');
+    expect(row).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByTestId('dead-status-badge')).toBeInTheDocument();
+
+    const menuButton = screen.getByTestId('character-menu-fallen');
+    expect(menuButton).not.toBeDisabled();
+    fireEvent.click(menuButton);
+    fireEvent.click(screen.getByText('Status'));
+    expect(screen.getByTestId('character-status-editor')).toBeInTheDocument();
   });
 });
 

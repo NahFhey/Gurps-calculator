@@ -13,7 +13,7 @@ export interface SchemaMetadataEntry {
   migratesFrom?: string[];
 }
 
-export const CURRENT_SCHEMA_VERSION = '1.6.1';
+export const CURRENT_SCHEMA_VERSION = '1.6.2';
 
 export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
   '1.0.0': {
@@ -158,6 +158,14 @@ export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
     description: 'Add optional inventory equipment cargo and atomic sheet promotion/demotion',
     features: ['equipment_bridge', 'equipment_provenance'],
     migratesFrom: ['1.6.0'],
+  },
+  '1.6.2': {
+    name: 'Injury Persistence',
+    timestamp: '2026-09-01',
+    breaking: false,
+    description: 'Persist party conditions, crippled limbs, and death across combat and downtime',
+    features: ['injury_persistence'],
+    migratesFrom: ['1.6.1'],
   },
 };
 
