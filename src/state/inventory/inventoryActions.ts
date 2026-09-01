@@ -16,8 +16,9 @@ import type {
   AlchemyReagent,
   AcquiredItem,
   InventoryOwner,
-  AcquisitionSource
+  AcquisitionSource,
 } from '../../types/campaign';
+import type { Equipment } from '../../types/characterSheet';
 
 // ============================================================================
 // ACTION TYPE CONSTANTS
@@ -57,6 +58,8 @@ export const INVENTORY_SET = 'setInventories' as const;
 // Inventory integration bus actions (Phase 12a.5)
 export const ITEM_ACQUIRED = 'inventory/itemAcquired' as const;
 export const ITEM_RETAGGED = 'inventory/itemRetagged' as const;
+export const ITEM_PROMOTED = 'inventory/itemPromoted' as const;
+export const ITEM_DEMOTED = 'inventory/itemDemoted' as const;
 export const ITEM_ATTUNEMENT_SET = 'inventory/itemAttunementSet' as const;
 export const ITEM_MAGICAL_SET = 'inventory/itemMagicalSet' as const;
 export const ITEM_CONSUMED = 'inventory/itemConsumed' as const;
@@ -139,6 +142,18 @@ export type ItemRetaggedAction = {
   type: typeof ITEM_RETAGGED;
   payload: { itemId: Id; newOwner: InventoryOwner };
 };
+export type ItemPromotedAction = {
+  type: typeof ITEM_PROMOTED;
+  payload: {
+    itemId: Id;
+    characterId: Id;
+    equipment: Omit<Equipment, 'id' | 'sourceItem'>;
+  };
+};
+export type ItemDemotedAction = {
+  type: typeof ITEM_DEMOTED;
+  payload: { characterId: Id; equipmentId: Id; quantity?: number };
+};
 export type ItemAttunementSetAction = {
   type: typeof ITEM_ATTUNEMENT_SET;
   payload: { itemId: Id; attuned: boolean };
@@ -207,6 +222,8 @@ export type InventoryAction =
   // Inventory integration bus actions
   | ItemAcquiredAction
   | ItemRetaggedAction
+  | ItemPromotedAction
+  | ItemDemotedAction
   | ItemAttunementSetAction
   | ItemMagicalSetAction
   | ItemConsumedAction
@@ -242,6 +259,8 @@ const INVENTORY_ACTION_TYPES = new Set([
   INVENTORY_SET,
   ITEM_ACQUIRED,
   ITEM_RETAGGED,
+  ITEM_PROMOTED,
+  ITEM_DEMOTED,
   ITEM_ATTUNEMENT_SET,
   ITEM_MAGICAL_SET,
   ITEM_CONSUMED,
@@ -255,4 +274,12 @@ const INVENTORY_ACTION_TYPES = new Set([
  */
 export function isInventoryAction(action: { type: string }): action is InventoryAction {
   return INVENTORY_ACTION_TYPES.has(action.type as typeof MATERIAL_ADD);
+}
+
+export function promoteItem(payload: ItemPromotedAction['payload']): ItemPromotedAction {
+  return { type: ITEM_PROMOTED, payload };
+}
+
+export function demoteItem(payload: ItemDemotedAction['payload']): ItemDemotedAction {
+  return { type: ITEM_DEMOTED, payload };
 }

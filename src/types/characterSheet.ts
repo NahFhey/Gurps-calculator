@@ -212,7 +212,7 @@ export interface Equipment {
   name: string;
   quantity: number;
   weight: number;             // Weight per item in lbs
-  cost: number;               // Cost per item in $
+  cost: number;               // Cost per item in the campaign base currency
   equipped?: boolean;
   location?: string;          // e.g., "Belt", "Back", "Torso"
   category?: EquipmentCategory;
@@ -231,6 +231,15 @@ export interface Equipment {
 
   // Shield stats
   db?: number;                // Defense Bonus
+
+  /** Inventory-domain provenance carried while the item is ON the sheet; restored at demotion. */
+  sourceItem?: {
+    id: Id;
+    crafterId?: Id;
+    magical?: boolean;
+    attuned?: boolean;
+    source?: string;
+  };
 }
 
 // ============================================================================

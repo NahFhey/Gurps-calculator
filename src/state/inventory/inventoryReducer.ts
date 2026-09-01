@@ -10,12 +10,15 @@ import type { CampaignState } from '../campaignReducer';
 import type {
   AcquiredItem,
   AcquisitionSource,
+  EquipmentCargo,
   FoodEntry,
   Id,
   Inventory,
   InventoryOwner,
   MaterialEntry
 } from '../../types/campaign';
+import { createDefaultGCSData } from '../../types/characterSheet';
+import type { Equipment } from '../../types/characterSheet';
 import type { CombatState } from '../../types/combatTracker';
 import {
   type InventoryAction,
@@ -42,6 +45,8 @@ import {
   INVENTORY_SET,
   ITEM_ACQUIRED,
   ITEM_RETAGGED,
+  ITEM_PROMOTED,
+  ITEM_DEMOTED,
   ITEM_ATTUNEMENT_SET,
   ITEM_MAGICAL_SET,
   ITEM_CONSUMED,
@@ -127,6 +132,50 @@ function findInventoryRecord(
   );
 }
 
+function createUniqueItemId(draft: Draft<CampaignState>, prefix: string): Id {
+  const base = `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  let id = base;
+  let collisionSuffix = 1;
+  while (Object.values(draft.entities.inventories).some(
+    inventory => inventory.items.some(item => item.id === id)
+  )) {
+    id = `${base}-${collisionSuffix++}`;
+  }
+  return id;
+}
+
+function createUniqueEquipmentId(characterEquipment: readonly Draft<Equipment>[]): Id {
+  const base = `equip-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  let id = base;
+  let collisionSuffix = 1;
+  while (characterEquipment.some(equipment => equipment.id === id)) {
+    id = `${base}-${collisionSuffix++}`;
+  }
+  return id;
+}
+
+function packEquipmentCargo(entry: Draft<Equipment>): EquipmentCargo {
+  return {
+    weight: entry.weight,
+    cost: entry.cost,
+    ...(entry.location !== undefined ? { location: entry.location } : {}),
+    ...(entry.category !== undefined ? { category: entry.category } : {}),
+    ...(entry.notes !== undefined ? { notes: entry.notes } : {}),
+    ...(entry.reference !== undefined ? { reference: entry.reference } : {}),
+    ...(entry.damage !== undefined ? { damage: entry.damage } : {}),
+    ...(entry.reach !== undefined ? { reach: entry.reach } : {}),
+    ...(entry.rangeHalf !== undefined ? { rangeHalf: entry.rangeHalf } : {}),
+    ...(entry.rangeFull !== undefined ? { rangeFull: entry.rangeFull } : {}),
+    ...(entry.dr !== undefined ? { dr: entry.dr } : {}),
+    ...(entry.drLocations !== undefined ? { drLocations: [...entry.drLocations] } : {}),
+    ...(entry.db !== undefined ? { db: entry.db } : {}),
+  };
+}
+
+function clampTransferQuantity(requested: number, available: number): number {
+  return Math.max(1, Math.min(Number.isFinite(requested) ? requested : 1, available));
+}
+
 /**
  * Land an acquired item using the inventory bus rules. Revert calls this same
  * helper so a restore remains an acquire-semantic write inside one reducer pass.
@@ -167,6 +216,9 @@ function acquireInventoryItem(
       const existing = inventory.items.find((candidate) => candidate.id === item.id);
       if (existing) {
         existing.quantity = (existing.quantity ?? 0) + item.quantity;
+        if (existing.equipmentData === undefined && item.equipmentData !== undefined) {
+          existing.equipmentData = item.equipmentData;
+        }
         return;
       }
       inventory.items.push({
@@ -177,7 +229,8 @@ function acquireInventoryItem(
         ...(item.magical !== undefined ? { magical: item.magical } : {}),
         value: item.value,
         notes: item.notes,
-        source: item.source ?? source
+        source: item.source ?? source,
+        ...(item.equipmentData !== undefined ? { equipmentData: item.equipmentData } : {}),
       });
       return;
     }
@@ -400,6 +453,89 @@ export function handleInventoryAction(
       return true;
     }
 
+    case ITEM_PROMOTED: {
+      const { itemId, characterId, equipment } = action.payload;
+      const character = draft.entities.characters[characterId];
+      if (!character) return true;
+
+      for (const inventory of Object.values(draft.entities.inventories)) {
+        const itemIndex = inventory.items.findIndex(candidate => candidate.id === itemId);
+        if (itemIndex < 0) continue;
+
+        const instance = inventory.items[itemIndex];
+        const availableQuantity = instance.quantity ?? 1;
+        if (availableQuantity <= 0) return true;
+        const promotedQuantity = clampTransferQuantity(equipment.quantity, availableQuantity);
+        const sourceItem: NonNullable<Equipment['sourceItem']> = {
+          id: itemId,
+          ...(instance.crafterId !== undefined ? { crafterId: instance.crafterId } : {}),
+          ...(instance.magical !== undefined ? { magical: instance.magical } : {}),
+          ...(instance.attuned !== undefined ? { attuned: instance.attuned } : {}),
+          ...(instance.source !== undefined ? { source: instance.source } : {}),
+        };
+        instance.quantity = availableQuantity - promotedQuantity;
+        if (instance.quantity === 0) inventory.items.splice(itemIndex, 1);
+
+        character.gcsData ??= createDefaultGCSData();
+        character.gcsData.equipment.push({
+          id: createUniqueEquipmentId(character.gcsData.equipment),
+          ...equipment,
+          quantity: promotedQuantity,
+          sourceItem,
+        });
+        return true;
+      }
+      return true;
+    }
+
+    case ITEM_DEMOTED: {
+      const { characterId, equipmentId } = action.payload;
+      const character = draft.entities.characters[characterId];
+      const equipmentEntries = character?.gcsData?.equipment;
+      const equipmentIndex = equipmentEntries?.findIndex(entry => entry.id === equipmentId) ?? -1;
+      if (!equipmentEntries || equipmentIndex < 0) return true;
+
+      const entry = equipmentEntries[equipmentIndex];
+      if (entry.quantity <= 0) return true;
+      const requestedQuantity = action.payload.quantity ?? entry.quantity;
+      const demotedQuantity = clampTransferQuantity(requestedQuantity, entry.quantity);
+      const cargo = packEquipmentCargo(entry);
+      const sourceItem = entry.sourceItem;
+
+      entry.quantity -= demotedQuantity;
+      if (entry.quantity === 0) equipmentEntries.splice(equipmentIndex, 1);
+
+      const destination = ensureInventoryRecord(draft, characterId);
+      const existingDestination = sourceItem
+        ? destination.items.find(item => item.id === sourceItem.id)
+        : undefined;
+      if (existingDestination) {
+        existingDestination.quantity = (existingDestination.quantity ?? 0) + demotedQuantity;
+        existingDestination.equipmentData = cargo;
+        return true;
+      }
+
+      const sourceIdExistsElsewhere = sourceItem !== undefined && Object.values(
+        draft.entities.inventories
+      ).some(inventory => inventory.items.some(item => item.id === sourceItem.id));
+      const restoredId = sourceItem && !sourceIdExistsElsewhere
+        ? sourceItem.id
+        : createUniqueItemId(draft, 'item');
+      destination.items.push({
+        id: restoredId,
+        name: entry.name,
+        quantity: demotedQuantity,
+        value: entry.cost,
+        ...(entry.notes !== undefined ? { notes: entry.notes } : {}),
+        ...(sourceItem?.crafterId !== undefined ? { crafterId: sourceItem.crafterId } : {}),
+        ...(sourceItem?.magical !== undefined ? { magical: sourceItem.magical } : {}),
+        ...(sourceItem?.attuned !== undefined ? { attuned: sourceItem.attuned } : {}),
+        ...(sourceItem?.source !== undefined ? { source: sourceItem.source } : {}),
+        equipmentData: cargo,
+      });
+      return true;
+    }
+
     case CURRENCY_SPENT: {
       const { owner, currencyKey, amount } = action.payload;
       const inventory = ensureInventoryRecord(draft, owner);
@@ -510,7 +646,8 @@ export function handleInventoryAction(
           magical: entry.itemSnapshot.magical,
           value: entry.itemSnapshot.value,
           notes: entry.itemSnapshot.notes,
-          source: entry.itemSnapshot.source
+          source: entry.itemSnapshot.source,
+          equipmentData: entry.itemSnapshot.equipmentData,
         },
         entry.characterId,
         'loot'

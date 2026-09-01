@@ -4,6 +4,7 @@
  */
 
 import type {
+  Equipment,
   GCSCharacterData,
   CharacterImages,
   SkillAttribute,
@@ -937,6 +938,13 @@ export interface Facility {
   activityCategories?: Record<string, ToolModifierSet>;
 }
 
+/** Sheet-domain stats an item carries while it is NOT on a character sheet.
+ * Opaque cargo: the inventory system ferries it, never edits it. */
+export type EquipmentCargo = Omit<
+  Equipment,
+  'id' | 'name' | 'quantity' | 'equipped' | 'sourceItem'
+>;
+
 export interface ItemInstance {
   id: Id;
   name?: string;
@@ -947,11 +955,12 @@ export interface ItemInstance {
   magical?: boolean;
   /** Whether this item is attuned. Absent is treated as false. */
   attuned?: boolean;
-  /** Value in cp (e.g. from loot distribution) */
+  /** Value in the campaign base currency (e.g. from loot distribution). */
   value?: number;
   notes?: string;
   /** Provenance label, e.g. 'crafting' | 'gathering' | 'loot' */
   source?: string;
+  equipmentData?: EquipmentCargo;
 }
 
 /** Authoritative material holding for one owner. There is no global material pool. */
@@ -999,7 +1008,7 @@ export type AcquisitionSource = 'crafting' | 'gathering' | 'loot' | 'trade';
 export type AcquiredItem =
   | { kind: 'material'; id: Id; name: string; type: string; quantity: number; source?: string; notes?: string }
   | { kind: 'food'; id: Id; name: string; types?: string[]; quantity: number; source?: string; notes?: string }
-  | { kind: 'equipment' | 'other'; id: Id; name: string; quantity: number; crafterId?: Id; value?: number; notes?: string; magical?: boolean; source?: string }
+  | { kind: 'equipment' | 'other'; id: Id; name: string; quantity: number; crafterId?: Id; value?: number; notes?: string; magical?: boolean; source?: string; equipmentData?: EquipmentCargo }
   | { kind: 'currency'; currencyKey: string; amount: number };
 
 export interface CurrencyLog {

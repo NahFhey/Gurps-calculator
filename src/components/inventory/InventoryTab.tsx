@@ -9,7 +9,9 @@ import {
   selectOwnerMaterialHoldings,
 } from '../../state/selectors/inventorySelectors';
 import type { Character, Inventory, ToolTemplate } from '../../types/campaign';
+import type { Equipment } from '../../types/characterSheet';
 import { inventoryLog } from '../../utils/activityLogger';
+import { getPrimaryCurrencyUnit } from '../../utils/currency';
 import { toNumberOr } from '../../utils/helpers';
 import { getCharacterPackLabel, getInventoryLabel } from './labels';
 import type {
@@ -23,6 +25,13 @@ import type {
 } from './types';
 import { InventoryOverviewView } from './views/InventoryOverviewView';
 import { PartyStashView } from './views/PartyStashView';
+import { EquipItemModal } from './EquipItemModal';
+
+interface EquipState {
+  inventoryId: string;
+  itemId: string;
+  characterId: string;
+}
 
 function getInventoryCharacterIds(...inventories: Inventory[]): string[] {
   return [...new Set(inventories.flatMap(inventory =>
@@ -92,6 +101,13 @@ export function InventoryTab() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null);
   const [transferState, setTransferState] = useState<TransferState | null>(null);
+  const [equipState, setEquipState] = useState<EquipState | null>(null);
+  const equipItem = equipState
+    ? inventories.find(inventory => inventory.id === equipState.inventoryId)?.items.find(
+      item => item.id === equipState.itemId
+    )
+    : undefined;
+  const currencyUnit = getPrimaryCurrencyUnit(state.entities.currencyConfig);
 
   function addMat() {
     if (useExistingMat) {
@@ -364,6 +380,25 @@ export function InventoryTab() {
     ));
   }, [actions, characters, inventories]);
 
+  const handleEquipItem = useCallback((
+    inventoryId: string,
+    itemId: string,
+    characterId: string
+  ) => {
+    if (!characters[characterId]) return;
+    setEquipState({ inventoryId, itemId, characterId });
+  }, [characters]);
+
+  const handleConfirmEquip = useCallback((equipment: Omit<Equipment, 'id' | 'sourceItem'>) => {
+    if (!equipState) return;
+    actions.promoteItem({
+      itemId: equipState.itemId,
+      characterId: equipState.characterId,
+      equipment,
+    });
+    setEquipState(null);
+  }, [actions, equipState]);
+
   return (
     <div>
       <div className="flex gap-2 mb-4">
@@ -426,6 +461,16 @@ export function InventoryTab() {
           onTransferStateChange={setTransferState}
           onConfirmTransfer={handleTransfer}
           onGiveItem={handleGiveItem}
+          onEquipItem={handleEquipItem}
+        />
+      )}
+
+      {equipState && equipItem && (
+        <EquipItemModal
+          item={equipItem}
+          currencyUnit={currencyUnit}
+          onConfirm={handleConfirmEquip}
+          onCancel={() => setEquipState(null)}
         />
       )}
     </div>

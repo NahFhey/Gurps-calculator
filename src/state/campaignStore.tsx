@@ -70,6 +70,7 @@ import type { DowntimeState } from '../types/downtime';
 import type { ForageZoneProfile } from '../types/foraging';
 import type { CombatState, RevealState } from '../types/combatTracker';
 import type { ReagentPromotedAction } from './inventory/inventoryActions';
+import type { ItemDemotedAction, ItemPromotedAction } from './inventory/inventoryActions';
 import type {
   MapState,
   MapModel,
@@ -280,6 +281,8 @@ type CampaignStoreValue = {
     spendCurrency: (owner: InventoryOwner, currencyKey: string, amount: number) => void;
     /** Inventory bus (Phase 12a.5): move an item/ref to a new owner. Always succeeds. */
     retagItem: (itemId: Id, newOwner: InventoryOwner) => void;
+    promoteItem: (payload: ItemPromotedAction['payload']) => void;
+    demoteItem: (payload: ItemDemotedAction['payload']) => void;
     /** Explicitly set an item's attunement flag. Always succeeds. */
     setItemAttunement: (itemId: Id, attuned: boolean) => void;
     /** Explicitly set an item's magical flag. Always succeeds. */
@@ -642,6 +645,10 @@ export function CampaignStoreProvider({
         dispatch({ type: 'inventory/currencySpent', payload: { owner, currencyKey, amount } }),
       retagItem: (itemId: Id, newOwner: InventoryOwner) =>
         dispatch({ type: 'inventory/itemRetagged', payload: { itemId, newOwner } }),
+      promoteItem: (payload: ItemPromotedAction['payload']) =>
+        dispatch({ type: 'inventory/itemPromoted', payload }),
+      demoteItem: (payload: ItemDemotedAction['payload']) =>
+        dispatch({ type: 'inventory/itemDemoted', payload }),
       setItemAttunement: (itemId: Id, attuned: boolean) =>
         dispatch({ type: 'inventory/itemAttunementSet', payload: { itemId, attuned } }),
       setItemMagical: (itemId: Id, magical: boolean) =>

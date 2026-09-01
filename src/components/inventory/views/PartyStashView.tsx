@@ -12,6 +12,7 @@ export interface PartyStashViewProps {
   onTransferStateChange: (state: TransferState | null) => void;
   onConfirmTransfer: () => void;
   onGiveItem: (inventoryId: string, itemId: string, characterId: string) => void;
+  onEquipItem?: (inventoryId: string, itemId: string, characterId: string) => void;
 }
 
 interface SelectedItemRef {
@@ -27,6 +28,7 @@ export function PartyStashView({
   onTransferStateChange,
   onConfirmTransfer,
   onGiveItem,
+  onEquipItem,
 }: PartyStashViewProps) {
   const [selectedItems, setSelectedItems] = useState<SelectedItemRef[]>([]);
   const [bulkCharacterChoice, setBulkCharacterChoice] = useState<string | null>(null);
@@ -173,6 +175,23 @@ export function PartyStashView({
                           className="max-w-28 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-white"
                         >
                           <option value="">Give to…</option>
+                          {sortedCharacters.map((character) => (
+                            <option key={character.id} value={character.id}>
+                              {character.name}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          aria-label={`Equip ${item.name} on character`}
+                          value=""
+                          onChange={(event) => {
+                            if (event.target.value) {
+                              onEquipItem?.(inventory.id, item.id, event.target.value);
+                            }
+                          }}
+                          className="max-w-28 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-white"
+                        >
+                          <option value="">Equip…</option>
                           {sortedCharacters.map((character) => (
                             <option key={character.id} value={character.id}>
                               {character.name}

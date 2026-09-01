@@ -13,7 +13,7 @@ export interface SchemaMetadataEntry {
   migratesFrom?: string[];
 }
 
-export const CURRENT_SCHEMA_VERSION = '1.6.0';
+export const CURRENT_SCHEMA_VERSION = '1.6.1';
 
 export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
   '1.0.0': {
@@ -150,6 +150,14 @@ export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
     description: 'Add terrain-keyed travel events, encounter hand-off, and travel meal ledgers',
     features: ['travel_events', 'travel_encounters', 'journey_provisioning'],
     migratesFrom: ['1.5.9'],
+  },
+  '1.6.1': {
+    name: 'Inventory Equipment Bridge',
+    timestamp: '2026-09-01',
+    breaking: false,
+    description: 'Add optional inventory equipment cargo and atomic sheet promotion/demotion',
+    features: ['equipment_bridge', 'equipment_provenance'],
+    migratesFrom: ['1.6.0'],
   },
 };
 

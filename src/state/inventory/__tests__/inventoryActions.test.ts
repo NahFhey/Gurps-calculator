@@ -23,8 +23,12 @@ import {
   INVENTORY_SET,
   ITEM_ACQUIRED,
   ITEM_RETAGGED,
+  ITEM_PROMOTED,
+  ITEM_DEMOTED,
   ITEM_ATTUNEMENT_SET,
   ITEM_MAGICAL_SET,
+  promoteItem,
+  demoteItem,
   isInventoryAction,
   type InventoryAction
 } from '../inventoryActions';
@@ -91,6 +95,8 @@ describe('inventoryActions', () => {
       expect(INVENTORY_SET).toBe('setInventories');
       expect(ITEM_ACQUIRED).toBe('inventory/itemAcquired');
       expect(ITEM_RETAGGED).toBe('inventory/itemRetagged');
+      expect(ITEM_PROMOTED).toBe('inventory/itemPromoted');
+      expect(ITEM_DEMOTED).toBe('inventory/itemDemoted');
       expect(ITEM_ATTUNEMENT_SET).toBe('inventory/itemAttunementSet');
       expect(ITEM_MAGICAL_SET).toBe('inventory/itemMagicalSet');
     });
@@ -120,6 +126,8 @@ describe('inventoryActions', () => {
         INVENTORY_SET,
         ITEM_ACQUIRED,
         ITEM_RETAGGED,
+        ITEM_PROMOTED,
+        ITEM_DEMOTED,
         ITEM_ATTUNEMENT_SET,
         ITEM_MAGICAL_SET
       ];
@@ -238,6 +246,22 @@ describe('inventoryActions', () => {
       } else {
         throw new Error('expected type guard to accept MATERIAL_ADD');
       }
+    });
+  });
+
+  describe('equipment bridge action creators', () => {
+    it('creates promotion and demotion bus actions', () => {
+      expect(promoteItem({
+        itemId: 'sword-1',
+        characterId: 'char-1',
+        equipment: {
+          name: 'Sword', quantity: 1, weight: 3, cost: 500, equipped: true,
+        },
+      })).toMatchObject({ type: ITEM_PROMOTED });
+      expect(demoteItem({ characterId: 'char-1', equipmentId: 'eq-1' })).toEqual({
+        type: ITEM_DEMOTED,
+        payload: { characterId: 'char-1', equipmentId: 'eq-1' },
+      });
     });
   });
 });

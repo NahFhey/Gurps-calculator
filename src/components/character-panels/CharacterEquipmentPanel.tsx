@@ -4,13 +4,14 @@ import { useCampaignStore } from '../../state/campaignStore';
 import { EquipmentSection } from '../character-sheet/EquipmentSection';
 import { createDefaultGCSData } from '../../types/characterSheet';
 import type { Character } from '../../types/campaign';
+import { getPrimaryCurrencyUnit } from '../../utils/currency';
 
 interface CharacterEquipmentPanelProps {
   character: Character;
 }
 
 export function CharacterEquipmentPanel({ character }: CharacterEquipmentPanelProps) {
-  const { actions } = useCampaignStore();
+  const { state, actions } = useCampaignStore();
   const [editMode, setEditMode] = useState(false);
 
   const gcsData = character.gcsData || createDefaultGCSData();
@@ -33,6 +34,15 @@ export function CharacterEquipmentPanel({ character }: CharacterEquipmentPanelPr
   }, [character.gcsData]);
 
   const displayData = editMode ? draftGcsData : gcsData;
+  const currencyUnit = getPrimaryCurrencyUnit(state.entities.currencyConfig);
+
+  const handleDemote = useCallback((equipmentId: string) => {
+    setDraftGcsData(previous => ({
+      ...previous,
+      equipment: previous.equipment.filter(entry => entry.id !== equipmentId),
+    }));
+    actions.demoteItem({ characterId: character.id, equipmentId });
+  }, [actions, character.id]);
 
   return (
     <div className="h-full flex flex-col">
@@ -92,6 +102,8 @@ export function CharacterEquipmentPanel({ character }: CharacterEquipmentPanelPr
           onOtherEquipmentChange={(otherEquipment) =>
             setDraftGcsData((prev) => ({ ...prev, otherEquipment }))
           }
+          onDemote={handleDemote}
+          currencyUnit={currencyUnit}
         />
       </div>
     </div>

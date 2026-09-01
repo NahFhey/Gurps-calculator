@@ -7,6 +7,8 @@ import {
   selectMageryLevel,
 } from '../../state/selectors/inventorySelectors';
 import type { Character, Inventory, ItemInstance, ToolTemplate } from '../../types/campaign';
+import { EquipItemModal } from '../inventory/EquipItemModal';
+import { getPrimaryCurrencyUnit } from '../../utils/currency';
 
 interface CharacterInventoryPanelProps {
   character: Character;
@@ -18,11 +20,13 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
   const [newItemQuantity, setNewItemQuantity] = useState(1);
   const [newCurrencyKey, setNewCurrencyKey] = useState('');
   const [newCurrencyAmount, setNewCurrencyAmount] = useState(0);
+  const [equipItem, setEquipItem] = useState<ItemInstance | null>(null);
 
   const toolTemplates = state.entities.toolTemplates as Record<string, ToolTemplate>;
   const mageryLevel = selectMageryLevel(state, character.id);
   const attunementCapacity = selectAttunementCapacity(state, character.id);
   const attunedItems = selectAttunedItems(state, character.id);
+  const currencyUnit = getPrimaryCurrencyUnit(state.entities.currencyConfig);
 
   // Find the character's inventory
   const characterInventory = useMemo(() => {
@@ -211,6 +215,12 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
                       </span>
                       <div className="flex items-center gap-1">
                         <button
+                          onClick={() => setEquipItem(item)}
+                          className="rounded bg-blue-600/20 px-2 py-1 text-xs text-blue-200 hover:bg-blue-600/30"
+                        >
+                          Equip…
+                        </button>
+                        <button
                           onClick={() => handleMagicalSet(item.id, !item.magical)}
                           className={`p-1 rounded hover:bg-gray-600 ${
                             item.magical ? 'text-violet-300' : 'text-gray-500 hover:text-gray-300'
@@ -385,6 +395,17 @@ export function CharacterInventoryPanel({ character }: CharacterInventoryPanelPr
           </div>
         )}
       </div>
+      {equipItem && (
+        <EquipItemModal
+          item={equipItem}
+          currencyUnit={currencyUnit}
+          onConfirm={(equipment) => {
+            actions.promoteItem({ itemId: equipItem.id, characterId: character.id, equipment });
+            setEquipItem(null);
+          }}
+          onCancel={() => setEquipItem(null)}
+        />
+      )}
     </div>
   );
 }
