@@ -90,6 +90,7 @@ import {
   handleJourneyDayBoundary,
   handleLocationArrival,
   progressJourneys,
+  syncCurrentLocationToActiveGroup,
 } from './party/journeyEngine';
 
 export const CAMPAIGN_META = {
@@ -884,10 +885,16 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
       return;
     }
     if (isPartyAction(action)) {
+      const prevActiveGroupId = draft.ui.activeTravelGroupId;
       handlePartyAction(draft, action);
 
-      // Campaign currentLocationId remains active-group-scoped until Phase 15a;
-      // discovery is objective and therefore applies to every arriving group.
+      // Phase 15a: currentLocationId is active-group-scoped — when the active group
+      // changes (explicit switch, or implicit reassignment when a drained group
+      // dissolves), re-derive it from the new active group's position. Arrivals
+      // below handle their own switch; discovery stays objective for every group.
+      if (draft.ui.activeTravelGroupId !== prevActiveGroupId) {
+        syncCurrentLocationToActiveGroup(draft);
+      }
       const placedGroup = action.type === 'party/placeGroup'
         ? draft.entities.travelGroups?.[action.payload.groupId]
         : undefined;
