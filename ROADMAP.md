@@ -432,6 +432,15 @@ Three fixes out of the "Map tab wiped / maps missing after reload" investigation
 
 ---
 
+## Phase 17: Battlemap Depth & Structures (IDEAS — parked 2026-09-01, design session required)
+
+**Goal:** Grow the map from a heightfield + decorative slabs into a battlemap with real interiors and tactical geometry. Everything here is an unscoped idea — grill-me + prototype before any implementation (same discipline as 15c).
+
+- **Hollow/cave tool** (Devin, 2026-09-01): the ground grid is a heightfield (one elevation per tile), so "erase between elevations 1 and 5" is unrepresentable as subtraction — but the same end state is expressible today as floor (low ground) + roof (StructureLayer slab, e.g. base 6 × 4 levels) + walls (high ground columns). The tool would be sugar: select high columns, "hollow N–M," and it rewrites them as ground + roof slab. Roof `visible` toggle = lift-the-roof dungeon play.
+- **Walls, doors, and objects/obstacles as first-class map entities**: nothing in the model represents them today (only terrain columns, structure slabs, markers, image layers). Design questions: sub-tile walls (edges) vs tile-filling obstacles; doors as state-carrying (open/closed/locked); furniture/cover objects; who authors them (GM paint mode?) and player visibility.
+- **StructureLayer v2 — tactical semantics**: v1 slabs are explicitly visual-only (`src/types/map.ts` note) — no travel routing, no line-of-sight. Caves/interiors only become *play* spaces once slabs and walls block LOS and pathing.
+- **Interior rendering questions**: token behavior under a slab (camera occlusion, selection), auto-hide roof when the active group is inside, fog/vision inside enclosed spaces.
+
 ## Summary Timeline
 
 | Phase | Type | Focus | Sessions |
