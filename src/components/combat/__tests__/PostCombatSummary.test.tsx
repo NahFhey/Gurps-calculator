@@ -2,8 +2,12 @@
  * Tests for PostCombatSummary component and buildCombatSummary helper (Phase 11c)
  */
 
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
-import { buildCombatSummary } from '../PostCombatSummary';
+import PostCombatSummary, { buildCombatSummary } from '../PostCombatSummary';
+import { CampaignStoreProvider, useCampaignStore } from '../../../state/campaignStore';
+import { createCampaignState } from '../../../state/campaignReducer';
+import { createDefaultGCSData } from '../../../types/characterSheet';
 import type { CombatState, Participant } from '../../../types/combatTracker';
 
 // ============================================================================
@@ -230,5 +234,68 @@ describe('buildCombatSummary', () => {
 
     expect(summary.healingEstimates['char-1'].daysToFullHP).toBe(12);
     expect(summary.healingEstimates['char-2'].daysToFullHP).toBe(1);
+  });
+});
+
+function CharacterStateObserver() {
+  const { state } = useCampaignStore();
+  return <pre data-testid="character-state">{JSON.stringify(state.entities.characters)}</pre>;
+}
+
+describe('PostCombatSummary persistence sync', () => {
+  it('syncs pools and replacement status, clears stale status, ignores library participants, and supports sheetless characters', async () => {
+    const campaign = createCampaignState();
+    const gcsData = createDefaultGCSData();
+    campaign.entities.characters = {
+      injured: { id: 'injured', name: 'Injured', work: { skills: {} }, gcsData },
+      clear: {
+        id: 'clear', name: 'Clear', work: { skills: {} }, gcsData: createDefaultGCSData(),
+        status: { conditions: [{ instanceId: 'old', conditionId: 'poisoned', label: 'Old poison' }] },
+      },
+      sheetless: { id: 'sheetless', name: 'Sheetless', work: { skills: {} } },
+      library: { id: 'library', name: 'Library', work: { skills: {} }, status: { dead: true } },
+    };
+
+    const combat = makeCombat([
+      makeParticipant({
+        instanceId: 'p-injured', name: 'Injured', isFromParty: true,
+        partyCharacterId: 'injured', currentHP: 3, currentFP: 4, isDead: true,
+        crippled: ['armR'],
+      }),
+      makeParticipant({
+        instanceId: 'p-clear', name: 'Clear', isFromParty: true,
+        partyCharacterId: 'clear', currentHP: 12, currentFP: 10, conditions: [], crippled: [],
+      }),
+      makeParticipant({
+        instanceId: 'p-sheetless', name: 'Sheetless', isFromParty: true,
+        partyCharacterId: 'sheetless',
+        conditions: [{ instanceId: 'poison', conditionId: 'poisoned', label: 'Poisoned', revealed: 'closed' }],
+      }),
+      makeParticipant({
+        instanceId: 'p-library', name: 'Library template', libraryId: 'library',
+        partyCharacterId: 'library', isFromParty: false, isDead: false,
+      }),
+    ]);
+
+    render(
+      <CampaignStoreProvider initialCampaignState={campaign}>
+        <PostCombatSummary combat={combat} onComplete={() => undefined} onProceedToLoot={() => undefined} />
+        <CharacterStateObserver />
+      </CampaignStoreProvider>
+    );
+
+    await waitFor(() => {
+      const characters = JSON.parse(screen.getByTestId('character-state').textContent ?? '{}');
+      expect(characters.injured.gcsData.pools.HP.current).toBe(3);
+      expect(characters.injured.gcsData.pools.FP.current).toBe(4);
+      expect(characters.injured.status).toEqual({ crippled: ['armR'], dead: true });
+      expect(characters.clear).not.toHaveProperty('status');
+      expect(characters.sheetless.status).toEqual({
+        conditions: [{
+          instanceId: 'poison', conditionId: 'poisoned', label: 'Poisoned', revealed: 'closed',
+        }],
+      });
+      expect(characters.library.status).toEqual({ dead: true });
+    });
   });
 });

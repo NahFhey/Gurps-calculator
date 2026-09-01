@@ -73,6 +73,7 @@ export interface ConditionDefinition {
   defaultDuration: ConditionDuration;
   stackingRule: StackingRuleValue;
   isObvious: boolean;
+  persistsAfterCombat: boolean;
   icon: string;
 }
 
@@ -84,6 +85,7 @@ export const ConditionCatalog: Record<ConditionIdType, ConditionDefinition> = {
     defaultDuration: { type: 'turns', value: 1 },
     stackingRule: 'replace',  // replace, stack, max
     isObvious: true,           // Visible in Player View without reveal
+    persistsAfterCombat: false,
     icon: '💫'
   },
 
@@ -94,6 +96,7 @@ export const ConditionCatalog: Record<ConditionIdType, ConditionDefinition> = {
     defaultDuration: { type: 'permanent', value: null },
     stackingRule: 'replace',
     isObvious: true,
+    persistsAfterCombat: false,
     icon: '⬇️'
   },
 
@@ -104,6 +107,7 @@ export const ConditionCatalog: Record<ConditionIdType, ConditionDefinition> = {
     defaultDuration: { type: 'permanent', value: null },
     stackingRule: 'replace',
     isObvious: true,
+    persistsAfterCombat: false,
     icon: '🤝'
   },
 
@@ -114,6 +118,7 @@ export const ConditionCatalog: Record<ConditionIdType, ConditionDefinition> = {
     defaultDuration: { type: 'untilEndOfCombat', value: null },
     stackingRule: 'stack',  // Can bleed from multiple wounds
     isObvious: true,
+    persistsAfterCombat: false,
     icon: '🩸'
   },
 
@@ -124,6 +129,7 @@ export const ConditionCatalog: Record<ConditionIdType, ConditionDefinition> = {
     defaultDuration: { type: 'rounds', value: 10 },
     stackingRule: 'stack',
     isObvious: false,  // May not be visible
+    persistsAfterCombat: true,
     icon: '☠️'
   },
 
@@ -134,6 +140,7 @@ export const ConditionCatalog: Record<ConditionIdType, ConditionDefinition> = {
     defaultDuration: { type: 'untilEndOfCombat', value: null },
     stackingRule: 'stack',
     isObvious: true,
+    persistsAfterCombat: false,
     icon: '🔥'
   },
 
@@ -144,6 +151,7 @@ export const ConditionCatalog: Record<ConditionIdType, ConditionDefinition> = {
     defaultDuration: { type: 'permanent', value: null },
     stackingRule: 'replace',
     isObvious: true,
+    persistsAfterCombat: true,
     icon: '😵'
   },
 
@@ -154,6 +162,7 @@ export const ConditionCatalog: Record<ConditionIdType, ConditionDefinition> = {
     defaultDuration: { type: 'rounds', value: 3 },
     stackingRule: 'max',  // Take longest duration
     isObvious: false,
+    persistsAfterCombat: true,
     icon: '👁️'
   },
 
@@ -164,6 +173,7 @@ export const ConditionCatalog: Record<ConditionIdType, ConditionDefinition> = {
     defaultDuration: { type: 'rounds', value: 3 },
     stackingRule: 'max',
     isObvious: false,
+    persistsAfterCombat: false,
     icon: '🐌'
   },
 
@@ -174,6 +184,7 @@ export const ConditionCatalog: Record<ConditionIdType, ConditionDefinition> = {
     defaultDuration: { type: 'rounds', value: 3 },
     stackingRule: 'max',
     isObvious: false,
+    persistsAfterCombat: false,
     icon: '⚡'
   },
 
@@ -184,6 +195,7 @@ export const ConditionCatalog: Record<ConditionIdType, ConditionDefinition> = {
     defaultDuration: { type: 'rounds', value: 3 },
     stackingRule: 'stack',  // Multiple shields can overlap
     isObvious: false,
+    persistsAfterCombat: false,
     icon: '🛡️'
   },
 
@@ -194,6 +206,7 @@ export const ConditionCatalog: Record<ConditionIdType, ConditionDefinition> = {
     defaultDuration: { type: 'untilEndOfCombat', value: null },
     stackingRule: 'stack',
     isObvious: false,
+    persistsAfterCombat: false,
     icon: '😓'
   }
 };
@@ -222,6 +235,11 @@ export function getAllConditions(): ConditionDefinition[] {
 export function isConditionObvious(conditionId: string): boolean {
   const condition = getCondition(conditionId);
   return condition?.isObvious ?? false;
+}
+
+/** Whether a condition should cross the post-combat boundary. Unknown IDs do not persist. */
+export function conditionPersistsAfterCombat(conditionId: string): boolean {
+  return getCondition(conditionId)?.persistsAfterCombat ?? false;
 }
 
 /**

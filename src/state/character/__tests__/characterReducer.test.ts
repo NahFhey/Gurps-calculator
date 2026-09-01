@@ -96,6 +96,18 @@ describe('characterReducer', () => {
 
       expect(next.entities.characters['missing']).toBeUndefined();
     });
+
+    it('deletes status when an explicit undefined replacement is written', () => {
+      const char = createMockCharacter({ status: { dead: true } });
+      state = applyAction(state, { type: CHARACTER_ADD, payload: char });
+
+      const next = applyAction(state, {
+        type: CHARACTER_UPDATE,
+        payload: { id: 'char-1', changes: { status: undefined } },
+      });
+
+      expect(next.entities.characters['char-1']).not.toHaveProperty('status');
+    });
   });
 
   describe('CHARACTER_REMOVE', () => {

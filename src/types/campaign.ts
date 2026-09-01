@@ -11,6 +11,7 @@ import type {
   SkillDifficulty,
 } from './characterSheet';
 import type { CombatCategory } from '../constants';
+import type { ConditionRevealState } from './combatTracker';
 import type {
   GatheringSpeciesExtended,
   GatheringToolExtended,
@@ -44,6 +45,25 @@ export interface LegacyCharacterSkill {
 
 export type LegacyCharacterSkillEntry = string | LegacyCharacterSkill;
 
+export interface PersistedCondition {
+  instanceId: string;
+  conditionId: string;
+  label: string;
+  severity?: number;
+  source?: string;
+  notes?: string;
+  /** GM concealment state (12a.6) — survives the combat boundary. */
+  revealed?: ConditionRevealState;
+}
+
+export interface CharacterStatus {
+  /** Open-ended conditions that last until explicitly cleared. */
+  conditions?: PersistedCondition[];
+  /** Hit-location keys, using the same vocabulary as Participant.crippled. */
+  crippled?: string[];
+  dead?: boolean;
+}
+
 /** Optional legacy skill containers still dual-read by downtime foraging. */
 export interface LegacyCharacterSkillSource {
   skills?: LegacyCharacterSkillEntry[];
@@ -74,6 +94,10 @@ export interface Character {
 
   // Full GCS character sheet data (optional for backward compatibility)
   gcsData?: GCSCharacterData;
+
+  /** Persistent injury state carried between combats (Phase 15a). Top-level on purpose:
+   * gcsData is draft-edited wholesale by panels and overwritten by GCS re-import. */
+  status?: CharacterStatus;
 }
 
 export interface CharacterTemplateEntity {

@@ -28,9 +28,10 @@ describe('downtimeErrors', () => {
         HELPER_ALREADY_ASSIGNED: 'HELPER_ALREADY_ASSIGNED',
         LOCK_CONFLICT: 'LOCK_CONFLICT',
         TOOL_CONFLICT: 'TOOL_CONFLICT',
+        CHARACTER_INCAPACITATED: 'CHARACTER_INCAPACITATED',
         UNKNOWN_ERROR: 'UNKNOWN_ERROR',
       });
-      expect(new Set(Object.values(DOWNTIME_ERROR_CODES)).size).toBe(5);
+      expect(new Set(Object.values(DOWNTIME_ERROR_CODES)).size).toBe(6);
     });
   });
 

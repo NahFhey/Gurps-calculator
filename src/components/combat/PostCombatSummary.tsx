@@ -16,7 +16,9 @@ import {
 import { useCombatStore } from '../../hooks/useCombatStore';
 import { hasCondition } from '../../utils/conditionsEngine';
 import { estimateHealing } from '../../utils/recovery';
+import { buildCharacterStatus } from '../../utils/injuryPersistence';
 import { ConditionId } from '../../constants/conditions';
+import type { Character } from '../../types/campaign';
 import type { CombatState, Participant, ConditionInstance } from '../../types/combatTracker';
 import type { CombatSummaryData, ParticipantSummary, HealingEstimate } from '../../types/combatTracker';
 
@@ -260,7 +262,7 @@ export default function PostCombatSummary({ combat, onComplete, onProceedToLoot 
 
   const summary = useMemo(() => buildCombatSummary(combat), [combat]);
 
-  // Auto-sync party character HP/FP back to campaign store
+  // Auto-sync party character pools and persistent injury status back to campaign store
   useEffect(() => {
     if (syncComplete) return;
 
@@ -269,32 +271,39 @@ export default function PostCombatSummary({ combat, onComplete, onProceedToLoot 
     );
 
     for (const ps of partyParticipants) {
-      const partyChar = partyCharacters.find(c => c.id === ps.partyCharacterId);
-      if (!partyChar?.gcsData) continue;
+      const partyCharacterId = ps.partyCharacterId;
+      if (!partyCharacterId) continue;
+      const partyChar = partyCharacters.find(c => c.id === partyCharacterId);
+      const participant = combat.participants.find(p => p.instanceId === ps.instanceId);
+      if (!partyChar || !participant) continue;
 
-      // Build the updated gcsData with synced pools
-      const updatedPools = {
-        ...partyChar.gcsData.pools,
-        HP: {
-          ...partyChar.gcsData.pools.HP,
-          current: ps.endHP
-        },
-        FP: {
-          ...partyChar.gcsData.pools.FP,
-          current: ps.endFP
-        }
+      const changes: Partial<Character> = {
+        // Keep this key even when undefined: post-combat sync has replace semantics.
+        status: buildCharacterStatus(participant),
       };
 
-      updatePartyCharacter(ps.partyCharacterId!, {
-        gcsData: {
+      if (partyChar.gcsData) {
+        changes.gcsData = {
           ...partyChar.gcsData,
-          pools: updatedPools
-        }
-      });
+          pools: {
+            ...partyChar.gcsData.pools,
+            HP: {
+              ...partyChar.gcsData.pools.HP,
+              current: ps.endHP
+            },
+            FP: {
+              ...partyChar.gcsData.pools.FP,
+              current: ps.endFP
+            }
+          }
+        };
+      }
+
+      updatePartyCharacter(partyCharacterId, changes);
     }
 
     setSyncComplete(true);
-  }, [summary, partyCharacters, updatePartyCharacter, syncComplete]);
+  }, [combat.participants, summary, partyCharacters, updatePartyCharacter, syncComplete]);
 
   // Separate party and non-party participants
   const partyParticipants = summary.participants.filter(p => p.isFromParty);

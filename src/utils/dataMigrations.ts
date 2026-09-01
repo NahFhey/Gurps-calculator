@@ -70,6 +70,7 @@ const migrationHandlers: Record<string, MigrationHandler> = {
   '1.5.8:1.5.9': migrateTo1_5_9,
   '1.5.9:1.6.0': migrateTo1_6_0,
   '1.6.0:1.6.1': migrateTo1_6_1,
+  '1.6.1:1.6.2': migrateTo1_6_2,
 };
 
 /**
@@ -694,6 +695,11 @@ export function migrateTo1_6_0(data: MigratableData): MigratableData {
 
 /** Migration: 1.6.0 → 1.6.1 (new equipment bridge fields are optional). */
 export function migrateTo1_6_1(data: MigratableData): MigratableData {
+  return data;
+}
+
+/** Migration: 1.6.1 → 1.6.2 (persistent injury fields are optional). */
+export function migrateTo1_6_2(data: MigratableData): MigratableData {
   return data;
 }
 

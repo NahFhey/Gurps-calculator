@@ -22,6 +22,7 @@ import {
   validateTaskCreation,
 } from '../../state/downtime/downtimeValidation';
 import type { ValidationResult } from '../../state/downtime/downtimeErrors';
+import { DowntimeValidationError } from '../../state/downtime/downtimeErrors';
 import type { DowntimeState, TaskResults } from '../../types/downtime';
 import type {
   Character,
@@ -321,13 +322,15 @@ export function DowntimeProvider({
 
   // Create convenience action functions
   const createDowntimeTask = (payload: CreateTaskPayload) => {
+    const validation = validateTaskCreation(state, payload, characters);
+    if (!validation.valid) throw new DowntimeValidationError(validation);
     dispatch(createTask(payload));
   };
 
   const createDowntimeTasksBatch = (payloads: CreateTaskPayload[]): ValidationResult[] => {
     const intraBatchResults = validateBatchToolExclusivity(payloads);
     const results = payloads.map((payload, index) => {
-      const stateResult = validateTaskCreation(state, payload);
+      const stateResult = validateTaskCreation(state, payload, characters);
       return stateResult.valid ? intraBatchResults[index] : stateResult;
     });
 

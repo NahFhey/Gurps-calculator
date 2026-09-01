@@ -12,6 +12,7 @@ import type {
 import { DEFAULT_HIT_LOCATION_PROFILE } from '../../types/characterSheet';
 import { calculateCharacterEncumbrance, calculateLocationDR } from '../../utils/encumbrance';
 import { COMBAT_CATEGORIES } from '../../constants';
+import { seedParticipantFromStatus } from '../../utils/injuryPersistence';
 import { ConfirmDialog, useConfirmDialog, useToast } from '../ui';
 
 interface Attack {
@@ -50,6 +51,8 @@ interface Character {
   armorByLocation?: Array<{ location: string; dr: number }>;
   encumbranceDodge?: number;
   encumbranceMove?: number;
+  crippled?: string[];
+  conditions?: ConditionInstance[];
 }
 
 /**
@@ -86,6 +89,7 @@ function partyCharacterToCombat(partyChar: PartyCharacter): Character {
 
   // Phase 12a: Token image for initiative timeline
   const tokenImage = partyChar.images?.token;
+  const seededStatus = seedParticipantFromStatus(partyChar.status);
 
   return {
     id: partyChar.id,
@@ -113,6 +117,8 @@ function partyCharacterToCombat(partyChar: PartyCharacter): Character {
     armorByLocation,
     encumbranceDodge: adjustedDodge !== baseDodge ? adjustedDodge : undefined,
     encumbranceMove: adjustedMove !== basicMove ? adjustedMove : undefined,
+    conditions: seededStatus.conditions,
+    crippled: seededStatus.crippled,
   };
 }
 
@@ -200,7 +206,14 @@ export default function EncounterSetup() {
   // Add all party characters at once
   const handleAddAllParty = () => {
     const toAdd = partyCharsForCombat.filter(
-      c => !isPartyCharInEncounter(c.partyCharacterId || c.id)
+      c => {
+        const source = (partyCharacters as PartyCharacter[]).find(
+          character => character.id === (c.partyCharacterId || c.id)
+        );
+        const incapacitated = source?.status?.dead === true
+          || source?.status?.conditions?.some(condition => condition.conditionId === 'unconscious') === true;
+        return !incapacitated && !isPartyCharInEncounter(c.partyCharacterId || c.id);
+      }
     );
     if (toAdd.length === 0) {
       showWarning('All party characters are already in the encounter');
@@ -311,9 +324,9 @@ export default function EncounterSetup() {
         shockPenalty: 0,
         isDead: false,
         bleeding: null,
-        crippled: [],
+        crippled: [...(character.crippled ?? [])],
         // Phase 6 fields
-        conditions: [],
+        conditions: [...(character.conditions ?? [])],
         // Party character tracking
         isFromParty: character.isFromParty || false,
         partyCharacterId: character.partyCharacterId
@@ -551,12 +564,25 @@ export default function EncounterSetup() {
                 <div className="space-y-2">
                   {partyCharsForCombat.map(char => {
                     const alreadyAdded = isPartyCharInEncounter(char.partyCharacterId || char.id);
+                    const source = (partyCharacters as PartyCharacter[]).find(
+                      character => character.id === (char.partyCharacterId || char.id)
+                    );
+                    const isPersistentlyDead = source?.status?.dead === true;
+                    const isPersistentlyUnconscious = source?.status?.conditions?.some(
+                      condition => condition.conditionId === 'unconscious'
+                    ) === true;
                     return (
                       <div key={char.id} className="flex items-center gap-2 bg-gray-700 rounded p-2">
                         <div className="flex-1">
                           <div className="font-semibold text-sm flex items-center gap-2">
                             {char.name}
                             <span className="text-xs px-1.5 py-0.5 bg-purple-600/30 text-purple-300 rounded">Party</span>
+                            {isPersistentlyDead && (
+                              <span className="rounded bg-red-900/60 px-1.5 py-0.5 text-xs text-red-200">dead</span>
+                            )}
+                            {!isPersistentlyDead && isPersistentlyUnconscious && (
+                              <span className="rounded bg-amber-900/60 px-1.5 py-0.5 text-xs text-amber-200">KO</span>
+                            )}
                           </div>
                           <div className="text-xs text-gray-400">
                             Speed: {char.basicSpeed} | HP: {char.hp}
