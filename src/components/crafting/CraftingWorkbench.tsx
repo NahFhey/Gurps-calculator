@@ -23,6 +23,7 @@ import type { DowntimeAction } from '../../state/downtime/downtimeActions';
 import { createAndResolveTask } from '../../utils/createAutoResolvedTask';
 import { selectCharacterAssignmentForSlot } from '../../state/downtime/downtimeSelectors';
 import { useCampaignStore } from '../../state/campaignStore';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 // ============================================================================
 // Types
@@ -473,43 +474,29 @@ export function CraftingWorkbench({
   return (
     <div>
       {/* Abandon Confirm Modal */}
-      {abandonConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-surface-1 p-6 rounded-lg max-w-md">
-            <h3 className="text-xl font-bold mb-4">Abandon Project?</h3>
-            <p className="mb-6">
-              This will cancel the current project and refund all materials.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setAbandonConfirm(false)}
-                className="px-4 py-2 bg-surface-3 rounded hover:bg-surface-4"
-              >
-                Keep Working
-              </button>
-              <button
-                onClick={() => {
-                  try {
-                    const refunded = refundMaterialsFromProject(current, materials);
-                    saveMaterials(refunded);
-                    saveCrafts(removeCraft(crafts, current?.id || '') as Craft[]);
-                  } catch (error) {
-                    console.error('Error during project cancellation:', error);
-                  } finally {
-                    setCurrent(null);
-                    onCraftUpdated(null);
-                    setAbandonConfirm(false);
-                    onProjectAbandoned();
-                  }
-                }}
-                className="px-4 py-2 bg-orange-600 rounded hover:bg-orange-700"
-              >
-                Abandon Project
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={abandonConfirm}
+        title="Abandon Project?"
+        message="This will cancel the current project and refund all materials."
+        confirmLabel="Abandon Project"
+        cancelLabel="Keep Working"
+        variant="warning"
+        onCancel={() => setAbandonConfirm(false)}
+        onConfirm={() => {
+          try {
+            const refunded = refundMaterialsFromProject(current, materials);
+            saveMaterials(refunded);
+            saveCrafts(removeCraft(crafts, current?.id || '') as Craft[]);
+          } catch (error) {
+            console.error('Error during project cancellation:', error);
+          } finally {
+            setCurrent(null);
+            onCraftUpdated(null);
+            setAbandonConfirm(false);
+            onProjectAbandoned();
+          }
+        }}
+      />
 
       {/* Action buttons */}
       <div className="flex gap-2 mb-4">

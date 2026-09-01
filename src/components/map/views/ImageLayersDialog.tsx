@@ -4,9 +4,10 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { X, Upload, Trash2, Eye, EyeOff, Grid3x3, Magnet, Maximize2 } from 'lucide-react';
+import { Upload, Trash2, Eye, EyeOff, Grid3x3, Magnet, Maximize2 } from 'lucide-react';
 import type { ImageLayerId, MapImageLayer, MapModel } from '../../../types/map';
 import { DEFAULT_TERRAIN_ELEVATION, MAX_ELEVATION } from '../../../constants/map';
+import { Modal } from '../../ui/Modal';
 
 interface ImageLayersDialogProps {
   map: MapModel;
@@ -292,43 +293,14 @@ export function ImageLayersDialog({ map, onAddLayer, onUpdateLayer, onRemoveLaye
   }, [map.cols, onAddLayer]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-full max-w-lg max-h-[80vh] flex flex-col rounded-lg border border-edge-strong bg-surface-1 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-edge px-4 py-3">
-          <h2 className="text-lg font-semibold text-fg-bright">Map Images</h2>
-          <button type="button" aria-label="Close" onClick={onClose} className="rounded p-1 hover:bg-surface-2">
-            <X className="h-4 w-4 text-fg-muted" />
-          </button>
-        </div>
-
-        <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-          {layers.length === 0 && (
-            <p className="text-sm text-fg-muted">
-              No images yet. Import a battlemap to place it under the grid, or use an
-              overlay as a tracing reference while painting terrain.
-            </p>
-          )}
-
-          {layers.map((layer) => (
-            <LayerCard
-              key={layer.id}
-              layer={layer}
-              map={map}
-              onUpdateLayer={onUpdateLayer}
-              onRemoveLayer={onRemoveLayer}
-            />
-          ))}
-
-          {importError && <p className="text-xs text-danger-400">{importError}</p>}
-          <p className="text-xs text-fg-faint">
-            Position and size are in tiles. If your image has its own printed grid, enter its
-            column/row count and use “Size to grid” — each image cell becomes one map tile.
-            Underlays are hidden from players while a map uses line-of-sight vision (they
-            can’t be clipped to explored tiles).
-          </p>
-        </div>
-
-        <div className="flex justify-between gap-2 border-t border-edge px-4 py-3">
+    <Modal
+      isOpen
+      onClose={onClose}
+      title="Map Images"
+      size="md"
+      bodyClassName="space-y-3 px-4 py-4"
+      footer={(
+        <div className="flex w-full justify-between gap-2">
           <button
             type="button"
             disabled={importing}
@@ -353,8 +325,33 @@ export function ImageLayersDialog({ map, onAddLayer, onUpdateLayer, onRemoveLaye
             }}
           />
         </div>
-      </div>
-    </div>
+      )}
+    >
+          {layers.length === 0 && (
+            <p className="text-sm text-fg-muted">
+              No images yet. Import a battlemap to place it under the grid, or use an
+              overlay as a tracing reference while painting terrain.
+            </p>
+          )}
+
+          {layers.map((layer) => (
+            <LayerCard
+              key={layer.id}
+              layer={layer}
+              map={map}
+              onUpdateLayer={onUpdateLayer}
+              onRemoveLayer={onRemoveLayer}
+            />
+          ))}
+
+          {importError && <p className="text-xs text-danger-400">{importError}</p>}
+          <p className="text-xs text-fg-faint">
+            Position and size are in tiles. If your image has its own printed grid, enter its
+            column/row count and use “Size to grid” — each image cell becomes one map tile.
+            Underlays are hidden from players while a map uses line-of-sight vision (they
+            can’t be clipped to explored tiles).
+          </p>
+    </Modal>
   );
 }
 

@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import type { MapId, TileId, LinkModel, MapModel } from '../../../types/map';
 import { MAP_SCALES } from '../../../constants/map';
-import { X } from 'lucide-react';
+import { Modal } from '../../ui/Modal';
 
 interface LinkEditorProps {
   fromMapId: MapId;
@@ -54,15 +54,7 @@ export function LinkEditor({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-full max-w-sm bg-surface-1 border border-edge-strong rounded-lg shadow-2xl">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-edge">
-          <h2 className="text-sm font-semibold text-fg-bright">Create Link</h2>
-          <button onClick={onCancel} className="p-1 rounded hover:bg-surface-2">
-            <X className="w-4 h-4 text-fg-muted" />
-          </button>
-        </div>
-
+    <Modal isOpen onClose={onCancel} title="Create Link" size="sm" bodyClassName="p-0">
         <form onSubmit={handleSubmit} className="px-4 py-3 space-y-3">
           {/* Target map */}
           <div>
@@ -127,7 +119,6 @@ export function LinkEditor({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }

@@ -2,8 +2,9 @@
  * SaveDesignModal - Prompt to save a completed design phase as a reusable template.
  */
 
-import { useEffect, useId, useState } from 'react';
+import { useId, useState } from 'react';
 import type { Craft } from '../../types/campaign';
+import { Modal } from '../ui/Modal';
 
 interface SaveDesignModalProps {
   craft: Craft;
@@ -13,44 +14,20 @@ interface SaveDesignModalProps {
 
 export function SaveDesignModal({ craft, onSave, onSkip }: SaveDesignModalProps) {
   const [designName, setDesignName] = useState('');
-  const titleId = useId();
   const descriptionId = useId();
   const inputId = useId();
 
-  useEffect(() => {
-    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') onSkip();
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onSkip]);
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descriptionId}
-        className="bg-surface-1 p-6 rounded-lg max-w-md border-2 border-purple-500"
-      >
-        <h3 id={titleId} className="text-xl font-bold mb-4 text-purple-400">Save Design?</h3>
-        <p id={descriptionId} className="mb-4 text-fg-secondary">
-          Design phase complete! Would you like to save this as a reusable craft design?
-        </p>
-        <div className="mb-4">
-          <label htmlFor={inputId} className="block text-sm mb-2">Design Name</label>
-          <input
-            id={inputId}
-            type="text"
-            value={designName}
-            onChange={(e) => setDesignName(e.target.value)}
-            placeholder={`${craft.currentQuality} ${craft.template}`}
-            aria-label="Design Name"
-            className="w-full bg-surface-3 px-3 py-2 rounded"
-          />
-        </div>
-        <div className="flex gap-3 justify-end">
+    <Modal
+      isOpen
+      onClose={onSkip}
+      title={<span className="text-purple-400">Save Design?</span>}
+      ariaDescribedby={descriptionId}
+      size="md"
+      closeOnBackdrop={false}
+      className="border-2 border-purple-500"
+      footer={(
+        <>
           <button
             type="button"
             onClick={onSkip}
@@ -70,8 +47,24 @@ export function SaveDesignModal({ craft, onSave, onSkip }: SaveDesignModalProps)
           >
             Save Design
           </button>
+        </>
+      )}
+    >
+        <p id={descriptionId} className="mb-4 text-fg-secondary">
+          Design phase complete! Would you like to save this as a reusable craft design?
+        </p>
+        <div className="mb-4">
+          <label htmlFor={inputId} className="block text-sm mb-2">Design Name</label>
+          <input
+            id={inputId}
+            type="text"
+            value={designName}
+            onChange={(e) => setDesignName(e.target.value)}
+            placeholder={`${craft.currentQuality} ${craft.template}`}
+            aria-label="Design Name"
+            className="w-full bg-surface-3 px-3 py-2 rounded"
+          />
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

@@ -5,8 +5,8 @@
 
 import React, { useState } from 'react';
 import type { TerrainModel, TravelMode } from '../../../types/map';
-import { X } from 'lucide-react';
 import { DEFAULT_TERRAIN_ELEVATION, MAX_ELEVATION } from '../../../constants/map';
+import { Modal } from '../../ui/Modal';
 
 /** Preset location terrain types for weather system integration */
 const LOCATION_TERRAIN_OPTIONS: { value: string; label: string }[] = [
@@ -87,21 +87,13 @@ export function TerrainEditor({ existing, onConfirm, onCancel }: TerrainEditorPr
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-full max-w-lg bg-surface-1 border border-edge-strong rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-edge">
-          <h2 className="text-lg font-semibold text-fg-bright">
-            {existing ? 'Edit Terrain' : 'Add Custom Terrain'}
-          </h2>
-          <button
-            onClick={onCancel}
-            className="p-1 rounded hover:bg-surface-2 transition-colors"
-          >
-            <X className="w-4 h-4 text-fg-muted" />
-          </button>
-        </div>
-
+    <Modal
+      isOpen
+      onClose={onCancel}
+      title={existing ? 'Edit Terrain' : 'Add Custom Terrain'}
+      size="md"
+      bodyClassName="p-0"
+    >
         {/* Form */}
         <form onSubmit={handleSubmit} className="px-4 py-4 space-y-4">
           {/* Name */}
@@ -259,7 +251,6 @@ export function TerrainEditor({ existing, onConfirm, onCancel }: TerrainEditorPr
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { X } from 'lucide-react';
 import type { Character } from '../../types/campaign';
 import { buildComparisonRows } from '../../utils/characterDiff';
+import { Modal } from '../ui/Modal';
 
 interface CharacterCompareModalProps {
   character: Character;
@@ -17,13 +17,7 @@ export function CharacterCompareModal({ character, characters, onClose, initialC
   const rows = useMemo(() => comparison ? buildComparisonRows(character, comparison) : [], [character, comparison]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div role="dialog" aria-modal="true" aria-labelledby="character-compare-title" className="max-h-[90vh] w-full max-w-6xl overflow-hidden rounded-lg border border-edge-strong bg-surface-1">
-        <header className="flex items-center justify-between border-b border-edge px-5 py-4">
-          <h2 id="character-compare-title" className="text-lg font-semibold text-fg-bright">Compare characters</h2>
-          <button type="button" aria-label="Close comparison" onClick={onClose} className="text-fg-muted hover:text-white"><X className="h-5 w-5" /></button>
-        </header>
-        <div className="p-5">
+    <Modal isOpen onClose={onClose} title="Compare characters" size="full" bodyClassName="p-5">
           <label className="mb-4 block text-sm text-fg-secondary">Compare {character.name} with
             <select aria-label="Compare with character" value={comparisonId} onChange={(event) => setComparisonId(event.target.value)} className="ml-2 rounded border border-edge-strong bg-surface-2 px-3 py-2">
               {candidates.length === 0 && <option value="">No other characters</option>}
@@ -42,8 +36,6 @@ export function CharacterCompareModal({ character, characters, onClose, initialC
               ))}
             </div>
           )}
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

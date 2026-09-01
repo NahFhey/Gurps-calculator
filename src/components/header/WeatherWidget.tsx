@@ -6,6 +6,7 @@ import { LocationManager } from '../location/LocationManager';
 import type { Weather, WeatherEffects } from '../../types/location';
 import { TEMPERATURE_LABELS, CLIMATE_LABELS } from '../../types/location';
 import { getActiveAmbientWeather } from '../../utils/ambientWeather';
+import { Modal } from '../ui/Modal';
 
 /**
  * WeatherWidget - Displays current weather conditions and effects
@@ -119,22 +120,30 @@ export function WeatherWidget({
   // No map available
   if (!activeMap) {
     return (
-      <div
-        className="rounded border border-edge-strong bg-surface-2/50 px-4 py-2 cursor-pointer hover:bg-surface-2"
-        onClick={() => setShowManager(true)}
-        data-testid="weather-widget"
-      >
-        <div className="text-sm text-fg-muted">No map set</div>
-        <div className="text-xs text-fg-faint">Select or place the active group on a map</div>
-
+      <>
+        <div
+          className="rounded border border-edge-strong bg-surface-2/50 px-4 py-2 cursor-pointer hover:bg-surface-2"
+          onClick={() => setShowManager(true)}
+          data-testid="weather-widget"
+        >
+          <div className="text-sm text-fg-muted">No map set</div>
+          <div className="text-xs text-fg-faint">Select or place the active group on a map</div>
+        </div>
         {showManager && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={(e) => e.stopPropagation()}>
-            <div onClick={(e) => e.stopPropagation()}>
-              <LocationManager onClose={() => setShowManager(false)} />
-            </div>
-          </div>
+          <Modal
+            isOpen
+            onClose={() => setShowManager(false)}
+            ariaLabel="Location manager"
+            hideCloseButton
+            size="lg"
+            closeOnBackdrop={false}
+            bodyClassName="p-0"
+            className="border-0 bg-transparent shadow-none"
+          >
+            <LocationManager onClose={() => setShowManager(false)} />
+          </Modal>
         )}
-      </div>
+      </>
     );
   }
 
@@ -155,11 +164,17 @@ export function WeatherWidget({
         </div>
 
         {showManager && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowManager(false)}>
-            <div onClick={(e) => e.stopPropagation()}>
-              <LocationManager onClose={() => setShowManager(false)} />
-            </div>
-          </div>
+          <Modal
+            isOpen
+            onClose={() => setShowManager(false)}
+            ariaLabel="Location manager"
+            hideCloseButton
+            size="lg"
+            bodyClassName="p-0"
+            className="border-0 bg-transparent shadow-none"
+          >
+            <LocationManager onClose={() => setShowManager(false)} />
+          </Modal>
         )}
       </>
     );
@@ -268,11 +283,17 @@ export function WeatherWidget({
 
       {/* Location Manager Modal */}
       {showManager && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowManager(false)}>
-          <div onClick={(e) => e.stopPropagation()}>
-            <LocationManager onClose={() => setShowManager(false)} />
-          </div>
-        </div>
+        <Modal
+          isOpen
+          onClose={() => setShowManager(false)}
+          ariaLabel="Location manager"
+          hideCloseButton
+          size="lg"
+          bodyClassName="p-0"
+          className="border-0 bg-transparent shadow-none"
+        >
+          <LocationManager onClose={() => setShowManager(false)} />
+        </Modal>
       )}
     </>
   );

@@ -4,6 +4,7 @@ import { useCampaignStore } from '../../../state/campaignStore';
 import { denormalizeObject, normalizeArray } from '../../../state/campaignUtils';
 import type { Facility, FacilityAttachment, FacilityType, ToolModifierSet } from '../../../types/campaign';
 import { FacilityAttachmentControl } from './FacilityAttachmentControl';
+import { ConfirmDialog } from '../../ui/ConfirmDialog';
 
 /**
  * FacilitiesView - Unified facilities management
@@ -218,22 +219,15 @@ export function FacilitiesView() {
       )}
 
       {/* Delete Confirmation Modal */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-surface-1 p-6 rounded-lg max-w-md border-2 border-edge-strong">
-            <h3 className="text-xl font-bold mb-4">Confirm Delete</h3>
-            <p className="mb-6">Delete facility "{deleteConfirm.name}"?</p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 bg-surface-3 rounded">
-                Cancel
-              </button>
-              <button onClick={confirmDelete} className="px-4 py-2 bg-danger-600 rounded">
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={deleteConfirm !== null}
+        title="Confirm Delete"
+        message={deleteConfirm ? `Delete facility "${deleteConfirm.name}"?` : ''}
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirm(null)}
+      />
 
       {/* Add/Edit Form */}
       {showAdd && (

@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
-import { X } from 'lucide-react';
 import { useCampaignStore } from '../../state/campaignStore';
 import { characterLog } from '../../utils/activityLogger';
 import type { Character } from '../../types/campaign';
 import type { PointLedgerEntry } from '../../types/characterSheet';
 import { createDefaultGCSData } from '../../types/characterSheet';
+import { Modal } from '../ui/Modal';
 
 interface AwardPointsModalProps {
   characters: Character[];
@@ -64,13 +64,20 @@ export function AwardPointsModal({ characters, onClose }: AwardPointsModalProps)
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div role="dialog" aria-modal="true" aria-labelledby="award-points-title" className="w-full max-w-lg rounded-lg border border-edge-strong bg-surface-1">
-        <header className="flex items-center justify-between border-b border-edge px-5 py-4">
-          <h2 id="award-points-title" className="text-lg font-semibold text-fg-bright">Award Points</h2>
-          <button type="button" onClick={onClose} aria-label="Close award points" className="text-fg-muted hover:text-fg-primary"><X className="h-5 w-5" /></button>
-        </header>
-        <div className="space-y-4 p-5">
+    <Modal
+      isOpen
+      onClose={onClose}
+      title="Award Points"
+      size="md"
+      bodyClassName="space-y-4 p-5"
+      className="border-edge-strong"
+      footer={(
+        <>
+          <button type="button" onClick={onClose} className="rounded border border-edge-strong px-4 py-2 text-fg-secondary hover:bg-surface-2">Cancel</button>
+          <button type="button" onClick={handleConfirm} disabled={selectedIds.size === 0 || amount < 1} data-testid="confirm-award-points-button" className="rounded bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50">Award</button>
+        </>
+      )}
+    >
           <label className="block text-sm text-fg-secondary">
             <span className="mb-1 block">Amount</span>
             <input data-testid="award-amount-input" type="number" min={1} value={amount} onChange={(event) => setAmount(Math.max(1, Number(event.target.value) || 1))} className="w-full rounded border border-edge-strong bg-surface-0 px-3 py-2 text-fg-bright" />
@@ -90,12 +97,6 @@ export function AwardPointsModal({ characters, onClose }: AwardPointsModalProps)
               ))}
             </div>
           </fieldset>
-        </div>
-        <footer className="flex justify-end gap-2 border-t border-edge px-5 py-4">
-          <button type="button" onClick={onClose} className="rounded border border-edge-strong px-4 py-2 text-fg-secondary hover:bg-surface-2">Cancel</button>
-          <button type="button" onClick={handleConfirm} disabled={selectedIds.size === 0 || amount < 1} data-testid="confirm-award-points-button" className="rounded bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50">Award</button>
-        </footer>
-      </div>
-    </div>
+    </Modal>
   );
 }

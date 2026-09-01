@@ -5,6 +5,9 @@
  * and behavior across the application.
  */
 
+// Modal Dialog
+export { Modal, type ModalProps, type ModalSize } from './Modal';
+
 // Confirmation Dialog
 export {
   ConfirmDialog,

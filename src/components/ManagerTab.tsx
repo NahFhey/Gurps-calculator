@@ -34,6 +34,7 @@ import { ImportExportPanel } from './ImportExportPanel';
 import { GMLockModal } from './GMLockModal';
 import { GatheringManager } from './GatheringManager';
 import { DebugPanel } from './DebugPanel';
+import { ConfirmDialog } from './ui/ConfirmDialog';
 
 // View types for the navigation tabs
 type ManagerView =
@@ -371,27 +372,23 @@ export function ManagerTab() {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-surface-1 p-6 rounded-lg max-w-md border-2 border-edge-strong">
-            <h3 className="text-xl font-bold mb-4">Confirm Delete</h3>
-            <p className="mb-6">
-              {deleteConfirm.type === 'foodType' ? `Delete type "${deleteConfirm.value}"?` :
-               deleteConfirm.type === 'materialType' ? `Delete type "${deleteConfirm.value}"?` :
-               deleteConfirm.type === 'worker' ? `Delete worker "${deleteConfirm.value}"?` :
-               deleteConfirm.type === 'lab' ? `Delete lab "${deleteConfirm.value}"?` :
-               deleteConfirm.type === 'kitchen' ? `Delete kitchen "${deleteConfirm.value}"?` :
-               deleteConfirm.type === 'cookingSkill' ? `Delete cooking skill "${deleteConfirm.value}"?` :
-               deleteConfirm.type === 'project' ? `Delete project "${deleteConfirm.name}"?` :
-               deleteConfirm.type === 'reagent' ? `Delete reagent "${deleteConfirm.value}"?` :
-               deleteConfirm.type === 'formula' ? `Delete formula "${deleteConfirm.value}"?` :
-               `Delete template "${deleteConfirm.value}"?`}
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 bg-surface-3 rounded">
-                Cancel
-              </button>
-              <button
-                onClick={() => {
+        <ConfirmDialog
+          isOpen
+          title="Confirm Delete"
+          message={deleteConfirm.type === 'foodType' ? `Delete type "${deleteConfirm.value}"?` :
+            deleteConfirm.type === 'materialType' ? `Delete type "${deleteConfirm.value}"?` :
+            deleteConfirm.type === 'worker' ? `Delete worker "${deleteConfirm.value}"?` :
+            deleteConfirm.type === 'lab' ? `Delete lab "${deleteConfirm.value}"?` :
+            deleteConfirm.type === 'kitchen' ? `Delete kitchen "${deleteConfirm.value}"?` :
+            deleteConfirm.type === 'cookingSkill' ? `Delete cooking skill "${deleteConfirm.value}"?` :
+            deleteConfirm.type === 'project' ? `Delete project "${deleteConfirm.name}"?` :
+            deleteConfirm.type === 'reagent' ? `Delete reagent "${deleteConfirm.value}"?` :
+            deleteConfirm.type === 'formula' ? `Delete formula "${deleteConfirm.value}"?` :
+            `Delete template "${deleteConfirm.value}"?`}
+          confirmLabel="Delete"
+          variant="danger"
+          onCancel={() => setDeleteConfirm(null)}
+          onConfirm={() => {
                   if (deleteConfirm.type === 'foodType') {
                     saveFoodTypes(foodTypes.filter(t => {
                       const typeName = typeof t === 'string' ? t : t.name;
@@ -426,14 +423,8 @@ export function ManagerTab() {
                     });
                   }
                   setDeleteConfirm(null);
-                }}
-                className="px-4 py-2 bg-danger-600 rounded"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
+          }}
+        />
       )}
 
       {/* Navigation Tabs */}

@@ -61,7 +61,7 @@ describe('ConfirmDialog', () => {
 
   it('calls onCancel when backdrop clicked', () => {
     render(<ConfirmDialog {...defaultProps} />);
-    fireEvent.click(screen.getByRole('dialog'));
+    fireEvent.click(screen.getByTestId('modal-backdrop'));
     expect(defaultProps.onCancel).toHaveBeenCalled();
   });
 

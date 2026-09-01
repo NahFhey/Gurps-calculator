@@ -5,10 +5,11 @@
  * forces the GM to assign terrain before continuing.
  */
 
-import { useEffect, useId, useState } from 'react';
+import { useId, useState } from 'react';
 import type { TileId, TerrainId, MapModel } from '../../../types/map';
 import { findTileGridPos } from '../../../utils/mapUtils';
 import { AlertTriangle, Paintbrush, CheckCircle } from 'lucide-react';
+import { Modal } from '../../ui/Modal';
 
 interface TerrainAssignmentModalProps {
   map: MapModel;
@@ -26,7 +27,6 @@ export function TerrainAssignmentModal({
   const [selectedTerrainId, setSelectedTerrainId] = useState<TerrainId>(
     map.lastPlacedTerrainId
   );
-  const titleId = useId();
   const descriptionId = useId();
   const terrains = Object.values(map.terrainById);
 
@@ -38,32 +38,23 @@ export function TerrainAssignmentModal({
 
   const allResolved = remainingNull.length === 0;
 
-  useEffect(() => {
-    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape' && allResolved) onDismiss();
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [allResolved, onDismiss]);
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descriptionId}
-        className="w-full max-w-sm bg-surface-1 border border-edge-strong rounded-lg shadow-2xl"
-      >
-        {/* Header */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-edge">
+    <Modal
+      isOpen
+      onClose={onDismiss}
+      title={(
+        <span className="flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-yellow-400" aria-hidden="true" />
-          <h2 id={titleId} className="text-sm font-semibold text-fg-bright">
-            Assign Terrain
-          </h2>
-        </div>
-
-        <div className="px-4 py-3 space-y-3">
+          Assign Terrain
+        </span>
+      )}
+      ariaDescribedby={descriptionId}
+      size="sm"
+      hideCloseButton
+      closeOnBackdrop={false}
+      closeOnEscape={allResolved}
+      bodyClassName="space-y-3 px-4 py-3"
+    >
           {allResolved ? (
             <div id={descriptionId} className="flex items-center gap-2 text-success-300 text-sm">
               <CheckCircle className="w-4 h-4" aria-hidden="true" />
@@ -147,8 +138,6 @@ export function TerrainAssignmentModal({
               </button>
             )}
           </div>
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

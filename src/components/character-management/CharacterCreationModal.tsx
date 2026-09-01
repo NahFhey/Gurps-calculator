@@ -6,8 +6,8 @@
  * - Import from file
  */
 
-import { useEffect, useState } from 'react';
-import { UserPlus, FileText, Upload, X, Dices, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import { UserPlus, FileText, Upload, Dices, RefreshCw } from 'lucide-react';
 import {
   createBlankCharacter,
   createCharacterFromTemplateEntity,
@@ -16,6 +16,7 @@ import { CHARACTER_TEMPLATE_SEEDS } from '../../constants/characterTemplateSeeds
 import { generateNpc, generateNpcName, type NpcVariance } from '../../utils/npcGenerator';
 import type { Character, CharacterTemplateEntity } from '../../types/campaign';
 import { CharacterImportFlow } from './CharacterImportFlow';
+import { Modal } from '../ui/Modal';
 
 type CreationStep = 'choose' | 'blank' | 'template' | 'npc' | 'import';
 
@@ -39,15 +40,11 @@ export function CharacterCreationModal({
   const [npcVariance, setNpcVariance] = useState<NpcVariance>('light');
   const [npcPreview, setNpcPreview] = useState<Character[]>([]);
 
-  const titleId = 'character-creation-modal-title';
-
-  useEffect(() => {
-    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  const title = step === 'choose' ? 'Add Character'
+    : step === 'blank' ? 'Create Blank Character'
+    : step === 'template' ? 'Create from Template'
+    : step === 'npc' ? 'Generate NPCs'
+    : 'Import Character';
 
   const handleCreateBlank = () => {
     const name = characterName.trim() || 'New Character';
@@ -82,37 +79,14 @@ export function CharacterCreationModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className={`bg-surface-1 rounded-lg border border-edge-strong w-full m-4 ${
-          step === 'import' || step === 'template' || step === 'npc' ? 'max-w-4xl' : 'max-w-md'
-        }`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-edge">
-          <h2 id={titleId} className="text-lg font-semibold text-fg-bright">
-            {step === 'choose' && 'Add Character'}
-            {step === 'blank' && 'Create Blank Character'}
-            {step === 'template' && 'Create from Template'}
-            {step === 'npc' && 'Generate NPCs'}
-            {step === 'import' && 'Import Character'}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="text-fg-muted hover:text-fg-primary p-1"
-          >
-            <X className="h-5 w-5" aria-hidden="true" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="p-6">
+    <Modal
+      isOpen
+      onClose={onClose}
+      title={title}
+      size={step === 'import' || step === 'template' || step === 'npc' ? 'xl' : 'md'}
+      closeOnBackdrop={false}
+      className="border-edge-strong"
+    >
           {step === 'choose' && (
             <div className="space-y-3">
               <button
@@ -329,8 +303,6 @@ export function CharacterCreationModal({
           {step === 'import' && (
             <CharacterImportFlow onBack={() => setStep('choose')} onComplete={onClose} />
           )}
-        </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

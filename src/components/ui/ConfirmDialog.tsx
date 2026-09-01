@@ -1,4 +1,5 @@
-import { ReactNode, useEffect, useCallback } from 'react';
+import { ReactNode, useCallback, useState } from 'react';
+import { Modal } from './Modal';
 
 // ============================================================================
 // TYPES
@@ -59,33 +60,6 @@ export function ConfirmDialog({
   onCancel,
   confirmDisabled = false,
 }: ConfirmDialogProps) {
-  // Handle escape key to close
-  const handleKeyDown = useCallback(
-    (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onCancel();
-      }
-    },
-    [onCancel]
-  );
-
-  useEffect(() => {
-    if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown);
-      // Prevent body scroll when dialog is open
-      document.body.style.overflow = 'hidden';
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = '';
-    };
-  }, [isOpen, handleKeyDown]);
-
-  if (!isOpen) {
-    return null;
-  }
-
   // Confirm button styles based on variant
   const confirmButtonClass = {
     default: 'bg-accent-600 hover:bg-accent-500 text-white',
@@ -94,28 +68,15 @@ export function ConfirmDialog({
   }[variant];
 
   return (
-    <div
-      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
-      onClick={onCancel}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-dialog-title"
-      aria-describedby="confirm-dialog-message"
-    >
-      <div
-        className="bg-surface-1 rounded-lg border border-edge-strong w-full max-w-md m-4 p-6"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2
-          id="confirm-dialog-title"
-          className="text-lg font-semibold text-fg-bright mb-4"
-        >
-          {title}
-        </h2>
-        <div id="confirm-dialog-message" className="text-fg-secondary mb-6">
-          {message}
-        </div>
-        <div className="flex gap-3 justify-end">
+    <Modal
+      isOpen={isOpen}
+      onClose={onCancel}
+      title={title}
+      size="md"
+      hideCloseButton
+      ariaDescribedby="confirm-dialog-message"
+      footer={(
+        <>
           <button
             type="button"
             onClick={onCancel}
@@ -133,17 +94,19 @@ export function ConfirmDialog({
           >
             {confirmLabel}
           </button>
-        </div>
+        </>
+      )}
+    >
+      <div id="confirm-dialog-message" className="text-fg-secondary">
+        {message}
       </div>
-    </div>
+    </Modal>
   );
 }
 
 // ============================================================================
 // HOOK FOR EASIER USAGE
 // ============================================================================
-
-import { useState } from 'react';
 
 export interface UseConfirmDialogOptions {
   title: string;

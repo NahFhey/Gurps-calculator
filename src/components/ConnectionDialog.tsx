@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react';
-import { X, Copy, Check, Wifi, WifiOff } from 'lucide-react';
+import { Copy, Check, Wifi, WifiOff } from 'lucide-react';
 import { useSyncContext } from '../net/SyncProvider';
 import { useCampaignStore } from '../state/campaignStore';
 import { PlayerAssignmentPanel } from './PlayerAssignmentPanel';
@@ -11,6 +11,7 @@ import { Role } from '../../shared/session';
 import { serializeCampaignState } from '../persistence/campaignStorage';
 import { hydrateCampaignState } from '../persistence/campaignStorage';
 import type { CampaignState } from '../state/campaignReducer';
+import { Modal } from './ui/Modal';
 
 interface ConnectionDialogProps {
   isOpen: boolean;
@@ -29,7 +30,6 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const titleId = 'connection-dialog-title';
   const campaignNameId = 'connection-dialog-campaign-name';
   const displayNameId = 'connection-dialog-display-name';
   const joinCodeId = 'connection-dialog-join-code';
@@ -82,27 +82,18 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
   // Connected view
   if (status === 'connected' && sessionInfo) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={titleId}
-          className="bg-surface-1 rounded-xl border border-edge-strong shadow-2xl w-full max-w-md p-6"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h2 id={titleId} className="text-lg font-semibold text-fg-bright flex items-center gap-2">
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        title={(
+          <span className="flex items-center gap-2">
               <Wifi className="h-5 w-5 text-success-400" aria-hidden="true" />
               Connected
-            </h2>
-            <button
-              onClick={onClose}
-              aria-label="Close"
-              className="p-1 rounded hover:bg-surface-2 text-fg-muted"
-            >
-              <X className="h-5 w-5" aria-hidden="true" />
-            </button>
-          </div>
-
+          </span>
+        )}
+        size="md"
+        className="rounded-xl border-edge-strong"
+      >
           <div className="space-y-3 text-sm text-fg-secondary">
             <div className="flex justify-between">
               <span>Role:</span>
@@ -137,34 +128,24 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
           >
             Disconnect
           </button>
-        </div>
-      </div>
+      </Modal>
     );
   }
 
   // Host/Join view
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="bg-surface-1 rounded-xl border border-edge-strong shadow-2xl w-full max-w-md p-6"
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2 id={titleId} className="text-lg font-semibold text-fg-bright flex items-center gap-2">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={(
+        <span className="flex items-center gap-2">
             <WifiOff className="h-5 w-5 text-fg-muted" aria-hidden="true" />
             Multiplayer
-          </h2>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="p-1 rounded hover:bg-surface-2 text-fg-muted"
-          >
-            <X className="h-5 w-5" aria-hidden="true" />
-          </button>
-        </div>
-
+        </span>
+      )}
+      size="md"
+      className="rounded-xl border-edge-strong"
+    >
         {/* Tabs */}
         <div role="tablist" aria-label="Multiplayer mode" className="flex gap-1 mb-4 bg-surface-0 rounded-lg p-1">
           <button
@@ -254,7 +235,6 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
             {error}
           </div>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }
