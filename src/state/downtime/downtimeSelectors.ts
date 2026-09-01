@@ -29,7 +29,8 @@ type TargetKeyActivityData =
   | { type: 'rest'; restType: string }
   | { type: 'trading'; merchantName: string }
   | { type: 'study'; skillName: string }
-  | { type: 'social'; contactId: string };
+  | { type: 'social'; contactId: string }
+  | { type: 'travel'; journeyId: string };
 
 // ============================================================================
 // BASIC SELECTORS
@@ -407,6 +408,8 @@ export function getTargetKeyFromActivityData(
       return `study:${(activityData as { skillName: string }).skillName.toLowerCase().trim()}`;
     case 'social':
       return `social:${(activityData as { contactId: string }).contactId}`;
+    case 'travel':
+      return (activityData as import('../../types/downtime').TravelData).journeyId;
     default:
       return 'unknown';
   }
@@ -514,6 +517,7 @@ function getToolIdsFromTask(task: DowntimeTask): string[] {
     case 'trading':
     case 'study':
     case 'social':
+    case 'travel':
       return [];
     default:
       return [];
@@ -746,6 +750,7 @@ const ACTIVITY_DISPLAY_NAMES: Record<DowntimeActivityType, string> = {
   trading: 'Trading',
   study: 'Study',
   social: 'Social',
+  travel: 'Traveling',
 };
 
 /**

@@ -195,12 +195,11 @@ describe('validateTravelRoute', () => {
       .some((b) => b.code === TRAVEL_BLOCKER_CODES.IMPASSABLE_TERRAIN)).toBe(true);
   });
 
-  it('flags routes beyond the foot budget', () => {
-    expect(validateTravelRoute(input({ routeTileIds: ['t-0-0', 't-0-1', 't-0-2'] }))
-      .some((b) => b.code === TRAVEL_BLOCKER_CODES.EXCEEDS_TIME_BUDGET)).toBe(true);
+  it('allows routes beyond a single-slot foot budget', () => {
+    expect(validateTravelRoute(input({ routeTileIds: ['t-0-0', 't-0-1', 't-0-2'] }))).toEqual([]);
   });
 
-  it('uses vehicle speed instead of the mode budget', () => {
+  it('does not use vehicle speed as an arming blocker', () => {
     const slow = { ...boatType, speedMilesPerSlot: 12 };
     const fast = { ...boatType, speedMilesPerSlot: 100 };
     const shared = {
@@ -208,17 +207,15 @@ describe('validateTravelRoute', () => {
       routeTileIds: ['t-0-0', 't-0-1', 't-0-2'],
       group: { ...group, vehicleId: vehicle.id }, vehicle,
     };
-    expect(validateTravelRoute(input({ ...shared, vehicleType: slow }))
-      .some((b) => b.code === TRAVEL_BLOCKER_CODES.EXCEEDS_TIME_BUDGET)).toBe(true);
-    expect(validateTravelRoute(input({ ...shared, vehicleType: fast }))
-      .some((b) => b.code === TRAVEL_BLOCKER_CODES.EXCEEDS_TIME_BUDGET)).toBe(false);
+    expect(validateTravelRoute(input({ ...shared, vehicleType: slow }))).toEqual([]);
+    expect(validateTravelRoute(input({ ...shared, vehicleType: fast }))).toEqual([]);
   });
 });
 
 describe('getRouteStats', () => {
-  it('reports a single tile as zero miles within budget', () => {
+  it('reports a single tile as zero miles and one estimated slot', () => {
     const stats = getRouteStats(makeMap(), ['t-0-0'], 'foot');
-    expect(stats).toMatchObject({ tileCount: 1, totalMiles: 0, withinBudget: true });
+    expect(stats).toMatchObject({ tileCount: 1, totalMiles: 0, estimatedMovingSlots: 1 });
   });
 
   it('sorts terrain counts and labels unassigned tiles', () => {
@@ -229,9 +226,10 @@ describe('getRouteStats', () => {
   });
 
   it('uses a vehicle type speed override in displayed stats', () => {
-    const stats = getRouteStats(makeMap(), ['t-0-0', 't-0-1'], 'boat', 0, vehicle, {
-      ...boatType, speedMilesPerSlot: 77,
+    const stats = getRouteStats(makeMap(), ['t-0-0', 't-0-1'], 'boat', {
+      vehicle,
+      vehicleType: { ...boatType, speedMilesPerSlot: 77 },
     });
-    expect(stats.budgetMiles).toBe(77);
+    expect(stats.budgetMilesPerSlot).toBe(77);
   });
 });

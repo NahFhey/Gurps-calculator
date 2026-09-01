@@ -26,6 +26,7 @@ import { TradingView } from './manager/views/TradingView';
 import { CharacterTemplatesView } from './manager/views/CharacterTemplatesView';
 import { VehiclesView } from './manager/views/VehiclesView';
 import { CalendarView } from './manager/views/CalendarView';
+import { TravelEventsView } from './manager/views/TravelEventsView';
 import { LocationManager } from './location/LocationManager';
 
 // Shared components
@@ -55,6 +56,7 @@ type ManagerView =
   | 'characterTemplates'
   | 'locations'
   | 'vehicles'
+  | 'travelEvents'
   | 'calendar'
   | 'debug';
 
@@ -493,6 +495,9 @@ export function ManagerTab() {
         <button onClick={() => setView('vehicles')} className={`px-4 py-2 ${view === 'vehicles' ? 'border-b-2 border-orange-500 text-orange-400' : 'text-gray-400'}`}>
           Vehicles
         </button>
+        <button onClick={() => setView('travelEvents')} className={`px-4 py-2 ${view === 'travelEvents' ? 'border-b-2 border-rose-500 text-rose-400' : 'text-gray-400'}`}>
+          Travel Events
+        </button>
         <button onClick={() => setView('calendar')} className={`px-4 py-2 ${view === 'calendar' ? 'border-b-2 border-sky-500 text-sky-400' : 'text-gray-400'}`}>
           Calendar
         </button>
@@ -628,6 +633,7 @@ export function ManagerTab() {
       {view === 'locations' && <LocationManager />}
 
       {view === 'vehicles' && <VehiclesView />}
+      {view === 'travelEvents' && <TravelEventsView />}
       {view === 'calendar' && <CalendarView />}
     </div>
   );

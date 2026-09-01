@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Users, Swords, History, ScrollText, Settings, Map } from 'lucide-react';
 import { useCampaignStore } from '../state/campaignStore';
 import CharacterLibrary from './combat/CharacterLibrary';
@@ -37,8 +37,16 @@ export function CombatTab() {
     actions.setCombatRulesPreset(preset);
   }, [actions]);
 
+  // A travel-encounter intent must land on Encounter Setup and STAY there after
+  // EncounterSetup consumes and clears the intent, so it writes the local view
+  // state rather than transiently overriding the derived view.
+  const pendingEncounter = state.ui.pendingIntent?.kind === 'encounter';
+  useEffect(() => {
+    if (pendingEncounter && !combatActive) setView('setup');
+  }, [pendingEncounter, combatActive]);
+
   // If there's an active combat, automatically show tracker
-  const currentView = combatActive ? 'tracker' : view;
+  const currentView = combatActive ? 'tracker' : pendingEncounter ? 'setup' : view;
 
   return (
     <div className="space-y-4 h-full flex flex-col">

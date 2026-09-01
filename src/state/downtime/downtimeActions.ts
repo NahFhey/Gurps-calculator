@@ -9,6 +9,7 @@ import type {
   ActivityData,
   DowntimeTask,
   TaskResults,
+  DowntimeState,
 } from '../../types/downtime';
 
 // ============================================================================
@@ -21,6 +22,7 @@ export const DOWNTIME_TASK_BEGIN_RESOLVE = 'downtime/taskBeginResolve' as const;
 export const DOWNTIME_TASK_RESOLVE = 'downtime/taskResolve' as const;
 export const DOWNTIME_TASK_CANCEL = 'downtime/taskCancel' as const;
 export const DOWNTIME_TASK_REORDER = 'downtime/taskReorder' as const;
+export const DOWNTIME_STATE_REPLACE = 'downtime/stateReplace' as const;
 
 // ============================================================================
 // PAYLOAD TYPES
@@ -68,7 +70,8 @@ export type DowntimeAction =
   | { type: typeof DOWNTIME_TASK_BEGIN_RESOLVE; payload: { taskId: string } }
   | { type: typeof DOWNTIME_TASK_RESOLVE; payload: { taskId: string; results: TaskResults } }
   | { type: typeof DOWNTIME_TASK_CANCEL; payload: { taskId: string } }
-  | { type: typeof DOWNTIME_TASK_REORDER; payload: { taskIds: string[] } };
+  | { type: typeof DOWNTIME_TASK_REORDER; payload: { taskIds: string[] } }
+  | { type: typeof DOWNTIME_STATE_REPLACE; payload: DowntimeState };
 
 // ============================================================================
 // ACTION CREATORS

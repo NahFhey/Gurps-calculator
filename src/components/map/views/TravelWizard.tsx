@@ -20,6 +20,7 @@ import { TravelStep3Confirm } from './TravelStep3Confirm';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { buildStagedGroup } from '../../../utils/travelComposition';
 import { SCALE_TO_MODES } from '../../../constants/map';
+import type { ProvisionEstimate } from '../../../utils/provisioning';
 
 interface TravelWizardProps {
   map: MapModel;
@@ -39,10 +40,19 @@ interface TravelWizardProps {
   day: number;
   slot: number;
   downtimeState: DowntimeState;
+  slotsPerDay: number;
+  nightSlotIndices?: number[];
+  navigatorId: Id | null;
+  gmNavigationSkill: number;
+  forcedMarch: boolean;
+  provisioning: ProvisionEstimate;
   onSetStep: (step: 1 | 2 | 3) => void;
   onMoveChip: (memberId: Id, to: PartyColumn) => void;
   onSelectVehicle: (vehicleId: Id | null) => void;
   onClearRoute: () => void;
+  onNavigatorChange: (id: Id | null) => void;
+  onGmNavigationSkillChange: (skill: number) => void;
+  onForcedMarchChange: (forced: boolean) => void;
   onConfirm: () => void;
   onClose: () => void;
 }
@@ -67,10 +77,19 @@ export function TravelWizard({
   day,
   slot,
   downtimeState,
+  slotsPerDay,
+  nightSlotIndices,
+  navigatorId,
+  gmNavigationSkill,
+  forcedMarch,
+  provisioning,
   onSetStep,
   onMoveChip,
   onSelectVehicle,
   onClearRoute,
+  onNavigatorChange,
+  onGmNavigationSkillChange,
+  onForcedMarchChange,
   onConfirm,
   onClose,
 }: TravelWizardProps) {
@@ -203,6 +222,22 @@ export function TravelWizard({
             blockers={blockers}
             isGmMode={isGmMode}
             hasNullTerrain={hasNullTerrain}
+            map={map}
+            routeTileIds={routeTileIds}
+            mode={selectedMode}
+            characters={travelingMemberIds.flatMap((id) => characters[id] ? [characters[id]] : [])}
+            vehicle={vehicle}
+            vehicleType={vehicleType}
+            weatherTravelModifier={weatherTravelMod}
+            slotsPerDay={slotsPerDay}
+            nightSlotIndices={nightSlotIndices}
+            navigatorId={navigatorId}
+            gmNavigationSkill={gmNavigationSkill}
+            forcedMarch={forcedMarch}
+            provisioning={provisioning}
+            onNavigatorChange={onNavigatorChange}
+            onGmNavigationSkillChange={onGmNavigationSkillChange}
+            onForcedMarchChange={onForcedMarchChange}
             onConfirm={onConfirm}
           />
         )}

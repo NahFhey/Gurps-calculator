@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import type { MapModel, MapId } from '../../../types/map';
 import type { WeatherTable } from '../../../types/location';
+import type { TravelEventTableSet } from '../../../types/travelEvents';
 import { DEFAULT_SIGHT_RANGE_TILES, MAP_SCALES } from '../../../constants/map';
 import { Plus, Map as MapIcon, ChevronDown, Navigation, MapPinned, Settings, Image as ImageIcon } from 'lucide-react';
 
@@ -35,10 +36,11 @@ interface MapHeaderProps {
   onSelectPlacement?: (kind: 'group' | 'vehicle', id: string) => void;
   onCancelPlacement?: () => void;
   onUpdateMapSettings?: (
-    changes: Partial<Pick<MapModel, 'visionMode' | 'sightRangeTiles' | 'climate' | 'weatherTableId'>>
+    changes: Partial<Pick<MapModel, 'visionMode' | 'sightRangeTiles' | 'climate' | 'weatherTableId' | 'travelEventTableSetId'>>
   ) => void;
   climateLabels?: Record<string, string>;
   weatherTables?: WeatherTable[];
+  travelEventTableSets?: TravelEventTableSet[];
   /** Called when GM clicks the Images button (opens the image layers dialog) */
   onOpenImages?: () => void;
 }
@@ -63,6 +65,7 @@ export function MapHeader({
   onUpdateMapSettings,
   climateLabels = {},
   weatherTables = [],
+  travelEventTableSets = [],
   onOpenImages,
 }: MapHeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -253,6 +256,20 @@ export function MapHeader({
                     className="w-full rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-sm text-gray-200"
                   >
                     {Object.entries(climateLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="map-travel-event-set" className="mb-1 block text-xs font-medium text-gray-300">
+                    Travel events
+                  </label>
+                  <select
+                    id="map-travel-event-set"
+                    value={activeMap.travelEventTableSetId ?? ''}
+                    onChange={(event) => onUpdateMapSettings?.({ travelEventTableSetId: event.target.value || null })}
+                    className="w-full rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-sm text-gray-200"
+                  >
+                    <option value="">Default</option>
+                    {travelEventTableSets.map((set) => <option key={set.id} value={set.id}>{set.name}</option>)}
                   </select>
                 </div>
                 <div>

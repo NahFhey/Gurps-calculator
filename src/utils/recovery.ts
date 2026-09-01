@@ -38,6 +38,7 @@ export interface RestRecoveryInput {
   maxFP: number;
   restedFullDay: boolean;
   physicianLevel?: number;
+  starvationFpDebt?: number;
 }
 
 export interface RestRecoveryResult {
@@ -51,7 +52,10 @@ export interface RestRecoveryResult {
 }
 
 export function resolveRestRecovery(input: RestRecoveryInput): RestRecoveryResult {
-  const fpRestored = Math.max(0, input.maxFP - input.currentFP);
+  const fpRestored = Math.max(
+    0,
+    input.maxFP - (input.starvationFpDebt ?? 0) - input.currentFP
+  );
   const hpRollMade = input.restType === 'sleep'
     && input.restedFullDay
     && input.currentHP < input.maxHP;

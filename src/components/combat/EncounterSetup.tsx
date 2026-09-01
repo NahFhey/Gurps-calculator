@@ -1,4 +1,4 @@
-import { useState, ChangeEvent } from 'react';
+import { useEffect, useRef, useState, ChangeEvent } from 'react';
 import { Plus, Play, ChevronUp, ChevronDown, X, Users, Lock, AlertTriangle, Save, FolderOpen, Trash2, UserPlus } from 'lucide-react';
 import { useCombatStore } from '../../hooks/useCombatStore';
 import { useCampaignStore } from '../../state/campaignStore';
@@ -157,7 +157,7 @@ export default function EncounterSetup() {
   } = useCombatStore();
 
   // Access GM mode from campaign store
-  const { state } = useCampaignStore();
+  const { state, actions } = useCampaignStore();
   const gmModeEnabled = state.ui.gmModeEnabled;
 
   const [encounterName, setEncounterName] = useState('');
@@ -167,6 +167,7 @@ export default function EncounterSetup() {
 
   const [showTemplatePanel, setShowTemplatePanel] = useState(false);
   const [templateName, setTemplateName] = useState('');
+  const consumedIntentRef = useRef<typeof state.ui.pendingIntent>(null);
 
   // Toast notifications
   const { warning: showWarning, success: showSuccess } = useToast();
@@ -318,6 +319,21 @@ export default function EncounterSetup() {
       setParticipants(prev => [...prev, participant]);
     }
   };
+
+  useEffect(() => {
+    const intent = state.ui.pendingIntent;
+    if (intent?.kind !== 'encounter' || consumedIntentRef.current === intent) return;
+    consumedIntentRef.current = intent;
+    const template = intent.templateId ? (encounterTemplates ?? {})[intent.templateId] : undefined;
+    if (template) {
+      handleLoadTemplate(template);
+      const eventName = Object.values(state.entities.travelEventTables ?? {})
+        .flatMap((table) => table.entries)
+        .find((event) => event.encounterTemplateId === template.id)?.name;
+      setEncounterName(eventName ?? template.name);
+    }
+    actions.clearPendingIntent();
+  }, [actions, encounterTemplates, state.entities.travelEventTables, state.ui.pendingIntent]);
 
   // Remove character from encounter
   const removeCharacter = (id: string) => {

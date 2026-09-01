@@ -15,7 +15,6 @@ import {
   MAP_ADD_LINK,
   MAP_REMOVE_LINK,
   MAP_REVEAL_TILES,
-  MAP_EXECUTE_TRAVEL,
   MAP_SET_PENDING_TERRAIN,
   MAP_CLEAR_PENDING_TERRAIN,
   isMapAction,
@@ -78,7 +77,6 @@ describe('mapActions', () => {
       expect(MAP_ADD_LINK).toBe('map/addLink');
       expect(MAP_REMOVE_LINK).toBe('map/removeLink');
       expect(MAP_REVEAL_TILES).toBe('map/revealTiles');
-      expect(MAP_EXECUTE_TRAVEL).toBe('map/executeTravel');
       expect(MAP_SET_PENDING_TERRAIN).toBe('map/setPendingTerrain');
       expect(MAP_CLEAR_PENDING_TERRAIN).toBe('map/clearPendingTerrain');
     });
@@ -100,7 +98,6 @@ describe('mapActions', () => {
         MAP_ADD_LINK,
         MAP_REMOVE_LINK,
         MAP_REVEAL_TILES,
-        MAP_EXECUTE_TRAVEL,
         MAP_SET_PENDING_TERRAIN,
         MAP_CLEAR_PENDING_TERRAIN,
       ];
@@ -124,7 +121,6 @@ describe('mapActions', () => {
         MAP_ADD_LINK,
         MAP_REMOVE_LINK,
         MAP_REVEAL_TILES,
-        MAP_EXECUTE_TRAVEL,
         MAP_SET_PENDING_TERRAIN,
         MAP_CLEAR_PENDING_TERRAIN,
       ];
@@ -212,25 +208,6 @@ describe('mapActions', () => {
       }
     });
 
-    it('returns true for travel execution actions', () => {
-      const actions: MapAction[] = [
-        {
-          type: MAP_EXECUTE_TRAVEL,
-          payload: {
-            mapId: 'map-1',
-            routeTileIds: ['tile-1', 'tile-2'],
-            destinationTileId: 'tile-2',
-            mode: 'foot',
-            gmOverride: false,
-            groupId: 'group-1',
-          },
-        },
-      ];
-      for (const action of actions) {
-        expect(isMapAction(action)).toBe(true);
-      }
-    });
-
     it('returns true for pending terrain actions', () => {
       const actions: MapAction[] = [
         { type: MAP_SET_PENDING_TERRAIN, payload: ['tile-1', 'tile-2'] },
@@ -264,12 +241,12 @@ describe('mapActions', () => {
 
     it('narrows the action type for TypeScript consumers', () => {
       const unknownAction: { type: string; payload?: unknown } = {
-        type: MAP_EXECUTE_TRAVEL,
+        type: MAP_REVEAL_TILES,
       };
       if (isMapAction(unknownAction)) {
-        expect(unknownAction.type).toBe(MAP_EXECUTE_TRAVEL);
+        expect(unknownAction.type).toBe(MAP_REVEAL_TILES);
       } else {
-        throw new Error('expected type guard to accept MAP_EXECUTE_TRAVEL');
+        throw new Error('expected type guard to accept MAP_REVEAL_TILES');
       }
     });
   });

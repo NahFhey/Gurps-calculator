@@ -31,9 +31,14 @@ export {
   selectGroupPosition,
   selectVehicles,
   selectVehicleTypes,
+  selectTravelEventTables,
+  selectTravelEventTableSets,
+  resolveTravelEventTable,
   selectGroupsAboardVehicle,
   selectGroupsOnMap,
-  selectVehiclesOnMap
+  selectVehiclesOnMap,
+  selectActiveJourneys,
+  selectGroupJourney
 } from './partySelectors';
 
 // Inventory selectors

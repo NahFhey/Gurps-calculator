@@ -5,7 +5,7 @@
  * across both campaignStorage and exportImport paths.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createCampaignState } from '../state/campaignReducer';
+import { campaignReducer, createCampaignState } from '../state/campaignReducer';
 import {
   serializeCampaignState,
   hydrateCampaignState,
@@ -56,6 +56,68 @@ function makeMap(overrides: Partial<MapModel> = {}): MapModel {
 // Direct serialize → hydrate round-trip
 // ---------------------------------------------------------------------------
 describe('serializeCampaignState / hydrateCampaignState round-trip', () => {
+  it('round-trips custom travel events, map override, and provisioning ledgers', () => {
+    const state = createCampaignState();
+    const map = makeMap({ travelEventTableSetId: 'set-custom' });
+    state.maps = { ...state.maps, mapsById: { [map.id]: map }, activeMapId: map.id };
+    state.entities.travelEventTables = {
+      custom: { id: 'custom', name: 'Custom', entries: [{ id: 'event', kind: 'encounter', weight: 4, name: 'Raiders', description: 'Raiders!', encounterTemplateId: null }] },
+    };
+    state.entities.travelEventTableSets = {
+      'set-custom': { id: 'set-custom', name: 'Custom Set', byTerrain: {}, fallbackTableId: 'custom' },
+    };
+    state.entities.groupMeals = { g: 7 };
+    state.entities.starvationFpDebt = { a: 2 };
+    const hydrated = hydrateCampaignState(JSON.parse(JSON.stringify(serializeCampaignState(state))));
+    expect(hydrated.entities.travelEventTables?.custom).toEqual(state.entities.travelEventTables.custom);
+    expect(hydrated.entities.travelEventTableSets?.['set-custom']).toEqual(state.entities.travelEventTableSets['set-custom']);
+    expect(hydrated.maps.mapsById[map.id].travelEventTableSetId).toBe('set-custom');
+    expect(hydrated.entities.groupMeals).toEqual({ g: 7 });
+    expect(hydrated.entities.starvationFpDebt).toEqual({ a: 2 });
+  });
+
+  it('checkpoint restore preserves travel events and provisioning ledgers', () => {
+    const state = hydrateCampaignState(JSON.parse(JSON.stringify(serializeCampaignState(createCampaignState()))));
+    state.entities.travelEventTables = { custom: { id: 'custom', name: 'Custom', entries: [] } };
+    state.entities.travelEventTableSets = { set: { id: 'set', name: 'Set', byTerrain: {}, fallbackTableId: 'custom' } };
+    state.entities.groupMeals = { g: 3 };
+    state.entities.starvationFpDebt = { a: 1 };
+    const checkpointed = campaignReducer(state, { type: 'createCheckpoint', payload: 'Travel ledger' });
+    const checkpointId = checkpointed.checkpoints.entries[0].id;
+    const diverged = {
+      ...checkpointed,
+      entities: { ...checkpointed.entities, travelEventTables: {}, groupMeals: {}, starvationFpDebt: {} },
+    };
+    const restored = campaignReducer(diverged, { type: 'restoreCheckpoint', payload: checkpointId });
+    expect(restored.entities.travelEventTables?.custom).toBeDefined();
+    expect(restored.entities.travelEventTableSets?.set).toBeDefined();
+    expect(restored.entities.groupMeals).toEqual({ g: 3 });
+    expect(restored.entities.starvationFpDebt).toEqual({ a: 1 });
+  });
+
+  it('round-trips an active journey and its resolved travel task as plain JSON', () => {
+    const state = createCampaignState();
+    const map = makeMap();
+    state.maps = { ...state.maps, activeMapId: map.id, mapsById: { [map.id]: map } };
+    state.entities = {
+      ...state.entities,
+      characters: { a: { id: 'a', name: 'A', work: { skills: {} } } },
+      travelGroups: { g: {
+        id: 'g', name: 'G', memberIds: ['a'], vehicleId: null, position: { mapId: map.id, tileId: 'tile-1' },
+        journey: { id: 'j', mapId: map.id, routeTileIds: ['tile-1', 'tile-1'], destinationTileId: 'tile-1', mode: 'foot', navigatorId: 'a', gmNavigationSkill: 10, forcedMarch: false, legProgressMiles: 2, milesTraveled: 4, status: 'active', gmOverride: false, startedAt: { day: 1, slot: 0 } },
+      } },
+    };
+    state.downtime = {
+      tasksById: { travel: {
+        id: 'travel', activityType: 'travel', dayKey: 1, slot: 0, leaderId: 'a', helperIds: [], status: 'resolved',
+        activityData: { type: 'travel', journeyId: 'j', groupId: 'g', vehicleId: null, milesMoved: 4, drifted: false },
+        results: { success: true, message: '4 mi' }, createdAt: 1, updatedAt: 1,
+      } }, taskOrder: ['travel'], pendingDayLedger: null,
+    };
+    const hydrated = hydrateCampaignState(JSON.parse(JSON.stringify(serializeCampaignState(state))));
+    expect(hydrated.entities.travelGroups?.g.journey).toEqual(state.entities.travelGroups!.g.journey);
+    expect(hydrated.downtime.tasksById.travel).toEqual(state.downtime.tasksById.travel);
+  });
   it('round-trips empty Sets', () => {
     const state = createCampaignState();
     // Ensure Sets are empty

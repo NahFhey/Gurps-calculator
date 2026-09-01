@@ -92,6 +92,7 @@ describe('TravelStep1Party', () => {
     const map = createNewMap({ name: 'Test', scaleMilesPerTile: 12, startTerrainId: 'terrain-plains' });
     render(
       <TravelWizard
+        provisioning={{ foodUnits: 0, days: 0, bestCookName: null }}
         map={map}
         step={1}
         selectedMode="foot"
@@ -109,10 +110,17 @@ describe('TravelStep1Party', () => {
         day={1}
         slot={0}
         downtimeState={downtimeInitialState}
+        slotsPerDay={3}
+        navigatorId={null}
+        gmNavigationSkill={10}
+        forcedMarch={false}
         onSetStep={vi.fn()}
         onMoveChip={vi.fn()}
         onSelectVehicle={vi.fn()}
         onClearRoute={vi.fn()}
+        onNavigatorChange={vi.fn()}
+        onGmNavigationSkillChange={vi.fn()}
+        onForcedMarchChange={vi.fn()}
         onConfirm={vi.fn()}
         onClose={vi.fn()}
       />

@@ -43,6 +43,14 @@ describe('resolveRestRecovery', () => {
     expect(resolveRestRecovery({ ...baseInput, currentHP: 10, currentFP: 10 }).fpRestored).toBe(0);
   });
 
+  it('caps FP recovery below max by starvation debt', () => {
+    expect(resolveRestRecovery({ ...baseInput, currentHP: 10, starvationFpDebt: 2 }).fpRestored).toBe(2);
+  });
+
+  it('restores no FP when already at the debt-adjusted cap', () => {
+    expect(resolveRestRecovery({ ...baseInput, currentHP: 10, currentFP: 8, starvationFpDebt: 2 }).fpRestored).toBe(0);
+  });
+
   it.each(['light_rest', 'meditation'] as const)('makes no HP roll for %s', (restType) => {
     expect(resolveRestRecovery({ ...baseInput, restType }).hpRollMade).toBe(false);
     expect(mockedRollVsTarget).not.toHaveBeenCalled();

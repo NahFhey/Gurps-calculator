@@ -7,6 +7,7 @@ import { createCampaignState } from '../state/campaignReducer';
 import type { CampaignState } from '../state/campaignReducer';
 import { CHARACTER_TEMPLATE_SEEDS } from '../constants/characterTemplateSeeds';
 import { VEHICLE_TYPE_SEEDS } from '../constants/vehicleSeeds';
+import { TRAVEL_EVENT_SET_SEED, TRAVEL_EVENT_TABLE_SEEDS } from '../constants/travelEventSeeds';
 import { safeDeepClone } from '../utils/helpers';
 import {
   normalizeArray,
@@ -22,6 +23,7 @@ import type { Id, Material, Food, Recipe, Craft, CraftDesign, AlchemyReagent, Al
 import type { TravelGroup } from '../types/party';
 import type { ActiveWeather, Location } from '../types/location';
 import { DEFAULT_CALENDAR } from '../utils/timeSystem';
+import { resolveGroupPosition } from '../utils/partyPosition';
 
 /** Clean Phase 14 location links and attachment references after hydration. */
 export function ensureLocationIntegrity(state: CampaignState): CampaignState {
@@ -241,6 +243,67 @@ export function ensureTravelGroups(state: CampaignState): CampaignState {
       travelGroups: groups,
       vehicles: state.entities.vehicles ?? {},
       vehicleTypes,
+    },
+  };
+}
+
+/** Drop invalid journeys and detach navigators who no longer belong to the group. */
+export function ensureJourneyIntegrity(state: CampaignState): CampaignState {
+  const originalGroups = state.entities.travelGroups ?? {};
+  let groups = originalGroups;
+  let changed = false;
+  const replaceGroup = (id: Id, group: TravelGroup): void => {
+    if (!changed) groups = { ...originalGroups };
+    groups[id] = group;
+    changed = true;
+  };
+  for (const [id, group] of Object.entries(originalGroups)) {
+    const journey = group.journey;
+    if (!journey) continue;
+    const position = resolveGroupPosition(state, group);
+    if (!state.maps.mapsById[journey.mapId]
+      || position?.mapId !== journey.mapId
+      || journey.routeTileIds[0] !== position.tileId) {
+      replaceGroup(id, { ...group, journey: null });
+    } else if (journey.navigatorId !== null && !group.memberIds.includes(journey.navigatorId)) {
+      replaceGroup(id, { ...group, journey: { ...journey, navigatorId: null } });
+    }
+  }
+  if (!changed) return state;
+  return { ...state, entities: { ...state.entities, travelGroups: groups } };
+}
+
+/** Seed built-in travel-event catalogs and provision ledgers after hydration. */
+export function ensureTravelEventTables(state: CampaignState): CampaignState {
+  const originalTables = state.entities.travelEventTables;
+  const originalSets = state.entities.travelEventTableSets;
+  const tables = { ...(originalTables ?? {}) };
+  const sets = { ...(originalSets ?? {}) };
+  const deleted = new Set(state.entities.deletedBuiltinTravelEventIds ?? []);
+  let changed = originalTables === undefined
+    || originalSets === undefined
+    || state.entities.groupMeals === undefined
+    || state.entities.starvationFpDebt === undefined;
+  for (const seed of TRAVEL_EVENT_TABLE_SEEDS) {
+    if (!tables[seed.id] && !deleted.has(seed.id)) {
+      tables[seed.id] = safeDeepClone(seed);
+      changed = true;
+    }
+  }
+  if (!sets[TRAVEL_EVENT_SET_SEED.id] && !deleted.has(TRAVEL_EVENT_SET_SEED.id)) {
+    sets[TRAVEL_EVENT_SET_SEED.id] = safeDeepClone(TRAVEL_EVENT_SET_SEED);
+    changed = true;
+  }
+  if (!changed) return state;
+  return {
+    ...state,
+    entities: {
+      ...state.entities,
+      travelEventTables: tables,
+      travelEventTableSets: sets,
+      deletedBuiltinTravelEventIds: [...deleted],
+      groupMeals: state.entities.groupMeals ?? {},
+      starvationFpDebt: state.entities.starvationFpDebt ?? {},
     },
   };
 }

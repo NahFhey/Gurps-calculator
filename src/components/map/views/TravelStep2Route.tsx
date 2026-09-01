@@ -35,7 +35,7 @@ export function TravelStep2Route({
 }: TravelStep2RouteProps) {
   const hasRoute = routeTileIds.length > 1;
   const stats = hasRoute
-    ? getRouteStats(map, routeTileIds, mode, weatherTravelModifier, vehicle, vehicleType)
+    ? getRouteStats(map, routeTileIds, mode, { weatherTravelModifier, vehicle, vehicleType })
     : null;
 
   const startPos = startTileId ? findTileGridPos(map, startTileId) : null;
@@ -80,8 +80,8 @@ export function TravelStep2Route({
             </div>
             <div className="text-[10px] text-gray-400">
               <Ruler className="w-2.5 h-2.5 inline mr-0.5" />
-              <span className={stats.withinBudget ? 'text-green-300' : 'text-red-300'}>
-                {(stats.totalMiles ?? 0).toFixed(0)} / {Math.round(stats.budgetMiles)} mi
+              <span className="text-green-300">
+                {(stats.totalMiles ?? 0).toFixed(0)} mi — ~{stats.estimatedMovingSlots} slots (~{stats.estimatedDays} days)
               </span>
             </div>
           </div>

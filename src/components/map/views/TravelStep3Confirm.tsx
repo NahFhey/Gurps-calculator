@@ -2,13 +2,35 @@
  * TravelStep3Confirm — validation checklist and confirm button.
  */
 
-import type { TravelBlocker } from '../../../types/map';
+import type { Character, Id } from '../../../types/campaign';
+import type { MapModel, TileId, TravelBlocker, TravelMode } from '../../../types/map';
+import type { Vehicle, VehicleTypeDef } from '../../../types/party';
 import { CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { getNavigationSkill } from '../../../utils/navigation';
+import { getRouteStats } from '../../../utils/mapTravelValidation';
+import { getWorstGroupEncumbranceLevel } from '../../../utils/encumbrance';
+import type { ProvisionEstimate } from '../../../utils/provisioning';
 
 interface TravelStep3ConfirmProps {
   blockers: TravelBlocker[];
   isGmMode: boolean;
   hasNullTerrain: boolean;
+  map: MapModel;
+  routeTileIds: TileId[];
+  mode: TravelMode;
+  characters: Character[];
+  vehicle: Vehicle | null;
+  vehicleType: VehicleTypeDef | null;
+  weatherTravelModifier: number;
+  slotsPerDay: number;
+  nightSlotIndices?: number[];
+  navigatorId: Id | null;
+  gmNavigationSkill: number;
+  forcedMarch: boolean;
+  provisioning: ProvisionEstimate;
+  onNavigatorChange: (id: Id | null) => void;
+  onGmNavigationSkillChange: (skill: number) => void;
+  onForcedMarchChange: (forced: boolean) => void;
   onConfirm: () => void;
 }
 
@@ -16,9 +38,33 @@ export function TravelStep3Confirm({
   blockers,
   isGmMode,
   hasNullTerrain,
+  map,
+  routeTileIds,
+  mode,
+  characters,
+  vehicle,
+  vehicleType,
+  weatherTravelModifier,
+  slotsPerDay,
+  nightSlotIndices,
+  navigatorId,
+  gmNavigationSkill,
+  forcedMarch,
+  provisioning,
+  onNavigatorChange,
+  onGmNavigationSkillChange,
+  onForcedMarchChange,
   onConfirm,
 }: TravelStep3ConfirmProps) {
   const canConfirm = blockers.length === 0;
+  const stats = getRouteStats(map, routeTileIds, mode, {
+    weatherTravelModifier,
+    vehicle,
+    vehicleType,
+    worstEncumbranceLevel: vehicle ? null : getWorstGroupEncumbranceLevel(characters).level,
+    slotsPerDay,
+    nightSlotIndices,
+  });
 
   return (
     <div className="space-y-3">
@@ -56,6 +102,60 @@ export function TravelStep3Confirm({
         )}
       </div>
 
+      <div className="space-y-2 rounded bg-gray-900/50 p-2">
+        <label className="block text-[10px] text-gray-400">
+          Navigator
+          <select
+            className="mt-1 w-full rounded bg-gray-800 px-2 py-1 text-xs text-gray-100"
+            value={navigatorId ?? ''}
+            onChange={(event) => onNavigatorChange(event.target.value || null)}
+          >
+            <option value="">GM-set skill</option>
+            {characters.map((character) => {
+              const skill = getNavigationSkill(character, mode);
+              return (
+                <option key={character.id} value={character.id}>
+                  {character.name} — {skill.level}{skill.isDefault ? ' (default)' : ''}
+                </option>
+              );
+            })}
+          </select>
+        </label>
+        {navigatorId === null && (
+          <label className="block text-[10px] text-gray-400">
+            GM Navigation skill
+            <input
+              type="number"
+              value={gmNavigationSkill}
+              onChange={(event) => onGmNavigationSkillChange(Number(event.target.value) || 0)}
+              className="mt-1 w-full rounded bg-gray-800 px-2 py-1 text-xs text-gray-100"
+            />
+          </label>
+        )}
+        {isGmMode && (
+          <label className="flex items-center gap-2 text-xs text-gray-300">
+            <input
+              type="checkbox"
+              checked={forcedMarch}
+              onChange={(event) => onForcedMarchChange(event.target.checked)}
+            />
+            Forced march
+          </label>
+        )}
+        <div className="text-[10px] text-gray-400">
+          {stats.totalMiles.toFixed(0)} mi — ~{stats.estimatedMovingSlots} slots (~{stats.estimatedDays} days)
+        </div>
+        <div className="text-[10px] text-gray-300" data-testid="provisioning-preview">
+          ≈{provisioning.days} days of ingredients for {characters.length} travelers — Best cook: {provisioning.bestCookName ?? 'None'}
+        </div>
+        {provisioning.days < stats.estimatedDays && (
+          <div className="flex items-center gap-1 text-[10px] text-amber-300">
+            <AlertTriangle className="h-3 w-3" />
+            Not enough provisions for the estimated journey
+          </div>
+        )}
+      </div>
+
       {/* GM override warning */}
       {isGmMode && hasNullTerrain && blockers.length === 0 && (
         <div className="flex items-start gap-2 bg-yellow-900/20 border border-yellow-700/50 rounded p-2">
@@ -78,7 +178,7 @@ export function TravelStep3Confirm({
             : 'bg-gray-700 text-gray-500 cursor-not-allowed',
         ].join(' ')}
       >
-        Confirm Travel
+        Begin Journey
       </button>
     </div>
   );

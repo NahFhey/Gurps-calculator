@@ -32,7 +32,6 @@ import {
   MAP_REMOVE_STRUCTURE_LAYER,
   MAP_SET_STRUCTURE_CELLS,
   MAP_REVEAL_TILES,
-  MAP_EXECUTE_TRAVEL,
   MAP_SET_PENDING_TERRAIN,
   MAP_CLEAR_PENDING_TERRAIN,
 } from './mapActions';
@@ -42,8 +41,6 @@ import {
   expandMapIfNeededForPaint,
 } from '../../utils/mapUtils';
 import { MAX_ELEVATION } from '../../constants/map';
-import { computeVisibleTiles } from '../../utils/lineOfSight';
-import { resolveVehiclePosition } from '../../utils/partyPosition';
 
 /**
  * Process map actions on the campaign state draft.
@@ -112,6 +109,9 @@ export function handleMapAction(
         if (changes.visionMode !== undefined) map.visionMode = changes.visionMode;
         if (changes.climate !== undefined) map.climate = changes.climate;
         if (changes.weatherTableId !== undefined) map.weatherTableId = changes.weatherTableId;
+        if (changes.travelEventTableSetId !== undefined) {
+          map.travelEventTableSetId = changes.travelEventTableSetId;
+        }
         if (changes.sightRangeTiles !== undefined) {
           const range = Number.isFinite(changes.sightRangeTiles) ? changes.sightRangeTiles : 1;
           map.sightRangeTiles = Math.max(1, Math.min(30, Math.round(range)));
@@ -410,64 +410,6 @@ export function handleMapAction(
           maps.mapsById[mapId] = expanded;
         }
       }
-      return;
-    }
-
-    // ========================================================================
-    // TRAVEL EXECUTION
-    // ========================================================================
-
-    case MAP_EXECUTE_TRAVEL: {
-      const { mapId, routeTileIds, destinationTileId, gmOverride, groupId } = action.payload;
-      const map = maps.mapsById[mapId];
-      const group = draft.entities.travelGroups?.[groupId];
-      if (!map || !group) return;
-      const vehicles = draft.entities.vehicles ?? {};
-      const currentPosition = group.vehicleId
-        ? resolveVehiclePosition(vehicles, group.vehicleId)
-        : group.position;
-      if (currentPosition?.mapId !== mapId || !map.tilesById[currentPosition.tileId]) return;
-
-      // 1. Move the group's authoritative position. Vehicle movement carries
-      // every aboard group and its one-level docked vehicles automatically.
-      if (group.vehicleId) {
-        const vehicle = vehicles[group.vehicleId];
-        if (!vehicle) return;
-        vehicle.position = { kind: 'tile', mapId, tileId: destinationTileId };
-        vehicle.modifiedAt = Date.now();
-      } else {
-        group.position = { mapId, tileId: destinationTileId };
-      }
-
-      // 2. Reveal all route tiles
-      for (const tileId of routeTileIds) {
-        map.revealedTileIds.add(tileId);
-      }
-      if (map.visionMode === 'lineOfSight') {
-        for (const visibleTileId of computeVisibleTiles(map, [destinationTileId])) {
-          map.revealedTileIds.add(visibleTileId);
-        }
-      }
-
-      // 3. Expand map if needed
-      const expanded = expandMapIfNeeded(map);
-      if (expanded !== map) {
-        maps.mapsById[mapId] = expanded;
-      }
-
-      // 4. Check for null terrain tiles (GM override)
-      if (gmOverride) {
-        const nullTiles = routeTileIds.filter((tileId) => {
-          const tile = maps.mapsById[mapId]?.tilesById[tileId];
-          return tile && tile.terrainId === null;
-        });
-        if (nullTiles.length > 0) {
-          maps.pendingTerrainAssignment = nullTiles;
-        }
-      }
-
-      // Note: Time advancement is handled in the main reducer
-      // since it's a cross-slice operation
       return;
     }
 

@@ -262,6 +262,8 @@ export interface MapModel {
   currentWeather?: ActiveWeather | null;
   /** Optional custom weather table stored in the location-authoring slice. */
   weatherTableId?: Id | null;
+  /** Optional terrain-keyed travel event table set override. */
+  travelEventTableSetId?: Id | null;
 
   /** Vision regime for players. */
   visionMode: VisionMode;
@@ -340,7 +342,6 @@ export const TRAVEL_BLOCKER_CODES = {
   VEHICLE_MODE_INCOMPATIBLE: 'VEHICLE_MODE_INCOMPATIBLE',
   NULL_TERRAIN_ON_ROUTE: 'NULL_TERRAIN_ON_ROUTE',
   IMPASSABLE_TERRAIN: 'IMPASSABLE_TERRAIN',
-  EXCEEDS_TIME_BUDGET: 'EXCEEDS_TIME_BUDGET',
 } as const;
 
 // ============================================================================

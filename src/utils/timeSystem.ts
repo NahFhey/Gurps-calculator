@@ -37,6 +37,19 @@ export const DEFAULT_CALENDAR: CalendarConfig = {
   startSeasonIndex: 0,
 };
 
+/** Night-slot indices for a day. Defaults to the last slot. */
+export function getNightSlotIndices(slotsPerDay: number, override?: number[]): number[] {
+  if (override !== undefined) {
+    return [...new Set(override.filter((slot) => Number.isInteger(slot) && slot >= 0 && slot < slotsPerDay))]
+      .sort((a, b) => a - b);
+  }
+  return slotsPerDay > 0 ? [slotsPerDay - 1] : [];
+}
+
+export function isNightSlot(slot: number, slotsPerDay: number, override?: number[]): boolean {
+  return getNightSlotIndices(slotsPerDay, override).includes(slot);
+}
+
 /** Resolve a campaign day to a season in a calendar that repeats forever. */
 export function getCurrentSeason(day: number, calendar: CalendarConfig): CurrentSeason {
   const seasons = calendar.seasons;

@@ -169,6 +169,7 @@ export function getToolIdsFromActivityData(activityData: ActivityData): string[]
     case 'study':
       return [];
     case 'social':
+    case 'travel':
       return [];
     default:
       return [];

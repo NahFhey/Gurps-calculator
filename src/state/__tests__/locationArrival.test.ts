@@ -24,63 +24,63 @@ function fixture(visibility: MarkerVisibility = 'gm') {
   return { state, map, origin, destination };
 }
 
-function travel(state: CampaignState, mapId: string, origin: string, destination: string, groupId = 'active') {
+function arrive(state: CampaignState, mapId: string, destination: string, groupId = 'active') {
   return campaignReducer(state, {
-    type: 'map/executeTravel',
-    payload: { mapId, routeTileIds: [origin, destination], destinationTileId: destination, mode: 'foot', gmOverride: false, groupId },
+    type: 'party/placeGroup',
+    payload: { groupId, mapId, tileId: destination },
   });
 }
 
 describe('location arrival cross-slice behavior', () => {
   it('switches the active group current location at a linked destination', () => {
-    const { state, map, origin, destination } = fixture();
-    expect(travel(state, map.id, origin, destination).locations.currentLocationId).toBe('town');
+    const { state, map, destination } = fixture();
+    expect(arrive(state, map.id, destination).locations.currentLocationId).toBe('town');
   });
 
   it('logs the named arrival', () => {
-    const { state, map, origin, destination } = fixture();
-    const result = travel(state, map.id, origin, destination);
+    const { state, map, destination } = fixture();
+    const result = arrive(state, map.id, destination);
     expect(result.logs.entries.find((entry) => entry.type === 'location.changed')?.payload.message).toBe('Party arrived at Ravenport');
   });
 
-  it('discovers a GM location pin with post-advance time', () => {
-    const { state, map, origin, destination } = fixture();
-    const result = travel(state, map.id, origin, destination);
-    expect(result.maps.mapsById[map.id].markersById.town).toMatchObject({ visibility: 'player', discoveredAt: { day: 1, slot: 1 } });
+  it('discovers a GM location pin at the current time', () => {
+    const { state, map, destination } = fixture();
+    const result = arrive(state, map.id, destination);
+    expect(result.maps.mapsById[map.id].markersById.town).toMatchObject({ visibility: 'player', discoveredAt: { day: 1, slot: 0 } });
   });
 
-  it('uses the wrapped post-advance day and slot', () => {
-    const { state, map, origin, destination } = fixture();
+  it('uses the current day and slot', () => {
+    const { state, map, destination } = fixture();
     state.time.day = 8;
     state.time.slot = state.time.slotsPerDay - 1;
-    expect(travel(state, map.id, origin, destination).maps.mapsById[map.id].markersById.town.discoveredAt).toEqual({ day: 9, slot: 0 });
+    expect(arrive(state, map.id, destination).maps.mapsById[map.id].markersById.town.discoveredAt).toEqual({ day: 8, slot: 2 });
   });
 
   it('logs discovery with an explicit filterable day', () => {
-    const { state, map, origin, destination } = fixture();
-    const result = travel(state, map.id, origin, destination);
+    const { state, map, destination } = fixture();
+    const result = arrive(state, map.id, destination);
     const log = result.logs.entries.find((entry) => entry.type === 'location.discovered');
     expect(log).toMatchObject({ day: 1, payload: { message: 'Discovered Ravenport' } });
   });
 
   it('leaves an already-player marker discovery metadata untouched', () => {
-    const { state, map, origin, destination } = fixture('player');
-    const result = travel(state, map.id, origin, destination);
+    const { state, map, destination } = fixture('player');
+    const result = arrive(state, map.id, destination);
     expect(result.maps.mapsById[map.id].markersById.town.discoveredAt).toBeUndefined();
     expect(result.logs.entries.some((entry) => entry.type === 'location.discovered')).toBe(false);
   });
 
   it('does not discover a plain GM marker on the same tile', () => {
-    const { state, map, origin, destination } = fixture();
+    const { state, map, destination } = fixture();
     map.markersById.note = { id: 'note', tileId: destination, type: 'note', label: 'Secret', visibility: 'gm' };
-    const result = travel(state, map.id, origin, destination);
+    const result = arrive(state, map.id, destination);
     expect(result.maps.mapsById[map.id].markersById.note).toMatchObject({ visibility: 'gm' });
     expect(result.maps.mapsById[map.id].markersById.note.discoveredAt).toBeUndefined();
   });
 
   it('discovers for a non-active group without changing campaign current location', () => {
-    const { state, map, origin, destination } = fixture();
-    const result = travel(state, map.id, origin, destination, 'scouts');
+    const { state, map, destination } = fixture();
+    const result = arrive(state, map.id, destination, 'scouts');
     expect(result.locations.currentLocationId).toBe('camp');
     expect(result.maps.mapsById[map.id].markersById.town.visibility).toBe('player');
     expect(result.logs.entries.some((entry) => entry.type === 'location.changed')).toBe(false);
@@ -94,11 +94,11 @@ describe('location arrival cross-slice behavior', () => {
   });
 
   it('retains wilderness terrain synchronization on an unlinked tile', () => {
-    const { state, map, origin, destination } = fixture();
+    const { state, map, destination } = fixture();
     delete map.markersById.town;
     map.tilesById[destination].markerIds = [];
     map.tilesById[destination].terrainId = 'terrain-forest';
-    const result = travel(state, map.id, origin, destination);
+    const result = arrive(state, map.id, destination);
     expect(result.locations.currentLocationId).toBe('camp');
     expect(result.locations.locations.camp.terrain).toBe('forest');
     expect(result.logs.entries.some((entry) => entry.type === 'terrain.changed')).toBe(true);
