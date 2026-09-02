@@ -87,6 +87,22 @@ describe('ImageLayersDialog size-to-grid', () => {
     expect(screen.getByLabelText(/grid rows/i)).toHaveValue(9);
   });
 
+  it('width edits resize around the center: x shifts by half the width change', () => {
+    const { onUpdateLayer } = mount(makeLayer({ x: 1.4, width: 8.3 }));
+
+    fireEvent.change(screen.getByLabelText(/^width$/i), { target: { value: '10.3' } });
+
+    expect(onUpdateLayer).toHaveBeenCalledWith('img-1', { width: 10.3, x: 0.4 });
+  });
+
+  it('height edits resize around the center: y shifts by half the height change', () => {
+    const { onUpdateLayer } = mount(makeLayer({ y: 2.6, height: 5.7 }));
+
+    fireEvent.change(screen.getByLabelText(/^height$/i), { target: { value: '3.7' } });
+
+    expect(onUpdateLayer).toHaveBeenCalledWith('img-1', { height: 3.7, y: 3.6 });
+  });
+
   it('starts align mode for the layer when Align 3×3 is clicked', () => {
     const { onStartAlign } = mount(makeLayer());
 

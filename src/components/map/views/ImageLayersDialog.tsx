@@ -22,6 +22,9 @@ interface ImageLayersDialogProps {
 /** Images are stored as base64 in campaign state — cap the longest edge on import. */
 const IMAGE_MAX_DIM = 2048;
 
+/** Keep coordinates tidy after center-preserving resize math. */
+const round3 = (value: number) => Math.round(value * 1000) / 1000;
+
 function importImage(file: File): Promise<{ src: string; aspect: number }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -216,8 +219,16 @@ function LayerCard({ layer, map, onUpdateLayer, onRemoveLayer, onStartAlign }: L
       <div className="flex flex-wrap items-end gap-2">
         {numberField(layer.x, (x) => onUpdateLayer(layer.id, { x }), { label: 'X (col)', step: 0.5 })}
         {numberField(layer.y, (y) => onUpdateLayer(layer.id, { y }), { label: 'Y (row)', step: 0.5 })}
-        {numberField(layer.width, (width) => onUpdateLayer(layer.id, { width }), { label: 'Width', min: 0.1, step: 0.5 })}
-        {numberField(layer.height, (height) => onUpdateLayer(layer.id, { height }), { label: 'Height', min: 0.1, step: 0.5 })}
+        {/* Manual width/height edits resize around the image's center; grid
+            operations (Align 3×3, Size to grid, Snap) stay corner-anchored. */}
+        {numberField(layer.width, (width) => onUpdateLayer(layer.id, {
+          width,
+          x: round3(layer.x - (width - layer.width) / 2),
+        }), { label: 'Width', min: 0.1, step: 0.5 })}
+        {numberField(layer.height, (height) => onUpdateLayer(layer.id, {
+          height,
+          y: round3(layer.y - (height - layer.height) / 2),
+        }), { label: 'Height', min: 0.1, step: 0.5 })}
         {numberField(layer.elevation, (elevation) => onUpdateLayer(layer.id, { elevation }), { label: 'Elev', min: 0, max: MAX_ELEVATION })}
       </div>
 
@@ -359,7 +370,8 @@ export function ImageLayersDialog({ map, onAddLayer, onUpdateLayer, onRemoveLaye
 
           {importError && <p className="text-xs text-danger-400">{importError}</p>}
           <p className="text-xs text-fg-faint">
-            Position and size are in tiles. To match an image&apos;s printed grid to the map, use
+            Position and size are in tiles; width/height edits resize around the image&apos;s
+            center. To match an image&apos;s printed grid to the map, use
             “Align 3×3”: drag a box over any 3×3 block of the image&apos;s cells and it is scaled
             and snapped automatically. Or enter its column/row count and use “Size to grid”.
             Underlays are hidden from players while a map uses line-of-sight vision (they
