@@ -1,154 +1,160 @@
-# GURPS Party Management Tool
+# GURPS VTT
 
-**Version 2.5.0**
+A virtual tabletop and campaign manager for GURPS. It runs as an Electron desktop app for the GM, embeds its own multiplayer server, and lets players join from a browser on the local network.
 
-A comprehensive campaign management tool for GURPS tabletop RPG sessions. Manage your party's characters, combat encounters, inventory, crafting, alchemy, cooking, gathering, and daily activities - all in one place.
+Current status lives in [ROADMAP.md](ROADMAP.md). Phases 10 through 14 are complete; Phase 15 (integration and polish) is in progress; Phase 16 (desktop packaging and networking depth) and Phase 17 (battlemap depth and structures) are next.
 
 ## Features
 
-### Core Systems
+### Combat
 
-- **Combat Tracker** - Full tactical combat management with initiative, maneuvers, hit locations, conditions, and injury resolution
-- **Character Library** - Create and manage characters with stats, skills, equipment, and work assignments
-- **Party Integration** - Characters seamlessly flow between combat and activity systems
-- **Day Planner** - Schedule daily activities with time slots, task assignments, and resource tracking
+- Full tactical combat tracker: initiative, maneuvers, hit locations, active defenses, conditions, and injury resolution
+- Injury persistence: conditions, crippled limbs, and death carry back to the character after combat
+- Consumables usable from inventory mid-fight
+- Participants placed on a linked battle map, with a dedicated maneuver rail during combat
 
-### Activity Systems
+### Characters
 
-- **Crafting** - Multi-phase projects (Setup → Design → Craft) with material requirements and quality levels
-- **Alchemy** - Reagent management, formula design, batch brewing with aspect-based mechanics and hazard systems
-- **Cooking** - Recipe creation with ingredient substitution and difficulty calculation
-- **Gathering** - Fishing and foraging with species tracking, skill calculations, and yield generation
+- Character library with stats, skills, equipment, and point tracking
+- GURPS Character Sheet (GCS) import with validation, diff preview, non-destructive updates, and batch party import
+- Templates, an NPC generator, and a side-by-side comparison view
+- Earned-points economy: awards, a ledger, and a spend cart
+- Inventory to sheet equipment bridge
 
-### Management Tools
+### Map and travel
 
-- **Inventory System** - Track party and personal inventories with categorized materials and equipment
-- **Configuration Manager** - Customize food types, material types, workers, templates, and alchemy settings
-- **Rules Reference** - Built-in GURPS rules quick reference
+- Hex map rendered in three.js with a per-tile elevation heightfield and terrain painting
+- Imported battlemap images as under or overlay layers, with size-to-grid, snapping, and a Roll20-style 3×3 align tool
+- Structure layers, markers, hidden locations with discovery, and cross-map tile portals
+- Group and vehicle tokens, per-map climate and weather, and a travel wizard that runs journeys with navigation rolls, drift, and terrain-keyed event tables
+- Travel and downtime share one time system
 
-### Data & Security
+### Downtime and activities
 
-- **GM/Player Mode** - Password-protected content separation for safe player access
-- **Import/Export** - Save and share game state with optional AES-GCM encryption
-- **Schema Versioning** - Automatic data migration with backup and recovery
-- **Local Storage** - Persistent data with automatic saves
+- Crafting, alchemy, cooking, fishing, foraging, and mining, each with material requirements, quality, and hazards
+- Activity chaining: results from one activity feed the next
+- Rest that resolves into real HP and FP recovery
+- Study, social influence with a relationship ledger, and trading
 
-## Tech Stack
+### Inventory
 
-- **React 18** + **TypeScript** - Type-safe UI components
-- **Vite** - Fast build tooling
-- **Tailwind CSS** - Utility-first styling
-- **Immer** - Immutable state management
-- **Lucide React** - Icon library
-- **Vitest** - Testing framework
+- Party and personal inventories, owner-attributed material holdings, shared pools with take-from-shared
+- Attunement state machine and dietary restrictions for cooking
 
-## Project Structure
+### Multiplayer and GM tools
+
+- Host a session from the desktop app; players join over the LAN from a browser
+- JWT-authenticated Socket.IO server with rate limiting and sql.js persistence
+- GM mode with player-safe visibility for conditions, hazards, hidden pins, and weather
+- Player assignment panel, connection dialog, and role reconciliation between the local toggle and the network role
+
+### Data
+
+- IndexedDB persistence with a localStorage fallback, plus a cross-tab overwrite guard
+- Import and export with AES-GCM encryption for locked, player-safe files
+- Schema versioning with automatic migrations
+- Global undo and redo, keyboard shortcuts (Alt+1 through Alt+7 switch modules, `?` shows the overlay), and notifications
+
+## Tech stack
+
+- React 18 and TypeScript, built with Vite
+- three.js for the map renderer
+- Immer for reducer updates, Zod for import validation
+- Tailwind CSS with a theme token layer
+- Socket.IO client and server, Express 5, sql.js, jose
+- Electron with electron-builder targets for Windows, macOS, and Linux
+- Vitest and Testing Library
+
+## Getting started
+
+Node 22 or newer is required.
+
+```bash
+npm install
+npm run dev
+```
+
+Other scripts:
+
+```bash
+npm run build          # production build
+npm test               # vitest in watch mode
+npm run test:coverage  # coverage report
+npm run lint           # eslint
+npm run check:tokens   # theme token allowlist check
+```
+
+The multiplayer server has its own package under `server/`:
+
+```bash
+cd server && npm install && npm run dev
+```
+
+The Electron main process in `electron/` embeds the built server and opens the app on its port. Packaging is configured in `electron-builder.yml` but is not yet wired into npm scripts; that is Phase 16a on the roadmap.
+
+## Project structure
 
 ```
 src/
-├── App.tsx                      # Application entry point
-├── types/                       # TypeScript type definitions
-│   ├── campaign.ts              # Core campaign types
-│   ├── combatTracker.ts         # Combat system types
-│   ├── gathering.ts             # Gathering system types
-│   └── ...
+├── App.tsx                 # migration check, state load, providers, shell
+├── unified/UnifiedShell.tsx# app shell: party column, center pane, module rail
 ├── components/
-│   ├── combat/                  # Combat system (23 components)
-│   │   ├── CombatTracker.tsx    # Main combat interface
-│   │   ├── CharacterLibrary.tsx # Character management
-│   │   ├── ActionPanel.tsx      # Combat actions
-│   │   └── views/               # Extracted view components
-│   ├── manager/                 # Configuration management
-│   │   └── views/               # 12 manager view components
-│   ├── gathering/               # Gathering system
-│   │   └── views/               # 7 gathering view components
-│   ├── dayplanner/              # Day planning system
-│   │   └── views/               # 5 day planner view components
-│   ├── alchemy/                 # Alchemy subsystem
-│   ├── AlchemyTab.tsx           # Alchemy interface
-│   ├── CombatTab.tsx            # Combat interface
-│   ├── CookingTab.tsx           # Cooking interface
-│   ├── CraftingTab.tsx          # Crafting interface
-│   ├── InventoryTab.tsx         # Inventory interface
-│   ├── GatheringTab.jsx         # Gathering interface
-│   ├── DayPlannerTab.tsx        # Day planner interface
-│   ├── ManagerTab.tsx           # Configuration interface
-│   └── RulesTab.tsx             # Rules reference
+│   ├── combat/             # combat tracker, encounter setup, GCS import
+│   ├── character-sheet/, character-panels/, character-management/
+│   ├── map/                # map panel, editors, travel wizard, three/ renderer
+│   ├── downtime/, crafting/, alchemy/, cooking/, gathering/
+│   ├── inventory/, location/, manager/, rules/, header/, ui/
+│   └── *Tab.tsx            # top-level module tabs
 ├── state/
-│   ├── campaignStore.js         # Redux-style store
-│   └── campaignReducer.ts       # State reducer with Immer
-├── utils/                       # Utility functions
-│   ├── combat*.js               # Combat utilities
-│   ├── alchemy.js               # Alchemy calculations
-│   ├── gathering.js             # Gathering mechanics
-│   └── ...
-├── hooks/                       # Custom React hooks
-└── contexts/                    # React contexts (legacy)
+│   ├── campaignStore.tsx   # useSyncExternalStore store with undo/redo history
+│   ├── campaignReducer.ts  # root reducer delegating to domain slices
+│   └── alchemy/ character/ combat/ crafting/ downtime/ gathering/ inventory/ map/ party/ selectors/
+├── persistence/            # campaign save/load, revision guard, data migration
+├── net/                    # ConnectionManager and SyncProvider (multiplayer client)
+├── hooks/                  # data hooks, storage, time advancement, shortcuts
+├── utils/                  # engines: combat, alchemy, gathering, journeys, storage, crypto, GCS parser
+├── types/                  # domain type modules
+└── constants/              # seeds and catalogs
+server/src/                 # Express + Socket.IO server: routes, socket, auth, db
+shared/                     # wire protocol and session types shared by client and server
+electron/                   # desktop main process and preload
 ```
 
-## Getting Started
-
-```bash
-# Install dependencies
-npm install
-
-# Run development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Run tests
-npm test
-```
+Modules on the rail, in order: Inventory, Downtime, Combat, Map, Manager, Rules, Changelog.
 
 ## Architecture
 
-### State Management
+**State.** A single Redux-style store built on `useSyncExternalStore`, with the root reducer delegating to per-domain sub-reducers under `src/state/`. Immer handles immutable updates. The store keeps a 50-snapshot history for undo and redo.
 
-The application uses a Redux-style store pattern with Immer for immutable updates:
+**Components.** Large features follow the thin-router pattern: a parent handles navigation and coordination, and each view under a `views/` directory is self-contained. See `docs/guides/` for the decomposition guide.
 
-```
-CampaignStore
-├── entities/           # Normalized data (characters, inventory, materials, etc.)
-├── collections/        # Array data (food types, material types, reagents, etc.)
-└── checkpoints/        # Save points and history
-```
+**Persistence.** The whole campaign state is saved as one blob in IndexedDB. A monotonic revision number guards against one tab overwriting another. Hydration migrations run on load, and the schema version is tracked separately from the app version.
 
-### Component Pattern
-
-Large components follow the "thin router" decomposition pattern:
-- Parent component handles navigation and state coordination
-- Child view components handle specific UI sections
-- Each view is self-contained and testable (50-500 lines)
-
-### TypeScript Coverage
-
-- **146 TypeScript files** (.tsx/.ts)
-- **25 legacy JavaScript files** (.jsx) - remaining for migration
-- Full type safety for combat, manager, gathering, and day planner systems
+**TypeScript.** The `src/` tree is fully TypeScript. The only remaining JavaScript files are legacy tests under `src/utils/__tests__/`.
 
 ## Testing
 
-```bash
-npm test              # Run tests in watch mode
-npm run test:ui       # Interactive test UI
-npm run test:coverage # Generate coverage report
-```
+The suite has roughly 280 test files and 4,200 test cases across utilities, reducers, views, and the server.
 
-**Test Coverage:**
-- 300+ unit tests
-- Utility function tests (helpers, alchemy, gathering, combat)
-- View component tests
-- State reducer tests
+```bash
+npm test              # watch mode
+npm run test:ui       # interactive UI
+npm run test:coverage # coverage
+cd server && npm test # server suite
+```
 
 ## Documentation
 
-Additional documentation is available in the `docs/` folder:
+- [ROADMAP.md](ROADMAP.md) is the source of truth for what is shipped, in progress, and parked.
+- `docs/` holds per-feature design and plan documents, one per shipped lane.
+- `docs/codex-specs/` is the dated implementation spec log.
+- `docs/guides/` covers decomposition, schema versioning, performance monitoring, and the stabilization workflow.
+- `docs/Archive/` holds superseded documents.
 
-- `docs/guides/` - Reference guides for performance monitoring, schema versioning, and decomposition patterns
-- `docs/Archive/` - Historical development documentation
+## Development notes
+
+This project is built largely with AI coding agents. Implementation specs go to Codex through the codex-shepherd workflow, and the main session reviews and verifies. The repo carries a graphify knowledge graph (`graphify-out/`, gitignored) for codebase queries; see `CLAUDE.md`.
 
 ## License
 
-MIT
+No license file has been added yet. All rights reserved until one is chosen.
