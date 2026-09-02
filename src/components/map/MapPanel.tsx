@@ -3,9 +3,9 @@
  * Entry point for the Map module in the shell.
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useCampaignStore } from '../../state/campaignStore';
-import type { MapScale, StructureLayer, StructureLayerId, TerrainId, TerrainModel, TileId, MarkerModel, LinkModel } from '../../types/map';
+import type { ImageLayerId, MapScale, StructureLayer, StructureLayerId, TerrainId, TerrainModel, TileId, MarkerModel, LinkModel } from '../../types/map';
 import type { Id } from '../../types/campaign';
 import { CLIMATE_LABELS, type ClimateType } from '../../types/location';
 import { MAX_ELEVATION } from '../../constants/map';
@@ -48,6 +48,7 @@ import type { PartyColumn } from './views/TravelStep1Party';
 import { getTerrainModifiers } from '../../utils/weatherSystem';
 import { resolveLocationTerrain, getBrushTiles, MAX_BRUSH_SIZE, type BrushShape } from '../../utils/mapUtils';
 import { getNavigationSkill } from '../../utils/navigation';
+import { alignImageLayerToGrid, type AlignBox } from '../../utils/imageAlign';
 import { JourneyStatusPanel } from './views/JourneyStatusPanel';
 import { estimateProvisionDays } from '../../utils/provisioning';
 
@@ -88,6 +89,8 @@ export function MapPanel() {
 
   // Image layers dialog
   const [showImageLayers, setShowImageLayers] = useState(false);
+  /** Layer being grid-aligned Roll20-style (dialog hides, map takes a 3×3 box drag). */
+  const [aligningLayerId, setAligningLayerId] = useState<ImageLayerId | null>(null);
 
   // Marker/Link editor state
   const [markerEditor, setMarkerEditor] = useState<{ tileId: TileId; existing?: MarkerModel } | null>(null);
@@ -101,6 +104,32 @@ export function MapPanel() {
   const [placing, setPlacing] = useState<
     { kind: 'group'; id: Id } | { kind: 'vehicle'; id: Id } | null
   >(null);
+
+  // The layer being aligned (guards against stale ids after map switch/delete)
+  const aligningLayer = useMemo(
+    () => activeMap?.imageLayers?.find((layer) => layer.id === aligningLayerId) ?? null,
+    [activeMap, aligningLayerId]
+  );
+
+  // Esc cancels align mode; it also ends when the map switches away from the layer.
+  useEffect(() => {
+    if (!aligningLayer) {
+      if (aligningLayerId !== null) setAligningLayerId(null);
+      return;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setAligningLayerId(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [aligningLayer, aligningLayerId]);
+
+  const handleAlignBoxComplete = useCallback((box: AlignBox) => {
+    setAligningLayerId(null);
+    if (!aligningLayer || !maps.activeMapId) return;
+    const aligned = alignImageLayerToGrid(aligningLayer, box);
+    if (aligned) actions.mapUpdateImageLayer(maps.activeMapId, aligningLayer.id, aligned);
+  }, [aligningLayer, maps.activeMapId, actions]);
 
   // The structure layer painting currently targets (guards against stale ids after map switch/delete)
   const activeStructureLayer = useMemo(
@@ -739,6 +768,8 @@ export function MapPanel() {
           onTileContextMenu={handleTileContextMenu}
           onTilePaintStart={handleTilePaintStart}
           onTilePaintEnter={handleTilePaintEnter}
+          alignMode={aligningLayer ? { elevation: aligningLayer.elevation } : null}
+          onAlignBoxComplete={handleAlignBoxComplete}
           onModifierWheel={handleModifierWheel}
           paintHud={{
             brushSize,
@@ -910,13 +941,14 @@ export function MapPanel() {
         />
       )}
 
-      {/* Image layers dialog (GM only) */}
-      {showImageLayers && isGmMode && maps.activeMapId && (
+      {/* Image layers dialog (GM only; hidden while drawing an align box on the map) */}
+      {showImageLayers && isGmMode && maps.activeMapId && !aligningLayer && (
         <ImageLayersDialog
           map={activeMap}
           onAddLayer={(layer) => actions.mapAddImageLayer(activeMap.id, layer)}
           onUpdateLayer={(layerId, changes) => actions.mapUpdateImageLayer(activeMap.id, layerId, changes)}
           onRemoveLayer={(layerId) => actions.mapRemoveImageLayer(activeMap.id, layerId)}
+          onStartAlign={setAligningLayerId}
           onClose={() => setShowImageLayers(false)}
         />
       )}

@@ -4,7 +4,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Upload, Trash2, Eye, EyeOff, Grid3x3, Magnet, Maximize2 } from 'lucide-react';
+import { Upload, Trash2, Eye, EyeOff, Grid3x3, Magnet, Maximize2, BoxSelect } from 'lucide-react';
 import type { ImageLayerId, MapImageLayer, MapModel } from '../../../types/map';
 import { DEFAULT_TERRAIN_ELEVATION, MAX_ELEVATION } from '../../../constants/map';
 import { Modal } from '../../ui/Modal';
@@ -14,6 +14,8 @@ interface ImageLayersDialogProps {
   onAddLayer: (layer: MapImageLayer) => void;
   onUpdateLayer: (layerId: ImageLayerId, changes: Partial<Omit<MapImageLayer, 'id'>>) => void;
   onRemoveLayer: (layerId: ImageLayerId) => void;
+  /** Enter draw-a-3×3-box alignment mode on the map for this layer. */
+  onStartAlign: (layerId: ImageLayerId) => void;
   onClose: () => void;
 }
 
@@ -78,9 +80,10 @@ interface LayerCardProps {
   map: MapModel;
   onUpdateLayer: (layerId: ImageLayerId, changes: Partial<Omit<MapImageLayer, 'id'>>) => void;
   onRemoveLayer: (layerId: ImageLayerId) => void;
+  onStartAlign: (layerId: ImageLayerId) => void;
 }
 
-function LayerCard({ layer, map, onUpdateLayer, onRemoveLayer }: LayerCardProps) {
+function LayerCard({ layer, map, onUpdateLayer, onRemoveLayer, onStartAlign }: LayerCardProps) {
   // "Size to grid": how many grid cells the imported image's own printed grid
   // has — applying makes each image cell exactly one map tile.
   const [gridCols, setGridCols] = useState(() => Math.max(1, Math.round(layer.width)));
@@ -220,6 +223,15 @@ function LayerCard({ layer, map, onUpdateLayer, onRemoveLayer }: LayerCardProps)
 
       {/* Size to grid: match the image's printed grid to the tile grid */}
       <div className="flex flex-wrap items-end gap-2 rounded border border-edge/60 bg-surface-1/40 px-2 py-1.5">
+        <button
+          type="button"
+          onClick={() => onStartAlign(layer.id)}
+          className="flex items-center gap-1 rounded bg-accent-600 px-2 py-1.5 text-xs font-medium text-white hover:bg-accent-500"
+          title="Draw a box over a 3×3 block of the image's grid on the map — the image is scaled and snapped so each cell becomes one tile"
+        >
+          <BoxSelect className="h-3 w-3" />
+          Align 3×3
+        </button>
         {numberField(gridCols, handleColsChange, { label: 'Grid cols', min: 1 })}
         {numberField(gridRows, (rows) => {
           setRowsTouched(true);
@@ -228,7 +240,7 @@ function LayerCard({ layer, map, onUpdateLayer, onRemoveLayer }: LayerCardProps)
         <button
           type="button"
           onClick={applyGridSize}
-          className="flex items-center gap-1 rounded bg-accent-600 px-2 py-1.5 text-xs font-medium text-white hover:bg-accent-500"
+          className="flex items-center gap-1 rounded bg-surface-2 px-2 py-1.5 text-xs text-fg-primary hover:bg-surface-3"
           title="Scale the image so each of its grid cells is exactly one map tile, and snap its corner to a tile"
         >
           <Grid3x3 className="h-3 w-3" />
@@ -257,7 +269,7 @@ function LayerCard({ layer, map, onUpdateLayer, onRemoveLayer }: LayerCardProps)
   );
 }
 
-export function ImageLayersDialog({ map, onAddLayer, onUpdateLayer, onRemoveLayer, onClose }: ImageLayersDialogProps) {
+export function ImageLayersDialog({ map, onAddLayer, onUpdateLayer, onRemoveLayer, onStartAlign, onClose }: ImageLayersDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
@@ -341,13 +353,15 @@ export function ImageLayersDialog({ map, onAddLayer, onUpdateLayer, onRemoveLaye
               map={map}
               onUpdateLayer={onUpdateLayer}
               onRemoveLayer={onRemoveLayer}
+              onStartAlign={onStartAlign}
             />
           ))}
 
           {importError && <p className="text-xs text-danger-400">{importError}</p>}
           <p className="text-xs text-fg-faint">
-            Position and size are in tiles. If your image has its own printed grid, enter its
-            column/row count and use “Size to grid” — each image cell becomes one map tile.
+            Position and size are in tiles. To match an image&apos;s printed grid to the map, use
+            “Align 3×3”: drag a box over any 3×3 block of the image&apos;s cells and it is scaled
+            and snapped automatically. Or enter its column/row count and use “Size to grid”.
             Underlays are hidden from players while a map uses line-of-sight vision (they
             can’t be clipped to explored tiles).
           </p>

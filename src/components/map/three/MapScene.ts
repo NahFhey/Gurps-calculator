@@ -12,6 +12,7 @@ import {
   type CameraState,
 } from '../../../utils/mapSceneMath';
 import { findTileGridPos } from '../../../utils/mapUtils';
+import { ALIGN_BOX_CELLS, type AlignBox } from '../../../utils/imageAlign';
 
 export interface TilePointerEvent {
   clientX: number;
@@ -39,6 +40,11 @@ export interface MapSceneCallbacks {
    * handled; false falls through to camera zoom.
    */
   onModifierWheel?(kind: 'brush' | 'elevation', direction: 1 | -1): boolean;
+  /**
+   * An image-align drag finished: the box is in fractional world tile units
+   * (x = column, y = row, min corner). Fired only while alignMode is active.
+   */
+  onAlignBoxComplete?(box: AlignBox): void;
   onContextLost?(): void;
   onContextRestored?(): void;
 }
@@ -77,6 +83,11 @@ export interface MapSceneFrameData {
   tokens: MapToken[] | null;
   paintModeActive: boolean;
   placingToken: boolean;
+  /**
+   * Roll20-style image alignment mode: left-drag draws a 3×3 preview box on
+   * the plane at this elevation instead of painting/clicking/orbiting.
+   */
+  alignMode: { elevation: number } | null;
 }
 
 interface PickEntry {
@@ -95,6 +106,8 @@ interface PointerDrag {
   lastPaintedTileId: TileId | null;
   /** Set when the drag started on a draggable token — moves the token, not the camera. */
   tokenFrom: PickEntry | null;
+  /** Set when the drag is drawing an image-align box (world x/z of the anchor corner). */
+  alignStart: { x: number; z: number } | null;
 }
 
 const TILE_LIFT = 0.35;
@@ -120,6 +133,8 @@ export class MapScene {
   private readonly imageTextures = new Map<string, { src: string; texture: THREE.Texture }>();
   /** Round-cropped portrait textures cached by stable token id and source reference. */
   private readonly tokenImageTextures = new Map<string, { src: string; texture: THREE.CanvasTexture }>();
+  /** Live 3×3 preview rectangle while an image-align drag is in progress. */
+  private alignRectGroup: THREE.Group | null = null;
   private markerGroup: THREE.Group | null = null;
   private linkGroup: THREE.Group | null = null;
   private tokenGroup: THREE.Group | null = null;
@@ -176,6 +191,9 @@ export class MapScene {
       || oldData.tokens !== data.tokens;
     if (rebuildTiles) this.rebuildWorld();
     else this.rebuildOverlays();
+    if (!data.alignMode) this.clearAlignRect();
+    if (data.alignMode) this.canvas.style.cursor = 'crosshair';
+    else if (this.canvas.style.cursor === 'crosshair') this.canvas.style.cursor = '';
     this.applyCamera();
     this.saveCamera(this.data.map.id);
     this.needsRender = true;
@@ -211,6 +229,7 @@ export class MapScene {
     if (this.data) this.saveCamera(this.data.map.id);
     cancelAnimationFrame(this.animationFrame);
     this.unbindEvents();
+    this.clearAlignRect();
     this.disposeWorld();
     for (const entry of this.imageTextures.values()) entry.texture.dispose();
     this.imageTextures.clear();
@@ -304,8 +323,15 @@ export class MapScene {
       dragged: false,
       lastPaintedTileId: null,
       tokenFrom: null,
+      alignStart: null,
     };
-    if (event.button === 0 && this.data?.paintModeActive) {
+    if (event.button === 0 && this.data?.alignMode) {
+      const point = this.pickGroundPoint(event.clientX, event.clientY);
+      if (point) {
+        this.pointerDrag.alignStart = point;
+        this.beginAlignRect();
+      }
+    } else if (event.button === 0 && this.data?.paintModeActive) {
       const hit = this.pick(event.clientX, event.clientY);
       if (hit) {
         this.pointerDrag.lastPaintedTileId = hit.tileId;
@@ -330,7 +356,10 @@ export class MapScene {
     const totalDy = event.clientY - drag.startY;
     if (Math.hypot(totalDx, totalDy) > DRAG_THRESHOLD) drag.dragged = true;
 
-    if (drag.button === 0 && this.data?.paintModeActive) {
+    if (drag.alignStart) {
+      const point = this.pickGroundPoint(event.clientX, event.clientY);
+      if (point) this.updateAlignRect(drag.alignStart, point);
+    } else if (drag.button === 0 && this.data?.paintModeActive) {
       const hit = this.pick(event.clientX, event.clientY);
       if (hit && hit.tileId !== drag.lastPaintedTileId) {
         drag.lastPaintedTileId = hit.tileId;
@@ -376,7 +405,19 @@ export class MapScene {
     if (!drag) return;
     this.canvas.releasePointerCapture?.(event.pointerId);
     if (drag.tokenFrom) this.canvas.style.cursor = '';
-    if (drag.tokenFrom && drag.dragged) {
+    if (drag.alignStart) {
+      const point = this.pickGroundPoint(event.clientX, event.clientY);
+      this.clearAlignRect();
+      // alignMode may have been cancelled (Esc) mid-drag — don't report then.
+      if (point && this.data?.alignMode) {
+        this.callbacks.onAlignBoxComplete?.({
+          x: Math.min(drag.alignStart.x, point.x),
+          y: Math.min(drag.alignStart.z, point.z),
+          width: Math.abs(point.x - drag.alignStart.x),
+          height: Math.abs(point.z - drag.alignStart.z),
+        });
+      }
+    } else if (drag.tokenFrom && drag.dragged) {
       const hit = this.pick(event.clientX, event.clientY);
       if (hit && hit.tileId !== drag.tokenFrom.tileId) {
         this.callbacks.onTokenDrop?.(drag.tokenFrom, hit);
@@ -425,6 +466,90 @@ export class MapScene {
     const hit = this.raycaster.intersectObject(this.tileMesh, false)[0];
     if (hit?.instanceId === undefined) return null;
     return this.pickEntries[hit.instanceId] ?? null;
+  }
+
+  /** Height of the plane the align box is drawn on (same floor formula as image layers). */
+  private alignPlaneHeight(): number {
+    const elevation = this.data?.alignMode?.elevation ?? 0;
+    return Math.max(elevation * TILE_LIFT, BASE_PLATE) + 0.02;
+  }
+
+  /** Intersect the pointer ray with the horizontal align plane → fractional world coords. */
+  private pickGroundPoint(clientX: number, clientY: number): { x: number; z: number } | null {
+    const rect = this.canvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+    this.pointerNdc.set(
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -((clientY - rect.top) / rect.height) * 2 + 1
+    );
+    this.raycaster.setFromCamera(this.pointerNdc, this.camera);
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -this.alignPlaneHeight());
+    const target = new THREE.Vector3();
+    return this.raycaster.ray.intersectPlane(plane, target)
+      ? { x: target.x, z: target.z }
+      : null;
+  }
+
+  private beginAlignRect(): void {
+    this.clearAlignRect();
+    const group = new THREE.Group();
+
+    // Translucent fill spanning 0..1 in x/z so nonuniform group scale shapes it.
+    const fillGeometry = new THREE.PlaneGeometry(1, 1);
+    fillGeometry.rotateX(-Math.PI / 2);
+    fillGeometry.translate(0.5, 0, 0.5);
+    const fill = new THREE.Mesh(fillGeometry, new THREE.MeshBasicMaterial({
+      color: '#60a5fa',
+      transparent: true,
+      opacity: 0.18,
+      depthTest: false,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    }));
+    fill.renderOrder = 2000;
+    group.add(fill);
+
+    // 3×3 cell lines so the user can match them against the image's printed grid.
+    const points: number[] = [];
+    for (let index = 0; index <= ALIGN_BOX_CELLS; index += 1) {
+      const t = index / ALIGN_BOX_CELLS;
+      points.push(t, 0, 0, t, 0, 1);
+      points.push(0, 0, t, 1, 0, t);
+    }
+    const lineGeometry = new THREE.BufferGeometry();
+    lineGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(points), 3));
+    const lines = new THREE.LineSegments(lineGeometry, new THREE.LineBasicMaterial({
+      color: '#93c5fd',
+      transparent: true,
+      opacity: 0.9,
+      depthTest: false,
+    }));
+    lines.renderOrder = 2001;
+    group.add(lines);
+
+    group.position.y = this.alignPlaneHeight();
+    group.visible = false;
+    this.alignRectGroup = group;
+    this.scene.add(group);
+  }
+
+  private updateAlignRect(start: { x: number; z: number }, current: { x: number; z: number }): void {
+    const group = this.alignRectGroup;
+    if (!group) return;
+    const width = Math.abs(current.x - start.x);
+    const depth = Math.abs(current.z - start.z);
+    group.visible = width > 0.01 && depth > 0.01;
+    group.position.x = Math.min(start.x, current.x);
+    group.position.z = Math.min(start.z, current.z);
+    group.scale.set(Math.max(width, 0.001), 1, Math.max(depth, 0.001));
+    this.needsRender = true;
+  }
+
+  private clearAlignRect(): void {
+    if (!this.alignRectGroup) return;
+    this.disposeGroup(this.alignRectGroup);
+    this.alignRectGroup = null;
+    this.needsRender = true;
   }
 
   private restoreOrFrameCamera(): void {
@@ -995,6 +1120,10 @@ export class MapScene {
       } else if (object instanceof THREE.Sprite) {
         materials.add(object.material);
         if (object.material.userData.disposeMap && object.material.map) object.material.map.dispose();
+      } else if (object instanceof THREE.Line) {
+        geometries.add(object.geometry);
+        const objectMaterials = Array.isArray(object.material) ? object.material : [object.material];
+        objectMaterials.forEach((material) => materials.add(material));
       }
     });
     geometries.forEach((geometry) => geometry.dispose());

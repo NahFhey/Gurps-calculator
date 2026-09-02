@@ -9,6 +9,7 @@ import {
   type TilePointerEvent,
   type TokenDragTile,
 } from '../three/MapScene';
+import type { AlignBox } from '../../../utils/imageAlign';
 
 interface Map3DViewProps {
   map: MapModel;
@@ -36,6 +37,10 @@ interface Map3DViewProps {
   onModifierWheel?: (kind: 'brush' | 'elevation', direction: 1 | -1) => boolean;
   /** Shown in the paint HUD while paint mode is active. */
   paintHud?: { brushSize: number; brushShape: string; elevationLabel: string } | null;
+  /** Image-align mode: left-drag draws a 3×3 box at this elevation's plane. */
+  alignMode?: { elevation: number } | null;
+  /** The align drag finished; box is in fractional tile units (min corner). */
+  onAlignBoxComplete?: (box: AlignBox) => void;
 }
 
 interface HoverInfo {
@@ -77,6 +82,7 @@ export function Map3DView(props: Map3DViewProps) {
       onTokenDrop: (from, to) => propsRef.current.onTokenDrop?.(from, to),
       onModifierWheel: (kind, direction) =>
         propsRef.current.onModifierWheel?.(kind, direction) ?? false,
+      onAlignBoxComplete: (box) => propsRef.current.onAlignBoxComplete?.(box),
       onContextLost: () => setUnavailable(true),
       onContextRestored: () => setUnavailable(false),
     };
@@ -115,6 +121,7 @@ export function Map3DView(props: Map3DViewProps) {
       tokens: props.tokens ?? null,
       paintModeActive: props.paintModeActive,
       placingToken: props.placingToken,
+      alignMode: props.alignMode ?? null,
     });
   }, [
     props.map,
@@ -127,6 +134,7 @@ export function Map3DView(props: Map3DViewProps) {
     props.tokens,
     props.paintModeActive,
     props.placingToken,
+    props.alignMode,
     sceneReady,
   ]);
 
@@ -143,6 +151,17 @@ export function Map3DView(props: Map3DViewProps) {
       {unavailable && (
         <div role="alert" className="absolute inset-x-4 top-4 z-20 rounded border border-danger-500/60 bg-danger-950/90 px-4 py-3 text-sm text-danger-200">
           3D map unavailable — WebGL could not start.
+        </div>
+      )}
+      {props.alignMode && (
+        <div
+          className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center"
+          data-testid="align-hud"
+        >
+          <div className="rounded-md border border-accent-500/60 bg-surface-0/90 px-4 py-2 text-sm text-fg-primary shadow-lg">
+            Drag a box over a <span className="font-semibold">3×3 block</span> of the image&apos;s grid
+            <span className="ml-2 text-fg-faint">Esc to cancel</span>
+          </div>
         </div>
       )}
       {props.paintModeActive && props.paintHud && (

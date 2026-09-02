@@ -25,16 +25,18 @@ function mount(layer: MapImageLayer) {
   const map = createNewMap({ name: 'M', scaleMilesPerTile: 12, startTerrainId: 'terrain-plains' });
   map.imageLayers = [layer];
   const onUpdateLayer = vi.fn();
+  const onStartAlign = vi.fn();
   render(
     <ImageLayersDialog
       map={map}
       onAddLayer={vi.fn()}
       onUpdateLayer={onUpdateLayer}
       onRemoveLayer={vi.fn()}
+      onStartAlign={onStartAlign}
       onClose={vi.fn()}
     />
   );
-  return { map, onUpdateLayer };
+  return { map, onUpdateLayer, onStartAlign };
 }
 
 describe('ImageLayersDialog size-to-grid', () => {
@@ -83,5 +85,13 @@ describe('ImageLayersDialog size-to-grid', () => {
     mount(makeLayer({ width: 12, height: 9 }));
     expect(screen.getByLabelText(/grid cols/i)).toHaveValue(12);
     expect(screen.getByLabelText(/grid rows/i)).toHaveValue(9);
+  });
+
+  it('starts align mode for the layer when Align 3×3 is clicked', () => {
+    const { onStartAlign } = mount(makeLayer());
+
+    fireEvent.click(screen.getByRole('button', { name: /align 3×3/i }));
+
+    expect(onStartAlign).toHaveBeenCalledWith('img-1');
   });
 });
