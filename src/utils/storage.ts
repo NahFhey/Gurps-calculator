@@ -1,8 +1,11 @@
 /**
- * localStorage wrapper with async API
- * Designed to be easily swappable with a backend API later
+ * Key-value storage wrapper with async API.
  *
- * Migration path: Replace this implementation with fetch() calls to Express backend
+ * Backend: IndexedDB when available (quota in the GBs — a 162×145 map with
+ * image layers burst localStorage's ~5MB cap, 2026-09-02), falling back to
+ * localStorage where IndexedDB is missing (jsdom tests, sandboxed contexts).
+ * Values already in localStorage are migrated to IndexedDB lazily on first
+ * read and the localStorage copy is removed to free the origin quota.
  *
  * Schema Versioning:
  * - Automatically handles data migrations on load
@@ -31,6 +34,140 @@ export interface Storage {
 }
 
 // ============================================================================
+// IndexedDB backend (localStorage fallback)
+// ============================================================================
+
+const DB_NAME = 'gurps-vtt-storage';
+const DB_STORE = 'kv';
+
+/** Memoized connection; resolves null when IndexedDB is unusable → localStorage fallback. */
+let dbPromise: Promise<IDBDatabase | null> | null = null;
+
+function openDatabase(): Promise<IDBDatabase | null> {
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve) => {
+    if (typeof indexedDB === 'undefined') {
+      resolve(null);
+      return;
+    }
+    try {
+      const request = indexedDB.open(DB_NAME, 1);
+      request.onupgradeneeded = () => {
+        request.result.createObjectStore(DB_STORE);
+      };
+      request.onsuccess = () => {
+        const db = request.result;
+        // If the connection dies (e.g. user clears site data), reconnect lazily.
+        db.onclose = () => {
+          dbPromise = null;
+        };
+        resolve(db);
+      };
+      request.onerror = () => {
+        logger.warn('[Storage] IndexedDB unavailable, falling back to localStorage', request.error);
+        resolve(null);
+      };
+      request.onblocked = () => resolve(null);
+    } catch (error) {
+      logger.warn('[Storage] IndexedDB open threw, falling back to localStorage', error);
+      resolve(null);
+    }
+  });
+  return dbPromise;
+}
+
+function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error ?? new Error('IndexedDB request failed'));
+  });
+}
+
+/** Resolves when the request's transaction has durably completed. */
+function writeToPromise(request: IDBRequest): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const transaction = request.transaction;
+    if (!transaction) {
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error ?? new Error('IndexedDB write failed'));
+      return;
+    }
+    transaction.oncomplete = () => resolve();
+    transaction.onabort = () => reject(transaction.error ?? new Error('IndexedDB transaction aborted'));
+    transaction.onerror = () => reject(transaction.error ?? new Error('IndexedDB transaction failed'));
+  });
+}
+
+async function backendGet(key: string): Promise<string | null> {
+  const db = await openDatabase();
+  if (!db) return localStorage.getItem(key);
+  const stored = await requestToPromise(
+    db.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).get(key)
+  );
+  if (typeof stored === 'string') return stored;
+  // Lazy one-time migration of a pre-IndexedDB value. The localStorage copy is
+  // removed only after the IndexedDB write has durably committed.
+  const legacy = localStorage.getItem(key);
+  if (legacy !== null) {
+    try {
+      await writeToPromise(
+        db.transaction(DB_STORE, 'readwrite').objectStore(DB_STORE).put(legacy, key)
+      );
+      localStorage.removeItem(key);
+      logger.log(`[Storage] Migrated "${key}" from localStorage to IndexedDB (${legacy.length} chars)`);
+    } catch (error) {
+      logger.warn(`[Storage] Migration of "${key}" to IndexedDB failed; serving localStorage copy`, error);
+    }
+    return legacy;
+  }
+  return null;
+}
+
+async function backendSet(key: string, value: string): Promise<void> {
+  const db = await openDatabase();
+  if (!db) {
+    localStorage.setItem(key, value);
+    return;
+  }
+  await writeToPromise(
+    db.transaction(DB_STORE, 'readwrite').objectStore(DB_STORE).put(value, key)
+  );
+  // A stale pre-migration copy must not shadow newer IndexedDB data if the
+  // database is ever cleared, and it wastes the origin's localStorage quota.
+  if (localStorage.getItem(key) !== null) localStorage.removeItem(key);
+}
+
+async function backendRemove(key: string): Promise<void> {
+  const db = await openDatabase();
+  if (db) {
+    await writeToPromise(
+      db.transaction(DB_STORE, 'readwrite').objectStore(DB_STORE).delete(key)
+    );
+  }
+  localStorage.removeItem(key);
+}
+
+async function backendClear(): Promise<void> {
+  const db = await openDatabase();
+  if (db) {
+    await writeToPromise(
+      db.transaction(DB_STORE, 'readwrite').objectStore(DB_STORE).clear()
+    );
+  }
+  localStorage.clear();
+}
+
+async function backendKeys(): Promise<string[]> {
+  const db = await openDatabase();
+  const local = Object.keys(localStorage);
+  if (!db) return local;
+  const idbKeys = await requestToPromise(
+    db.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).getAllKeys()
+  );
+  return Array.from(new Set([...idbKeys.map(String), ...local]));
+}
+
+// ============================================================================
 // Storage Implementation
 // ============================================================================
 
@@ -48,7 +185,7 @@ const storage: Storage = {
    */
   async get(key: string, migrations: boolean = true): Promise<StorageGetResult | null> {
     try {
-      const value = localStorage.getItem(key);
+      const value = await backendGet(key);
       if (value === null) {
         return null;
       }
@@ -101,7 +238,7 @@ const storage: Storage = {
 
       return { value };
     } catch (error) {
-      console.error(`localStorage.get error for key "${key}":`, error);
+      console.error(`storage.get error for key "${key}":`, error);
       return null;
     }
   },
@@ -117,7 +254,7 @@ const storage: Storage = {
    */
   async set(key: string, value: string, trackVersion: boolean = true): Promise<void> {
     try {
-      localStorage.setItem(key, value);
+      await backendSet(key, value);
 
       // Track schema version when saving main state
       if (trackVersion && (key === 'appState' || key === 'gmState')) {
@@ -126,14 +263,14 @@ const storage: Storage = {
     } catch (error) {
       // Handle quota exceeded errors gracefully
       if (error instanceof Error && error.name === 'QuotaExceededError') {
-        console.error('localStorage quota exceeded. Consider clearing old data.');
+        console.error('Storage quota exceeded. Consider clearing old data.');
         if (!quotaAlertShown) {
           quotaAlertShown = true;
           // Dispatch a custom event so the UI can show a proper banner
           window.dispatchEvent(new CustomEvent('storage-quota-exceeded'));
         }
       } else {
-        console.error(`localStorage.set error for key "${key}":`, error);
+        console.error(`storage.set error for key "${key}":`, error);
       }
       throw error;
     }
@@ -145,9 +282,9 @@ const storage: Storage = {
    */
   async remove(key: string): Promise<void> {
     try {
-      localStorage.removeItem(key);
+      await backendRemove(key);
     } catch (error) {
-      console.error(`localStorage.remove error for key "${key}":`, error);
+      console.error(`storage.remove error for key "${key}":`, error);
       throw error;
     }
   },
@@ -157,9 +294,9 @@ const storage: Storage = {
    */
   async clear(): Promise<void> {
     try {
-      localStorage.clear();
+      await backendClear();
     } catch (error) {
-      console.error('localStorage.clear error:', error);
+      console.error('storage.clear error:', error);
       throw error;
     }
   },
@@ -170,9 +307,9 @@ const storage: Storage = {
    */
   async keys(): Promise<string[]> {
     try {
-      return Object.keys(localStorage);
+      return await backendKeys();
     } catch (error) {
-      console.error('localStorage.keys error:', error);
+      console.error('storage.keys error:', error);
       return [];
     }
   }

@@ -344,6 +344,12 @@ export function expandMap(
     cols: newCols,
     grid: newGrid,
     tilesById: newTilesById,
+    // Image layers are positioned in grid coordinates, so prepending rows or
+    // columns shifts the origin out from under them — offset to keep each
+    // image locked to the same terrain.
+    imageLayers: (top > 0 || left > 0) && map.imageLayers
+      ? map.imageLayers.map((layer) => ({ ...layer, x: layer.x + left, y: layer.y + top }))
+      : map.imageLayers,
   };
 }
 
