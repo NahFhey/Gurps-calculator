@@ -157,4 +157,4 @@ This project is built largely with AI coding agents. Implementation specs go to 
 
 ## License
 
-No license file has been added yet. All rights reserved until one is chosen.
+[MIT](LICENSE)

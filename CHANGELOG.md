@@ -1,6 +1,49 @@
 # Changelog
 
-All notable changes to the GURPS Party Management Tool are documented in this file.
+All notable changes to GURPS VTT are documented in this file. Day-to-day status lives in [ROADMAP.md](ROADMAP.md); this file records release-level summaries.
+
+## [3.0.0] - 2026-09-02
+
+The project became a full virtual tabletop. Everything below shipped between 2026-03 and 2026-09 across roadmap Phases 10 to 15.
+
+### Combat
+- Full tactical combat tracker: initiative, maneuvers, hit locations, active defenses, conditions, injury resolution
+- Injury persistence back to the character: conditions, crippled limbs, death
+- Consumables from inventory mid-combat
+- Participants placed on a linked battle map; maneuver rail during combat
+
+### Characters
+- GCS import with validation, diff preview, non-destructive update, batch party import
+- Templates, NPC generator, comparison view
+- Earned-points economy: awards, ledger, spend cart
+- Inventory to sheet equipment bridge
+
+### Map and travel
+- three.js hex map with per-tile elevation and terrain painting
+- Imported battlemap image layers: size-to-grid, snapping, Roll20-style 3x3 align
+- Structure layers, markers, hidden locations with discovery, cross-map portals
+- Group and vehicle tokens; per-map climate and weather
+- Travel wizard running journeys with navigation rolls, drift, and terrain-keyed event tables
+
+### Downtime and activities
+- Unified downtime system sharing one time system with travel
+- Crafting, alchemy, cooking, fishing, foraging, mining, with activity chaining
+- Rest resolves into real HP and FP recovery
+- Study, social influence with a relationship ledger, trading
+- Owner-attributed holdings, take-from-shared, attunement, dietary restrictions
+
+### Multiplayer and desktop
+- Electron desktop app embedding the server; players join over the LAN from a browser
+- JWT-authenticated Socket.IO server with rate limiting and sql.js persistence
+- GM mode with player-safe visibility
+- Player assignment panel and connection dialog
+
+### Platform
+- Full TypeScript migration of `src/`
+- IndexedDB persistence with localStorage fallback and a cross-tab overwrite guard
+- Global undo/redo, keyboard shortcuts, notifications, theme tokens, shared Modal primitive
+- Entry bundle reduced from 2,061KB to 450KB
+- Licensed under MIT
 
 ## [2.5.0] - 2025-01-XX
 

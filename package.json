@@ -1,7 +1,8 @@
 {
   "name": "gurps-party-tool",
-  "version": "2.5.0",
-  "description": "GURPS Party Management Tool - Inventory, Cooking, Crafting, Alchemy, Gathering & Performance Monitoring",
+  "version": "3.0.0",
+  "description": "GURPS VTT - virtual tabletop and campaign manager: combat, characters, hex map and travel, downtime activities, inventory, multiplayer",
+  "license": "MIT",
   "main": "src/App.jsx",
   "type": "module",
   "engines": {

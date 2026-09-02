@@ -1,5 +1,5 @@
 // Version and changelog information
-export const VERSION = '2.5.0';
+export const VERSION = '3.0.0';
 
 export interface ChangelogCategory {
   category: string;
@@ -14,6 +14,72 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '3.0.0',
+    date: '2026-09-02',
+    title: 'GURPS VTT: combat, characters, map & travel, downtime, multiplayer',
+    changes: [
+      {
+        category: 'Combat (Phase 11, 15a)',
+        items: [
+          'Full tactical combat tracker: initiative, maneuvers, hit locations, active defenses, conditions',
+          'Injury persistence: conditions, crippled limbs and death carry back to the character',
+          'Consumables usable from inventory mid-combat',
+          'Participants placed on a linked battle map; dedicated maneuver rail during combat'
+        ]
+      },
+      {
+        category: 'Characters (Phase 12)',
+        items: [
+          'GCS import with validation, diff preview, non-destructive update and batch party import',
+          'Character templates, NPC generator and comparison view',
+          'Earned-points economy: awards, ledger and spend cart',
+          'Inventory to sheet equipment bridge'
+        ]
+      },
+      {
+        category: 'Map & travel (Phase 14, 15c)',
+        items: [
+          'three.js hex map with per-tile elevation heightfield and terrain painting',
+          'Imported battlemap image layers with size-to-grid, snapping and Roll20-style 3x3 align',
+          'Structure layers, markers, hidden locations with discovery, cross-map portals',
+          'Group and vehicle tokens, per-map climate and weather',
+          'Travel wizard: journeys with navigation rolls, drift and terrain-keyed event tables',
+          'Right-drag pans, middle-drag rotates; map storage moved to IndexedDB'
+        ]
+      },
+      {
+        category: 'Downtime & activities (Phase 13)',
+        items: [
+          'Unified downtime system sharing one time system with travel',
+          'Crafting, alchemy, cooking, fishing, foraging and mining with activity chaining',
+          'Rest resolves into real HP and FP recovery',
+          'Study, social influence with relationship ledger, and trading',
+          'Owner-attributed material holdings, take-from-shared, attunement, dietary restrictions'
+        ]
+      },
+      {
+        category: 'Multiplayer & desktop (Phase 10.5, 16)',
+        items: [
+          'Electron desktop app embedding the multiplayer server; players join over the LAN',
+          'JWT-authenticated Socket.IO server with rate limiting and sql.js persistence',
+          'GM mode with player-safe visibility for conditions, hazards, hidden pins and weather',
+          'Player assignment panel and connection dialog'
+        ]
+      },
+      {
+        category: 'Platform & polish (Phase 10, 15)',
+        items: [
+          'Full TypeScript migration of src/',
+          'IndexedDB persistence with localStorage fallback and cross-tab overwrite guard',
+          'Global undo/redo, keyboard shortcuts (Alt+1..7, ?), notifications',
+          'Theme tokens and a shared Modal primitive',
+          'Entry bundle cut from 2,061KB to 450KB; ~4,200 tests',
+          'Project relicensed under MIT'
+        ]
+      }
+    ]
+  },
   {
     version: '2.5.0',
     date: '2026-01-23',
