@@ -437,6 +437,28 @@ Three fixes out of the "Map tab wiped / maps missing after reload" investigation
 
 **Goal:** Grow the map from a heightfield + decorative slabs into a battlemap with real interiors and tactical geometry. Everything here is an unscoped idea — grill-me + prototype before any implementation (same discipline as 15c).
 
+### 17a. Room-stamp composer (design session 2026-09-03 — ordered slice, the first concrete path through this phase)
+
+**Source:** review of Czepeku Architect (room-by-room battlemap builder). Its lesson is a middle path between generated-and-frozen maps (one-page dungeon generators) and hand-placing every prop (Inkarnate): pre-drawn *room images with a tile footprint*, composed on a background, with cheap shape editing, doors as edge toggles, and a measure-to-fit tool. The composer is the product; the art is the user's (their Czepeku/other subscription, sliced into stamps, or CC0 tile sets). We do not ship anyone's rooms.
+
+**What it reuses:** `MapImageLayer` (`src/types/map.ts:197`) already carries x/y/width/height in tile units, underlay/overlay placement, Snap/Fit/Size-to-grid and Align 3×3. The terrain brush already edits tile sets. `revealedTileIds` + Bresenham LOS (`src/utils/lineOfSight.ts`) is the vision pipeline walls plug into.
+
+**What it deliberately skips:** object-level editing inside a room (Inkarnate territory; Czepeku hasn't built it either), procedural dungeon generation (different problem), free-form drawing.
+
+**Ordered slice — each step ships on its own:**
+
+1. **Asset store separation** (prerequisite, standalone win). Images are base64 inside the campaign blob and sync by whole-state upload (`src/net/SyncProvider.tsx:102`); even a few dozen room images makes that unusable, and a single 4.5 MB map already forced the IndexedDB move. Assets get their own IndexedDB store keyed by content hash; campaign state references them by id; players fetch lazily by id (new asset endpoint on the relay). Closes the "delta sync" gap for images.
+2. **Rotate (90° steps), mirror, lock on image layers.** None exist today. Lock is the one users ask for first once layers stack.
+3. **Footprints + shape editing.** Each image layer gets an optional footprint (set of tiles, default = bounding box). Add/remove tiles with the existing brush model. Overlap of two footprints renders a checkerboard hint (Czepeku's cue). Footprint, not bbox, drives snapping.
+4. **Edge walls and doors, wall-aware LOS.** Every footprint boundary edge is a wall; a shared edge between two footprints is an interior wall; double-click cycles wall → door → open. Remove all walls on a shared edge and two rooms merge. Doors carry open/closed/locked. This is the tile-native answer to the "walls, doors, objects as first-class entities" item below (edges, not free geometry) and slots into the Bresenham LOS as edge blocking. Objects/obstacles as tile-filling entities stay a later item.
+5. **Stamp library panel + measure-to-fit.** User-imported images tagged by category (background / room / hallway / stairs) with their footprint size. Drag a box on the map → library filters to stamps whose footprint fits. Import flow slices a larger image into a stamp by tile rectangle.
+
+**Blockers it depends on (both already listed below):** the **tactical scale tier** (1 yd/square — stamps only make sense there; the hex-vs-square presentation question must land first) and, for multi-floor buildings, **linked maps** as the second-floor mechanism.
+
+**Prototype before implementing:** step 3 + 4 together on a throwaway branch — the feel of footprint editing and door toggling is the whole design risk. Steps 1 and 2 can go straight to codex-shepherd.
+
+### 17b. Parked ideas (2026-09-01/02, unscoped)
+
 - **Hollow/cave tool** (Devin, 2026-09-01): the ground grid is a heightfield (one elevation per tile), so "erase between elevations 1 and 5" is unrepresentable as subtraction — but the same end state is expressible today as floor (low ground) + roof (StructureLayer slab, e.g. base 6 × 4 levels) + walls (high ground columns). The tool would be sugar: select high columns, "hollow N–M," and it rewrites them as ground + roof slab. Roof `visible` toggle = lift-the-roof dungeon play.
 - **Walls, doors, and objects/obstacles as first-class map entities**: nothing in the model represents them today (only terrain columns, structure slabs, markers, image layers). Design questions: sub-tile walls (edges) vs tile-filling obstacles; doors as state-carrying (open/closed/locked); furniture/cover objects; who authors them (GM paint mode?) and player visibility.
 - **StructureLayer v2 — tactical semantics**: v1 slabs are explicitly visual-only (`src/types/map.ts` note) — no travel routing, no line-of-sight. Caves/interiors only become *play* spaces once slabs and walls block LOS and pathing.
