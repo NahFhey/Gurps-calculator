@@ -367,7 +367,7 @@ describe('exportImport', () => {
   describe('exportUnlocked and importFile', () => {
     it('re-imports an unlocked campaign export', async () => {
       const exported: UnlockedExportData =
-        exportUnlocked(createCampaignState());
+        await exportUnlocked(createCampaignState());
       const result: ImportResult = await importFile(JSON.stringify(exported));
 
       expect(result.ok).toBe(true);

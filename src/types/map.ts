@@ -11,6 +11,9 @@ import type { ActiveWeather, ClimateType, Id } from './location';
 // TYPE ALIASES
 // ============================================================================
 
+/** SHA-256 of asset bytes: 64 lowercase hexadecimal characters. */
+export type AssetId = string;
+
 /** Unique identifier for a map */
 export type MapId = string;
 
@@ -192,13 +195,16 @@ export type ImageLayerPlacement = 'underlay' | 'overlay';
 
 /**
  * An imported image (e.g. a battlemap) positioned on the map grid.
- * Stored as a base64 data URL, downscaled on import.
+ * After ingestion a layer has assetId or src, never neither.
  */
 export interface MapImageLayer {
   id: ImageLayerId;
   name: string;
-  /** Base64 data URL of the (downscaled) image */
-  src: string;
+  /** Content hash of the image bytes in the asset store. */
+  assetId?: AssetId;
+  mime?: string;
+  /** Legacy inline data URL. Ingested into the asset store on load/import; new layers never set it. */
+  src?: string;
   placement: ImageLayerPlacement;
   /** Render opacity, 0..1 */
   opacity: number;

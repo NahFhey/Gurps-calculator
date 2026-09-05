@@ -14,6 +14,12 @@
  * @module utils/exportImport
  */
 
+import type { AssetId } from '../types/map';
+import type { AssetStore } from '../assets/assetStore';
+import { getAssetStore } from '../assets/assetStore';
+import { collectReferencedAssetIds, ingestInlineImageLayers } from '../assets/assetMigration';
+import { parseDataUrl, toDataUrl } from '../assets/dataUrl';
+import { sha256Hex } from '../assets/sha256';
 import { encryptJSON, decryptJSON, validateGMLock, type GMLock, type EncryptOptions } from './cryptoLock';
 import {
   CURRENT_SCHEMA_VERSION,
@@ -238,7 +244,10 @@ export type SplitStateResult = CampaignSplitStateResult | LegacySplitStateResult
 export type ExportPublicPayload = SerializedCampaignState | LegacyPublicState;
 export type ExportGMPayload = SerializedCampaignState | LegacyGMPayload;
 
+export type ExportAssets = Record<AssetId, { mime: string; base64: string }>;
+
 interface ExportEnvelopeMetadata {
+  assets?: ExportAssets;
   schemaVersion: string;
   exportDate: string;
   migrationInfo?: MigrationInfo;
@@ -259,6 +268,7 @@ export interface LockedExportData extends ExportEnvelopeMetadata {
 export type ExportData = UnlockedExportData | LockedExportData;
 
 export interface CampaignImportEnvelope {
+  assets?: ExportAssets;
   schemaVersion: string | number;
   exportDate?: string;
   exportType?: string;
@@ -578,19 +588,50 @@ export function mergeGM(publicState: unknown, gmPayload: unknown): unknown {
   return merged;
 }
 
+/** Embed each referenced asset once, including checkpoint-only references. Missing assets stay dangling. */
+export async function collectExportAssets(
+  state: CampaignState | LegacyCampaignState, store: AssetStore = getAssetStore(),
+): Promise<ExportAssets> {
+  const assets: ExportAssets = {};
+  if (!isCampaignState(state)) return assets;
+  for (const id of collectReferencedAssetIds(state)) {
+    const record = await store.get(id);
+    if (record) assets[id] = { mime: record.mime, base64: toDataUrl(record.bytes, record.mime).split(',')[1] };
+  }
+  return assets;
+}
+
+async function ingestExportAssets(assets: ExportAssets | undefined): Promise<void> {
+  if (!assets) return;
+  const store = getAssetStore();
+  for (const [id, asset] of Object.entries(assets)) {
+    const decoded = parseDataUrl(`data:${asset.mime};base64,${asset.base64}`);
+    // Verify before put: a corrupt entry must not leave unreferenced bytes in storage.
+    if (!decoded || await sha256Hex(decoded.bytes) !== id) continue;
+    await store.put(decoded.bytes, decoded.mime);
+  }
+}
+
+async function ingestImportPayload(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+  if (!isCampaignState(payload)) return payload;
+  const { state } = await ingestInlineImageLayers(payload);
+  return state as unknown as Record<string, unknown>;
+}
+
 /**
  * Exports full application state as unlocked JSON.
  * WARNING: Contains all GM data in plaintext. For GM use only.
  */
-export function exportUnlocked(
+export async function exportUnlocked(
   state: CampaignState | LegacyCampaignState
-): UnlockedExportData {
+): Promise<UnlockedExportData> {
   const { public: publicData, gm: gmData } = splitState(state);
 
   return {
     schemaVersion: SCHEMA_VERSION,
     exportDate: new Date().toISOString(),
     exportType: 'unlocked',
+    assets: await collectExportAssets(state),
     public: publicData,
     gm: gmData
   };
@@ -613,6 +654,7 @@ export async function exportLocked(
     schemaVersion: SCHEMA_VERSION,
     exportDate: new Date().toISOString(),
     exportType: 'locked',
+    assets: await collectExportAssets(state),
     public: publicData,
     gmLock: gmLock
   };
@@ -768,10 +810,11 @@ export async function importFile(jsonInput: unknown): Promise<ImportResult> {
 
     const migrated = migrateImport(importData);
 
+    await ingestExportAssets(migrated.assets);
     const sanitized = {
       ...migrated,
-      public: stripSchemaVersion(migrated.public),
-      ...(migrated.gm ? { gm: stripSchemaVersion(migrated.gm) } : {})
+      public: await ingestImportPayload(stripSchemaVersion(migrated.public)),
+      ...(migrated.gm ? { gm: await ingestImportPayload(stripSchemaVersion(migrated.gm)) } : {})
     };
 
     if (migrated.exportType === 'locked') {
@@ -816,7 +859,8 @@ export async function unlockGMData(
 
   try {
     const gmData = await decryptJSON(envelope.gmLock, password);
-    return { ok: true, gmData };
+    return { ok: true, gmData: isCampaignState(gmData)
+      ? (await ingestInlineImageLayers(gmData)).state : gmData };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return { ok: false, error: message };

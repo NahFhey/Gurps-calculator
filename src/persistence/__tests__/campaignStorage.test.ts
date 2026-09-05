@@ -1,4 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { createMemoryAssetStore, getAssetStore, setAssetStoreForTests } from '../../assets/assetStore';
+import { imageState } from '../../assets/__tests__/fixtures';
+
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCampaignState } from '../../state/campaignReducer';
 import {
   loadCampaignState,
@@ -8,6 +11,14 @@ import {
 } from '../campaignStorage';
 import type { CombatCharacter, CombatSession, CombatItem } from '../../types/campaign';
 import type { CombatState } from '../../types/combatTracker';
+
+beforeAll(async () => {
+  if (!globalThis.crypto?.subtle) {
+    const { webcrypto } = await import('node:crypto');
+    Object.defineProperty(globalThis, 'crypto', { value: webcrypto, configurable: true });
+  }
+});
+afterEach(() => { setAssetStoreForTests(null); vi.restoreAllMocks(); });
 
 // ============================================================================
 // TEST FIXTURES
@@ -84,8 +95,33 @@ function createMockCombatItem(overrides: Record<string, unknown> = {}): CombatIt
 
 describe('campaignStorage', () => {
   beforeEach(() => {
+    setAssetStoreForTests(createMemoryAssetStore());
     localStorage.clear();
     resetRevisionGuard();
+  });
+
+  it('ingests inline map images on load and saves the rewritten state for the next load', async () => {
+    const { state, map } = imageState();
+    await saveCampaignState(state);
+    const orphan = await getAssetStore().put(new Uint8Array([9]), 'image/jpeg');
+    const loaded = await loadCampaignState();
+    expect(await getAssetStore().has(orphan)).toBe(false);
+    const layer = loaded.maps.mapsById[map.id].imageLayers![0];
+    expect(layer.assetId).toMatch(/^[a-f0-9]{64}$/);
+    expect(layer).not.toHaveProperty('src');
+    expect(await getAssetStore().has(layer.assetId!)).toBe(true);
+    const stored = JSON.parse(localStorage.getItem('campaignState') ?? '{}');
+    expect(stored.maps.mapsById[map.id].imageLayers[0]).toEqual(layer);
+    expect((await loadCampaignState()).maps.mapsById[map.id].imageLayers![0]).toEqual(layer);
+  });
+
+  it('keeps legacy images readable when asset storage fails', async () => {
+    const { state, map } = imageState();
+    await saveCampaignState(state);
+    vi.spyOn(getAssetStore(), 'put').mockRejectedValue(new Error('Asset quota'));
+    const loaded = await loadCampaignState();
+    expect(loaded.maps.mapsById[map.id].imageLayers![0].src).toBe('data:image/jpeg;base64,AQID');
+    expect(loaded.maps.mapsById[map.id].imageLayers![0].assetId).toBeUndefined();
   });
 
   it('loadCampaignState returns defaults when empty', async () => {

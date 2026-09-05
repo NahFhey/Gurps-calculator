@@ -37,10 +37,10 @@ export function ImportExportPanel({
   const [importStatus, setImportStatus] = useState<ImportStatus | null>(null);
 
   // Handle export unlocked (GM only)
-  const handleExportUnlocked = () => {
+  const handleExportUnlocked = async () => {
     setExporting(true);
     try {
-      const data = exportUnlocked(state);
+      const data = await exportUnlocked(state);
       const filename = `gurps-export-unlocked-${new Date().toISOString().split('T')[0]}.json`;
       downloadJSON(data, filename);
       setImportStatus({

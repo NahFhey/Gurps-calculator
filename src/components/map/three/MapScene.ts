@@ -1,3 +1,4 @@
+import { getAssetStore } from '../../../assets/assetStore';
 import * as THREE from 'three';
 import type { MapImageLayer, MapModel, TerrainId, TileId } from '../../../types/map';
 import { getEffectiveElevation } from '../../../utils/lineOfSight';
@@ -129,8 +130,10 @@ export class MapScene {
   private overlayMesh: THREE.InstancedMesh | null = null;
   private structureMesh: THREE.InstancedMesh | null = null;
   private imageGroup: THREE.Group | null = null;
-  /** Data-URL textures cached per image layer so paint rebuilds don't re-decode. */
-  private readonly imageTextures = new Map<string, { src: string; texture: THREE.Texture }>();
+  /** Textures cached per layer and content key so paint rebuilds do not re-decode. */
+  private readonly imageTextures = new Map<string, { key: string; texture: THREE.Texture | null; assetId?: string }>();
+  private readonly missingImageAssets = new Set<string>();
+  private readonly assetStore = getAssetStore();
   /** Round-cropped portrait textures cached by stable token id and source reference. */
   private readonly tokenImageTextures = new Map<string, { src: string; texture: THREE.CanvasTexture }>();
   /** Live 3×3 preview rectangle while an image-align drag is in progress. */
@@ -231,8 +234,7 @@ export class MapScene {
     this.unbindEvents();
     this.clearAlignRect();
     this.disposeWorld();
-    for (const entry of this.imageTextures.values()) entry.texture.dispose();
-    this.imageTextures.clear();
+    for (const id of this.imageTextures.keys()) this.releaseImageTexture(id);
     for (const entry of this.tokenImageTextures.values()) entry.texture.dispose();
     this.tokenImageTextures.clear();
     this.markerTexture?.dispose();
@@ -741,36 +743,88 @@ export class MapScene {
     return true;
   }
 
-  private getImageTexture(layer: MapImageLayer): THREE.Texture {
+  private releaseImageTexture(id: string): void {
+    const entry = this.imageTextures.get(id);
+    if (!entry) return;
+    this.imageTextures.delete(id);
+    entry.texture?.dispose();
+    if (entry.assetId && ![...this.imageTextures.values()].some((other) => other.assetId === entry.assetId)) {
+      this.assetStore.releaseObjectUrl(entry.assetId);
+    }
+  }
+
+  private getImageTexture(layer: MapImageLayer): THREE.Texture | null {
+    const key = layer.assetId ?? layer.src ?? '';
     const cached = this.imageTextures.get(layer.id);
-    if (cached && cached.src === layer.src) return cached.texture;
-    cached?.texture.dispose();
+    if (cached?.key === key) return cached.texture;
+    this.releaseImageTexture(layer.id);
+    const entry = { key, texture: null as THREE.Texture | null, assetId: layer.assetId };
+    this.imageTextures.set(layer.id, entry);
+    if (layer.assetId) {
+      const assetId = layer.assetId;
+      void this.assetStore.getObjectUrl(assetId).then((url) => {
+        // Identity, rather than key alone, also guards remove/re-add of the same layer.
+        if (this.imageTextures.get(layer.id) !== entry) return;
+        if (!url) {
+          if (!this.missingImageAssets.has(assetId)) {
+            this.missingImageAssets.add(assetId);
+            console.warn('[MapScene] Missing image asset', assetId);
+          }
+          return;
+        }
+        const texture = new THREE.TextureLoader().load(url, () => {
+          if (this.imageTextures.get(layer.id) !== entry) return;
+          this.buildImageLayers();
+          this.needsRender = true;
+        });
+        texture.colorSpace = THREE.SRGBColorSpace;
+        entry.texture = texture;
+        this.buildImageLayers();
+        this.needsRender = true;
+      }).catch((error: unknown) => {
+        if (this.imageTextures.get(layer.id) === entry) console.warn('[MapScene] Failed to resolve image asset', assetId, error);
+      });
+      return null;
+    }
+    if (!layer.src) return null;
     const texture = new THREE.TextureLoader().load(layer.src, () => {
-      this.needsRender = true;
+      if (this.imageTextures.get(layer.id) === entry) this.needsRender = true;
     });
     texture.colorSpace = THREE.SRGBColorSpace;
-    this.imageTextures.set(layer.id, { src: layer.src, texture });
+    entry.texture = texture;
     return texture;
   }
 
+  private clearImageLayers(): void {
+    if (!this.imageGroup) return;
+    this.scene.remove(this.imageGroup);
+    this.imageGroup.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        object.geometry.dispose();
+        this.disposeMaterial(object.material);
+      }
+    });
+    this.imageGroup = null;
+  }
+
   private buildImageLayers(): void {
+    this.clearImageLayers();
     if (!this.data) return;
     const layers = (this.data.map.imageLayers ?? []).filter((layer) => this.imageLayerIsRendered(layer));
-    // Drop cached textures for layers that no longer exist.
-    const liveIds = new Set((this.data.map.imageLayers ?? []).map((layer) => layer.id));
+    // Release removed or changed layers, including layers currently hidden by visibility/fog.
+    const liveKeys = new Map((this.data.map.imageLayers ?? []).map((layer) => [layer.id, layer.assetId ?? layer.src ?? '']));
     for (const [id, entry] of this.imageTextures) {
-      if (!liveIds.has(id)) {
-        entry.texture.dispose();
-        this.imageTextures.delete(id);
-      }
+      if (liveKeys.get(id) !== entry.key) this.releaseImageTexture(id);
     }
     if (layers.length === 0) return;
 
     const group = new THREE.Group();
     layers.forEach((layer, index) => {
+      const texture = this.getImageTexture(layer);
+      if (!texture) return;
       const overlay = layer.placement === 'overlay';
       const material = new THREE.MeshBasicMaterial({
-        map: this.getImageTexture(layer),
+        map: texture,
         transparent: true,
         opacity: Math.max(0, Math.min(1, layer.opacity)),
         depthWrite: false,
@@ -1085,18 +1139,7 @@ export class MapScene {
       this.disposeMaterial(this.structureMesh.material);
       this.structureMesh = null;
     }
-    if (this.imageGroup) {
-      // Materials are disposed here; the shared textures live in imageTextures
-      // and are released in dispose() or when their layer disappears.
-      this.scene.remove(this.imageGroup);
-      this.imageGroup.traverse((object) => {
-        if (object instanceof THREE.Mesh) {
-          object.geometry.dispose();
-          this.disposeMaterial(object.material);
-        }
-      });
-      this.imageGroup = null;
-    }
+    this.clearImageLayers();
     this.disposeGroup(this.markerGroup);
     this.disposeGroup(this.linkGroup);
     this.disposeGroup(this.tokenGroup);

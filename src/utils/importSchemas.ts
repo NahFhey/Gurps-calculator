@@ -109,10 +109,13 @@ export const CombatExportSchema = z.object({
 // ─── Campaign File Import ────────────────────────────────────────────────────
 
 const GMLockSchema = z.object({
-  encryptedData: z.string(),
+  encryptedData: z.string().optional(),
+  ciphertext: z.string().optional(),
   salt: z.string(),
   iv: z.string(),
-}).passthrough();
+}).passthrough().refine((lock) => lock.ciphertext !== undefined || lock.encryptedData !== undefined, {
+  message: 'Missing encrypted GM payload',
+});
 
 /**
  * Validates the top-level envelope of a campaign export file.
@@ -121,6 +124,7 @@ const GMLockSchema = z.object({
  * envelope is correct so that mergeGM / migrateImport can operate safely.
  */
 export const CampaignImportSchema = z.object({
+  assets: z.record(z.string(), z.object({ mime: z.string(), base64: z.string() })).optional(),
   schemaVersion: z.union([z.string(), z.number()]).transform(String),
   exportDate: z.string().optional(),
   exportType: z.enum(['locked', 'unlocked']).optional(),

@@ -197,9 +197,9 @@ describe('validateImport', () => {
     expect(result.warnings?.some((w) => w.includes('GM data'))).toBe(true);
   });
 
-  it('accepts valid unlocked export', () => {
+  it('accepts valid unlocked export', async () => {
     const state = createCampaignState();
-    const exported = exportUnlocked(state);
+    const exported = await exportUnlocked(state);
     const result = validateImport(exported);
     expect(result.valid).toBe(true);
   });
@@ -235,7 +235,7 @@ describe('importFile', () => {
 
   it('successfully imports a valid unlocked export', async () => {
     const state = createCampaignState();
-    const exported = exportUnlocked(state);
+    const exported = await exportUnlocked(state);
     const result = await importFile(exported);
     expect(result.ok).toBe(true);
     requireSuccessfulImport(result);
@@ -245,7 +245,7 @@ describe('importFile', () => {
 
   it('successfully imports a valid JSON string', async () => {
     const state = createCampaignState();
-    const exported = exportUnlocked(state);
+    const exported = await exportUnlocked(state);
     const jsonStr = JSON.stringify(exported);
     const result = await importFile(jsonStr);
     expect(result.ok).toBe(true);

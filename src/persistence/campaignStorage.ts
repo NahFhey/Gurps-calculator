@@ -1,3 +1,4 @@
+import { ingestInlineImageLayers, pruneUnreferencedAssets } from '../assets/assetMigration';
 import storage from '../utils/storage';
 import { createCampaignState, type CampaignState } from '../state/campaignReducer';
 import { generateAllTestSampleData, isStateEmpty } from '../utils/testSampleData';
@@ -268,7 +269,16 @@ export async function loadCampaignState(): Promise<CampaignState> {
   try {
     const parsed = JSON.parse(stored.value);
     const hydratedState = hydrateCampaignState(parsed);
-    return injectTestSampleData(hydratedState);
+    const state = injectTestSampleData(hydratedState);
+    try {
+      const migrated = await ingestInlineImageLayers(state);
+      if (migrated.ingested > 0) await saveCampaignState(migrated.state);
+      await pruneUnreferencedAssets(migrated.state);
+      return migrated.state;
+    } catch (error) {
+      logger.warn('[CampaignStorage] Asset migration/cleanup failed; keeping loaded state', error);
+      return state;
+    }
   } catch (error) {
     console.error('Failed to parse campaign state, using defaults.', error);
     const freshState = ensureTravelEventTables(ensureTravelGroups(ensureCharacterTemplates(createCampaignState())));

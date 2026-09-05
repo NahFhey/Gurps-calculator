@@ -3,6 +3,8 @@
  * Changes apply live to the map (no confirm step).
  */
 
+import { importImage } from '../../../assets/importImage';
+import { useAssetUrl } from '../../../assets/useAssetUrl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Upload, Trash2, Eye, EyeOff, Grid3x3, Magnet, Maximize2, BoxSelect } from 'lucide-react';
 import type { ImageLayerId, MapImageLayer, MapModel } from '../../../types/map';
@@ -19,42 +21,8 @@ interface ImageLayersDialogProps {
   onClose: () => void;
 }
 
-/** Images are stored as base64 in campaign state — cap the longest edge on import. */
-const IMAGE_MAX_DIM = 2048;
-
 /** Keep coordinates tidy after center-preserving resize math. */
 const round3 = (value: number) => Math.round(value * 1000) / 1000;
-
-function importImage(file: File): Promise<{ src: string; aspect: number }> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        let { width, height } = img;
-        if (width > IMAGE_MAX_DIM || height > IMAGE_MAX_DIM) {
-          const scale = IMAGE_MAX_DIM / Math.max(width, height);
-          width = Math.round(width * scale);
-          height = Math.round(height * scale);
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Could not get canvas context'));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve({ src: canvas.toDataURL('image/jpeg', 0.85), aspect: height / width });
-      };
-      img.onerror = () => reject(new Error('Failed to load image'));
-      img.src = reader.result as string;
-    };
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.readAsDataURL(file);
-  });
-}
 
 function numberField(value: number, onChange: (value: number) => void, opts: {
   label: string; min?: number; max?: number; step?: number;
@@ -92,22 +60,25 @@ function LayerCard({ layer, map, onUpdateLayer, onRemoveLayer, onStartAlign }: L
   const [gridCols, setGridCols] = useState(() => Math.max(1, Math.round(layer.width)));
   const [gridRows, setGridRows] = useState(() => Math.max(1, Math.round(layer.height)));
   const [rowsTouched, setRowsTouched] = useState(false);
+  const imageUrl = useAssetUrl(layer);
   /** Natural height/width ratio of the image, for deriving rows from cols. */
   const [aspect, setAspect] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    setAspect(null);
+    if (!imageUrl) return;
     const img = new Image();
     img.onload = () => {
       if (!cancelled && img.naturalWidth > 0) {
         setAspect(img.naturalHeight / img.naturalWidth);
       }
     };
-    img.src = layer.src;
+    img.src = imageUrl;
     return () => {
       cancelled = true;
     };
-  }, [layer.src]);
+  }, [imageUrl]);
 
   const handleColsChange = (cols: number) => {
     const next = Math.max(1, Math.round(cols));
@@ -147,7 +118,7 @@ function LayerCard({ layer, map, onUpdateLayer, onRemoveLayer, onStartAlign }: L
     <div className="rounded border border-edge bg-surface-0/50 p-3 space-y-2">
       <div className="flex items-center gap-2">
         <img
-          src={layer.src}
+          src={imageUrl ?? undefined}
           alt=""
           className="h-10 w-10 rounded object-cover border border-edge flex-shrink-0"
         />
@@ -290,12 +261,13 @@ export function ImageLayersDialog({ map, onAddLayer, onUpdateLayer, onRemoveLaye
     setImporting(true);
     setImportError(null);
     try {
-      const { src, aspect } = await importImage(file);
+      const { assetId, mime, aspect } = await importImage(file);
       const width = map.cols;
       onAddLayer({
         id: `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         name: file.name.replace(/\.[^.]+$/, '') || 'Image',
-        src,
+        assetId,
+        mime,
         placement: 'underlay',
         opacity: 1,
         visible: true,
