@@ -20,6 +20,9 @@ import { standaloneToast } from '../components/ui/Toast';
 import type { SessionInfo } from '../../shared/session';
 import type { Role } from '../../shared/session';
 import type { PlayerInfo } from '../../shared/protocol';
+import type { CampaignState } from '../state/campaignReducer';
+import { hydrateCampaignState } from '../persistence/campaignStorage';
+import { pullMissingAssets } from './assetSync';
 
 // ---------------------------------------------------------------------------
 // Context shape
@@ -69,7 +72,7 @@ export function useSyncContextOptional(): SyncContextValue | null {
 interface SyncProviderProps {
   children: ReactNode;
   /** Callback to replace campaign state when server sends an update */
-  onServerStateUpdate?: (stateJson: string) => void;
+  onServerStateUpdate?: (state: CampaignState) => void;
 }
 
 export function SyncProvider({ children, onServerStateUpdate }: SyncProviderProps) {
@@ -103,7 +106,12 @@ export function SyncProvider({ children, onServerStateUpdate }: SyncProviderProp
       if (!connectionManager.campaignId) return;
       try {
         const { state } = await connectionManager.fetchState();
-        onServerStateUpdateRef.current?.(state);
+        const hydrated = hydrateCampaignState(JSON.parse(state) as CampaignState);
+        const progress = await pullMissingAssets(hydrated);
+        if (progress.failed.length > 0) {
+          standaloneToast.warning(`${progress.failed.length} map images could not be downloaded.`);
+        }
+        onServerStateUpdateRef.current?.(hydrated);
       } catch (err) {
         console.error('[SyncProvider] Failed to fetch updated state:', err);
         standaloneToast.error('Failed to sync with server. Your local changes are preserved.');

@@ -1,7 +1,27 @@
 /**
  * Socket.IO protocol — event names and payload types shared between client and server.
  */
-import type { Role } from './session';
+import type { Role } from './session.js';
+/** Paths relative to the /api router. */
+export declare const ASSET_ROUTES: {
+    readonly list: "/campaigns/:id/assets";
+    readonly item: "/campaigns/:id/assets/:assetId";
+};
+export declare function campaignAssetsPath(campaignId: string): string;
+export declare function campaignAssetPath(campaignId: string, assetId: string): string;
+export interface AssetMeta {
+    id: string;
+    mime: string;
+    size: number;
+}
+export interface AssetUploadResponse {
+    id: string;
+    size: number;
+    created: boolean;
+}
+export interface AssetListResponse {
+    assets: AssetMeta[];
+}
 export declare const EVENTS: {
     /** Client → Server: join a campaign room */
     readonly JOIN_ROOM: "room:join";

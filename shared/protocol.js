@@ -1,6 +1,17 @@
 /**
  * Socket.IO protocol — event names and payload types shared between client and server.
  */
+/** Paths relative to the /api router. */
+export const ASSET_ROUTES = {
+    list: '/campaigns/:id/assets',
+    item: '/campaigns/:id/assets/:assetId',
+};
+export function campaignAssetsPath(campaignId) {
+    return `/api${ASSET_ROUTES.list.replace(':id', encodeURIComponent(campaignId))}`;
+}
+export function campaignAssetPath(campaignId, assetId) {
+    return `${campaignAssetsPath(campaignId)}/${encodeURIComponent(assetId)}`;
+}
 // ---------------------------------------------------------------------------
 // Event names
 // ---------------------------------------------------------------------------

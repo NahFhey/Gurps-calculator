@@ -369,3 +369,45 @@ describe('ConnectionManager errors', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe('ConnectionManager asset transport', () => {
+  it('uses campaign auth for uploads, downloads and inventory', async () => {
+    const id = 'a'.repeat(64);
+    const bytes = new Uint8Array([0, 255, 42]);
+    fetchMock.mockResolvedValueOnce(campaignResponse()).mockResolvedValueOnce(sessionResponse());
+    await connectionManager.hostGame('Assets', '{}');
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ id, size: 3, created: true }, { status: 201 }))
+      .mockResolvedValueOnce(new Response(bytes.buffer, { headers: { 'Content-Type': 'image/webp' } }))
+      .mockResolvedValueOnce(jsonResponse({ assets: [{ id, mime: 'image/webp', size: 3 }] }))
+      .mockResolvedValueOnce(new Response(null, { status: 404 }));
+    expect(await connectionManager.uploadAsset(id, bytes, 'image/webp')).toEqual({ created: true });
+    expect(fetchMock).toHaveBeenNthCalledWith(3, `/api/campaigns/campaign-1/assets/${id}`, {
+      method: 'PUT', headers: { Authorization: 'Bearer gm-token', 'Content-Type': 'image/webp' }, body: bytes.buffer,
+    });
+    expect(await connectionManager.fetchAsset(id)).toEqual({ bytes, mime: 'image/webp' });
+    expect(fetchMock).toHaveBeenNthCalledWith(4, `/api/campaigns/campaign-1/assets/${id}`, {
+      headers: { Authorization: 'Bearer gm-token', 'Content-Type': 'application/json' },
+    });
+    expect(await connectionManager.listRemoteAssets()).toEqual([{ id, mime: 'image/webp', size: 3 }]);
+    expect(fetchMock).toHaveBeenNthCalledWith(5, '/api/campaigns/campaign-1/assets', {
+      headers: { Authorization: 'Bearer gm-token', 'Content-Type': 'application/json' },
+    });
+    expect(await connectionManager.fetchAsset(id)).toBeNull();
+  });
+
+  it('rejects disconnected operations and HTTP failures other than a download 404', async () => {
+    const id = 'b'.repeat(64);
+    const bytes = new Uint8Array([1]);
+    await expect(connectionManager.uploadAsset(id, bytes, 'image/png')).rejects.toThrow('Not connected');
+    await expect(connectionManager.fetchAsset(id)).rejects.toThrow('Not connected');
+    await expect(connectionManager.listRemoteAssets()).rejects.toThrow('Not connected');
+    expect(fetchMock).not.toHaveBeenCalled();
+    fetchMock.mockResolvedValueOnce(campaignResponse()).mockResolvedValueOnce(sessionResponse());
+    await connectionManager.hostGame('Assets', '{}');
+    fetchMock.mockResolvedValue(new Response(null, { status: 403, statusText: 'Forbidden' }));
+    await expect(connectionManager.uploadAsset(id, bytes, 'image/png')).rejects.toThrow('Forbidden');
+    await expect(connectionManager.fetchAsset(id)).rejects.toThrow('Forbidden');
+    await expect(connectionManager.listRemoteAssets()).rejects.toThrow('Forbidden');
+  });
+});

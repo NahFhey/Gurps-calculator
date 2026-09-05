@@ -4,6 +4,36 @@
 
 import type { Role } from './session.js';
 
+/** Paths relative to the /api router. */
+export const ASSET_ROUTES = {
+  list: '/campaigns/:id/assets',
+  item: '/campaigns/:id/assets/:assetId',
+} as const;
+
+export function campaignAssetsPath(campaignId: string): string {
+  return `/api${ASSET_ROUTES.list.replace(':id', encodeURIComponent(campaignId))}`;
+}
+
+export function campaignAssetPath(campaignId: string, assetId: string): string {
+  return `${campaignAssetsPath(campaignId)}/${encodeURIComponent(assetId)}`;
+}
+
+export interface AssetMeta {
+  id: string;
+  mime: string;
+  size: number;
+}
+
+export interface AssetUploadResponse {
+  id: string;
+  size: number;
+  created: boolean;
+}
+
+export interface AssetListResponse {
+  assets: AssetMeta[];
+}
+
 // ---------------------------------------------------------------------------
 // Event names
 // ---------------------------------------------------------------------------

@@ -1,9 +1,18 @@
 import '@testing-library/jest-dom';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ImageLayersDialog } from '../ImageLayersDialog';
 import { createNewMap } from '../../../../utils/mapUtils';
 import type { MapImageLayer } from '../../../../types/map';
+import * as imageImport from '../../../../assets/importImage';
+import * as assetStore from '../../../../assets/assetStore';
+import { connectionManager } from '../../../../net/ConnectionManager';
+import { Role } from '../../../../../shared/session';
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 const makeLayer = (overrides: Partial<MapImageLayer> = {}): MapImageLayer => ({
   id: 'img-1',
@@ -19,6 +28,40 @@ const makeLayer = (overrides: Partial<MapImageLayer> = {}): MapImageLayer => ({
   height: 5.7,
   elevation: 1,
   ...overrides,
+});
+
+describe('ImageLayersDialog asset upload', () => {
+  it.each([
+    ['connected', Role.GM, true],
+    ['offline', Role.GM, false],
+    ['connected', Role.Player, false],
+  ] as const)('uploads after import for status %s and role %s: %s', async (status, role, shouldUpload) => {
+    const id = 'a'.repeat(64);
+    const bytes = new Uint8Array([1, 2, 3]);
+    vi.spyOn(imageImport, 'importImage').mockResolvedValue({ assetId: id, mime: 'image/png', aspect: 1 });
+    const store = assetStore.createMemoryAssetStore();
+    vi.spyOn(store, 'get').mockResolvedValue({ id, bytes, mime: 'image/png', size: 3, createdAt: 1 });
+    vi.spyOn(assetStore, 'getAssetStore').mockReturnValue(store);
+    vi.spyOn(connectionManager, 'status', 'get').mockReturnValue(status);
+    vi.spyOn(connectionManager, 'role', 'get').mockReturnValue(role);
+    const upload = vi.spyOn(connectionManager, 'uploadAsset').mockRejectedValue(new Error('offline'));
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const onAddLayer = vi.fn();
+    const map = createNewMap({ name: 'M', scaleMilesPerTile: 12, startTerrainId: 'terrain-plains' });
+    render(<ImageLayersDialog map={map} onAddLayer={onAddLayer} onUpdateLayer={vi.fn()} onRemoveLayer={vi.fn()} onStartAlign={vi.fn()} onClose={vi.fn()} />);
+    const input = document.querySelector('input[type="file"]');
+    if (!input) throw new Error('Missing file input');
+    fireEvent.change(input, { target: { files: [new File([bytes], 'map.png', { type: 'image/png' })] } });
+    await waitFor(() => expect(onAddLayer).toHaveBeenCalledOnce());
+    if (shouldUpload) {
+      await waitFor(() => expect(log).toHaveBeenCalledWith('[ImageLayersDialog] Failed to upload map image:', expect.any(Error)));
+      expect(upload).toHaveBeenCalledExactlyOnceWith(id, bytes, 'image/png');
+    } else {
+      expect(upload).not.toHaveBeenCalled();
+    }
+    expect(onAddLayer.mock.calls[0][0]).toMatchObject({ assetId: id, mime: 'image/png' });
+    expect(screen.queryByText('offline')).not.toBeInTheDocument();
+  });
 });
 
 function mount(layer: MapImageLayer) {

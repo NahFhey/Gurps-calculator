@@ -9,6 +9,7 @@
 import initSqlJs, { type Database } from 'sql.js';
 import fs from 'fs';
 import path from 'path';
+import type { AssetMeta } from '../../shared/protocol.js';
 
 // When compiled, db.js lives at server/dist/server/src/db.js
 // When run via tsx (dev), import.meta.dirname is server/src/
@@ -63,6 +64,18 @@ export async function initDB(): Promise<Database> {
       join_code TEXT UNIQUE NOT NULL,
       is_active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (campaign_id) REFERENCES campaigns(id)
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS assets (
+      campaign_id TEXT NOT NULL,
+      id TEXT NOT NULL,
+      mime TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (campaign_id, id),
       FOREIGN KEY (campaign_id) REFERENCES campaigns(id)
     )
   `);
@@ -138,6 +151,88 @@ export function updateCampaignState(id: string, stateJson: string): number {
   saveDB();
   const campaign = getCampaign(id);
   return campaign?.version ?? 0;
+}
+
+export function isValidAssetId(id: string): boolean {
+  return /^[a-f0-9]{64}$/.test(id);
+}
+
+function validateAssetCampaign(campaignId: string): void {
+  // Campaign ids normally come from nanoid; also reject unsafe existing row ids.
+  if (!/^[A-Za-z0-9_-]+$/.test(campaignId) || !getCampaign(campaignId)) {
+    throw new Error('Invalid asset campaign');
+  }
+}
+
+function validateAssetKey(campaignId: string, id: string): void {
+  if (!isValidAssetId(id)) throw new Error('Invalid asset id');
+  validateAssetCampaign(campaignId);
+}
+
+export function getAssetMeta(campaignId: string, id: string): Omit<AssetMeta, 'id'> & { createdAt: string } | null {
+  validateAssetKey(campaignId, id);
+  const stmt = db.prepare('SELECT mime, size, created_at AS createdAt FROM assets WHERE campaign_id = ? AND id = ?');
+  try {
+    stmt.bind([campaignId, id]);
+    if (!stmt.step()) return null;
+    const row = stmt.getAsObject();
+    return { mime: String(row.mime), size: Number(row.size), createdAt: String(row.createdAt) };
+  } finally {
+    stmt.free();
+  }
+}
+
+export function putAsset(campaignId: string, id: string, mime: string, bytes: Uint8Array): { created: boolean } {
+  validateAssetKey(campaignId, id);
+  if (getAssetMeta(campaignId, id)) return { created: false };
+  const dir = path.join(DATA_DIR, 'assets', campaignId);
+  const file = path.join(dir, id);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(file + '.tmp', bytes);
+  fs.renameSync(file + '.tmp', file);
+  db.run('INSERT INTO assets (campaign_id, id, mime, size, created_at) VALUES (?, ?, ?, ?, ?)',
+    [campaignId, id, mime, bytes.byteLength, new Date().toISOString()]);
+  saveDB();
+  return { created: true };
+}
+
+export function readAssetBytes(campaignId: string, id: string): Uint8Array | null {
+  if (!getAssetMeta(campaignId, id)) return null;
+  // getAssetMeta validates both path components before any filesystem access.
+  const file = path.join(DATA_DIR, 'assets', campaignId, id);
+  try {
+    return fs.readFileSync(file);
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return null;
+    throw error;
+  }
+}
+
+export function listAssets(campaignId: string): AssetMeta[] {
+  validateAssetCampaign(campaignId);
+  const stmt = db.prepare('SELECT id, mime, size FROM assets WHERE campaign_id = ? ORDER BY id');
+  const assets: AssetMeta[] = [];
+  try {
+    stmt.bind([campaignId]);
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      assets.push({ id: String(row.id), mime: String(row.mime), size: Number(row.size) });
+    }
+    return assets;
+  } finally {
+    stmt.free();
+  }
+}
+
+export function getCampaignAssetTotal(campaignId: string): number {
+  validateAssetCampaign(campaignId);
+  const stmt = db.prepare('SELECT COALESCE(SUM(size), 0) AS total FROM assets WHERE campaign_id = ?');
+  try {
+    stmt.bind([campaignId]);
+    return stmt.step() ? Number(stmt.getAsObject().total) : 0;
+  } finally {
+    stmt.free();
+  }
 }
 
 // ---------------------------------------------------------------------------

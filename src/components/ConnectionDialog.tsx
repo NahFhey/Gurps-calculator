@@ -12,6 +12,8 @@ import { serializeCampaignState } from '../persistence/campaignStorage';
 import { hydrateCampaignState } from '../persistence/campaignStorage';
 import type { CampaignState } from '../state/campaignReducer';
 import { Modal } from './ui/Modal';
+import { standaloneToast } from './ui/Toast';
+import { pullMissingAssets, pushReferencedAssets } from '../net/assetSync';
 
 interface ConnectionDialogProps {
   isOpen: boolean;
@@ -29,6 +31,8 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [assetProgress, setAssetProgress] = useState<string | null>(null);
+  const [assetWarning, setAssetWarning] = useState<string | null>(null);
 
   const campaignNameId = 'connection-dialog-campaign-name';
   const displayNameId = 'connection-dialog-display-name';
@@ -38,30 +42,46 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
 
   const handleHost = async () => {
     setError(null);
+    setAssetWarning(null);
     setLoading(true);
     try {
       const stateJson = JSON.stringify(serializeCampaignState(state as CampaignState));
       await hostGame(campaignName, stateJson);
+      const progress = await pushReferencedAssets(state, {
+        onProgress: ({ done, total }) => setAssetProgress(`Uploading map images ${done}/${total}…`),
+      });
+      if (progress.failed.length > 0) {
+        setAssetWarning(`${progress.failed.length} map images could not be uploaded. Hosting can continue.`);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to host game');
     } finally {
+      setAssetProgress(null);
       setLoading(false);
     }
   };
 
   const handleJoin = async () => {
     setError(null);
+    setAssetWarning(null);
     setLoading(true);
     try {
       const stateJson = await joinGame(joinCode, displayName);
       // Parse and hydrate the server state, then replace local state
       const parsed = JSON.parse(stateJson);
       const hydrated = hydrateCampaignState(parsed as CampaignState);
+      const progress = await pullMissingAssets(hydrated, {
+        onProgress: ({ done, total }) => setAssetProgress(`Downloading map images ${done}/${total}…`),
+      });
       actions.importCampaignState(hydrated);
+      if (progress.failed.length > 0) {
+        standaloneToast.warning(`${progress.failed.length} map images could not be downloaded. You have joined the game.`);
+      }
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to join game');
     } finally {
+      setAssetProgress(null);
       setLoading(false);
     }
   };
@@ -69,6 +89,7 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
   const handleDisconnect = () => {
     disconnect();
     setError(null);
+    setAssetWarning(null);
   };
 
   const handleCopyCode = () => {
@@ -78,6 +99,13 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
       setTimeout(() => setCopied(false), 2000);
     }
   };
+
+  const assetFeedback = (
+    <>
+      {assetProgress && <p role="status" className="mt-3 text-xs text-fg-secondary">{assetProgress}</p>}
+      {assetWarning && <p role="status" className="mt-3 text-xs text-warning-400">{assetWarning}</p>}
+    </>
+  );
 
   // Connected view
   if (status === 'connected' && sessionInfo) {
@@ -119,11 +147,14 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
             </div>
           </div>
 
+          {assetFeedback}
+
           {/* Player Assignment (GM only) */}
           {sessionInfo.role === Role.GM && <PlayerAssignmentPanel />}
 
           <button
             onClick={handleDisconnect}
+            disabled={loading}
             className="mt-6 w-full py-2 rounded-lg bg-danger-600/80 hover:bg-danger-600 text-white text-sm font-medium transition-colors"
           >
             Disconnect
@@ -230,6 +261,7 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
           </div>
         )}
 
+        {assetFeedback}
         {error && (
           <div role="alert" className="mt-3 p-2 rounded-lg bg-danger-900/40 border border-danger-600/40 text-xs text-danger-300">
             {error}

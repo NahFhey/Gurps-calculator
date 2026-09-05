@@ -12,7 +12,9 @@
  */
 
 import { io, type Socket } from 'socket.io-client';
-import { EVENTS } from '../../shared/protocol';
+import { campaignAssetPath, campaignAssetsPath, EVENTS } from '../../shared/protocol';
+import type { AssetListResponse, AssetMeta, AssetUploadResponse } from '../../shared/protocol';
+import type { AssetId } from '../types/map';
 import type {
   StateUpdatedPayload,
   PlayerJoinedPayload,
@@ -245,6 +247,34 @@ class ConnectionManager {
   // ---------------------------------------------------------------------------
   // Event listeners
   // ---------------------------------------------------------------------------
+
+  async uploadAsset(id: AssetId, bytes: Uint8Array, mime: string): Promise<{ created: boolean }> {
+    if (!this._campaignId) throw new Error('Not connected to a campaign');
+    const res = await fetch(campaignAssetPath(this._campaignId, id), {
+      method: 'PUT',
+      headers: { ...this.authHeaders(), 'Content-Type': mime },
+      body: new Uint8Array(bytes).buffer,
+    });
+    if (!res.ok) throw new Error(`Failed to upload asset: ${res.statusText}`);
+    const data: AssetUploadResponse = await res.json();
+    return { created: data.created };
+  }
+
+  async fetchAsset(id: AssetId): Promise<{ bytes: Uint8Array; mime: string } | null> {
+    if (!this._campaignId) throw new Error('Not connected to a campaign');
+    const res = await fetch(campaignAssetPath(this._campaignId, id), { headers: this.authHeaders() });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`Failed to fetch asset: ${res.statusText}`);
+    return { bytes: new Uint8Array(await res.arrayBuffer()), mime: res.headers.get('Content-Type') ?? 'application/octet-stream' };
+  }
+
+  async listRemoteAssets(): Promise<AssetMeta[]> {
+    if (!this._campaignId) throw new Error('Not connected to a campaign');
+    const res = await fetch(campaignAssetsPath(this._campaignId), { headers: this.authHeaders() });
+    if (!res.ok) throw new Error(`Failed to list assets: ${res.statusText}`);
+    const data: AssetListResponse = await res.json();
+    return data.assets;
+  }
 
   onStatusChange(listener: StatusListener): () => void {
     this.statusListeners.add(listener);

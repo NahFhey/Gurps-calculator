@@ -14,6 +14,7 @@
  */
 
 import express from 'express';
+import type { Express, Request } from 'express';
 import { createServer } from 'http';
 import { Server as SocketServer } from 'socket.io';
 import compression from 'compression';
@@ -45,6 +46,34 @@ export interface ServerHandle {
   port: number;
   /** Gracefully shut down the server. */
   close: () => Promise<void>;
+}
+
+/** Match the asset namespace, including individual byte endpoints. */
+function isAssetRequest(req: Request): boolean {
+  return /^\/api\/campaigns\/[^/]+\/assets(?:\/|$)/i.test(req.originalUrl.split('?')[0]);
+}
+
+export function setupApiMiddleware(app: Express): void {
+  const json = express.json({ limit: '10mb' });
+  app.use((req, res, next) => {
+    if (isAssetRequest(req)) next();
+    else json(req, res, next);
+  });
+  app.use('/api/campaigns/:id/assets', rateLimit({
+    windowMs: 60 * 1000,
+    max: 600,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many asset requests, please try again later' },
+  }));
+  app.use('/api', rateLimit({
+    windowMs: 60 * 1000,
+    max: 100,
+    skip: isAssetRequest,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later' },
+  }));
 }
 
 /** Parse CORS origins from env or options. */
@@ -118,17 +147,7 @@ export async function startServer(options?: StartServerOptions): Promise<ServerH
     credentials: true,
   }));
 
-  // Body parser with 10MB limit (down from 100MB)
-  app.use(express.json({ limit: '10mb' }));
-
-  // General rate limiter: 100 requests per minute per IP
-  app.use('/api', rateLimit({
-    windowMs: 60 * 1000,
-    max: 100,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: 'Too many requests, please try again later' },
-  }));
+  setupApiMiddleware(app);
 
   // Stricter rate limiter for session join: 10 attempts per minute per IP
   // Prevents brute-forcing join codes

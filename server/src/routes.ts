@@ -9,7 +9,9 @@
  *   - PUT /campaigns/:id/state → requires auth + GM role + campaign membership
  */
 
-import { Router, type Request, type Response } from 'express';
+import { Router, raw } from 'express';
+import type { NextFunction, Request, Response, RequestHandler } from 'express';
+import { createHash } from 'node:crypto';
 
 /** Extract a single string param (Express 5 params can be string | string[]). */
 function param(req: Request, name: string): string {
@@ -24,16 +26,93 @@ import {
   updateCampaignState,
   createSession,
   getSessionByJoinCode,
+  getAssetMeta,
+  getCampaignAssetTotal,
+  isValidAssetId,
+  listAssets,
+  putAsset,
+  readAssetBytes,
 } from './db.js';
 import { signToken, authMiddleware, requireRole, requireCampaignAccess } from './auth.js';
 import { Role } from '../../shared/session.js';
-import { EVENTS } from '../../shared/protocol.js';
+import { ASSET_ROUTES, EVENTS } from '../../shared/protocol.js';
+import type { AssetListResponse, AssetUploadResponse } from '../../shared/protocol.js';
 
 /** Maximum state payload size in bytes (10 MB). */
 const MAX_STATE_SIZE = 10 * 1024 * 1024;
+export const MAX_ASSET_SIZE = 8 * 1024 * 1024;
+export const MAX_CAMPAIGN_ASSET_TOTAL = 256 * 1024 * 1024;
+
+const validateAssetRequest: RequestHandler = (req, res, next) => {
+  if (req.params.assetId !== undefined && !isValidAssetId(param(req, 'assetId'))) {
+    res.status(400).json({ error: 'Invalid asset id' });
+    return;
+  }
+  if (!/^[A-Za-z0-9_-]+$/.test(param(req, 'id'))) {
+    res.status(400).json({ error: 'Invalid campaign id' });
+    return;
+  }
+  if (!getCampaign(param(req, 'id'))) {
+    res.status(404).json({ error: 'Campaign not found' });
+    return;
+  }
+  next();
+};
 
 export function setupRoutes(io: SocketServer): Router {
   const router = Router();
+
+  router.put(ASSET_ROUTES.item, authMiddleware, requireRole(Role.GM), requireCampaignAccess,
+    validateAssetRequest,
+    (req: Request, res: Response, next: NextFunction) => {
+      if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp'].includes(req.get('Content-Type') ?? '')) {
+        res.status(415).json({ error: 'Unsupported asset mime type' });
+        return;
+      }
+      next();
+    },
+    raw({ type: () => true, limit: MAX_ASSET_SIZE }),
+    (req: Request, res: Response<AssetUploadResponse | { error: string }>) => {
+      const id = param(req, 'assetId');
+      const campaignId = param(req, 'id');
+      const bytes: Buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+      if (createHash('sha256').update(bytes).digest('hex') !== id) {
+        res.status(400).json({ error: 'Asset hash mismatch' });
+        return;
+      }
+      const existing = getAssetMeta(campaignId, id);
+      if (!existing && getCampaignAssetTotal(campaignId) + bytes.byteLength > MAX_CAMPAIGN_ASSET_TOTAL) {
+        res.status(413).json({ error: 'Campaign asset storage limit exceeded' });
+        return;
+      }
+      const { created } = putAsset(campaignId, id, req.get('Content-Type')!, bytes);
+      res.status(created ? 201 : 200).json({ id, size: existing?.size ?? bytes.byteLength, created });
+    });
+
+  const sendAsset: RequestHandler = (req, res) => {
+    const campaignId = param(req, 'id');
+    const id = param(req, 'assetId');
+    const meta = getAssetMeta(campaignId, id);
+    const bytes = meta ? readAssetBytes(campaignId, id) : null;
+    if (!meta || !bytes) {
+      res.status(404).json({ error: 'Asset not found' });
+      return;
+    }
+    res.set({
+      'Content-Type': meta.mime,
+      'Content-Length': String(meta.size),
+      'Cache-Control': 'private, max-age=31536000, immutable',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    if (req.method === 'HEAD') res.end();
+    else res.send(Buffer.from(bytes));
+  };
+  router.head(ASSET_ROUTES.item, authMiddleware, requireCampaignAccess, validateAssetRequest, sendAsset);
+  router.get(ASSET_ROUTES.item, authMiddleware, requireCampaignAccess, validateAssetRequest, sendAsset);
+  router.get(ASSET_ROUTES.list, authMiddleware, requireCampaignAccess, validateAssetRequest,
+    (req: Request, res: Response<AssetListResponse>) => {
+      res.json({ assets: listAssets(param(req, 'id')) });
+    });
 
   // ---------------------------------------------------------------------------
   // Campaigns
@@ -230,5 +309,14 @@ export function setupRoutes(io: SocketServer): Router {
     });
   });
 
+  // Body-parser rejections (e.g. express.raw over MAX_ASSET_SIZE) must keep the JSON error contract.
+  router.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+    const type = typeof err === 'object' && err !== null && 'type' in err ? (err as { type?: string }).type : undefined;
+    if (type === 'entity.too.large') {
+      res.status(413).json({ error: 'Asset exceeds size limit' });
+      return;
+    }
+    next(err);
+  });
   return router;
 }
