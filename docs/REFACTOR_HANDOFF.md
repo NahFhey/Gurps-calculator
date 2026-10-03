@@ -75,14 +75,14 @@ Sessions 7-10. History on this branch: bd47c06 → **8f29dc0** `feat(import): �
 - GM-only layer and stamp bytes are not in a locked export's plaintext assets, so after an unlock on another machine those references dangle.
 - Dead code for review phase 5: `GMLockData` + `ManagerTabProps` in `src/types/views.ts` (unused, wrong lock shape); `filterForPlayerExport` no-op stub in `src/state/campaignUtils.ts:299` (uncalled; its test asserts identity). Batch `notes` left public (no reader found; not GM-labelled).
 
-**Owner decisions needed (Devin)**
+**Owner decisions needed (Devin)** — resolved 2026-10-03 in `docs/TYPED_BOUNDARIES_PLAN.md` §5: V3 keeps replace-on-unlock (merge deferred); the five libraries are hidden from players and the three UI leaks get role guards, both in TB5c.
 - GM-authored libraries the UI does NOT hide from players, so the projection keeps them: `entities.combatCharacters` (NPC library), `encounterTemplates`, `travelEventTables` / `travelEventSets`, `skillAdvancements[].notes`, `activities.gmOverride`. Hide them from players or not?
 - UI leaks in player mode: AnalysisView "⚠️ False Profile" (`AnalysisView.tsx:282,431`), BatchesView `hazardEvaluation` (`:912`), LocationFormView `gmNotes` (`:57`). These belong with the UI overhaul unless you want them earlier.
 - **V3:** unlock loads the file's encrypted GM campaign in place of the current one, so changes to the public half or made after import are replaced (kept in the "Before GM unlock" checkpoint; the dialog now says so). A real merge needs a three-way merge of the redacted fields. Keep replace-on-unlock, or build the merge?
 
 ## Next phase
 **Typed boundaries (review phase 3): planned in `docs/TYPED_BOUNDARIES_PLAN.md`** (design session 2026-10-03, branch `claude/laughing-albattani-7fb610`; no source changed). §1 maps every boundary at 5ba27f5; §2 is the design (one semver schema contract `1.7.0` in `shared/`, a `Persisted<CampaignState>` DTO with one codec and a typed whole-state replacement policy, a structural shared decoder plus loose deep validation on the client, server compare-and-swap PUT with 409, a precomputed `combat.playerView` for players, domain action unions); §3 the steps TB0-TB7; §5 the owner decisions.
-**Start at TB0** (shared hygiene: delete the hand-committed `shared/{protocol,session}.{js,d.ts}` twins, which Vite resolves before the `.ts`; add the shared-rules test), then TB1 (version contract). Check §5 for Devin's answers before TB1; TB5c depends on Q5b/Q5c.
+**Start at TB0** (shared hygiene: delete the hand-committed `shared/{protocol,session}.{js,d.ts}` twins, which Vite resolves before the `.ts`; add the shared-rules test), then TB1 (version contract). Devin answered all eight §5 questions on 2026-10-03 (all as recommended). Prerequisite before TB3: Devin adds `zod` to `server/package.json` and runs `npm install` in the main checkout's `server/`.
 Same process: Claude writes the code, one read-only Codex gpt-6.1-sol round for the phase (TB7), triage file, provenance entry. After it, per review §4: dead-code/tooling (phase 5), state ownership, combat consolidation (claim E), then the UI overhaul (design proposal first; out of scope until then).
 
 ## Remaining steps (history; step 5 is complete, see session 6)
