@@ -22,6 +22,7 @@ import { parseDataUrl, toDataUrl } from '../assets/dataUrl';
 import { sha256Hex } from '../assets/sha256';
 import { encryptJSON, decryptJSON, validateGMLock, type GMLock, type EncryptOptions } from './cryptoLock';
 import { validateMapTokenCollections } from './mapTokenMigration';
+import { projectCampaignForPlayers } from '../../shared/playerProjection';
 import {
   CURRENT_SCHEMA_VERSION,
   compareVersions,
@@ -311,7 +312,8 @@ export type UnlockResult =
   | { ok: true; gmData: unknown }
   | { ok: false; error: string };
 
-const isCampaignState = (state: unknown): state is CampaignState =>
+/** True for the normalized campaign shape (as opposed to the pre-campaign flat export shape). */
+export const isCampaignState = (state: unknown): state is CampaignState =>
   Boolean(
     state
     && (state as Partial<CampaignState>).ui
@@ -335,8 +337,8 @@ const stripSchemaVersion = (
 
 /**
  * Splits application state into public (player-safe) and GM-only portions.
- * Public data: visible to all users
- * GM data: should only be visible in GM mode
+ * Public data: the player projection (shared/playerProjection), safe to hand to players
+ * GM data: the full campaign; encrypted in locked exports
  */
 export function splitState(state: CampaignState): CampaignSplitStateResult;
 export function splitState(state: LegacyCampaignState): LegacySplitStateResult;
@@ -346,15 +348,7 @@ export function splitState(
   if (isCampaignState(state)) {
     const serializedState = toSerializableCampaignState(state);
     return {
-      public: {
-        ...serializedState,
-        ui: {
-          ...serializedState.ui,
-          gmModeEnabled: false,
-          gmSessionUnlocked: false,
-          pendingIntent: null
-        }
-      },
+      public: projectCampaignForPlayers(serializedState),
       gm: {
         ...serializedState,
         ui: {
@@ -643,7 +637,9 @@ export async function exportLocked(
     schemaVersion: SCHEMA_VERSION,
     exportDate: new Date().toISOString(),
     exportType: 'locked',
-    assets: await collectExportAssets(state),
+    // Plaintext bytes only for what players can see. GM-only layers are not
+    // shipped at all, so after an unlock elsewhere they need their source store.
+    assets: await collectExportAssets(isCampaignState(publicData) ? publicData : state),
     public: publicData,
     gmLock: gmLock
   };

@@ -92,6 +92,9 @@ export function GMLockModal({ isOpen, onClose, onUnlock, error }: GMLockModalPro
                 <li>Formula design information</li>
                 <li>Batch GM observations</li>
               </ul>
+              <p className="mt-2">
+                Unlocking loads the file's full GM campaign in place of the current one. Changes made since the import are kept in the "Before GM unlock" checkpoint.
+              </p>
             </div>
           </div>
 

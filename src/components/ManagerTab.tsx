@@ -1,11 +1,12 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Shield, ShieldOff } from 'lucide-react';
 import { refundMaterialsFromProject } from '../utils/helpers';
-import { unlockGMData, mergeGM } from '../utils/exportImport';
+import { unlockPendingGMLock, type PendingGMLock } from '../utils/campaignImport';
+import type { CampaignState } from '../state/campaignReducer';
 import { useCampaignStore } from '../state/campaignStore';
+import { setPendingGMLock, usePendingGMLock } from '../state/pendingGMLock';
 import { denormalizeObject, normalizeArray } from '../state/campaignUtils';
 import { selectOwnerMaterialHoldings } from '../state/selectors/inventorySelectors';
-import type { GMLockData } from '../types/views';
 import type { Id, FoodType, MaterialType, Material, AlchemyLab, Kitchen, CookingSkill, AlchemyReagent, AlchemyFormula, CustomTemplates, Craft } from '../types/campaign';
 
 // View components
@@ -81,7 +82,7 @@ export function ManagerTab() {
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState | null>(null);
   const [showGMLockModal, setShowGMLockModal] = useState(false);
   const [gmLockError, setGmLockError] = useState<string | null>(null);
-  const [gmLockData, setGmLockData] = useState<GMLockData | null>(null);
+  const gmLockData = usePendingGMLock();
   const { state: campaignState, actions: campaignActions } = useCampaignStore();
   const [initialPromotionSourceNames, setInitialPromotionSourceNames] = useState<string[] | undefined>();
   const consumedIntentRef = useRef<typeof campaignState.ui.pendingIntent>(null);
@@ -237,38 +238,42 @@ export function ManagerTab() {
     }
   };
 
-  // Handle GM unlock with password
-  const handleGMUnlock = (password: string) => {
+  // Handle GM unlock with password. GM mode turns on only after a successful decrypt.
+  const handleGMUnlock = async (password: string) => {
     if (!password) {
       setGmLockError('Password is required');
       return;
     }
 
-    if (!gmLockData || !gmLockData.encryptedData) {
-      setGmLockError('No encrypted data found');
+    if (!gmLockData) {
+      setGmLockError('No locked GM data to unlock');
       return;
     }
 
-    try {
-      const decryptedState = unlockGMData(gmLockData as GMLockData, password);
-      if (decryptedState) {
-        // Merge GM data into campaign state
-        mergeGM(campaignActions, decryptedState);
-        setGmMode(true);
-        setShowGMLockModal(false);
-        setGmLockError(null);
-      } else {
-        setGmLockError('Incorrect password');
-      }
-    } catch (error) {
-      setGmLockError('Decryption failed: ' + (error as Error).message);
+    const outcome = await unlockPendingGMLock(gmLockData, password);
+    if (!outcome.ok) {
+      setGmLockError(outcome.error);
+      return;
     }
+
+    campaignActions.importCampaignState({
+      ...outcome.state,
+      ui: { ...outcome.state.ui, activeModule: campaignState.ui.activeModule },
+    }, 'Before GM unlock');
+    setGmMode(true);
+    setPendingGMLock(null);
+    setShowGMLockModal(false);
+    setGmLockError(null);
   };
 
-  // Handle import
-  const handleImport = () => {
-    // The import is handled by ImportExportPanel, which calls campaignActions.importState
-    // Just close GM lock modal if it's open
+  // Handle import: replace the campaign (the reducer checkpoints the old one first)
+  const handleImport = (importedState: CampaignState, pendingLock: PendingGMLock | null) => {
+    campaignActions.importCampaignState({
+      ...importedState,
+      // Stay on the Manager, where the GM unlocks the file, instead of the file's saved navigation.
+      ui: { ...importedState.ui, activeModule: campaignState.ui.activeModule },
+    });
+    setPendingGMLock(pendingLock);
     setShowGMLockModal(false);
     setGmLockError(null);
   };
@@ -509,7 +514,6 @@ export function ManagerTab() {
           gmMode={gmMode}
           gmLockData={gmLockData}
           setGmMode={setGmMode}
-          setGmLockData={setGmLockData}
           onImport={handleImport}
           onShowGMLockModal={() => setShowGMLockModal(true)}
         />

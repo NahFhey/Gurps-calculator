@@ -5,7 +5,7 @@
  *   - POST /campaigns (create) → returns JWT (role=gm) — no auth required
  *   - POST /sessions (create session) → requires GM auth
  *   - POST /sessions/join → returns JWT (role=player) — no auth required (join code is the credential)
- *   - GET /campaigns/:id → requires auth + campaign membership
+ *   - GET /campaigns/:id → requires auth + campaign membership; non-GM roles get the player projection
  *   - PUT /campaigns/:id/state → requires auth + GM role + campaign membership
  */
 
@@ -36,6 +36,7 @@ import {
 import { signToken, authMiddleware, requireRole, requireCampaignAccess } from './auth.js';
 import { Role } from '../../shared/session.js';
 import { ASSET_ROUTES, EVENTS } from '../../shared/protocol.js';
+import { projectCampaignForPlayers } from '../../shared/playerProjection.js';
 import type { AssetListResponse, AssetUploadResponse } from '../../shared/protocol.js';
 
 /** Maximum state payload size in bytes (10 MB). */
@@ -158,7 +159,7 @@ export function setupRoutes(io: SocketServer): Router {
 
   /**
    * GET /api/campaigns/:id — Get campaign state and metadata.
-   * Requires: auth + campaign membership.
+   * Requires: auth + campaign membership. Non-GM roles receive the player projection.
    */
   router.get('/campaigns/:id', authMiddleware, requireCampaignAccess, (req: Request, res: Response) => {
     const campaign = getCampaign(param(req, 'id'));
@@ -167,11 +168,24 @@ export function setupRoutes(io: SocketServer): Router {
       return;
     }
 
+    // Only the GM receives the stored state as-is; every other role gets the
+    // player projection, so GM secrets never leave the server.
+    let state = campaign.state_json;
+    if (req.auth?.role !== Role.GM) {
+      try {
+        const parsed: unknown = JSON.parse(state);
+        state = JSON.stringify(typeof parsed === 'object' && parsed !== null ? projectCampaignForPlayers(parsed) : parsed);
+      } catch {
+        res.status(500).json({ error: 'Campaign state is unreadable' });
+        return;
+      }
+    }
+
     res.json({
       id: campaign.id,
       name: campaign.name,
       version: campaign.version,
-      state: campaign.state_json,
+      state,
       updatedAt: campaign.updated_at,
     });
   });

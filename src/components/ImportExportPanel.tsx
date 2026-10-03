@@ -1,8 +1,9 @@
 import { useState, ChangeEvent } from 'react';
 import { Download, Upload, Lock, Unlock, FileJson, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
-import { exportUnlocked, exportLocked, importFile, downloadJSON, mergeGM } from '../utils/exportImport';
+import { exportUnlocked, exportLocked, downloadJSON } from '../utils/exportImport';
+import { prepareCampaignImport, type PendingGMLock } from '../utils/campaignImport';
+import { playerProjectionGaps } from '../../shared/playerProjection';
 import type { CampaignState } from '../state/campaignReducer';
-import type { GMLockData } from '../types/views';
 
 interface ImportStatus {
   type: 'success' | 'error' | 'warning';
@@ -13,10 +14,10 @@ interface ImportStatus {
 interface ImportExportPanelProps {
   state: CampaignState;
   gmMode: boolean;
-  gmLockData?: GMLockData | null;
+  gmLockData?: PendingGMLock | null;
   setGmMode: (mode: boolean) => void;
-  setGmLockData: (data: GMLockData | null) => void;
-  onImport: (state: unknown) => void;
+  /** Called once per successful import with the hydrated campaign and, for locked files, the pending GM lock. */
+  onImport: (state: CampaignState, pendingLock: PendingGMLock | null) => void;
   onShowGMLockModal: () => void;
 }
 
@@ -27,7 +28,6 @@ interface ImportExportPanelProps {
 export function ImportExportPanel({
   state,
   gmLockData,
-  setGmLockData,
   onImport,
 }: ImportExportPanelProps) {
   const [exportPassword, setExportPassword] = useState('');
@@ -35,9 +35,12 @@ export function ImportExportPanel({
   const [showExportPassword, setShowExportPassword] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importStatus, setImportStatus] = useState<ImportStatus | null>(null);
+  // The store holds only the public half until the GM unlocks; exporting now would drop the GM payload.
+  const exportBlocked = !!gmLockData;
 
   // Handle export unlocked (GM only)
   const handleExportUnlocked = async () => {
+    if (exportBlocked) return;
     setExporting(true);
     try {
       const data = await exportUnlocked(state);
@@ -59,6 +62,7 @@ export function ImportExportPanel({
 
   // Handle export locked (player-safe)
   const handleExportLocked = async () => {
+    if (exportBlocked) return;
     if (!exportPassword) {
       setImportStatus({
         type: 'error',
@@ -87,7 +91,12 @@ export function ImportExportPanel({
       const data = await exportLocked(state, exportPassword);
       const filename = `gurps-export-locked-${new Date().toISOString().split('T')[0]}.json`;
       downloadJSON(data, filename);
-      setImportStatus({
+      const gaps = playerProjectionGaps(state);
+      setImportStatus(gaps.length > 0 ? {
+        type: 'warning',
+        message: 'Locked export downloaded. Some content is not hidden from players yet:',
+        warnings: gaps,
+      } : {
         type: 'success',
         message: 'Locked export successful! File is safe to share with players. GM content requires password to access.'
       });
@@ -105,12 +114,13 @@ export function ImportExportPanel({
 
   // Handle file selection for import
   const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const input = e.target;
+    const file = input.files?.[0];
     if (!file) return;
 
     try {
       const text = await file.text();
-      const result = await importFile(text);
+      const result = await prepareCampaignImport(text);
 
       if (!result.ok) {
         setImportStatus({
@@ -120,8 +130,14 @@ export function ImportExportPanel({
         return;
       }
 
-      // Show warnings if any
-      if (result.warnings && result.warnings.length > 0) {
+      onImport(result.state, result.pendingLock);
+      if (result.pendingLock) {
+        setImportStatus({
+          type: 'success',
+          message: 'Locked import successful! Public data loaded. Enable GM Mode and enter password to access GM content.',
+          warnings: result.warnings
+        });
+      } else if (result.warnings.length > 0) {
         setImportStatus({
           type: 'warning',
           message: 'Import successful with warnings:',
@@ -133,35 +149,15 @@ export function ImportExportPanel({
           message: 'Import successful!'
         });
       }
-
-      // Check if locked
-      if (result.isLocked) {
-        // Store gmLock for later unlock
-        setGmLockData(result.data.gmLock);
-        setImportStatus({
-          type: 'success',
-          message: 'Locked import successful! Public data loaded. Enable GM Mode and enter password to access GM content.',
-          warnings: result.warnings
-        });
-        // Load public data only
-        onImport(result.data.public);
-      } else {
-        // Unlocked - merge GM data if present
-        const mergedState = result.data.gm
-          ? mergeGM(result.data.public, result.data.gm)
-          : result.data.public;
-        onImport(mergedState);
-        setGmLockData(null);
-      }
     } catch (err) {
       setImportStatus({
         type: 'error',
         message: `Import failed: ${(err as Error).message}`
       });
+    } finally {
+      // Reset so choosing the same file again still fires a change event, including after an error.
+      input.value = '';
     }
-
-    // Reset file input
-    e.target.value = '';
   };
 
   return (
@@ -256,6 +252,12 @@ export function ImportExportPanel({
           Export Data
         </h4>
 
+        {exportBlocked && (
+          <p className="text-sm text-yellow-300">
+            Unlock the GM content before exporting. Until then only the player view is loaded, and an export would lose the encrypted GM data.
+          </p>
+        )}
+
         {/* Unlocked Export (GM Only) */}
         <div className="space-y-2">
           <div className="flex items-start gap-2">
@@ -269,7 +271,7 @@ export function ImportExportPanel({
           </div>
           <button
             onClick={handleExportUnlocked}
-            disabled={exporting}
+            disabled={exporting || exportBlocked}
             className="bg-danger-700 hover:bg-danger-600 text-white px-4 py-2 rounded transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             <Download size={16} />
@@ -329,7 +331,7 @@ export function ImportExportPanel({
 
             <button
               onClick={handleExportLocked}
-              disabled={exporting || !exportPassword || exportPassword !== exportPasswordConfirm}
+              disabled={exporting || exportBlocked || !exportPassword || exportPassword !== exportPasswordConfirm}
               className="bg-success-700 hover:bg-success-600 text-white px-4 py-2 rounded transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <Lock size={16} />

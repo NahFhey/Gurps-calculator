@@ -151,6 +151,68 @@ describe('GET /api/campaigns/:id', () => {
     expect(res.status).toBe(404);
     expect(res.body.error).toMatch(/not found/i);
   });
+
+  describe('player-safe state (review claim D)', () => {
+    const gmState = JSON.stringify({
+      ui: { activeModule: 'map', gmModeEnabled: true, gmSessionUnlocked: true, pendingIntent: null },
+      meta: { schemaVersion: '1.6.5' },
+      time: { day: 42 },
+      entities: {
+        alchemyReagents: { r: { id: 'r', name: 'Grey Dust', quantity: 1, identificationLevel: 0,
+          aspects: { primary: 'SECRET-fire' }, notes: 'SECRET note' } },
+      },
+      checkpoints: { maxSize: 10, entries: [{ id: 'cp', label: 'SECRET', snapshot: {} }] },
+      logs: { entries: [
+        { id: 'gm', visibility: 'gmOnly', payload: { message: 'SECRET ambush' } },
+        { id: 'pub', visibility: 'player', payload: { message: 'The party set out' } },
+      ] },
+    });
+
+    async function getAs(token: string) {
+      return request(app).get('/api/campaigns/vis').set('Authorization', `Bearer ${token}`);
+    }
+
+    it('a player receives the projection, not the raw state', async () => {
+      createCampaign('vis', 'Visibility', gmState);
+      const res = await getAs(await playerToken('vis'));
+
+      expect(res.status).toBe(200);
+      expect(res.body.state).not.toContain('SECRET');
+      const state = JSON.parse(res.body.state);
+      expect(state.ui.gmModeEnabled).toBe(false);
+      expect(state.time.day).toBe(42);
+      expect(state.entities.alchemyReagents.r.name).toBe('Grey Dust');
+      expect(state.logs.entries.map((e: { id: string }) => e.id)).toEqual(['pub']);
+    });
+
+    it('a spectator receives the projection too', async () => {
+      createCampaign('vis', 'Visibility', gmState);
+      const token = await signToken({ campaignId: 'vis', role: Role.Spectator, displayName: 'Watcher' });
+      const res = await getAs(token);
+
+      expect(res.status).toBe(200);
+      expect(res.body.state).not.toContain('SECRET');
+    });
+
+    it('the GM still receives the stored state byte for byte', async () => {
+      createCampaign('vis', 'Visibility', gmState);
+      const res = await getAs(await gmToken('vis'));
+
+      expect(res.status).toBe(200);
+      expect(res.body.state).toBe(gmState);
+    });
+
+    it('unparseable stored state is a 500 for players, never the raw text', async () => {
+      createCampaign('vis', 'Visibility', '{"SECRET": ');
+      const player = await getAs(await playerToken('vis'));
+      expect(player.status).toBe(500);
+      expect(JSON.stringify(player.body)).not.toContain('SECRET');
+
+      const gm = await getAs(await gmToken('vis'));
+      expect(gm.status).toBe(200);
+      expect(gm.body.state).toBe('{"SECRET": ');
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
