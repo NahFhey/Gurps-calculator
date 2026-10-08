@@ -7,6 +7,7 @@ import { logger } from '../utils/logger';
 import { removeLegacyTravelState } from '../utils/dataMigrations';
 import { ensureMapTokens, ensureMapScale, ensureAmbientWeather, ensureCharacterTemplates, ensureTravelGroups, ensureJourneyIntegrity, ensureTravelEventTables, ensureInventoryRecords, ensureOwnerAttributedHoldings, ensureConditionVisibility, ensureCombatCharacterCategories, ensureCombatHistoryShape, ensureLocationIntegrity } from './dataMigration';
 import { DEFAULT_CALENDAR } from '../utils/timeSystem';
+import { CAMPAIGN_SCHEMA_VERSION, classifySchemaVersion } from '../../shared/campaignVersion';
 
 const CAMPAIGN_STORAGE_KEY = 'campaignState';
 const CAMPAIGN_REVISION_KEY = 'campaignStateRevision';
@@ -53,7 +54,7 @@ function announceSaveHealth() {
 }
 
 async function readStoredRevision(): Promise<number> {
-  const stored = await storage.get(CAMPAIGN_REVISION_KEY, false);
+  const stored = await storage.get(CAMPAIGN_REVISION_KEY);
   if (!stored?.value) {
     return 0;
   }
@@ -73,8 +74,12 @@ async function readStoredRevision(): Promise<number> {
 export const UNREADABLE_SAVE_KEY_PREFIX = 'campaignState_unreadable_';
 
 export interface CampaignLoadIssue {
-  /** 'unreadable': storage read failed. 'invalid': bytes read but did not parse/hydrate. */
-  kind: 'unreadable' | 'invalid';
+  /**
+   * 'unreadable': storage read failed. 'invalid': bytes read but did not
+   * parse/hydrate. 'newer-version': a newer build saved it; this one must not
+   * load or overwrite it.
+   */
+  kind: 'unreadable' | 'invalid' | 'newer-version';
   message: string;
   /** Original stored text, when it could be read. */
   raw: string | null;
@@ -190,7 +195,46 @@ const hydrateMapState = (maps: any): CampaignState['maps'] => {
   };
 };
 
+/**
+ * A campaign payload whose `meta.schemaVersion` this build cannot read: a
+ * newer build wrote it ('future'), or the version is not strict semver
+ * ('malformed'). Thrown before anything is repaired or stamped.
+ */
+export class CampaignVersionError extends Error {
+  constructor(readonly version: unknown, readonly versionClass: 'future' | 'malformed') {
+    super(
+      versionClass === 'future'
+        ? `This campaign was saved by a newer version of the app (schema ${String(version)}; ` +
+          `this version reads up to ${CAMPAIGN_SCHEMA_VERSION}). Update the app to open it.`
+        : `This campaign has a malformed schema version: ${JSON.stringify(version) ?? String(version)}`
+    );
+    this.name = 'CampaignVersionError';
+  }
+}
+
+const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * Refuse a payload from a newer build or with a malformed version. A missing
+ * version, or any below 1.7.0, is pre-contract: the old `'1.0.0'` was never
+ * bumped, so hydration's idempotent repairs are what bring it up to date.
+ */
+function assertReadableSchemaVersion(payload: unknown): void {
+  const meta = isPlainRecord(payload) ? payload.meta : undefined;
+  if (!isPlainRecord(meta) || meta.schemaVersion === undefined) return;
+  const versionClass = classifySchemaVersion(meta.schemaVersion);
+  if (versionClass === 'future' || versionClass === 'malformed') {
+    throw new CampaignVersionError(meta.schemaVersion, versionClass);
+  }
+}
+
+/**
+ * Turn a parsed campaign payload into runtime state: refuse unreadable
+ * versions, run the idempotent repairs, and stamp the current schema version.
+ */
 export const hydrateCampaignState = (payload: CampaignState): CampaignState => {
+  assertReadableSchemaVersion(payload);
   payload = ensureMapTokens(removeLegacyTravelState(payload));
   const base = createCampaignState();
   const reveal = payload.combat?.reveal ?? base.combat.reveal;
@@ -198,6 +242,11 @@ export const hydrateCampaignState = (payload: CampaignState): CampaignState => {
     ...base,
     ...payload,
     // Ensure all nested structures have proper defaults
+    meta: {
+      ...base.meta,
+      ...(isPlainRecord(payload.meta) ? payload.meta : {}),
+      schemaVersion: CAMPAIGN_SCHEMA_VERSION,
+    },
     ui: {
       ...base.ui,
       ...payload.ui,
@@ -451,10 +500,10 @@ async function loadCampaignStateNow(): Promise<CampaignState> {
   try {
     state = injectTestSampleData(hydrateCampaignState(JSON.parse(raw)));
   } catch (error) {
-    logger.error('[CampaignStorage] Stored campaign is invalid; saving is paused.', error);
+    logger.error('[CampaignStorage] Stored campaign cannot be loaded; saving is paused.', error);
     // Block saves before the first await below, not after it.
     const issue: CampaignLoadIssue = {
-      kind: 'invalid',
+      kind: error instanceof CampaignVersionError && error.versionClass === 'future' ? 'newer-version' : 'invalid',
       message: describeError(error),
       raw,
       recoveryKey: null,
@@ -502,12 +551,12 @@ async function preserveUnreadableSave(raw: string): Promise<string | null> {
     for (const existing of await storage.keys()) {
       if (
         existing.startsWith(UNREADABLE_SAVE_KEY_PREFIX) &&
-        (await storage.get(existing, false))?.value === raw
+        (await storage.get(existing))?.value === raw
       ) {
         return existing;
       }
     }
-    await storage.set(key, raw, false);
+    await storage.set(key, raw);
     return key;
   } catch (error) {
     logger.warn('[CampaignStorage] Could not copy the unreadable save aside', error);

@@ -10,7 +10,7 @@
  */
 
 import { projectCampaignForPlayers } from '../../shared/playerProjection';
-import { hydrateCampaignState } from '../persistence/campaignStorage';
+import { CampaignVersionError, hydrateCampaignState } from '../persistence/campaignStorage';
 import type { CampaignState } from '../state/campaignReducer';
 import type { GMLock } from './cryptoLock';
 import { importFile, isCampaignState, mergeGM, unlockGMData } from './exportImport';
@@ -34,6 +34,22 @@ export type GMUnlockOutcome =
 export const PRE_CAMPAIGN_EXPORT_ERROR =
   'This file uses the pre-campaign export format, which this version cannot load into a campaign.';
 
+type Hydrated = { ok: true; state: CampaignState } | { ok: false; error: string };
+
+/**
+ * Hydrate a payload, returning a version refusal as a failure. The envelope
+ * version is checked by `importFile`; this catches an inner `meta.schemaVersion`
+ * from a newer build, or a malformed one, which would otherwise be stamped over.
+ */
+function hydrateForImport(payload: CampaignState): Hydrated {
+  try {
+    return { ok: true, state: hydrateCampaignState(payload) };
+  } catch (error) {
+    if (error instanceof CampaignVersionError) return { ok: false, error: error.message };
+    throw error;
+  }
+}
+
 /** Validate, migrate and hydrate an export file. Nothing is dispatched here. */
 export async function prepareCampaignImport(json: string): Promise<PreparedCampaignImport> {
   const result = await importFile(json);
@@ -42,11 +58,13 @@ export async function prepareCampaignImport(json: string): Promise<PreparedCampa
   if (result.isLocked) {
     const publicState = result.data.public;
     if (!isCampaignState(publicState)) return { ok: false, error: PRE_CAMPAIGN_EXPORT_ERROR };
+    // The plaintext half is not trusted: a tampered file, or one exported before the public half
+    // was projected, would otherwise load GM secrets and GM mode without the password.
+    const hydrated = hydrateForImport(projectCampaignForPlayers(publicState));
+    if (!hydrated.ok) return hydrated;
     return {
       ok: true,
-      // The plaintext half is not trusted: a tampered file, or one exported before the public half
-      // was projected, would otherwise load GM secrets and GM mode without the password.
-      state: hydrateCampaignState(projectCampaignForPlayers(publicState)),
+      state: hydrated.state,
       pendingLock: {
         gmLock: result.data.gmLock,
         public: result.data.public,
@@ -59,7 +77,9 @@ export async function prepareCampaignImport(json: string): Promise<PreparedCampa
 
   const fullState = result.data.gm ?? result.data.public;
   if (!isCampaignState(fullState)) return { ok: false, error: PRE_CAMPAIGN_EXPORT_ERROR };
-  return { ok: true, state: hydrateCampaignState(fullState), pendingLock: null, warnings: result.warnings };
+  const hydrated = hydrateForImport(fullState);
+  if (!hydrated.ok) return hydrated;
+  return { ok: true, state: hydrated.state, pendingLock: null, warnings: result.warnings };
 }
 
 /** Decrypt a pending lock. A wrong password or bad payload is returned as a failure, never thrown. */
@@ -68,5 +88,5 @@ export async function unlockPendingGMLock(pending: PendingGMLock, password: stri
   if (!unlocked.ok) return unlocked;
   const merged = mergeGM(pending.public, unlocked.gmData);
   if (!isCampaignState(merged)) return { ok: false, error: 'The decrypted GM data is not a campaign.' };
-  return { ok: true, state: hydrateCampaignState(merged) };
+  return hydrateForImport(merged);
 }

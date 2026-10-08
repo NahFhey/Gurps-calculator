@@ -128,6 +128,6 @@ describe.each<OpenOutcome>(['error', 'blocked', 'throw'])('IndexedDB open failur
   it('lenient get keeps the localStorage fallback', async () => {
     localStorage.setItem('misc', 'kept');
     const mod = await freshStorageModule();
-    await expect(mod.default.get('misc', false)).resolves.toEqual({ value: 'kept' });
+    await expect(mod.default.get('misc')).resolves.toEqual({ value: 'kept' });
   });
 });

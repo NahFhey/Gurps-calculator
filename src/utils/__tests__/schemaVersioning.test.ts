@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   CURRENT_SCHEMA_VERSION,
-  compareVersions,
+  compareSchemaVersions,
   getMigrationPath,
   getMigrationHistory,
   logMigration,
@@ -67,7 +67,7 @@ function assertArrayProperty<Key extends string>(
 describe('Schema Versioning System', () => {
   describe('Version Constants', () => {
     it('should have current schema version defined', () => {
-      expect(CURRENT_SCHEMA_VERSION).toBe('1.6.5');
+      expect(CURRENT_SCHEMA_VERSION).toBe('1.7.0');
     });
 
     it('should have metadata for all supported versions', () => {
@@ -88,6 +88,8 @@ describe('Schema Versioning System', () => {
       expect(SCHEMA_METADATA['1.5.3']).toBeDefined();
       expect(SCHEMA_METADATA['1.5.5']).toBeDefined();
       expect(SCHEMA_METADATA['1.5.6']).toBeDefined();
+      expect(SCHEMA_METADATA['1.7.0']).toMatchObject({ name: 'Schema version contract', breaking: false, migratesFrom: ['1.6.5'] });
+      expect(getMigrationPath('1.6.5', '1.7.0')).toEqual(['1.7.0']);
     });
 
     it('should include features list in metadata', () => {
@@ -98,26 +100,26 @@ describe('Schema Versioning System', () => {
     });
   });
 
-  describe('compareVersions()', () => {
+  describe('compareSchemaVersions()', () => {
     it('should return -1 when first version is less', () => {
-      expect(compareVersions('1.0.0', '1.1.0')).toBe(-1);
-      expect(compareVersions('1.0.0', '1.3.0')).toBe(-1);
-      expect(compareVersions('1.2.0', '1.3.0')).toBe(-1);
+      expect(Math.sign(compareSchemaVersions('1.0.0', '1.1.0'))).toBe(-1);
+      expect(Math.sign(compareSchemaVersions('1.0.0', '1.3.0'))).toBe(-1);
+      expect(Math.sign(compareSchemaVersions('1.2.0', '1.3.0'))).toBe(-1);
     });
 
     it('should return 0 when versions are equal', () => {
-      expect(compareVersions('1.0.0', '1.0.0')).toBe(0);
-      expect(compareVersions('1.3.0', '1.3.0')).toBe(0);
+      expect(Math.sign(compareSchemaVersions('1.0.0', '1.0.0'))).toBe(0);
+      expect(Math.sign(compareSchemaVersions('1.3.0', '1.3.0'))).toBe(0);
     });
 
     it('should return 1 when first version is greater', () => {
-      expect(compareVersions('1.3.0', '1.0.0')).toBe(1);
-      expect(compareVersions('1.2.0', '1.0.0')).toBe(1);
+      expect(Math.sign(compareSchemaVersions('1.3.0', '1.0.0'))).toBe(1);
+      expect(Math.sign(compareSchemaVersions('1.2.0', '1.0.0'))).toBe(1);
     });
 
     it('should handle patch versions correctly', () => {
-      expect(compareVersions('1.0.0', '1.0.1')).toBe(-1);
-      expect(compareVersions('1.0.1', '1.0.0')).toBe(1);
+      expect(Math.sign(compareSchemaVersions('1.0.0', '1.0.1'))).toBe(-1);
+      expect(Math.sign(compareSchemaVersions('1.0.1', '1.0.0'))).toBe(1);
     });
   });
 
@@ -344,9 +346,41 @@ describe('Schema Versioning System', () => {
       expect(result.currentDay).toBe(1);
       expect(result.schemaVersion).toBe('1.3.0');
     });
+
+    it('migrates the last pre-contract version to the contract without changing shape', () => {
+      const data = { materials: [{ id: 'm1' }], currentDay: 3 };
+      const result = migrateData(data, '1.6.5', CURRENT_SCHEMA_VERSION);
+      expect(result).toEqual({ ...data, schemaVersion: '1.7.0' });
+    });
+
+    it.each(['garbage', '1.6.x', '1.6', '', '01.6.5'])('throws on malformed fromVersion %j instead of stamping', (from) => {
+      expect(() => migrateData({ currentDay: 1 }, from)).toThrow(/malformed schema version/);
+    });
+
+    it('throws on a malformed toVersion', () => {
+      expect(() => migrateData({ currentDay: 1 }, '1.6.5', 'next')).toThrow(/malformed schema version/);
+    });
+
+    it('throws on an older version with no known migration path', () => {
+      expect(() => migrateData({ currentDay: 1 }, '0.9.0')).toThrow(/No migration path/);
+      expect(() => migrateData({ currentDay: 1 }, '1.6.6')).toThrow(/No migration path/);
+    });
+
+    it('refuses to relabel data from a newer version', () => {
+      expect(() => migrateData({ currentDay: 1 }, '1.99.0')).toThrow(/newer schema version/);
+    });
   });
 
   describe('validateDataForVersion()', () => {
+    it('applies every gate below a two-digit minor version (1.10.0 is past 1.4.0)', () => {
+      const data = { alchemyReagents: [], alchemyFormulas: [], inventories: [] };
+
+      const validation = validateDataForVersion(data, '1.10.0');
+
+      expect(validation.issues).toContain('Missing or invalid currentDay');
+      expect(validation.issues.some(issue => /inventories/.test(issue))).toBe(true);
+    });
+
     it('should validate v1.3.0 data correctly', () => {
       const validData = {
         materials: [],
@@ -482,9 +516,9 @@ describe('Schema Versioning System', () => {
 
   describe('Backward Compatibility', () => {
     it('should mark data as needing migration if older version', () => {
-      expect(compareVersions('1.0.0', '1.3.0')).toBeLessThan(0);
-      expect(compareVersions('1.1.0', '1.3.0')).toBeLessThan(0);
-      expect(compareVersions('1.2.0', '1.3.0')).toBeLessThan(0);
+      expect(compareSchemaVersions('1.0.0', '1.3.0')).toBeLessThan(0);
+      expect(compareSchemaVersions('1.1.0', '1.3.0')).toBeLessThan(0);
+      expect(compareSchemaVersions('1.2.0', '1.3.0')).toBeLessThan(0);
     });
 
     it('should have upgrade path for all old versions', () => {

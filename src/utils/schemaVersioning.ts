@@ -3,6 +3,13 @@
  */
 
 import { logger } from './logger';
+import {
+  CAMPAIGN_SCHEMA_VERSION,
+  classifySchemaVersion,
+  compareSchemaVersions,
+} from '../../shared/campaignVersion';
+
+export { classifySchemaVersion, compareSchemaVersions };
 
 export interface SchemaMetadataEntry {
   name: string;
@@ -13,9 +20,13 @@ export interface SchemaMetadataEntry {
   migratesFrom?: string[];
 }
 
-export const CURRENT_SCHEMA_VERSION = '1.6.5';
+/** The single campaign schema version (shared/campaignVersion.ts). */
+export const CURRENT_SCHEMA_VERSION = CAMPAIGN_SCHEMA_VERSION;
 
 export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
+  '1.7.0': { name: 'Schema version contract', timestamp: '2026-10-07', breaking: false,
+    description: 'One semver contract: meta.schemaVersion is stamped on every persisted campaign; newer versions are refused',
+    features: ['schema_version_contract'], migratesFrom: ['1.6.5'] },
   '1.6.5': { name: 'Persistent map tokens', timestamp: '2026-09-08', breaking: true,
     description: 'Map-owned token instances, participant references and square movement coordinates',
     features: ['map_tokens'], migratesFrom: ['1.6.4'] },
@@ -188,7 +199,6 @@ export const SCHEMA_METADATA: Record<string, SchemaMetadataEntry> = {
   },
 };
 
-export const SCHEMA_VERSION_KEY = 'app_schema_version';
 export const MIGRATION_HISTORY_KEY = 'app_migration_history';
 
 export interface MigrationLogEntry {
@@ -198,53 +208,11 @@ export interface MigrationLogEntry {
   [key: string]: unknown;
 }
 
-export function getStoredSchemaVersion(): string {
-  try {
-    const stored = localStorage.getItem(SCHEMA_VERSION_KEY);
-    return stored || '1.0.0';
-  } catch (error) {
-    logger.error('Failed to read schema version:', error);
-    return '1.0.0';
-  }
-}
-
-export function saveSchemaVersion(version: string = CURRENT_SCHEMA_VERSION): boolean {
-  try {
-    localStorage.setItem(SCHEMA_VERSION_KEY, version);
-    return true;
-  } catch (error) {
-    logger.error('Failed to save schema version:', error);
-    return false;
-  }
-}
-
-export function compareVersions(v1: string, v2: string): number {
-  const parts1 = v1.split('.').map(Number);
-  const parts2 = v2.split('.').map(Number);
-
-  for (let i = 0; i < 3; i++) {
-    const p1 = parts1[i] || 0;
-    const p2 = parts2[i] || 0;
-
-    if (p1 < p2) return -1;
-    if (p1 > p2) return 1;
-  }
-
-  return 0;
-}
-
-export function needsMigration(
-  storedVersion: string,
-  currentVersion: string = CURRENT_SCHEMA_VERSION
-): boolean {
-  return compareVersions(storedVersion, currentVersion) < 0;
-}
-
 export function getMigrationPath(
   fromVersion: string,
   toVersion: string = CURRENT_SCHEMA_VERSION
 ): string[] {
-  const versions = Object.keys(SCHEMA_METADATA).sort((a, b) => compareVersions(a, b));
+  const versions = Object.keys(SCHEMA_METADATA).sort(compareSchemaVersions);
 
   const fromIndex = versions.indexOf(fromVersion);
   const toIndex = versions.indexOf(toVersion);
@@ -312,26 +280,4 @@ export function isValidSchemaVersion(version: string): boolean {
 export function getFeaturesForVersion(version: string): string[] {
   const metadata = SCHEMA_METADATA[version];
   return metadata ? metadata.features : [];
-}
-
-export interface SchemaInfo {
-  currentVersion: string;
-  storedVersion: string;
-  needsMigration: boolean;
-  metadata: SchemaMetadataEntry | undefined;
-  migrationPath: string[];
-  migrationHistory: MigrationLogEntry[];
-}
-
-export function getSchemaInfo(): SchemaInfo {
-  const storedVersion = getStoredSchemaVersion();
-
-  return {
-    currentVersion: CURRENT_SCHEMA_VERSION,
-    storedVersion,
-    needsMigration: needsMigration(storedVersion),
-    metadata: SCHEMA_METADATA[CURRENT_SCHEMA_VERSION],
-    migrationPath: getMigrationPath(storedVersion),
-    migrationHistory: getMigrationHistory(),
-  };
 }

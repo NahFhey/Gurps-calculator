@@ -2,7 +2,8 @@
  * SaveHealthBanner — tells the user when their campaign is NOT being saved.
  *
  * Three situations, most severe first:
- * - Load failure: the stored campaign could not be read or decoded. Saving is
+ * - Load failure: the stored campaign could not be read or decoded, or a newer
+ *   build of the app wrote it. Saving is
  *   paused (campaignStorage blocks it) so the blank session cannot overwrite
  *   the original. The user downloads the original and/or explicitly starts fresh.
  * - Conflict: another tab or window saved after this one loaded; this session's
@@ -81,8 +82,13 @@ export function SaveHealthBanner() {
   if (loadIssue) {
     content = (
       <>
-        <h3 className="text-sm font-semibold text-danger-100">Your saved campaign couldn&apos;t be loaded</h3>
+        <h3 className="text-sm font-semibold text-danger-100">
+          {loadIssue.kind === 'newer-version'
+            ? 'Your saved campaign is from a newer version of the app'
+            : "Your saved campaign couldn't be loaded"}
+        </h3>
         <p className="text-xs text-danger-300 mt-0.5">
+          {loadIssue.kind === 'newer-version' && 'Update the app to open it. '}
           Saving is paused so the original isn&apos;t overwritten. You&apos;re looking at a blank campaign.
           {loadIssue.recoveryKey && ' A copy of the original has been kept in storage.'}
         </p>

@@ -7,14 +7,10 @@
  * Values already in localStorage are migrated to IndexedDB lazily on first
  * read and the localStorage copy is removed to free the origin quota.
  *
- * Schema Versioning:
- * - Automatically handles data migrations on load
- * - Tracks schema version in localStorage
- * - Supports upgrading from v1.0.0 to current version
+ * Values are opaque strings here. Schema versioning lives with the campaign
+ * (`meta.schemaVersion`, shared/campaignVersion.ts), not in this layer.
  */
 
-import { getStoredSchemaVersion, saveSchemaVersion, CURRENT_SCHEMA_VERSION } from './schemaVersioning';
-import { migrateData, validateDataForVersion } from './dataMigrations';
 import { logger } from './logger';
 
 // ============================================================================
@@ -26,10 +22,10 @@ export interface StorageGetResult {
 }
 
 export interface Storage {
-  get: (key: string, migrations?: boolean) => Promise<StorageGetResult | null>;
+  get: (key: string) => Promise<StorageGetResult | null>;
   /** Raw stored text; unlike `get`, read failures reject instead of resolving null. */
   readRaw: (key: string) => Promise<string | null>;
-  set: (key: string, value: string, trackVersion?: boolean) => Promise<void>;
+  set: (key: string, value: string) => Promise<void>;
   remove: (key: string) => Promise<void>;
   clear: () => Promise<void>;
   keys: () => Promise<string[]>;
@@ -380,67 +376,14 @@ function reportWriteError(key: string, error: unknown) {
 
 const storage: Storage = {
   /**
-   * Get a value from localStorage
-   * Automatically handles schema migrations for application state
-   *
+   * Get a value. Read failures resolve null (use `readRaw` to see them).
    * @param key - Storage key
-   * @param migrations - If true, apply schema migrations (default: true)
    * @returns Object with value string or null if not found
    */
-  async get(key: string, migrations: boolean = true): Promise<StorageGetResult | null> {
+  async get(key: string): Promise<StorageGetResult | null> {
     try {
       const value = await backendGet(key);
-      if (value === null) {
-        return null;
-      }
-
-      // Apply migrations for main state keys
-      if (migrations && (key === 'appState' || key === 'gmState')) {
-        let data: Record<string, unknown>;
-        try {
-          data = JSON.parse(value) as Record<string, unknown>;
-        } catch (parseError) {
-          logger.warn(
-            `Malformed JSON in localStorage for key "${key}"; returning null.`,
-            parseError
-          );
-          return null;
-        }
-        try {
-          const storedVersion = getStoredSchemaVersion() || '1.0.0';
-
-          if (storedVersion !== CURRENT_SCHEMA_VERSION) {
-            logger.log(
-              `Migrating ${key} from v${storedVersion} to v${CURRENT_SCHEMA_VERSION}`
-            );
-
-            const migratedData = migrateData(data, storedVersion, CURRENT_SCHEMA_VERSION);
-
-            // Validate migrated data
-            const validation = validateDataForVersion(
-              migratedData,
-              CURRENT_SCHEMA_VERSION
-            ) as { valid: boolean; issues: string[] };
-
-            if (!validation.valid) {
-              logger.warn(
-                `Data validation issues for ${key}:`,
-                validation.issues
-              );
-            }
-
-            // Save updated version and return migrated data
-            saveSchemaVersion(CURRENT_SCHEMA_VERSION);
-            return { value: JSON.stringify(migratedData) };
-          }
-        } catch (migrationError) {
-          logger.error(`Migration failed for ${key}:`, migrationError);
-          // Return original value if migration fails
-          return { value };
-        }
-      }
-
-      return { value };
+      return value === null ? null : { value };
     } catch (error) {
       console.error(`storage.get error for key "${key}":`, error);
       return null;
@@ -451,21 +394,13 @@ const storage: Storage = {
   readRaw: readRawStrict,
 
   /**
-   * Set a value in localStorage
-   * Automatically tracks schema version on state saves
-   *
+   * Set a value
    * @param key - Storage key
    * @param value - Value to store (should be JSON string)
-   * @param trackVersion - If true, update schema version (default: true)
    */
-  async set(key: string, value: string, trackVersion: boolean = true): Promise<void> {
+  async set(key: string, value: string): Promise<void> {
     try {
       await backendSet(key, value);
-
-      // Track schema version when saving main state
-      if (trackVersion && (key === 'appState' || key === 'gmState')) {
-        saveSchemaVersion(CURRENT_SCHEMA_VERSION);
-      }
     } catch (error) {
       reportWriteError(key, error);
       throw error;

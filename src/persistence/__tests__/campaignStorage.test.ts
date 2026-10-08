@@ -19,6 +19,7 @@ import {
   whenCampaignSavesSettled,
 } from '../campaignStorage';
 import storage from '../../utils/storage';
+import { CAMPAIGN_SCHEMA_VERSION } from '../../../shared/campaignVersion';
 import { isStateEmpty } from '../../utils/testSampleData';
 import type { CombatCharacter, CombatSession, CombatItem } from '../../types/campaign';
 import type { CombatState } from '../../types/combatTracker';
@@ -858,6 +859,84 @@ describe('campaignStorage', () => {
       await loading;
       expect(getCampaignLoadIssue()!.recoveryKey).not.toBeNull();
       expect(localStorage.getItem('campaignState')).toBe('not-valid-json{{{');
+    });
+  });
+
+  describe('schema-version contract', () => {
+    /** A real saved campaign with its meta rewritten, as an older or newer build would leave it. */
+    async function storeCampaignWithMeta(meta: Record<string, unknown> | undefined) {
+      const state = createCampaignState();
+      state.time.day = 12;
+      await saveCampaignState(state);
+      const stored = JSON.parse(localStorage.getItem('campaignState')!);
+      if (meta === undefined) delete stored.meta;
+      else stored.meta = meta;
+      const raw = JSON.stringify(stored);
+      localStorage.setItem('campaignState', raw);
+      resetRevisionGuard();
+      return raw;
+    }
+
+    it('stamps fresh campaigns and their saves with the contract version', async () => {
+      expect(createCampaignState().meta.schemaVersion).toBe(CAMPAIGN_SCHEMA_VERSION);
+      await saveCampaignState(createCampaignState());
+      expect(JSON.parse(localStorage.getItem('campaignState')!).meta.schemaVersion).toBe('1.7.0');
+    });
+
+    it('refuses a save from a newer build: saves blocked, bytes kept, newer-version issue', async () => {
+      const raw = await storeCampaignWithMeta({ rulesVersion: '1.0.0', schemaVersion: '1.99.0', downtimeSchemaVersion: 2 });
+      const revision = localStorage.getItem('campaignStateRevision');
+
+      const loaded = await loadCampaignState();
+
+      const issue = getCampaignLoadIssue();
+      expect(issue?.kind).toBe('newer-version');
+      expect(issue?.message).toContain('1.99.0');
+      expect(issue?.raw).toBe(raw);
+      expect(localStorage.getItem(issue!.recoveryKey!)).toBe(raw);
+      // Not the newer campaign relabelled as current: a blank one.
+      expect(loaded.time.day).not.toBe(12);
+      expect(isStateEmpty(loaded)).toBe(true);
+
+      loaded.time.day = 30;
+      await expect(saveCampaignState(loaded)).rejects.toBeInstanceOf(CampaignSaveBlockedError);
+      expect(localStorage.getItem('campaignState')).toBe(raw);
+      expect(localStorage.getItem('campaignStateRevision')).toBe(revision);
+    });
+
+    it('treats a malformed stored version as an invalid save, not a pre-contract one', async () => {
+      const raw = await storeCampaignWithMeta({ rulesVersion: '1.0.0', schemaVersion: '1.6.x' });
+
+      await loadCampaignState();
+
+      expect(getCampaignLoadIssue()?.kind).toBe('invalid');
+      expect(getCampaignLoadIssue()?.message).toContain('malformed schema version');
+      await expect(saveCampaignState(createCampaignState())).rejects.toBeInstanceOf(CampaignSaveBlockedError);
+      expect(localStorage.getItem('campaignState')).toBe(raw);
+    });
+
+    it.each([
+      ['the never-bumped 1.0.0', { rulesVersion: '1.0.0', schemaVersion: '1.0.0', downtimeSchemaVersion: 2 }],
+      ['no schemaVersion', { rulesVersion: '1.0.0' }],
+      ['no meta at all', undefined],
+    ])('loads a pre-contract save (%s), repairs it and stamps the contract version', async (_label, meta) => {
+      await storeCampaignWithMeta(meta);
+
+      const loaded = await loadCampaignState();
+
+      expect(getCampaignLoadIssue()).toBeNull();
+      expect(loaded.time.day).toBe(12);
+      expect(loaded.meta).toEqual({ rulesVersion: '1.0.0', schemaVersion: '1.7.0', downtimeSchemaVersion: 2 });
+      await saveCampaignState(loaded);
+      expect(JSON.parse(localStorage.getItem('campaignState')!).meta.schemaVersion).toBe('1.7.0');
+    });
+
+    it('keeps meta fields it does not own', async () => {
+      await storeCampaignWithMeta({ rulesVersion: '0.9.0', schemaVersion: '1.7.0', downtimeSchemaVersion: 1, note: 'kept' });
+
+      const loaded = await loadCampaignState();
+
+      expect(loaded.meta).toEqual({ rulesVersion: '0.9.0', schemaVersion: '1.7.0', downtimeSchemaVersion: 1, note: 'kept' });
     });
   });
 

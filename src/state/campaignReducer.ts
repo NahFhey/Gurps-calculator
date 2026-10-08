@@ -87,6 +87,7 @@ import { isCombatAction, handleCombatAction } from './combat';
 import { isMapAction, handleMapAction, type MapAction } from './map';
 import { isPartyAction, handlePartyAction, type PartyAction } from './party';
 import { resolveGroupPosition } from '../utils/partyPosition';
+import { CAMPAIGN_SCHEMA_VERSION } from '../../shared/campaignVersion';
 import { mapsWithPresence, regenerateMapWeatherIfNeeded, resolveWeatherContext } from '../utils/ambientWeather';
 import {
   handleJourneyDayBoundary,
@@ -97,7 +98,7 @@ import {
 
 export const CAMPAIGN_META = {
   rulesVersion: '1.0.0',
-  schemaVersion: '1.0.0'
+  schemaVersion: CAMPAIGN_SCHEMA_VERSION
 };
 
 enableMapSet();
@@ -132,7 +133,12 @@ export type CampaignState = {
   };
   meta: {
     rulesVersion: string;
+    /** The campaign schema-version contract (shared/campaignVersion.ts). */
     schemaVersion: string;
+    /**
+     * Legacy downtime-only version, kept on read for old saves. Not an
+     * authority: `schemaVersion` versions the whole campaign, downtime included.
+     */
     downtimeSchemaVersion: number;
   };
   entities: {

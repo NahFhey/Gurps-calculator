@@ -65,6 +65,24 @@ describe('SaveHealthBanner', () => {
       expect(await readBlob(createObjectURL.mock.calls[0][0])).toBe('not-valid-json{{{');
     });
 
+    it('says a newer build wrote the save and keeps it downloadable', async () => {
+      const stored = JSON.parse(JSON.stringify(createCampaignState()));
+      stored.meta.schemaVersion = '1.99.0';
+      const raw = JSON.stringify(stored);
+      await loadWithStoredCampaign(raw);
+      expect(getCampaignLoadIssue()?.kind).toBe('newer-version');
+
+      render(<SaveHealthBanner />);
+
+      const alert = screen.getByRole('alert');
+      expect(alert).toHaveTextContent('Your saved campaign is from a newer version of the app');
+      // In the plain-language summary, not only in the raw error detail line.
+      expect(screen.getByText(/Saving is paused/)).toHaveTextContent('Update the app to open it.');
+      expect(alert).toHaveTextContent('Saving is paused');
+      expect(alert).not.toHaveTextContent("couldn't be loaded");
+      expect(screen.getByRole('button', { name: /download original/i })).toBeInTheDocument();
+    });
+
     it('needs a confirmation before starting fresh, then resumes saving', async () => {
       await loadWithStoredCampaign('not-valid-json{{{');
       render(<SaveHealthBanner />);

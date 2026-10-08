@@ -25,7 +25,7 @@ import { validateMapTokenCollections } from './mapTokenMigration';
 import { projectCampaignForPlayers } from '../../shared/playerProjection';
 import {
   CURRENT_SCHEMA_VERSION,
-  compareVersions,
+  classifySchemaVersion,
   getMigrationPath,
 } from './schemaVersioning';
 import { migrateData, validateDataForVersion } from './dataMigrations';
@@ -662,15 +662,20 @@ export function validateImport(data: unknown): ValidationResult {
   }
 
   const importedVersion = String(envelope.schemaVersion);
+  const versionClass = classifySchemaVersion(importedVersion, SCHEMA_VERSION);
 
-  if (compareVersions(importedVersion, SCHEMA_VERSION) > 0) {
+  if (versionClass === 'malformed') {
+    return { valid: false, error: `Malformed schema version "${importedVersion}"` };
+  }
+
+  if (versionClass === 'future') {
     return {
       valid: false,
       error: `Incompatible schema version ${importedVersion} (current: ${SCHEMA_VERSION}). Please update the application.`
     };
   }
 
-  if (compareVersions(importedVersion, SCHEMA_VERSION) < 0) {
+  if (versionClass === 'older') {
     warnings.push(`Old schema version ${importedVersion} (current: ${SCHEMA_VERSION}). Migration will be attempted.`);
   }
 
@@ -849,7 +854,11 @@ export async function unlockGMData(
   try {
     let gmData = await decryptJSON(envelope.gmLock, password);
     const originalVersion = envelope.originalSchemaVersion ?? String(envelope.schemaVersion ?? SCHEMA_VERSION);
-    if (compareVersions(originalVersion, CURRENT_SCHEMA_VERSION) < 0) {
+    const versionClass = classifySchemaVersion(originalVersion, CURRENT_SCHEMA_VERSION);
+    if (versionClass === 'future' || versionClass === 'malformed') {
+      return { ok: false, error: `Cannot unlock GM data with schema version "${originalVersion}" (current: ${CURRENT_SCHEMA_VERSION})` };
+    }
+    if (versionClass === 'older') {
       if (!gmData || typeof gmData !== 'object' || Array.isArray(gmData)) {
         return { ok: false, error: 'Invalid GM data section' };
       }

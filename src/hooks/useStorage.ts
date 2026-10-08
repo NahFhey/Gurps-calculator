@@ -70,7 +70,7 @@ export function useKeyedDebouncedStorageSave(delay: number = 500): DebouncedSave
         try {
           // Use localStorage as fallback if window.storage unavailable
           if (window?.storage?.set) {
-            await window.storage.set(key, JSON.stringify(data), true);
+            await window.storage.set(key, JSON.stringify(data));
           } else {
             localStorage.setItem(key, JSON.stringify(data));
           }
@@ -90,7 +90,7 @@ export function useKeyedDebouncedStorageSave(delay: number = 500): DebouncedSave
         pendingData.delete(k);
         try {
           if (window?.storage?.set) {
-            await window.storage.set(k, JSON.stringify(data), true);
+            await window.storage.set(k, JSON.stringify(data));
           } else {
             localStorage.setItem(k, JSON.stringify(data));
           }
@@ -126,7 +126,7 @@ export function useKeyedDebouncedStorageSave(delay: number = 500): DebouncedSave
       try {
         // Use localStorage as fallback if window.storage unavailable
         if (window?.storage?.set) {
-          await window.storage.set(key, JSON.stringify(dataToSave), true);
+          await window.storage.set(key, JSON.stringify(dataToSave));
         } else {
           localStorage.setItem(key, JSON.stringify(dataToSave));
         }
@@ -149,7 +149,7 @@ export function useKeyedDebouncedStorageSave(delay: number = 500): DebouncedSave
           try {
             if (window?.storage?.set) {
               // Note: async won't complete, but we try
-              window.storage.set(k, JSON.stringify(data), true);
+              window.storage.set(k, JSON.stringify(data));
             } else {
               localStorage.setItem(k, JSON.stringify(data));
             }

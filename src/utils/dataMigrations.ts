@@ -21,7 +21,8 @@ import { logger } from './logger';
 import {
   getMigrationPath,
   logMigration,
-  compareVersions,
+  classifySchemaVersion,
+  compareSchemaVersions,
   CURRENT_SCHEMA_VERSION,
 } from './schemaVersioning';
 import { ensureParticipantConditionVisibility } from './conditionsEngine';
@@ -76,6 +77,7 @@ const migrationHandlers: Record<string, MigrationHandler> = {
   '1.6.2:1.6.3': migrateTo1_6_3,
   '1.6.3:1.6.4': migrateTo1_6_4,
   '1.6.4:1.6.5': migrateTo1_6_5,
+  '1.6.5:1.7.0': migrateTo1_7_0,
 };
 
 /**
@@ -86,15 +88,25 @@ export function migrateData(
   fromVersion: string,
   toVersion: string = CURRENT_SCHEMA_VERSION
 ): MigratableData {
-  if (compareVersions(fromVersion, toVersion) >= 0) {
+  // Stamping a version the data was never migrated to would hide the gap, so
+  // anything without a known path is refused rather than relabelled.
+  const fromClass = classifySchemaVersion(toVersion) === 'malformed'
+    ? 'malformed'
+    : classifySchemaVersion(fromVersion, toVersion);
+  if (fromClass === 'malformed') {
+    throw new Error(`Cannot migrate: malformed schema version (from ${String(fromVersion)} to ${String(toVersion)})`);
+  }
+  if (fromClass === 'current') {
     return { ...data, schemaVersion: toVersion };
+  }
+  if (fromClass === 'future') {
+    throw new Error(`Cannot migrate data from newer schema version ${fromVersion} down to ${toVersion}`);
   }
 
   const migrationPath = getMigrationPath(fromVersion, toVersion);
 
   if (migrationPath.length === 0) {
-    logger.warn(`No migration path found from ${fromVersion} to ${toVersion}`);
-    return { ...data, schemaVersion: toVersion };
+    throw new Error(`No migration path from schema version ${fromVersion} to ${toVersion}`);
   }
 
   let migratedData: MigratableData = { ...data };
@@ -817,7 +829,7 @@ export function validateDataForVersion(
 
   const obj = data as Record<string, unknown>;
 
-  if (version >= '1.1.0') {
+  if (compareSchemaVersions(version, '1.1.0') >= 0) {
     if (!Array.isArray(obj.alchemyReagents)) {
       issues.push('Missing or invalid alchemyReagents array');
     }
@@ -826,19 +838,19 @@ export function validateDataForVersion(
     }
   }
 
-  if (version >= '1.2.0') {
+  if (compareSchemaVersions(version, '1.2.0') >= 0) {
     if (obj.combatActive && typeof obj.combatActive !== 'object') {
       issues.push('Invalid combatActive structure');
     }
   }
 
-  if (version >= '1.3.0') {
+  if (compareSchemaVersions(version, '1.3.0') >= 0) {
     if (typeof obj.currentDay !== 'number') {
       issues.push('Missing or invalid currentDay');
     }
   }
 
-  if (version >= '1.4.0') {
+  if (compareSchemaVersions(version, '1.4.0') >= 0) {
     if (
       obj.inventories !== undefined &&
       (typeof obj.inventories !== 'object' || obj.inventories === null || Array.isArray(obj.inventories))
@@ -895,3 +907,10 @@ export function migrateTo1_6_4(data: MigratableData): MigratableData {
 }
 
 export function migrateTo1_6_5(data: MigratableData): MigratableData { return migrateMapTokens(data); }
+
+/**
+ * Migration: 1.6.5 → 1.7.0 (schema-version contract). No shape change: the
+ * version contract only starts stamping `meta.schemaVersion`, which hydration
+ * does for every loaded campaign.
+ */
+export function migrateTo1_7_0(data: MigratableData): MigratableData { return data; }
