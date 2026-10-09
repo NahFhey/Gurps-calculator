@@ -69,7 +69,7 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
       const stateJson = await joinGame(joinCode, displayName);
       // Parse and hydrate the server state, then replace local state
       const parsed = JSON.parse(stateJson);
-      const hydrated = hydrateCampaignState(parsed as CampaignState);
+      const hydrated = hydrateCampaignState(parsed);
       const progress = await pullMissingAssets(hydrated, {
         onProgress: ({ done, total }) => setAssetProgress(`Downloading map images ${done}/${total}…`),
       });

@@ -12,6 +12,7 @@
 import { projectCampaignForPlayers } from '../../shared/playerProjection';
 import { CampaignVersionError, hydrateCampaignState } from '../persistence/campaignStorage';
 import type { CampaignState } from '../state/campaignReducer';
+import type { CampaignDTO } from '../persistence/campaignCodec';
 import type { GMLock } from './cryptoLock';
 import { importFile, isCampaignState, mergeGM, unlockGMData } from './exportImport';
 
@@ -41,7 +42,7 @@ type Hydrated = { ok: true; state: CampaignState } | { ok: false; error: string 
  * version is checked by `importFile`; this catches an inner `meta.schemaVersion`
  * from a newer build, or a malformed one, which would otherwise be stamped over.
  */
-function hydrateForImport(payload: CampaignState): Hydrated {
+function hydrateForImport(payload: CampaignDTO): Hydrated {
   try {
     return { ok: true, state: hydrateCampaignState(payload) };
   } catch (error) {

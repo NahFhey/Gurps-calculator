@@ -2,7 +2,7 @@ import { ingestInlineImageLayers, pruneUnreferencedAssets } from '../assets/asse
 import storage, { readRawStrict, writeWithRevision, ValueAlreadyPresentError } from '../utils/storage';
 import { createCampaignState, type CampaignState } from '../state/campaignReducer';
 import { generateAllTestSampleData, isStateEmpty } from '../utils/testSampleData';
-import { initialMapState } from '../types/map';
+import { fromCampaignDTO, toCampaignDTO, type CampaignDTO } from './campaignCodec';
 import { logger } from '../utils/logger';
 import { removeLegacyTravelState } from '../utils/dataMigrations';
 import { ensureMapTokens, ensureMapScale, ensureAmbientWeather, ensureCharacterTemplates, ensureTravelGroups, ensureJourneyIntegrity, ensureTravelEventTables, ensureInventoryRecords, ensureOwnerAttributedHoldings, ensureConditionVisibility, ensureCombatCharacterCategories, ensureCombatHistoryShape, ensureLocationIntegrity } from './dataMigration';
@@ -142,54 +142,31 @@ export function resetRevisionGuard() {
   loadInFlight = null;
 }
 
-const serializeMapState = (maps: CampaignState['maps']) => {
-  const serializedMaps: Record<string, unknown> = {};
-  for (const [mapId, map] of Object.entries(maps.mapsById)) {
-    serializedMaps[mapId] = {
-      ...map,
-      revealedTileIds: Array.from(map.revealedTileIds || []),
-    };
-  }
-  return {
-    ...maps,
-    mapsById: serializedMaps,
-  };
+export const serializeCampaignState = (state: CampaignState): CampaignDTO => {
+  const dto = toCampaignDTO(state);
+  return { ...dto, legacy: { ...dto.legacy, appState: {} } };
 };
 
-export const serializeCampaignState = (state: CampaignState) => ({
-  ...state,
-  legacy: {
-    ...state.legacy,
-    appState: {}
-  },
-  combat: {
-    ...state.combat,
-    reveal: {
-      ...state.combat.reveal,
-      revealedTargets: Array.from(state.combat.reveal.revealedTargets || []),
-      revealedHP: Array.from(state.combat.reveal.revealedHP || [])
-    }
-  },
-  maps: serializeMapState(state.maps),
-});
-
-const hydrateMapState = (maps: any): CampaignState['maps'] => {
+/** Map repairs on the DTO: climate/visionMode defaults, the legacy party-position key dropped. */
+const hydrateMapState = (
+  maps: CampaignDTO['maps'] | undefined,
+  base: CampaignDTO['maps']
+): CampaignDTO['maps'] => {
   if (!maps || !maps.mapsById) {
-    return initialMapState;
+    return base;
   }
-  const hydratedMaps: Record<string, any> = {};
-  for (const [mapId, map] of Object.entries(maps.mapsById as Record<string, any>)) {
-    const mapWithoutPartyPosition = { ...map };
-    delete mapWithoutPartyPosition[LEGACY_PARTY_POSITION_KEY];
-    hydratedMaps[mapId] = {
-      ...mapWithoutPartyPosition,
+  const hydratedMaps: CampaignDTO['maps']['mapsById'] = {};
+  for (const [mapId, map] of Object.entries(maps.mapsById)) {
+    const repaired = {
+      ...map,
       climate: map.climate ?? 'temperate',
       visionMode: map.visionMode ?? 'lineOfSight',
-      revealedTileIds: new Set(map.revealedTileIds || []),
     };
+    Reflect.deleteProperty(repaired, LEGACY_PARTY_POSITION_KEY);
+    hydratedMaps[mapId] = repaired;
   }
   return {
-    ...initialMapState,
+    ...base,
     ...maps,
     mapsById: hydratedMaps,
   };
@@ -233,12 +210,13 @@ function assertReadableSchemaVersion(payload: unknown): void {
  * Turn a parsed campaign payload into runtime state: refuse unreadable
  * versions, run the idempotent repairs, and stamp the current schema version.
  */
-export const hydrateCampaignState = (payload: CampaignState): CampaignState => {
+export const hydrateCampaignState = (payload: CampaignDTO): CampaignState => {
   assertReadableSchemaVersion(payload);
   payload = ensureMapTokens(removeLegacyTravelState(payload));
-  const base = createCampaignState();
+  const base = toCampaignDTO(createCampaignState());
   const reveal = payload.combat?.reveal ?? base.combat.reveal;
-  return ensureLocationIntegrity(ensureAmbientWeather(ensureTravelEventTables(ensureJourneyIntegrity(ensureTravelGroups(ensureCharacterTemplates(ensureCombatHistoryShape(ensureCombatCharacterCategories(ensureConditionVisibility(ensureOwnerAttributedHoldings(ensureInventoryRecords(ensureMapScale({
+  // Merge and repair on the DTO; the codec revives the Sets before the ensure* chain.
+  const merged: CampaignDTO = {
     ...base,
     ...payload,
     // Ensure all nested structures have proper defaults
@@ -283,12 +261,13 @@ export const hydrateCampaignState = (payload: CampaignState): CampaignState => {
       reveal: {
         ...base.combat.reveal,
         ...reveal,
-        revealedTargets: new Set(reveal.revealedTargets || []),
-        revealedHP: new Set(reveal.revealedHP || [])
       }
     },
-    maps: hydrateMapState(payload.maps),
-  }))))))))))));
+    maps: hydrateMapState(payload.maps, base.maps),
+  };
+  return ensureLocationIntegrity(ensureAmbientWeather(ensureTravelEventTables(ensureJourneyIntegrity(ensureTravelGroups(ensureCharacterTemplates(ensureCombatHistoryShape(ensureCombatCharacterCategories(ensureConditionVisibility(ensureOwnerAttributedHoldings(ensureInventoryRecords(ensureMapScale(
+    fromCampaignDTO(merged)
+  ))))))))))));
 };
 
 /** Decide the revision to stamp, or refuse if another tab saved since we loaded. */
@@ -311,7 +290,7 @@ function nextRevisionOrConflict(storedRevision: number): number {
   return Math.max(sessionRevision ?? 0, storedRevision) + 1;
 }
 
-async function writeCampaignPayload(payload: ReturnType<typeof serializeCampaignState>) {
+async function writeCampaignPayload(payload: CampaignDTO) {
   sessionRevision = await writeWithRevision({
     valueKey: CAMPAIGN_STORAGE_KEY,
     value: JSON.stringify(payload),

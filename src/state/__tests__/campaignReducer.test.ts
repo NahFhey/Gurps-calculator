@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { campaignReducer, createCampaignState, initialCampaignState, logEvent } from '../campaignReducer';
-import { hydrateCampaignState } from '../../persistence/campaignStorage';
+import { hydrateCampaignState, serializeCampaignState } from '../../persistence/campaignStorage';
+import { logger } from '../../utils/logger';
 import { DEFAULT_STUDY_CONFIG } from '../../constants';
 import { selectContactByName, selectContacts, selectStudyConfig, selectStudyProjects, selectStudyProjectsForCharacter } from '../selectors';
 import type { ContactEntry, StudyProject } from '../../types/campaign';
@@ -121,7 +122,7 @@ describe('campaignReducer', () => {
     const persisted = createCampaignState();
     persisted.ui.pendingIntent = { kind: 'craft' };
 
-    expect(hydrateCampaignState(persisted).ui.pendingIntent).toBeNull();
+    expect(hydrateCampaignState(serializeCampaignState(persisted)).ui.pendingIntent).toBeNull();
   });
 
   it('toggleGmMode flips boolean', () => {
@@ -269,6 +270,20 @@ describe('campaignReducer', () => {
 
     expect(restored.time.slot).toBe(0);
     expect(restored.time.day).toBe(1);
+  });
+
+  it('createCheckpoint skips a state that cannot be JSON-cloned instead of storing it live', () => {
+    const state = createCampaignState();
+    const circular: Record<string, unknown> = { foo: 'bar' };
+    circular.self = circular;
+    Object.assign(state.ui, { circular });
+    vi.spyOn(logger, 'error').mockImplementation(() => {});
+
+    const result = campaignReducer(state, { type: 'createCheckpoint', payload: 'Unclonable' });
+
+    expect(result.checkpoints.entries).toHaveLength(0);
+    expect(logger.error).toHaveBeenCalledWith('Failed to create checkpoint snapshot; checkpoint skipped:', expect.any(Error));
+    vi.restoreAllMocks();
   });
 
   it('restoreCheckpoint with malformed (non-serializable) snapshot leaves state unchanged', () => {

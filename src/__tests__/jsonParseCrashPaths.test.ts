@@ -187,25 +187,8 @@ describe('campaignReducer restoreCheckpoint', () => {
     const state = createCampaignState();
     state.time.day = 10;
 
-    const snapshot = {
-      ui: state.ui,
-      meta: state.meta,
-      entities: state.entities,
-      legacy: state.legacy,
-      mealBuff: null,
-      time: { ...state.time, day: 5 },
-      inventory: state.inventory,
-      crafting: state.crafting,
-      alchemy: state.alchemy,
-      gathering: state.gathering,
-      combat: state.combat,
-      locations: state.locations,
-      downtime: state.downtime,
-      maps: state.maps,
-      dayPlanner: state.dayPlanner,
-      activities: state.activities,
-      logs: state.logs,
-    };
+    const { toSnapshotDTO } = await import('../persistence/campaignCodec');
+    const snapshot = { ...toSnapshotDTO(state), time: { ...state.time, day: 5 } };
 
     state.checkpoints = {
       entries: [{ id: 'cp-1', label: 'Checkpoint 1', snapshot, createdAt: Date.now() }],

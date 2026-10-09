@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { createMemoryAssetStore } from '../assetStore';
 import { collectReferencedAssetIds, ingestInlineImageLayers, pruneUnreferencedAssets } from '../assetMigration';
 import { imageLayer, imageState } from './fixtures';
+import { toSnapshotDTO } from '../../persistence/campaignCodec';
 
 beforeAll(async () => {
   if (!globalThis.crypto?.subtle) {
@@ -18,7 +19,7 @@ describe('asset migration', () => {
     const { map: second } = imageState();
     state.maps.mapsById[second.id] = second;
     const { state: snapshot, map: historical } = imageState([imageLayer({ src: 'data:image/png;base64,BAUG' })]);
-    state.checkpoints.entries = [{ id: 'checkpoint', label: 'Before combat', createdAt: 1, snapshot }];
+    state.checkpoints.entries = [{ id: 'checkpoint', label: 'Before combat', createdAt: 1, snapshot: toSnapshotDTO(snapshot) }];
     const before = JSON.stringify(state);
     const result = await ingestInlineImageLayers(state, store);
     expect(result.ingested).toBe(3);
@@ -55,7 +56,7 @@ describe('asset migration', () => {
     const store = createMemoryAssetStore();
     const { state } = imageState();
     const { state: snapshot } = imageState([imageLayer({ src: 'data:image/png;base64,BAUG' })]);
-    state.checkpoints.entries = [{ id: 'checkpoint', label: 'Before combat', createdAt: 1, snapshot }];
+    state.checkpoints.entries = [{ id: 'checkpoint', label: 'Before combat', createdAt: 1, snapshot: toSnapshotDTO(snapshot) }];
     const migrated = (await ingestInlineImageLayers(state, store)).state;
     const orphan = await store.put(new Uint8Array([7]), 'image/jpeg');
     expect(await pruneUnreferencedAssets(migrated, store)).toEqual([orphan]);
@@ -139,7 +140,7 @@ it('collects and retains live and checkpoint stamp assets even without any image
   const stamp = { id: 'stamp', name: 'Room', category: 'room' as const, assetId: liveId, width: 4, height: 3, placement: 'underlay' as const, createdAt: 1 };
   state.maps.stamps = { stamp };
   snapshot.maps.stamps = { stamp: { ...stamp, assetId: checkpointId } };
-  state.checkpoints.entries = [{ id: 'checkpoint', label: 'Before combat', createdAt: 1, snapshot }];
+  state.checkpoints.entries = [{ id: 'checkpoint', label: 'Before combat', createdAt: 1, snapshot: toSnapshotDTO(snapshot) }];
   expect(collectReferencedAssetIds(state)).toEqual(new Set([liveId, checkpointId]));
   expect(await pruneUnreferencedAssets(state, store)).toEqual([orphanId]);
   expect(new Set(await store.list())).toEqual(new Set([liveId, checkpointId]));

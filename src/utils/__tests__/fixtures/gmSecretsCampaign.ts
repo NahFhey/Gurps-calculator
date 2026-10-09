@@ -4,7 +4,7 @@
  * contains `SECRET` so a test can sweep a serialized payload for leftovers.
  */
 import { imageLayer, imageState } from '../../../assets/__tests__/fixtures';
-import type { CampaignState } from '../../../state/campaignReducer';
+import { toSnapshotDTO } from '../../../persistence/campaignCodec';
 import type { CombatState, Participant } from '../../../types/combatTracker';
 import { participantToken } from '../../mapTokenSpatial';
 import { createDefaultLocation } from '../../weatherSystem';
@@ -107,7 +107,7 @@ export function gmSecretsCampaign() {
     alchemyReagents: [{ id: 'old', name: 'Old Root', identificationLevel: 0, aspects: { primary: 'SECRET-old' }, notes: 'SECRET old note' }],
   } };
 
-  const snapshot: CampaignState = JSON.parse(JSON.stringify({ ...state, checkpoints: { ...state.checkpoints, entries: [] } }));
+  const snapshot = toSnapshotDTO(state);
   state.checkpoints = { ...state.checkpoints, entries: [{ id: 'cp', label: 'Before SECRET reveal', createdAt: 1, snapshot }] };
 
   return { state, map, gmTile, playerTile };

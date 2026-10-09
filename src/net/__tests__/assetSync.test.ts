@@ -5,6 +5,7 @@ import { imageLayer, imageState } from '../../assets/__tests__/fixtures';
 import { pullMissingAssets, pushReferencedAssets } from '../assetSync';
 import type { AssetSyncConnection, AssetSyncProgress } from '../assetSync';
 import type { AssetId } from '../../types/map';
+import { toSnapshotDTO } from '../../persistence/campaignCodec';
 
 beforeAll(async () => {
   if (!globalThis.crypto?.subtle) {
@@ -66,7 +67,7 @@ describe('asset synchronization', () => {
     const transport = connection();
     transport.fetchAsset.mockImplementation(async (id) => id === remote ? { bytes, mime: 'image/webp' } : null);
     const state = references([local, missing]);
-    state.checkpoints.entries = [{ id: 'checkpoint', label: 'Earlier', createdAt: 1, snapshot: references([remote]) }];
+    state.checkpoints.entries = [{ id: 'checkpoint', label: 'Earlier', createdAt: 1, snapshot: toSnapshotDTO(references([remote])) }];
     expect(await pullMissingAssets(state, undefined, transport, store)).toEqual({ total: 3, done: 3, failed: [missing] });
     expect(transport.fetchAsset.mock.calls.map(([id]) => id).sort()).toEqual([remote, missing].sort());
     expect(await store.get(remote)).toMatchObject({ bytes, mime: 'image/webp', id: remote });

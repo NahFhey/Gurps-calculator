@@ -106,7 +106,7 @@ export function SyncProvider({ children, onServerStateUpdate }: SyncProviderProp
       if (!connectionManager.campaignId) return;
       try {
         const { state } = await connectionManager.fetchState();
-        const hydrated = hydrateCampaignState(JSON.parse(state) as CampaignState);
+        const hydrated = hydrateCampaignState(JSON.parse(state));
         const progress = await pullMissingAssets(hydrated);
         if (progress.failed.length > 0) {
           standaloneToast.warning(`${progress.failed.length} map images could not be downloaded.`);

@@ -14,6 +14,7 @@ import { ensureMapTokens } from '../../persistence/dataMigration';
 import { hydrateCampaignState, serializeCampaignState } from '../../persistence/campaignStorage';
 import { migrateTo1_6_5, migrateData } from '../dataMigrations';
 import type { SerializedCampaignState } from '../exportImport';
+import type { CampaignDTO } from '../../persistence/campaignCodec';
 import { exportLocked, exportUnlocked, importFile, mergeGM, unlockGMData } from '../exportImport';
 
 export function tokenFixture() {
@@ -287,7 +288,7 @@ describe('map token migration entry paths', () => {
   it('hydrates browser JSON and checkpoint snapshots; restoring cannot reintroduce participant positions', () => {
     const { legacy, map } = legacyFixture();
     const checkpointed = campaignReducer(legacy, { type: 'createCheckpoint', payload: 'Before' });
-    const payload: CampaignState = JSON.parse(JSON.stringify(serializeCampaignState(checkpointed)));
+    const payload: CampaignDTO = JSON.parse(JSON.stringify(serializeCampaignState(checkpointed)));
     const next = hydrateCampaignState(payload);
     expect(Object.keys(next.maps.mapsById[map.id].tokens)).toHaveLength(2);
     const checkpoint = next.checkpoints.entries[0];
@@ -342,7 +343,7 @@ describe('map token migration entry paths', () => {
       if (!result.ok) throw new Error(result.error);
       gm = result.gmData;
     }
-    const merged = mergeGM(imported.data.public, gm) as unknown as CampaignState;
+    const merged = mergeGM(imported.data.public, gm) as unknown as CampaignDTO;
     expect(Object.values(merged.maps.mapsById[map.id].tokens)).toHaveLength(2);
     expect(Object.values(merged.checkpoints.entries[0].snapshot.maps.mapsById[map.id].tokens)).toHaveLength(2);
     const next = hydrateCampaignState(merged);
@@ -369,7 +370,7 @@ describe('map token migration entry paths', () => {
 
   it('quarantines null maps during normal hydration and retains the unresolved spatial record', () => {
     const { legacy, map } = legacyFixture();
-    const input = { ...legacy, maps: { ...legacy.maps, mapsById: { [map.id]: null } } } as unknown as CampaignState;
+    const input = { ...legacy, maps: { ...legacy.maps, mapsById: { [map.id]: null } } } as unknown as CampaignDTO;
     const hydrated = hydrateCampaignState(input);
     expect(hydrated.maps.mapsById[map.id]).toBeUndefined();
     expect(hydrated.maps).toHaveProperty(`legacyMaps.${map.id}`, null);

@@ -12,6 +12,14 @@ import {
 } from '../utils/timeSystem';
 import { DEFAULT_STUDY_CONFIG, SLOT_NAMES, SLOTS_PER_DAY } from '../constants';
 import { logger } from '../utils/logger';
+import {
+  fromCampaignDTO,
+  fromSnapshotDTO,
+  toSnapshotDTO,
+  type CampaignDTO,
+  type CampaignSnapshotDTO,
+} from '../persistence/campaignCodec';
+import { REPLACEMENT_POLICIES, replaceCampaignState } from './campaignReplacement';
 import type {
   Id,
   Character,
@@ -67,7 +75,7 @@ import type {
 } from '../types/location';
 import type { LocationModifiers, WeatherEffects } from '../types/location';
 import type { DowntimeState } from '../types/downtime';
-import type { MapState, TileId } from '../types/map';
+import type { MapState } from '../types/map';
 import { initialMapState } from '../types/map';
 import type { TravelGroup, Vehicle, VehicleTypeDef } from '../types/party';
 import type { TravelEventTable, TravelEventTableSet } from '../types/travelEvents';
@@ -340,7 +348,8 @@ export type Checkpoint = {
   id: string;
   label: string;
   createdAt: number;
-  snapshot: CampaignSnapshot;
+  /** Stored as a DTO (arrays, not Sets): it is persisted with the campaign as-is. */
+  snapshot: CampaignSnapshotDTO;
 };
 
 export const logEvent = (
@@ -355,45 +364,23 @@ export const logEvent = (
   payload
 });
 
-const createCheckpointSnapshot = (state: CampaignState): CampaignSnapshot => {
-  const { checkpoints, ...rest } = state;
-  // Sets become {} under JSON.stringify, so snapshots store them as arrays
-  // (mirroring serializeCampaignState) — this also keeps checkpoints intact
-  // through campaign save/load. restoreCheckpoint rebuilds the Sets.
-  const serializable = {
-    ...rest,
-    combat: {
-      ...rest.combat,
-      reveal: {
-        ...rest.combat.reveal,
-        revealedTargets: Array.from(rest.combat.reveal.revealedTargets || []),
-        revealedHP: Array.from(rest.combat.reveal.revealedHP || [])
-      }
-    },
-    maps: {
-      ...rest.maps,
-      mapsById: Object.fromEntries(
-        Object.entries(rest.maps.mapsById).map(([mapId, map]) => [
-          mapId,
-          { ...map, revealedTileIds: Array.from(map.revealedTileIds || []) }
-        ])
-      )
-    }
-  };
+const createCheckpointEntry = (state: CampaignState, label: string): Checkpoint | null => {
+  let snapshot: CampaignSnapshotDTO;
   try {
-    return JSON.parse(JSON.stringify(serializable)) as CampaignSnapshot;
+    snapshot = toSnapshotDTO(state);
   } catch (err) {
-    logger.error('Failed to create checkpoint snapshot:', err);
-    return rest as unknown as CampaignSnapshot;
+    // A state that cannot be JSON-cloned cannot be restored either: skip the
+    // checkpoint rather than store live draft proxies.
+    logger.error('Failed to create checkpoint snapshot; checkpoint skipped:', err);
+    return null;
   }
+  return {
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    label,
+    createdAt: Date.now(),
+    snapshot
+  };
 };
-
-const createCheckpointEntry = (state: CampaignState, label: string): Checkpoint => ({
-  id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-  label,
-  createdAt: Date.now(),
-  snapshot: createCheckpointSnapshot(state)
-});
 
 const guardTimeAdvance = (draft: Draft<CampaignState>): boolean => {
   if (draft.activities.pausedSessionIds.length === 0) {
@@ -411,8 +398,11 @@ const guardTimeAdvance = (draft: Draft<CampaignState>): boolean => {
   return false;
 };
 
-const pushTimeCheckpoint = (draft: Draft<CampaignState>, label: string): void => {
+const pushCheckpoint = (draft: Draft<CampaignState>, label: string): void => {
   const checkpoint = createCheckpointEntry(draft as CampaignState, label);
+  if (!checkpoint) {
+    return;
+  }
   draft.checkpoints.entries.unshift(checkpoint);
   if (draft.checkpoints.entries.length > draft.checkpoints.maxSize) {
     draft.checkpoints.entries.pop();
@@ -463,22 +453,10 @@ const advanceSlotAndRegenerateWeather = (
   }
 };
 
-// Accepts a Set, a serialized array, or the {} left behind by pre-fix
-// checkpoints that JSON.stringify'd a Set.
-const reviveSet = <T>(value: unknown): Set<T> => {
-  if (value instanceof Set) {
-    return value as Set<T>;
-  }
-  return new Set(Array.isArray(value) ? (value as T[]) : []);
-};
-
-const normalizeCombatReveal = (combat: CampaignState['combat']): CampaignState['combat'] => ({
-  ...combat,
-  reveal: {
-    ...combat.reveal,
-    revealedTargets: reviveSet<string>(combat.reveal.revealedTargets),
-    revealedHP: reviveSet<string>(combat.reveal.revealedHP)
-  }
+/** Defaults for the root slices a whole-state replacement finds missing. */
+const replacementDefaults = (time: CampaignState['time'] | undefined): CampaignState => ({
+  ...createCampaignState(),
+  locations: createInitialLocationState(time ?? { day: 1, slot: 0 })
 });
 
 export const createCampaignState = (legacyAppState: LegacyAppState = initialLegacyAppState): CampaignState => ({
@@ -681,7 +659,7 @@ export type CampaignAction =
   | { type: 'startCombat'; payload?: { encounterId?: string } }
   | { type: 'registerCombatDamage'; payload: { targetId: string; remainingHp: number } }
   | { type: 'registerCombatDefenseSuccess'; payload: { targetId: string; defense: { dodge?: number } } }
-  | { type: 'applyDebugState'; payload: CampaignState }
+  | { type: 'applyDebugState'; payload: CampaignDTO }
   // Character actions
   | { type: 'addCharacter'; payload: Character }
   | { type: 'updateCharacter'; payload: { id: Id; changes: Partial<Character> } }
@@ -1009,48 +987,17 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         }
         return;
       case 'createCheckpoint': {
-        const checkpoint = createCheckpointEntry(draft as CampaignState, action.payload);
-        draft.checkpoints.entries.unshift(checkpoint);
-        if (draft.checkpoints.entries.length > draft.checkpoints.maxSize) {
-          draft.checkpoints.entries.pop();
-        }
+        pushCheckpoint(draft, action.payload);
         return;
       }
       case 'importCampaignState': {
-        const label = action.payload.label ?? 'Before import';
-        const checkpoint = createCheckpointEntry(draft as CampaignState, label);
-        draft.checkpoints.entries.unshift(checkpoint);
-        if (draft.checkpoints.entries.length > draft.checkpoints.maxSize) {
-          draft.checkpoints.entries.pop();
-        }
-        const { checkpoints: _ignored, ...nextState } = action.payload.state;
-        const preservedCheckpoints = draft.checkpoints;
-        draft.ui = nextState.ui;
-        draft.meta = nextState.meta;
-        draft.entities = nextState.entities;
-        draft.legacy = nextState.legacy;
-        draft.mealBuff = nextState.mealBuff;
-        draft.time = nextState.time;
-        draft.inventory = nextState.inventory || { activeTab: 'materials' };
-        draft.crafting = nextState.crafting || { currentProject: null };
-        draft.alchemy = nextState.alchemy || { activeBatch: null };
-        draft.gathering = nextState.gathering || { activeSession: null };
-        draft.dayPlanner = nextState.dayPlanner || { timeSlots: [], taskAssignments: [], pendingDayLedger: null, currentSlot: 0 };
-        draft.activities = nextState.activities;
-        draft.logs = nextState.logs;
-        draft.combat = normalizeCombatReveal(nextState.combat);
-        draft.locations = nextState.locations || createInitialLocationState(nextState.time || { day: 1, slot: 0 });
-        draft.downtime = nextState.downtime || downtimeInitialState;
-        draft.maps = (nextState as CampaignState).maps || initialMapState;
-        draft.checkpoints = preservedCheckpoints;
+        pushCheckpoint(draft, action.payload.label ?? 'Before import');
+        const next = action.payload.state;
+        replaceCampaignState(draft, next, REPLACEMENT_POLICIES.import, replacementDefaults(next.time));
         return;
       }
       case 'startCombat': {
-        const checkpoint = createCheckpointEntry(draft as CampaignState, 'Before combat');
-        draft.checkpoints.entries.unshift(checkpoint);
-        if (draft.checkpoints.entries.length > draft.checkpoints.maxSize) {
-          draft.checkpoints.entries.pop();
-        }
+        pushCheckpoint(draft, 'Before combat');
         draft.combat.active = true;
         draft.combat.encounterId =
           action.payload?.encounterId ?? `enc-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -1089,25 +1036,10 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         return;
       }
       case 'applyDebugState': {
-        const nextState = action.payload;
-        draft.ui = nextState.ui;
-        draft.meta = nextState.meta;
-        draft.entities = nextState.entities;
-        draft.legacy = nextState.legacy;
-        draft.mealBuff = nextState.mealBuff;
-        draft.time = nextState.time;
-        draft.inventory = nextState.inventory;
-        draft.crafting = nextState.crafting;
-        draft.alchemy = nextState.alchemy;
-        draft.gathering = nextState.gathering;
-        draft.dayPlanner = nextState.dayPlanner;
-        draft.activities = nextState.activities;
-        draft.logs = nextState.logs;
-        draft.checkpoints = nextState.checkpoints;
-        draft.combat = normalizeCombatReveal(nextState.combat);
-        draft.locations = nextState.locations || createInitialLocationState(nextState.time || { day: 1, slot: 0 });
-        draft.downtime = nextState.downtime || downtimeInitialState;
-        draft.maps = nextState.maps || initialMapState;
+        // Hand-edited debug JSON may lack whole slices; the defaults fill them.
+        const dto: Partial<CampaignDTO> = action.payload;
+        const next = fromCampaignDTO(dto);
+        replaceCampaignState(draft, next, REPLACEMENT_POLICIES.debug, replacementDefaults(next.time));
         return;
       }
       case 'restoreCheckpoint': {
@@ -1115,52 +1047,26 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         if (!checkpoint) {
           return;
         }
-        let restoredSnapshot: CampaignSnapshot;
+        let restored: Partial<CampaignSnapshot>;
         try {
-          restoredSnapshot = JSON.parse(JSON.stringify(checkpoint.snapshot)) as CampaignSnapshot;
+          // Old snapshots may lack slices added since; the defaults fill them.
+          const dto: Partial<CampaignSnapshotDTO> = JSON.parse(JSON.stringify(checkpoint.snapshot));
+          restored = fromSnapshotDTO(dto);
         } catch (err) {
           logger.error('Failed to deep-clone checkpoint for restore:', err);
           return;
         }
-        const rollbackEntry = logEvent('campaign.rollback', 'player', {
+        replaceCampaignState(draft, restored, REPLACEMENT_POLICIES.restore, replacementDefaults(restored.time));
+        appendLogEntry(draft, logEvent('campaign.rollback', 'player', {
           message: 'Rollback occurred.'
-        });
-        draft.ui = restoredSnapshot.ui;
-        draft.meta = restoredSnapshot.meta;
-        draft.entities = restoredSnapshot.entities;
-        draft.legacy = restoredSnapshot.legacy;
-        draft.mealBuff = restoredSnapshot.mealBuff ?? null;
-        draft.time = restoredSnapshot.time;
-        draft.inventory = restoredSnapshot.inventory;
-        draft.crafting = restoredSnapshot.crafting;
-        draft.alchemy = restoredSnapshot.alchemy;
-        draft.gathering = restoredSnapshot.gathering;
-        draft.dayPlanner = restoredSnapshot.dayPlanner;
-        draft.activities = restoredSnapshot.activities;
-        draft.logs = {
-          entries: restoredSnapshot.logs.entries
-        };
-        appendLogEntry(draft, rollbackEntry);
-        draft.combat = normalizeCombatReveal(restoredSnapshot.combat);
-        draft.locations = (restoredSnapshot as CampaignState).locations || createInitialLocationState(restoredSnapshot.time || { day: 1, slot: 0 });
-        draft.downtime = (restoredSnapshot as CampaignState).downtime || downtimeInitialState;
-        const restoredMaps = (restoredSnapshot as CampaignState).maps || initialMapState;
-        draft.maps = {
-          ...restoredMaps,
-          mapsById: Object.fromEntries(
-            Object.entries(restoredMaps.mapsById || {}).map(([mapId, map]) => [
-              mapId,
-              { ...map, revealedTileIds: reviveSet<TileId>(map.revealedTileIds) }
-            ])
-          )
-        };
+        }));
         return;
       }
       case 'advanceTime': {
         if (!guardTimeAdvance(draft)) {
           return;
         }
-        pushTimeCheckpoint(draft, 'Before time advance');
+        pushCheckpoint(draft, 'Before time advance');
         const previousDay = draft.time.day;
         progressJourneys(draft);
         advanceSlotAndRegenerateWeather(

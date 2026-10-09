@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { campaignReducer, createCampaignState, type CampaignState } from '../../state/campaignReducer';
+import { campaignReducer, createCampaignState } from '../../state/campaignReducer';
 import { hydrateCampaignState, serializeCampaignState } from '../../persistence/campaignStorage';
 import { ensureOwnerAttributedHoldings } from '../../persistence/dataMigration';
+import { toSnapshotDTO, type CampaignDTO } from '../../persistence/campaignCodec';
 import { migrateTo1_5_4 } from '../dataMigrations';
 
 describe('owner-attributed holdings migration', () => {
@@ -95,7 +96,7 @@ describe('owner-attributed holdings migration', () => {
     party.materials = [{ id: 'iron', name: 'Iron', type: 'metal', quantity: 4 }];
     party.food = [{ id: 'apple', name: 'Apple', types: ['fruit'], quantity: 2 }];
     const serialized = JSON.stringify(serializeCampaignState(state));
-    const hydrated = hydrateCampaignState(JSON.parse(serialized) as CampaignState);
+    const hydrated = hydrateCampaignState(JSON.parse(serialized) as CampaignDTO);
     const roundTrippedParty = Object.values(hydrated.entities.inventories).find(inventory => inventory.ownerType === 'party');
     expect(roundTrippedParty?.materials).toEqual(party.materials);
     expect(roundTrippedParty?.food).toEqual(party.food);
@@ -105,7 +106,7 @@ describe('owner-attributed holdings migration', () => {
 
   it('migrates legacy pools inside checkpoint snapshots before restore', () => {
     const state = createCampaignState();
-    const { checkpoints: _checkpoints, ...snapshot } = state;
+    const snapshot = toSnapshotDTO(state);
     const legacySnapshot = {
       ...snapshot,
       entities: {

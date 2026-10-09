@@ -4,7 +4,8 @@
 import { describe, expect, it } from 'vitest';
 import { playerProjectionGaps, projectCampaignForPlayers } from '../../../shared/playerProjection';
 import { hydrateCampaignState } from '../../persistence/campaignStorage';
-import { createCampaignState, type CampaignState } from '../../state/campaignReducer';
+import { toCampaignDTO } from '../../persistence/campaignCodec';
+import { createCampaignState } from '../../state/campaignReducer';
 import type { MapStamp } from '../../types/map';
 import { gmSecretsCampaign, SECRET_MARKER, secretPaths } from './fixtures/gmSecretsCampaign';
 
@@ -193,7 +194,8 @@ describe('projectCampaignForPlayers', () => {
     expect(Object.keys(out).sort()).toEqual(Object.keys(state).sort());
     expect(Object.keys(out.entities)).toEqual(expect.arrayContaining(Object.keys(state.entities)));
     expect(Object.keys(out.ui)).toEqual(expect.arrayContaining(Object.keys(state.ui)));
-    const loaded = hydrateCampaignState(out as CampaignState);
+    // Production callers project the DTO (export, import, server), not runtime state.
+    const loaded = hydrateCampaignState(projectCampaignForPlayers(toCampaignDTO(state)));
     expect(loaded.time.day).toBe(42);
     expect(Object.keys(loaded.entities.alchemyReagents).sort()).toEqual(['disguised', 'identified', 'unknown']);
   });

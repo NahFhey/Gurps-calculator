@@ -5,6 +5,7 @@ import { ingestInlineImageLayers } from '../../assets/assetMigration';
 import { collectExportAssets, exportLocked, exportUnlocked, importFile, SCHEMA_VERSION, unlockGMData } from '../exportImport';
 import { CampaignImportSchema } from '../importSchemas';
 import type { CampaignState } from '../../state/campaignReducer';
+import { toSnapshotDTO } from '../../persistence/campaignCodec';
 
 beforeAll(async () => {
   if (!globalThis.crypto?.subtle) {
@@ -37,7 +38,7 @@ describe('campaign assets in exports', () => {
   it('includes checkpoint-only assets, deduplicates references, and skips missing bytes', async () => {
     const { state } = imageState();
     const { state: snapshot } = imageState([imageLayer({ src: 'data:image/png;base64,BAUG' })]);
-    state.checkpoints.entries = [{ id: 'checkpoint', label: 'Snapshot', createdAt: 1, snapshot }];
+    state.checkpoints.entries = [{ id: 'checkpoint', label: 'Snapshot', createdAt: 1, snapshot: toSnapshotDTO(snapshot) }];
     const migrated = (await ingestInlineImageLayers(state)).state;
     expect(Object.keys(await collectExportAssets(migrated))).toHaveLength(2);
     await getAssetStore().clear();

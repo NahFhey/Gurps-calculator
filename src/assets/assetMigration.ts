@@ -1,13 +1,26 @@
 import type { CampaignState } from '../state/campaignReducer';
-import type { AssetId, MapState } from '../types/map';
+import type { AssetId, MapModel, MapState } from '../types/map';
 import type { AssetStore } from './assetStore';
 import { getAssetStore } from './assetStore';
 import { parseDataUrl } from './dataUrl';
 
+type ImageLayers = NonNullable<MapModel['imageLayers']>;
+/** The parts of a map state (live or checkpoint DTO) that hold asset references. */
+type AssetBearingMaps = {
+  stamps?: MapState['stamps'];
+  mapsById?: Record<string, { imageLayers?: ImageLayers }>;
+};
+
+/** The parts of a campaign (runtime state or DTO) that hold asset references. */
+type AssetBearingState = {
+  maps: AssetBearingMaps & { mapsById: Record<string, { imageLayers?: ImageLayers }> };
+  checkpoints: { entries: { snapshot: { maps: AssetBearingMaps & { mapsById: Record<string, { imageLayers?: ImageLayers }> } } }[] };
+};
+
 /** References in live maps and all embedded checkpoint snapshots. */
-export function collectReferencedAssetIds(state: CampaignState): Set<AssetId> {
+export function collectReferencedAssetIds(state: AssetBearingState): Set<AssetId> {
   const ids = new Set<AssetId>();
-  const collect = (maps: MapState | undefined) => {
+  const collect = (maps: AssetBearingMaps | undefined) => {
     for (const stamp of Object.values(maps?.stamps ?? {})) ids.add(stamp.assetId);
     for (const map of Object.values(maps?.mapsById ?? {})) {
       for (const layer of map.imageLayers ?? []) if (layer.assetId) ids.add(layer.assetId);
@@ -18,33 +31,48 @@ export function collectReferencedAssetIds(state: CampaignState): Set<AssetId> {
   return ids;
 }
 
-/** Copy on change, preserving legacy URLs when they cannot be decoded. */
+/**
+ * Copy on change, preserving legacy URLs when they cannot be decoded. Works on
+ * runtime state and on DTOs: it only swaps image layers, so the result keeps
+ * the input's shape (the overload states that; the body is typed structurally).
+ */
+export async function ingestInlineImageLayers<S extends AssetBearingState>(
+  state: S, store?: AssetStore,
+): Promise<{ state: S; ingested: number }>;
 export async function ingestInlineImageLayers(
-  state: CampaignState, store: AssetStore = getAssetStore(),
-): Promise<{ state: CampaignState; ingested: number }> {
+  state: AssetBearingState, store: AssetStore = getAssetStore(),
+): Promise<{ state: AssetBearingState; ingested: number }> {
   let ingested = 0;
-  async function ingestMaps(maps: MapState): Promise<MapState> {
-    if (!maps?.mapsById) return maps;
-    let result = maps;
-    for (const [id, map] of Object.entries(maps.mapsById)) {
-      if (!map.imageLayers) continue;
-      let layers = map.imageLayers;
-      for (const [index, layer] of map.imageLayers.entries()) {
+  // Generic over the map record: live maps hold Sets, checkpoint snapshots hold DTOs.
+  async function ingestMapsById<M extends { imageLayers?: ImageLayers }>(
+    mapsById: Record<string, M>,
+  ): Promise<Record<string, M>> {
+    let result = mapsById;
+    for (const [id, map] of Object.entries(mapsById)) {
+      const original: ImageLayers | undefined = map.imageLayers;
+      if (!original) continue;
+      let layers = original;
+      for (const [index, layer] of original.entries()) {
         if (layer.assetId || !layer.src) continue;
         const parsed = parseDataUrl(layer.src);
         if (!parsed) continue;
         const assetId = await store.put(parsed.bytes, parsed.mime);
-        if (layers === map.imageLayers) layers = [...layers];
+        if (layers === original) layers = [...layers];
         const { src: _src, ...rest } = layer;
         layers[index] = { ...rest, assetId, mime: parsed.mime };
         ingested++;
       }
-      if (layers !== map.imageLayers) {
-        if (result === maps) result = { ...maps, mapsById: { ...maps.mapsById } };
-        result.mapsById[id] = { ...map, imageLayers: layers };
+      if (layers !== original) {
+        if (result === mapsById) result = { ...mapsById };
+        result[id] = { ...map, imageLayers: layers };
       }
     }
     return result;
+  }
+  async function ingestMaps<S extends { mapsById: Record<string, { imageLayers?: ImageLayers }> }>(maps: S): Promise<S> {
+    if (!maps?.mapsById) return maps;
+    const mapsById = await ingestMapsById(maps.mapsById);
+    return mapsById === maps.mapsById ? maps : { ...maps, mapsById };
   }
   const maps = await ingestMaps(state.maps);
   let entries = state.checkpoints?.entries;

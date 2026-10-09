@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { campaignReducer, createCampaignState } from '../../campaignReducer';
 import type { CampaignState } from '../../campaignReducer';
 import { hydrateCampaignState, serializeCampaignState } from '../../../persistence/campaignStorage';
+import type { CampaignDTO } from '../../../persistence/campaignCodec';
 import { isRoutableMap } from '../../../utils/mapScale';
 import { createNewMap } from '../../../utils/mapUtils';
 
@@ -15,7 +16,7 @@ describe('journey checkpoints', () => {
       [map.id]: { ...rest, scaleMilesPerTile: 50 },
     } } } as unknown as CampaignState;
     const checkpointed = campaignReducer(legacy, { type: 'createCheckpoint', payload: 'Legacy' });
-    const payload: CampaignState = JSON.parse(JSON.stringify({
+    const payload: CampaignDTO = JSON.parse(JSON.stringify({
       ...serializeCampaignState(checkpointed), schemaVersion: '1.6.3',
     }));
     const hydrated = hydrateCampaignState(payload);

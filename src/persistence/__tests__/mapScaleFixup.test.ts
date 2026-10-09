@@ -5,6 +5,7 @@ import { createNewMap } from '../../utils/mapUtils';
 import { isRoutableMap } from '../../utils/mapScale';
 import { ensureMapScale } from '../dataMigration';
 import { hydrateCampaignState, serializeCampaignState } from '../campaignStorage';
+import type { CampaignDTO } from '../campaignCodec';
 
 function fixture() {
   const state = createCampaignState();
@@ -66,7 +67,7 @@ describe('ensureMapScale', () => {
 
   it('hydrates a serialized 1.6.3 map before routability consumers run', () => {
     const { legacy, map } = fixture();
-    const payload: CampaignState = JSON.parse(JSON.stringify({ ...serializeCampaignState(legacy), schemaVersion: '1.6.3' }));
+    const payload: CampaignDTO = JSON.parse(JSON.stringify({ ...serializeCampaignState(legacy), schemaVersion: '1.6.3' }));
     const hydrated = hydrateCampaignState(payload);
     const restoredMap = hydrated.maps.mapsById[map.id];
     expect(restoredMap.scale).toBe('50mi');

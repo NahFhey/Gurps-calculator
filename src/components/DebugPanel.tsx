@@ -1,28 +1,13 @@
 import { useEffect, useMemo, useState, ChangeEvent } from 'react';
 import { useCampaignStore } from '../state/campaignStore';
 import { ConfirmDialog, useConfirmDialog } from './ui';
-import type { CampaignState } from '../state/campaignReducer';
-
-const serializeCampaignState = (state: CampaignState): string =>
-  JSON.stringify(
-    state,
-    (_key, value) => {
-      if (value instanceof Set) {
-        return Array.from(value);
-      }
-      if (value instanceof Map) {
-        return Array.from(value.entries());
-      }
-      return value;
-    },
-    2
-  );
+import { toCampaignDTO, type CampaignDTO } from '../persistence/campaignCodec';
 
 export function DebugPanel() {
   const { state, actions } = useCampaignStore();
   const [jsonText, setJsonText] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const serializedState = useMemo(() => serializeCampaignState(state), [state]);
+  const serializedState = useMemo(() => JSON.stringify(toCampaignDTO(state), null, 2), [state]);
 
   const applyDialog = useConfirmDialog({
     title: 'Apply Debug State',
@@ -37,7 +22,7 @@ export function DebugPanel() {
 
   const handleApply = async () => {
     setError(null);
-    let parsed: CampaignState;
+    let parsed: CampaignDTO;
     try {
       parsed = JSON.parse(jsonText);
     } catch {

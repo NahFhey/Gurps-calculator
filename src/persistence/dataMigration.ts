@@ -34,22 +34,22 @@ const isLegacyMapRecord = (map: unknown): map is LegacyMapRecord =>
 
 /** Normalize persisted scales in live maps and restorable checkpoint snapshots. */
 export function ensureMapScale(state: CampaignState): CampaignState {
-  const fixMaps = (maps: CampaignState['maps']): CampaignState['maps'] => {
+  // Generic over the map state: live maps hold Sets, checkpoint snapshots hold DTOs.
+  const fixMaps = <S extends { mapsById: Record<string, object> }>(maps: S): S => {
     if (!maps?.mapsById) return maps;
     let changed = false;
     const mapsById = { ...maps.mapsById };
     for (const [id, map] of Object.entries(mapsById)) {
       if (!isLegacyMapRecord(map)) continue;
-      const legacy: LegacyMapRecord = map;
       // Legacy keys are intentionally plain string literals for migration honesty.
-      const hasLegacyKey = Object.prototype.hasOwnProperty.call(legacy, 'scaleMilesPerTile');
-      const validScale = legacy.scale === legacyScaleToRung(legacy.scale);
+      const hasLegacyKey = Object.prototype.hasOwnProperty.call(map, 'scaleMilesPerTile');
+      const validScale = map.scale === legacyScaleToRung(map.scale);
       if (validScale && !hasLegacyKey) continue;
       const scale = validScale
-        ? legacyScaleToRung(legacy.scale)
-        : legacyScaleToRung(legacy['scaleMilesPerTile'] ?? legacy.scale);
-      const cleaned = { ...legacy, scale };
-      delete cleaned['scaleMilesPerTile'];
+        ? legacyScaleToRung(map.scale)
+        : legacyScaleToRung(map['scaleMilesPerTile'] ?? map.scale);
+      const cleaned = { ...map, scale };
+      Reflect.deleteProperty(cleaned, 'scaleMilesPerTile');
       mapsById[id] = cleaned;
       changed = true;
     }
@@ -1039,4 +1039,4 @@ export async function cleanupLegacyData(): Promise<void> {
   console.log('[Migration] ✅ Cleanup complete');
 }
 
-export function ensureMapTokens(state: CampaignState): CampaignState { return migrateMapTokens(state); }
+export function ensureMapTokens<T>(state: T): T { return migrateMapTokens(state); }

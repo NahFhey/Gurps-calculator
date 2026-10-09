@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createCampaignState } from '../../state/campaignReducer';
 import type { CampaignState } from '../../state/campaignReducer';
-import { hydrateCampaignState, loadCampaignState, saveCampaignState } from '../../persistence/campaignStorage';
+import { hydrateCampaignState, loadCampaignState, saveCampaignState, serializeCampaignState } from '../../persistence/campaignStorage';
 import type { CombatState } from '../../types/combatTracker';
 
 function makeLegacyCombat(): CombatState {
@@ -26,7 +26,7 @@ describe('combat consumption persistence', () => {
   it('hydrates an older CombatState that has no consumptions field', () => {
     const state = createCampaignState();
     state.combat.activeSession = makeLegacyCombat() as unknown as CampaignState['combat']['activeSession'];
-    const hydrated = hydrateCampaignState(state);
+    const hydrated = hydrateCampaignState(serializeCampaignState(state));
     const combat = hydrated.combat.activeSession as unknown as CombatState;
     expect(combat.id).toBe('combat-old');
     expect(combat.consumptions).toBeUndefined();

@@ -77,6 +77,7 @@ import type {
   ActiveWeather,
 } from '../types/location';
 import type { CalendarConfig } from '../utils/timeSystem';
+import type { CampaignDTO } from '../persistence/campaignCodec';
 import type { DowntimeState } from '../types/downtime';
 import type { ForageZoneProfile } from '../types/foraging';
 import type { CombatState, RevealState } from '../types/combatTracker';
@@ -224,7 +225,7 @@ type CampaignStoreValue = {
     createCheckpoint: (label: string) => void;
     restoreCheckpoint: (id: string) => void;
     importCampaignState: (state: CampaignState, label?: string) => void;
-    applyDebugState: (state: CampaignState) => void;
+    applyDebugState: (state: CampaignDTO) => void;
 
     // Combat (legacy)
     startCombat: (encounterId?: string) => void;
@@ -599,7 +600,7 @@ export function CampaignStoreProvider({
         dispatch({ type: 'registerCombatDamage', payload: { targetId, remainingHp } }),
       registerCombatDefenseSuccess: (targetId: string, defense: { dodge?: number }) =>
         dispatch({ type: 'registerCombatDefenseSuccess', payload: { targetId, defense } }),
-      applyDebugState: (state: CampaignState) => dispatch({ type: 'applyDebugState', payload: state }),
+      applyDebugState: (state: CampaignDTO) => dispatch({ type: 'applyDebugState', payload: state }),
 
       // Character Actions
       addCharacter: (character: Character) => dispatch({ type: 'addCharacter', payload: character }),

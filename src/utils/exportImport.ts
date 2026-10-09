@@ -32,6 +32,7 @@ import { migrateData, validateDataForVersion } from './dataMigrations';
 import { logger } from './logger';
 import { CampaignImportSchema, exceedsImportSizeLimit } from './importSchemas';
 import type { CampaignState } from '../state/campaignReducer';
+import { toDetachedCampaignDTO, type CampaignDTO } from '../persistence/campaignCodec';
 import type {
   AlchemyBatch,
   AlchemyFormula,
@@ -59,20 +60,8 @@ export interface MigrationInfo {
   timestamp: string;
 }
 
-type SerializedCombatReveal = Omit<
-  CampaignState['combat']['reveal'],
-  'revealedTargets' | 'revealedHP'
-> & {
-  revealedTargets: string[];
-  revealedHP: string[];
-};
-
 /** JSON-safe normalized campaign state used inside export envelopes. */
-export type SerializedCampaignState = Omit<CampaignState, 'combat'> & {
-  combat: Omit<CampaignState['combat'], 'reveal'> & {
-    reveal?: SerializedCombatReveal;
-  };
-};
+export type SerializedCampaignState = CampaignDTO;
 
 export type LegacyAlchemyReagent = Omit<AlchemyReagent, 'aspects'> & {
   aspects?: AlchemyReagent['aspects'] | string[];
@@ -312,18 +301,28 @@ export type UnlockResult =
   | { ok: true; gmData: unknown }
   | { ok: false; error: string };
 
-/** True for the normalized campaign shape (as opposed to the pre-campaign flat export shape). */
-export const isCampaignState = (state: unknown): state is CampaignState =>
-  Boolean(
+/**
+ * True for the normalized campaign shape (as opposed to the pre-campaign flat
+ * export shapes). On a typed value it keeps the campaign members of its union
+ * (runtime `CampaignState` stays runtime); on anything read from outside it
+ * narrows to `CampaignDTO`, the wire shape.
+ */
+export function isCampaignState<T extends CampaignState | CampaignDTO | LegacyCampaignState | LegacyPublicState>(
+  state: T
+): state is Extract<T, CampaignState | CampaignDTO>;
+export function isCampaignState(state: unknown): state is CampaignDTO;
+export function isCampaignState(state: unknown): boolean {
+  return Boolean(
     state
-    && (state as Partial<CampaignState>).ui
-    && (state as Partial<CampaignState>).meta
-    && (state as Partial<CampaignState>).entities
-    && (state as Partial<CampaignState>).time
+    && (state as Partial<CampaignDTO>).ui
+    && (state as Partial<CampaignDTO>).meta
+    && (state as Partial<CampaignDTO>).entities
+    && (state as Partial<CampaignDTO>).time
   );
+}
 
 const toSerializableCampaignState = (state: CampaignState): SerializedCampaignState =>
-  JSON.parse(JSON.stringify(state, (_key, value: unknown) => value instanceof Set ? Array.from(value) : value)) as SerializedCampaignState;
+  toDetachedCampaignDTO(state);
 
 const stripSchemaVersion = (
   state: Record<string, unknown>
@@ -573,7 +572,7 @@ export function mergeGM(publicState: unknown, gmPayload: unknown): unknown {
 
 /** Embed each referenced asset once, including checkpoint-only references. Missing assets stay dangling. */
 export async function collectExportAssets(
-  state: CampaignState | LegacyCampaignState, store: AssetStore = getAssetStore(),
+  state: CampaignState | CampaignDTO | LegacyCampaignState, store: AssetStore = getAssetStore(),
 ): Promise<ExportAssets> {
   const assets: ExportAssets = {};
   if (!isCampaignState(state)) return assets;
