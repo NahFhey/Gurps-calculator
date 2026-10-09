@@ -21,7 +21,7 @@ import type { SessionInfo } from '../../shared/session';
 import type { Role } from '../../shared/session';
 import type { PlayerInfo } from '../../shared/protocol';
 import type { CampaignState } from '../state/campaignReducer';
-import { hydrateCampaignState } from '../persistence/campaignStorage';
+import { decodeCampaign } from '../persistence/decodeCampaign';
 import { pullMissingAssets } from './assetSync';
 
 // ---------------------------------------------------------------------------
@@ -106,7 +106,9 @@ export function SyncProvider({ children, onServerStateUpdate }: SyncProviderProp
       if (!connectionManager.campaignId) return;
       try {
         const { state } = await connectionManager.fetchState();
-        const hydrated = hydrateCampaignState(JSON.parse(state));
+        const decoded = decodeCampaign(state);
+        if (!decoded.ok) throw new Error(decoded.detail);
+        const hydrated = decoded.state;
         const progress = await pullMissingAssets(hydrated);
         if (progress.failed.length > 0) {
           standaloneToast.warning(`${progress.failed.length} map images could not be downloaded.`);

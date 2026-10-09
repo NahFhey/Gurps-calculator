@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { campaignReducer, createCampaignState } from '../../state/campaignReducer';
+import { createCampaignState } from '../../state/campaignReducer';
 import { hydrateCampaignState, serializeCampaignState } from '../../persistence/campaignStorage';
 import { ensureOwnerAttributedHoldings } from '../../persistence/dataMigration';
 import { toSnapshotDTO, type CampaignDTO } from '../../persistence/campaignCodec';
 import { migrateTo1_5_4 } from '../dataMigrations';
+import { restoreCheckpoint } from '../../test/restoreCheckpoint';
 
 describe('owner-attributed holdings migration', () => {
   it('moves legacy global pools to the party with exact quantities and fields', () => {
@@ -119,7 +120,7 @@ describe('owner-attributed holdings migration', () => {
       id: 'legacy-checkpoint', label: 'Legacy', createdAt: 1, snapshot: legacySnapshot,
     }];
     const hydrated = ensureOwnerAttributedHoldings(state);
-    const restored = campaignReducer(hydrated, { type: 'restoreCheckpoint', payload: 'legacy-checkpoint' });
+    const restored = restoreCheckpoint(hydrated, 'legacy-checkpoint');
     const party = Object.values(restored.entities.inventories).find(inventory => inventory.ownerType === 'party');
     expect(party?.materials[0].quantity).toBe(11);
     expect(party?.food[0].quantity).toBe(5);

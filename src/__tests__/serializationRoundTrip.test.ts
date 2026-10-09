@@ -14,6 +14,7 @@ import {
 } from '../persistence/campaignStorage';
 import type { CampaignState } from '../state/campaignReducer';
 import type { MapModel } from '../types/map';
+import { restoreCheckpoint } from '../test/restoreCheckpoint';
 
 type SerializedCampaignState = ReturnType<typeof serializeCampaignState>;
 
@@ -89,7 +90,7 @@ describe('serializeCampaignState / hydrateCampaignState round-trip', () => {
       ...checkpointed,
       entities: { ...checkpointed.entities, travelEventTables: {}, groupMeals: {}, starvationFpDebt: {} },
     };
-    const restored = campaignReducer(diverged, { type: 'restoreCheckpoint', payload: checkpointId });
+    const restored = restoreCheckpoint(diverged, checkpointId);
     expect(restored.entities.travelEventTables?.custom).toBeDefined();
     expect(restored.entities.travelEventTableSets?.set).toBeDefined();
     expect(restored.entities.groupMeals).toEqual({ g: 3 });

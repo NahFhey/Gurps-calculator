@@ -15,6 +15,7 @@ import {
   type ValidationResult
 } from '../exportImport';
 import { createCampaignState } from '../../state/campaignReducer';
+import { parseCampaignDTO } from '../../persistence/decodeCampaign';
 import type { CampaignState } from '../../state/campaignReducer';
 import { createNewMap } from '../mapUtils';
 import { isRoutableMap } from '../mapScale';
@@ -177,10 +178,14 @@ describe('exportImport', () => {
     expect(imported.data.originalSchemaVersion).toBe('1.6.3');
     const unlocked = await unlockGMData(imported.data, 'legacy-password');
     if (!unlocked.ok) throw new Error(unlocked.error);
-    const gm = unlocked.gmData as SerializedCampaignState;
+    const gmDecoded = parseCampaignDTO(unlocked.gmData);
+    const publicDecoded = parseCampaignDTO(imported.data.public);
+    if (!gmDecoded.ok) throw new Error(gmDecoded.detail);
+    if (!publicDecoded.ok) throw new Error(publicDecoded.detail);
+    const gm = gmDecoded.dto;
     expect(gm.maps.mapsById[map.id].scale).toBe('50mi');
     expect(gm.maps.mapsById[map.id]).not.toHaveProperty('scaleMilesPerTile');
-    const merged = mergeGM(imported.data.public, gm) as SerializedCampaignState;
+    const merged = mergeGM(publicDecoded.dto, gm);
     expect(() => isRoutableMap(merged.maps.mapsById[map.id])).not.toThrow();
     expect(isRoutableMap(merged.maps.mapsById[map.id])).toBe(true);
   });

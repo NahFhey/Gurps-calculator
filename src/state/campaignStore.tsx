@@ -21,6 +21,9 @@ import {
   getCampaignSaveHealth,
   whenCampaignSavesSettled,
 } from '../persistence/campaignStorage';
+import { prepareCheckpointRestore } from '../persistence/decodeCampaign';
+import { standaloneToast } from '../components/ui/Toast';
+import { logger } from '../utils/logger';
 import type {
   Id,
   Character,
@@ -591,7 +594,15 @@ export function CampaignStoreProvider({
       addLogEntry: (payload: LogEntry) => dispatch({ type: 'addLogEntry', payload }),
       setLogsEntries: (payload: LogEntry[]) => dispatch({ type: 'setLogsEntries', payload }),
       createCheckpoint: (label: string) => dispatch({ type: 'createCheckpoint', payload: label }),
-      restoreCheckpoint: (id: string) => dispatch({ type: 'restoreCheckpoint', payload: id }),
+      restoreCheckpoint: (id: string) => {
+        const prepared = prepareCheckpointRestore(store.getState(), id);
+        if (!prepared.ok) {
+          logger.error(prepared.error);
+          standaloneToast.error(prepared.error);
+          return;
+        }
+        dispatch(prepared.action);
+      },
       importCampaignState: (state: CampaignState, label?: string) =>
         dispatch({ type: 'importCampaignState', payload: { state, label } }),
       startCombat: (encounterId?: string) =>

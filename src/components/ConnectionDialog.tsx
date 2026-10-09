@@ -9,7 +9,7 @@ import { useCampaignStore } from '../state/campaignStore';
 import { PlayerAssignmentPanel } from './PlayerAssignmentPanel';
 import { Role } from '../../shared/session';
 import { serializeCampaignState } from '../persistence/campaignStorage';
-import { hydrateCampaignState } from '../persistence/campaignStorage';
+import { decodeCampaign } from '../persistence/decodeCampaign';
 import type { CampaignState } from '../state/campaignReducer';
 import { Modal } from './ui/Modal';
 import { standaloneToast } from './ui/Toast';
@@ -67,9 +67,10 @@ export function ConnectionDialog({ isOpen, onClose }: ConnectionDialogProps) {
     setLoading(true);
     try {
       const stateJson = await joinGame(joinCode, displayName);
-      // Parse and hydrate the server state, then replace local state
-      const parsed = JSON.parse(stateJson);
-      const hydrated = hydrateCampaignState(parsed);
+      // Decode the server state, then replace local state
+      const decoded = decodeCampaign(stateJson);
+      if (!decoded.ok) throw new Error(decoded.detail);
+      const hydrated = decoded.state;
       const progress = await pullMissingAssets(hydrated, {
         onProgress: ({ done, total }) => setAssetProgress(`Downloading map images ${done}/${total}…`),
       });

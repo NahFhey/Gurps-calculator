@@ -517,8 +517,10 @@ describe('campaignStorage', () => {
 
   describe('inventory owner record migration', () => {
     it('backfills party and character inventory records on load of a pre-12a.5 save', async () => {
-      // Pre-12a.5 save: characters exist but no inventories key at all
+      // Pre-12a.5 save: characters exist but no inventories key at all. Every
+      // local save has carried ui and time (the store always saved the whole state).
       const legacyState = {
+        ui: {},
         time: { day: 2, slot: 1 },
         entities: {
           characters: {
@@ -543,6 +545,8 @@ describe('campaignStorage', () => {
 
     it('migration is idempotent across save/load round-trips', async () => {
       const legacyState = {
+        ui: {},
+        time: { day: 1, slot: 0 },
         entities: { characters: { 'c1': { id: 'c1', name: 'Korrin' } } },
       };
       localStorage.setItem('campaignState', JSON.stringify(legacyState));
@@ -558,6 +562,8 @@ describe('campaignStorage', () => {
 
     it('does not disturb existing inventory contents on load', async () => {
       const stateWithInventory = {
+        ui: {},
+        time: { day: 1, slot: 0 },
         entities: {
           characters: { 'c1': { id: 'c1', name: 'Korrin' } },
           inventories: {

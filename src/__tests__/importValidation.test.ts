@@ -13,6 +13,8 @@ import {
   mergeGM,
   SCHEMA_VERSION,
   type ImportResult,
+  type LegacyGMPayload,
+  type LegacyPublicState,
   type ValidationResult,
 } from '../utils/exportImport';
 import { createCampaignState } from '../state/campaignReducer';
@@ -300,8 +302,8 @@ describe('splitState / mergeGM', () => {
   });
 
   it('mergeGM handles legacy (non-campaign) state', () => {
-    const publicData = {
-      materials: [{ id: 'm1', name: 'Iron' }],
+    const publicData: LegacyPublicState = {
+      materials: [{ id: 'm1', name: 'Iron', type: 'metal', quantity: 1 }],
       foods: [],
       recipes: [],
       crafts: [],
@@ -310,15 +312,18 @@ describe('splitState / mergeGM', () => {
       workers: [],
       customTemplates: {},
       craftDesigns: [],
-      alchemySettings: {},
+      alchemySettings: { defaultLabRating: 0, workBlockMinutes: 120, showObviousRoles: true },
       effectFamilyMap: {},
-      alchemyReagents: [{ id: 'r1', name: 'Herb' }],
+      alchemyReagents: [{
+        id: 'r1', name: 'Herb', quantity: 1, refinement: 'crude', basePotency: 'P1', concentrationSteps: 0,
+        identificationLevel: 0, aspects: null, hazards: [], roles: [], analysisHistory: [],
+      }],
       alchemyFormulas: [],
       alchemyBatches: [],
     };
 
-    const gmPayload = {
-      reagentSecrets: [{ id: 'r1', aspects: ['fire'], hazards: [], roles: [] }],
+    const gmPayload: LegacyGMPayload = {
+      reagentSecrets: [{ id: 'r1', aspects: ['fire'], hazards: [], roles: [], falseProfile: null, notes: '' }],
       formulaSecrets: [],
       batchSecrets: [],
       gmSettings: { notes: 'GM note', customRules: [] },

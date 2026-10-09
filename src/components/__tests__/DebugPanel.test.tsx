@@ -51,6 +51,30 @@ describe('DebugPanel', () => {
     expect(screen.getByTestId('time-day')).toHaveTextContent('1');
   });
 
+  it.each([
+    ['a non-campaign object', () => ({ hello: 'world' }), 'does not look like a campaign state'],
+    ['a malformed combat reveal', (json: Record<string, unknown>) => ({ ...json, combat: { reveal: 'x' } }), 'combat.reveal'],
+    ['a campaign from a newer version', (json: Record<string, unknown>) => ({ ...json, meta: { schemaVersion: '1.99.0' } }), 'newer version of the app'],
+  ])('refuses %s before asking to confirm', (_label, edit, message) => {
+    render(
+      <ToastProvider>
+        <CampaignStoreProvider>
+          <CampaignStateProbe />
+          <DebugPanel />
+        </CampaignStoreProvider>
+      </ToastProvider>
+    );
+
+    const input = screen.getByTestId('debug-json') as HTMLTextAreaElement;
+    const edited = edit(JSON.parse(input.value) as Record<string, unknown>);
+    fireEvent.change(input, { target: { value: JSON.stringify(edited) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply JSON' }));
+
+    expect(screen.getByTestId('debug-error')).toHaveTextContent(message);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByTestId('time-day')).toHaveTextContent('1');
+  });
+
   it('applies valid JSON, overwrites time, and does not append logs', async () => {
     render(
       <ToastProvider>

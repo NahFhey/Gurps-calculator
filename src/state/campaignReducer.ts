@@ -14,7 +14,6 @@ import { DEFAULT_STUDY_CONFIG, SLOT_NAMES, SLOTS_PER_DAY } from '../constants';
 import { logger } from '../utils/logger';
 import {
   fromCampaignDTO,
-  fromSnapshotDTO,
   toSnapshotDTO,
   type CampaignDTO,
   type CampaignSnapshotDTO,
@@ -654,7 +653,8 @@ export type CampaignAction =
   | { type: 'addLogEntry'; payload: LogEntry }
   | { type: 'setLogsEntries'; payload: LogEntry[] }
   | { type: 'createCheckpoint'; payload: string }
-  | { type: 'restoreCheckpoint'; payload: string }
+  /** `state` is the checkpoint already decoded and repaired: build this with `prepareCheckpointRestore` (persistence/decodeCampaign). */
+  | { type: 'restoreCheckpoint'; payload: { id: string; state: CampaignState } }
   | { type: 'importCampaignState'; payload: { state: CampaignState; label?: string } }
   | { type: 'startCombat'; payload?: { encounterId?: string } }
   | { type: 'registerCombatDamage'; payload: { targetId: string; remainingHp: number } }
@@ -1043,17 +1043,10 @@ export function campaignReducer(state: CampaignState, action: CampaignAction) {
         return;
       }
       case 'restoreCheckpoint': {
-        const checkpoint = draft.checkpoints.entries.find((entry) => entry.id === action.payload);
-        if (!checkpoint) {
-          return;
-        }
-        let restored: Partial<CampaignSnapshot>;
-        try {
-          // Old snapshots may lack slices added since; the defaults fill them.
-          const dto: Partial<CampaignSnapshotDTO> = JSON.parse(JSON.stringify(checkpoint.snapshot));
-          restored = fromSnapshotDTO(dto);
-        } catch (err) {
-          logger.error('Failed to deep-clone checkpoint for restore:', err);
+        // The snapshot was decoded and repaired outside the reducer (importing
+        // the decoder here would close a cycle through campaignStorage).
+        const { id, state: restored } = action.payload;
+        if (!draft.checkpoints.entries.some((entry) => entry.id === id)) {
           return;
         }
         replaceCampaignState(draft, restored, REPLACEMENT_POLICIES.restore, replacementDefaults(restored.time));

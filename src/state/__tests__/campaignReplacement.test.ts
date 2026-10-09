@@ -5,6 +5,8 @@ import { REPLACEMENT_POLICIES } from '../campaignReplacement';
 import { toCampaignDTO } from '../../persistence/campaignCodec';
 import { createInitialLocationState } from '../../utils/weatherSystem';
 import { createNewMap } from '../../utils/mapUtils';
+import { restoreCheckpoint } from '../../test/restoreCheckpoint';
+import { decodeCampaign } from '../../persistence/decodeCampaign';
 
 const ROOT_KEYS = Object.keys(createCampaignState()).sort();
 
@@ -27,7 +29,7 @@ describe('whole-state replacement policies', () => {
     expect(kept).toEqual(['checkpoints']);
   });
 
-  it('restore keeps every root key its policy keeps and replaces the rest from the snapshot', () => {
+  it('restore keeps every root key its policy keeps and replaces the rest from the decoded snapshot', () => {
     let state = campaignWithMap();
     state = campaignReducer(state, { type: 'createCheckpoint', payload: 'Before' });
     const checkpointId = state.checkpoints.entries[0].id;
@@ -37,7 +39,10 @@ describe('whole-state replacement policies', () => {
       campaignReducer(state, { type: 'advanceTime' }),
       { type: 'createCheckpoint', payload: 'After' }
     );
-    const restored = campaignReducer(diverged, { type: 'restoreCheckpoint', payload: checkpointId });
+    const restored = restoreCheckpoint(diverged, checkpointId);
+    // Restore decodes the snapshot like a load does, so the load repairs apply.
+    const decoded = decodeCampaign(JSON.stringify(snapshot));
+    if (!decoded.ok) throw new Error(decoded.detail);
 
     for (const [key, rule] of Object.entries(REPLACEMENT_POLICIES.restore) as [keyof CampaignState, string][]) {
       if (rule === 'keep') {
@@ -47,7 +52,7 @@ describe('whole-state replacement policies', () => {
         expect(restored.logs.entries.slice(1)).toEqual(snapshot.logs.entries);
         expect(restored.logs.entries[0].type).toBe('campaign.rollback');
       } else {
-        expect(toCampaignDTO(restored)[key], key).toEqual(snapshot[key as keyof typeof snapshot]);
+        expect(restored[key], key).toEqual(decoded.state[key]);
       }
     }
     expect(REPLACEMENT_POLICIES.restore.checkpoints).toBe('keep');

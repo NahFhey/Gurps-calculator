@@ -20,9 +20,11 @@ import { getAssetStore } from '../assets/assetStore';
 import { collectReferencedAssetIds, ingestInlineImageLayers } from '../assets/assetMigration';
 import { parseDataUrl, toDataUrl } from '../assets/dataUrl';
 import { sha256Hex } from '../assets/sha256';
-import { encryptJSON, decryptJSON, validateGMLock, type GMLock, type EncryptOptions } from './cryptoLock';
+import { encryptJSON, decryptJSON, isGMLock, validateGMLock, type GMLock, type EncryptOptions } from './cryptoLock';
 import { validateMapTokenCollections } from './mapTokenMigration';
+import { isRecord } from './mapTokenSpatial';
 import { projectCampaignForPlayers } from '../../shared/playerProjection';
+import { isCampaignRoot } from '../../shared/campaignDocument';
 import {
   CURRENT_SCHEMA_VERSION,
   classifySchemaVersion,
@@ -33,6 +35,7 @@ import { logger } from './logger';
 import { CampaignImportSchema, exceedsImportSizeLimit } from './importSchemas';
 import type { CampaignState } from '../state/campaignReducer';
 import { toDetachedCampaignDTO, type CampaignDTO } from '../persistence/campaignCodec';
+import { parseCampaignDTO } from '../persistence/decodeCampaign';
 import type {
   AlchemyBatch,
   AlchemyFormula,
@@ -267,7 +270,8 @@ export interface CampaignImportEnvelope {
   exportType?: string;
   public: Record<string, unknown>;
   gm?: Record<string, unknown>;
-  gmLock?: GMLock & { encryptedData?: string };
+  /** Unchecked (legacy files carry a string); `isGMLock` narrows it. */
+  gmLock?: unknown;
   migrationInfo?: MigrationInfo;
   [key: string]: unknown;
 }
@@ -303,22 +307,14 @@ export type UnlockResult =
 
 /**
  * True for the normalized campaign shape (as opposed to the pre-campaign flat
- * export shapes). On a typed value it keeps the campaign members of its union
- * (runtime `CampaignState` stays runtime); on anything read from outside it
- * narrows to `CampaignDTO`, the wire shape.
+ * export shapes). It keeps the campaign members of its union (runtime
+ * `CampaignState` stays runtime). Values read from outside go through
+ * `isCampaignRoot` or `parseCampaignDTO` instead.
  */
-export function isCampaignState<T extends CampaignState | CampaignDTO | LegacyCampaignState | LegacyPublicState>(
-  state: T
-): state is Extract<T, CampaignState | CampaignDTO>;
-export function isCampaignState(state: unknown): state is CampaignDTO;
-export function isCampaignState(state: unknown): boolean {
-  return Boolean(
-    state
-    && (state as Partial<CampaignDTO>).ui
-    && (state as Partial<CampaignDTO>).meta
-    && (state as Partial<CampaignDTO>).entities
-    && (state as Partial<CampaignDTO>).time
-  );
+export function isCampaignState<
+  T extends CampaignState | CampaignDTO | LegacyCampaignState | LegacyPublicState | LegacyGMPayload
+>(state: T): state is Extract<T, CampaignState | CampaignDTO> {
+  return isCampaignRoot(state);
 }
 
 const toSerializableCampaignState = (state: CampaignState): SerializedCampaignState =>
@@ -505,16 +501,20 @@ export function mergeGM(
   publicState: LegacyPublicState,
   gmPayload: LegacyGMPayload
 ): LegacyPublicState & { gmNotes: string; gmCustomRules: unknown[] };
-export function mergeGM(publicState: unknown, gmPayload: unknown): unknown;
-export function mergeGM(publicState: unknown, gmPayload: unknown): unknown {
+export function mergeGM(
+  publicState: SerializedCampaignState | LegacyPublicState,
+  gmPayload: SerializedCampaignState | LegacyGMPayload
+): unknown {
   if (isCampaignState(publicState)) {
     return gmPayload || publicState;
   }
   const merged: LegacyPublicState & {
     gmNotes?: string;
     gmCustomRules?: unknown[];
-  } = { ...(publicState as LegacyPublicState) };
-  const gmData = gmPayload as LegacyGMPayload;
+  } = { ...publicState };
+  // A campaign GM half carries none of the legacy secrets merged below.
+  if (isCampaignState(gmPayload)) return merged;
+  const gmData = gmPayload;
 
   if (gmData.reagentSecrets && merged.alchemyReagents) {
     merged.alchemyReagents = merged.alchemyReagents.map((r) => {
@@ -595,9 +595,10 @@ async function ingestExportAssets(assets: ExportAssets | undefined): Promise<voi
 }
 
 async function ingestImportPayload(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
-  if (!isCampaignState(payload)) return payload;
-  const { state } = await ingestInlineImageLayers(payload);
-  return state as unknown as Record<string, unknown>;
+  const parsed = parseCampaignDTO(payload);
+  if (!parsed.ok) return payload;
+  const { state } = await ingestInlineImageLayers(parsed.dto);
+  return state;
 }
 
 /**
@@ -707,6 +708,23 @@ export function validateImport(data: unknown): ValidationResult {
 }
 
 /**
+ * Public and GM halves of a migrated payload. A campaign splits as `splitState`
+ * splits one (player projection; full campaign without a pending intent).
+ */
+function splitMigratedPayload(
+  payload: Record<string, unknown>
+): { public: Record<string, unknown>; gm: Record<string, unknown> } {
+  if (isCampaignRoot(payload)) {
+    return {
+      public: projectCampaignForPlayers(payload),
+      gm: { ...payload, ui: { ...payload.ui, pendingIntent: null } }
+    };
+  }
+  const { public: publicData, gm } = splitState(payload);
+  return { public: { ...publicData }, gm: { ...gm } };
+}
+
+/**
  * Migrates imported data from old schema versions to current version.
  * Handles version normalization and applies necessary migrations.
  */
@@ -741,18 +759,14 @@ export function migrateImport(
       logger.warn('Migrated data has validation issues:', validation.issues);
     }
 
-    const { public: migratedPublic, gm: migratedGm } = splitState(
-      migratedState as unknown as CampaignState | LegacyCampaignState
-    );
+    const { public: migratedPublic, gm: migratedGm } = splitMigratedPayload(migratedState);
 
     const migrationPath = getMigrationPath(importedVersion, SCHEMA_VERSION);
 
     return {
       ...data,
-      public: migratedPublic as unknown as Record<string, unknown>,
-      ...(data.exportType === 'unlocked'
-        ? { gm: migratedGm as unknown as Record<string, unknown> }
-        : {}),
+      public: migratedPublic,
+      ...(data.exportType === 'unlocked' ? { gm: migratedGm } : {}),
       schemaVersion: SCHEMA_VERSION,
       originalSchemaVersion: data.originalSchemaVersion ?? importedVersion,
       migrationInfo: {
@@ -792,7 +806,7 @@ export async function importFile(jsonInput: unknown): Promise<ImportResult> {
       return { ok: false, error: `Import validation error${path ? ` at ${path}` : ''}: ${issue?.message}` };
     }
 
-    const importData = data as CampaignImportEnvelope;
+    const importData: CampaignImportEnvelope = zodResult.data;
     const validation = validateImport(importData);
     if (!validation.valid) {
       return { ok: false, error: validation.error };
@@ -811,12 +825,12 @@ export async function importFile(jsonInput: unknown): Promise<ImportResult> {
     };
 
     if (migrated.exportType === 'locked') {
+      const { gmLock } = sanitized;
+      // validateImport has already refused a locked export whose lock fails this.
+      if (!isGMLock(gmLock)) return { ok: false, error: 'Locked export has an invalid gmLock' };
       return {
         ok: true,
-        data: sanitized as CampaignImportEnvelope & {
-          exportType: 'locked';
-          gmLock: GMLock & { encryptedData?: string };
-        },
+        data: { ...sanitized, exportType: 'locked', gmLock },
         warnings: validation.warnings,
         isLocked: true
       };
@@ -842,26 +856,28 @@ export async function importFile(jsonInput: unknown): Promise<ImportResult> {
  * Call this after importFile() when user enters password for GM mode.
  */
 export async function unlockGMData(
-  importData: unknown,
+  envelope: { gmLock?: unknown; schemaVersion?: string | number; originalSchemaVersion?: string },
   password: string
 ): Promise<UnlockResult> {
-  const envelope = importData as Partial<CampaignImportEnvelope>;
-  if (!envelope.gmLock) {
+  const { gmLock } = envelope;
+  if (!gmLock) {
     return { ok: false, error: 'No gmLock present in import data' };
   }
+  // The message decryptJSON throws for a lock it cannot read.
+  if (!isGMLock(gmLock)) return { ok: false, error: 'Invalid or unsupported gmLock format' };
 
   try {
-    let gmData = await decryptJSON(envelope.gmLock, password);
+    let gmData = await decryptJSON(gmLock, password);
     const originalVersion = envelope.originalSchemaVersion ?? String(envelope.schemaVersion ?? SCHEMA_VERSION);
     const versionClass = classifySchemaVersion(originalVersion, CURRENT_SCHEMA_VERSION);
     if (versionClass === 'future' || versionClass === 'malformed') {
       return { ok: false, error: `Cannot unlock GM data with schema version "${originalVersion}" (current: ${CURRENT_SCHEMA_VERSION})` };
     }
     if (versionClass === 'older') {
-      if (!gmData || typeof gmData !== 'object' || Array.isArray(gmData)) {
+      if (!isRecord(gmData)) {
         return { ok: false, error: 'Invalid GM data section' };
       }
-      const migrated = migrateData(gmData as Record<string, unknown>, originalVersion, CURRENT_SCHEMA_VERSION);
+      const migrated = migrateData(gmData, originalVersion, CURRENT_SCHEMA_VERSION);
       const validation = validateDataForVersion(migrated, CURRENT_SCHEMA_VERSION);
       if (!validation.valid) {
         logger.warn('Migrated data has validation issues:', validation.issues);
@@ -869,8 +885,8 @@ export async function unlockGMData(
       gmData = stripSchemaVersion(migrated);
     }
     if (!validateMapTokenCollections(gmData)) return { ok: false, error: 'Invalid GM map token collection' };
-    return { ok: true, gmData: isCampaignState(gmData)
-      ? (await ingestInlineImageLayers(gmData)).state : gmData };
+    const parsed = parseCampaignDTO(gmData);
+    return { ok: true, gmData: parsed.ok ? (await ingestInlineImageLayers(parsed.dto)).state : gmData };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return { ok: false, error: message };

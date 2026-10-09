@@ -2,18 +2,17 @@ import { ingestInlineImageLayers, pruneUnreferencedAssets } from '../assets/asse
 import storage, { readRawStrict, writeWithRevision, ValueAlreadyPresentError } from '../utils/storage';
 import { createCampaignState, type CampaignState } from '../state/campaignReducer';
 import { generateAllTestSampleData, isStateEmpty } from '../utils/testSampleData';
-import { fromCampaignDTO, toCampaignDTO, type CampaignDTO } from './campaignCodec';
+import { toCampaignDTO, type CampaignDTO } from './campaignCodec';
 import { logger } from '../utils/logger';
-import { removeLegacyTravelState } from '../utils/dataMigrations';
-import { ensureMapTokens, ensureMapScale, ensureAmbientWeather, ensureCharacterTemplates, ensureTravelGroups, ensureJourneyIntegrity, ensureTravelEventTables, ensureInventoryRecords, ensureOwnerAttributedHoldings, ensureConditionVisibility, ensureCombatCharacterCategories, ensureCombatHistoryShape, ensureLocationIntegrity } from './dataMigration';
-import { DEFAULT_CALENDAR } from '../utils/timeSystem';
-import { CAMPAIGN_SCHEMA_VERSION, classifySchemaVersion } from '../../shared/campaignVersion';
+import { ensureCharacterTemplates, ensureTravelGroups, ensureTravelEventTables } from './dataMigration';
+import { decodeCampaign, type CampaignDecodeFailure } from './decodeCampaign';
+
+// The repair stage lives in campaignRepair.ts (decodeCampaign imports it; keeping it here
+// would make this module and the decoder import each other). Re-exported for callers and tests.
+export { CampaignVersionError, hydrateCampaignState } from './campaignRepair';
 
 const CAMPAIGN_STORAGE_KEY = 'campaignState';
 const CAMPAIGN_REVISION_KEY = 'campaignStateRevision';
-// Legacy key as a string literal on purpose: the field no longer exists on
-// MapModel, but pre-1.5.6 saves still carry it.
-const LEGACY_PARTY_POSITION_KEY = 'partyTileId';
 
 // ---------------------------------------------------------------------------
 // Cross-tab overwrite guard
@@ -145,129 +144,6 @@ export function resetRevisionGuard() {
 export const serializeCampaignState = (state: CampaignState): CampaignDTO => {
   const dto = toCampaignDTO(state);
   return { ...dto, legacy: { ...dto.legacy, appState: {} } };
-};
-
-/** Map repairs on the DTO: climate/visionMode defaults, the legacy party-position key dropped. */
-const hydrateMapState = (
-  maps: CampaignDTO['maps'] | undefined,
-  base: CampaignDTO['maps']
-): CampaignDTO['maps'] => {
-  if (!maps || !maps.mapsById) {
-    return base;
-  }
-  const hydratedMaps: CampaignDTO['maps']['mapsById'] = {};
-  for (const [mapId, map] of Object.entries(maps.mapsById)) {
-    const repaired = {
-      ...map,
-      climate: map.climate ?? 'temperate',
-      visionMode: map.visionMode ?? 'lineOfSight',
-    };
-    Reflect.deleteProperty(repaired, LEGACY_PARTY_POSITION_KEY);
-    hydratedMaps[mapId] = repaired;
-  }
-  return {
-    ...base,
-    ...maps,
-    mapsById: hydratedMaps,
-  };
-};
-
-/**
- * A campaign payload whose `meta.schemaVersion` this build cannot read: a
- * newer build wrote it ('future'), or the version is not strict semver
- * ('malformed'). Thrown before anything is repaired or stamped.
- */
-export class CampaignVersionError extends Error {
-  constructor(readonly version: unknown, readonly versionClass: 'future' | 'malformed') {
-    super(
-      versionClass === 'future'
-        ? `This campaign was saved by a newer version of the app (schema ${String(version)}; ` +
-          `this version reads up to ${CAMPAIGN_SCHEMA_VERSION}). Update the app to open it.`
-        : `This campaign has a malformed schema version: ${JSON.stringify(version) ?? String(version)}`
-    );
-    this.name = 'CampaignVersionError';
-  }
-}
-
-const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-/**
- * Refuse a payload from a newer build or with a malformed version. A missing
- * version, or any below 1.7.0, is pre-contract: the old `'1.0.0'` was never
- * bumped, so hydration's idempotent repairs are what bring it up to date.
- */
-function assertReadableSchemaVersion(payload: unknown): void {
-  const meta = isPlainRecord(payload) ? payload.meta : undefined;
-  if (!isPlainRecord(meta) || meta.schemaVersion === undefined) return;
-  const versionClass = classifySchemaVersion(meta.schemaVersion);
-  if (versionClass === 'future' || versionClass === 'malformed') {
-    throw new CampaignVersionError(meta.schemaVersion, versionClass);
-  }
-}
-
-/**
- * Turn a parsed campaign payload into runtime state: refuse unreadable
- * versions, run the idempotent repairs, and stamp the current schema version.
- */
-export const hydrateCampaignState = (payload: CampaignDTO): CampaignState => {
-  assertReadableSchemaVersion(payload);
-  payload = ensureMapTokens(removeLegacyTravelState(payload));
-  const base = toCampaignDTO(createCampaignState());
-  const reveal = payload.combat?.reveal ?? base.combat.reveal;
-  // Merge and repair on the DTO; the codec revives the Sets before the ensure* chain.
-  const merged: CampaignDTO = {
-    ...base,
-    ...payload,
-    // Ensure all nested structures have proper defaults
-    meta: {
-      ...base.meta,
-      ...(isPlainRecord(payload.meta) ? payload.meta : {}),
-      schemaVersion: CAMPAIGN_SCHEMA_VERSION,
-    },
-    ui: {
-      ...base.ui,
-      ...payload.ui,
-      pendingIntent: null
-    },
-    checkpoints: {
-      ...base.checkpoints,
-      ...payload.checkpoints,
-      entries: payload.checkpoints?.entries ?? base.checkpoints.entries
-    },
-    entities: {
-      ...base.entities,
-      ...payload.entities
-    },
-    time: {
-      ...base.time,
-      ...payload.time,
-      calendar: payload.time?.calendar ?? DEFAULT_CALENDAR,
-    },
-    locations: {
-      ...base.locations,
-      ...payload.locations,
-      locations: payload.locations?.locations ?? base.locations.locations,
-      weatherTables: payload.locations?.weatherTables ?? base.locations.weatherTables,
-    },
-    legacy: {
-      ...base.legacy,
-      ...payload.legacy,
-      appState: base.legacy.appState
-    },
-    combat: {
-      ...base.combat,
-      ...payload.combat,
-      reveal: {
-        ...base.combat.reveal,
-        ...reveal,
-      }
-    },
-    maps: hydrateMapState(payload.maps, base.maps),
-  };
-  return ensureLocationIntegrity(ensureAmbientWeather(ensureTravelEventTables(ensureJourneyIntegrity(ensureTravelGroups(ensureCharacterTemplates(ensureCombatHistoryShape(ensureCombatCharacterCategories(ensureConditionVisibility(ensureOwnerAttributedHoldings(ensureInventoryRecords(ensureMapScale(
-    fromCampaignDTO(merged)
-  ))))))))))));
 };
 
 /** Decide the revision to stamp, or refuse if another tab saved since we loaded. */
@@ -477,13 +353,15 @@ async function loadCampaignStateNow(): Promise<CampaignState> {
 
   let state: CampaignState;
   try {
-    state = injectTestSampleData(hydrateCampaignState(JSON.parse(raw)));
+    const decoded = decodeCampaign(raw);
+    if (!decoded.ok) throw new CampaignDecodeError(decoded.reason, decoded.detail);
+    state = injectTestSampleData(decoded.state);
   } catch (error) {
     logger.error('[CampaignStorage] Stored campaign cannot be loaded; saving is paused.', error);
     // Block saves before the first await below, not after it.
     const issue: CampaignLoadIssue = {
-      kind: error instanceof CampaignVersionError && error.versionClass === 'future' ? 'newer-version' : 'invalid',
-      message: describeError(error),
+      kind: error instanceof CampaignDecodeError && error.reason === 'future-version' ? 'newer-version' : 'invalid',
+      message: error instanceof CampaignDecodeError ? error.message : describeError(error),
       raw,
       recoveryKey: null,
     };
@@ -515,6 +393,14 @@ async function loadCampaignStateNow(): Promise<CampaignState> {
 
 function createFreshCampaignState(): CampaignState {
   return ensureTravelEventTables(ensureTravelGroups(ensureCharacterTemplates(createCampaignState())));
+}
+
+/** A stored campaign the decoder refused; carries the decoder's reason. */
+class CampaignDecodeError extends Error {
+  constructor(readonly reason: CampaignDecodeFailure['reason'], detail: string) {
+    super(detail);
+    this.name = 'CampaignDecodeError';
+  }
 }
 
 function describeError(error: unknown): string {

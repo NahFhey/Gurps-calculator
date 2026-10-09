@@ -70,7 +70,7 @@ describe('asset sync wire-in', () => {
 
   it('hydrates joined JSON, awaits the asset pull, then dispatches and closes despite missing images', async () => {
     const pending = deferred<AssetSyncProgress>();
-    vi.spyOn(connectionManager, 'joinGame').mockResolvedValue({ sessionInfo: { ...session, role: Role.Player }, stateJson: JSON.stringify({ maps: serializeCampaignState(state).maps }) });
+    vi.spyOn(connectionManager, 'joinGame').mockResolvedValue({ sessionInfo: { ...session, role: Role.Player }, stateJson: JSON.stringify(serializeCampaignState(state)) });
     const pull = vi.spyOn(assetSync, 'pullMissingAssets').mockImplementation(async (_state, opts) => {
       opts?.onProgress?.({ total: 1, done: 0, failed: [] });
       return pending.promise;
@@ -95,7 +95,7 @@ describe('asset sync wire-in', () => {
   it('hydrates server updates once and hands off the same state after pulling assets', async () => {
     const pending = deferred<AssetSyncProgress>();
     vi.spyOn(connectionManager, 'campaignId', 'get').mockReturnValue('campaign');
-    vi.spyOn(connectionManager, 'fetchState').mockResolvedValue({ state: JSON.stringify({ maps: serializeCampaignState(state).maps }), version: 2 });
+    vi.spyOn(connectionManager, 'fetchState').mockResolvedValue({ state: JSON.stringify(serializeCampaignState(state)), version: 2 });
     const listener = vi.spyOn(connectionManager, 'onStateUpdated');
     const pull = vi.spyOn(assetSync, 'pullMissingAssets').mockReturnValue(pending.promise);
     const handOver = vi.fn();
@@ -106,5 +106,36 @@ describe('asset sync wire-in', () => {
     expect(handOver).not.toHaveBeenCalled();
     await act(async () => pending.resolve({ total: 1, done: 1, failed: [] }));
     expect(handOver).toHaveBeenCalledExactlyOnceWith(pull.mock.calls[0][0]);
+  });
+
+  it('refuses to join a campaign the decoder rejects: error shown, nothing imported', async () => {
+    const malformed = { ...serializeCampaignState(state), meta: { schemaVersion: '1.99.0' } };
+    vi.spyOn(connectionManager, 'joinGame').mockResolvedValue({ sessionInfo: { ...session, role: Role.Player }, stateJson: JSON.stringify(malformed) });
+    const pull = vi.spyOn(assetSync, 'pullMissingAssets');
+    const close = vi.fn();
+    render(<SyncProvider><ConnectionDialog isOpen onClose={close} /></SyncProvider>);
+    fireEvent.click(screen.getByRole('tab', { name: 'Join Game' }));
+    fireEvent.change(screen.getByLabelText('Join Code'), { target: { value: 'ABC123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Join Game' }));
+    await screen.findByText(/newer version of the app/);
+    expect(pull).not.toHaveBeenCalled();
+    expect(importState).not.toHaveBeenCalled();
+    expect(close).not.toHaveBeenCalled();
+  });
+
+  it('refuses a server update the decoder rejects: error toast, nothing handed off', async () => {
+    const malformed = { ...serializeCampaignState(state), combat: { reveal: 'x' } };
+    vi.spyOn(connectionManager, 'campaignId', 'get').mockReturnValue('campaign');
+    vi.spyOn(connectionManager, 'fetchState').mockResolvedValue({ state: JSON.stringify(malformed), version: 2 });
+    const listener = vi.spyOn(connectionManager, 'onStateUpdated');
+    const pull = vi.spyOn(assetSync, 'pullMissingAssets');
+    const error = vi.spyOn(standaloneToast, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const handOver = vi.fn();
+    render(<SyncProvider onServerStateUpdate={handOver}><span>Session</span></SyncProvider>);
+    act(() => { void listener.mock.calls[0][0]({ version: 2, updatedAt: '2026-09-05' }); });
+    await waitFor(() => expect(error).toHaveBeenCalledOnce());
+    expect(pull).not.toHaveBeenCalled();
+    expect(handOver).not.toHaveBeenCalled();
   });
 });

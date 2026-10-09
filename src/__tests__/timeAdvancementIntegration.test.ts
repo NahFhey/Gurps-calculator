@@ -14,6 +14,7 @@ import {
   createCampaignState,
   type CampaignState,
 } from '../state/campaignReducer';
+import { restoreCheckpoint } from '../test/restoreCheckpoint';
 
 // ============================================================================
 // HELPERS
@@ -151,7 +152,7 @@ describe('Time Advancement Integration', () => {
       const checkpointId = next.checkpoints.entries[0].id;
 
       // Restore
-      next = campaignReducer(next, { type: 'restoreCheckpoint', payload: checkpointId });
+      next = restoreCheckpoint(next, checkpointId);
 
       expect(next.time.day).toBe(1);
       expect(next.time.slot).toBe(0);

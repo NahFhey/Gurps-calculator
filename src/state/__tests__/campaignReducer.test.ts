@@ -6,6 +6,7 @@ import { DEFAULT_STUDY_CONFIG } from '../../constants';
 import { selectContactByName, selectContacts, selectStudyConfig, selectStudyProjects, selectStudyProjectsForCharacter } from '../selectors';
 import type { ContactEntry, StudyProject } from '../../types/campaign';
 import type { MapModel } from '../../types/map';
+import { restoreCheckpoint } from '../../test/restoreCheckpoint';
 
 describe('campaignReducer', () => {
   const studyProject: StudyProject = {
@@ -266,7 +267,7 @@ describe('campaignReducer', () => {
     const checkpointId = withCheckpoint.checkpoints.entries[0].id;
     const advanced = campaignReducer(withCheckpoint, { type: 'advanceTime' });
 
-    const restored = campaignReducer(advanced, { type: 'restoreCheckpoint', payload: checkpointId });
+    const restored = restoreCheckpoint(advanced, checkpointId);
 
     expect(restored.time.slot).toBe(0);
     expect(restored.time.day).toBe(1);
@@ -286,28 +287,7 @@ describe('campaignReducer', () => {
     vi.restoreAllMocks();
   });
 
-  it('restoreCheckpoint with malformed (non-serializable) snapshot leaves state unchanged', () => {
-    const state = createCampaignState();
-    const circular: Record<string, unknown> = { foo: 'bar' };
-    circular.self = circular;
-    state.checkpoints.entries.push({
-      id: 'bad-cp',
-      label: 'bad',
-      createdAt: 0,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      snapshot: circular as any
-    });
-    const dayBefore = state.time.day;
-    const slotBefore = state.time.slot;
-    const logsBefore = state.logs.entries.length;
-
-    const result = campaignReducer(state, { type: 'restoreCheckpoint', payload: 'bad-cp' });
-
-    expect(result.time.day).toBe(dayBefore);
-    expect(result.time.slot).toBe(slotBefore);
-    expect(result.logs.entries.length).toBe(logsBefore);
-    expect(result.checkpoints.entries).toHaveLength(1);
-  });
+  // The non-serializable snapshot case moved to decodeCampaign.test (restore is decoded outside the reducer).
 
   it('checkpoint round-trip preserves map and combat reveal Sets', () => {
     const makeMap = (): MapModel => ({
@@ -348,7 +328,7 @@ describe('campaignReducer', () => {
       type: 'registerCombatDamage',
       payload: { targetId: 'target-c', remainingHp: 5 }
     });
-    const restored = campaignReducer(diverged, { type: 'restoreCheckpoint', payload: checkpointId });
+    const restored = restoreCheckpoint(diverged, checkpointId);
 
     expect(restored.combat.reveal.revealedTargets).toBeInstanceOf(Set);
     expect(restored.combat.reveal.revealedTargets.has('target-a')).toBe(true);
@@ -404,7 +384,7 @@ describe('campaignReducer', () => {
       snapshot: legacySnapshot
     });
 
-    const restored = campaignReducer(state, { type: 'restoreCheckpoint', payload: 'legacy-cp' });
+    const restored = restoreCheckpoint(state, 'legacy-cp');
 
     expect(restored.combat.reveal.revealedTargets).toBeInstanceOf(Set);
     expect(restored.combat.reveal.revealedTargets.size).toBe(0);
@@ -419,7 +399,7 @@ describe('campaignReducer', () => {
     const checkpointId = withCheckpoint.checkpoints.entries[0].id;
     const advanced = campaignReducer(withCheckpoint, { type: 'advanceTime' });
 
-    const restored = campaignReducer(advanced, { type: 'restoreCheckpoint', payload: checkpointId });
+    const restored = restoreCheckpoint(advanced, checkpointId);
 
     expect(restored.logs.entries[0].visibility).toBe('player');
     expect(restored.logs.entries[0].payload.message).toContain('Rollback occurred');

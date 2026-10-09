@@ -170,20 +170,18 @@ describe('combatReveal deep-clone crash paths', () => {
 describe('campaignReducer restoreCheckpoint', () => {
   // Import dynamically since the reducer is large
   it('restoreCheckpoint handles nonexistent checkpoint id', async () => {
-    const { campaignReducer, createCampaignState } = await import('../state/campaignReducer');
+    const { createCampaignState } = await import('../state/campaignReducer');
+    const { prepareCheckpointRestore } = await import('../persistence/decodeCampaign');
     const state = createCampaignState();
     state.checkpoints = { entries: [], maxSize: 10 };
 
-    // Should not crash, just return unchanged state
-    const next = campaignReducer(state, {
-      type: 'restoreCheckpoint',
-      payload: 'nonexistent-id',
-    });
-    expect(next.time.day).toBe(state.time.day);
+    // Should not crash: the restore is refused with a message
+    expect(prepareCheckpointRestore(state, 'nonexistent-id')).toEqual({ ok: false, error: expect.any(String) });
   });
 
   it('restoreCheckpoint with valid checkpoint restores state', async () => {
-    const { campaignReducer, createCampaignState } = await import('../state/campaignReducer');
+    const { createCampaignState } = await import('../state/campaignReducer');
+    const { restoreCheckpoint } = await import('../test/restoreCheckpoint');
     const state = createCampaignState();
     state.time.day = 10;
 
@@ -195,10 +193,7 @@ describe('campaignReducer restoreCheckpoint', () => {
       maxSize: 10,
     };
 
-    const next = campaignReducer(state, {
-      type: 'restoreCheckpoint',
-      payload: 'cp-1',
-    });
+    const next = restoreCheckpoint(state, 'cp-1');
     expect(next.time.day).toBe(5);
   });
 });

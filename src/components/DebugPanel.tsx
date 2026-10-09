@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, ChangeEvent } from 'react';
 import { useCampaignStore } from '../state/campaignStore';
 import { ConfirmDialog, useConfirmDialog } from './ui';
-import { toCampaignDTO, type CampaignDTO } from '../persistence/campaignCodec';
+import { toCampaignDTO } from '../persistence/campaignCodec';
+import { parseCampaignDTO } from '../persistence/decodeCampaign';
 
 export function DebugPanel() {
   const { state, actions } = useCampaignStore();
@@ -22,16 +23,15 @@ export function DebugPanel() {
 
   const handleApply = async () => {
     setError(null);
-    let parsed: CampaignDTO;
-    try {
-      parsed = JSON.parse(jsonText);
-    } catch {
-      setError('Invalid JSON. Please fix the syntax and try again.');
-      return;
-    }
-
-    if (!parsed || !parsed.ui || !parsed.meta || !parsed.entities || !parsed.time) {
-      setError('JSON does not look like a campaign state.');
+    // Validation only: the reducer fills missing slices from defaults, and no
+    // load repairs run, so what is applied is what was typed.
+    const parsed = parseCampaignDTO(jsonText);
+    if (!parsed.ok) {
+      setError(
+        parsed.reason === 'not-json' ? 'Invalid JSON. Please fix the syntax and try again.'
+          : parsed.reason === 'not-a-campaign' ? 'JSON does not look like a campaign state.'
+          : parsed.detail
+      );
       return;
     }
 
@@ -40,7 +40,7 @@ export function DebugPanel() {
       return;
     }
 
-    actions.applyDebugState(parsed);
+    actions.applyDebugState(parsed.dto);
     setError(null);
   };
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { encryptJSON, decryptJSON, validateGMLock, type GMLock } from '../cryptoLock';
+import { encryptJSON, decryptJSON, isGMLock, validateGMLock, type GMLock } from '../cryptoLock';
+import { unlockGMData } from '../exportImport';
 
 const payload = {
   campaign: 'The Clockwork Citadel',
@@ -134,5 +135,23 @@ describe('validateGMLock', () => {
     const lock = await encryptJSON(payload, 'password', { iterations: 1000 });
 
     expectInvalid(validateGMLock({ ...lock, iterations: 0 }), /iterations/i);
+  });
+});
+
+describe('isGMLock', () => {
+  it('is true only for a lock that validates', async () => {
+    const lock = await encryptJSON(payload, 'password', { iterations: 1000 });
+    const missingCiphertext: Partial<GMLock> = { ...lock };
+    delete missingCiphertext.ciphertext;
+
+    expect(isGMLock(lock)).toBe(true);
+    expect(isGMLock('not-a-lock')).toBe(false);
+    expect(isGMLock({})).toBe(false);
+    expect(isGMLock(missingCiphertext)).toBe(false);
+  });
+
+  it('unlockGMData refuses a lock with the wrong shape before decrypting', async () => {
+    const result = await unlockGMData({ gmLock: { kdf: 'PBKDF2', cipher: 'AES-GCM' } }, 'password');
+    expect(result).toEqual({ ok: false, error: 'Invalid or unsupported gmLock format' });
   });
 });

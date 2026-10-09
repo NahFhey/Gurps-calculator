@@ -16,6 +16,7 @@ import {
 } from '../state/campaignReducer';
 import type { CombatCharacter } from '../types/campaign';
 import type { CombatState, Participant } from '../types/combatTracker';
+import { restoreCheckpoint } from '../test/restoreCheckpoint';
 
 // ============================================================================
 // TEST FIXTURES
@@ -419,7 +420,7 @@ describe('Combat Round Integration', () => {
       const checkpointId = state.checkpoints.entries[0].id;
 
       // Restore the checkpoint
-      state = campaignReducer(state, { type: 'restoreCheckpoint', payload: checkpointId });
+      state = restoreCheckpoint(state, checkpointId);
 
       // Combat should be rolled back
       expect(state.combat.active).toBe(false);

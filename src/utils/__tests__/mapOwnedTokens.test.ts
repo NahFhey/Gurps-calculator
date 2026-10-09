@@ -15,7 +15,9 @@ import { hydrateCampaignState, serializeCampaignState } from '../../persistence/
 import { migrateTo1_6_5, migrateData } from '../dataMigrations';
 import type { SerializedCampaignState } from '../exportImport';
 import type { CampaignDTO } from '../../persistence/campaignCodec';
+import { parseCampaignDTO } from '../../persistence/decodeCampaign';
 import { exportLocked, exportUnlocked, importFile, mergeGM, unlockGMData } from '../exportImport';
+import { restoreCheckpoint } from '../../test/restoreCheckpoint';
 
 export function tokenFixture() {
   const state = createCampaignState();
@@ -293,7 +295,7 @@ describe('map token migration entry paths', () => {
     expect(Object.keys(next.maps.mapsById[map.id].tokens)).toHaveLength(2);
     const checkpoint = next.checkpoints.entries[0];
     expect(Object.keys(checkpoint.snapshot.maps.mapsById[map.id].tokens)).toHaveLength(2);
-    const restored = campaignReducer(next, { type: 'restoreCheckpoint', payload: checkpoint.id });
+    const restored = restoreCheckpoint(next, checkpoint.id);
     expect(restored.combat.activeSession?.participants[0].tokenRef).toBeDefined();
     expect(restored.combat.activeSession?.participants[0]).not.toHaveProperty('position');
   });
@@ -343,7 +345,11 @@ describe('map token migration entry paths', () => {
       if (!result.ok) throw new Error(result.error);
       gm = result.gmData;
     }
-    const merged = mergeGM(imported.data.public, gm) as unknown as CampaignDTO;
+    const publicDecoded = parseCampaignDTO(imported.data.public);
+    const gmDecoded = parseCampaignDTO(gm);
+    if (!publicDecoded.ok) throw new Error(publicDecoded.detail);
+    if (!gmDecoded.ok) throw new Error(gmDecoded.detail);
+    const merged = mergeGM(publicDecoded.dto, gmDecoded.dto);
     expect(Object.values(merged.maps.mapsById[map.id].tokens)).toHaveLength(2);
     expect(Object.values(merged.checkpoints.entries[0].snapshot.maps.mapsById[map.id].tokens)).toHaveLength(2);
     const next = hydrateCampaignState(merged);

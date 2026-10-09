@@ -138,6 +138,9 @@ export async function decryptJSON(gmLock: GMLock, password: string): Promise<unk
   }
 }
 
+/** True when `value` passes `validateGMLock`; the string fields are checked by decoding them in `decryptJSON`. */
+export const isGMLock = (value: unknown): value is GMLock => validateGMLock(value).valid;
+
 export function validateGMLock(gmLock: unknown): ValidationResult {
   if (!gmLock || typeof gmLock !== 'object') {
     return { valid: false, error: 'gmLock is missing or not an object' };

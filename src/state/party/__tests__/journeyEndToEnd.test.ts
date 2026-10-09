@@ -4,6 +4,7 @@ import { createDefaultGCSData } from '../../../types/characterSheet';
 import type { Journey, TravelGroup } from '../../../types/party';
 import { createNewMap } from '../../../utils/mapUtils';
 import { campaignReducer, createCampaignState, type CampaignState } from '../../campaignReducer';
+import { restoreCheckpoint } from '../../../test/restoreCheckpoint';
 
 function build() {
   const state = createCampaignState();
@@ -82,7 +83,7 @@ describe('journey end-to-end: multi-day arc', () => {
     const afterTwo = tick(afterOne);
     expect(afterTwo.entities.travelGroups?.g.position?.tileId).toBe(route[2]);
     const checkpointId = afterTwo.checkpoints.entries[1].id; // snapshot before first tick
-    const restored = campaignReducer(afterTwo, { type: 'restoreCheckpoint', payload: checkpointId });
+    const restored = restoreCheckpoint(afterTwo, checkpointId);
     expect(restored.entities.travelGroups?.g.position?.tileId).toBe(route[0]);
     expect(restored.entities.travelGroups?.g.journey).toMatchObject({
       status: 'active', routeTileIds: route, milesTraveled: 0,

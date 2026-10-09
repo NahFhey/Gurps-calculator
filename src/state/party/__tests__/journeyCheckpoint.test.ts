@@ -5,6 +5,7 @@ import { hydrateCampaignState, serializeCampaignState } from '../../../persisten
 import type { CampaignDTO } from '../../../persistence/campaignCodec';
 import { isRoutableMap } from '../../../utils/mapScale';
 import { createNewMap } from '../../../utils/mapUtils';
+import { restoreCheckpoint } from '../../../test/restoreCheckpoint';
 
 describe('journey checkpoints', () => {
   it('restores a valid scale from a checkpoint in a hydrated 1.6.3 campaign', () => {
@@ -20,9 +21,7 @@ describe('journey checkpoints', () => {
       ...serializeCampaignState(checkpointed), schemaVersion: '1.6.3',
     }));
     const hydrated = hydrateCampaignState(payload);
-    const restored = campaignReducer(hydrated, {
-      type: 'restoreCheckpoint', payload: hydrated.checkpoints.entries[0].id,
-    });
+    const restored = restoreCheckpoint(hydrated, hydrated.checkpoints.entries[0].id);
     expect(restored.maps.activeMapId).toBe(map.id);
     const restoredMap = restored.maps.mapsById[map.id];
     expect(restoredMap.scale).toBe('50mi');
@@ -49,7 +48,7 @@ describe('journey checkpoints', () => {
     const checkpointId = checkpointed.checkpoints.entries[0].id;
     const aborted = campaignReducer(checkpointed, { type: 'party/abortJourney', payload: { groupId: 'g' } });
     expect(aborted.entities.travelGroups?.g.journey).toBeNull();
-    const restored = campaignReducer(aborted, { type: 'restoreCheckpoint', payload: checkpointId });
+    const restored = restoreCheckpoint(aborted, checkpointId);
     expect(restored.entities.travelGroups?.g.journey).toMatchObject({ id: 'j', legProgressMiles: 3, milesTraveled: 6, status: 'active' });
   });
 });
