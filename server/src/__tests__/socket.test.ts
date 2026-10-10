@@ -35,6 +35,14 @@ function waitForEvent<T = unknown>(socket: ClientSocket, event: string): Promise
   });
 }
 
+/** The event's payload, or 'timeout' when it does not arrive within `ms`. */
+function eventOrTimeout<T = unknown>(socket: ClientSocket, event: string, ms = 500): Promise<T | 'timeout'> {
+  return Promise.race([
+    waitForEvent<T>(socket, event),
+    new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), ms)),
+  ]);
+}
+
 beforeEach(
   () =>
     new Promise<void>((resolve) => {
@@ -147,7 +155,7 @@ describe('JOIN_ROOM', () => {
     const client = await connectClient('camp-a', Role.GM, 'GM');
     await waitForEvent(client, 'connect');
 
-    const errorPromise = waitForEvent<{ message: string }>(client, 'error');
+    const errorPromise = waitForEvent<{ message: string }>(client, EVENTS.ERROR);
 
     client.emit(EVENTS.JOIN_ROOM, {
       campaignId: 'camp-b', // different campaign
@@ -220,21 +228,122 @@ describe('JOIN_ROOM', () => {
     client2.disconnect();
   });
 
-  it('ignores JOIN_ROOM with no campaignId', async () => {
+  it('rejects JOIN_ROOM with no campaignId with an error event and does not join', async () => {
     const client = await connectClient('camp-empty', Role.GM, 'Bad');
     await waitForEvent(client, 'connect');
 
-    // Send bad payload — should not crash or emit ROOM_JOINED
+    const joined = eventOrTimeout(client, EVENTS.ROOM_JOINED);
+    const error = eventOrTimeout<{ message: string }>(client, EVENTS.ERROR);
     client.emit(EVENTS.JOIN_ROOM, { role: 'gm', displayName: 'Bad' });
 
-    // Wait a short time; if ROOM_JOINED fires, the test fails
-    const result = await Promise.race([
-      waitForEvent(client, EVENTS.ROOM_JOINED).then(() => 'joined'),
-      new Promise<string>((resolve) => setTimeout(() => resolve('timeout'), 500)),
-    ]);
-
-    expect(result).toBe('timeout');
+    expect(await error).toEqual({ message: expect.stringMatching(/invalid/i) });
+    expect(await joined).toBe('timeout');
+    expect(client.connected).toBe(true);
     client.disconnect();
+  });
+
+  it.each<[string, unknown[]]>([
+    ['no argument', []],
+    ['null', [null]],
+    ['a bare string', ['camp-bad']],
+    ['a number', [42]],
+    ['an empty object', [{}]],
+    ['a numeric campaignId', [{ campaignId: 42 }]],
+    ['an unknown role', [{ campaignId: 'camp-bad', role: 'admin' }]],
+    ['a non-string displayName', [{ campaignId: 'camp-bad', displayName: 7 }]],
+  ])('JOIN_ROOM with %s emits an error, keeps the socket, and a valid join still works', async (_label, args) => {
+    const client = await connectClient('camp-bad', Role.GM, 'GM');
+    await waitForEvent(client, 'connect');
+
+    const error = eventOrTimeout<{ message: string }>(client, EVENTS.ERROR);
+    const early = eventOrTimeout(client, EVENTS.ROOM_JOINED);
+    client.emit(EVENTS.JOIN_ROOM, ...args);
+
+    const payload = await error;
+    expect(payload).toEqual({ message: expect.stringMatching(/invalid/i) });
+    expect(payload === 'timeout' ? '' : payload.message).not.toMatch(/not authenticated/i);
+    expect(await early).toBe('timeout');
+    expect(client.connected).toBe(true);
+
+    const joined = eventOrTimeout<{ campaignId: string; playerCount: number }>(client, EVENTS.ROOM_JOINED);
+    client.emit(EVENTS.JOIN_ROOM, { campaignId: 'camp-bad' });
+    expect(await joined).toEqual({ campaignId: 'camp-bad', playerCount: 1 });
+
+    client.disconnect();
+  });
+
+  it('JOIN_ROOM with only a campaignId joins (role and name come from the token)', async () => {
+    const client = await connectClient('camp-min', Role.Player, 'Minimal');
+    await waitForEvent(client, 'connect');
+
+    const joined = eventOrTimeout<{ campaignId: string; playerCount: number }>(client, EVENTS.ROOM_JOINED);
+    client.emit(EVENTS.JOIN_ROOM, { campaignId: 'camp-min' });
+
+    expect(await joined).toEqual({ campaignId: 'camp-min', playerCount: 1 });
+    client.disconnect();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A refused JOIN_ROOM leaves the socket out of the room
+// ---------------------------------------------------------------------------
+describe('Refused JOIN_ROOM', () => {
+  /** Number of server sockets in a room. */
+  async function roomSize(room: string): Promise<number> {
+    return (await io.in(room).fetchSockets()).length;
+  }
+
+  it('a payload with a bad field does not put the socket in the named room', async () => {
+    const client = await connectClient('camp-bad', Role.GM, 'GM');
+    await waitForEvent(client, 'connect');
+
+    const error = waitForEvent<{ message: string }>(client, EVENTS.ERROR);
+    client.emit(EVENTS.JOIN_ROOM, { campaignId: 'camp-bad', role: 'admin' });
+
+    expect(await error).toEqual({ message: expect.stringMatching(/invalid/i) });
+    expect(await roomSize('camp-bad')).toBe(0);
+    client.disconnect();
+  });
+
+  it('a join for a campaign the token is not for does not put the socket in that room', async () => {
+    const client = await connectClient('camp-1', Role.Player, 'Player');
+    await waitForEvent(client, 'connect');
+
+    const error = waitForEvent<{ message: string }>(client, EVENTS.ERROR);
+    client.emit(EVENTS.JOIN_ROOM, { campaignId: 'camp-2' });
+
+    expect(await error).toEqual({ message: expect.stringMatching(/not authenticated/i) });
+    expect(await roomSize('camp-2')).toBe(0);
+    client.disconnect();
+  });
+
+  it.each<[string, string, Record<string, unknown>]>([
+    ['a bad field', 'camp-shared', { campaignId: 'camp-shared', role: 'admin' }],
+    ['a token for another campaign', 'camp-other', { campaignId: 'camp-shared' }],
+  ])('a refused join (%s) tells the members of the room nothing', async (_label, tokenCampaign, payload) => {
+    const member = await connectClient('camp-shared', Role.GM, 'GM');
+    await waitForEvent(member, 'connect');
+    const memberList = waitForEvent(member, EVENTS.PLAYER_LIST);
+    member.emit(EVENTS.JOIN_ROOM, { campaignId: 'camp-shared' });
+    await memberList; // the member's own join is fully announced before the refused one starts
+
+    const heard: string[] = [];
+    member.on(EVENTS.PLAYER_JOINED, () => heard.push(EVENTS.PLAYER_JOINED));
+    member.on(EVENTS.PLAYER_LIST, () => heard.push(EVENTS.PLAYER_LIST));
+
+    const intruder = await connectClient(tokenCampaign, Role.Player, 'Intruder');
+    await waitForEvent(intruder, 'connect');
+    const error = waitForEvent(intruder, EVENTS.ERROR);
+    intruder.emit(EVENTS.JOIN_ROOM, payload);
+    await error;
+    // The server emits any announcement before it sends the error, so a wrong
+    // one is already in flight; give it a short window to arrive.
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    expect(heard).toEqual([]);
+    expect(await roomSize('camp-shared')).toBe(1);
+    member.disconnect();
+    intruder.disconnect();
   });
 });
 

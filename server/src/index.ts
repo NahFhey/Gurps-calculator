@@ -14,7 +14,7 @@
  */
 
 import express from 'express';
-import type { Express, Request } from 'express';
+import type { ErrorRequestHandler, Express, Request } from 'express';
 import { createServer } from 'http';
 import { Server as SocketServer } from 'socket.io';
 import compression from 'compression';
@@ -75,6 +75,50 @@ export function setupApiMiddleware(app: Express): void {
     message: { error: 'Too many requests, please try again later' },
   }));
 }
+
+/** A numeric field of an error object, or undefined. */
+function numericField(err: object, key: string): number | undefined {
+  const value: unknown = Reflect.get(err, key);
+  return typeof value === 'number' ? value : undefined;
+}
+
+/**
+ * Keeps every error under `/api` on the `{ error }` JSON contract; mount it
+ * with `app.use('/api', apiErrorHandler)` after the `/api` router.
+ * `express.json` runs at app level, so the router's own error handler never
+ * sees its parse and size errors. Without this, Express's final handler
+ * would render an HTML page with the stack.
+ *
+ * - JSON parse failure → 400; body over the limit → 413.
+ * - Another client error (status 400-499, e.g. body-parser's 415 for an
+ *   unsupported charset) → that status; its message only when `expose`.
+ * - Anything else → logged, 500 with a fixed message (no stack, no detail).
+ */
+export const apiErrorHandler: ErrorRequestHandler = (err: unknown, _req, res, next) => {
+  if (res.headersSent) {
+    next(err);
+    return;
+  }
+  const errObject = typeof err === 'object' && err !== null ? err : undefined;
+  const type = errObject ? Reflect.get(errObject, 'type') : undefined;
+  if (type === 'entity.parse.failed') {
+    res.status(400).json({ error: 'Request body is not valid JSON' });
+    return;
+  }
+  if (type === 'entity.too.large') {
+    res.status(413).json({ error: 'Request body exceeds the size limit' });
+    return;
+  }
+  const status = errObject ? numericField(errObject, 'status') ?? numericField(errObject, 'statusCode') : undefined;
+  if (errObject && status !== undefined && Number.isInteger(status) && status >= 400 && status <= 499) {
+    const message: unknown = Reflect.get(errObject, 'message');
+    const expose = Reflect.get(errObject, 'expose') === true && typeof message === 'string';
+    res.status(status).json({ error: expose ? message : 'Bad request' });
+    return;
+  }
+  console.error('[api] unhandled error:', err);
+  res.status(500).json({ error: 'Internal server error' });
+};
 
 /** Parse CORS origins from env or options. */
 function parseCorsOrigins(input?: string | string[]): string[] | string {
@@ -162,6 +206,7 @@ export async function startServer(options?: StartServerOptions): Promise<ServerH
   // API routes
   const apiRouter = setupRoutes(io);
   app.use('/api', apiRouter);
+  app.use('/api', apiErrorHandler);
 
   // Socket.IO handlers
   setupSocket(io);

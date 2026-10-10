@@ -2,8 +2,9 @@
  * ConnectionManager — singleton managing the Socket.IO connection
  * and HTTP API calls to the GURPS VTT server.
  *
- * This is NOT a React hook — it's a plain class so it can be used
- * from both React components and the campaign store's save logic.
+ * This is NOT a React hook — it's a plain class, usable outside React.
+ * Its consumers are SyncProvider and the asset sync helpers (multiplayer is
+ * not mounted yet); the campaign store's save logic does not use it.
  *
  * Auth flow:
  *   - hostGame / joinGame receive a JWT from the server
@@ -12,8 +13,14 @@
  */
 
 import { io, type Socket } from 'socket.io-client';
-import { campaignAssetPath, campaignAssetsPath, EVENTS } from '../../shared/protocol';
-import type { AssetListResponse, AssetMeta, AssetUploadResponse } from '../../shared/protocol';
+import {
+  campaignAssetPath,
+  campaignAssetsPath,
+  EVENTS,
+  UpdateStateResponseSchema,
+  VersionConflictResponseSchema,
+} from '../../shared/protocol';
+import type { AssetListResponse, AssetMeta, AssetUploadResponse, PushStateResult } from '../../shared/protocol';
 import type { AssetId } from '../types/map';
 import type {
   StateUpdatedPayload,
@@ -210,21 +217,36 @@ class ConnectionManager {
   // ---------------------------------------------------------------------------
 
   /**
-   * Push updated state to the server (GM only).
+   * Push updated state to the server (GM only). The write lands only while the
+   * server still holds `expectedVersion`; otherwise the result carries the
+   * server's current version and nothing is merged (a later STATE_UPDATED or
+   * fetch moves `serverVersion`). Any other failure throws.
    */
-  async pushState(stateJson: string): Promise<number> {
+  async pushState(stateJson: string, expectedVersion: number): Promise<PushStateResult> {
     if (!this._campaignId) throw new Error('Not connected to a campaign');
 
     const res = await fetch(`/api/campaigns/${this._campaignId}/state`, {
       method: 'PUT',
       headers: this.authHeaders(),
-      body: JSON.stringify({ state: stateJson }),
+      body: JSON.stringify({ state: stateJson, expectedVersion }),
     });
-    if (!res.ok) throw new Error(`Failed to push state: ${res.statusText}`);
 
-    const data = await res.json();
-    this._serverVersion = data.version;
-    return data.version;
+    if (res.status === 409) {
+      const conflict = VersionConflictResponseSchema.safeParse(await readJson(res));
+      if (!conflict.success) throw new Error('Failed to push state: 409 with an unreadable conflict body');
+      return { ok: false, currentVersion: conflict.data.currentVersion };
+    }
+    if (!res.ok) {
+      const body = await readJson(res);
+      const serverError = typeof body === 'object' && body !== null ? Reflect.get(body, 'error') : undefined;
+      const detail = typeof serverError === 'string' ? serverError : res.statusText;
+      throw new Error(`Failed to push state: ${res.status} ${detail}`);
+    }
+
+    const data = UpdateStateResponseSchema.safeParse(await readJson(res));
+    if (!data.success) throw new Error('Failed to push state: unreadable response');
+    this._serverVersion = data.data.version;
+    return { ok: true, version: data.data.version };
   }
 
   /**
@@ -396,6 +418,16 @@ class ConnectionManager {
     for (const listener of this.playerListListeners) {
       listener(this._playerList);
     }
+  }
+}
+
+/** The response body as parsed JSON, or undefined when it is not JSON. */
+async function readJson(res: Response): Promise<unknown> {
+  try {
+    const body: unknown = await res.json();
+    return body;
+  } catch {
+    return undefined;
   }
 }
 

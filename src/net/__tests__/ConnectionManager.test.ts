@@ -122,7 +122,7 @@ describe('ConnectionManager REST and socket authentication', () => {
       '{"round":1}',
       'Morgan',
     );
-    const version = await connectionManager.pushState('{"round":2}');
+    const result = await connectionManager.pushState('{"round":2}', 4);
 
     expect(info).toEqual({
       sessionId: 'session-1',
@@ -133,7 +133,7 @@ describe('ConnectionManager REST and socket authentication', () => {
     expect(connectionManager.token).toBe('gm-token');
     expect(connectionManager.role).toBe(Role.GM);
     expect(connectionManager.isGM).toBe(true);
-    expect(version).toBe(5);
+    expect(result).toEqual({ ok: true, version: 5 });
     expect(connectionManager.serverVersion).toBe(5);
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
@@ -362,11 +362,92 @@ describe('ConnectionManager errors', () => {
     await expect(connectionManager.fetchState()).rejects.toThrow(
       'No campaign ID',
     );
-    await expect(connectionManager.pushState('{}')).rejects.toThrow(
+    await expect(connectionManager.pushState('{}', 1)).rejects.toThrow(
       'Not connected to a campaign',
     );
 
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('ConnectionManager.pushState (optimistic concurrency)', () => {
+  /** Host a game (server version 4) so pushState has a campaign and a token. */
+  async function hosted(): Promise<void> {
+    fetchMock.mockResolvedValueOnce(campaignResponse()).mockResolvedValueOnce(sessionResponse());
+    await connectionManager.hostGame('Bridge Ambush', '{"round":1}');
+    expect(connectionManager.serverVersion).toBe(4);
+  }
+
+  it('sends the state with the expected version', async () => {
+    await hosted();
+    fetchMock.mockResolvedValueOnce(jsonResponse({ version: 5 }));
+
+    await connectionManager.pushState('{"round":2}', 4);
+
+    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/campaigns/campaign-1/state', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer gm-token' },
+      body: JSON.stringify({ state: '{"round":2}', expectedVersion: 4 }),
+    });
+  });
+
+  it('a 200 returns ok with the new version and moves serverVersion', async () => {
+    await hosted();
+    fetchMock.mockResolvedValueOnce(jsonResponse({ version: 5 }));
+
+    expect(await connectionManager.pushState('{"round":2}', 4)).toEqual({ ok: true, version: 5 });
+    expect(connectionManager.serverVersion).toBe(5);
+  });
+
+  it('a 409 returns the conflict with currentVersion and leaves serverVersion alone', async () => {
+    await hosted();
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ error: 'version-conflict', currentVersion: 7 }, { status: 409, statusText: 'Conflict' }),
+    );
+
+    expect(await connectionManager.pushState('{"round":2}', 4)).toEqual({ ok: false, currentVersion: 7 });
+    expect(connectionManager.serverVersion).toBe(4);
+  });
+
+  it.each([
+    ['no currentVersion', { error: 'version-conflict' }],
+    ['a string currentVersion', { error: 'version-conflict', currentVersion: '7' }],
+    ['another error tag', { error: 'conflict', currentVersion: 7 }],
+  ])('a 409 with %s throws', async (_label, body) => {
+    await hosted();
+    fetchMock.mockResolvedValueOnce(jsonResponse(body, { status: 409, statusText: 'Conflict' }));
+
+    await expect(connectionManager.pushState('{"round":2}', 4)).rejects.toThrow(/409/);
+    expect(connectionManager.serverVersion).toBe(4);
+  });
+
+  it.each([
+    [400, 'Bad Request', 'Invalid expectedVersion: expected int'],
+    [422, 'Unprocessable Entity', 'This campaign was saved by a newer version of the app'],
+  ])('a %i throws with the status and the server message', async (status, statusText, error) => {
+    await hosted();
+    fetchMock.mockResolvedValueOnce(jsonResponse({ error, reason: 'x' }, { status, statusText }));
+
+    const failure = connectionManager.pushState('{"round":2}', 4);
+
+    await expect(failure).rejects.toThrow(String(status));
+    await expect(failure).rejects.toThrow(error);
+    expect(connectionManager.serverVersion).toBe(4);
+  });
+
+  it('a failure without a JSON body falls back to the status text', async () => {
+    await hosted();
+    fetchMock.mockResolvedValueOnce(new Response('<html>boom</html>', { status: 500, statusText: 'Internal Server Error' }));
+
+    await expect(connectionManager.pushState('{"round":2}', 4)).rejects.toThrow(/500.*Internal Server Error/);
+  });
+
+  it('a 200 without a numeric version throws and leaves serverVersion alone', async () => {
+    await hosted();
+    fetchMock.mockResolvedValueOnce(jsonResponse({ version: 'five' }));
+
+    await expect(connectionManager.pushState('{"round":2}', 4)).rejects.toThrow();
+    expect(connectionManager.serverVersion).toBe(4);
   });
 });
 

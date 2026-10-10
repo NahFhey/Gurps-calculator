@@ -35,12 +35,50 @@ import {
 } from './db.js';
 import { signToken, authMiddleware, requireRole, requireCampaignAccess } from './auth.js';
 import { Role } from '../../shared/session.js';
-import { ASSET_ROUTES, EVENTS } from '../../shared/protocol.js';
+import {
+  ASSET_ROUTES,
+  EVENTS,
+  VERSION_CONFLICT,
+  CreateCampaignRequestSchema,
+  CreateSessionRequestSchema,
+  JoinSessionRequestSchema,
+  UpdateStateRequestSchema,
+} from '../../shared/protocol.js';
 import { projectCampaignForPlayers } from '../../shared/playerProjection.js';
-import type { AssetListResponse, AssetUploadResponse } from '../../shared/protocol.js';
+import { decodeCampaignPayload } from '../../shared/campaignDocument.js';
+import type { CampaignDecodeReason } from '../../shared/campaignDocument.js';
+import type { AssetListResponse, AssetUploadResponse, StateUpdatedPayload } from '../../shared/protocol.js';
 
 /** Maximum state payload size in bytes (10 MB). */
 const MAX_STATE_SIZE = 10 * 1024 * 1024;
+
+/** The parts of a zod issue the 400 message uses. */
+interface BodyIssue {
+  readonly path: readonly PropertyKey[];
+  readonly message: string;
+}
+
+/** A 400 message naming the first bad field: `Missing x` when absent, `Invalid x: ...` when the wrong type. */
+function describeBodyError(body: unknown, issues: readonly BodyIssue[]): string {
+  const issue = issues[0];
+  const field = issue?.path[0];
+  if (issue === undefined || field === undefined) {
+    return body === undefined ? 'Missing request body' : 'Request body must be a JSON object';
+  }
+  const name = String(field);
+  const value: unknown = typeof body === 'object' && body !== null ? Reflect.get(body, field) : undefined;
+  return value === undefined ? `Missing ${name}` : `Invalid ${name}: ${issue.message}`;
+}
+
+function stateTooLarge(state: string): boolean {
+  return Buffer.byteLength(state, 'utf8') > MAX_STATE_SIZE;
+}
+
+/** Status for a campaign document the decoder refused: a newer schema is 422, anything else 400. */
+function refusalStatus(reason: CampaignDecodeReason): 400 | 422 {
+  return reason === 'future-version' ? 422 : 400;
+}
+
 export const MAX_ASSET_SIZE = 8 * 1024 * 1024;
 export const MAX_CAMPAIGN_ASSET_TOTAL = 256 * 1024 * 1024;
 
@@ -126,19 +164,29 @@ export function setupRoutes(io: SocketServer): Router {
    * No auth required — this is the entry point for GMs.
    */
   router.post('/campaigns', async (req: Request, res: Response) => {
-    const { name, state } = req.body;
-    if (!name || !state) {
-      res.status(400).json({ error: 'Missing name or state' });
+    const body: unknown = req.body;
+    const parsed = CreateCampaignRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      res.status(400).json({ error: describeBodyError(body, parsed.error.issues) });
       return;
     }
+    const { name, state } = parsed.data;
 
-    // Validate payload size
-    if (typeof state === 'string' && Buffer.byteLength(state, 'utf8') > MAX_STATE_SIZE) {
+    if (stateTooLarge(state)) {
       res.status(413).json({ error: `State payload exceeds ${MAX_STATE_SIZE / 1024 / 1024}MB limit` });
       return;
     }
 
+    // Decoded on create as well as on update: the same document enters the same
+    // table, and an unchecked POST would be a way around the PUT's version gate.
+    const decoded = decodeCampaignPayload(state);
+    if (!decoded.ok) {
+      res.status(refusalStatus(decoded.reason)).json({ error: decoded.detail, reason: decoded.reason });
+      return;
+    }
+
     const id = nanoid(12);
+    // The original string, byte for byte: the decoder only checks it.
     const campaign = createCampaign(id, name, state);
 
     // Sign a GM token for the creator
@@ -193,7 +241,9 @@ export function setupRoutes(io: SocketServer): Router {
   /**
    * PUT /api/campaigns/:id/state — Update campaign state.
    * Requires: auth + GM role + campaign membership.
-   * Body: { state: string (JSON) }
+   * Body: { state: string (JSON), expectedVersion: number }
+   * Optimistic concurrency: 409 { error: 'version-conflict', currentVersion }
+   * when the stored version has moved past expectedVersion.
    */
   router.put(
     '/campaigns/:id/state',
@@ -201,41 +251,50 @@ export function setupRoutes(io: SocketServer): Router {
     requireRole(Role.GM),
     requireCampaignAccess,
     (req: Request, res: Response) => {
-      const { state } = req.body;
-      if (!state) {
-        res.status(400).json({ error: 'Missing state' });
+      const body: unknown = req.body;
+      const parsed = UpdateStateRequestSchema.safeParse(body);
+      if (!parsed.success) {
+        res.status(400).json({ error: describeBodyError(body, parsed.error.issues) });
         return;
       }
+      const { state, expectedVersion } = parsed.data;
 
-      // Validate payload size
-      if (typeof state === 'string' && Buffer.byteLength(state, 'utf8') > MAX_STATE_SIZE) {
+      if (stateTooLarge(state)) {
         res.status(413).json({ error: `State payload exceeds ${MAX_STATE_SIZE / 1024 / 1024}MB limit` });
         return;
       }
 
-      // Validate state is parseable JSON
-      try {
-        JSON.parse(state);
-      } catch {
-        res.status(400).json({ error: 'State is not valid JSON' });
+      const decoded = decodeCampaignPayload(state);
+      if (!decoded.ok) {
+        res.status(refusalStatus(decoded.reason)).json({ error: decoded.detail, reason: decoded.reason });
         return;
       }
 
-      const campaign = getCampaign(param(req, 'id'));
-      if (!campaign) {
+      const id = param(req, 'id');
+      if (!getCampaign(id)) {
         res.status(404).json({ error: 'Campaign not found' });
         return;
       }
 
-      const newVersion = updateCampaignState(param(req, 'id'), state);
+      // The original string, byte for byte: the decoder only checks it.
+      const result = updateCampaignState(id, state, expectedVersion);
+      if (!result.ok) {
+        if (result.reason === 'version-conflict') {
+          res.status(409).json({ error: VERSION_CONFLICT, currentVersion: result.currentVersion });
+        } else {
+          res.status(404).json({ error: 'Campaign not found' });
+        }
+        return;
+      }
 
       // Notify all clients in the campaign room
-      io.to(param(req, 'id')).emit(EVENTS.STATE_UPDATED, {
-        version: newVersion,
+      const payload: StateUpdatedPayload = {
+        version: result.version,
         updatedAt: new Date().toISOString(),
-      });
+      };
+      io.to(id).emit(EVENTS.STATE_UPDATED, payload);
 
-      res.json({ version: newVersion });
+      res.json({ version: result.version });
     },
   );
 
@@ -249,11 +308,13 @@ export function setupRoutes(io: SocketServer): Router {
    * Body: { campaignId: string }
    */
   router.post('/sessions', authMiddleware, requireRole(Role.GM), async (req: Request, res: Response) => {
-    const { campaignId } = req.body;
-    if (!campaignId) {
-      res.status(400).json({ error: 'Missing campaignId' });
+    const body: unknown = req.body;
+    const parsed = CreateSessionRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      res.status(400).json({ error: describeBodyError(body, parsed.error.issues) });
       return;
     }
+    const { campaignId } = parsed.data;
 
     // GM must be creating a session for their own campaign
     if (req.auth!.campaignId !== campaignId) {
@@ -286,11 +347,13 @@ export function setupRoutes(io: SocketServer): Router {
    * No auth required — the join code is the credential.
    */
   router.post('/sessions/join', async (req: Request, res: Response) => {
-    const { joinCode, displayName } = req.body;
-    if (!joinCode) {
-      res.status(400).json({ error: 'Missing joinCode' });
+    const body: unknown = req.body;
+    const parsed = JoinSessionRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      res.status(400).json({ error: describeBodyError(body, parsed.error.issues) });
       return;
     }
+    const { joinCode, displayName } = parsed.data;
 
     const session = getSessionByJoinCode(joinCode.toUpperCase());
     if (!session) {

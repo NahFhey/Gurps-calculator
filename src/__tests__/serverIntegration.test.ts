@@ -14,12 +14,20 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { startServer, type ServerHandle } from '../../server/src/index.js';
 import { signToken } from '../../server/src/auth.js';
 import { Role } from '../../shared/session.js';
+import { createCampaignState } from '../state/campaignReducer';
+import { serializeCampaignState } from '../persistence/campaignStorage';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
 let server: ServerHandle;
+
+/** What a hosting client sends (ConnectionDialog: the JSON of the campaign DTO). */
+const baseDto = serializeCampaignState(createCampaignState());
+const baseState = JSON.stringify(baseDto);
+/** The same campaign on another day: a distinct state that is still a valid campaign. */
+const stateOnDay = (day: number) => JSON.stringify({ ...baseDto, time: { ...baseDto.time, day } });
 let baseUrl: string;
 let tmpDir: string;
 
@@ -42,7 +50,7 @@ function jsonHeaders(token?: string): Record<string, string> {
 }
 
 /** Create a campaign via the API; returns { id, name, version, token } (GM token). */
-async function createCampaign(name: string, state = '{}') {
+async function createCampaign(name: string, state = baseState) {
   const res = await fetch(`${baseUrl}/api/campaigns`, {
     method: 'POST',
     headers: jsonHeaders(),
@@ -60,7 +68,7 @@ describe('Campaign routes', () => {
     const res = await fetch(`${baseUrl}/api/campaigns`, {
       method: 'POST',
       headers: jsonHeaders(),
-      body: JSON.stringify({ name: 'Test Campaign', state: '{"foo":"bar"}' }),
+      body: JSON.stringify({ name: 'Test Campaign', state: baseState }),
     });
     expect(res.status).toBe(201);
     const data = await res.json();
@@ -74,7 +82,7 @@ describe('Campaign routes', () => {
     const res = await fetch(`${baseUrl}/api/campaigns`, {
       method: 'POST',
       headers: jsonHeaders(),
-      body: JSON.stringify({ state: '{}' }),
+      body: JSON.stringify({ state: baseState }),
     });
     expect(res.status).toBe(400);
   });
@@ -89,7 +97,7 @@ describe('Campaign routes', () => {
   });
 
   it('GET /api/campaigns/:id returns a campaign with a valid token', async () => {
-    const { id, token } = await createCampaign('Get Test', '{"key":"val"}');
+    const { id, token } = await createCampaign('Get Test', stateOnDay(3));
 
     const res = await fetch(`${baseUrl}/api/campaigns/${id}`, {
       headers: jsonHeaders(token),
@@ -98,7 +106,7 @@ describe('Campaign routes', () => {
     const data = await res.json();
     expect(data.id).toBe(id);
     expect(data.name).toBe('Get Test');
-    expect(data.state).toBe('{"key":"val"}');
+    expect(data.state).toBe(stateOnDay(3));
     expect(data.version).toBe(1);
   });
 
@@ -132,12 +140,12 @@ describe('Campaign routes', () => {
   });
 
   it('PUT /api/campaigns/:id/state updates state and bumps version', async () => {
-    const { id, token } = await createCampaign('Update Test', '{"v":1}');
+    const { id, token } = await createCampaign('Update Test');
 
     const putRes = await fetch(`${baseUrl}/api/campaigns/${id}/state`, {
       method: 'PUT',
       headers: jsonHeaders(token),
-      body: JSON.stringify({ state: '{"v":2}' }),
+      body: JSON.stringify({ state: stateOnDay(2), expectedVersion: 1 }),
     });
     expect(putRes.status).toBe(200);
     const putData = await putRes.json();
@@ -148,7 +156,7 @@ describe('Campaign routes', () => {
       headers: jsonHeaders(token),
     });
     const getData = await getRes.json();
-    expect(getData.state).toBe('{"v":2}');
+    expect(getData.state).toBe(stateOnDay(2));
     expect(getData.version).toBe(2);
   });
 
@@ -172,9 +180,26 @@ describe('Campaign routes', () => {
     const res = await fetch(`${baseUrl}/api/campaigns/nonexistent/state`, {
       method: 'PUT',
       headers: jsonHeaders(token),
-      body: JSON.stringify({ state: '{}' }),
+      body: JSON.stringify({ state: baseState, expectedVersion: 1 }),
     });
     expect(res.status).toBe(404);
+  });
+
+  it('PUT /api/campaigns/:id/state refuses a state from a newer version with 422 and keeps the stored one', async () => {
+    const { id, token } = await createCampaign('Future Test');
+    const future = JSON.stringify({ ...baseDto, meta: { ...baseDto.meta, schemaVersion: '1.99.0' } });
+
+    const res = await fetch(`${baseUrl}/api/campaigns/${id}/state`, {
+      method: 'PUT',
+      headers: jsonHeaders(token),
+      body: JSON.stringify({ state: future, expectedVersion: 1 }),
+    });
+    expect(res.status).toBe(422);
+    expect(await res.json()).toEqual({ error: expect.stringMatching(/newer version/), reason: 'future-version' });
+
+    const getData = await (await fetch(`${baseUrl}/api/campaigns/${id}`, { headers: jsonHeaders(token) })).json();
+    expect(getData.state).toBe(baseState);
+    expect(getData.version).toBe(1);
   });
 });
 
@@ -474,13 +499,67 @@ describe('Socket.IO events', () => {
       await fetch(`${baseUrl}/api/campaigns/${campaignId}/state`, {
         method: 'PUT',
         headers: jsonHeaders(gmToken),
-        body: JSON.stringify({ state: '{"updated":true}' }),
+        body: JSON.stringify({ state: stateOnDay(2), expectedVersion: 1 }),
       });
 
       const result = await updatePromise;
       expect(result.version).toBe(2);
     } finally {
       client.disconnect();
+    }
+  });
+
+  it('two writers at the same version: 200 then 409, and only the first is broadcast', async () => {
+    const watcher = connectClient(await playerToken('Watcher'));
+    const putAt = (state: string, expectedVersion: number) =>
+      fetch(`${baseUrl}/api/campaigns/${campaignId}/state`, {
+        method: 'PUT',
+        headers: jsonHeaders(gmToken),
+        body: JSON.stringify({ state, expectedVersion }),
+      });
+    const nextUpdate = (ms: number) =>
+      new Promise<{ version: number } | 'timeout'>((resolve) => {
+        const timer = setTimeout(() => {
+          watcher.off('state:updated', onUpdate);
+          resolve('timeout');
+        }, ms);
+        const onUpdate = (data: { version: number }) => {
+          clearTimeout(timer);
+          resolve(data);
+        };
+        watcher.once('state:updated', onUpdate);
+      });
+
+    try {
+      await new Promise<void>((resolve) => {
+        watcher.on('room:joined', () => resolve());
+        watcher.emit('room:join', { campaignId });
+      });
+
+      const firstEvent = nextUpdate(3000);
+      const first = await putAt(stateOnDay(2), 1);
+      expect(first.status).toBe(200);
+      expect(await first.json()).toEqual({ version: 2 });
+      // The first write's broadcast is received and consumed before the second
+      // PUT, so it cannot be mistaken for one from the conflict.
+      expect(await firstEvent).toEqual({ version: 2, updatedAt: expect.any(String) });
+
+      const later: unknown[] = [];
+      const collect = (data: unknown) => later.push(data);
+      watcher.on('state:updated', collect);
+      const second = await putAt(stateOnDay(3), 1);
+      expect(second.status).toBe(409);
+      expect(await second.json()).toEqual({ error: 'version-conflict', currentVersion: 2 });
+      // The window starts only once the 409 has arrived: the server emits before
+      // it responds, so a wrong broadcast is already in flight by now.
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      watcher.off('state:updated', collect);
+      expect(later).toEqual([]);
+
+      const getData = await (await fetch(`${baseUrl}/api/campaigns/${campaignId}`, { headers: jsonHeaders(gmToken) })).json();
+      expect(getData.version).toBe(2);
+    } finally {
+      watcher.disconnect();
     }
   });
 });

@@ -40,6 +40,30 @@ describe('decodeCampaignPayload', () => {
     expect(result).toEqual({ ok: false, reason: 'future-version', detail: expect.stringContaining('newer version of the app') });
   });
 
+  it('refuses a deeply nested schemaVersion without throwing', () => {
+    let deep: unknown = [];
+    for (let i = 0; i < 20_000; i++) deep = [deep];
+    const text = `{"ui":{},"meta":{"schemaVersion":${'['.repeat(20_000)}${']'.repeat(20_000)}},"entities":{},"time":{}}`;
+    for (const input of [root({ schemaVersion: deep }), text]) {
+      let result: ReturnType<typeof decodeCampaignPayload> | undefined;
+      expect(() => { result = decodeCampaignPayload(input); }).not.toThrow();
+      expect(result).toEqual({ ok: false, reason: 'malformed-version', detail: expect.stringMatching(/^This campaign has a malformed schema version: /) });
+    }
+  });
+
+  it.each([
+    ['a long string', 'x'.repeat(1000), `"${'x'.repeat(64)}"…`],
+    ['a short string', '1.6.x', '"1.6.x"'],
+    ['null', null, 'null'],
+    ['a number', 1.7, '1.7'],
+    ['a boolean', true, 'true'],
+    ['an array', ['1', '7'], 'an array'],
+    ['an object', { major: 1 }, 'an object'],
+  ])('describes a malformed %s briefly', (_label, schemaVersion, described) => {
+    const result = decodeCampaignPayload(root({ schemaVersion }));
+    expect(result).toEqual({ ok: false, reason: 'malformed-version', detail: `This campaign has a malformed schema version: ${described}` });
+  });
+
   it.each([
     ['the current version', '1.7.0', false],
     ['the never-bumped 1.0.0', '1.0.0', true],

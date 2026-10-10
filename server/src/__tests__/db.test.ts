@@ -102,27 +102,87 @@ describe('Campaign CRUD', () => {
     expect(getCampaign('nonexistent')).toBeNull();
   });
 
-  it('updateCampaignState increments version', () => {
+  it('updateCampaignState at the current version bumps it and returns the new one', () => {
     createCampaign('c3', 'Versioned', '{"v":1}');
 
-    const v2 = updateCampaignState('c3', '{"v":2}');
-    expect(v2).toBe(2);
+    expect(updateCampaignState('c3', '{"v":2}', 1)).toEqual({ ok: true, version: 2 });
+    expect(updateCampaignState('c3', '{"v":3}', 2)).toEqual({ ok: true, version: 3 });
 
-    const v3 = updateCampaignState('c3', '{"v":3}');
-    expect(v3).toBe(3);
+    const row = getCampaign('c3')!;
+    expect(row.version).toBe(3);
+    expect(row.state_json).toBe('{"v":3}');
   });
 
-  it('updateCampaignState updates the state_json', () => {
+  it('updateCampaignState persists a successful write to disk', async () => {
     createCampaign('c4', 'Stateful', '{"old":true}');
-    updateCampaignState('c4', '{"new":true}');
+    expect(updateCampaignState('c4', '{"new":true}', 1)).toEqual({ ok: true, version: 2 });
 
-    const campaign = getCampaign('c4');
-    expect(campaign!.state_json).toBe('{"new":true}');
+    await initDB();
+
+    const campaign = getCampaign('c4')!;
+    expect(campaign.state_json).toBe('{"new":true}');
+    expect(campaign.version).toBe(2);
   });
 
-  it('updateCampaignState returns 0 for non-existent campaign', () => {
-    const version = updateCampaignState('nonexistent', '{}');
-    expect(version).toBe(0);
+  it('updateCampaignState at a stale version is a conflict that changes nothing, in memory or on disk', async () => {
+    createCampaign('c5', 'Contested', '{"v":1}');
+    expect(updateCampaignState('c5', '{"v":2}', 1)).toEqual({ ok: true, version: 2 });
+    getDB().run(`UPDATE campaigns SET updated_at = '2000-01-01 00:00:00' WHERE id = 'c5'`);
+    saveDB();
+    const dbFile = path.join(tmpDir, 'campaigns.db');
+    const bytesBefore = fs.readFileSync(dbFile);
+    const statBefore = fs.statSync(dbFile);
+    // An in-memory change that is NOT saved: if the conflict path saved the
+    // database, this row would reach the disk with it.
+    getDB().run(`INSERT INTO campaigns (id, name, state_json) VALUES ('unsaved', 'Unsaved', '{}')`);
+
+    expect(updateCampaignState('c5', '{"stale":true}', 1)).toEqual({
+      ok: false,
+      reason: 'version-conflict',
+      currentVersion: 2,
+    });
+
+    const row = getCampaign('c5')!;
+    expect(row.version).toBe(2);
+    expect(row.state_json).toBe('{"v":2}');
+    expect(row.updated_at).toBe('2000-01-01 00:00:00');
+    expect(fs.readFileSync(dbFile).equals(bytesBefore)).toBe(true);
+    const statAfter = fs.statSync(dbFile);
+    expect(statAfter.ino).toBe(statBefore.ino);
+    expect(statAfter.mtimeMs).toBe(statBefore.mtimeMs);
+
+    await initDB();
+    expect(getCampaign('unsaved')).toBeNull();
+    const reread = getCampaign('c5')!;
+    expect(reread.version).toBe(2);
+    expect(reread.state_json).toBe('{"v":2}');
+    expect(reread.updated_at).toBe('2000-01-01 00:00:00');
+  });
+
+  it('updateCampaignState at a version ahead of the row is a conflict too', () => {
+    createCampaign('c6', 'Ahead', '{"v":1}');
+
+    expect(updateCampaignState('c6', '{"v":9}', 5)).toEqual({
+      ok: false,
+      reason: 'version-conflict',
+      currentVersion: 1,
+    });
+    expect(getCampaign('c6')!.state_json).toBe('{"v":1}');
+  });
+
+  it('updateCampaignState on an unknown id is not-found', () => {
+    expect(updateCampaignState('nonexistent', '{}', 1)).toEqual({ ok: false, reason: 'not-found' });
+    expect(getCampaign('nonexistent')).toBeNull();
+  });
+
+  it('reads every campaign column with its SQL type', () => {
+    createCampaign('typed', 'Typed', '{"t":1}');
+    const row = getCampaign('typed')!;
+
+    expect(Object.keys(row).sort()).toEqual(['created_at', 'id', 'name', 'state_json', 'updated_at', 'version']);
+    expect(typeof row.version).toBe('number');
+    expect(row.created_at).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+    expect(row.updated_at).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
   });
 
   it('handles large state JSON', () => {
@@ -147,7 +207,8 @@ describe('Session CRUD', () => {
     expect(session.campaign_id).toBe('camp1');
     expect(session.join_code).toBe('ABC123');
     expect(session.is_active).toBe(1);
-    expect(session.created_at).toBeDefined();
+    expect(session.created_at).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+    expect(Object.keys(session).sort()).toEqual(['campaign_id', 'created_at', 'id', 'is_active', 'join_code']);
   });
 
   it('getSession returns the session by id', () => {

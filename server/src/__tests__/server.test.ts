@@ -4,6 +4,7 @@ import path from 'path';
 import os from 'os';
 import request from 'supertest';
 import { startServer, type ServerHandle } from '../index.js';
+import { campaignJson } from './campaignFixture.js';
 
 let tmpDir: string;
 let server: ServerHandle;
@@ -28,10 +29,24 @@ describe('startServer', () => {
 
     const res = await request(`http://localhost:${server.port}`)
       .post('/api/campaigns')
-      .send({ name: 'Integration Test', state: '{}' });
+      .send({ name: 'Integration Test', state: campaignJson() });
 
     expect(res.status).toBe(201);
     expect(res.body.name).toBe('Integration Test');
+  });
+
+  it('answers a malformed JSON body with a JSON 400, not the HTML error page', async () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gurps-server-test-'));
+    server = await startServer({ port: 0, dbDir: tmpDir });
+
+    const res = await request(`http://localhost:${server.port}`)
+      .post('/api/campaigns')
+      .set('Content-Type', 'application/json')
+      .send('{"name": ');
+
+    expect(res.status).toBe(400);
+    expect(res.type).toBe('application/json');
+    expect(res.body).toEqual({ error: 'Request body is not valid JSON' });
   });
 
   it('gracefully shuts down', async () => {
@@ -55,7 +70,7 @@ describe('startServer', () => {
     // Create a campaign
     await request(`http://localhost:${server.port}`)
       .post('/api/campaigns')
-      .send({ name: 'Persist Test', state: '{"persist":true}' });
+      .send({ name: 'Persist Test', state: campaignJson({ extra: { persist: true } }) });
 
     // Shut down and restart
     await server.close();
@@ -66,7 +81,7 @@ describe('startServer', () => {
     // Actually, we don't know the nanoid, so let's create one more and verify count
     const res = await request(`http://localhost:${server.port}`)
       .post('/api/campaigns')
-      .send({ name: 'After Restart', state: '{}' });
+      .send({ name: 'After Restart', state: campaignJson() });
 
     expect(res.status).toBe(201);
   });

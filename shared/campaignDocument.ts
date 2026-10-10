@@ -50,12 +50,34 @@ export type DecodeResult =
 export const isCampaignRoot = (value: unknown): value is CampaignRootJSON =>
   CampaignRootSchema.safeParse(value).success;
 
+/** Longest slice of a client-supplied version quoted back in a refusal. */
+const MAX_QUOTED_VERSION = 64;
+
+function capText(text: string): string {
+  return text.length > MAX_QUOTED_VERSION ? `${text.slice(0, MAX_QUOTED_VERSION)}…` : text;
+}
+
+/**
+ * A short description of a client-supplied version value. It never recurses
+ * (a deeply nested array would overflow JSON.stringify) and quotes at most
+ * MAX_QUOTED_VERSION characters of a string.
+ */
+function describeVersionValue(version: unknown): string {
+  if (typeof version === 'string') {
+    const cut = version.length > MAX_QUOTED_VERSION;
+    return `${JSON.stringify(version.slice(0, MAX_QUOTED_VERSION))}${cut ? '…' : ''}`;
+  }
+  if (Array.isArray(version)) return 'an array';
+  if (version !== null && typeof version === 'object') return 'an object';
+  return capText(String(version));
+}
+
 /** The message for a version this build refuses. */
 export function describeVersionRefusal(version: unknown, versionClass: 'future' | 'malformed'): string {
   return versionClass === 'future'
-    ? `This campaign was saved by a newer version of the app (schema ${String(version)}; ` +
+    ? `This campaign was saved by a newer version of the app (schema ${capText(String(version))}; ` +
       `this version reads up to ${CAMPAIGN_SCHEMA_VERSION}). Update the app to open it.`
-    : `This campaign has a malformed schema version: ${JSON.stringify(version) ?? String(version)}`;
+    : `This campaign has a malformed schema version: ${describeVersionValue(version)}`;
 }
 
 /**

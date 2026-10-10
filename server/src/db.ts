@@ -5,8 +5,10 @@
  * JSON string — the server does not need to understand its structure.
  */
 
-// @ts-ignore
-import initSqlJs, { type Database } from 'sql.js';
+// The ambient types for sql.js; referenced here so any program that reaches
+// this file (the root tsc does, through serverIntegration.test.ts) loads them.
+/// <reference path="./sql-js.d.ts" />
+import initSqlJs, { type Database, type SqlValue } from 'sql.js';
 import fs from 'fs';
 import path from 'path';
 import type { AssetMeta } from '../../shared/protocol.js';
@@ -122,6 +124,18 @@ export interface CampaignRow {
   updated_at: string;
 }
 
+/** Columns read one by one (sql.js rows are untyped records); every campaign column is NOT NULL. */
+function readCampaignRow(row: Record<string, SqlValue>): CampaignRow {
+  return {
+    id: String(row.id),
+    name: String(row.name),
+    state_json: String(row.state_json),
+    version: Number(row.version),
+    created_at: String(row.created_at),
+    updated_at: String(row.updated_at),
+  };
+}
+
 export function createCampaign(id: string, name: string, stateJson: string): CampaignRow {
   db.run(
     `INSERT INTO campaigns (id, name, state_json) VALUES (?, ?, ?)`,
@@ -135,7 +149,7 @@ export function getCampaign(id: string): CampaignRow | null {
   const stmt = db.prepare(`SELECT * FROM campaigns WHERE id = ?`);
   stmt.bind([id]);
   if (stmt.step()) {
-    const row = stmt.getAsObject() as unknown as CampaignRow;
+    const row = readCampaignRow(stmt.getAsObject());
     stmt.free();
     return row;
   }
@@ -143,14 +157,30 @@ export function getCampaign(id: string): CampaignRow | null {
   return null;
 }
 
-export function updateCampaignState(id: string, stateJson: string): number {
+export type UpdateStateResult =
+  | { ok: true; version: number }
+  | { ok: false; reason: 'version-conflict'; currentVersion: number }
+  | { ok: false; reason: 'not-found' };
+
+/**
+ * Compare-and-swap the campaign state: the write lands only while the stored
+ * version equals `expectedVersion`. sql.js is single-threaded, so the one
+ * UPDATE is atomic; `getRowsModified()` must read it before any other statement.
+ * A refused write touches neither the row nor the file on disk.
+ */
+export function updateCampaignState(id: string, stateJson: string, expectedVersion: number): UpdateStateResult {
   db.run(
-    `UPDATE campaigns SET state_json = ?, version = version + 1, updated_at = datetime('now') WHERE id = ?`,
-    [stateJson, id]
+    `UPDATE campaigns SET state_json = ?, version = version + 1, updated_at = datetime('now') WHERE id = ? AND version = ?`,
+    [stateJson, id, expectedVersion]
   );
-  saveDB();
-  const campaign = getCampaign(id);
-  return campaign?.version ?? 0;
+  if (db.getRowsModified() === 1) {
+    saveDB();
+    return { ok: true, version: expectedVersion + 1 };
+  }
+  const current = getCampaign(id);
+  return current
+    ? { ok: false, reason: 'version-conflict', currentVersion: current.version }
+    : { ok: false, reason: 'not-found' };
 }
 
 export function isValidAssetId(id: string): boolean {
@@ -247,6 +277,17 @@ export interface SessionRow {
   created_at: string;
 }
 
+/** Columns read one by one; every session column is NOT NULL. */
+function readSessionRow(row: Record<string, SqlValue>): SessionRow {
+  return {
+    id: String(row.id),
+    campaign_id: String(row.campaign_id),
+    join_code: String(row.join_code),
+    is_active: Number(row.is_active),
+    created_at: String(row.created_at),
+  };
+}
+
 export function createSession(id: string, campaignId: string, joinCode: string): SessionRow {
   db.run(
     `INSERT INTO sessions (id, campaign_id, join_code) VALUES (?, ?, ?)`,
@@ -260,7 +301,7 @@ export function getSession(id: string): SessionRow | null {
   const stmt = db.prepare(`SELECT * FROM sessions WHERE id = ?`);
   stmt.bind([id]);
   if (stmt.step()) {
-    const row = stmt.getAsObject() as unknown as SessionRow;
+    const row = readSessionRow(stmt.getAsObject());
     stmt.free();
     return row;
   }
@@ -272,7 +313,7 @@ export function getSessionByJoinCode(joinCode: string): SessionRow | null {
   const stmt = db.prepare(`SELECT * FROM sessions WHERE join_code = ? AND is_active = 1`);
   stmt.bind([joinCode]);
   if (stmt.step()) {
-    const row = stmt.getAsObject() as unknown as SessionRow;
+    const row = readSessionRow(stmt.getAsObject());
     stmt.free();
     return row;
   }

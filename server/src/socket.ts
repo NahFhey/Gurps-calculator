@@ -10,7 +10,7 @@
  */
 
 import type { Server as SocketServer, Socket } from 'socket.io';
-import { EVENTS, type JoinRoomPayload, type PlayerInfo } from '../../shared/protocol.js';
+import { EVENTS, JoinRoomPayloadSchema, type ErrorPayload, type PlayerInfo } from '../../shared/protocol.js';
 import { verifyToken, type TokenPayload } from './auth.js';
 
 /** Track connected players per campaign room. */
@@ -59,13 +59,20 @@ export function setupSocket(io: SocketServer): void {
     const auth = socket.data.auth as TokenPayload;
     console.log(`[Socket] Client connected: ${socket.id} (${auth.displayName}, ${auth.role})`);
 
-    socket.on(EVENTS.JOIN_ROOM, (payload: JoinRoomPayload) => {
-      const { campaignId } = payload;
-      if (!campaignId) return;
+    socket.on(EVENTS.JOIN_ROOM, (payload: unknown) => {
+      // Parse before touching any room state; a bad payload is refused, never thrown on.
+      const parsed = JoinRoomPayloadSchema.safeParse(payload);
+      if (!parsed.success) {
+        const error: ErrorPayload = { message: 'Invalid room:join payload' };
+        socket.emit(EVENTS.ERROR, error);
+        return;
+      }
+      const { campaignId } = parsed.data;
 
       // Verify the client is joining the campaign they're authenticated for
       if (campaignId !== auth.campaignId) {
-        socket.emit('error', { message: 'Cannot join a campaign you are not authenticated for' });
+        const error: ErrorPayload = { message: 'Cannot join a campaign you are not authenticated for' };
+        socket.emit(EVENTS.ERROR, error);
         return;
       }
 
